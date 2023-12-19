@@ -5,18 +5,17 @@
 #ifndef SHILL_VPN_VPN_CONNECTION_UNDER_TEST_H_
 #define SHILL_VPN_VPN_CONNECTION_UNDER_TEST_H_
 
-#include "shill/vpn/vpn_connection.h"
-
 #include <memory>
 #include <string>
 #include <string_view>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/ipconfig.h"
 #include "shill/service.h"
+#include "shill/vpn/vpn_connection.h"
 
 namespace shill {
 
@@ -33,10 +32,10 @@ class VPNConnectionUnderTest : public VPNConnection {
   MOCK_METHOD(void, OnConnect, (), (override));
   MOCK_METHOD(void, OnDisconnect, (), (override));
 
-  void TriggerConnected(const std::string& link_name,
-                        int interface_index,
-                        std::unique_ptr<IPConfig::Properties> ipv4_properties,
-                        std::unique_ptr<IPConfig::Properties> ipv6_properties);
+  void TriggerConnected(
+      const std::string& link_name,
+      int interface_index,
+      std::unique_ptr<net_base::NetworkConfig> network_config);
   void TriggerFailure(Service::ConnectFailure reason, std::string_view detail);
   void TriggerStopped();
 

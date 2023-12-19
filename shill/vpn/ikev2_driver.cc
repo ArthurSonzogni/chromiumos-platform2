@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/error.h"
@@ -184,18 +185,11 @@ void IKEv2Driver::Disconnect() {
   ipsec_connection_->Disconnect();
 }
 
-std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv4Properties() const {
-  if (ipv4_properties_ == nullptr) {
+std::unique_ptr<net_base::NetworkConfig> IKEv2Driver::GetNetworkConfig() const {
+  if (!network_config_.has_value()) {
     return nullptr;
   }
-  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
-}
-
-std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv6Properties() const {
-  if (ipv6_properties_ == nullptr) {
-    return nullptr;
-  }
-  return std::make_unique<IPConfig::Properties>(*ipv6_properties_);
+  return std::make_unique<net_base::NetworkConfig>(*network_config_);
 }
 
 void IKEv2Driver::OnConnectTimeout() {
@@ -260,15 +254,18 @@ void IKEv2Driver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
 void IKEv2Driver::OnIPsecConnected(
     const std::string& link_name,
     int interface_index,
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
-    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
+    std::unique_ptr<net_base::NetworkConfig> network_config) {
   if (!event_handler_) {
     LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
     return;
   }
   ReportConnectionMetrics();
-  ipv4_properties_ = std::move(ipv4_properties);
-  ipv6_properties_ = std::move(ipv6_properties);
+  if (!network_config) {
+    LOG(ERROR) << "OnIPsecConnected() triggered with null network_config";
+  } else {
+    network_config_ =
+        std::make_optional<net_base::NetworkConfig>(*network_config);
+  }
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 

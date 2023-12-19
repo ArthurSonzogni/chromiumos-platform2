@@ -19,6 +19,7 @@
 #include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password.h>
 #include <net-base/mock_process_manager.h>
+#include <net-base/network_config.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -28,7 +29,6 @@
 #include "shill/rpc_task.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
-#include "shill/vpn/vpn_connection_under_test.h"
 
 namespace shill {
 
@@ -143,8 +143,7 @@ class MockCallbacks {
               OnConnected,
               (const std::string& link_name,
                int interface_index,
-               std::unique_ptr<IPConfig::Properties> ipv4_properties,
-               std::unique_ptr<IPConfig::Properties> ipv6_properties));
+               std::unique_ptr<net_base::NetworkConfig> network_config));
   MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
   MOCK_METHOD(void, OnStopped, ());
 };
@@ -337,7 +336,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnected) {
       {kPPPInterfaceName, kIfName}, {kPPPInternalIP4Address, kLocalIPAddress}};
 
   // No callbacks should be invoked when authenticating.
-  EXPECT_CALL(callbacks_, OnConnected(_, _, _, _)).Times(0);
+  EXPECT_CALL(callbacks_, OnConnected).Times(0);
   EXPECT_CALL(callbacks_, OnFailure(_)).Times(0);
   EXPECT_CALL(callbacks_, OnStopped()).Times(0);
   l2tp_connection_->InvokeNotify(kPPPReasonAuthenticating, config);
@@ -346,7 +345,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnected) {
 
   // Expects OnConnected() when kPPPReasonConnect event comes.
   auto actual_ip_properties = std::make_unique<IPConfig::Properties>();
-  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _));
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
   EXPECT_CALL(*device_info(), GetIndex(kIfName)).WillOnce(Return(kIfIndex));
   l2tp_connection_->InvokeNotify(kPPPReasonConnect, config);
   dispatcher_.task_environment().RunUntilIdle();
@@ -362,7 +361,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnectedWithoutDeviceInfoReady) {
   // The object should register the callback with DeviceInfo if the interface is
   // not known by shill now.
   DeviceInfo::LinkReadyCallback link_ready_cb;
-  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _)).Times(0);
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _)).Times(0);
   EXPECT_CALL(*device_info(), GetIndex(kIfName)).WillOnce(Return(-1));
   EXPECT_CALL(*device_info(), AddVirtualInterfaceReadyCallback(kIfName, _))
       .WillOnce([&](const std::string&, DeviceInfo::LinkReadyCallback cb) {
@@ -373,7 +372,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnectedWithoutDeviceInfoReady) {
 
   // Expects OnConnected() when the link is ready.
   std::move(link_ready_cb).Run(kIfName, kIfIndex);
-  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _));
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
   dispatcher_.task_environment().RunUntilIdle();
 }
 

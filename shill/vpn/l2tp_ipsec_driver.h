@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/manager.h"
@@ -30,8 +31,7 @@ class L2TPIPsecDriver : public VPNDriver {
   // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
-  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
-  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
+  std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const override;
   void OnConnectTimeout() override;
 
   // Disconnects from the VPN service before suspend or when the current default
@@ -68,10 +68,10 @@ class L2TPIPsecDriver : public VPNDriver {
       net_base::ProcessManager* process_manager);
 
   // Callbacks from IPsecConnection.
-  void OnIPsecConnected(const std::string& link_name,
-                        int interface_index,
-                        std::unique_ptr<IPConfig::Properties> ipv4_properties,
-                        std::unique_ptr<IPConfig::Properties> ipv6_properties);
+  void OnIPsecConnected(
+      const std::string& link_name,
+      int interface_index,
+      std::unique_ptr<net_base::NetworkConfig> network_config);
   void OnIPsecFailure(Service::ConnectFailure failure);
   void OnIPsecStopped();
 
@@ -82,7 +82,7 @@ class L2TPIPsecDriver : public VPNDriver {
 
   EventHandler* event_handler_ = nullptr;
   std::unique_ptr<VPNConnection> ipsec_connection_;
-  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
+  std::optional<net_base::NetworkConfig> network_config_;
 
   base::WeakPtrFactory<L2TPIPsecDriver> weak_factory_{this};
 };

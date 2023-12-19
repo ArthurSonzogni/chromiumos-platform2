@@ -4,7 +4,6 @@
 
 #include "shill/vpn/vpn_connection.h"
 
-#include <map>
 #include <set>
 #include <string>
 #include <string_view>
@@ -15,6 +14,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <net-base/network_config.h>
 
 namespace shill {
 
@@ -95,14 +95,12 @@ bool VPNConnection::IsConnectingOrConnected() const {
 void VPNConnection::NotifyConnected(
     const std::string& link_name,
     int interface_index,
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
-    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
+    std::unique_ptr<net_base::NetworkConfig> network_config) {
   CheckCallWithState(__func__, state_, {State::kConnecting});
   state_ = State::kConnected;
   dispatcher_->PostTask(
-      FROM_HERE,
-      base::BindOnce(callbacks_->on_connected_cb, link_name, interface_index,
-                     std::move(ipv4_properties), std::move(ipv6_properties)));
+      FROM_HERE, base::BindOnce(callbacks_->on_connected_cb, link_name,
+                                interface_index, std::move(network_config)));
 }
 
 void VPNConnection::NotifyFailure(Service::ConnectFailure reason,

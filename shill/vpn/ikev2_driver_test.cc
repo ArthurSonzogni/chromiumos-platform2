@@ -124,7 +124,7 @@ TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
   // Connected.
   const std::string kIfName = "xfrm0";
   constexpr int kIfIndex = 123;
-  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {}, {});
+  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, nullptr);
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
                                       Metrics::kVpnDriverIKEv2));
@@ -176,7 +176,7 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));

@@ -11,9 +11,9 @@
 #include <utility>
 
 #include <base/functional/callback.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/ipconfig.h"
 #include "shill/mockable.h"
 #include "shill/service.h"
 
@@ -47,8 +47,7 @@ class VPNConnection {
     using OnConnectedCallback = base::RepeatingCallback<void(
         const std::string& link_name,
         int interface_index,
-        std::unique_ptr<IPConfig::Properties> ipv4_properties,
-        std::unique_ptr<IPConfig::Properties> ipv6_properties)>;
+        std::unique_ptr<net_base::NetworkConfig> network_config)>;
     // The state has been changed to kDisconnecting caused by a failure
     // unexpectedly (i.e., Disconnect() is not called).
     using OnFailureCallback = base::OnceCallback<void(Service::ConnectFailure)>;
@@ -106,8 +105,7 @@ class VPNConnection {
   // functions.
   void NotifyConnected(const std::string& link_name,
                        int interface_index,
-                       std::unique_ptr<IPConfig::Properties> ipv4_properties,
-                       std::unique_ptr<IPConfig::Properties> ipv6_properties);
+                       std::unique_ptr<net_base::NetworkConfig> network_config);
   // Note that NotifyFailure() will also invoke OnDisconnect() on the derived
   // class (by a PostTask()), and thus the derived class don't need to do any
   // clean up other than calling this function on failures.

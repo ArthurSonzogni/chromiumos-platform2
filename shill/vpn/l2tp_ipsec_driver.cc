@@ -17,6 +17,7 @@
 #include <brillo/type_list.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/error.h"
@@ -276,18 +277,13 @@ void L2TPIPsecDriver::Disconnect() {
   ipsec_connection_->Disconnect();
 }
 
-std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv4Properties()
+std::unique_ptr<net_base::NetworkConfig> L2TPIPsecDriver::GetNetworkConfig()
     const {
-  if (ipv4_properties_ == nullptr) {
-    LOG(DFATAL) << "ipv4_properties_ is invalid.";
+  if (!network_config_.has_value()) {
+    LOG(DFATAL) << "network_config_ is invalid.";
     return nullptr;
   }
-  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
-}
-
-std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv6Properties()
-    const {
-  return nullptr;
+  return std::make_unique<net_base::NetworkConfig>(*network_config_);
 }
 
 void L2TPIPsecDriver::OnConnectTimeout() {
@@ -350,15 +346,19 @@ void L2TPIPsecDriver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
 void L2TPIPsecDriver::OnIPsecConnected(
     const std::string& link_name,
     int interface_index,
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
-    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
+    std::unique_ptr<net_base::NetworkConfig> network_config) {
   if (!event_handler_) {
     LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
     return;
   }
   LOG(INFO) << "VPN connection established";
   ReportConnectionMetrics();
-  ipv4_properties_ = std::move(ipv4_properties);
+  if (!network_config) {
+    LOG(ERROR) << "OnIPsecConnected() triggered with null network_config";
+  } else {
+    network_config_ =
+        std::make_optional<net_base::NetworkConfig>(*network_config);
+  }
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 

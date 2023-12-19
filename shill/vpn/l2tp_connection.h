@@ -13,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
 #include <libpasswordprovider/password_provider.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
@@ -79,7 +80,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
 
   // Callback registered in DeviceInfo to invoke NotifyConnected() once
   // DeviceInfo notices the ppp interface.
-  void OnLinkReady(std::unique_ptr<IPConfig::Properties> ipv4_properties,
+  void OnLinkReady(std::unique_ptr<net_base::NetworkConfig> network_config,
                    const std::string& if_name,
                    int if_index);
   void OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code);

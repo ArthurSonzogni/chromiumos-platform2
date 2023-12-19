@@ -5,6 +5,7 @@
 #include "shill/vpn/l2tp_connection.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -22,6 +23,7 @@
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
+#include "shill/ipconfig.h"
 #include "shill/ppp_daemon.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -169,18 +171,22 @@ void L2TPConnection::Notify(const std::string& reason,
 
   ipv4_properties->method = kTypeVPN;
 
+  // TODO(b/307855773): Make PPPDaemon::ParseIPConfiguration return
+  // NetworkConfig
+  auto network_config = std::make_unique<net_base::NetworkConfig>(
+      IPConfig::Properties::ToNetworkConfig(ipv4_properties.get(), nullptr));
+
   // Notify() could be invoked either before or after the creation of the ppp
   // interface. We need to make sure that the interface is ready (by checking
   // DeviceInfo) before invoking the connected callback here.
   int interface_index = device_info_->GetIndex(interface_name);
   if (interface_index != -1) {
-    NotifyConnected(interface_name, interface_index, std::move(ipv4_properties),
-                    /*ipv6_properties=*/nullptr);
+    NotifyConnected(interface_name, interface_index, std::move(network_config));
   } else {
     device_info_->AddVirtualInterfaceReadyCallback(
         interface_name,
         base::BindOnce(&L2TPConnection::OnLinkReady, weak_factory_.GetWeakPtr(),
-                       std::move(ipv4_properties)));
+                       std::move(network_config)));
   }
 }
 
@@ -339,7 +345,7 @@ void L2TPConnection::StartXl2tpd() {
 }
 
 void L2TPConnection::OnLinkReady(
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    std::unique_ptr<net_base::NetworkConfig> network_config,
     const std::string& if_name,
     int if_index) {
   if (state() != State::kConnecting) {
@@ -348,8 +354,7 @@ void L2TPConnection::OnLinkReady(
     LOG(WARNING) << "OnLinkReady() called but the current state is " << state();
     return;
   }
-  NotifyConnected(if_name, if_index, std::move(ipv4_properties),
-                  /*ipv6_properties=*/nullptr);
+  NotifyConnected(if_name, if_index, std::move(network_config));
 }
 
 void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {

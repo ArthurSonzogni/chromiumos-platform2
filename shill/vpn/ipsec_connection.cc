@@ -33,6 +33,7 @@
 #include <net-base/process_manager.h>
 #include <re2/re2.h>
 
+#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -1143,8 +1144,7 @@ void IPsecConnection::ParseDNSServers() {
 void IPsecConnection::OnL2TPConnected(
     const std::string& interface_name,
     int interface_index,
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
-    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
+    std::unique_ptr<net_base::NetworkConfig> network_config) {
   if (state() != State::kConnecting) {
     // This is possible, e.g., the upper layer called Disconnect() right before
     // this callback is triggered.
@@ -1152,8 +1152,7 @@ void IPsecConnection::OnL2TPConnected(
                  << state();
     return;
   }
-  NotifyConnected(interface_name, interface_index, std::move(ipv4_properties),
-                  std::move(ipv6_properties));
+  NotifyConnected(interface_name, interface_index, std::move(network_config));
 }
 
 void IPsecConnection::OnDisconnect() {
@@ -1247,8 +1246,11 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
     ipv4_props->blackhole_ipv6 = false;
   }
 
-  NotifyConnected(ifname, ifindex, std::move(ipv4_props),
-                  std::move(ipv6_props));
+  // TODO(b/307855773): Migrate ipv4_props and ipv6_props in this method.
+  auto network_config = std::make_unique<net_base::NetworkConfig>(
+      IPConfig::Properties::ToNetworkConfig(ipv4_props.get(),
+                                            ipv6_props.get()));
+  NotifyConnected(ifname, ifindex, std::move(network_config));
 }
 
 void IPsecConnection::StopCharon() {

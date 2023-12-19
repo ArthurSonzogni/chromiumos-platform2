@@ -20,7 +20,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/l2tp_connection.h"
 #include "shill/vpn/mock_vpn_driver.h"
@@ -141,7 +140,7 @@ TEST_F(L2TPIPsecDriverTest, ConnectAndDisconnect) {
   // Connected.
   const std::string kIfName = "ppp0";
   constexpr int kIfIndex = 123;
-  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {}, {});
+  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, nullptr);
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
                                       Metrics::kVpnDriverL2tpIpsec));
@@ -202,7 +201,7 @@ TEST_F(L2TPIPsecDriverTest, ConnectedFailure) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
@@ -219,7 +218,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnSuspend) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
@@ -231,7 +230,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
@@ -244,7 +243,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));

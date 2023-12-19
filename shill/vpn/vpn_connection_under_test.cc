@@ -11,9 +11,9 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/ipconfig.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -25,10 +25,8 @@ VPNConnectionUnderTest::VPNConnectionUnderTest(
 void VPNConnectionUnderTest::TriggerConnected(
     const std::string& link_name,
     int interface_index,
-    std::unique_ptr<IPConfig::Properties> ipv4_properties,
-    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
-  NotifyConnected(link_name, interface_index, std::move(ipv4_properties),
-                  std::move(ipv6_properties));
+    std::unique_ptr<net_base::NetworkConfig> network_config) {
+  NotifyConnected(link_name, interface_index, std::move(network_config));
 }
 
 void VPNConnectionUnderTest::TriggerFailure(Service::ConnectFailure reason,

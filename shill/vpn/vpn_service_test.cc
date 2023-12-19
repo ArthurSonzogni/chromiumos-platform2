@@ -132,7 +132,7 @@ class VPNServiceTest : public testing::Test {
 };
 
 TEST_F(VPNServiceTest, LogName) {
-  EXPECT_EQ("vpn_ikev2_0", service_->log_name());
+  EXPECT_EQ("vpn_openvpn_0", service_->log_name());
 }
 
 TEST_F(VPNServiceTest, ConnectAlreadyConnected) {

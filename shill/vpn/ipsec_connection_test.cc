@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/mock_process_manager.h>
+#include <net-base/network_config.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -259,8 +260,7 @@ class MockCallbacks {
               OnConnected,
               (const std::string& link_name,
                int interface_index,
-               std::unique_ptr<IPConfig::Properties> ipv4_properties,
-               std::unique_ptr<IPConfig::Properties> ipv6_properties));
+               std::unique_ptr<net_base::NetworkConfig> network_config));
   MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
   MOCK_METHOD(void, OnStopped, ());
 };
@@ -824,13 +824,9 @@ TEST_F(IPsecConnectionTest, StartL2TPLayerAndConnected) {
   // L2TP connected.
   const std::string kIfName = "ppp0";
   constexpr int kIfIndex = 123;
-  std::unique_ptr<IPConfig::Properties> ipv4_properties;
-  std::unique_ptr<IPConfig::Properties> ipv6_properties;
-  l2tp_connection_->TriggerConnected(kIfName, kIfIndex,
-                                     std::move(ipv4_properties),
-                                     std::move(ipv6_properties));
+  l2tp_connection_->TriggerConnected(kIfName, kIfIndex, nullptr);
 
-  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _));
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
   dispatcher_.task_environment().RunUntilIdle();
 }
 
@@ -917,7 +913,7 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
 
   std::move(registered_link_ready_cb).Run(actual_if_name, kIfIndex);
-  EXPECT_CALL(callbacks_, OnConnected(actual_if_name, kIfIndex, _, _));
+  EXPECT_CALL(callbacks_, OnConnected(actual_if_name, kIfIndex, _));
   dispatcher_.task_environment().RunUntilIdle();
 }
 
