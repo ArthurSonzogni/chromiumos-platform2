@@ -45,7 +45,7 @@ class FingerprintAuthFactorDriver final
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
           AuthIntentSequence<AuthIntent::kDecrypt>>,
       public AfDriverNoCredentialVerifier,
-      public AfDriverNoLockScreenKnowledgeFactor {
+      public AfDriverNoKnowledgeFactor {
  public:
   FingerprintAuthFactorDriver(
       Platform* platform,

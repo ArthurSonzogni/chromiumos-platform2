@@ -44,9 +44,8 @@ class PinAuthFactorDriver final
       public AfDriverNoCredentialVerifier,
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter,
-      public AfDriverWithLockScreenKnowledgeFactorType<
-          LockScreenKnowledgeFactorType::
-              LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN> {
+      public AfDriverWithKnowledgeFactorType<
+          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN> {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 

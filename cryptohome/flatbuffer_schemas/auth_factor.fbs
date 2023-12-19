@@ -26,8 +26,8 @@ enum SerializedLockoutPolicy : int {
   TIME_LIMITED = 3,
 }
 
-// Refer to the LockScreenKnowledgeFactorHashAlgorithm proto.
-enum SerializedLockScreenKnowledgeFactorHashAlgorithm : int {
+// Refer to the KnowledgeFactorHashAlgorithm proto.
+enum SerializedKnowledgeFactorHashAlgorithm : int {
   // Used for hashing PINs in Chrome.
   PBKDF2_AES256_1234 = 1,
 
@@ -38,7 +38,7 @@ enum SerializedLockScreenKnowledgeFactorHashAlgorithm : int {
 // Refer to the KnowledgeFactorHashInfo proto.
 table SerializedKnowledgeFactorHashInfo {
   // This field should always be non-null in practice.
-  algorithm:SerializedLockScreenKnowledgeFactorHashAlgorithm = null (id:0);
+  algorithm:SerializedKnowledgeFactorHashAlgorithm = null (id:0);
   salt:[ubyte] (id:1);
 }
 

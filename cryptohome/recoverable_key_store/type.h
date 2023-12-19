@@ -16,22 +16,22 @@ namespace cryptohome {
 // the corresponding recoverable key store and protected by:
 // - The private key of the key pair will be wrapped by the wrapping key
 // - The wrapping key will be wrapped by the recovery key
-// - The recovery key will be protected by the lock screen knowledge factor
+// - The recovery key will be protected by the knowledge factor
 struct SecurityDomainKeys {
   hwsec_foundation::secure_box::KeyPair key_pair;
   brillo::SecureBlob wrapping_key;
 };
 
-// The lock screen knowledge factor, along with all associated data necessary
+// The knowledge factor, along with all associated data necessary
 // for generating the recoverable key store.
-struct LockScreenKnowledgeFactor {
-  // Type of the lock screen knowledge factor.
-  LockScreenKnowledgeFactorType lskf_type;
-  // The lock screen knowledge factor hash algorithm.
-  LockScreenKnowledgeFactorHashAlgorithm algorithm;
-  // The salt used for hashing the lock screen knowledge factor.
+struct KnowledgeFactor {
+  // Type of the knowledge factor.
+  KnowledgeFactorType knowledge_factor_type;
+  // The knowledge factor hash algorithm.
+  KnowledgeFactorHashAlgorithm algorithm;
+  // The salt used for hashing the knowledge factor.
   brillo::Blob salt;
-  // The hash result of the lock screen knowledge factor using |salt| as salt.
+  // The hash result of the knowledge factor using |salt| as salt.
   brillo::SecureBlob hash;
 };
 

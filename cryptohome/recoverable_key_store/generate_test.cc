@@ -30,11 +30,9 @@ constexpr size_t kHashSize = 32;
 TEST(GenerateRecoverableKeyStoreTest, GenerateSuccess) {
   const brillo::SecureBlob kSeed1("seed1"), kSeed2("seed2");
   const brillo::SecureBlob kWrappingKey(kSecurityDomainWrappingKeySize, 0xAA);
-  const LockScreenKnowledgeFactor kLskf = {
-      .lskf_type =
-          LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      .algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
+  const KnowledgeFactor kKnowledgeFactor = {
+      .knowledge_factor_type = KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN,
+      .algorithm = KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
       .salt = brillo::Blob(kSaltSize, 0xBB),
       .hash = brillo::SecureBlob(kHashSize, 0xCC),
   };
@@ -56,19 +54,17 @@ TEST(GenerateRecoverableKeyStoreTest, GenerateSuccess) {
       .public_key = key_pair2->public_key,
   };
 
-  EXPECT_THAT(
-      GenerateRecoverableKeyStore(kLskf, kLabel, security_domain_keys, cert),
-      IsOk());
+  EXPECT_THAT(GenerateRecoverableKeyStore(kKnowledgeFactor, kLabel,
+                                          security_domain_keys, cert),
+              IsOk());
 }
 
 TEST(GenerateRecoverableKeyStoreTest, GenerateInvalidPublicKey) {
   const brillo::SecureBlob kSeed("seed");
   const brillo::SecureBlob kWrappingKey(kSecurityDomainWrappingKeySize, 0xAA);
-  const LockScreenKnowledgeFactor kLskf = {
-      .lskf_type =
-          LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      .algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
+  const KnowledgeFactor kKnowledgeFactor = {
+      .knowledge_factor_type = KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN,
+      .algorithm = KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
       .salt = brillo::Blob(kSaltSize, 0xBB),
       .hash = brillo::SecureBlob(kHashSize, 0xCC),
   };
@@ -85,8 +81,8 @@ TEST(GenerateRecoverableKeyStoreTest, GenerateInvalidPublicKey) {
   SecurityDomainKeys security_domain_keys = {.key_pair = *key_pair,
                                              .wrapping_key = kWrappingKey};
 
-  EXPECT_THAT(GenerateRecoverableKeyStore(kLskf, kLabel, security_domain_keys,
-                                          kInvalidCert),
+  EXPECT_THAT(GenerateRecoverableKeyStore(kKnowledgeFactor, kLabel,
+                                          security_domain_keys, kInvalidCert),
               NotOk());
 }
 

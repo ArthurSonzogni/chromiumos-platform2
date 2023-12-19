@@ -324,7 +324,7 @@ class UserDataAuth {
 
   // Get all the recoverable key stores of the user. These key stores, for
   // example, allow the user to recover their passkeys on other devices by
-  // providing this device's lock screen knowledge factors.
+  // providing this device's knowledge factors.
   void GetRecoverableKeyStores(
       user_data_auth::GetRecoverableKeyStoresRequest request,
       base::OnceCallback<

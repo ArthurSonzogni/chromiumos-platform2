@@ -40,7 +40,7 @@ using ::hwsec_foundation::status::MakeStatus;
 constexpr size_t kWrongAttemptLabelSize = 8;
 
 CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
-    LockScreenKnowledgeFactorType lskf_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCert& cert,
@@ -54,8 +54,8 @@ CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
         ErrorActionSet(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  LockScreenKnowledgeFactor lskf = {
-      .lskf_type = lskf_type,
+  KnowledgeFactor knowledge_factor = {
+      .knowledge_factor_type = knowledge_factor_type,
       .algorithm =
           SerializedKnowledgeFactorAlgorithmToProto(*hash_info->algorithm),
       .salt = hash_info->salt,
@@ -63,7 +63,7 @@ CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
   };
 
   CryptohomeStatusOr<RecoverableKeyStore> key_store_proto =
-      GenerateRecoverableKeyStore(lskf, wrong_attempt_label,
+      GenerateRecoverableKeyStore(knowledge_factor, wrong_attempt_label,
                                   *auth_input.security_domain_keys, cert);
   if (!key_store_proto.ok()) {
     return MakeStatus<CryptohomeError>(
@@ -87,7 +87,7 @@ CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
 }  // namespace
 
 CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
-    LockScreenKnowledgeFactorType lskf_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider) {
@@ -100,14 +100,15 @@ CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   brillo::Blob wrong_attempt_label = CreateRandomBlob(kWrongAttemptLabelSize);
-  return DoCreateRecoverableKeyStoreState(lskf_type, auth_input, metadata,
-                                          *backend_cert, wrong_attempt_label);
+  return DoCreateRecoverableKeyStoreState(knowledge_factor_type, auth_input,
+                                          metadata, *backend_cert,
+                                          wrong_attempt_label);
 }
 
 CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
 MaybeUpdateRecoverableKeyStoreState(
     const RecoverableKeyStoreState& state,
-    LockScreenKnowledgeFactorType lskf_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider) {
@@ -133,8 +134,9 @@ MaybeUpdateRecoverableKeyStoreState(
   brillo::Blob wrong_attempt_label =
       brillo::BlobFromString(key_store.key_store_parameters().counter_id());
   CryptohomeStatusOr<RecoverableKeyStoreState> new_state =
-      DoCreateRecoverableKeyStoreState(lskf_type, auth_input, metadata,
-                                       *backend_cert, wrong_attempt_label);
+      DoCreateRecoverableKeyStoreState(knowledge_factor_type, auth_input,
+                                       metadata, *backend_cert,
+                                       wrong_attempt_label);
   if (!new_state.ok()) {
     return std::move(new_state).err_status();
   }

@@ -264,28 +264,23 @@ class AfDriverNoRateLimiter : public virtual AuthFactorDriver {
                                         DecryptedUss& decrypted_uss) final;
 };
 
-// Common implementation of GetLockScreenKnowledgeFactorType(). Takes the
-// LockScreenKnowledgeFactorType as template parameter, with the special case
+// Common implementation of GetKnowledgeFactorType(). Takes the
+// KnowledgeFactorType as template parameter, with the special case
 // that UNSPECIFIED is translated to nullopt. This is because returning an
-// optional that either contains a valid LSKF type or nullopt is easier to
-// handle than returning an enum that contains UNSPECIFIED.
-template <LockScreenKnowledgeFactorType kType>
-class AfDriverWithLockScreenKnowledgeFactorType
-    : public virtual AuthFactorDriver {
+// optional that either contains a valid knowledge factor type or nullopt is
+// easier to handle than returning an enum that contains UNSPECIFIED.
+template <KnowledgeFactorType kType>
+class AfDriverWithKnowledgeFactorType : public virtual AuthFactorDriver {
  private:
-  std::optional<LockScreenKnowledgeFactorType>
-  GetLockScreenKnowledgeFactorType() const final {
-    if (kType == LockScreenKnowledgeFactorType::
-                     LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED) {
+  std::optional<KnowledgeFactorType> GetKnowledgeFactorType() const final {
+    if (kType == KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED) {
       return std::nullopt;
     }
     return kType;
   }
 };
-using AfDriverNoLockScreenKnowledgeFactor =
-    AfDriverWithLockScreenKnowledgeFactorType<
-        LockScreenKnowledgeFactorType::
-            LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED>;
+using AfDriverNoKnowledgeFactor = AfDriverWithKnowledgeFactorType<
+    KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED>;
 
 }  // namespace cryptohome
 

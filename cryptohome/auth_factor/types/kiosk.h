@@ -41,7 +41,7 @@ class KioskAuthFactorDriver final
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter,
-      public AfDriverNoLockScreenKnowledgeFactor {
+      public AfDriverNoKnowledgeFactor {
  public:
   KioskAuthFactorDriver() = default;
 

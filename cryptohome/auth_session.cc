@@ -2988,9 +2988,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
-  std::optional<LockScreenKnowledgeFactorType> lskf_type =
-      factor_driver.GetLockScreenKnowledgeFactorType();
-  if (lskf_type.has_value() && decrypt_token_) {
+  std::optional<KnowledgeFactorType> knowledge_factor_type =
+      factor_driver.GetKnowledgeFactorType();
+  if (knowledge_factor_type.has_value() && decrypt_token_) {
     DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
     const SecurityDomainKeys* security_domain_keys =
         decrypted_uss.GetSecurityDomainKeys();
@@ -4229,9 +4229,9 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
   // TODO(b/312628857): Report metrics for the update result.
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor.type());
-  std::optional<LockScreenKnowledgeFactorType> lskf_type =
-      factor_driver.GetLockScreenKnowledgeFactorType();
-  if (!lskf_type.has_value() || !decrypt_token_) {
+  std::optional<KnowledgeFactorType> knowledge_factor_type =
+      factor_driver.GetKnowledgeFactorType();
+  if (!knowledge_factor_type.has_value() || !decrypt_token_) {
     return;
   }
   const SecurityDomainKeys* security_domain_keys =
@@ -4252,7 +4252,7 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
       auth_factor.auth_block_state().recoverable_key_store_state;
   if (!old_state.has_value()) {
     CryptohomeStatusOr<RecoverableKeyStoreState> new_state_status =
-        CreateRecoverableKeyStoreState(*lskf_type, auth_input,
+        CreateRecoverableKeyStoreState(*knowledge_factor_type, auth_input,
                                        auth_factor.metadata(), *provider);
     if (!new_state_status.ok()) {
       LOG(WARNING) << "Failed to create recoverable key store state: "
@@ -4263,8 +4263,8 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
   } else {
     CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
         new_state_status = MaybeUpdateRecoverableKeyStoreState(
-            *old_state, *lskf_type, auth_input, auth_factor.metadata(),
-            *provider);
+            *old_state, *knowledge_factor_type, auth_input,
+            auth_factor.metadata(), *provider);
     if (!new_state_status.ok()) {
       LOG(WARNING) << "Failed to update recoverable key store state."
                    << new_state_status.status();

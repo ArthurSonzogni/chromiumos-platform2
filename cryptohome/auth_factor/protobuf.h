@@ -28,14 +28,13 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
 std::optional<AuthFactorType> AuthFactorTypeFromProto(
     user_data_auth::AuthFactorType type);
 
-// Functions to convert a SerializedLockScreenKnowledgeFactorHashAlgorithm to
+// Functions to convert a SerializedKnowledgeFactorHashAlgorithm to
 // and from the protobuf enum.
-LockScreenKnowledgeFactorHashAlgorithm
-SerializedKnowledgeFactorAlgorithmToProto(
-    const SerializedLockScreenKnowledgeFactorHashAlgorithm& algorithm);
-std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm>
+KnowledgeFactorHashAlgorithm SerializedKnowledgeFactorAlgorithmToProto(
+    const SerializedKnowledgeFactorHashAlgorithm& algorithm);
+std::optional<SerializedKnowledgeFactorHashAlgorithm>
 SerializedKnowledgeFactorAlgorithmFromProto(
-    const LockScreenKnowledgeFactorHashAlgorithm& algorithm);
+    const KnowledgeFactorHashAlgorithm& algorithm);
 
 // Function to convert an auth factor prepare purpose from the protobuf enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(

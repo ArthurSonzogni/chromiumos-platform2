@@ -183,12 +183,10 @@ class AuthFactorDriver {
   virtual std::optional<user_data_auth::AuthFactor> ConvertToProto(
       const std::string& label, const AuthFactorMetadata& metadata) const = 0;
 
-  // If the auth factor is qualified as a lock screen knowledge factor (meaning
-  // it can generate recoverable keys that allow other devices to recover using
-  // the same knowledge factor input), get the factor type. Otherwise, returns
-  // nullopt.
-  virtual std::optional<LockScreenKnowledgeFactorType>
-  GetLockScreenKnowledgeFactorType() const = 0;
+  // If the auth factor is qualified as a knowledge factor (meaning it can
+  // generate recoverable keys that allow other devices to recover using the
+  // same raw input), get the factor type. Otherwise, returns nullopt.
+  virtual std::optional<KnowledgeFactorType> GetKnowledgeFactorType() const = 0;
 };
 
 }  // namespace cryptohome

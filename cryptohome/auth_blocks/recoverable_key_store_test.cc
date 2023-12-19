@@ -84,8 +84,8 @@ TEST(RecoverableKeyStoreTest, CreateSuccess) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
           }}};
 
@@ -97,8 +97,8 @@ TEST(RecoverableKeyStoreTest, CreateSuccess) {
 
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
-          LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, metadata, cert_provider);
+          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input, metadata,
+          cert_provider);
   ASSERT_THAT(state, IsOk());
   EXPECT_TRUE(RecoverableKeyStore().ParseFromString(
       brillo::BlobToString(state->key_store_proto)));
@@ -110,8 +110,8 @@ TEST(RecoverableKeyStoreTest, CreateInvalidParams) {
   MockRecoverableKeyStoreBackendCertProvider cert_provider;
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
-          LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, {}, cert_provider);
+          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input, {},
+          cert_provider);
   EXPECT_THAT(state, NotOk());
 }
 
@@ -127,8 +127,8 @@ TEST(RecoverableKeyStoreTest, CreateGetCertFailed) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
           }}};
 
@@ -137,8 +137,8 @@ TEST(RecoverableKeyStoreTest, CreateGetCertFailed) {
 
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
-          LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, metadata, cert_provider);
+          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input, metadata,
+          cert_provider);
   EXPECT_THAT(state, NotOk());
 }
 
@@ -158,8 +158,8 @@ TEST(RecoverableKeyStoreTest, UpdateSuccess) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
           }}};
 
@@ -170,9 +170,8 @@ TEST(RecoverableKeyStoreTest, UpdateSuccess) {
   EXPECT_CALL(cert_provider, GetBackendCert).WillOnce(Return(*backend_cert));
 
   auto updated = MaybeUpdateRecoverableKeyStoreState(
-      *state,
-      LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, metadata, cert_provider);
+      *state, KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input,
+      metadata, cert_provider);
   ASSERT_THAT(updated, IsOk());
   ASSERT_TRUE(updated->has_value());
   EXPECT_NE(state->key_store_proto, (*updated)->key_store_proto);
@@ -194,8 +193,8 @@ TEST(RecoverableKeyStoreTest, UpdateNotNeeded) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
           }}};
 
@@ -206,9 +205,8 @@ TEST(RecoverableKeyStoreTest, UpdateNotNeeded) {
   EXPECT_CALL(cert_provider, GetBackendCert).WillOnce(Return(*backend_cert));
 
   auto updated = MaybeUpdateRecoverableKeyStoreState(
-      *state,
-      LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, metadata, cert_provider);
+      *state, KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input,
+      metadata, cert_provider);
   ASSERT_THAT(updated, IsOkAndHolds(std::nullopt));
 }
 
@@ -229,8 +227,8 @@ TEST(RecoverableKeyStoreTest, UpdateFailed) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
           }}};
 
@@ -238,9 +236,8 @@ TEST(RecoverableKeyStoreTest, UpdateFailed) {
   EXPECT_CALL(cert_provider, GetBackendCert).WillOnce(Return(std::nullopt));
 
   auto updated = MaybeUpdateRecoverableKeyStoreState(
-      *state,
-      LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, metadata, cert_provider);
+      *state, KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input,
+      metadata, cert_provider);
   EXPECT_THAT(updated, NotOk());
 }
 

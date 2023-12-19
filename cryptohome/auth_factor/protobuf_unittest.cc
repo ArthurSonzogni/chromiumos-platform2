@@ -197,7 +197,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
   user_data_auth::KnowledgeFactorHashInfo hash_info;
   hash_info.set_algorithm(
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
+      KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
   hash_info.set_salt(kSalt);
   *auth_factor_proto.mutable_password_metadata()->mutable_hash_info() =
       hash_info;
@@ -227,8 +227,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   ASSERT_TRUE(password_metadata->hash_info.has_value());
   EXPECT_THAT(
       password_metadata->hash_info->algorithm,
-      Optional(
-          SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF));
+      Optional(SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF));
   EXPECT_EQ(password_metadata->hash_info->salt, brillo::BlobFromString(kSalt));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPassword));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));

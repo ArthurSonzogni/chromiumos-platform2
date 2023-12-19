@@ -1135,7 +1135,7 @@ class AuthSessionWithUssTest : public AuthSessionTest {
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      const AuthFactorMetadata& auth_factor_metadata,
                      AuthBlock::CreateCallback create_callback) {
-          // PIN is a lock screen knowledge factor, so security domain keys
+          // PIN is a knowledge factor, so security domain keys
           // should be populated in auth input.
           if (!auth_input.security_domain_keys.has_value()) {
             std::move(create_callback)
@@ -1676,7 +1676,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
   // Calling AddAuthFactor.
   user_data_auth::KnowledgeFactorHashInfo hash_info;
   hash_info.set_algorithm(
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
+      KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
   hash_info.set_salt(kHashSalt);
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -1711,9 +1711,8 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
   const auto* loaded_hash_info = loaded_pin_factor->metadata().hash_info();
   ASSERT_NE(loaded_hash_info, nullptr);
   ASSERT_TRUE(loaded_hash_info->algorithm.has_value());
-  EXPECT_EQ(
-      *loaded_hash_info->algorithm,
-      SerializedLockScreenKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234);
+  EXPECT_EQ(*loaded_hash_info->algorithm,
+            SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234);
   EXPECT_EQ(loaded_hash_info->salt, brillo::BlobFromString(kHashSalt));
 }
 
@@ -5008,9 +5007,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
               PinMetadata{
                   .hash_info =
                       SerializedKnowledgeFactorHashInfo{
-                          .algorithm =
-                              SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                                  PBKDF2_AES256_1234,
+                          .algorithm = SerializedKnowledgeFactorHashAlgorithm::
+                              PBKDF2_AES256_1234,
                           .salt = brillo::Blob(30, 0xAA),
                       },
               },
@@ -5127,9 +5125,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
               PinMetadata{
                   .hash_info =
                       SerializedKnowledgeFactorHashInfo{
-                          .algorithm =
-                              SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                                  PBKDF2_AES256_1234,
+                          .algorithm = SerializedKnowledgeFactorHashAlgorithm::
+                              PBKDF2_AES256_1234,
                           .salt = brillo::Blob(30, 0xAA),
                       },
               },

@@ -342,8 +342,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStore) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kPinInputSaltSize, 0xBB),
           }}};
   KeyBlobs vkk_data;
@@ -391,8 +391,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStoreDisabled) {
   AuthFactorMetadata metadata = {
       .metadata = PinMetadata{
           .hash_info = SerializedKnowledgeFactorHashInfo{
-              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
-                  PBKDF2_AES256_1234,
+              .algorithm =
+                  SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kPinInputSaltSize, 0xBB),
           }}};
   KeyBlobs vkk_data;

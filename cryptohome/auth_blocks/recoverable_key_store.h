@@ -19,7 +19,7 @@ namespace cryptohome {
 // common implementation that can be used by AuthBlocks that need to generate
 // recoverable key stores.
 CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
-    LockScreenKnowledgeFactorType lskf_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider);
@@ -30,7 +30,7 @@ CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
 CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
 MaybeUpdateRecoverableKeyStoreState(
     const RecoverableKeyStoreState& state,
-    LockScreenKnowledgeFactorType lskf_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider);

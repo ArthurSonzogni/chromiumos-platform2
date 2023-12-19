@@ -4,9 +4,8 @@
 //
 // Provides types used in the recoverable key store service. The service
 // supports syncing passwords, passkeys, device backups etc. where new
-// devices can join with presenting the lock screen knowledge factor (LSKF) of
-// an existing device. This is currently only used for passkey sync in
-// ChromeOS.
+// devices can join with presenting the knowledge factor of an existing
+// device. This is currently only used for passkey sync in ChromeOS.
 
 syntax = "proto3";
 
@@ -58,21 +57,20 @@ message WrappedSecurityDomainKey {
   bytes wrapped_wrapping_key = 4;
 }
 
-// Lock screen knowledge factor (LSKF) type.
-enum LockScreenKnowledgeFactorType {
-  LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED = 0;
+enum KnowledgeFactorType {
+  KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED = 0;
 
   // The PIN auth factor type.
-  LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN = 1;
+  KNOWLEDGE_FACTOR_TYPE_PIN = 1;
 
-  // The password auth factor type. But note that we only allow local
-  // passwords as an LSKF. GAIA password can't be used as an LSKF.
-  LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PASSWORD = 2;
+  // The password auth factor type. But note that we only allow local passwords
+  // as a knowledge factor. GAIA password can't be used as a knowledge factor.
+  KNOWLEDGE_FACTOR_TYPE_PASSWORD = 2;
 }
 
-// Type of the hashing algorithm used to hash the LSKF on the client side
-// before using the LSKF for any operation.
-enum LockScreenKnowledgeFactorHashAlgorithm {
+// Type of the hashing algorithm used to hash the knowledge factor on the
+// client side before using the knowledge factor for any operation.
+enum KnowledgeFactorHashAlgorithm {
   HASH_TYPE_UNSPECIFIED = 0;
 
   // Used for hashing PINs in Chrome.
@@ -84,12 +82,11 @@ enum LockScreenKnowledgeFactorHashAlgorithm {
 
 // The metadata associated with a recoverable key store.
 message RecoverableKeyStoreMetadata {
-  // Lock screen knowledge factor (LSKF) type.
-  LockScreenKnowledgeFactorType lock_screen_knowledge_factor_type = 1;
+  KnowledgeFactorType knowledge_factor_type = 1;
 
-  // Type of the hashing algorithm used to hash the LSKF on the client side
-  // before using the LSKF for any operation.
-  LockScreenKnowledgeFactorHashAlgorithm hash_type = 2;
+  // Type of the hashing algorithm used to hash the knowledge factor on the
+  // client side before using the knowledge factor for any operation.
+  KnowledgeFactorHashAlgorithm hash_type = 2;
 
   // Salt used for hashing.
   bytes hash_salt = 3;

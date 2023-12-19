@@ -24,7 +24,7 @@ namespace {
 std::optional<SerializedKnowledgeFactorHashInfo>
 KnowledgeFactorHashInfoFromProto(
     const user_data_auth::KnowledgeFactorHashInfo& hash_info) {
-  std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm> algorithm =
+  std::optional<SerializedKnowledgeFactorHashAlgorithm> algorithm =
       SerializedKnowledgeFactorAlgorithmFromProto(hash_info.algorithm());
   if (!algorithm.has_value()) {
     return std::nullopt;
@@ -150,27 +150,24 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
   }
 }
 
-LockScreenKnowledgeFactorHashAlgorithm
-SerializedKnowledgeFactorAlgorithmToProto(
-    const SerializedLockScreenKnowledgeFactorHashAlgorithm& algorithm) {
+KnowledgeFactorHashAlgorithm SerializedKnowledgeFactorAlgorithmToProto(
+    const SerializedKnowledgeFactorHashAlgorithm& algorithm) {
   switch (algorithm) {
-    case SerializedLockScreenKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234:
-      return LockScreenKnowledgeFactorHashAlgorithm::
-          HASH_TYPE_PBKDF2_AES256_1234;
-    case SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF:
-      return LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF;
+    case SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234:
+      return KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234;
+    case SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF:
+      return KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF;
   }
 }
 
-std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm>
+std::optional<SerializedKnowledgeFactorHashAlgorithm>
 SerializedKnowledgeFactorAlgorithmFromProto(
-    const LockScreenKnowledgeFactorHashAlgorithm& algorithm) {
+    const KnowledgeFactorHashAlgorithm& algorithm) {
   switch (algorithm) {
-    case LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234:
-      return SerializedLockScreenKnowledgeFactorHashAlgorithm::
-          PBKDF2_AES256_1234;
-    case LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF:
-      return SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF;
+    case KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234:
+      return SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234;
+    case KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF:
+      return SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF;
     default:
       return std::nullopt;
   }

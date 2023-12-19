@@ -82,12 +82,12 @@ std::optional<WrappedSecurityDomainKey> GenerateWrappedSecurityDomainKey(
 }
 
 std::optional<RecoverableKeyStoreMetadata> GenerateRecoverableKeyStoreMetadata(
-    const LockScreenKnowledgeFactor& lskf,
+    const KnowledgeFactor& knowledge_factor,
     const RecoverableKeyStoreBackendCert& cert) {
   RecoverableKeyStoreMetadata metadata;
-  metadata.set_lock_screen_knowledge_factor_type(lskf.lskf_type);
-  metadata.set_hash_type(lskf.algorithm);
-  metadata.set_hash_salt(brillo::BlobToString(lskf.salt));
+  metadata.set_knowledge_factor_type(knowledge_factor.knowledge_factor_type);
+  metadata.set_hash_type(knowledge_factor.algorithm);
+  metadata.set_hash_salt(brillo::BlobToString(knowledge_factor.salt));
   metadata.set_cert_list_version(cert.version);
   return metadata;
 }
@@ -132,39 +132,39 @@ GenerateRecoverableKeyStoreParameters(
 
 std::optional<brillo::Blob> GenerateWrappedRecoveryKey(
     const brillo::SecureBlob& recovery_key,
-    const LockScreenKnowledgeFactor& lskf,
+    const KnowledgeFactor& knowledge_factor,
     const RecoverableKeyStoreBackendCert& cert,
     const brillo::Blob& key_store_params) {
-  // First layer of encryption uses the lock screen knowledge factor as the key.
-  // This ensures only possession of the LSKF grants access to the recover key
-  // and therefore the security domain key backed by it.
-  std::optional<brillo::Blob> lskf_wrapped_recovery_key =
+  // First layer of encryption uses the knowledge factor as the key.
+  // This ensures only possession of the knowledge factor grants access to the
+  // recover key and therefore the security domain key backed by it.
+  std::optional<brillo::Blob> knowledge_factor_wrapped_recovery_key =
       hwsec_foundation::secure_box::Encrypt(
-          brillo::Blob(), lskf.hash,
+          brillo::Blob(), knowledge_factor.hash,
           brillo::BlobFromString(kLocallyEncryptedRecoveryKeyHeader),
           recovery_key);
-  if (!lskf_wrapped_recovery_key.has_value()) {
-    LOG(ERROR)
-        << "Failed to wrap recovery key by lock screen knowledge factor hash.";
+  if (!knowledge_factor_wrapped_recovery_key.has_value()) {
+    LOG(ERROR) << "Failed to wrap recovery key by knowledge factor hash.";
     return std::nullopt;
   }
 
   // Second layer of encryption uses the recoverable key store service backend
-  // public key. This ensures the decryption attempts using LSKF can only be
-  // done in the service backend, such that:
+  // public key. This ensures the decryption attempts using knowledge factor can
+  // only be done in the service backend, such that:
   // 1. The wrong attempt limitation can be enforced properly.
   // 2. The key store blob doesn't become a material for attackers to
-  // brute-force the user's LSKF value.
-  brillo::SecureBlob hashed_lskf = Sha256(brillo::SecureBlob::Combine(
-      brillo::SecureBlob(kThmKhHashPrefix), lskf.hash));
+  // brute-force the user's knowledge factor value.
+  brillo::SecureBlob hashed_knowledge_factor =
+      Sha256(brillo::SecureBlob::Combine(brillo::SecureBlob(kThmKhHashPrefix),
+                                         knowledge_factor.hash));
   brillo::Blob header = brillo::CombineBlobs(
       {brillo::BlobFromString(kThmEncryptedRecoveryKeyHeader),
        key_store_params});
   std::optional<brillo::Blob> wrapped_recovery_key =
       hwsec_foundation::secure_box::Encrypt(
-          cert.public_key, hashed_lskf, header,
-          brillo::SecureBlob(lskf_wrapped_recovery_key->begin(),
-                             lskf_wrapped_recovery_key->end()));
+          cert.public_key, hashed_knowledge_factor, header,
+          brillo::SecureBlob(knowledge_factor_wrapped_recovery_key->begin(),
+                             knowledge_factor_wrapped_recovery_key->end()));
   if (!wrapped_recovery_key.has_value()) {
     LOG(ERROR) << "Failed to wrap recovery key by backend public key.";
     return std::nullopt;
@@ -175,7 +175,7 @@ std::optional<brillo::Blob> GenerateWrappedRecoveryKey(
 }  // namespace
 
 CryptohomeStatusOr<RecoverableKeyStore> GenerateRecoverableKeyStore(
-    const LockScreenKnowledgeFactor& lskf,
+    const KnowledgeFactor& knowledge_factor,
     const brillo::Blob& wrong_attempt_label,
     const SecurityDomainKeys& keys,
     const RecoverableKeyStoreBackendCert& cert) {
@@ -195,7 +195,7 @@ CryptohomeStatusOr<RecoverableKeyStore> GenerateRecoverableKeyStore(
   }
 
   std::optional<RecoverableKeyStoreMetadata> key_store_metadata =
-      GenerateRecoverableKeyStoreMetadata(lskf, cert);
+      GenerateRecoverableKeyStoreMetadata(knowledge_factor, cert);
   if (!key_store_metadata.has_value()) {
     LOG(ERROR) << "Failed to generate recoverable key store metadata.";
     return MakeStatus<CryptohomeError>(
@@ -215,7 +215,7 @@ CryptohomeStatusOr<RecoverableKeyStore> GenerateRecoverableKeyStore(
   }
 
   std::optional<brillo::Blob> wrapped_recovery_key = GenerateWrappedRecoveryKey(
-      recovery_key, lskf, cert, key_store_params->serialized);
+      recovery_key, knowledge_factor, cert, key_store_params->serialized);
   if (!wrapped_recovery_key.has_value()) {
     LOG(ERROR) << "Failed to generate wrapped recovery key.";
     return MakeStatus<CryptohomeError>(
