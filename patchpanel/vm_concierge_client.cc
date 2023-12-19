@@ -27,7 +27,8 @@ void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
                            bool success) {
   if (!success) {
-    LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
+    LOG(ERROR) << __func__ << ": failed to connect to signal "
+               << interface << "." << signal;
   }
 }
 
@@ -35,15 +36,15 @@ std::optional<uint32_t> ReadAttachResponse(dbus::Response* dbus_response) {
   dbus::MessageReader reader(dbus_response);
   vm_tools::concierge::AttachNetDeviceResponse attach_response;
   if (!reader.PopArrayOfBytesAsProto(&attach_response)) {
-    LOG(ERROR) << "VmConciergeClient: response decode failed";
+    LOG(ERROR) << __func__ << ": response decode failed";
     return std::nullopt;
   }
   if (!attach_response.success()) {
-    LOG(ERROR) << "VmConciergeClient: remote side fail: "
-               << attach_response.failure_reason();
+    LOG(ERROR) << __func__
+               << ": remote side fail: " << attach_response.failure_reason();
     return std::nullopt;
   }
-  LOG(INFO) << "AttachTapDevice succeeded with device inserted at "
+  LOG(INFO) << __func__ << ": attach succeeded with device inserted at "
             << attach_response.guest_bus();
   return {attach_response.guest_bus()};
 }
@@ -52,15 +53,15 @@ bool ReadDetachResponse(dbus::Response* dbus_response) {
   dbus::MessageReader reader(dbus_response);
   vm_tools::concierge::DetachNetDeviceResponse detach_response;
   if (!reader.PopArrayOfBytesAsProto(&detach_response)) {
-    LOG(ERROR) << "VmConciergeClient: response decode failed";
+    LOG(ERROR) << __func__ << ": response decode failed";
     return false;
   }
   if (!detach_response.success()) {
-    LOG(ERROR) << "VmConciergeClient: remote side fail: "
-               << detach_response.failure_reason();
+    LOG(ERROR) << __func__
+               << ": remote side fail: " << detach_response.failure_reason();
     return false;
   }
-  LOG(INFO) << "DetachTapDevice succeeded";
+  LOG(INFO) << __func__ << ": detach succeeded";
   return true;
 }
 
@@ -104,7 +105,7 @@ void VmConciergeClient::DoAttachTapDevice(const std::string& tap_name,
   attach_request_proto.set_owner_id(vm_id.owner_id);
   attach_request_proto.set_tap_name(tap_name);
   if (!writer.AppendProtoAsArrayOfBytes(attach_request_proto)) {
-    LOG(ERROR) << "VmConciergeClient: request encode failed";
+    LOG(ERROR) << __func__ << ": request encode failed";
     return;
   }
   base::OnceCallback<void(dbus::Response*)> dbus_callback =
@@ -117,7 +118,7 @@ bool VmConciergeClient::AttachTapDevice(int64_t vm_cid,
                                         AttachTapCallback callback) {
   const auto itr = cid_vmid_map_.find(vm_cid);
   if (itr == cid_vmid_map_.end()) {
-    LOG(ERROR) << "VMConciergeClient: VM " << vm_cid << " is not registered.";
+    LOG(ERROR) << __func__ << ": VM " << vm_cid << " is not registered.";
     return false;
   }
   if (itr->second.has_value()) {
@@ -145,7 +146,7 @@ void VmConciergeClient::DoDetachTapDevice(uint32_t bus_num,
   detach_request_proto.set_owner_id(vm_id.owner_id);
   detach_request_proto.set_guest_bus(bus_num);
   if (!writer.AppendProtoAsArrayOfBytes(detach_request_proto)) {
-    LOG(ERROR) << "VmConciergeClient: request encode failed";
+    LOG(ERROR) << __func__ << ": request encode failed";
     return;
   }
   base::OnceCallback<void(dbus::Response*)> dbus_callback =
@@ -181,7 +182,8 @@ void VmConciergeClient::OnVmStarted(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
   vm_tools::concierge::VmStartedSignal started_signal;
   if (!reader.PopArrayOfBytesAsProto(&started_signal)) {
-    LOG(ERROR) << "Failed to parse " << vm_tools::concierge::kVmStartedSignal;
+    LOG(ERROR) << __func__ << ": failed to parse "
+               << vm_tools::concierge::kVmStartedSignal;
     return;
   }
   const int64_t cid = started_signal.vm_info().cid();
@@ -190,7 +192,7 @@ void VmConciergeClient::OnVmStarted(dbus::Signal* signal) {
     return;
   }
   VmId vm_id{started_signal.owner_id(), started_signal.name()};
-  LOG(INFO) << "VM " << cid << " has started with VmId " << vm_id;
+  LOG(INFO) << __func__ << ": VM " << cid << " has started with VmId " << vm_id;
   itr->second.emplace(vm_id);
   // Handles pending tasks:
   auto q_itr = cid_requestq_map_.find(cid);
@@ -208,14 +210,16 @@ void VmConciergeClient::OnVmStopping(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
   vm_tools::concierge::VmStoppingSignal stopping_signal;
   if (!reader.PopArrayOfBytesAsProto(&stopping_signal)) {
-    LOG(ERROR) << "Failed to parse " << vm_tools::concierge::kVmStoppingSignal;
+    LOG(ERROR) << __func__ << ": failed to parse "
+               << vm_tools::concierge::kVmStoppingSignal;
     return;
   }
   const int64_t cid = stopping_signal.cid();
   if (cid_vmid_map_.erase(cid) > 0) {
     // Removes pending tasks:
     cid_requestq_map_.erase(cid);
-    LOG(INFO) << "VM " << cid << " is removed from VmConciergeClient.";
+    LOG(INFO) << __func__ << ": VM " << cid
+              << " is removed from VmConciergeClient.";
   }
 }
 
