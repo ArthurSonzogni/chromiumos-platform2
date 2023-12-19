@@ -32,6 +32,8 @@ class FlossBatteryProvider : public BluetoothBatteryProvider {
   void UpdateDeviceBattery(const std::string& address, int level) override;
 
  private:
+  friend class FlossBatteryProviderTest;
+
   base::WeakPtrFactory<FlossBatteryProvider> weak_ptr_factory_;
 };
 

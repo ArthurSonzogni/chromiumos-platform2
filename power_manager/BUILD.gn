@@ -603,6 +603,7 @@ if (use.test) {
       "powerd/system/fake_proximity.cc",
       "powerd/system/fake_sensor_device.cc",
       "powerd/system/fake_sensor_service.cc",
+      "powerd/system/floss_battery_provider_test.cc",
       "powerd/system/input_watcher_test.cc",
       "powerd/system/internal_backlight_test.cc",
       "powerd/system/lockfile_checker_test.cc",
