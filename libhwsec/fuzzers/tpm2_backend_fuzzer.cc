@@ -414,9 +414,8 @@ struct FuzzCommandHelper {
 
 // Fuzz command helper for the synchronous backend call.
 template <auto Command, typename R, typename S, typename... Args>
-struct FuzzCommandHelper<Command,
-                         R (S::*)(Args...),
-                         std::enable_if_t<std::is_convertible_v<Status, R>>> {
+  requires(std::convertible_to<Status, R>)
+struct FuzzCommandHelper<Command, R (S::*)(Args...)> {
   void Fuzz(FuzzedDataProvider& data_provider, Middleware middleware) {
     FuzzCallSync<
         Command,
@@ -427,9 +426,9 @@ struct FuzzCommandHelper<Command,
 
 // Fuzz command helper for the asynchronous backend call.
 template <auto Command, typename R, typename S, typename... Args>
+  requires(std::convertible_to<Status, R>)
 struct FuzzCommandHelper<Command,
-                         void (S::*)(base::OnceCallback<void(R)>, Args...),
-                         std::enable_if_t<std::is_convertible_v<Status, R>>> {
+                         void (S::*)(base::OnceCallback<void(R)>, Args...)> {
   void Fuzz(FuzzedDataProvider& data_provider, Middleware middleware) {
     FuzzCallSync<
         Command,

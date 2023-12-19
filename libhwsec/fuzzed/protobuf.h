@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FUZZED_PROTOBUF_H_
 #define LIBHWSEC_FUZZED_PROTOBUF_H_
 
+#include <concepts>
 #include <string>
 #include <type_traits>
 
@@ -19,9 +20,8 @@ namespace hwsec {
 
 // Generates fuzzed protobuf.
 template <typename T>
-struct FuzzedObject<
-    T,
-    std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>>> {
+  requires(std::derived_from<T, google::protobuf::Message>)
+struct FuzzedObject<T> {
   T operator()(FuzzedDataProvider& provider) const {
     T result;
     result.ParseFromString(brillo::BlobToString(

@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FUZZED_BASIC_OBJECTS_H_
 #define LIBHWSEC_FUZZED_BASIC_OBJECTS_H_
 
+#include <concepts>
 #include <map>
 #include <optional>
 #include <set>
@@ -24,6 +25,7 @@
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/utility/concepts.h>
 
 // This file contains the fuzzed generator for basic objects.
 // The basic type means primitive type or everything that is belong to "std",
@@ -35,43 +37,35 @@ namespace hwsec {
 //
 // Template parameters:
 //   |FuzzedType| - The type of the data to be generate.
-//   |Enable| - The enable_if_t helper field.
-template <typename FuzzedType, typename Enable = void>
+template <typename FuzzedType>
 struct FuzzedObject {
   // You have to have a specialization for FuzzedObject.
   FuzzedObject() = delete;
 };
 
-// Generates fuzzed enum.
-// If the enum has kMaxValue, the generate value will not exceed it.
+// Generates fuzzed enum with the max value.
 template <typename T>
-struct FuzzedObject<T, std::enable_if_t<std::is_enum_v<T>>> {
-  // A helper to check an enum has kMaxValue or not.
-  template <typename E, typename Enable = void>
-  struct EnumHasMaxValue {
-    static constexpr inline bool value = false;
-  };
-
-  template <typename E>
-  struct EnumHasMaxValue<E, std::void_t<decltype(E::kMaxValue)>> {
-    static constexpr inline bool value = true;
-  };
-
+  requires(hwsec_foundation::EnumTypeWithMaxValue<T>)
+struct FuzzedObject<T> {
   T operator()(FuzzedDataProvider& provider) const {
-    if constexpr (EnumHasMaxValue<T>::value) {
-      return provider.ConsumeEnum<T>();
-    } else {
-      return static_cast<T>(
-          provider.ConsumeIntegral<std::underlying_type_t<T>>());
-    }
+    return provider.ConsumeEnum<T>();
+  }
+};
+
+// Generates fuzzed enum without max value.
+template <typename T>
+  requires(hwsec_foundation::EnumTypeWithoutMaxValue<T>)
+struct FuzzedObject<T> {
+  T operator()(FuzzedDataProvider& provider) const {
+    return static_cast<T>(
+        provider.ConsumeIntegral<std::underlying_type_t<T>>());
   }
 };
 
 // Generates fuzzed integral.
 template <typename T>
-struct FuzzedObject<
-    T,
-    std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<bool, T>>> {
+  requires(std::integral<T> && !std::same_as<T, bool>)
+struct FuzzedObject<T> {
   T operator()(FuzzedDataProvider& provider) const {
     return provider.ConsumeIntegral<T>();
   }
@@ -160,8 +154,8 @@ struct FuzzedObject<absl::flat_hash_map<T, U>> {
 // Generates fuzzed std::vector.
 // Excludes the uint8_t variant, because it's covered by brillo::Blob.
 template <typename T>
-struct FuzzedObject<std::vector<T>,
-                    std::enable_if_t<!std::is_same_v<T, uint8_t>>> {
+  requires(!std::same_as<T, uint8_t>)
+struct FuzzedObject<std::vector<T>> {
   std::vector<T> operator()(FuzzedDataProvider& provider) const {
     std::vector<T> result;
     while (provider.ConsumeBool()) {

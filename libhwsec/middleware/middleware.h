@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_MIDDLEWARE_MIDDLEWARE_H_
 #define LIBHWSEC_MIDDLEWARE_MIDDLEWARE_H_
 
+#include <concepts>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -171,15 +172,15 @@ class Middleware {
     kAsync,
   };
 
-  template <typename Func, typename = void>
+  template <typename Func>
   struct SubClassHelper {
     static_assert(sizeof(Func) == -1, "Unknown member function");
   };
 
   // SubClass helper for the synchronous backend call.
   template <typename R, typename S, typename... Args>
-  struct SubClassHelper<R (S::*)(Args...),
-                        std::enable_if_t<std::is_convertible_v<Status, R>>> {
+    requires(std::convertible_to<Status, R>)
+  struct SubClassHelper<R (S::*)(Args...)> {
     inline constexpr static CallType type = CallType::kSync;
     using Result = R;
     using SubClass = S;
@@ -188,8 +189,8 @@ class Middleware {
 
   // SubClass helper for the asynchronous backend call.
   template <typename R, typename S, typename... Args>
-  struct SubClassHelper<void (S::*)(base::OnceCallback<void(R)>, Args...),
-                        std::enable_if_t<std::is_convertible_v<Status, R>>> {
+    requires(std::convertible_to<Status, R>)
+  struct SubClassHelper<void (S::*)(base::OnceCallback<void(R)>, Args...)> {
     inline constexpr static CallType type = CallType::kAsync;
     using Result = R;
     using SubClass = S;
