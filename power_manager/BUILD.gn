@@ -194,6 +194,7 @@ static_library("libsystem") {
     "powerd/system/display/external_display.cc",
     "powerd/system/event_device.cc",
     "powerd/system/external_ambient_light_sensor_factory_mojo.cc",
+    "powerd/system/floss_battery_provider.cc",
     "powerd/system/input_watcher.cc",
     "powerd/system/internal_backlight.cc",
     "powerd/system/lockfile_checker.cc",

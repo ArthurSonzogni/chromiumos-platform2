@@ -19,8 +19,8 @@
 #include <dbus/message.h>
 
 #include "power_manager/powerd/system/async_file_reader.h"
-#include "power_manager/powerd/system/bluetooth_battery_provider.h"
 #include "power_manager/powerd/system/bluez_battery_provider.h"
+#include "power_manager/powerd/system/floss_battery_provider.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager::system {
@@ -163,6 +163,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   std::map<base::FilePath, std::unique_ptr<AsyncFileReader>> battery_readers_;
 
   std::unique_ptr<BluezBatteryProvider> bluez_battery_provider_;
+  std::unique_ptr<FlossBatteryProvider> floss_battery_provider_;
 
   base::WeakPtrFactory<PeripheralBatteryWatcher> weak_ptr_factory_;
 };

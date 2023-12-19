@@ -102,6 +102,7 @@ const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
     : peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       bluez_battery_provider_(std::make_unique<BluezBatteryProvider>()),
+      floss_battery_provider_(std::make_unique<FlossBatteryProvider>()),
       weak_ptr_factory_(this) {}
 
 PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {
@@ -124,6 +125,7 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
           weak_ptr_factory_.GetWeakPtr()));
 
   bluez_battery_provider_->Init(dbus_wrapper_->GetBus());
+  floss_battery_provider_->Init(dbus_wrapper_->GetBus());
 }
 
 void PeripheralBatteryWatcher::OnUdevEvent(const UdevEvent& event) {
@@ -294,8 +296,9 @@ void PeripheralBatteryWatcher::SendBatteryStatus(
   std::string address;
   if (ExtractBluetoothAddress(path, &address) &&
       RE2::FullMatch(address, kBluetoothAddressRegex)) {
-    // Bluetooth batteries is reported separately to BlueZ.
+    // Bluetooth batteries is reported separately to each Bluetooth stack.
     bluez_battery_provider_->UpdateDeviceBattery(address, level);
+    floss_battery_provider_->UpdateDeviceBattery(address, level);
     return;
   }
 
