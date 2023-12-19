@@ -83,6 +83,7 @@ unlinkat: 1
 unshare: 1
 wait4: 1
 write: 1
+writev: 1
 
 # Allow system logging and communication over the network.
 socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET
