@@ -15,13 +15,15 @@
 #include "power_manager/powerd/system/bluetooth_battery_provider.h"
 #include "power_manager/powerd/system/bluetooth_manager_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
+#include "power_manager/powerd/system/floss_battery_provider_manager_interface.h"
 
 namespace power_manager::system {
 
 // Represents Floss's battery provider for Human Interface Devices (HID). It
 // manages the sending of battery data changes to the Floss daemon.
 class FlossBatteryProvider : public BluetoothBatteryProvider,
-                             public BluetoothManagerInterface {
+                             public BluetoothManagerInterface,
+                             public FlossBatteryProviderManagerInterface {
  public:
   FlossBatteryProvider();
 
@@ -47,11 +49,24 @@ class FlossBatteryProvider : public BluetoothBatteryProvider,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender) override;
 
+  // FlossBatteryProviderManagerInterface overrides.
+  void RegisterAsBatteryProvider(bool available) override;
+  void OnRegisteredAsBatteryProvider(dbus::Response* response) override;
+  void RefreshBatteryInfo(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender) override;
+
+  // The ID provided by the BatteryProviderManager.
+  uint32_t battery_provider_id_;
+
   // Wrapper for interacting with DBus.
   DBusWrapperInterface* dbus_wrapper_;
 
   // DBus object proxy for interacting with the Bluetooth manager.
   dbus::ObjectProxy* bluetooth_manager_object_proxy_;
+
+  // DBus object proxy for interacting with the Floss BatteryProviderManager.
+  dbus::ObjectProxy* provider_manager_object_proxy_;
 
   // This provider is registered with the Bluetooth manager.
   bool is_registered_with_bluetooth_manager_ = false;
