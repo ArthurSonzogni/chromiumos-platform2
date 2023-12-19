@@ -47,8 +47,8 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
   LoadOobeConfigRollback load_config(&oobe_config, &rollback_metrics,
                                      file_handler);
 
-  std::string config, enrollment_domain;
-  CHECK(load_config.GetOobeConfigJson(&config, &enrollment_domain));
+  std::string config;
+  CHECK(load_config.GetOobeConfigJson(&config));
 
   auto root = base::JSONReader::Read(config);
   CHECK(root);

@@ -100,8 +100,8 @@ TEST_F(LoadOobeConfigRollbackTest, NoRollbackNoJson) {
   EnableRollbackMetricsReporting();
   ExpectOobeConfigRestoreMetricRecord(0);
 
-  std::string config, enrollment_domain;
-  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  std::string config;
+  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config));
 }
 
 TEST_F(LoadOobeConfigRollbackTest, DecryptAndParse) {
@@ -109,8 +109,8 @@ TEST_F(LoadOobeConfigRollbackTest, DecryptAndParse) {
   EnableRollbackMetricsReporting();
   ExpectOobeConfigRestoreMetricRecord(1);
 
-  std::string config, enrollment_domain;
-  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  std::string config;
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config));
 }
 
 TEST_F(LoadOobeConfigRollbackTest, SecondRequestDoesNotNeedPstore) {
@@ -118,8 +118,8 @@ TEST_F(LoadOobeConfigRollbackTest, SecondRequestDoesNotNeedPstore) {
   EnableRollbackMetricsReporting();
   ExpectOobeConfigRestoreMetricRecord(2);
 
-  std::string config, enrollment_domain;
-  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  std::string config;
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config));
 
   // Delete pstore data to make decryption impossible. This fakes the scenario
   // where a reboot happens during rollback OOBE.
@@ -127,8 +127,7 @@ TEST_F(LoadOobeConfigRollbackTest, SecondRequestDoesNotNeedPstore) {
 
   // Requesting config should still work because it re-uses previous data.
   std::string config_saved;
-  ASSERT_TRUE(
-      load_config_->GetOobeConfigJson(&config_saved, &enrollment_domain));
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config_saved));
   ASSERT_EQ(config_saved, config);
 }
 
@@ -142,7 +141,7 @@ TEST_F(LoadOobeConfigRollbackTest, DecryptionFailsGracefully) {
   ExpectOobeConfigRestoreMetricRecord(1);
 
   std::string config, enrollment_domain;
-  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config));
 }
 
 }  // namespace oobe_config

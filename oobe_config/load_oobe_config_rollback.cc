@@ -52,12 +52,10 @@ LoadOobeConfigRollback::LoadOobeConfigRollback(
       oobe_config_(oobe_config),
       rollback_metrics_(rollback_metrics) {}
 
-bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
-                                               string* enrollment_domain) {
+bool LoadOobeConfigRollback::GetOobeConfigJson(string* config) {
   LOG(INFO) << "Looking for rollback state.";
 
   *config = "";
-  *enrollment_domain = "";
 
   // Restore path is created by tmpfiles config.
   CHECK(file_handler_.HasRestorePath());

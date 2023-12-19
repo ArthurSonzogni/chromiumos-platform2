@@ -49,11 +49,11 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   EnterpriseRollbackMetricsHandler rollback_metrics;
   LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config,
                                                    &rollback_metrics);
-  std::string chrome_config_json, unused_enrollment_domain;
+  std::string chrome_config_json;
 
   // There is rollback data so attempt to parse it.
-  const bool rollback_success = load_oobe_config_rollback.GetOobeConfigJson(
-      &chrome_config_json, &unused_enrollment_domain);
+  const bool rollback_success =
+      load_oobe_config_rollback.GetOobeConfigJson(&chrome_config_json);
   if (rollback_success) {
     LOG(INFO) << "Rollback oobe config sent.";
   } else {

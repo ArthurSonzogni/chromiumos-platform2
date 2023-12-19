@@ -17,11 +17,9 @@ class LoadOobeConfigInterface {
 
   virtual ~LoadOobeConfigInterface() = default;
 
-  // Populates |config| with the oobe config file in json format. Additionally
-  // populates the |enrollment_domain| if exist any. On error it returns false
-  // otherwise it returns true.
-  virtual bool GetOobeConfigJson(std::string* config,
-                                 std::string* enrollment_domain) = 0;
+  // Populates |config| with the oobe config file in json format.
+  // On error it returns false otherwise it returns true.
+  virtual bool GetOobeConfigJson(std::string* config) = 0;
 };
 
 }  // namespace oobe_config

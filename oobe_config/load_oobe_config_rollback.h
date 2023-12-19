@@ -32,8 +32,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   ~LoadOobeConfigRollback() = default;
 
-  bool GetOobeConfigJson(std::string* config,
-                         std::string* enrollment_domain) override;
+  bool GetOobeConfigJson(std::string* config) override;
 
  private:
   // Assembles a JSON config for Chrome based on rollback_data. Returns true if
