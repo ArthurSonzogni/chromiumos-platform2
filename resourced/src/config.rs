@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#[cfg(test)]
 use std::fs;
 use std::fs::DirEntry;
 use std::path::Path;
@@ -11,11 +10,14 @@ use std::path::PathBuf;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use schedqos::compute_uclamp_min;
+use schedqos::CpusetCgroup;
 
 use crate::common::read_from_file;
 
 const CHROMEOS_CONFIG_PATH: &str = "run/chromeos-config/v1";
 const RESOURCE_CONFIG_DIR: &str = "resource";
+const SCHEDQOS_CONFIG_DIR: &str = "schedqos";
 const DEFUALT_MIN_ACTIVE_THREADS: u32 = 2;
 
 pub trait FromDir {
@@ -266,19 +268,179 @@ fn parse_config_from_path<T: FromDir>(path: &Path) -> Result<Option<T>> {
     T::from_dir(first_dir)
 }
 
-/// Expects to find a directory tree as follows:
-/// * /run/chromeos-config/v1/resource/
-///   * {ac,dc}
-///     * web-rtc-power-preferences/governor/
-///       * ondemand/
-///         * powersave-bias
-///     * fullscreen-power-preferences/governor/
-///       * schedutil/
-///     * vm-boot-power-preferences/governor/..
-///     * borealis-gaming-power-preferences/governor/..
-///     * arcvm-gaming-power-preferences/governor/..
-///     * battery-saver-power-preferences/governor/..
-///     * default-power-preferences/governor/..
+/// The schedqos configuration to use for threads of a given priority.
+///
+/// Each field corresponds to fields in [schedqos::ThreadStateConfig].
+#[derive(Default, Debug, PartialEq)]
+pub struct SchedqosThreadConfig {
+    pub rt_priority: Option<Option<u32>>,
+    pub nice: Option<i32>,
+    pub uclamp_min: Option<u32>,
+    pub cpuset_cgroup: Option<CpusetCgroup>,
+    pub latency_sensitive: Option<bool>,
+}
+
+impl SchedqosThreadConfig {
+    fn merge_into(&self, config: &mut schedqos::ThreadStateConfig) {
+        if let Some(rt_priority) = self.rt_priority {
+            config.rt_priority = rt_priority
+        }
+        if let Some(nice) = self.nice {
+            config.nice = nice
+        }
+        if let Some(uclamp_min) = self.uclamp_min {
+            config.uclamp_min = compute_uclamp_min(uclamp_min);
+        }
+        if let Some(cpuset_cgroup) = self.cpuset_cgroup {
+            config.cpuset_cgroup = cpuset_cgroup
+        }
+        if let Some(latency_sensitive) = self.latency_sensitive {
+            config.latency_sensitive = latency_sensitive
+        }
+    }
+
+    fn parse(path: &Path) -> Result<Self> {
+        let mut config = Self::default();
+
+        let rt_priority_path = path.join("rt-priority");
+        if rt_priority_path.exists() {
+            let rt_priority: i32 =
+                read_from_file(&rt_priority_path).context("failed to read rt-priority")?;
+            let rt_priority = if rt_priority < 0 {
+                None
+            } else {
+                Some(rt_priority as u32)
+            };
+            config.rt_priority = Some(rt_priority);
+        }
+
+        let nice_path = path.join("nice");
+        if nice_path.exists() {
+            let nice = read_from_file(&nice_path).context("failed to read nice")?;
+            config.nice = Some(nice);
+        }
+
+        let uclamp_min_path = path.join("uclamp-min");
+        if uclamp_min_path.exists() {
+            let uclamp_min =
+                read_from_file(&uclamp_min_path).context("failed to read uclamp-min")?;
+            if !(0..=100).contains(&uclamp_min) {
+                bail!("uclamp-min {} is out of range", uclamp_min);
+            }
+            config.uclamp_min = Some(uclamp_min);
+        }
+
+        let cpuset_cgroup_path = path.join("cpuset-cgroup");
+        if cpuset_cgroup_path.exists() {
+            let cpuset_cgroup =
+                fs::read_to_string(cpuset_cgroup_path).context("failed to read cpuset-cgroup")?;
+            let cpuset_cgroup = match cpuset_cgroup.as_str() {
+                "all" => CpusetCgroup::All,
+                "efficient" => CpusetCgroup::Efficient,
+                other => bail!("invalid cpuset-cgroup: {}", other),
+            };
+            config.cpuset_cgroup = Some(cpuset_cgroup);
+        }
+
+        let latency_sensitive_path = path.join("latency-sensitive");
+        if latency_sensitive_path.exists() {
+            let latency_sensitive = fs::read_to_string(latency_sensitive_path)
+                .context("failed to read latency-sensitive")?;
+            let latency_sensitive = match latency_sensitive.as_str() {
+                "true" => true,
+                "false" => false,
+                other => bail!("invalid latency-sensitive: {}", other),
+            };
+            config.latency_sensitive = Some(latency_sensitive);
+        }
+
+        Ok(config)
+    }
+}
+
+/// Config for the schedqos feature.
+#[derive(Default, Debug, PartialEq)]
+pub struct SchedqosConfig {
+    /// The cpu share of normal cpu cgroup.
+    pub normal_cpu_share: Option<u16>,
+    /// The cpu share of background cpu cgroup.
+    pub background_cpu_share: Option<u16>,
+    /// The thread config for URGENT_BURSTY state.
+    pub thread_urgent_bursty: Option<SchedqosThreadConfig>,
+    /// The thread config for URGENT state.
+    pub thread_urgent: Option<SchedqosThreadConfig>,
+    /// The thread config for BALANCED state.
+    pub thread_balanced: Option<SchedqosThreadConfig>,
+    /// The thread config for ECO state.
+    pub thread_eco: Option<SchedqosThreadConfig>,
+    /// The thread config for UTILITY state.
+    pub thread_utility: Option<SchedqosThreadConfig>,
+    /// The thread config for BACKGROUND state.
+    pub thread_background: Option<SchedqosThreadConfig>,
+}
+
+impl SchedqosConfig {
+    pub fn merge_thread_configs_into(
+        &self,
+        thread_configs: &mut [schedqos::ThreadStateConfig; schedqos::NUM_THREAD_STATES],
+    ) {
+        let configs = [
+            (
+                &self.thread_urgent_bursty,
+                schedqos::ThreadState::UrgentBursty,
+            ),
+            (&self.thread_urgent, schedqos::ThreadState::Urgent),
+            (&self.thread_balanced, schedqos::ThreadState::Balanced),
+            (&self.thread_eco, schedqos::ThreadState::Eco),
+            (&self.thread_utility, schedqos::ThreadState::Utility),
+            (&self.thread_background, schedqos::ThreadState::Background),
+        ];
+
+        for (config, config_type) in configs {
+            if let Some(config) = config {
+                config.merge_into(&mut thread_configs[config_type as usize]);
+            }
+        }
+    }
+
+    fn parse(path: &Path) -> Result<Self> {
+        let mut config = Self::default();
+
+        let normal_cpu_share_path = path.join("normal-cpu-share");
+        if normal_cpu_share_path.exists() {
+            let normal_cpu_share = read_from_file(&normal_cpu_share_path)
+                .context("failed to read normal-cpu-share")?;
+            config.normal_cpu_share = Some(normal_cpu_share);
+        }
+
+        let background_cpu_share_path = path.join("background-cpu-share");
+        if background_cpu_share_path.exists() {
+            let background_cpu_share = read_from_file(&background_cpu_share_path)
+                .context("failed to read background-cpu-share")?;
+            config.background_cpu_share = Some(background_cpu_share);
+        }
+
+        let configs = [
+            ("thread-urgent-bursty", &mut config.thread_urgent_bursty),
+            ("thread-urgent", &mut config.thread_urgent),
+            ("thread-balanced", &mut config.thread_balanced),
+            ("thread-eco", &mut config.thread_eco),
+            ("thread-utility", &mut config.thread_utility),
+            ("thread-background", &mut config.thread_background),
+        ];
+        for (dir_name, config) in configs {
+            let config_path = path.join(dir_name);
+            if config_path.exists() {
+                *config = Some(SchedqosThreadConfig::parse(&config_path).with_context(|| {
+                    format!("failed to parse schedqos thread config for {}", dir_name)
+                })?);
+            }
+        }
+
+        Ok(config)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ConfigProvider {
     config_path: PathBuf,
@@ -291,6 +453,19 @@ impl ConfigProvider {
         }
     }
 
+    /// Expects to find a directory tree as follows:
+    /// * /run/chromeos-config/v1/resource/
+    ///   * {ac,dc}
+    ///     * web-rtc-power-preferences/governor/
+    ///       * ondemand/
+    ///         * powersave-bias
+    ///     * fullscreen-power-preferences/governor/
+    ///       * schedutil/
+    ///     * vm-boot-power-preferences/governor/..
+    ///     * borealis-gaming-power-preferences/governor/..
+    ///     * arcvm-gaming-power-preferences/governor/..
+    ///     * battery-saver-power-preferences/governor/..
+    ///     * default-power-preferences/governor/..
     pub fn read_power_preferences(
         &self,
         power_source_type: PowerSourceType,
@@ -329,6 +504,16 @@ impl ConfigProvider {
         }
 
         Ok(Some(preferences))
+    }
+
+    pub fn read_sched_qos_config(&self, name: &str) -> Result<Option<SchedqosConfig>> {
+        let path = self.config_path.join(SCHEDQOS_CONFIG_DIR).join(name);
+
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        Ok(Some(SchedqosConfig::parse(&path)?))
     }
 }
 
@@ -587,6 +772,303 @@ mod tests {
                 assert_eq!(actual, Some(expected));
             }
         }
+    }
+
+    #[test]
+    fn test_config_provider_empty_root_schedqos() {
+        let fake = FakeConfig::new();
+        let provider = fake.provider();
+
+        let config = provider.read_sched_qos_config("default").unwrap();
+
+        assert!(config.is_none());
+    }
+
+    #[test]
+    fn test_config_provider_empty_dir_schedqos() {
+        let mut fake = FakeConfig::new();
+        fake.mkdir(Path::new(SCHEDQOS_CONFIG_DIR));
+        let provider = fake.provider();
+
+        let config = provider.read_sched_qos_config("default").unwrap();
+
+        assert!(config.is_none());
+    }
+
+    #[test]
+    fn test_config_provider_empty_default_schedqos() {
+        let mut fake = FakeConfig::new();
+        fake.mkdir(&Path::new(SCHEDQOS_CONFIG_DIR).join("default"));
+        let provider = fake.provider();
+
+        let config = provider.read_sched_qos_config("default").unwrap();
+
+        assert_eq!(config.unwrap(), SchedqosConfig::default());
+    }
+
+    #[test]
+    fn test_config_provider_schedqos() {
+        let mut fake = FakeConfig::new();
+        let default_config_path = Path::new(SCHEDQOS_CONFIG_DIR).join("default");
+        fake.write(&default_config_path.join("normal-cpu-share"), b"1000");
+        fake.write(&default_config_path.join("background-cpu-share"), b"20");
+        let thread_urgent_bursty_path = default_config_path.join("thread-urgent-bursty");
+        fake.write(&thread_urgent_bursty_path.join("rt-priority"), b"1");
+        fake.write(&thread_urgent_bursty_path.join("nice"), b"-10");
+        fake.write(&thread_urgent_bursty_path.join("uclamp-min"), b"80");
+        fake.write(&thread_urgent_bursty_path.join("cpuset-cgroup"), b"all");
+        fake.write(
+            &thread_urgent_bursty_path.join("latency-sensitive"),
+            b"true",
+        );
+        let thread_urgent_path = default_config_path.join("thread-urgent");
+        fake.write(&thread_urgent_path.join("rt-priority"), b"10");
+        fake.write(&thread_urgent_path.join("nice"), b"5");
+        fake.write(&thread_urgent_path.join("uclamp-min"), b"70");
+        fake.write(&thread_urgent_path.join("cpuset-cgroup"), b"efficient");
+        fake.write(&thread_urgent_path.join("latency-sensitive"), b"false");
+        let thread_balanced_path = default_config_path.join("thread-balanced");
+        fake.write(&thread_balanced_path.join("rt-priority"), b"-1");
+        fake.write(&thread_balanced_path.join("nice"), b"0");
+        fake.write(&thread_balanced_path.join("uclamp-min"), b"0");
+        let thread_eco_path = default_config_path.join("thread-eco");
+        fake.write(&thread_eco_path.join("nice"), b"19");
+        fake.write(&thread_eco_path.join("uclamp-min"), b"100");
+        let thread_utility_path = default_config_path.join("thread-utility");
+        fake.mkdir(&thread_utility_path);
+        let thread_background_path = default_config_path.join("thread-background");
+        fake.mkdir(&thread_background_path);
+
+        let partialconfig_path = Path::new(SCHEDQOS_CONFIG_DIR).join("partial");
+        fake.write(&partialconfig_path.join("normal-cpu-share"), b"900");
+        let thread_urgent_bursty_path = partialconfig_path.join("thread-urgent-bursty");
+        fake.write(&thread_urgent_bursty_path.join("rt-priority"), b"2");
+        let thread_urgent_path = partialconfig_path.join("thread-urgent");
+        fake.mkdir(&thread_urgent_path);
+
+        let provider = fake.provider();
+
+        let default_config = provider.read_sched_qos_config("default").unwrap();
+        assert_eq!(
+            default_config.unwrap(),
+            SchedqosConfig {
+                normal_cpu_share: Some(1000),
+                background_cpu_share: Some(20),
+                thread_urgent_bursty: Some(SchedqosThreadConfig {
+                    rt_priority: Some(Some(1)),
+                    nice: Some(-10),
+                    uclamp_min: Some(80),
+                    cpuset_cgroup: Some(CpusetCgroup::All),
+                    latency_sensitive: Some(true),
+                }),
+                thread_urgent: Some(SchedqosThreadConfig {
+                    rt_priority: Some(Some(10)),
+                    nice: Some(5),
+                    uclamp_min: Some(70),
+                    cpuset_cgroup: Some(CpusetCgroup::Efficient),
+                    latency_sensitive: Some(false),
+                }),
+                thread_balanced: Some(SchedqosThreadConfig {
+                    rt_priority: Some(None),
+                    nice: Some(0),
+                    uclamp_min: Some(0),
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
+                thread_eco: Some(SchedqosThreadConfig {
+                    rt_priority: None,
+                    nice: Some(19),
+                    uclamp_min: Some(100),
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
+                thread_utility: Some(SchedqosThreadConfig {
+                    rt_priority: None,
+                    nice: None,
+                    uclamp_min: None,
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
+                thread_background: Some(SchedqosThreadConfig {
+                    rt_priority: None,
+                    nice: None,
+                    uclamp_min: None,
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
+            }
+        );
+
+        let partial_config = provider.read_sched_qos_config("partial").unwrap();
+        assert_eq!(
+            partial_config.unwrap(),
+            SchedqosConfig {
+                normal_cpu_share: Some(900),
+                background_cpu_share: None,
+                thread_urgent_bursty: Some(SchedqosThreadConfig {
+                    rt_priority: Some(Some(2)),
+                    nice: None,
+                    uclamp_min: None,
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
+                thread_urgent: Some(SchedqosThreadConfig::default()),
+                thread_balanced: None,
+                thread_eco: None,
+                thread_utility: None,
+                thread_background: None,
+            }
+        );
+
+        let empty_config = provider.read_sched_qos_config("empty").unwrap();
+        assert!(empty_config.is_none());
+    }
+
+    #[test]
+    fn test_schedqos_config_merge_into() {
+        let mut thread_configs = [
+            schedqos::ThreadStateConfig {
+                rt_priority: Some(2),
+                nice: -8,
+                uclamp_min: 100,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                latency_sensitive: false,
+            },
+            schedqos::ThreadStateConfig {
+                rt_priority: None,
+                nice: 0,
+                uclamp_min: 200,
+                cpuset_cgroup: CpusetCgroup::All,
+                latency_sensitive: true,
+            },
+            schedqos::ThreadStateConfig {
+                rt_priority: Some(3),
+                nice: 2,
+                uclamp_min: 300,
+                cpuset_cgroup: CpusetCgroup::All,
+                latency_sensitive: true,
+            },
+            schedqos::ThreadStateConfig {
+                rt_priority: Some(3),
+                nice: 2,
+                uclamp_min: 300,
+                cpuset_cgroup: CpusetCgroup::All,
+                latency_sensitive: true,
+            },
+            schedqos::ThreadStateConfig {
+                rt_priority: None,
+                nice: 3,
+                uclamp_min: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                latency_sensitive: false,
+            },
+            schedqos::ThreadStateConfig {
+                rt_priority: None,
+                nice: 4,
+                uclamp_min: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                latency_sensitive: false,
+            },
+        ];
+        SchedqosConfig {
+            normal_cpu_share: None,
+            background_cpu_share: None,
+            thread_urgent_bursty: Some(SchedqosThreadConfig {
+                rt_priority: Some(Some(1)),
+                nice: Some(-10),
+                uclamp_min: Some(80),
+                cpuset_cgroup: Some(CpusetCgroup::All),
+                latency_sensitive: Some(true),
+            }),
+            thread_urgent: Some(SchedqosThreadConfig {
+                rt_priority: Some(Some(10)),
+                nice: Some(5),
+                uclamp_min: Some(70),
+                cpuset_cgroup: Some(CpusetCgroup::Efficient),
+                latency_sensitive: Some(false),
+            }),
+            thread_balanced: Some(SchedqosThreadConfig {
+                rt_priority: Some(None),
+                nice: Some(0),
+                uclamp_min: Some(0),
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+            thread_eco: Some(SchedqosThreadConfig {
+                rt_priority: None,
+                nice: Some(19),
+                uclamp_min: None,
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+            thread_utility: Some(SchedqosThreadConfig {
+                rt_priority: None,
+                nice: Some(18),
+                uclamp_min: None,
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+            thread_background: Some(SchedqosThreadConfig {
+                rt_priority: Some(Some(3)),
+                nice: None,
+                uclamp_min: None,
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+        }
+        .merge_thread_configs_into(&mut thread_configs);
+
+        assert_eq!(
+            thread_configs,
+            [
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(1),
+                    nice: -10,
+                    uclamp_min: 819,
+                    cpuset_cgroup: CpusetCgroup::All,
+                    latency_sensitive: true,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(10),
+                    nice: 5,
+                    uclamp_min: 717,
+                    cpuset_cgroup: CpusetCgroup::Efficient,
+                    latency_sensitive: false,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: None,
+                    nice: 0,
+                    uclamp_min: 0,
+                    cpuset_cgroup: CpusetCgroup::All,
+                    latency_sensitive: true,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(3),
+                    nice: 19,
+                    uclamp_min: 300,
+                    cpuset_cgroup: CpusetCgroup::All,
+                    latency_sensitive: true,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: None,
+                    nice: 18,
+                    uclamp_min: 10,
+                    cpuset_cgroup: CpusetCgroup::Efficient,
+                    latency_sensitive: false,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(3),
+                    nice: 4,
+                    uclamp_min: 10,
+                    cpuset_cgroup: CpusetCgroup::Efficient,
+                    latency_sensitive: false,
+                },
+            ]
+        );
+
+        let before_thread_configs = thread_configs.clone();
+        SchedqosConfig::default().merge_thread_configs_into(&mut thread_configs);
+        assert_eq!(thread_configs, before_thread_configs);
     }
 
     #[test]

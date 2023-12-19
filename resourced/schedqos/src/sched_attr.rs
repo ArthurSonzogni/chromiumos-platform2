@@ -12,8 +12,11 @@ const SCHED_FLAG_UTIL_CLAMP_MAX: u64 = 0x40;
 
 /// The maximum value for uclamp
 pub const UCLAMP_MAX: u32 = 1024;
+pub const fn compute_uclamp_min(percent: u32) -> u32 {
+    (percent * UCLAMP_MAX + 50) / 100
+}
 const UCLAMP_BOOST_PERCENT: u32 = 60;
-pub const UCLAMP_BOOSTED_MIN: u32 = (UCLAMP_BOOST_PERCENT * UCLAMP_MAX + 50) / 100;
+pub const UCLAMP_BOOSTED_MIN: u32 = compute_uclamp_min(UCLAMP_BOOST_PERCENT);
 
 /// Context to apply sched_attr.
 pub struct SchedAttrContext {

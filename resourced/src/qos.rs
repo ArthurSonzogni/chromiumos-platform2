@@ -24,6 +24,7 @@ use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::task::JoinHandle;
 
+use crate::config::ConfigProvider;
 use crate::proc::load_ruid;
 
 pub type SchedQosContext = schedqos::RestorableSchedQosContext;
@@ -106,9 +107,32 @@ impl Display for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
-    let cpu_normal = setup_cpu_cgroup("resourced/normal", 1024)?;
-    let cpu_background = setup_cpu_cgroup("resourced/background", 10)?;
+pub fn create_schedqos_context(
+    config_provider: &ConfigProvider,
+) -> anyhow::Result<SchedQosContext> {
+    let mut normal_cpu_share = 1024;
+    let mut background_cpu_share = 10;
+    let mut thread_configs = Config::default_thread_config();
+    match config_provider.read_sched_qos_config("default") {
+        Ok(Some(local_config)) => {
+            if let Some(share) = local_config.normal_cpu_share {
+                normal_cpu_share = share;
+            }
+            if let Some(share) = local_config.background_cpu_share {
+                background_cpu_share = share;
+            }
+            local_config.merge_thread_configs_into(&mut thread_configs);
+        }
+        Ok(None) => {
+            info!("no schedqos config to override.");
+        }
+        Err(e) => {
+            error!("Failed to read sched qos config: {:?}", e);
+        }
+    }
+
+    let cpu_normal = setup_cpu_cgroup("resourced/normal", normal_cpu_share)?;
+    let cpu_background = setup_cpu_cgroup("resourced/background", background_cpu_share)?;
     // Note these might be changed to resourced specific folders in the futre
     let cpuset_all = open_cpuset_cgroup("chrome/urgent")?;
     let cpuset_efficient = open_cpuset_cgroup("chrome/non-urgent")?;
@@ -121,7 +145,7 @@ pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
             cpuset_efficient,
         },
         process_configs: Config::default_process_config(),
-        thread_configs: Config::default_thread_config(),
+        thread_configs,
     };
 
     let file_path = Path::new(STATE_FILE_PATH);

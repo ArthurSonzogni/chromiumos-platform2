@@ -23,6 +23,7 @@ pub use cgroups::CpusetCgroup;
 use proc::load_process_timestamp;
 use proc::load_thread_timestamp;
 use proc::ThreadChecker;
+pub use sched_attr::compute_uclamp_min;
 use sched_attr::SchedAttrContext;
 use sched_attr::UCLAMP_BOOSTED_MIN;
 pub use sched_attr::UCLAMP_MAX;
@@ -34,8 +35,8 @@ use storage::ThreadMap;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
-const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
+pub const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
+pub const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
 
 /// Errors from schedqos crate.
 #[derive(Debug)]
@@ -223,7 +224,7 @@ pub struct ProcessStateConfig {
 }
 
 /// Detailed scheduler settings for a thread QoS state.
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct ThreadStateConfig {
     /// The priority in RT (SCHED_FIFO). If this is None, it uses SCHED_OTHER instead.
     pub rt_priority: Option<u32>,

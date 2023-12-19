@@ -733,7 +733,7 @@ fn report_notification_count(notification_count: i32) -> Result<()> {
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let config_provider = ConfigProvider::from_root(root);
-    let scheduler_context = match qos::create_schedqos_context() {
+    let scheduler_context = match qos::create_schedqos_context(&config_provider) {
         Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
         Err(e) => {
             error!("failed to initialize schedqos context: {e}");
