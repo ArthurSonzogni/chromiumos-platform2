@@ -1484,6 +1484,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
 
   switch (request.host_ureadahead_mode()) {
     case kStartArcMiniInstanceRequest_HostUreadaheadMode_MODE_DEFAULT:
+      env_vars.emplace_back("HOST_UREADAHEAD_MODE=DEFAULT");
       break;
     case arc::StartArcMiniInstanceRequest_HostUreadaheadMode_MODE_GENERATE:
       env_vars.emplace_back("HOST_UREADAHEAD_MODE=GENERATE");

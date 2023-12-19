@@ -664,6 +664,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
       switch (host_ureadahead_mode_) {
         case arc::StartArcMiniInstanceRequest::MODE_DEFAULT:
+          result.emplace_back("HOST_UREADAHEAD_MODE=DEFAULT");
           break;
         case arc::StartArcMiniInstanceRequest::MODE_GENERATE:
           result.emplace_back("HOST_UREADAHEAD_MODE=GENERATE");
