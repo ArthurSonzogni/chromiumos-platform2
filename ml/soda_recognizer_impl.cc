@@ -50,6 +50,12 @@ void SodaCallback(const char* soda_response_str,
     LOG(ERROR) << "Parse SODA response failed." << std::endl;
     return;
   }
+  // These will only be included when include_logging() in the initial request
+  // was set to true, but we don't need to gate printing on that.
+  for (const auto& log_line : response.log_lines()) {
+    LOG(ERROR) << log_line;
+  }
+
   reinterpret_cast<SodaRecognizerImpl*>(soda_recognizer_impl)
       ->OnSodaEvent(response.SerializeAsString());
 }
@@ -159,6 +165,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   cfg_msg.set_sample_rate(spec->sample_rate);
   cfg_msg.set_language_pack_directory(real_language_dlc_path->value());
   cfg_msg.set_api_key(spec->api_key);
+  cfg_msg.set_include_logging(spec->include_logging_output);
 
   if (spec->enable_formatting != OptionalBool::kUnknown) {
     cfg_msg.set_enable_formatting(spec->enable_formatting ==
