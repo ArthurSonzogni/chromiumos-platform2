@@ -7,6 +7,7 @@
 
 #include <concepts>
 #include <type_traits>
+#include <utility>
 
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -43,6 +44,7 @@ struct SubClassHelper<R (S::*)(Args...)> {
   using Result = R;
   using SubClass = S;
   using Callback = base::OnceCallback<void(R)>;
+  static R Signature(Args...);
 };
 
 // SubClass helper for the asynchronous backend call.
@@ -53,6 +55,7 @@ struct SubClassHelper<void (S::*)(base::OnceCallback<void(R)>, Args...)> {
   using Result = R;
   using SubClass = S;
   using Callback = base::OnceCallback<void(R)>;
+  static R Signature(Args...);
 };
 
 template <typename Func>
@@ -68,6 +71,39 @@ template <typename Func>
 concept AsyncBackendMethod = SubClassHelper<Func>::type == CallType::kAsync;
 template <typename Func>
 concept BackendMethod = SyncBackendMethod<Func> || AsyncBackendMethod<Func>;
+
+// The custom parameter forwarding rules.
+template <typename T>
+  requires(!std::is_pointer_v<T>)
+static T ForwardParameter(T&& t) {
+  // The rvalue should still be rvalue, because we have the ownership.
+  return t;
+}
+
+template <typename T>
+  requires(!std::is_pointer_v<T>)
+static const T& ForwardParameter(T& t) {
+  // Add const for normal reference, because we don't have the ownership.
+  // base::BindOnce will copy const reference parameter when binding.
+  return t;
+}
+
+template <typename T>
+  requires(!std::is_pointer_v<T>)
+static const T& ForwardParameter(const T& t) {
+  // The const reference would still be const reference.
+  // base::BindOnce will copy const reference parameter when binding.
+  return t;
+}
+
+template <typename Func, typename... Args>
+concept ValidBackendMethodArgs =
+    BackendMethod<Func> && requires(Args&&... args) {
+      // Validate the function signature is callable with the forwarded
+      // arguments.
+      SubClassHelper<Func>::Signature(
+          ForwardParameter(std::forward<Args>(args))...);
+    };
 
 }  // namespace hwsec
 

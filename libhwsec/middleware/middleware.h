@@ -60,54 +60,18 @@ class Middleware {
 
   MiddlewareDerivative Derive() const { return middleware_derivative_; }
 
-  // Call the synchronous backend function synchronously.
+  // Call the backend function synchronously.
   template <auto Func, typename... Args>
-    requires(SyncBackendMethod<decltype(Func)>)
+    requires(BackendMethod<decltype(Func)> &&
+             ValidBackendMethodArgs<decltype(Func), Args...>)
   auto CallSync(Args&&... args) const {
-    // Calling sync backend function.
-    auto task = base::BindOnce(
-        &Middleware::DoSyncBackendCall<Func, decltype(ForwardParameter(
-                                                 std::declval<Args>()))...>,
-        middleware_derivative_.middleware,
-        ForwardParameter(std::forward<Args>(args))...);
-    return RunBlockingTask(std::move(task));
-  }
-
-  // Call the asynchronous backend function synchronously.
-  template <auto Func, typename... Args>
-    requires(AsyncBackendMethod<decltype(Func)>)
-  auto CallSync(Args&&... args) const {
-    // Calling async backend function.
-    using hwsec_foundation::status::MakeStatus;
-    using Result = SubClassResult<decltype(Func)>;
-    using Callback = SubClassCallback<decltype(Func)>;
-
-    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                              base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-    Result result =
-        MakeStatus<TPMError>("Unknown error", TPMRetryAction::kNoRetry);
-    Callback callback =
-        base::BindOnce([](Result* result_ptr,
-                          Result value) { *result_ptr = std::move(value); },
-                       &result)
-            .Then(base::BindOnce(&base::WaitableEvent::Signal,
-                                 base::Unretained(&event)));
-
-    base::OnceClosure task = base::BindOnce(
-        &Middleware::DoAsyncBackendCall<Func, decltype(ForwardParameter(
-                                                  std::declval<Args>()))...>,
-        middleware_derivative_.middleware, std::move(callback),
-        ForwardParameter(std::forward<Args>(args))...);
-
-    middleware_derivative_.task_runner->PostTask(FROM_HERE, std::move(task));
-    event.Wait();
-    return result;
+    return CallSyncInternal<Func>(std::forward<Args>(args)...);
   }
 
   // Call the backend function asynchronously.
   template <auto Func, typename Callback, typename... Args>
-    requires(BackendMethod<decltype(Func)>)
+    requires(BackendMethod<decltype(Func)> &&
+             ValidBackendMethodArgs<decltype(Func), Args...>)
   void CallAsync(Callback callback, Args&&... args) const {
     CHECK(middleware_derivative_.task_runner);
 
@@ -170,42 +134,6 @@ class Middleware {
   }
 
  private:
-  template <typename>
-  inline static constexpr bool always_false_v = false;
-
-  // The custom parameter forwarding rules.
-  template <typename T>
-  static T ForwardParameter(T&& t) {
-    // The rvalue should still be rvalue, because we have the ownership.
-    return t;
-  }
-
-  template <typename T>
-  static const T& ForwardParameter(T& t) {
-    // Add const for normal reference, because we don't have the ownership.
-    // base::BindOnce will copy const reference parameter when binding.
-    return t;
-  }
-
-  template <typename T>
-  static const T& ForwardParameter(const T& t) {
-    // The const reference would still be const reference.
-    // base::BindOnce will copy const reference parameter when binding.
-    return t;
-  }
-
-  template <typename T>
-  static const T* ForwardParameter(const T* t) {
-    static_assert(always_false_v<T>, "Pointer cannot be safely forward!");
-    return nullptr;
-  }
-
-  template <typename T>
-  static T* ForwardParameter(T* t) {
-    static_assert(always_false_v<T>, "Pointer cannot be safely forward!");
-    return nullptr;
-  }
-
   // Get the quick result that is not related to the function itself.
   template <auto Func>
     requires(BackendMethod<decltype(Func)>)
@@ -345,6 +273,51 @@ class Middleware {
     DoAsyncBackendCallInternal<Func>(
         std::move(middleware), std::move(retry_handler), std::move(callback),
         std::move(args), idx_seq);
+  }
+
+  // Call the synchronous backend function synchronously.
+  template <auto Func, typename... Args>
+    requires(SyncBackendMethod<decltype(Func)>)
+  auto CallSyncInternal(Args&&... args) const {
+    // Calling sync backend function.
+    auto task = base::BindOnce(
+        &Middleware::DoSyncBackendCall<Func, decltype(ForwardParameter(
+                                                 std::declval<Args>()))...>,
+        middleware_derivative_.middleware,
+        ForwardParameter(std::forward<Args>(args))...);
+    return RunBlockingTask(std::move(task));
+  }
+
+  // Call the asynchronous backend function synchronously.
+  template <auto Func, typename... Args>
+    requires(AsyncBackendMethod<decltype(Func)>)
+  auto CallSyncInternal(Args&&... args) const {
+    // Calling async backend function.
+    using hwsec_foundation::status::MakeStatus;
+    using Result = SubClassResult<decltype(Func)>;
+    using Callback = SubClassCallback<decltype(Func)>;
+
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+    Result result =
+        MakeStatus<TPMError>("Unknown error", TPMRetryAction::kNoRetry);
+    Callback callback =
+        base::BindOnce([](Result* result_ptr,
+                          Result value) { *result_ptr = std::move(value); },
+                       &result)
+            .Then(base::BindOnce(&base::WaitableEvent::Signal,
+                                 base::Unretained(&event)));
+
+    base::OnceClosure task = base::BindOnce(
+        &Middleware::DoAsyncBackendCall<Func, decltype(ForwardParameter(
+                                                  std::declval<Args>()))...>,
+        middleware_derivative_.middleware, std::move(callback),
+        ForwardParameter(std::forward<Args>(args))...);
+
+    middleware_derivative_.task_runner->PostTask(FROM_HERE, std::move(task));
+    event.Wait();
+    return result;
   }
 
   // Calling synchronous backend function asynchronously.
