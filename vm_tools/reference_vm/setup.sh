@@ -33,13 +33,16 @@ PACKAGES=(
   locales
   lvm2
   pciutils
+  pipewire
+  pipewire-pulse
   rsync
   shim-signed
+  sudo
+  systemd-timesyncd
   tpm2-tools
   usbutils
   vim-tiny
-  sudo
-  systemd-timesyncd
+  wireplumber
   zstd
   # for bruschetta.Toolkit.*
   python3-gi gir1.2-gtk-3.0 gir1.2-gtk-4.0 libegl1
@@ -97,6 +100,19 @@ EOF
   systemctl enable maitred.service update-cros-list.service vshd.service \
     'opt-google-cros\x2dcontainers.mount'
 
+  install -D -m 0644 -t /usr/src/virtio-snd-6.1 \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/dkms.conf" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/Makefile" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_card.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_card.h" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_chmap.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_ctl_msg.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_ctl_msg.h" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_jack.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_pcm.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_pcm.h" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_pcm_msg.c" \
+    "${DATA_ROOT}/usr/src/virtio-snd-6.1/virtio_pcm_ops.c"
   install -D -m 0644 -t /usr/src/virtio-tpm-1 \
     "${DATA_ROOT}/usr/src/virtio-tpm-1/dkms.conf" \
     "${DATA_ROOT}/usr/src/virtio-tpm-1/Makefile" \
@@ -123,6 +139,7 @@ EOF
   # Find the installed, not running, kernel version.
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
     sed -E -e 's/linux-image-//')"
+  dkms install virtio-snd/6.1 -k "${kernel}"
   dkms install virtio-tpm/1 -k "${kernel}"
   dkms install virtio-wayland/1 -k "${kernel}"
 
@@ -148,7 +165,7 @@ EOF
   update-alternatives --install /usr/bin/vim vim /usr/bin/vim.tiny 10
 
   # test user for debugging
-  useradd -m -s /bin/bash -G sudo,tss chronos
+  useradd -m -s /bin/bash -G audio,sudo,tss chronos
   chpasswd <<< chronos:test0000
   mkdir -p /var/lib/systemd/linger
   touch /var/lib/systemd/linger/chronos
