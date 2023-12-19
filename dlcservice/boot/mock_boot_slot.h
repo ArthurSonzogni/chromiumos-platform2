@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <gmock/gmock.h>
 
 namespace dlcservice {
 

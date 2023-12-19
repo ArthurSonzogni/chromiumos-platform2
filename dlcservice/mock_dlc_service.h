@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <gmock/gmock.h>
+
 #include "dlcservice/dlc_service.h"
 
 namespace dlcservice {

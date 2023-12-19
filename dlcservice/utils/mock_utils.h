@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
+#include <gmock/gmock.h>
 #include <libimageloader/manifest.h>
 
 #include "dlcservice/utils/utils_interface.h"
