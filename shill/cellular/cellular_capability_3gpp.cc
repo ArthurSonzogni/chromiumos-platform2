@@ -507,14 +507,6 @@ void CellularCapability3gpp::StopModem(ResultCallback callback) {
     SLOG(this, 2) << __func__ << " Cancelled next attach APN retry.";
   }
 
-  cellular()->dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CellularCapability3gpp::Stop_Disable,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
-}
-
-void CellularCapability3gpp::Stop_Disable(ResultCallback callback) {
-  SLOG(this, 3) << __func__;
   if (!modem_proxy_) {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
@@ -522,32 +514,11 @@ void CellularCapability3gpp::Stop_Disable(ResultCallback callback) {
     return;
   }
   metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
-  modem_proxy_->Enable(
-      false,
-      base::BindOnce(&CellularCapability3gpp::Stop_DisableCompleted,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-      kTimeoutEnable.InMilliseconds());
-}
-
-void CellularCapability3gpp::Stop_DisableCompleted(ResultCallback callback,
-                                                   const Error& error) {
-  SLOG(this, 3) << __func__;
-
-  // Set the modem to low power state even when we fail to stop the modem,
-  // since a modem without a SIM card is in failed state and might have its
-  // radio on.
-  Stop_PowerDown(std::move(callback), error);
-}
-
-void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
-                                            const Error& stop_disabled_error) {
-  SLOG(this, 3) << __func__;
 
   modem_proxy_->SetPowerState(
       MM_MODEM_POWER_STATE_LOW,
-      base::BindOnce(&CellularCapability3gpp::Stop_PowerDownCompleted,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     stop_disabled_error),
+      base::BindOnce(&CellularCapability3gpp::StopPowerDownCompleted,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
       kTimeoutSetPowerState.InMilliseconds());
   if (cellular()->service())
     cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
@@ -558,19 +529,20 @@ void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
 // system suspended, we might not get this event from
 // ModemManager. And we might not even get a timeout from dbus-c++,
 // because StartModem re-initializes proxies.
-void CellularCapability3gpp::Stop_PowerDownCompleted(
-    ResultCallback callback,
-    const Error& stop_disabled_error,
-    const Error& error) {
+void CellularCapability3gpp::StopPowerDownCompleted(ResultCallback callback,
+                                                    const Error& error) {
   SLOG(this, 3) << __func__;
-
-  if (error.IsFailure())
-    SLOG(this, 2) << "Ignoring error returned by SetPowerState: " << error;
-
-  if (stop_disabled_error.IsSuccess())
+  if (error.IsSuccess())
     metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
+  else
+    LOG(WARNING) << "Ignoring modem low power mode failure: " << error;
+
   ReleaseProxies();
-  std::move(callback).Run(stop_disabled_error);
+
+  // A power down (and implicit disable) request should ideally never fail. But
+  // if it does, it's more consistent to ignore it, so that we can keep all the
+  // state in shill and the UI in proper sync.
+  std::move(callback).Run(Error());
 }
 
 void CellularCapability3gpp::ConnectionAttemptComplete(

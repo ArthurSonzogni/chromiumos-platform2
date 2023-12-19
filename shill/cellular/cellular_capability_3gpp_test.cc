@@ -695,11 +695,6 @@ TEST_F(CellularCapability3gppTest, StopModem) {
 
   EXPECT_CALL(
       *modem_proxy,
-      Enable(false, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
-      .WillOnce(WithArg<1>(Invoke(return_success)));
-
-  EXPECT_CALL(
-      *modem_proxy,
       SetPowerState(
           MM_MODEM_POWER_STATE_LOW, _,
           CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
@@ -715,13 +710,6 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   InitProxies();
-
-  EXPECT_CALL(
-      *modem_proxy,
-      Enable(false, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
-      .WillOnce(WithArg<1>(Invoke([](ResultCallback callback) {
-        std::move(callback).Run(Error(Error::kSuccess));
-      })));
 
   // Even if this returns false, we should still succeed in stopping the
   // modem.
@@ -745,10 +733,6 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
 
     EXPECT_CALL(*modem_proxy_,
                 Enable(true, _,
-                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
-        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
-    EXPECT_CALL(*modem_proxy_,
-                Enable(false, _,
                        CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(
@@ -801,10 +785,6 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 
     EXPECT_CALL(*modem_proxy_,
                 Enable(true, _,
-                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
-        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
-    EXPECT_CALL(*modem_proxy_,
-                Enable(false, _,
                        CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(

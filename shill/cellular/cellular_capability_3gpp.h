@@ -386,12 +386,7 @@ class CellularCapability3gpp {
   void EnableModemCompleted(ResultCallback callback, const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_Disable(ResultCallback callback);
-  void Stop_DisableCompleted(ResultCallback callback, const Error& error);
-  void Stop_PowerDown(ResultCallback callback, const Error& stop_disable_error);
-  void Stop_PowerDownCompleted(ResultCallback callback,
-                               const Error& stop_disable_error,
-                               const Error& error);
+  void StopPowerDownCompleted(ResultCallback callback, const Error& error);
 
   void Register(ResultCallback callback);
 
