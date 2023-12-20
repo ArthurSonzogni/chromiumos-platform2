@@ -22,7 +22,6 @@
 #include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
-#include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
@@ -30,12 +29,6 @@
 #endif
 
 namespace cros {
-
-// Vendor tag to indicate whether CrOS digital zoom implemented in the stream
-// manipulator can be attempted.
-constexpr uint32_t kCrosDigitalZoomVendorKey = kCrosDigitalZoomVendorTagStart;
-constexpr char kCrosDigitalZoomVendorTagSectionName[] = "com.google";
-constexpr char kCrosDigitalZoomVendorTagName[] = "com.google.crosDigitalZoom";
 
 class FramingStreamManipulator : public StreamManipulator {
  public:
@@ -82,10 +75,6 @@ class FramingStreamManipulator : public StreamManipulator {
       bool auto_framing_supported = false);
   ~FramingStreamManipulator() override;
 
-  // One-time initializations for updating information.
-  static bool UpdateVendorTags(VendorTagManager& vendor_tag_manager);
-  static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
-
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks) override;
@@ -118,8 +107,6 @@ class FramingStreamManipulator : public StreamManipulator {
     kAutoFramingOn,
     // The intermediate state before transitioning to |kOff| state.
     kTransitionToAutoFramingOff,
-    // Manual zoom is on. The crop window is set by users.
-    kManualZoom,
   };
 
   struct Metrics {
@@ -152,7 +139,7 @@ class FramingStreamManipulator : public StreamManipulator {
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();
   void UpdateOptionsOnThread(const base::Value::Dict& json_values);
-  std::pair<State, State> StateTransitionOnThread(bool manual_zoom_enabled);
+  std::pair<State, State> StateTransitionOnThread();
   void UploadMetricsOnThread();
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
@@ -221,10 +208,6 @@ class FramingStreamManipulator : public StreamManipulator {
   // Flagged if auto framing is enabled in FeatureProfile. This value should be
   // false by default if a USE flag camera_feature_auto_framing is not set.
   bool auto_framing_supported_ = false;
-
-  // Flagged if manual zoom can be done in this stream manipulator. It is false
-  // if the camera already has zoom capability.
-  bool manual_zoom_supported_ = false;
 
   Metrics metrics_;
 };
