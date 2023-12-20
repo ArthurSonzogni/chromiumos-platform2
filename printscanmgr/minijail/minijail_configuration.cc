@@ -63,6 +63,9 @@ void EnterDaemonMinijail() {
   CHECK_EQ(0,
            minijail_bind(jail.get(), "/run/ippusb/debug", "/run/ippusb/debug",
                          1));  // Advanced debugging capability for ippusb.
+  CHECK_EQ(0, minijail_bind(jail.get(), "/run/avahi-daemon",
+                            "/run/avahi-daemon", 0));
+  CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/run/avahi-daemon"));
 
   // Run as the printscanmgr user and group. Inherit supplementary groups so
   // printscanmgr can run `lpadmin` and `lpstat`.

@@ -79,3 +79,5 @@ mremap: 1
 madvise: 1
 unlinkat: 1
 gettimeofday: 1
+sendmmsg: 1
+sysinfo: 1

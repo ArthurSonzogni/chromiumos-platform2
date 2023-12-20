@@ -73,3 +73,5 @@ mremap: 1
 gettimeofday: 1
 clock_gettime: 1
 madvise: 1
+sendmmsg: 1
+sysinfo: 1
