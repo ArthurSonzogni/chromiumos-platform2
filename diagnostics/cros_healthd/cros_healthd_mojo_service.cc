@@ -91,8 +91,7 @@ void CrosHealthdMojoService::IsEventSupported(
 
 void CrosHealthdMojoService::ProbeProcessInfo(
     uint32_t process_id, ProbeProcessInfoCallback callback) {
-  ProcessFetcher(context_).FetchProcessInfo(static_cast<pid_t>(process_id),
-                                            std::move(callback));
+  FetchProcessInfo(context_, process_id, std::move(callback));
 }
 
 void CrosHealthdMojoService::ProbeTelemetryInfo(
@@ -105,8 +104,8 @@ void CrosHealthdMojoService::ProbeMultipleProcessInfo(
     const std::optional<std::vector<uint32_t>>& process_ids,
     const bool ignore_single_process_info,
     ProbeMultipleProcessInfoCallback callback) {
-  ProcessFetcher(context_).FetchMultipleProcessInfo(
-      process_ids, ignore_single_process_info, std::move(callback));
+  FetchMultipleProcessInfo(context_, process_ids, ignore_single_process_info,
+                           std::move(callback));
 }
 
 }  // namespace diagnostics

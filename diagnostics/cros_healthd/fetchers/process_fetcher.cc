@@ -24,9 +24,11 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -183,7 +185,7 @@ std::optional<mojom::ProbeErrorPtr> ParseIOContents(
 void FinishFetchingProcessInfo(
     base::OnceCallback<void(mojom::ProcessResultPtr)> callback,
     uint32_t process_id,
-    mojom::ProcessInfo process_info,
+    mojom::ProcessInfoPtr process_info,
     const base::flat_map<uint32_t, std::string>& io_contents) {
   if (io_contents.empty() || !io_contents.contains(process_id)) {
     std::move(callback).Run(mojom::ProcessResult::NewError(
@@ -192,16 +194,15 @@ void FinishFetchingProcessInfo(
     return;
   }
 
-  mojom::ProcessInfoPtr process_info_ptr = process_info.Clone();
-  auto error = ParseIOContents(io_contents.at(process_id), process_info_ptr);
+  auto error = ParseIOContents(io_contents.at(process_id), process_info);
   if (error.has_value()) {
-    std::move(callback).Run(mojom::ProcessResult::NewError(error->Clone()));
-    return;
-  } else {
     std::move(callback).Run(
-        mojom::ProcessResult::NewProcessInfo(std::move(process_info_ptr)));
+        mojom::ProcessResult::NewError(std::move(error.value())));
     return;
   }
+
+  std::move(callback).Run(
+      mojom::ProcessResult::NewProcessInfo(std::move(process_info)));
 }
 
 void FinishFetchingMultipleProcessInfo(
@@ -226,7 +227,7 @@ void FinishFetchingMultipleProcessInfo(
     auto error = ParseIOContents(all_io_contents.at(pid), it->second);
     if (error.has_value()) {
       if (!ignore_single_process_error) {
-        errors.push_back({pid, error->Clone()});
+        errors.push_back({pid, std::move(error.value())});
       }
       it = multiple_process_info.erase(it);
       continue;
@@ -244,128 +245,7 @@ void FinishFetchingMultipleProcessInfo(
   return;
 }
 
-}  // namespace
-
-ProcessFetcher::ProcessFetcher(Context* context, const base::FilePath& root_dir)
-    : BaseFetcher(context), root_dir_(root_dir) {}
-
-void ProcessFetcher::FetchProcessInfo(
-    uint32_t process_id,
-    base::OnceCallback<void(mojom::ProcessResultPtr)> callback) {
-  mojom::ProcessInfo process_info;
-  auto error = GetProcessInfo(process_id, &process_info);
-  if (error.has_value()) {
-    std::move(callback).Run(
-        mojom::ProcessResult::NewError(std::move(error.value())));
-    return;
-  }
-
-  context_->executor()->GetProcessIOContents(
-      {base::checked_cast<uint32_t>(process_id)},
-      base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
-                     std::move(process_id), std::move(process_info)));
-}
-
-void ProcessFetcher::FetchMultipleProcessInfo(
-    const std::optional<std::vector<uint32_t>>& input_process_ids,
-    const bool ignore_single_process_error,
-    base::OnceCallback<void(mojom::MultipleProcessResultPtr)> callback) {
-  std::vector<std::pair<uint32_t, mojom::ProcessInfoPtr>> process_infos;
-  std::vector<std::pair<uint32_t, mojom::ProbeErrorPtr>> errors;
-  std::set<uint32_t> process_ids;
-  if (!input_process_ids.has_value()) {
-    base::FileEnumerator enumerator(root_dir_.Append("proc"), false,
-                                    base::FileEnumerator::DIRECTORIES);
-    for (base::FilePath proc_path = enumerator.Next(); !proc_path.empty();
-         proc_path = enumerator.Next()) {
-      uint32_t process_id;
-      if (base::StringToUint(proc_path.BaseName().value(), &process_id)) {
-        process_ids.insert(process_id);
-      }
-    }
-  } else {
-    for (const auto& input_process_id : *input_process_ids) {
-      process_ids.insert(input_process_id);
-    }
-  }
-
-  for (auto it = process_ids.begin(); it != process_ids.end();) {
-    mojom::ProcessInfo process_info;
-    uint32_t process_id = *it;
-    auto error = GetProcessInfo(process_id, &process_info);
-    if (error.has_value()) {
-      if (!ignore_single_process_error) {
-        errors.push_back({process_id, error->Clone()});
-      }
-      it = process_ids.erase(it);
-    } else {
-      process_infos.push_back({process_id, process_info.Clone()});
-      ++it;
-    }
-  }
-
-  context_->executor()->GetProcessIOContents(
-      {process_ids.begin(), process_ids.end()},
-      base::BindOnce(&FinishFetchingMultipleProcessInfo, std::move(callback),
-                     ignore_single_process_error, std::move(process_infos),
-                     std::move(errors)));
-}
-
-std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessInfo(
-    uint32_t pid, mojom::ProcessInfo* process_info) {
-  base::FilePath proc_pid_dir = GetProcProcessDirectoryPath(root_dir_, pid);
-
-  // Number of ticks after system boot that the process started.
-  uint64_t start_time_ticks;
-  auto error = ParseProcPidStat(
-      &process_info->state, &process_info->priority, &process_info->nice,
-      &start_time_ticks, &process_info->name, &process_info->parent_process_id,
-      &process_info->process_group_id, &process_info->threads,
-      &process_info->process_id, proc_pid_dir);
-  if (error.has_value()) {
-    return error;
-  }
-
-  error = CalculateProcessUptime(start_time_ticks, &process_info->uptime_ticks);
-  if (error.has_value()) {
-    return error;
-  }
-
-  error = ParseProcPidStatm(&process_info->total_memory_kib,
-                            &process_info->resident_memory_kib,
-                            &process_info->free_memory_kib, proc_pid_dir);
-  if (error.has_value()) {
-    return error;
-  }
-
-  uid_t user_id;
-  error = GetProcessUid(&user_id, proc_pid_dir);
-  if (error.has_value()) {
-    return error;
-  }
-
-  process_info->user_id = static_cast<uint32_t>(user_id);
-  if (!ReadAndTrimString(proc_pid_dir, kProcessCmdlineFile,
-                         &process_info->command)) {
-    return CreateAndLogProbeError(
-        mojom::ErrorType::kFileReadError,
-        "Failed to read " + proc_pid_dir.Append(kProcessCmdlineFile).value());
-  }
-
-  // In "/proc/{PID}/cmdline", the arguments are separated by 0x00, we need
-  // to replace them by space for better output.
-  for (auto& ch : process_info->command) {
-    if (ch == '\0') {
-      ch = ' ';
-    }
-  }
-  base::TrimWhitespaceASCII(process_info->command, base::TRIM_ALL,
-                            &process_info->command);
-
-  return std::nullopt;
-}
-
-std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
+std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
     mojom::ProcessState* state,
     int8_t* priority,
     int8_t* nice,
@@ -375,7 +255,7 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
     uint32_t* process_group_id,
     uint32_t* threads,
     uint32_t* process_id,
-    base::FilePath proc_pid_dir) {
+    const base::FilePath& proc_pid_dir) {
   // Note that start_time_ticks, name, parent_process_id, process_group_id,
   // threads, process_id are the only pointers actually dereferenced in this
   // function. The helper functions which set |state|, |priority| and |nice| are
@@ -465,11 +345,11 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   return std::nullopt;
 }
 
-std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
+std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
     uint32_t* total_memory_kib,
     uint32_t* resident_memory_kib,
     uint32_t* free_memory_kib,
-    base::FilePath proc_pid_dir) {
+    const base::FilePath& proc_pid_dir) {
   DCHECK(total_memory_kib);
   DCHECK(resident_memory_kib);
   DCHECK(free_memory_kib);
@@ -532,12 +412,14 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   return std::nullopt;
 }
 
-std::optional<mojom::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
-    uint64_t start_time_ticks, uint64_t* process_uptime_ticks) {
+std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
+    const base::FilePath& root_dir,
+    uint64_t start_time_ticks,
+    uint64_t* process_uptime_ticks) {
   DCHECK(process_uptime_ticks);
 
   std::string uptime_contents;
-  base::FilePath uptime_path = GetProcUptimePath(root_dir_);
+  base::FilePath uptime_path = GetProcUptimePath(root_dir);
   if (!ReadAndTrimString(uptime_path, &uptime_contents)) {
     return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read " + uptime_path.value());
@@ -570,8 +452,8 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
   return std::nullopt;
 }
 
-std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
-    uid_t* user_id, base::FilePath proc_pid_dir) {
+std::optional<mojom::ProbeErrorPtr> GetProcessUid(
+    uid_t* user_id, const base::FilePath& proc_pid_dir) {
   DCHECK(user_id);
 
   std::string status_contents;
@@ -609,6 +491,130 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
   }
 
   return std::nullopt;
+}
+
+base::expected<mojom::ProcessInfoPtr, mojom::ProbeErrorPtr> GetProcessInfo(
+    const base::FilePath& root_dir, uint32_t pid) {
+  base::FilePath proc_pid_dir = GetProcProcessDirectoryPath(root_dir, pid);
+
+  auto process_info = mojom::ProcessInfo::New();
+
+  // Number of ticks after system boot that the process started.
+  uint64_t start_time_ticks;
+  auto error = ParseProcPidStat(
+      &process_info->state, &process_info->priority, &process_info->nice,
+      &start_time_ticks, &process_info->name, &process_info->parent_process_id,
+      &process_info->process_group_id, &process_info->threads,
+      &process_info->process_id, proc_pid_dir);
+  if (error.has_value()) {
+    return base::unexpected(std::move(error.value()));
+  }
+
+  error = CalculateProcessUptime(root_dir, start_time_ticks,
+                                 &process_info->uptime_ticks);
+  if (error.has_value()) {
+    return base::unexpected(std::move(error.value()));
+  }
+
+  error = ParseProcPidStatm(&process_info->total_memory_kib,
+                            &process_info->resident_memory_kib,
+                            &process_info->free_memory_kib, proc_pid_dir);
+  if (error.has_value()) {
+    return base::unexpected(std::move(error.value()));
+  }
+
+  uid_t user_id;
+  error = GetProcessUid(&user_id, proc_pid_dir);
+  if (error.has_value()) {
+    return base::unexpected(std::move(error.value()));
+  }
+
+  process_info->user_id = static_cast<uint32_t>(user_id);
+  if (!ReadAndTrimString(proc_pid_dir, kProcessCmdlineFile,
+                         &process_info->command)) {
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError,
+        "Failed to read " + proc_pid_dir.Append(kProcessCmdlineFile).value()));
+  }
+
+  // In "/proc/{PID}/cmdline", the arguments are separated by 0x00, we need
+  // to replace them by space for better output.
+  for (auto& ch : process_info->command) {
+    if (ch == '\0') {
+      ch = ' ';
+    }
+  }
+  base::TrimWhitespaceASCII(process_info->command, base::TRIM_ALL,
+                            &process_info->command);
+
+  return base::ok(std::move(process_info));
+}
+
+}  // namespace
+
+void FetchProcessInfo(
+    Context* context,
+    uint32_t process_id,
+    base::OnceCallback<void(mojom::ProcessResultPtr)> callback) {
+  const auto& root_dir = GetRootDir();
+  auto result = GetProcessInfo(root_dir, process_id);
+  if (!result.has_value()) {
+    std::move(callback).Run(
+        mojom::ProcessResult::NewError(std::move(result.error())));
+    return;
+  }
+
+  context->executor()->GetProcessIOContents(
+      /*pids=*/{process_id},
+      base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
+                     std::move(process_id), std::move(result.value())));
+}
+
+void FetchMultipleProcessInfo(
+    Context* context,
+    const std::optional<std::vector<uint32_t>>& input_process_ids,
+    const bool ignore_single_process_error,
+    base::OnceCallback<void(mojom::MultipleProcessResultPtr)> callback) {
+  const auto& root_dir = GetRootDir();
+
+  std::vector<std::pair<uint32_t, mojom::ProcessInfoPtr>> process_infos;
+  std::vector<std::pair<uint32_t, mojom::ProbeErrorPtr>> errors;
+  std::set<uint32_t> process_ids;
+  if (!input_process_ids.has_value()) {
+    base::FileEnumerator enumerator(root_dir.Append("proc"), false,
+                                    base::FileEnumerator::DIRECTORIES);
+    for (base::FilePath proc_path = enumerator.Next(); !proc_path.empty();
+         proc_path = enumerator.Next()) {
+      uint32_t process_id;
+      if (base::StringToUint(proc_path.BaseName().value(), &process_id)) {
+        process_ids.insert(process_id);
+      }
+    }
+  } else {
+    for (const auto input_process_id : input_process_ids.value()) {
+      process_ids.insert(input_process_id);
+    }
+  }
+
+  for (auto it = process_ids.begin(); it != process_ids.end();) {
+    uint32_t process_id = *it;
+    auto result = GetProcessInfo(root_dir, process_id);
+    if (!result.has_value()) {
+      if (!ignore_single_process_error) {
+        errors.push_back({process_id, std::move(result.error())});
+      }
+      it = process_ids.erase(it);
+    } else {
+      process_infos.push_back({process_id, std::move(result.value())});
+      ++it;
+    }
+  }
+
+  context->executor()->GetProcessIOContents(
+      /*pids=*/{process_ids.begin(), process_ids.end()},
+      base::BindOnce(&FinishFetchingMultipleProcessInfo, std::move(callback),
+                     ignore_single_process_error, std::move(process_infos),
+                     std::move(errors)));
 }
 
 }  // namespace diagnostics
