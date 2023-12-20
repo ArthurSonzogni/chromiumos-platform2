@@ -1,6 +1,12 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include <map>
+#include <vector>
+
+#include <base/containers/contains.h>
+
 #include "shill/wifi/wifi_security.h"
 
 #include "shill/dbus-constants.h"
@@ -334,6 +340,70 @@ TEST(WiFiSecurityTest, BasicWpa3Enterprise) {
   EXPECT_EQ(sec, WiFiSecurity(sec.ToString()));
   sec.Freeze();
   EXPECT_EQ(sec, WiFiSecurity(sec.ToString()));
+}
+
+TEST(WiFiSecurityTest, IsSubsetOf) {
+  std::map<WiFiSecurity::Mode, std::vector<WiFiSecurity::Mode>> valid_supersets{
+      {WiFiSecurity::kNone, {WiFiSecurity::kNone}},
+      {WiFiSecurity::kTransOwe, {WiFiSecurity::kTransOwe}},
+      {WiFiSecurity::kOwe, {WiFiSecurity::kOwe}},
+      {WiFiSecurity::kWep, {WiFiSecurity::kWep}},
+      {WiFiSecurity::kWpa,
+       {WiFiSecurity::kWpa, WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpaWpa2, {WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpaAll, {WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpa2,
+       {WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpa2, WiFiSecurity::kWpa2Wpa3,
+        WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpa2Wpa3,
+       {WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpa3,
+       {WiFiSecurity::kWpa3, WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpaAll}},
+      {WiFiSecurity::kWpaEnterprise,
+       {WiFiSecurity::kWpaEnterprise, WiFiSecurity::kWpaWpa2Enterprise,
+        WiFiSecurity::kWpaAllEnterprise}},
+      {WiFiSecurity::kWpaWpa2Enterprise,
+       {WiFiSecurity::kWpaWpa2Enterprise, WiFiSecurity::kWpaAllEnterprise}},
+      {WiFiSecurity::kWpaAllEnterprise, {WiFiSecurity::kWpaAllEnterprise}},
+      {WiFiSecurity::kWpa2Enterprise,
+       {WiFiSecurity::kWpaWpa2Enterprise, WiFiSecurity::kWpa2Enterprise,
+        WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpaAllEnterprise}},
+      {WiFiSecurity::kWpa2Wpa3Enterprise,
+       {WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpaAllEnterprise}},
+      {WiFiSecurity::kWpa3Enterprise,
+       {WiFiSecurity::kWpa3Enterprise, WiFiSecurity::kWpa2Wpa3Enterprise,
+        WiFiSecurity::kWpaAllEnterprise}},
+  };
+  std::vector<WiFiSecurity::Mode> security_modes;
+  for (auto it : valid_supersets) {
+    security_modes.push_back(it.first);
+  }
+  for (const auto& mode : security_modes) {
+    WiFiSecurity security(mode);
+    for (const auto& set_mode : security_modes) {
+      WiFiSecurity security_set(set_mode);
+      if (base::Contains(valid_supersets[mode], set_mode)) {
+        EXPECT_TRUE(security.IsSubsetOf(set_mode));
+        EXPECT_EQ(security_set.Combine(security.mode()), security_set);
+      } else {
+        EXPECT_FALSE(security.IsSubsetOf(set_mode))
+            << security_set << "/" << security;
+        // If IsSubsetOf is false then there are following possibilities:
+        // - they are from different SecurityClasses (Combine -> invalid)
+        // - they are both from "None" class (Combine -> higher one)
+        // - they are both from "WPA" class (Combine -> a superset)
+        // First two cases are tested elsewhere, so here just focus on the third
+        // one.
+        if (security_set.SecurityClass() == security.SecurityClass() &&
+            security_set.IsWpa()) {
+          auto combination = security_set.Combine(security.mode());
+          EXPECT_TRUE(combination.IsValid());
+          EXPECT_TRUE(security.IsSubsetOf(combination));
+          EXPECT_TRUE(security_set.IsSubsetOf(combination));
+        }
+      }
+    }
+  }
 }
 
 TEST(WiFiSecurityTest, CombineSecurityNone) {
