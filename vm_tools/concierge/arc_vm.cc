@@ -1431,13 +1431,7 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-  // TODO(b/287128076): Remove deprecated use of guest_zram_size.
-  int64_t zram_size = request.guest_zram_mib() != 0
-                          ? MiB(request.guest_zram_mib())
-                          : request.guest_zram_size();
-#pragma clang diagnostic pop
+  int64_t zram_size = MiB(request.guest_zram_mib());
 
   std::vector<std::string> params = {
       "root=/dev/vda",
