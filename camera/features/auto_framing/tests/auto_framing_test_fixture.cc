@@ -228,8 +228,7 @@ bool AutoFramingTestFixture::SetUp(
 
   framing_stream_manipulator_ = std::make_unique<FramingStreamManipulator>(
       &runtime_options_, &gpu_resources_, base::FilePath(),
-      std::move(still_capture_processor), options,
-      /*auto_framing_supported=*/true);
+      std::move(still_capture_processor), options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   if (!locked_static_info) {

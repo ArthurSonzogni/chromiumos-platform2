@@ -219,7 +219,6 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
   return std::make_pair(size.width / g, size.height / g);
 }
 
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
 int CalculateMedian(const base::flat_map<int, int>& histogram) {
   DCHECK_GT(histogram.size(), 0);
   const int total_count = std::accumulate(
@@ -237,7 +236,6 @@ int CalculateMedian(const base::flat_map<int, int>& histogram) {
   NOTREACHED();
   return 0;
 }
-#endif
 
 bool IsFullCrop(const Rect<float>& rect) {
   constexpr float kThreshold = 1e-3f;
@@ -268,8 +266,7 @@ FramingStreamManipulator::FramingStreamManipulator(
     GpuResources* gpu_resources,
     base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-    std::optional<Options> options_override_for_testing,
-    bool auto_framing_supported)
+    std::optional<Options> options_override_for_testing)
     : config_(ReloadableConfigFile::Options{
           .default_config_file_path = std::move(config_file_path),
           .override_config_file_path =
@@ -277,8 +274,7 @@ FramingStreamManipulator::FramingStreamManipulator(
       runtime_options_(runtime_options),
       gpu_resources_(gpu_resources),
       still_capture_processor_(std::move(still_capture_processor)),
-      camera_metrics_(CameraMetrics::New()),
-      auto_framing_supported_(auto_framing_supported) {
+      camera_metrics_(CameraMetrics::New()) {
   DCHECK_NE(runtime_options_, nullptr);
   DCHECK(gpu_resources_);
   TRACE_AUTO_FRAMING();
@@ -523,8 +519,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
     return false;
   }
 
-  if (auto_framing_supported_ &&
-      !SetUpPipelineOnThread(target_aspect_ratio_x, target_aspect_ratio_y)) {
+  if (!SetUpPipelineOnThread(target_aspect_ratio_x, target_aspect_ratio_y)) {
     setup_failed_ = true;
     return false;
   }
@@ -627,8 +622,7 @@ bool FramingStreamManipulator::GetAutoFramingEnabled() {
   // TODO(pihsun): Handle multi people mode.
   // TODO(pihsun): ReloadableConfigFile merges new config to old config, so
   // this won't be "unset" after set, which will be confusing for developers.
-  return auto_framing_supported_ &&
-         options_.enable.value_or(runtime_options_->sw_privacy_switch_state() !=
+  return options_.enable.value_or(runtime_options_->sw_privacy_switch_state() !=
                                       mojom::CameraPrivacySwitchState::ON &&
                                   runtime_options_->auto_framing_state() !=
                                       mojom::CameraAutoFramingState::OFF);
@@ -876,12 +870,33 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
     return false;
   }
 
-  if (auto_framing_supported_ &&
-      !GetAutoFramingCropWindowOnThread(ctx, *full_frame_buffer.buffer(),
-                                        frame_number)) {
+  if (ctx->state_transition.first != State::kAutoFramingOff &&
+      ctx->state_transition.second == State::kAutoFramingOff) {
+    if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
+      LOGF(ERROR) << "Failed to reset crop window at result " << frame_number;
+      return false;
+    }
+  }
+  if (ctx->state_transition.first != State::kAutoFramingOn &&
+      ctx->state_transition.second == State::kAutoFramingOn) {
+    auto_framing_client_.ResetDetectionTimer();
+  }
+  if (!auto_framing_client_.ProcessFrame(
+          *ctx->timestamp, ctx->state_transition.second == State::kAutoFramingOn
+                               ? *full_frame_buffer.buffer()
+                               : nullptr)) {
+    LOGF(ERROR) << "Failed to process frame " << frame_number;
     return false;
   }
 
+  std::optional<Rect<float>> roi =
+      auto_framing_client_.TakeNewRegionOfInterest();
+  if (roi) {
+    region_of_interest_ = *roi;
+  }
+
+  // Crop the full frame into client buffers.
+  ctx->crop_region = auto_framing_client_.GetCropWindow(*ctx->timestamp);
   active_crop_region_ = *ctx->crop_region;
   for (auto& b : ctx->client_buffers) {
     Rect<float> adjusted_crop_region;
@@ -1016,50 +1031,8 @@ void FramingStreamManipulator::ReturnStillCaptureResultOnThread(
   callbacks_.result_callback.Run(std::move(result));
 }
 
-bool FramingStreamManipulator::GetAutoFramingCropWindowOnThread(
-    CaptureContext* ctx,
-    buffer_handle_t full_frame_buffer,
-    uint32_t frame_number) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
-  if (ctx->state_transition.first != State::kAutoFramingOff &&
-      ctx->state_transition.second == State::kAutoFramingOff) {
-    if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
-      LOGF(ERROR) << "Failed to reset crop window at result " << frame_number;
-      return false;
-    }
-  }
-  if (ctx->state_transition.first != State::kAutoFramingOn &&
-      ctx->state_transition.second == State::kAutoFramingOn) {
-    auto_framing_client_.ResetDetectionTimer();
-  }
-  if (!auto_framing_client_.ProcessFrame(
-          *ctx->timestamp, ctx->state_transition.second == State::kAutoFramingOn
-                               ? full_frame_buffer
-                               : nullptr)) {
-    LOGF(ERROR) << "Failed to process frame " << frame_number;
-    return false;
-  }
-
-  std::optional<Rect<float>> roi =
-      auto_framing_client_.TakeNewRegionOfInterest();
-  if (roi) {
-    region_of_interest_ = *roi;
-  }
-
-  // Crop the full frame into client buffers.
-  ctx->crop_region = auto_framing_client_.GetCropWindow(*ctx->timestamp);
-  return true;
-#else
-  // This function should not be called if there is no auto framing.
-  return false;
-#endif
-}
-
 bool FramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
 
@@ -1070,9 +1043,6 @@ bool FramingStreamManipulator::SetUpPipelineOnThread(
       .target_aspect_ratio_y = target_aspect_ratio_y,
       .detection_rate = options_.detection_rate,
   });
-#else
-  return true;
-#endif
 }
 
 void FramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
@@ -1212,10 +1182,7 @@ void FramingStreamManipulator::ResetOnThread() {
 
   UploadMetricsOnThread();
 
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
   auto_framing_client_.TearDown();
-#endif
-
   still_capture_processor_->Reset();
 
   state_ = State::kDisabled;
@@ -1241,7 +1208,6 @@ void FramingStreamManipulator::ResetOnThread() {
 void FramingStreamManipulator::UploadMetricsOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
   const AutoFramingClient::Metrics pipeline_metrics =
       auto_framing_client_.GetMetrics();
   // Skip sessions that no frames are actually captured.
@@ -1301,7 +1267,6 @@ void FramingStreamManipulator::UploadMetricsOnThread() {
   if (!has_error) {
     camera_metrics_->SendAutoFramingError(AutoFramingError::kNoError);
   }
-#endif  // USE_CAMERA_FEATURE_AUTO_FRAMING
 }
 
 void FramingStreamManipulator::UpdateOptionsOnThread(

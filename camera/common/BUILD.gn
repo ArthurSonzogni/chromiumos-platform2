@@ -299,7 +299,6 @@ source_set("camera_gpu_algorithm") {
 source_set("stream_manipulator") {
   sources = [
     "//camera/common/camera_diagnostics_config.cc",
-    "//camera/common/framing_stream_manipulator.cc",
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",
     "//camera/common/stream_manipulator_manager.cc",
@@ -322,6 +321,7 @@ source_set("stream_manipulator") {
     "//camera/gpu:gpu_resources",
   ]
   if (use.camera_feature_auto_framing) {
+    sources += [ "//camera/common/framing_stream_manipulator.cc" ]
     deps += [ "//camera/features/auto_framing" ]
   }
   if (use.camera_feature_face_detection) {
