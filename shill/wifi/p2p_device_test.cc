@@ -13,20 +13,19 @@
 #include <net-base/mac_address.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/supplicant/mock_supplicant_group_proxy.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
 #include "shill/supplicant/mock_supplicant_peer_proxy.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_p2p_manager.h"
 #include "shill/wifi/mock_p2p_service.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
-#include "shill/wifi/wifi_security.h"
 
 using ::testing::_;
 using ::testing::ByMove;

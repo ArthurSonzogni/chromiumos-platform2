@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <map>
 #include <string>
 #include <string_view>
@@ -30,7 +29,6 @@
 #include "shill/device.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -47,9 +45,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static std::string ObjectID(const WiFiService* w) {
-  return w->log_name();
-}
 }  // namespace Logging
 
 namespace {
@@ -260,8 +255,8 @@ WiFiService::WiFiService(Manager* manager,
 
   // Log the |log_name| to |friendly_name| mapping for debugging purposes.
   // The latter will be tagged for scrubbing.
-  SLOG(this, 1) << "Constructed WiFi service " << log_name() << ": "
-                << WiFi::LogSSID(friendly_name());
+  SLOG(1) << "Constructed WiFi service " << log_name() << ": "
+          << WiFi::LogSSID(friendly_name());
 }
 
 WiFiService::~WiFiService() = default;
@@ -542,7 +537,7 @@ std::string WiFiService::GetMACPolicy(Error* /*error*/) {
 bool WiFiService::SetMACPolicyInternal(const std::string& policy,
                                        Error* error,
                                        bool only_property) {
-  SLOG(this, 2) << __func__;
+  SLOG(2) << __func__;
   auto ret = std::find_if(
       RandomizationPolicyMap.begin(), RandomizationPolicyMap.end(),
       [policy](const std::pair<RandomizationPolicy, std::string>& it) {
@@ -679,7 +674,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
   std::string passphrase;
   if (storage->GetString(id, kStorageCredentialPassphrase, &passphrase)) {
     if (SetPassphraseInternal(passphrase, Service::kReasonCredentialsLoaded)) {
-      SLOG(this, 2) << "Loaded passphrase in WiFiService::Load.";
+      SLOG(2) << "Loaded passphrase in WiFiService::Load.";
     }
   }
 
@@ -687,8 +682,8 @@ bool WiFiService::Load(const StoreInterface* storage) {
   if (storage->GetString(id, kStorageSecurity, &security_str)) {
     WiFiSecurity security(security_str);
     if (security_.IsValid() && security_ != security) {
-      SLOG(this, 2) << "Overwriting Security property: " << security_ << " <- "
-                    << security_str;
+      SLOG(2) << "Overwriting Security property: " << security_ << " <- "
+              << security_str;
     }
     security_ = security;
     security_.Freeze();
@@ -899,7 +894,7 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 }
 
 void WiFiService::InitializeCustomMetrics() {
-  SLOG(this, 2) << __func__ << " for " << log_name();
+  SLOG(2) << __func__ << " for " << log_name();
   auto histogram = metrics()->GetFullMetricName(
       Metrics::kMetricTimeToJoinMillisecondsSuffix, technology());
   AddServiceStateTransitionTimer(histogram, Service::kStateAssociating,
@@ -1155,7 +1150,7 @@ void WiFiService::ValidateTagState(SessionTagExpectedState expected_state,
       break;
   }
   if (uma_tag_state != Metrics::kWiFiSessionTagStateExpected) {
-    SLOG(this, kSessionTagMinimumLogVerbosity)
+    SLOG(kSessionTagMinimumLogVerbosity)
         << __func__ << ": " << uma_suffix << ": Found an "
         << (expected_state == kSessionTagExpectedValid ? "invalid" : "existing")
         << " session tag.";
@@ -1367,9 +1362,8 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 
   params.Set<std::vector<uint8_t>>(WPASupplicant::kNetworkPropertySSID, ssid_);
 
-  SLOG(this, 2) << "Sending MAC policy: "
-                << RandomizationPolicyMap.at(random_mac_policy_)
-                << " to supplicant.";
+  SLOG(2) << "Sending MAC policy to supplicant: "
+          << RandomizationPolicyMap.at(random_mac_policy_);
   SetSupplicantMACPolicy(params);
   switch (random_mac_policy_) {
     case RandomizationPolicy::PersistentRandom:

@@ -4,7 +4,6 @@
 
 #include "shill/manager.h"
 
-#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -25,7 +24,6 @@
 #include <net-base/network_priority.h>
 #include <metrics/timer_mock.h>
 
-#include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_service_observer.h"
 #include "shill/ephemeral_profile.h"
@@ -33,12 +31,9 @@
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/geolocation_info.h"
-#include "shill/logging.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_log.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_resolver.h"
@@ -47,12 +42,12 @@
 #include "shill/mock_virtual_device.h"
 #include "shill/network/mock_network.h"
 #include "shill/portal_detector.h"
-#include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/key_file_store.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/testing.h"
 #include "shill/tethering_manager.h"
 #include "shill/upstart/mock_upstart.h"

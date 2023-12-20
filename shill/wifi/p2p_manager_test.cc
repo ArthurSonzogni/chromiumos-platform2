@@ -19,6 +19,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_wifi_phy.h"
