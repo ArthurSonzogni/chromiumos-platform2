@@ -50,6 +50,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   bool IsActive() const;
 
  private:
+  friend class FanotifyWatcherTest;
+
   // FanotifyReaderThread::Delegate overrides:
   void OnFileOpenRequested(
       ino_t inode,

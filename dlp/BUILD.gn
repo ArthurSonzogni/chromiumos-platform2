@@ -133,10 +133,7 @@ if (use.test) {
       "dlp_adaptor_test_helper.cc",
       "dlp_adaptor_test_helper.h",
       "dlp_requests_cache_test.cc",
-
-      # TODO(crbug.com/1223082) Rewrite fanotify_watcher tests to use mocked
-      # fanotify as they are flaky otherwise.
-      # "fanotify_watcher_test.cc",
+      "fanotify_watcher_test.cc",
     ]
     configs += [
       "//common-mk:test",

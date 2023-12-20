@@ -26,15 +26,18 @@ FanotifyWatcher::FanotifyWatcher(Delegate* delegate,
     : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       fd_events_thread_(task_runner_, this),
       fh_events_thread_(task_runner_, this),
-      fanotify_fd_events_fd_(fanotify_perm_fd),
-      fanotify_fh_events_fd_(fanotify_notif_fd),
       delegate_(delegate) {
   DCHECK(delegate);
 
-  fd_events_thread_.StartThread(fanotify_fd_events_fd_.get());
+  if (fanotify_perm_fd >= 0) {
+    fanotify_fd_events_fd_.reset(fanotify_perm_fd);
+    fd_events_thread_.StartThread(fanotify_perm_fd);
+  }
 
-  if (GetKernelVersion() >= kMinKernelVersionForFanDeleteEvents) {
-    fh_events_thread_.StartThread(fanotify_fh_events_fd_.get());
+  if (GetKernelVersion() >= kMinKernelVersionForFanDeleteEvents &&
+      fanotify_notif_fd >= 0) {
+    fanotify_fh_events_fd_.reset(fanotify_notif_fd);
+    fh_events_thread_.StartThread(fanotify_notif_fd);
   }
 }
 
@@ -43,7 +46,8 @@ FanotifyWatcher::~FanotifyWatcher() = default;
 void FanotifyWatcher::AddFileDeleteWatch(const base::FilePath& path) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  if (GetKernelVersion() >= kMinKernelVersionForFanDeleteEvents) {
+  if (GetKernelVersion() >= kMinKernelVersionForFanDeleteEvents &&
+      fanotify_fh_events_fd_.get() >= 0) {
     int res = fanotify_mark(fanotify_fh_events_fd_.get(), FAN_MARK_ADD,
                             FAN_DELETE_SELF, AT_FDCWD, path.value().c_str());
 

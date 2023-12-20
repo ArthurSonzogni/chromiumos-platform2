@@ -90,7 +90,9 @@ FanotifyReaderThread::FanotifyReaderThread(
 }
 
 FanotifyReaderThread::~FanotifyReaderThread() {
-  base::PlatformThread::Join(handle_);
+  if (!handle_.is_null()) {
+    base::PlatformThread::Join(handle_);
+  }
 }
 
 void FanotifyReaderThread::StartThread(int fanotify_fd) {
