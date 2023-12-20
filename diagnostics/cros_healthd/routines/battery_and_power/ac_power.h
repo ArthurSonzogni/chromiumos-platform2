@@ -9,8 +9,6 @@
 #include <optional>
 #include <string>
 
-#include <base/files/file_path.h>
-
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -33,8 +31,7 @@ class AcPowerRoutine final : public DiagnosticRoutineWithStatus {
  public:
   // Override |root_dir| for testing only.
   AcPowerRoutine(ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-                 const std::optional<std::string>& expected_power_type,
-                 const base::FilePath& root_dir = base::FilePath("/"));
+                 const std::optional<std::string>& expected_power_type);
   AcPowerRoutine(const AcPowerRoutine&) = delete;
   AcPowerRoutine& operator=(const AcPowerRoutine&) = delete;
 
@@ -56,8 +53,6 @@ class AcPowerRoutine final : public DiagnosticRoutineWithStatus {
   ash::cros_healthd::mojom::AcPowerStatusEnum expected_power_status_;
   // Expected type of the power supply.
   std::optional<std::string> expected_power_type_;
-  // Root directory appended to relative paths used by the routine.
-  base::FilePath root_dir_;
   // A measure of how far along the routine is, reported in all status updates.
   uint32_t progress_percent_ = 0;
 };

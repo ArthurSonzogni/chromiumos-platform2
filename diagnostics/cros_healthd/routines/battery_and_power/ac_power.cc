@@ -14,6 +14,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+#include "diagnostics/base/file_utils.h"
+
 namespace diagnostics {
 
 namespace {
@@ -54,11 +56,9 @@ const uint32_t kAcPowerRoutineWaitingProgressPercent = 33;
 
 AcPowerRoutine::AcPowerRoutine(
     mojom::AcPowerStatusEnum expected_status,
-    const std::optional<std::string>& expected_power_type,
-    const base::FilePath& root_dir)
+    const std::optional<std::string>& expected_power_type)
     : expected_power_status_(expected_status),
-      expected_power_type_(expected_power_type),
-      root_dir_(root_dir) {}
+      expected_power_type_(expected_power_type) {}
 
 AcPowerRoutine::~AcPowerRoutine() = default;
 
@@ -127,7 +127,7 @@ void AcPowerRoutine::CalculateProgressPercent() {
 
 void AcPowerRoutine::RunAcPowerRoutine() {
   base::FileEnumerator dir_enumerator(
-      root_dir_.AppendASCII(kPowerSupplyDirectoryPath),
+      GetRootDir().AppendASCII(kPowerSupplyDirectoryPath),
       false /* is_recursive */,
       base::FileEnumerator::SHOW_SYM_LINKS | base::FileEnumerator::FILES |
           base::FileEnumerator::DIRECTORIES);

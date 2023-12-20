@@ -10,10 +10,10 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -26,7 +26,7 @@ constexpr char kExpectedPowerType[] = "USB_PD";
 constexpr char kPowerSupplyDirectoryPath[] =
     "sys/class/power_supply/foo_power_supply";
 
-class AcPowerRoutineTest : public testing::Test {
+class AcPowerRoutineTest : public BaseFileTest {
  public:
   AcPowerRoutineTest(const AcPowerRoutineTest&) = delete;
   AcPowerRoutineTest& operator=(const AcPowerRoutineTest&) = delete;
@@ -34,14 +34,12 @@ class AcPowerRoutineTest : public testing::Test {
  protected:
   AcPowerRoutineTest() = default;
 
-  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
-
   DiagnosticRoutine* routine() { return routine_.get(); }
 
   void CreateRoutine(mojom::AcPowerStatusEnum expected_status,
                      const std::optional<std::string>& expected_power_type) {
-    routine_ = std::make_unique<AcPowerRoutine>(
-        expected_status, expected_power_type, temp_dir_.GetPath());
+    routine_ =
+        std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
   }
 
   mojom::RoutineUpdatePtr GetUpdate() {
@@ -55,22 +53,19 @@ class AcPowerRoutineTest : public testing::Test {
 
   void WriteOnlineFileContents(const std::string& file_contents) {
     EXPECT_TRUE(
-        WriteFileAndCreateParentDirs(temp_dir_.GetPath()
+        WriteFileAndCreateParentDirs(GetRootDir()
                                          .AppendASCII(kPowerSupplyDirectoryPath)
                                          .AppendASCII("online"),
                                      file_contents));
   }
 
   void WriteTypeFileContents(const std::string& file_contents) {
-    EXPECT_TRUE(
-        WriteFileAndCreateParentDirs(temp_dir_.GetPath()
-                                         .AppendASCII(kPowerSupplyDirectoryPath)
-                                         .AppendASCII("type"),
-                                     file_contents));
+    EXPECT_TRUE(WriteFileAndCreateParentDirs(
+        GetRootDir().AppendASCII(kPowerSupplyDirectoryPath).AppendASCII("type"),
+        file_contents));
   }
 
  private:
-  base::ScopedTempDir temp_dir_;
   std::unique_ptr<AcPowerRoutine> routine_;
 };
 
