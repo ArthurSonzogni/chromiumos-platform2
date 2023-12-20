@@ -61,7 +61,7 @@ def main():
     )
     ap.add_argument(
         "--debian-release",
-        default="bookworm",
+        default="trixie",
         help="OS version to be installed (default: %(default)s)",
     )
     ap.add_argument(
