@@ -31,11 +31,6 @@ pkg_config("target_defaults") {
   }
 }
 
-source_set("metrics_uma") {
-  sources = [ "metrics_uma.cc" ]
-  all_dependent_configs = [ ":target_defaults" ]
-}
-
 proto_library("enterprise_rollback_metrics_proto") {
   proto_in_dir = "."
   proto_out_dir = "include/oobe_config/metrics"

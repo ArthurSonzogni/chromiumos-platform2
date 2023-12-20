@@ -86,7 +86,6 @@ static_library("liboobeconfig") {
     ":oobe_config_proto",
     "filesystem:filesystem",
     "metrics:libenterprise_rollback_metrics",
-    "metrics:metrics_uma",
   ]
 }
 

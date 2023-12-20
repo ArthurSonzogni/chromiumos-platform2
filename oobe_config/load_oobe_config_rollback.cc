@@ -76,8 +76,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       ReportEnterpriseRollbackRestoreResult(
           *rollback_metrics_, EnterpriseRollbackEvent::
                                   ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_DECRYPT);
-      metrics_uma_.RecordRestoreResult(
-          MetricsUMA::OobeRestoreResult::kStage1Failure);
       return false;
     }
   }
@@ -89,8 +87,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       ReportEnterpriseRollbackRestoreResult(
           *rollback_metrics_,
           EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_READ);
-      metrics_uma_.RecordRestoreResult(
-          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
     RollbackData rollback_data;
@@ -99,8 +95,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       ReportEnterpriseRollbackRestoreResult(
           *rollback_metrics_,
           EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_PARSE);
-      metrics_uma_.RecordRestoreResult(
-          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
     // We get the data for Chrome and assemble the config.
@@ -109,8 +103,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       ReportEnterpriseRollbackRestoreResult(
           *rollback_metrics_,
           EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_CONFIG);
-      metrics_uma_.RecordRestoreResult(
-          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
 
@@ -118,7 +110,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     ReportEnterpriseRollbackRestoreResult(
         *rollback_metrics_,
         EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_SUCCESS);
-    metrics_uma_.RecordRestoreResult(MetricsUMA::OobeRestoreResult::kSuccess);
     return true;
   }
 

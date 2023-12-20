@@ -9,7 +9,6 @@
 
 #include "oobe_config/features/features.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
-#include "oobe_config/metrics/metrics_uma.h"
 #include "oobe_config/oobe_config.h"
 
 namespace {
@@ -37,8 +36,6 @@ int main(int argc, char* argv[]) {
   InitLog();
 
   oobe_config::EnterpriseRollbackMetricsHandler rollback_metrics;
-  // TODO(b/301924474): Clean old UMA metrics.
-  oobe_config::MetricsUMA metrics_uma;
 
   base::CommandLine::Init(argc, argv);
   LOG(INFO) << "Starting oobe_config_save";
@@ -62,8 +59,6 @@ int main(int argc, char* argv[]) {
     rollback_metrics.TrackEvent(
         oobe_config::EnterpriseRollbackMetricsHandler::CreateEventData(
             EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_SAVE_FAILURE));
-    metrics_uma.RecordSaveResult(
-        oobe_config::MetricsUMA::RollbackSaveResult::kStage2Failure);
     return 0;
   }
 
@@ -71,7 +66,5 @@ int main(int argc, char* argv[]) {
   rollback_metrics.TrackEvent(
       oobe_config::EnterpriseRollbackMetricsHandler::CreateEventData(
           EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_SAVE_SUCCESS));
-  metrics_uma.RecordSaveResult(
-      oobe_config::MetricsUMA::RollbackSaveResult::kSuccess);
   return 0;
 }
