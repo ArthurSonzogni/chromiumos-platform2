@@ -53,7 +53,7 @@ allow cros_metrics_daemon cros_var_log_vmlog:{file lnk_file} create_file_perms;
 allow cros_metrics_daemon device:blk_file getattr;
 
 rw_dir_file(cros_metrics_daemon, cros_run_metrics_external)
-allow cros_metrics_daemon cros_run_metrics:dir { rw_dir_perms };
+create_dir_file(cros_metrics_daemon, cros_run_metrics)
 allow cros_metrics_daemon cros_run_metrics_external_crash:dir { rw_dir_perms remove_name };
 allow cros_metrics_daemon cros_run_metrics_external_crash:file { rw_file_perms unlink };
 

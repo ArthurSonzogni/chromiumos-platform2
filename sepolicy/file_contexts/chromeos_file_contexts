@@ -498,7 +498,7 @@ has_arc(`
 /run/lockbox(/.*)?              u:object_r:cros_run_lockbox:s0
 /run/log                        u:object_r:cros_run_log:s0
 /run/lorgnette(/.*)?            u:object_r:cros_run_lorgnette:s0
-/run/metrics                    u:object_r:cros_run_metrics:s0
+/run/metrics(/.*)?              u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
 /run/mojo                       u:object_r:cros_run_mojo:s0
 /run/mojo/service_manager.sock  u:object_r:cros_mojo_service_manager_socket:s0
