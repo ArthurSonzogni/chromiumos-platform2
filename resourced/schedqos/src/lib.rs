@@ -174,20 +174,20 @@ impl Config {
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
             },
             // ThreadState::Urgent
             ThreadStateConfig {
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
                 ..ThreadStateConfig::default()
             },
             // ThreadState::Balanced
             ThreadStateConfig {
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
                 ..ThreadStateConfig::default()
             },
             // ThreadState::Eco
@@ -235,10 +235,12 @@ pub struct ThreadStateConfig {
     pub uclamp_min: u32,
     /// The cpuset cgroup
     pub cpuset_cgroup: CpusetCgroup,
+    /// Whether the thread is latency sensitive or not.
+    ///
     /// On systems that use EAS, EAS will try to pack workloads onto non-idle
     /// cpus first as long as there is capacity. However, if an idle cpu was
     /// chosen it would reduce the latency.
-    pub prefer_idle: bool,
+    pub latency_sensitive: bool,
 }
 
 impl ThreadStateConfig {
@@ -255,7 +257,7 @@ impl ThreadStateConfig {
             nice: 0,
             uclamp_min: 0,
             cpuset_cgroup: CpusetCgroup::All,
-            prefer_idle: false,
+            latency_sensitive: false,
         }
     }
 }
@@ -486,11 +488,13 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             "/proc/{}/task/{}/latency_sensitive",
             process_id.0, thread_id.0
         );
-
         if std::path::Path::new(&latency_sensitive_file).exists() {
-            let value = if thread_config.prefer_idle { 1 } else { 0 };
-            std::fs::write(&latency_sensitive_file, value.to_string())
-                .map_err(Error::LatencySensitive)?;
+            let value = if thread_config.latency_sensitive {
+                b"1"
+            } else {
+                b"0"
+            };
+            std::fs::write(&latency_sensitive_file, value).map_err(Error::LatencySensitive)?;
         }
 
         Ok(())
@@ -865,20 +869,20 @@ mod tests {
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
             },
             // ThreadState::Urgent
             ThreadStateConfig {
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
                 ..ThreadStateConfig::default()
             },
             // ThreadState::Balanced
             ThreadStateConfig {
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: true,
+                latency_sensitive: true,
                 ..ThreadStateConfig::default()
             },
             // ThreadState::Eco

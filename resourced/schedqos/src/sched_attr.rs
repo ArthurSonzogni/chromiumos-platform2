@@ -258,7 +258,7 @@ mod tests {
                 nice,
                 uclamp_min,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: false,
+                latency_sensitive: false,
             };
 
             ctx.set_thread_sched_attr(ThreadId(0), &thread_config, true)
@@ -300,7 +300,7 @@ mod tests {
                 nice,
                 uclamp_min,
                 cpuset_cgroup: CpusetCgroup::All,
-                prefer_idle: false,
+                latency_sensitive: false,
             };
 
             ctx.set_thread_sched_attr(ThreadId(0), &thread_config, true)
