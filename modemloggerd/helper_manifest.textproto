@@ -63,3 +63,10 @@ helper {
     extra_argument: "+DISK=0,1,0"
   }
 }
+helper {
+  modem_name: "fm350"
+  exe {
+    filename: "/usr/local/opt/fibocom/modemlogger"
+    output_dir_argument: "-o"
+  }
+}
