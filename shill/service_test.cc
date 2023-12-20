@@ -877,24 +877,12 @@ TEST_F(ServiceTest, ServicePortalDetectionFailureProperties) {
   result.http_probe_completed = true;
   result.https_probe_completed = true;
 
-  EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(kPortalDetectionFailedPhaseProperty,
-                                kPortalDetectionPhaseDns))
-      .Times(1);
-  EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(kPortalDetectionFailedStatusProperty,
-                                kPortalDetectionStatusTimeout))
-      .Times(1);
   EXPECT_CALL(
       *GetAdaptor(),
       EmitIntChanged(kPortalDetectionFailedStatusCodeProperty, kStatusCode))
       .Times(1);
 
   service_->SetPortalDetectionFailure(result);
-  EXPECT_EQ(kPortalDetectionPhaseDns,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusTimeout,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(kStatusCode, service_->portal_detection_failure_status_code());
 }
 
@@ -2874,8 +2862,6 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
 
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ("", service_->portal_detection_failure_phase());
-  EXPECT_EQ("", service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -2898,8 +2884,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
 
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ("", service_->portal_detection_failure_phase());
-  EXPECT_EQ("", service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -2925,8 +2909,6 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   // kInternetConnectivity validation state.
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ("", service_->portal_detection_failure_phase());
-  EXPECT_EQ("", service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -2950,10 +2932,6 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseConnection,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusFailure,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -2978,10 +2956,6 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseDns,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusFailure,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -3006,10 +2980,6 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseDns,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusTimeout,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
@@ -3037,10 +3007,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseContent,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusRedirect,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(302, service_->portal_detection_failure_status_code());
 }
 
@@ -3064,10 +3030,6 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseContent,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusRedirect,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(302, service_->portal_detection_failure_status_code());
 }
 
@@ -3093,10 +3055,6 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseContent,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusSuccess,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(200, service_->portal_detection_failure_status_code());
 }
 
@@ -3119,10 +3077,6 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(kPortalDetectionPhaseUnknown,
-            service_->portal_detection_failure_phase());
-  EXPECT_EQ(kPortalDetectionStatusFailure,
-            service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 

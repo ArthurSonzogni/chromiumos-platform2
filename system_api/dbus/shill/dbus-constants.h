@@ -164,10 +164,6 @@ constexpr char kManagedCredentialsProperty[] = "ManagedCredentials";
 constexpr char kMeteredProperty[] = "Metered";
 constexpr char kNameProperty[] = "Name";  // Also used for Device and Profile.
 constexpr char kPassphraseRequiredProperty[] = "PassphraseRequired";
-constexpr char kPortalDetectionFailedPhaseProperty[] =
-    "PortalDetectionFailedPhase";
-constexpr char kPortalDetectionFailedStatusProperty[] =
-    "PortalDetectionFailedStatus";
 constexpr char kPortalDetectionFailedStatusCodeProperty[] =
     "PortalDetectionFailedStatusCode";
 constexpr char kPreviousErrorProperty[] = "PreviousError";
@@ -532,17 +528,6 @@ constexpr char kRoamStateReady[] = "ready";
 constexpr char kPasspointMatchTypeHome[] = "home";
 constexpr char kPasspointMatchTypeRoaming[] = "roaming";
 constexpr char kPasspointMatchTypeUnknown[] = "unknown";
-
-// Flimflam portal phase and status.
-constexpr char kPortalDetectionPhaseConnection[] = "Connection";
-constexpr char kPortalDetectionPhaseDns[] = "DNS";
-constexpr char kPortalDetectionPhaseHttp[] = "HTTP";
-constexpr char kPortalDetectionPhaseContent[] = "Content";
-constexpr char kPortalDetectionPhaseUnknown[] = "Unknown";
-constexpr char kPortalDetectionStatusFailure[] = "Failure";
-constexpr char kPortalDetectionStatusTimeout[] = "Timeout";
-constexpr char kPortalDetectionStatusSuccess[] = "Success";
-constexpr char kPortalDetectionStatusRedirect[] = "Redirect";
 
 // Flimflam property names for SIMLock status.
 // kSIMLockStatusProperty is a Cellular Device property.

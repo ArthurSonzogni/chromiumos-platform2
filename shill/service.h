@@ -741,12 +741,6 @@ class Service : public base::RefCounted<Service> {
     return portal_detection_count_;
   }
   const std::string& probe_url_string() const { return probe_url_string_; }
-  const std::string& portal_detection_failure_phase() const {
-    return portal_detection_failure_phase_;
-  }
-  const std::string& portal_detection_failure_status() {
-    return portal_detection_failure_status_;
-  }
   int portal_detection_failure_status_code() {
     return portal_detection_failure_status_code_;
   }
@@ -1130,8 +1124,6 @@ class Service : public base::RefCounted<Service> {
   bool key_rotation_;
   bool endpoint_auth_;
   std::string probe_url_string_;
-  std::string portal_detection_failure_phase_;
-  std::string portal_detection_failure_status_;
   int portal_detection_failure_status_code_;
 
   uint8_t strength_;
