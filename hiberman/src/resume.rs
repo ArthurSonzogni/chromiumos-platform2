@@ -41,7 +41,6 @@ use crate::hiberlog::LogFile;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
-use crate::hiberutil::read_hiberimage_size;
 use crate::hiberutil::sanitize_username;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateStage;
@@ -440,7 +439,7 @@ impl ResumeConductor {
 
         // briefly mount hibermeta to read the size of the hiberimage.
         let hibermeta_mount = volume_manager.setup_hibermeta_lv(true)?;
-        let image_size = read_hiberimage_size()?;
+        let image_size = hibermeta_mount.read_hiberimage_size()?;
         drop(hibermeta_mount);
 
         let ram_size = get_ram_size();

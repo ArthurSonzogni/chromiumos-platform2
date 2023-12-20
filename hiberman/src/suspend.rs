@@ -42,7 +42,6 @@ use crate::hiberutil::get_ram_size;
 use crate::hiberutil::has_user_logged_out;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
-use crate::hiberutil::write_hiberimage_size;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
@@ -309,7 +308,7 @@ impl SuspendConductor<'_> {
                 metrics_logger.flush()?;
             }
 
-            write_hiberimage_size(image_size)?;
+            hibermeta_mount.write_hiberimage_size(image_size)?;
 
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);

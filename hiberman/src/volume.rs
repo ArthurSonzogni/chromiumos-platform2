@@ -16,12 +16,14 @@ use log::warn;
 use regex::Regex;
 
 use std::ffi::OsStr;
+use std::fs::File;
 use std::fs::create_dir;
 use std::fs::read_dir;
 use std::fs::read_link;
 use std::fs::remove_file;
 use std::fs::OpenOptions;
 use std::io::IoSlice;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
@@ -35,6 +37,7 @@ use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::device_mapper::DeviceMapper;
 use crate::files::HIBERMETA_DIR;
+use crate::files::HIBERIMAGE_SIZE_FILE;
 use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
@@ -931,6 +934,36 @@ impl ActiveMount {
         ActiveMount {
             mountpoint: PathBuf::from(Path::new(&mountpoint)),
         }
+    }
+
+    /// Read the size of the hibernate image from 'hibermeta'.
+    pub fn read_hiberimage_size(&self) -> Result<u64> {
+        let mut f = File::open(HIBERIMAGE_SIZE_FILE.as_path())?;
+
+        let mut bytes = [0; 8];
+
+        f.read_exact(&mut bytes).context(format!(
+            "Failed to read hiberimage size from {}",
+            HIBERIMAGE_SIZE_FILE.display()
+        ))?;
+
+        Ok(u64::from_ne_bytes(bytes))
+    }
+
+    /// Write the size of the hibernate image to 'hibermeta'.
+    pub fn write_hiberimage_size(&self, size: u64) -> Result<()> {
+        let mut f = File::options()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(HIBERIMAGE_SIZE_FILE.as_path())?;
+
+        let bytes = size.to_ne_bytes();
+
+        f.write_all(&bytes).context(format!(
+            "Failed to write hiberimage size to {}",
+            HIBERIMAGE_SIZE_FILE.display()
+        ))
     }
 
 }
