@@ -11,6 +11,7 @@
 #include <base/containers/flat_map.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/timer/timer.h>
 #include <camera/camera_metadata.h>
 
 #include "common/reloadable_config_file.h"
@@ -64,7 +65,7 @@ class CameraHal {
 
   void OnSpecUpdated(const base::Value::Dict& json_values);
 
-  void ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec);
+  void ApplySpec();
 
   void NotifyCameraConnected(int id, bool connected);
 
@@ -83,6 +84,12 @@ class CameraHal {
   std::unique_ptr<ReloadableConfigFile> config_file_;
 
   HalSpec hal_spec_;
+
+  HalSpec applied_hal_spec_;
+
+  // TODO(b:261682032): This is for workaround that fake HAL plugging /
+  // unplugging camera too quickly will cause issue in Chrome.
+  base::OneShotTimer apply_spec_timer_;
 
   const camera_module_callbacks_t* callbacks_ = nullptr;
 

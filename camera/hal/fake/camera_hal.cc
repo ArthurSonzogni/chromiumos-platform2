@@ -130,7 +130,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   callbacks_ = callbacks;
-  ApplySpec({}, hal_spec_);
+  ApplySpec();
 
   return 0;
 }
@@ -220,8 +220,8 @@ void CameraHal::OnSpecUpdated(const base::Value::Dict& json_values) {
     return;
   }
 
-  ApplySpec(hal_spec_, hal_spec.value());
   hal_spec_ = hal_spec.value();
+  ApplySpec();
 }
 
 bool CameraHal::SetUpCamera(int id, const CameraSpec& spec) {
@@ -256,7 +256,7 @@ void CameraHal::NotifyCameraConnected(int id, bool connected) {
                 : CAMERA_DEVICE_STATUS_NOT_PRESENT);
 }
 
-void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
+void CameraHal::ApplySpec() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (callbacks_ == nullptr) {
@@ -264,13 +264,17 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
     return;
   }
 
-  for (const auto& old_camera_spec : old_spec.cameras) {
+  bool should_apply_delayed_spec = false;
+  auto new_applied_spec = hal_spec_;
+
+  for (const auto& old_camera_spec : applied_hal_spec_.cameras) {
     int id = old_camera_spec.id;
-    auto it = std::find_if(new_spec.cameras.begin(), new_spec.cameras.end(),
+    auto it = std::find_if(new_applied_spec.cameras.begin(),
+                           new_applied_spec.cameras.end(),
                            [&](const auto& spec) { return spec.id == id; });
     // TODO(pihsun): Might need to close the camera if some currently opened
     // camera is removed in spec.
-    if (it == new_spec.cameras.end()) {
+    if (it == new_applied_spec.cameras.end()) {
       // Camera entry removed.
       if (old_camera_spec.connected) {
         VLOGF(1) << "Removing camera " << id;
@@ -284,14 +288,11 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
                  << old_camera_spec.connected << "->" << it->connected;
         NotifyCameraConnected(id, it->connected);
       } else if (it->connected) {
+        bool should_reconnect = false;
         if (it->supported_formats != old_camera_spec.supported_formats) {
           VLOGF(1) << "Camera " << id << " supported formats changed";
           NotifyCameraConnected(id, false);
           TearDownCamera(id);
-
-          // TODO(b:261682032): Sleep here to make sure the disconnect /
-          // teardown event is properly propagated.
-          base::PlatformThread::Sleep(kReconnectDelay);
 
           // Supported format changes change static metadata, so we need to
           // regenerate static metadata here.
@@ -301,26 +302,26 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
             LOGF(WARNING) << "Error when setting up camera id " << id;
             continue;
           }
-          NotifyCameraConnected(id, true);
+          should_reconnect = true;
         } else if (it->frames != old_camera_spec.frames) {
           // TODO(pihsun): For frames spec change it's possible to just start
           // returning new frames in the CameraClient instead of simulating
           // unplug / plug the camera.
           VLOGF(1) << "Camera " << id << " frames spec changed";
           NotifyCameraConnected(id, false);
-
-          // TODO(b:261682032): Sleep here to make sure the disconnect /
-          // teardown event is properly propagated.
-          base::PlatformThread::Sleep(kReconnectDelay);
-
-          NotifyCameraConnected(id, true);
+          should_reconnect = true;
+        }
+        if (should_reconnect) {
+          should_apply_delayed_spec = true;
+          it->connected = false;
         }
       }
     }
   }
-  for (const auto& camera_spec : new_spec.cameras) {
+  for (const auto& camera_spec : new_applied_spec.cameras) {
     int id = camera_spec.id;
-    if (std::none_of(old_spec.cameras.begin(), old_spec.cameras.end(),
+    if (std::none_of(applied_hal_spec_.cameras.begin(),
+                     applied_hal_spec_.cameras.end(),
                      [&](const auto& spec) { return spec.id == id; })) {
       // New device.
       VLOGF(1) << "Adding camera " << id;
@@ -332,6 +333,15 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
       }
       NotifyCameraConnected(id, camera_spec.connected);
     }
+  }
+
+  applied_hal_spec_ = new_applied_spec;
+
+  // TODO(b:261682032): This is for workaround that fake HAL plugging /
+  // unplugging camera too quickly will cause issue in Chrome.
+  if (should_apply_delayed_spec) {
+    apply_spec_timer_.Start(FROM_HERE, kReconnectDelay, this,
+                            &CameraHal::ApplySpec);
   }
 }
 
