@@ -1379,7 +1379,10 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(
+      auth_factor_manager_.GetAuthFactorMap(auth_session.obfuscated_username())
+          .Find(kFakeLabel),
+      Optional(_));
 }
 
 // TODO(betuls) : migrate to uss test
@@ -1477,7 +1480,10 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(
+      auth_factor_manager_.GetAuthFactorMap(auth_session.obfuscated_username())
+          .Find(kFakeLabel),
+      Optional(_));
 }
 
 // Test the new auth factor failure path when asynchronous key creation fails.
@@ -3073,8 +3079,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel), Optional(_));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakePinLabel), Optional(_));
+  }
 
   // Test.
 
@@ -3094,9 +3104,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors_1,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel),
-              Eq(std::nullopt));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakePinLabel), Eq(std::nullopt));
+  }
 
   // Calling AuthenticateAuthFactor for password succeeds.
   error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
@@ -3153,8 +3166,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel), Optional(_));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakePinLabel), Optional(_));
+  }
 
   // Disable the writing of the USS file. This shouldn't cause the remove
   // operation to fail.
@@ -3184,9 +3201,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors_1,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel),
-              Eq(std::nullopt));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakePinLabel), Eq(std::nullopt));
+  }
 
   // Calling AuthenticateAuthFactor for password succeeds.
   error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
@@ -3243,9 +3263,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakeOtherLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeOtherLabel),
-              Optional(_));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakeOtherLabel), Optional(_));
+  }
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(
       user_session->GetCredentialVerifiers(),
@@ -3271,9 +3294,12 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors_1,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
-  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeOtherLabel),
-              Eq(std::nullopt));
+  {
+    const auto& auth_factor_map = auth_factor_manager_.GetAuthFactorMap(
+        auth_session.obfuscated_username());
+    EXPECT_THAT(auth_factor_map.Find(kFakeLabel), Optional(_));
+    EXPECT_THAT(auth_factor_map.Find(kFakeOtherLabel), Eq(std::nullopt));
+  }
 
   // Calling AuthenticateAuthFactor for the first password succeeds.
   error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
@@ -4165,7 +4191,8 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   SetAuthFactorMap(kFakeUsername,
                    AfMapBuilder()
                        .WithUss()
-                       .AddCopiesFromMap(auth_session.auth_factor_map())
+                       .AddCopiesFromMap(auth_factor_manager_.GetAuthFactorMap(
+                           auth_session.obfuscated_username()))
                        .Consume());
   std::vector<std::string> auth_factor_labels{kFakeFingerprintLabel,
                                               kFakeSecondFingerprintLabel};

@@ -18,6 +18,7 @@
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/username.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -261,10 +262,10 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
+  const ObfuscatedUsername& username = auth_session.obfuscated_username();
   CryptohomeStatus status = AddVaultKeyset(
-      key_data.label(), key_data, auth_session.obfuscated_username(),
-      auth_session.file_system_keyset(),
-      !auth_session.auth_factor_map().HasFactorWithStorage(
+      key_data.label(), key_data, username, auth_session.file_system_keyset(),
+      !auth_factor_manager_->GetAuthFactorMap(username).HasFactorWithStorage(
           AuthFactorStorageType::kVaultKeyset),
       VaultKeysetIntent{.backup = false}, std::move(key_blobs),
       std::move(auth_state));

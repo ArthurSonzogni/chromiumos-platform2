@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -189,11 +188,6 @@ class AuthSession final {
 
   // Returns the key data with which this AuthSession is authenticated with.
   const KeyData& current_key_data() const { return key_data_; }
-
-  // Returns the map from the label to the auth factor.
-  const AuthFactorMap& auth_factor_map() const {
-    return const_cast<AuthSession*>(this)->GetAuthFactorMap();
-  }
 
   // Indicates if the session has a User Secret Stash enabled.
   bool has_user_secret_stash() const { return decrypt_token_.has_value(); }

@@ -100,6 +100,7 @@
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
+#include "cryptohome/username.h"
 #include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
 #include "libhwsec-foundation/status/status_chain.h"
@@ -322,6 +323,7 @@ template <typename ReplyType>
 void ReplyWithAuthFactorStatus(
     InUseAuthSession auth_session,
     UserPolicyFile* user_policy_file,
+    AuthFactorManager* auth_factor_manager,
     AuthFactorDriverManager* auth_factor_driver_manager,
     UserSession* user_session,
     std::string auth_factor_label,
@@ -344,17 +346,18 @@ void ReplyWithAuthFactorStatus(
 
   std::optional<user_data_auth::AuthFactorWithStatus> auth_factor_with_status;
   // Select which AuthFactorWithStatus to build based on user type.
+  const ObfuscatedUsername& username = auth_session->obfuscated_username();
   if (auth_session->ephemeral_user()) {
     CHECK(user_session);
     auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_session->obfuscated_username(), user_policy_file,
-        auth_factor_driver_manager,
+        username, user_policy_file, auth_factor_driver_manager,
         user_session->FindCredentialVerifier(auth_factor_label));
   } else {
     auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_session->obfuscated_username(), user_policy_file,
-        auth_factor_driver_manager,
-        auth_session->auth_factor_map().Find(auth_factor_label)->auth_factor());
+        username, user_policy_file, auth_factor_driver_manager,
+        auth_factor_manager->GetAuthFactorMap(username)
+            .Find(auth_factor_label)
+            ->auth_factor());
   }
 
   if (!auth_factor_with_status.has_value()) {
@@ -2622,7 +2625,9 @@ void UserDataAuth::StartAuthSessionWithSession(
   reply.set_broadcast_id(auth_session->serialized_public_token());
   reply.set_user_exists(auth_session->user_exists());
 
-  if (auth_session->auth_factor_map().empty() &&
+  const AuthFactorMap& auth_factor_map = auth_factor_manager_->GetAuthFactorMap(
+      auth_session->obfuscated_username());
+  if (auth_factor_map.empty() &&
       (auth_session->user_exists() && !auth_session->ephemeral_user())) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -2638,8 +2643,7 @@ void UserDataAuth::StartAuthSessionWithSession(
 
   // Discover any available auth factors from the AuthSession.
   std::set<std::string> listed_auth_factor_labels;
-  for (AuthFactorMap::ValueView stored_auth_factor :
-       auth_session->auth_factor_map()) {
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
     AuthFactorDriver& factor_driver =
         auth_factor_driver_manager_->GetDriver(auth_factor.type());
@@ -3453,8 +3457,9 @@ void UserDataAuth::AddAuthFactorWithSession(
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
           std::move(auth_session).BindForCallback(),
-          user_policy_file_status.value(), auth_factor_driver_manager_,
-          sessions_->Find(username), request.auth_factor().label(),
+          user_policy_file_status.value(), auth_factor_manager_,
+          auth_factor_driver_manager_, sessions_->Find(username),
+          request.auth_factor().label(),
           std::move(on_done_wrapped_with_signal_)));
 }
 
@@ -3642,8 +3647,9 @@ void UserDataAuth::UpdateAuthFactorWithSession(
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
           std::move(auth_session).BindForCallback(),
-          user_policy_file_status.value(), auth_factor_driver_manager_,
-          sessions_->Find(username), request.auth_factor().label(),
+          user_policy_file_status.value(), auth_factor_manager_,
+          auth_factor_driver_manager_, sessions_->Find(username),
+          request.auth_factor().label(),
           std::move(on_done_wrapped_with_signal_)));
 }
 
@@ -3683,13 +3689,14 @@ void UserDataAuth::UpdateAuthFactorMetadataWithSession(
   }
   AuthSession* auth_session_ptr = auth_session.Get();
   auth_session_ptr->UpdateAuthFactorMetadata(
-      request, base::BindOnce(
-                   &ReplyWithAuthFactorStatus<
-                       user_data_auth::UpdateAuthFactorMetadataReply>,
-                   std::move(auth_session).BindForCallback(),
-                   user_policy_file_status.value(), auth_factor_driver_manager_,
-                   sessions_->Find(auth_session_ptr->username()),
-                   request.auth_factor().label(), std::move(on_done)));
+      request,
+      base::BindOnce(&ReplyWithAuthFactorStatus<
+                         user_data_auth::UpdateAuthFactorMetadataReply>,
+                     std::move(auth_session).BindForCallback(),
+                     user_policy_file_status.value(), auth_factor_manager_,
+                     auth_factor_driver_manager_,
+                     sessions_->Find(auth_session_ptr->username()),
+                     request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::RelabelAuthFactor(
@@ -3740,7 +3747,7 @@ void UserDataAuth::RelabelAuthFactorWithSession(
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::RelabelAuthFactorReply>,
           std::move(auth_session).BindForCallback(), *user_policy_file,
-          auth_factor_driver_manager_,
+          auth_factor_manager_, auth_factor_driver_manager_,
           sessions_->Find(auth_session_ptr->username()),
           request.new_auth_factor_label(), std::move(on_done)));
 }
@@ -3793,7 +3800,7 @@ void UserDataAuth::ReplaceAuthFactorWithSession(
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::ReplaceAuthFactorReply>,
           std::move(auth_session).BindForCallback(), *user_policy_file,
-          auth_factor_driver_manager_,
+          auth_factor_manager_, auth_factor_driver_manager_,
           sessions_->Find(auth_session_ptr->username()),
           request.auth_factor().label(), std::move(on_done)));
 }
@@ -3828,8 +3835,9 @@ void UserDataAuth::RemoveAuthFactorWithSession(
   }
 
   user_data_auth::AuthFactorRemoved auth_factor_removed_msg;
-  if (auto view =
-          auth_session->auth_factor_map().Find(request.auth_factor_label());
+  if (auto view = auth_factor_manager_
+                      ->GetAuthFactorMap(auth_session->obfuscated_username())
+                      .Find(request.auth_factor_label());
       view.has_value()) {
     const auto& af = view->auth_factor();
     const AuthFactorDriver& factor_driver =

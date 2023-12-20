@@ -8,7 +8,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -73,7 +72,6 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/type.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
