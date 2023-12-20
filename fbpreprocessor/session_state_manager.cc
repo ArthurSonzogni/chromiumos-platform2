@@ -20,6 +20,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/time/time.h>
 #include <bindings/device_management_backend.pb.h>
 #include <bindings/policy_common_definitions.pb.h>
 #include <brillo/errors/error.h>
@@ -27,6 +29,7 @@
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/storage.h"
 
 namespace {
@@ -59,6 +62,9 @@ constexpr std::array<std::string_view, kUserAllowlistSize> kUserAllowlist{
 constexpr int kPolicyOptionsSize = 2;
 constexpr std::array<std::string_view, kPolicyOptionsSize> kPolicyOptions{
     "all", "wifi"};
+
+// Add a delay when the user logs in before the policy is ready to be retrieved.
+constexpr base::TimeDelta kDelayForFirstUserInit = base::Seconds(2);
 
 bool IsFirmwareDumpPolicyAllowed(
     const enterprise_management::CloudPolicySettings& user_policy) {
@@ -103,11 +109,12 @@ bool IsUserInAllowedDomain(std::string_view username) {
 
 namespace fbpreprocessor {
 
-SessionStateManager::SessionStateManager(dbus::Bus* bus)
+SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
     : session_manager_proxy_(
           std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)),
       active_sessions_num_(kNumberActiveSessionsUnknown),
-      fw_dumps_allowed_by_policy_(false) {
+      fw_dumps_allowed_by_policy_(false),
+      manager_(manager) {
   session_manager_proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionStateManager::OnSessionStateChanged,
                           weak_factory_.GetWeakPtr()),
@@ -161,6 +168,16 @@ bool SessionStateManager::PrimaryUserInAllowlist() const {
 }
 
 bool SessionStateManager::UpdatePolicy() {
+  // When a user logs in for the first time there is a delay before the policy
+  // is available. Wait a little bit before retrieving the policy.
+  return manager_->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&SessionStateManager::OnPolicyUpdated,
+                     weak_factory_.GetWeakPtr()),
+      kDelayForFirstUserInit);
+}
+
+void SessionStateManager::OnPolicyUpdated() {
   fw_dumps_allowed_by_policy_ = false;
 
   login_manager::PolicyDescriptor descriptor;
@@ -178,32 +195,31 @@ bool SessionStateManager::UpdatePolicy() {
       error.get()) {
     LOG(ERROR) << "Failed to retrieve policy "
                << (error ? error->GetMessage() : "unknown error") << ".";
-    return false;
+    return;
   }
   enterprise_management::PolicyFetchResponse response;
   if (!response.ParseFromArray(out_blob.data(), out_blob.size())) {
     LOG(ERROR) << "Failed to parse policy response";
-    return false;
+    return;
   }
 
   enterprise_management::PolicyData policy_data;
   if (!policy_data.ParseFromArray(response.policy_data().data(),
                                   response.policy_data().size())) {
     LOG(ERROR) << "Failed to parse policy data.";
-    return false;
+    return;
   }
 
   enterprise_management::CloudPolicySettings user_policy;
   if (!user_policy.ParseFromString(policy_data.policy_value())) {
     LOG(ERROR) << "Failed to parse user policy.";
-    return false;
+    return;
   }
 
   fw_dumps_allowed_by_policy_ = IsFirmwareDumpPolicyAllowed(user_policy);
   LOG(INFO) << "Adding firmware dumps to feedback reports "
             << (fw_dumps_allowed_by_policy_ ? "" : "NOT ")
             << "allowed by policy.";
-  return true;
 }
 
 bool SessionStateManager::FirmwareDumpsAllowedByPolicy() const {

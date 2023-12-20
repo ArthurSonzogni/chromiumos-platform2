@@ -14,6 +14,8 @@
 #include <bindings/cloud_policy.pb.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "fbpreprocessor/manager.h"
+
 namespace fbpreprocessor {
 
 class SessionStateManagerInterface {
@@ -42,7 +44,7 @@ class SessionStateManagerInterface {
 
 class SessionStateManager : public SessionStateManagerInterface {
  public:
-  explicit SessionStateManager(dbus::Bus* bus);
+  explicit SessionStateManager(Manager* manager, dbus::Bus* bus);
   SessionStateManager(const SessionStateManager&) = delete;
   SessionStateManager& operator=(const SessionStateManager&) = delete;
   ~SessionStateManager() override = default;
@@ -74,6 +76,10 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // Retrieve the value of the UserFeedbackWithLowLevelDebugDataAllowed policy.
   bool UpdatePolicy();
+
+  // Extract the value of the UserFeedbackWithLowLevelDebugDataAllowed policy
+  // when there's an update to the policy.
+  void OnPolicyUpdated();
 
   // Utility method that resets the relevant members that hold the state of
   // logged in users/sessions when the state changes, for example when users log
@@ -116,6 +122,9 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // List of SessionStateManager observers
   base::ObserverList<Observer>::Unchecked observers_;
+
+  // Pointer to the Manager class that instantiates all the main modules.
+  Manager* manager_;
 
   base::WeakPtrFactory<SessionStateManager> weak_factory_{this};
 };

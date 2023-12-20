@@ -30,7 +30,7 @@ void Manager::Start(dbus::Bus* bus) {
   // register as observers with the SessionStateManager::Observer interface.
   // Same thing for PlatformFeaturesClient, other modules will also register as
   // observers so it must be instantiated before the observers.
-  session_state_manager_ = std::make_unique<SessionStateManager>(bus);
+  session_state_manager_ = std::make_unique<SessionStateManager>(this, bus);
   platform_features_ = std::make_unique<PlatformFeaturesClient>();
 
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
