@@ -42,6 +42,8 @@ int main(int arg, char** argv) {
   if (pid == 0) {
     CHECK_EQ(getuid(), 0) << "Executor must run as root";
 
+    LOG(INFO) << "Starting executor daemon.";
+
     printscanmgr::EnterExecutorMinijail();
 
     printscanmgr_endpoint.reset();
