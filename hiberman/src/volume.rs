@@ -1242,7 +1242,7 @@ fn get_dm_status(target: &str) -> Result<String> {
 }
 
 /// Delete a loop device.
-fn delete_loop_device(dev: &PathBuf) -> Result<()> {
+fn delete_loop_device(dev: &Path) -> Result<()> {
     let dev_str = dev.to_string_lossy();
     checked_command(Command::new(LOSETUP_PATH).args(["-d", dev_str.as_ref()]))
         .context(format!("Failed to delete loop device: {}", dev.display()))

@@ -501,7 +501,7 @@ pub fn emergency_reboot(reason: &str) {
 /// Perform an orderly reboot.
 fn reboot_system() {
     error!("Rebooting system!");
-    let _ = checked_command(&mut Command::new("/sbin/reboot")).expect("Failed to reboot system");
+    checked_command(&mut Command::new("/sbin/reboot")).expect("Failed to reboot system");
 }
 
 pub fn mount_filesystem<P: AsRef<OsStr>>(
