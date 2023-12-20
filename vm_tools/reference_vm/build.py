@@ -3,7 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Build a VM disk image that can boot as a guest on ChromeOS with VM
+"""Build a VM disk image for Bruschetta.
+
+This script builds a disk imagethat can boot as a guest on ChromeOS with VM
 integrations.
 """
 
@@ -17,6 +19,7 @@ import subprocess
 import tempfile
 from typing import Dict, List, Optional, Tuple
 
+# pylint: disable=import-error
 import jinja2
 import requests
 import yaml
@@ -103,7 +106,7 @@ def main():
                 run_debootstrap(
                     args.debian_release, target, cache_dir=cache_dir
                 )
-                with open(target / "etc/fstab", "w") as f:
+                with open(target / "etc/fstab", "w", encoding="utf-8") as f:
                     print("Writing fstab")
                     f.write(fstab)
 
@@ -191,9 +194,12 @@ def setup_storage(
         text=True,
     )
 
-    with open(temp_dir / "disk_var.yml") as f:
+    with open(
+        temp_dir / "disk_var.yml",
+        encoding="utf-8",
+    ) as f:
         disk_vars = yaml.load(f, Loader=yaml.SafeLoader)
-    with open(temp_dir / "fstab") as f:
+    with open(temp_dir / "fstab", encoding="utf-8") as f:
         fstab = f.read()
 
     return (disk_vars, fstab)
