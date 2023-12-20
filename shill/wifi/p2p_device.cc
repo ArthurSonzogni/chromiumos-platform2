@@ -657,26 +657,12 @@ void P2PDevice::GroupStarted(const KeyValueStore& properties) {
       SetupGroup(properties);
       SetState(P2PDeviceState::kClientConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
-      // TODO(b/299915001): Depending on device role, NetworkStarted handler
-      // should be called in response to events either from patchpanel or
-      // Shill::Network, in case of GO and Client, respectively. Just for now
-      // it's posted from here, to push device into next state.
-      Dispatcher()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&P2PDevice::NetworkStarted, base::Unretained(this)));
       break;
     // Expected P2P GO state for GroupStarted event
     case P2PDeviceState::kGOStarting:
       SetupGroup(properties);
       SetState(P2PDeviceState::kGOConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
-      // TODO(b/299915001): Depending on device role, NetworkStarted handler
-      // should be called in response to events either from patchpanel or
-      // Shill::Network, in case of GO and Client, respectively. Just for now
-      // it's posted from here, to push device into next state.
-      Dispatcher()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&P2PDevice::NetworkStarted, base::Unretained(this)));
       break;
     // Common states for all roles.
     case P2PDeviceState::kUninitialized:
@@ -774,6 +760,15 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
                    << " while in state " << P2PDeviceStateName(state_);
       break;
   }
+}
+
+// TODO(b/299915001): The NetworkStarted handler should be called internally
+// in response to events from patchpanel. To push device into next state it
+// may be posted by P2PManager via EmulateNetworkStarted, until patchpanel
+// changes are ready.
+void P2PDevice::EmulateNetworkStarted() {
+  Dispatcher()->PostTask(FROM_HERE, base::BindOnce(&P2PDevice::NetworkStarted,
+                                                   base::Unretained(this)));
 }
 
 void P2PDevice::NetworkStarted() {

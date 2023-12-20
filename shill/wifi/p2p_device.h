@@ -143,6 +143,12 @@ class P2PDevice : public LocalDevice,
   void PeerJoined(const dbus::ObjectPath& peer) override;
   void PeerDisconnected(const dbus::ObjectPath& peer) override;
 
+  // TODO(b/299915001): The NetworkStarted handler should be called internally
+  // in response to events from patchpanel. To push device into next state it
+  // may be posted by P2PManager via EmulateNetworkStarted, until patchpanel
+  // changes are ready.
+  void EmulateNetworkStarted();
+
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
