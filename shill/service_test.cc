@@ -873,10 +873,8 @@ TEST_F(ServiceTest, State) {
 TEST_F(ServiceTest, ServicePortalDetectionFailureProperties) {
   const int kStatusCode = 204;
   PortalDetector::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
+  result.http_result = PortalDetector::ProbeResult::kDNSTimeout;
   result.http_status_code = 204;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
 
   EXPECT_CALL(
       *GetAdaptor(),
@@ -2846,11 +2844,10 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
-  result.http_status_code = 204;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kSuccess;
+  result.http_status_code = 204;
+  result.https_result = PortalDetector::ProbeResult::kSuccess;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi), _))
@@ -2872,11 +2869,10 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
-  result.http_status_code = 204;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kSuccess;
+  result.http_status_code = 204;
+  result.https_result = PortalDetector::ProbeResult::kSuccess;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi),
@@ -2895,11 +2891,10 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   service_->increment_portal_detection_count_for_testing();
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
-  result.http_status_code = 204;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kSuccess;
+  result.http_status_code = 204;
+  result.https_result = PortalDetector::ProbeResult::kSuccess;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorRetryResult,
                                         Technology(Technology::kWiFi),
@@ -2919,11 +2914,10 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
-  result.http_status_code = 0;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kConnectionFailure;
+  result.http_status_code = 0;
+  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -2942,12 +2936,10 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kDNSFailure;
-  result.http_status_code = 0;
-  result.https_error = HttpRequest::Error::kDNSFailure;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kDNSFailure;
+  result.http_status_code = 0;
+  result.https_result = PortalDetector::ProbeResult::kDNSFailure;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -2966,12 +2958,10 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
-  result.http_status_code = 0;
-  result.https_error = HttpRequest::Error::kDNSTimeout;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kDNSTimeout;
+  result.http_status_code = 0;
+  result.https_result = PortalDetector::ProbeResult::kDNSTimeout;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -2990,15 +2980,14 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
+  result.num_attempts = 1;
+  result.http_result = PortalDetector::ProbeResult::kPortalRedirect;
   result.http_status_code = 302;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
   result.probe_url =
       net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
-  result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.https_result = PortalDetector::ProbeResult::kTLSFailure;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3017,11 +3006,10 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
-  result.http_status_code = 302;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect;
+  result.http_status_code = 302;
+  result.https_result = PortalDetector::ProbeResult::kTLSFailure;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3040,13 +3028,11 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
+  result.num_attempts = 1;
+  result.http_result = PortalDetector::ProbeResult::kPortalSuspected;
   result.http_status_code = 200;
   result.http_content_length = 123;
-  result.https_error = HttpRequest::Error::kConnectionFailure;
-  result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3065,11 +3051,9 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   NetworkMonitor::Result result;
-  result.http_result = PortalDetector::HTTPProbeResult::kNoResult;
-  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.http_result = PortalDetector::ProbeResult::kNoResult;
+  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi),

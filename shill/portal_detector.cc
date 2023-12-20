@@ -162,6 +162,7 @@ void PortalDetector::StartTrialTask() {
   // systematic failure from creating a hot loop.
   delay_backoff_exponent_++;
   result_ = Result();
+  result_->num_attempts = attempt_count_;
   is_active_ = true;
   last_attempt_start_time_ = base::TimeTicks::Now();
   LOG(INFO) << LoggingTag()
@@ -182,14 +183,8 @@ void PortalDetector::StartTrialTask() {
 }
 
 void PortalDetector::CompleteTrial(Result result) {
-  LOG(INFO) << LoggingTag() << ": Trial result: " << result.GetValidationState()
-            << ". HTTP probe: dest=" << http_url_.host()
-            << ", result=" << result.http_result
-            << ", duration=" << result.http_duration
-            << ". HTTPS probe: dest=" << https_url_.host()
-            << ", result=" << result.https_error
-            << ", duration=" << result.https_duration;
-  result.num_attempts = attempt_count_;
+  LOG(INFO) << LoggingTag()
+            << ": Trial result: " << result.GetValidationState();
   CleanupTrial();
   previous_result_ = result;
   portal_result_callback_.Run(result);
@@ -214,11 +209,10 @@ void PortalDetector::Stop() {
 void PortalDetector::HttpRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   int status_code = response->GetStatusCode();
-  result_->http_probe_completed = true;
   result_->http_status_code = status_code;
   result_->http_content_length = GetContentLength(response);
   if (status_code == brillo::http::status_code::NoContent) {
-    result_->http_result = HTTPProbeResult::kSuccess;
+    result_->http_result = ProbeResult::kSuccess;
   } else if (status_code == brillo::http::status_code::Ok) {
     // 200 responses are treated as 204 responses if there is no content. This
     // is consistent with AOSP and helps support networks that transparently
@@ -227,16 +221,16 @@ void PortalDetector::HttpRequestSuccessCallback(
     // answers are also considered as 204 responses (b/122999481).
     if (result_->http_content_length == 0 ||
         result_->http_content_length == 1) {
-      result_->http_result = HTTPProbeResult::kSuccess;
+      result_->http_result = ProbeResult::kSuccess;
     } else if (result_->http_content_length.value_or(0) > 1) {
       // Any 200 response including some content in the response body is a
       // strong indication of an evasive portal indirectly redirecting the HTTP
       // probe without a 302 response code.
       // TODO(b/309175584): Validate that the response is a valid HTML page
       result_->probe_url = http_url_;
-      result_->http_result = HTTPProbeResult::kPortalSuspected;
+      result_->http_result = ProbeResult::kPortalSuspected;
     } else {
-      result_->http_result = HTTPProbeResult::kFailure;
+      result_->http_result = ProbeResult::kFailure;
     }
   } else if (IsRedirectResponse(status_code)) {
     // If a redirection code is received, verify that there is a valid Location
@@ -251,29 +245,25 @@ void PortalDetector::HttpRequestSuccessCallback(
         LOG(INFO) << LoggingTag() << ": Redirect response, Redirect URL: "
                   << redirect_url_string
                   << ", response status code: " << status_code;
-        result_->http_result = HTTPProbeResult::kPortalRedirect;
+        result_->http_result = ProbeResult::kPortalRedirect;
       } else {
         // Do not log the Location header if it is not a valid URL and cannot
         // be obfuscated by the redaction tool.
         LOG(INFO) << LoggingTag() << ": Received redirection status code "
                   << status_code << " but Location header was not a valid URL.";
-        result_->http_result = HTTPProbeResult::kPortalInvalidRedirect;
+        result_->http_result = ProbeResult::kPortalInvalidRedirect;
       }
     } else {
       LOG(INFO) << LoggingTag() << ": Received redirection status code "
                 << status_code << " but there was no Location header";
-      result_->http_result = HTTPProbeResult::kPortalInvalidRedirect;
+      result_->http_result = ProbeResult::kPortalInvalidRedirect;
     }
   } else {
     // Any other result is considered a failure.
-    result_->http_result = HTTPProbeResult::kFailure;
+    result_->http_result = ProbeResult::kFailure;
   }
   result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
-            << " result=" << result_->http_result
-            << " response status code=" << status_code
-            << " content_length=" << result_->http_content_length.value_or(0)
-            << " duration=" << result_->http_duration;
+  LOG(INFO) << LoggingTag() << ": " << *result_;
   if (result_->IsComplete()) {
     CompleteTrial(*result_);
   }
@@ -283,33 +273,26 @@ void PortalDetector::HttpsRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   // Assume that HTTPS prevent any tempering with the content of the response
   // and always consider the HTTPS probe as successful if the request completed.
-  result_->https_probe_completed = true;
+  result_->https_result = ProbeResult::kSuccess;
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
-            << " succeessful, duration=" << result_->https_duration;
+  LOG(INFO) << LoggingTag() << ": " << *result_;
   if (result_->IsComplete())
     CompleteTrial(*result_);
 }
 
 void PortalDetector::HttpRequestErrorCallback(HttpRequest::Error http_error) {
-  result_->http_probe_completed = true;
-  result_->http_result = GetHTTPProbeStatusFromRequestError(http_error);
+  result_->http_result = GetProbeResultFromRequestError(http_error);
   result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
-            << " failed: " << http_error
-            << ", duration=" << result_->http_duration;
+  LOG(INFO) << LoggingTag() << ": " << *result_;
   if (result_->IsComplete()) {
     CompleteTrial(*result_);
   }
 }
 
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Error https_error) {
-  result_->https_error = https_error;
-  result_->https_probe_completed = true;
+  result_->https_result = GetProbeResultFromRequestError(https_error);
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
-            << " failed: " << https_error
-            << ", duration=" << result_->https_duration;
+  LOG(INFO) << LoggingTag() << ": " << *result_;
   if (result_->IsComplete()) {
     CompleteTrial(*result_);
   }
@@ -365,27 +348,29 @@ std::optional<size_t> PortalDetector::GetContentLength(
 }
 
 // static
-std::string_view PortalDetector::HTTPProbeResultName(HTTPProbeResult result) {
+std::string_view PortalDetector::ProbeResultName(ProbeResult result) {
   switch (result) {
-    case HTTPProbeResult::kNoResult:
+    case ProbeResult::kNoResult:
       return "No result";
-    case HTTPProbeResult::kDNSFailure:
+    case ProbeResult::kDNSFailure:
       return "DNS failure";
-    case HTTPProbeResult::kDNSTimeout:
+    case ProbeResult::kDNSTimeout:
       return "DNS timeout";
-    case HTTPProbeResult::kConnectionFailure:
+    case ProbeResult::kTLSFailure:
+      return "TLS failure";
+    case ProbeResult::kConnectionFailure:
       return "Connection failure";
-    case HTTPProbeResult::kHTTPTimeout:
+    case ProbeResult::kHTTPTimeout:
       return "Request timeout";
-    case HTTPProbeResult::kSuccess:
+    case ProbeResult::kSuccess:
       return "Success";
-    case HTTPProbeResult::kPortalSuspected:
+    case ProbeResult::kPortalSuspected:
       return "Portal suspected";
-    case HTTPProbeResult::kPortalRedirect:
+    case ProbeResult::kPortalRedirect:
       return "Portal redirect";
-    case HTTPProbeResult::kPortalInvalidRedirect:
+    case ProbeResult::kPortalInvalidRedirect:
       return "Portal invalid redirect";
-    case HTTPProbeResult::kFailure:
+    case ProbeResult::kFailure:
       return "Failure";
   }
 }
@@ -406,20 +391,21 @@ std::string_view PortalDetector::ValidationStateToString(
 }
 
 // static
-PortalDetector::HTTPProbeResult
-PortalDetector::GetHTTPProbeStatusFromRequestError(HttpRequest::Error error) {
+PortalDetector::ProbeResult PortalDetector::GetProbeResultFromRequestError(
+    HttpRequest::Error error) {
   switch (error) {
     case HttpRequest::Error::kDNSFailure:
-      return HTTPProbeResult::kDNSFailure;
+      return ProbeResult::kDNSFailure;
     case HttpRequest::Error::kDNSTimeout:
-      return HTTPProbeResult::kDNSTimeout;
+      return ProbeResult::kDNSTimeout;
+    case HttpRequest::Error::kTLSFailure:
+      return ProbeResult::kTLSFailure;
     case HttpRequest::Error::kHTTPTimeout:
-      return HTTPProbeResult::kHTTPTimeout;
+      return ProbeResult::kHTTPTimeout;
     case HttpRequest::Error::kInternalError:
     case HttpRequest::Error::kConnectionFailure:
-    case HttpRequest::Error::kTLSFailure:
     case HttpRequest::Error::kIOError:
-      return HTTPProbeResult::kConnectionFailure;
+      return ProbeResult::kConnectionFailure;
   }
 }
 
@@ -479,6 +465,14 @@ std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
                                        allow_non_google_https);
 }
 
+bool PortalDetector::Result::IsHTTPProbeComplete() const {
+  return http_result != ProbeResult::kNoResult;
+}
+
+bool PortalDetector::Result::IsHTTPSProbeComplete() const {
+  return https_result != ProbeResult::kNoResult;
+}
+
 bool PortalDetector::Result::IsComplete() const {
   // Any HTTP probe result that triggers the Chrome sign-in portal UX flow
   // (portal redirect or portal suspected results) is enough to complete the
@@ -487,69 +481,67 @@ bool PortalDetector::Result::IsComplete() const {
   // timeout and terminating the socket connection of the HTTPS probe early by
   // triggering CleanupTrial. Otherwise, the results of both probes is needed.
   return IsHTTPProbeRedirected() || IsHTTPProbeRedirectionSuspected() ||
-         (http_probe_completed && https_probe_completed);
+         (IsHTTPProbeComplete() && IsHTTPSProbeComplete());
 }
 
 bool PortalDetector::Result::IsHTTPSProbeSuccessful() const {
-  return https_probe_completed && !https_error;
+  return https_result == ProbeResult::kSuccess;
 }
 
 bool PortalDetector::Result::IsHTTPProbeSuccessful() const {
-  return http_probe_completed && http_result == HTTPProbeResult::kSuccess;
+  return http_result == ProbeResult::kSuccess;
 }
 
 bool PortalDetector::Result::IsHTTPProbeRedirectionSuspected() const {
-  if (!http_probe_completed) {
-    return false;
-  }
   // Any 200 response including some content in the response body is a strong
   // indication of an evasive portal indirectly redirecting the HTTP probe
   // without a 302 response code.
-  if (http_result == HTTPProbeResult::kPortalSuspected) {
+  if (http_result == ProbeResult::kPortalSuspected) {
     return true;
   }
   // Any incomplete redirect 302 or 307 response without a Location header
   // is considered as misbehaving captive portal.
-  if (http_result == HTTPProbeResult::kPortalInvalidRedirect) {
+  if (http_result == ProbeResult::kPortalInvalidRedirect) {
     return true;
   }
   return false;
 }
 
 bool PortalDetector::Result::IsHTTPProbeRedirected() const {
-  return http_probe_completed &&
-         http_result == HTTPProbeResult::kPortalRedirect && redirect_url;
+  return http_result == ProbeResult::kPortalRedirect && redirect_url;
 }
 
 Metrics::PortalDetectorResult PortalDetector::Result::GetResultMetric() const {
   switch (http_result) {
-    case PortalDetector::HTTPProbeResult::kNoResult:
+    case ProbeResult::kNoResult:
       return Metrics::kPortalDetectorResultUnknown;
-    case PortalDetector::HTTPProbeResult::kDNSFailure:
+    case ProbeResult::kDNSFailure:
       return Metrics::kPortalDetectorResultDNSFailure;
-    case PortalDetector::HTTPProbeResult::kDNSTimeout:
+    case ProbeResult::kDNSTimeout:
       return Metrics::kPortalDetectorResultDNSTimeout;
-    case PortalDetector::HTTPProbeResult::kConnectionFailure:
+    case ProbeResult::kTLSFailure:
       return Metrics::kPortalDetectorResultConnectionFailure;
-    case PortalDetector::HTTPProbeResult::kHTTPTimeout:
+    case ProbeResult::kConnectionFailure:
+      return Metrics::kPortalDetectorResultConnectionFailure;
+    case ProbeResult::kHTTPTimeout:
       return Metrics::kPortalDetectorResultHTTPTimeout;
-    case PortalDetector::HTTPProbeResult::kSuccess:
+    case ProbeResult::kSuccess:
       if (IsHTTPSProbeSuccessful()) {
         return Metrics::kPortalDetectorResultOnline;
       } else {
         return Metrics::kPortalDetectorResultHTTPSFailure;
       }
-    case PortalDetector::HTTPProbeResult::kPortalSuspected:
+    case ProbeResult::kPortalSuspected:
       if (IsHTTPSProbeSuccessful()) {
         return Metrics::kPortalDetectorResultNoConnectivity;
       } else {
         return Metrics::kPortalDetectorResultHTTPSFailure;
       }
-    case PortalDetector::HTTPProbeResult::kPortalRedirect:
+    case ProbeResult::kPortalRedirect:
       return Metrics::kPortalDetectorResultRedirectFound;
-    case PortalDetector::HTTPProbeResult::kPortalInvalidRedirect:
+    case ProbeResult::kPortalInvalidRedirect:
       return Metrics::kPortalDetectorResultRedirectNoUrl;
-    case PortalDetector::HTTPProbeResult::kFailure:
+    case ProbeResult::kFailure:
       return Metrics::kPortalDetectorResultHTTPFailure;
   }
 }
@@ -563,9 +555,7 @@ bool PortalDetector::Result::operator==(
   return http_result == rhs.http_result &&
          http_status_code == rhs.http_status_code &&
          http_content_length == rhs.http_content_length &&
-         num_attempts == rhs.num_attempts && https_error == rhs.https_error &&
-         http_probe_completed == rhs.http_probe_completed &&
-         https_probe_completed == rhs.https_probe_completed &&
+         num_attempts == rhs.num_attempts && https_result == rhs.https_result &&
          redirect_url == rhs.redirect_url && probe_url == rhs.probe_url;
 }
 
@@ -578,8 +568,8 @@ std::unique_ptr<PortalDetector> PortalDetectorFactory::Create(
 }
 
 std::ostream& operator<<(std::ostream& stream,
-                         PortalDetector::HTTPProbeResult result) {
-  return stream << PortalDetector::HTTPProbeResultName(result);
+                         PortalDetector::ProbeResult result) {
+  return stream << PortalDetector::ProbeResultName(result);
 }
 
 std::ostream& operator<<(std::ostream& stream,
@@ -587,18 +577,26 @@ std::ostream& operator<<(std::ostream& stream,
   return stream << PortalDetector::ValidationStateToString(state);
 }
 
-std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result) {
-  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe "
-         << (result.http_probe_completed ? "completed" : "in-flight")
-         << " result=" << result.http_result
-         << " code=" << result.http_status_code;
-  if (result.http_content_length) {
-    stream << " content-length=" << *result.http_content_length;
+std::ostream& operator<<(std::ostream& stream,
+                         const PortalDetector::Result& result) {
+  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe ";
+  if (result.IsHTTPProbeComplete()) {
+    stream << "in-flight";
+  } else {
+    stream << "result=" << result.http_result
+           << " code=" << result.http_status_code;
+    if (result.http_content_length) {
+      stream << " content-length=" << *result.http_content_length;
+    }
+    stream << " duration=" << result.http_duration;
   }
-  stream << " duration=" << result.http_duration << ", HTTPS probe "
-         << (result.https_probe_completed ? "completed" : "in-flight")
-         << " result=" << result.https_error
-         << " duration=" << result.https_duration;
+  stream << ", HTTPS probe ";
+  if (result.IsHTTPSProbeComplete()) {
+    stream << "in-flight";
+  } else {
+    stream << " result=" << result.https_result
+           << " duration=" << result.https_duration;
+  }
   if (result.redirect_url) {
     stream << ", redirect_url=" << result.redirect_url->ToString();
   }

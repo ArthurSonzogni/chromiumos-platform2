@@ -151,12 +151,10 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
 
 TEST_F(NetworkMonitorTest, StartWithResultReturned) {
   const PortalDetector::Result result{
-      .http_result = PortalDetector::HTTPProbeResult::kSuccess,
+      .http_result = PortalDetector::ProbeResult::kSuccess,
       .http_status_code = 204,
       .http_content_length = 0,
-      .https_error = HttpRequest::Error::kHTTPTimeout,
-      .http_probe_completed = true,
-      .https_probe_completed = true,
+      .https_result = PortalDetector::ProbeResult::kHTTPTimeout,
   };
 
   EXPECT_CALL(*mock_portal_detector_factory_,

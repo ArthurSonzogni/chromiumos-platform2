@@ -995,10 +995,7 @@ void Network::StartConnectivityTest(
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
                                        const PortalDetector::Result& result) {
   LOG(INFO) << device_logging_tag
-            << ": Completed connectivity test. HTTP probe result="
-            << result.http_result << ", duration=" << result.http_duration
-            << ". HTTPS probe result=" << result.https_error
-            << ", duration=" << result.https_duration;
+            << ": Completed connectivity test: " << result;
   connectivity_test_portal_detector_.reset();
 }
 

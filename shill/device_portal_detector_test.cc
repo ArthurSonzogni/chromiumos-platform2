@@ -105,65 +105,61 @@ class TestNetwork : public Network {
   void SetDNSFailure() {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kDNSFailure;
-    portal_detection_result_.https_error = HttpRequest::Error::kDNSFailure;
-    portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_probe_completed = true;
+        PortalDetector::ProbeResult::kDNSFailure;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kDNSFailure;
   }
 
   void SetDNSTimeout() {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kDNSTimeout;
-    portal_detection_result_.https_error = HttpRequest::Error::kDNSTimeout;
-    portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_probe_completed = true;
+        PortalDetector::ProbeResult::kDNSTimeout;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kDNSTimeout;
   }
 
   void SetRedirectResult(const std::string& redirect_url) {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kPortalRedirect;
+        PortalDetector::ProbeResult::kPortalRedirect;
     portal_detection_result_.http_status_code = 302;
     portal_detection_result_.http_content_length = 0;
-    portal_detection_result_.http_probe_completed = true;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kTLSFailure;
     portal_detection_result_.redirect_url =
         net_base::HttpUrl::CreateFromString(redirect_url);
     portal_detection_result_.probe_url =
         net_base::HttpUrl::CreateFromString(redirect_url);
-    portal_detection_result_.https_probe_completed = true;
   }
 
   void SetInvalidRedirectResult() {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
+        PortalDetector::ProbeResult::kPortalInvalidRedirect;
     portal_detection_result_.http_status_code = 302;
     portal_detection_result_.http_content_length = 0;
-    portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_probe_completed = true;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kTLSFailure;
   }
 
   void SetHTTPSFailureResult() {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kSuccess;
+        PortalDetector::ProbeResult::kSuccess;
     portal_detection_result_.http_status_code = 204;
     portal_detection_result_.http_content_length = 0;
-    portal_detection_result_.https_error =
-        HttpRequest::Error::kConnectionFailure;
-    portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_probe_completed = true;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kConnectionFailure;
   }
 
   void SetOnlineResult() {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_result =
-        PortalDetector::HTTPProbeResult::kSuccess;
+        PortalDetector::ProbeResult::kSuccess;
     portal_detection_result_.http_status_code = 204;
     portal_detection_result_.http_content_length = 0;
-    portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_probe_completed = true;
+    portal_detection_result_.https_result =
+        PortalDetector::ProbeResult::kSuccess;
   }
 
   void ContinuePortalDetection() {

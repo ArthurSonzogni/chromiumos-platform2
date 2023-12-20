@@ -1040,12 +1040,10 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
 
   // Upstream network fetched.
   NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result =
-      PortalDetector::HTTPProbeResult::kSuccess;
+  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
   network_monitor_result.http_status_code = 204;
   network_monitor_result.http_content_length = 0;
-  network_monitor_result.http_probe_completed = true;
-  network_monitor_result.https_probe_completed = true;
+  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
   network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
@@ -1097,12 +1095,10 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
 
   // Tethering network created.
   NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result =
-      PortalDetector::HTTPProbeResult::kSuccess;
+  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
   network_monitor_result.http_status_code = 204;
   network_monitor_result.http_content_length = 0;
-  network_monitor_result.http_probe_completed = true;
-  network_monitor_result.https_probe_completed = true;
+  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
   eth_network.set_network_monitor_result_for_testing(network_monitor_result);
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
@@ -1277,11 +1273,11 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
   // Upstream network fetched. Network is in a portal state.
   NetworkMonitor::Result network_monitor_result;
   network_monitor_result.http_result =
-      PortalDetector::HTTPProbeResult::kPortalRedirect;
+      PortalDetector::ProbeResult::kPortalRedirect;
   network_monitor_result.http_status_code = 302;
   network_monitor_result.http_content_length = 0;
-  network_monitor_result.http_probe_completed = true;
-  network_monitor_result.https_probe_completed = true;
+  network_monitor_result.https_result =
+      PortalDetector::ProbeResult::kTLSFailure;
   network_monitor_result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
   network_->set_network_monitor_result_for_testing(network_monitor_result);
@@ -1442,10 +1438,9 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
   // Upstream network fetched. Network not ready.
   NetworkMonitor::Result network_monitor_result;
   network_monitor_result.http_result =
-      PortalDetector::HTTPProbeResult::kConnectionFailure;
-  network_monitor_result.https_error = HttpRequest::Error::kConnectionFailure;
-  network_monitor_result.http_probe_completed = true;
-  network_monitor_result.https_probe_completed = true;
+      PortalDetector::ProbeResult::kConnectionFailure;
+  network_monitor_result.https_result =
+      PortalDetector::ProbeResult::kConnectionFailure;
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),

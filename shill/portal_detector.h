@@ -120,29 +120,47 @@ class PortalDetector {
   // PortalDetector.
   static ProbingConfiguration DefaultProbingConfiguration();
 
-  enum class HTTPProbeResult {
+  // Represents the result of an HTTP or HTTPS probe. Both types of probe use
+  // the same enum but not all results are relevant to both types:
+  //  - HTTP probe: TLS failures are not possible.
+  //  - HTTPS probe: The "portal" states are not possible (kPortalSuspected,
+  //    kPortalRedirect, kPortalInvalidRedirect).
+  enum class ProbeResult {
+    // The probe has not completed yet.
     kNoResult,
+    // Name resolution failed.
     kDNSFailure,
+    // Name resolution timed out.
     kDNSTimeout,
+    // HTTPS probe only: the TLS connection failed.
+    kTLSFailure,
+    // The HTTP connection failed.
     kConnectionFailure,
+    // The HTTP request timed out.
     kHTTPTimeout,
+    // The probe successfully completed with the expected result.
     kSuccess,
+    // HTTP probe only: the probe completed but the result was unexpected
+    // and indicates that there is a hidden captive portal network not
+    // redirecting the probe.
     kPortalSuspected,
+    // HTTP probe only: the probe completed but was redirected.
     kPortalRedirect,
+    // HTTP probe only: the probe completed but was redirected and the
+    // redirection was invalid.
     kPortalInvalidRedirect,
+    // Another unknown error happened.
     kFailure,
   };
 
   // Static method used to map a portal detection phase to a string. This
   // includes the phases for connection, DNS, HTTP, returned content and
   // unknown.
-  static std::string_view HTTPProbeResultName(HTTPProbeResult result);
+  static std::string_view ProbeResultName(ProbeResult result);
 
   // Static method mapping from HttpRequest errors to PortalDetection
-  // Status. For example, if the HttpRequest error is kResultDNSFailure,
-  // this method returns Status::kFailure.
-  static HTTPProbeResult GetHTTPProbeStatusFromRequestError(
-      HttpRequest::Error error);
+  // ProbeResult.
+  static ProbeResult GetProbeResultFromRequestError(HttpRequest::Error error);
 
   // Represents the possible outcomes of a portal detection attempt.
   enum class ValidationState {
@@ -168,32 +186,30 @@ class PortalDetector {
   struct Result {
     // The total number of trial attempts so far.
     int num_attempts = 0;
-
-    HTTPProbeResult http_result = HTTPProbeResult::kNoResult;
+    // The result of the HTTP probe.
+    ProbeResult http_result = ProbeResult::kNoResult;
     // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
     // The content length of the HTTP response.
     std::optional<size_t> http_content_length = std::nullopt;
-    // HTTPS probe error if the HTTPS probe failed.
-    std::optional<HttpRequest::Error> https_error = std::nullopt;
+    // The result of the HTTPS probe.
+    ProbeResult https_result = ProbeResult::kNoResult;
     // Redirection URL obtained from the Location header when the final
     // ValidationState of the Result if kPortalRedirect.
     std::optional<net_base::HttpUrl> redirect_url = std::nullopt;
     // URL of the HTTP probe when the final ValidationState of the Result is
     // either kPortalRedirect or kPortalSuspected.
     std::optional<net_base::HttpUrl> probe_url = std::nullopt;
-
-    // Boolean used for tracking the completion state of both HTTP and HTTPS
-    // probes.
-    bool http_probe_completed = false;
-    bool https_probe_completed = false;
-
     // Total HTTP and HTTPS probe durations, recorded if the respective probe
     // successfully started. The todal duration of the network validation
     // attempt is the longest of the two durations.
     base::TimeDelta http_duration = base::TimeDelta();
     base::TimeDelta https_duration = base::TimeDelta();
 
+    // Returns true if the HTTP has completed, successfully or not.
+    bool IsHTTPProbeComplete() const;
+    // Returns true if the HTTPS has completed, successfully or not.
+    bool IsHTTPSProbeComplete() const;
     // Returns true if both HTTP and HTTPS probes have completed, successfully
     // or not.
     bool IsComplete() const;
@@ -390,10 +406,11 @@ class PortalDetectorFactory {
 };
 
 std::ostream& operator<<(std::ostream& stream,
-                         PortalDetector::HTTPProbeResult result);
+                         PortalDetector::ProbeResult result);
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ValidationState state);
-std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result);
+std::ostream& operator<<(std::ostream& stream,
+                         const PortalDetector::Result& result);
 
 }  // namespace shill
 
