@@ -34,13 +34,13 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
+#include <brillo/fuzzed_proto_generator.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/fuzzers/blob_mutator.h>
-#include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/platform.h"
@@ -50,8 +50,8 @@ namespace cryptohome {
 using ::brillo::Blob;
 using ::brillo::BlobFromString;
 using ::brillo::BlobToString;
+using ::brillo::FuzzedProtoGenerator;
 using ::brillo::SecureBlob;
-using ::hwsec_foundation::FuzzedProtoGenerator;
 using ::hwsec_foundation::MutateBlob;
 
 namespace {

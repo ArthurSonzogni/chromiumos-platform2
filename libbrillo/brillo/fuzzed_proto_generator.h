@@ -2,30 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_
-#define LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_
+#ifndef LIBBRILLO_BRILLO_FUZZED_PROTO_GENERATOR_H_
+#define LIBBRILLO_BRILLO_FUZZED_PROTO_GENERATOR_H_
 
 #include <vector>
 
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <google/protobuf/unknown_field_set.h>
 
-#include "libhwsec-foundation/hwsec-foundation_export.h"
-
-namespace hwsec_foundation {
+namespace brillo {
 
 // Generates a fuzzed protobuf buffer: the result is either a valid
 // serialization (of protobuf that corresponds to *some* schema) or a
 // "corrupted" value that might be close to a valid one to some degree.
-class HWSEC_FOUNDATION_EXPORT FuzzedProtoGenerator final {
+class BRILLO_EXPORT FuzzedProtoGenerator final {
  public:
   // `provider` is used to generate the resulting protobuf; it must outlive this
   // instance.
   explicit FuzzedProtoGenerator(FuzzedDataProvider& provider);
   // `byte_breadcrumbs` are byte sequences that can be included in the generated
   // protobuf as-is (but in arbitrary places).
-  FuzzedProtoGenerator(std::vector<brillo::Blob> byte_breadcrumbs,
+  FuzzedProtoGenerator(std::vector<Blob> byte_breadcrumbs,
                        FuzzedDataProvider& provider);
 
   FuzzedProtoGenerator(const FuzzedProtoGenerator&) = delete;
@@ -34,12 +33,12 @@ class HWSEC_FOUNDATION_EXPORT FuzzedProtoGenerator final {
   ~FuzzedProtoGenerator();
 
   // Generates the result.
-  brillo::Blob Generate();
+  Blob Generate();
 
  private:
   // Generates either a fuzzed protobuf message (with recursively generated
   // fuzzed contents) or a byte blob.
-  brillo::Blob GenerateMessageOrBlob(int nesting_depth);
+  Blob GenerateMessageOrBlob(int nesting_depth);
   // Generates a fuzzed protobuf field (which, potentially, is itself a
   // recursively generated message) and adds it to the field set. Returns
   // `false` when no field was added.
@@ -47,9 +46,9 @@ class HWSEC_FOUNDATION_EXPORT FuzzedProtoGenerator final {
                            google::protobuf::UnknownFieldSet& field_set);
 
   FuzzedDataProvider& provider_;
-  const std::vector<brillo::Blob> byte_breadcrumbs_;
+  const std::vector<Blob> byte_breadcrumbs_;
 };
 
-}  // namespace hwsec_foundation
+}  // namespace brillo
 
-#endif  // LIBHWSEC_FOUNDATION_FUZZERS_FUZZED_PROTO_GENERATOR_H_
+#endif  // LIBBRILLO_BRILLO_FUZZED_PROTO_GENERATOR_H_

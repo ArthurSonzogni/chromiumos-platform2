@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec-foundation/fuzzers/fuzzed_proto_generator.h"
+#include "brillo/fuzzed_proto_generator.h"
 
 #include <stdint.h>
 
@@ -18,9 +18,7 @@
 #include <google/protobuf/unknown_field_set.h>
 #include <google/protobuf/wire_format.h>
 
-using brillo::Blob;
-using brillo::BlobFromString;
-using brillo::BlobToString;
+namespace brillo {
 
 namespace {
 
@@ -38,13 +36,11 @@ Blob SerializeProtobufUnknownFieldSet(
 
 }  // namespace
 
-namespace hwsec_foundation {
-
 FuzzedProtoGenerator::FuzzedProtoGenerator(FuzzedDataProvider& provider)
     : provider_(provider) {}
 
-FuzzedProtoGenerator::FuzzedProtoGenerator(
-    std::vector<brillo::Blob> byte_breadcrumbs, FuzzedDataProvider& provider)
+FuzzedProtoGenerator::FuzzedProtoGenerator(std::vector<Blob> byte_breadcrumbs,
+                                           FuzzedDataProvider& provider)
     : provider_(provider), byte_breadcrumbs_(std::move(byte_breadcrumbs)) {}
 
 FuzzedProtoGenerator::~FuzzedProtoGenerator() = default;
@@ -128,4 +124,4 @@ bool FuzzedProtoGenerator::GenerateAndAddField(
   return false;
 }
 
-}  // namespace hwsec_foundation
+}  // namespace brillo

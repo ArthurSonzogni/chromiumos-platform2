@@ -27,6 +27,7 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/fake_cryptohome.h>
+#include <brillo/fuzzed_proto_generator.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -40,7 +41,6 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <libhwsec/factory/fuzzed_factory.h>
-#include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_platform.h"
@@ -60,7 +60,7 @@ namespace {
 
 using ::brillo::Blob;
 using ::brillo::BlobFromString;
-using ::hwsec_foundation::FuzzedProtoGenerator;
+using ::brillo::FuzzedProtoGenerator;
 using ::testing::_;
 using ::testing::NiceMock;
 

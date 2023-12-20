@@ -8,10 +8,10 @@
 #include <string>
 #include <type_traits>
 
+#include <brillo/fuzzed_proto_generator.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <google/protobuf/message.h>
-#include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
 #include "libhwsec/fuzzed/basic_objects.h"
 
@@ -25,7 +25,7 @@ struct FuzzedObject<
   T operator()(FuzzedDataProvider& provider) const {
     T result;
     result.ParseFromString(brillo::BlobToString(
-        hwsec_foundation::FuzzedProtoGenerator(provider).Generate()));
+        brillo::FuzzedProtoGenerator(provider).Generate()));
     return result;
   }
 };

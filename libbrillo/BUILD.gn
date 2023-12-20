@@ -194,6 +194,11 @@ libbrillo_sublibs = [
     library_name = "brillo-protobuf"
     all_dependent_pkg_deps = [ "protobuf" ]
     sources = [ "brillo/proto_file_io.cc" ]
+    configs = []
+    if (use.fuzzer) {
+      sources += [ "brillo/fuzzed_proto_generator.cc" ]
+      configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    }
   },
 
   {
