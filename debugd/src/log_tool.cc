@@ -271,7 +271,6 @@ const std::array kCommandLogs {
       // edid-decode's stderr output is redundant, so silence it.
       "edid-decode --skip-hex-dump \"${f}\" 2>/dev/null; "
     "done"},
-  Log{kFile, "extensions.log", "/var/log/extensions.log"},
   Log{kCommand, "folder_size_dump",
     "/usr/libexec/debugd/helpers/folder_size_dump --system",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
@@ -596,6 +595,7 @@ const std::array kVarLogFileLogs {
     4 * 1024 * 1024, LogTool::Encoding::kUtf8},
   Log{kFile, "ec_info", "/var/log/ec_info.txt"},
   Log{kFile, "eventlog", "/var/log/eventlog.txt"},
+  Log{kFile, "extensions.log", "/var/log/extensions.log"},
   Log{kFile, "fwupd_log", "/var/log/fwupd.log"},
   Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
