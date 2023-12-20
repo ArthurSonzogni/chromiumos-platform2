@@ -73,8 +73,19 @@ class InodeTable {
   // global counter if |ino| is zero.
   Node* Ensure(ino_t parent, const char* name, ino_t ino = 0);
 
-  // Move a table |node| to be the child node |name| of |parent| ino. Returns
-  // the node or null on failure.
+  // Move a table |node| to be the child node |name| of |parent| ino. This
+  // overwrites any existing node at that parent/name combination, even if it
+  // was a directory, consistent with FUSE or "man 2 renameat2" semantics where
+  // the RENAME_NOREPLACE flag is off by default.
+  //
+  // Returns |node| on success. It can fail if the |parent| cannot be found, if
+  // attempting to reparent |node| to itself (causing a direct loop) or if the
+  // |name| is invalid.
+  //
+  // Indirect loops, where a node is its own ancestor (but not its own parent),
+  // are currently not prohibited, but that may change in the future.
+  //
+  // On failure, nullptr is returned and, as a side effect, errno is set.
   Node* Move(Node* node, ino_t parent, const char* name);
 
   // Deletes the node for |ino|. Returns true if the node was deleted.
@@ -126,6 +137,14 @@ class InodeTable {
 
   // Removes |node| from the node table.
   Node* RemoveNode(Node* node);
+
+  // Removes and deletes n from the node table for every Node n that is either
+  // |node| itself or a descendent of |node|.
+  void RemoveAndDeleteNodeAndDescendents(Node* node);
+
+  // Returns whether |n| is a descendent of |ancestor|. It returns false if the
+  // two nodes are equal.
+  bool HasDescendent(Node* ancestor, Node* n);
 
   // Creates a new device number.
   dev_t CreateDev();

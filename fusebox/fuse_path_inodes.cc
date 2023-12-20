@@ -27,6 +27,11 @@ Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
   return node;
 }
 
+// Returns "/" prepended to |name|, which matches the form of the Node.name
+// field. For example, a "foo.bar" input produces a "/foo.bar" output.
+//
+// It returns an empty string on failure, which occurs if path already contains
+// a "/" or if path is one of: NULL, "", "." or "..".
 std::string GetChildNodeName(const char* name) {
   std::string_view entry(name ? name : "");
 
@@ -131,12 +136,15 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   if (child.empty() || !node || node->ino == parent)
     return NodeError(EINVAL);
 
-  auto p = parent_map_.find(std::to_string(parent).append(child));
-  if (p != parent_map_.end())
-    return NodeError(EEXIST);
-
   if (parent_it->second->device != node->device)
     return NodeError(ENOTSUP);  // cross-device move
+
+  if ((node->parent == parent) && (node->name == child))
+    return node;
+
+  auto p = parent_map_.find(std::to_string(parent).append(child));
+  if (p != parent_map_.end())
+    RemoveAndDeleteNodeAndDescendents(p->second);
 
   RemoveNode(node);
   node->parent = parent;
@@ -237,6 +245,41 @@ Node* InodeTable::RemoveNode(Node* node) {
   node_map_.erase(n);
 
   return node;
+}
+
+void InodeTable::RemoveAndDeleteNodeAndDescendents(Node* node) {
+  CHECK_NE(node, root_node_);
+
+  // TODO(nigeltao): this could be more algorithmically efficient if we
+  // redesigned our data structures so that a Node pointed to its children
+  // instead of to its parent.
+
+  std::vector<Node*> condemned_nodes;
+  for (const auto& it : node_map_) {
+    Node* n = it.second.get();
+    if ((n == node) || HasDescendent(node, n)) {
+      condemned_nodes.push_back(n);
+    }
+  }
+
+  for (Node* n : condemned_nodes) {
+    ForgetStat(n->ino);
+    delete RemoveNode(n);
+  }
+}
+
+bool InodeTable::HasDescendent(Node* ancestor, Node* n) {
+  while (n != root_node_) {
+    const auto& iter = node_map_.find(n->parent);
+    if (iter == node_map_.end()) {
+      break;
+    }
+    n = iter->second.get();
+    if (n == ancestor) {
+      return true;
+    }
+  }
+  return false;
 }
 
 Device InodeTable::MakeFromName(const std::string& name) const {

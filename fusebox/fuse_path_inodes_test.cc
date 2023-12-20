@@ -278,12 +278,6 @@ TEST(FusePathInodesTest, ChildNodeMove) {
   EXPECT_EQ("/baz", inodes.GetName(child_child->ino));
   EXPECT_EQ("/foo/bar/baz", inodes.GetPath(child_child));
 
-  // Child node cannot be moved to an existing node.
-  errno = 0;
-  Node* exist = inodes.Move(child, 1, "foo");
-  EXPECT_FALSE(exist);
-  EXPECT_EQ(EEXIST, errno);
-
   // Child node can be moved to a new child node.
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, child->parent);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 1, child->ino);
@@ -303,6 +297,99 @@ TEST(FusePathInodesTest, ChildNodeMove) {
   // And its parent and ino should not change.
   EXPECT_EQ(FIRST_UNRESERVED_INO + 1, child_child->parent);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 2, child_child->ino);
+}
+
+TEST(FusePathInodesTest, MoveOverwrites) {
+  InodeTable inodes;
+
+  // Create this tree of nodes:
+  //
+  // /
+  // /a
+  // /a/f
+  // /a/f/i
+  // /a/f/j
+  // /a/f/k
+  // /a/g
+  // /a/g/p
+  // /a/g/p/x
+  // /a/g/q
+  // /a/h
+  ino_t a = inodes.Ensure(1, "a")->ino;
+  ino_t f = inodes.Ensure(a, "f")->ino;
+  ino_t g = inodes.Ensure(a, "g")->ino;
+  ino_t h = inodes.Ensure(a, "h")->ino;
+  ino_t i = inodes.Ensure(f, "i")->ino;
+  ino_t j = inodes.Ensure(f, "j")->ino;
+  ino_t k = inodes.Ensure(f, "k")->ino;
+  ino_t p = inodes.Ensure(g, "p")->ino;
+  ino_t q = inodes.Ensure(g, "q")->ino;
+  ino_t x = inodes.Ensure(p, "x")->ino;
+
+  EXPECT_TRUE(inodes.Lookup(a));
+  EXPECT_TRUE(inodes.Lookup(f));
+  EXPECT_TRUE(inodes.Lookup(g));
+  EXPECT_TRUE(inodes.Lookup(h));
+  EXPECT_TRUE(inodes.Lookup(i));
+  EXPECT_TRUE(inodes.Lookup(j));
+  EXPECT_TRUE(inodes.Lookup(k));
+  EXPECT_TRUE(inodes.Lookup(p));
+  EXPECT_TRUE(inodes.Lookup(q));
+  EXPECT_TRUE(inodes.Lookup(x));
+  EXPECT_EQ("/a/f", inodes.GetPath(inodes.Lookup(f)));
+  EXPECT_EQ("/a/f/i", inodes.GetPath(inodes.Lookup(i)));
+  EXPECT_EQ("/a/f/j", inodes.GetPath(inodes.Lookup(j)));
+
+  // mv /a/f /a/g
+  EXPECT_TRUE(inodes.Move(inodes.Lookup(f), a, "g"));
+
+  // The tree is now:
+  //
+  // /
+  // /a
+  // /a/g      # Basename is "g" but still uses the f inode.
+  // /a/g/i
+  // /a/g/j
+  // /a/g/k
+  // /a/h
+  EXPECT_TRUE(inodes.Lookup(a));
+  EXPECT_TRUE(inodes.Lookup(f));
+  EXPECT_FALSE(inodes.Lookup(g));
+  EXPECT_TRUE(inodes.Lookup(h));
+  EXPECT_TRUE(inodes.Lookup(i));
+  EXPECT_TRUE(inodes.Lookup(j));
+  EXPECT_TRUE(inodes.Lookup(k));
+  EXPECT_FALSE(inodes.Lookup(p));
+  EXPECT_FALSE(inodes.Lookup(q));
+  EXPECT_FALSE(inodes.Lookup(x));
+  EXPECT_EQ("/a/g", inodes.GetPath(inodes.Lookup(f)));
+  EXPECT_EQ("/a/g/i", inodes.GetPath(inodes.Lookup(i)));
+  EXPECT_EQ("/a/g/j", inodes.GetPath(inodes.Lookup(j)));
+
+  // mv /a/g/j /a/h
+  EXPECT_TRUE(inodes.Move(inodes.Lookup(j), a, "h"));
+
+  // The tree is now:
+  //
+  // /
+  // /a
+  // /a/g      # Basename is "g" but still uses the f inode.
+  // /a/g/i
+  // /a/g/k
+  // /a/h      # Basename is "h" but still uses the j inode.
+  EXPECT_TRUE(inodes.Lookup(a));
+  EXPECT_TRUE(inodes.Lookup(f));
+  EXPECT_FALSE(inodes.Lookup(g));
+  EXPECT_FALSE(inodes.Lookup(h));
+  EXPECT_TRUE(inodes.Lookup(i));
+  EXPECT_TRUE(inodes.Lookup(j));
+  EXPECT_TRUE(inodes.Lookup(k));
+  EXPECT_FALSE(inodes.Lookup(p));
+  EXPECT_FALSE(inodes.Lookup(q));
+  EXPECT_FALSE(inodes.Lookup(x));
+  EXPECT_EQ("/a/g", inodes.GetPath(inodes.Lookup(f)));
+  EXPECT_EQ("/a/g/i", inodes.GetPath(inodes.Lookup(i)));
+  EXPECT_EQ("/a/h", inodes.GetPath(inodes.Lookup(j)));
 }
 
 TEST(FusePathInodesTest, ChildNodeRename) {
