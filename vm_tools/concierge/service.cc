@@ -275,6 +275,12 @@ constexpr char kVmMemoryManagementHostKillDecisionMsTimeoutParam[] =
     "HostMsTimeout";
 // Default value for kVmMemoryManagementHostKillDecisionMsTimeoutParam
 constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
+// Polling interval for checking existence of control socket file path.
+constexpr base::TimeDelta kControlSocketPathPollingInterval =
+    base::Milliseconds(10);
+// Timeout for checking existence of control socket file path.
+constexpr base::TimeDelta kControlSocketPathPollingTimeout =
+    base::Milliseconds(1000);
 
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kVmMemoryManagementServiceFeature{
@@ -729,6 +735,27 @@ bool ShutdownVm(VmBaseImpl* vm,
   metrics::DurationRecorder duration_recorder(
       metrics, vm->GetInfo().type, metrics::DurationRecorder::Event::kVmStop);
   return vm->Shutdown();
+}
+
+// Delays run of callback until path exists, or print error when timeout.
+void WaitUntilControlSocketPathExist(
+    const base::FilePath& path,
+    base::OnceCallback<void()> callback_on_success,
+    base::TimeDelta timeout) {
+  if (base::PathExists(path)) {
+    std::move(callback_on_success).Run();
+    return;
+  }
+  if (timeout <= kControlSocketPathPollingInterval) {
+    LOG(ERROR) << "Timeout while waiting on path " << path;
+    return;
+  }
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&WaitUntilControlSocketPathExist, path,
+                     std::move(callback_on_success),
+                     timeout - kControlSocketPathPollingInterval),
+      kControlSocketPathPollingInterval);
 }
 
 }  // namespace
@@ -2091,8 +2118,10 @@ StartVmResponse Service::StartVmInternal(
 
   vms_[vm_id] = std::move(vm);
 
-  HandleVmStarted(vm_id, classification, *vm_info, socket_path,
-                  response.status());
+  // While VmStartedSignal is delayed, the return of StartVM does not wait for
+  // the control socket to avoid a delay in boot time. Ref: b:316491142.
+  HandleControlSocketReady(vm_id, classification, *vm_info, socket_path,
+                           response.status());
   return response;
 }
 
@@ -4055,11 +4084,27 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   }
 }
 
-void Service::HandleVmStarted(const VmId& vm_id,
-                              apps::VmType classification,
-                              const vm_tools::concierge::VmInfo& vm_info,
-                              const std::string& vm_socket,
-                              vm_tools::concierge::VmStatus status) {
+void Service::HandleControlSocketReady(
+    const VmId& vm_id,
+    apps::VmType classification,
+    const vm_tools::concierge::VmInfo& vm_info,
+    const std::string& vm_socket,
+    vm_tools::concierge::VmStatus status) {
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WaitUntilControlSocketPathExist,
+                     base::FilePath(vm_socket),
+                     base::BindOnce(&Service::OnControlSocketReady,
+                                    weak_ptr_factory_.GetWeakPtr(), vm_id,
+                                    classification, vm_info, vm_socket, status),
+                     kControlSocketPathPollingTimeout));
+}
+
+void Service::OnControlSocketReady(const VmId& vm_id,
+                                   apps::VmType classification,
+                                   const vm_tools::concierge::VmInfo& vm_info,
+                                   const std::string& vm_socket,
+                                   vm_tools::concierge::VmStatus status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (vm_memory_management_service_) {
     vm_memory_management_service_->NotifyVmStarted(classification,

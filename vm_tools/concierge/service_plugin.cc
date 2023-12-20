@@ -295,8 +295,8 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   vms_[vm_id] = std::move(vm);
 
-  HandleVmStarted(vm_id, apps::VmType::PLUGIN_VM, *vm_info,
-                  vms_[vm_id]->GetVmSocketPath(), response.status());
+  HandleControlSocketReady(vm_id, apps::VmType::PLUGIN_VM, *vm_info,
+                           vms_[vm_id]->GetVmSocketPath(), response.status());
 
   return response;
 }

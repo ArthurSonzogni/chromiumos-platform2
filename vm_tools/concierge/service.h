@@ -404,11 +404,18 @@ class Service final : public org::chromium::VmConciergeInterface,
                                  pid_t pid,
                                  std::string vm_token,
                                  vm_tools::apps::VmType vm_type);
-  void HandleVmStarted(const VmId& vm_id,
-                       apps::VmType classification,
-                       const vm_tools::concierge::VmInfo& vm_info,
-                       const std::string& vm_socket,
-                       vm_tools::concierge::VmStatus status);
+  // Handles additional steps for VM startup after control socket is ready
+  // asynchronously.
+  void HandleControlSocketReady(const VmId& vm_id,
+                                apps::VmType classification,
+                                const vm_tools::concierge::VmInfo& vm_info,
+                                const std::string& vm_socket,
+                                vm_tools::concierge::VmStatus status);
+  void OnControlSocketReady(const VmId& vm_id,
+                            apps::VmType classification,
+                            const vm_tools::concierge::VmInfo& vm_info,
+                            const std::string& vm_socket,
+                            vm_tools::concierge::VmStatus status);
   void SendVmStartedSignal(const VmId& vm_id,
                            const vm_tools::concierge::VmInfo& vm_info,
                            vm_tools::concierge::VmStatus status);

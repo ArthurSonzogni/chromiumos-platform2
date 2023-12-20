@@ -518,6 +518,9 @@ enum VmStatus {
 }
 
 // Information sent back by vm_concierge in response to a StartVm dbus message.
+// StartVmResponse is returned as early as the crosvm process is started, which
+// may not be ready for control. Wait for VmStartedSignal instead before making
+// DBus requests to control the VM.
 message StartVmResponse {
   // If true, the VM was started successfully.  |vm_info| will have non-default
   // values only if this is true.
@@ -562,7 +565,8 @@ message StartVmResponse {
   bool free_bytes_has_value = 7;
 }
 
-// Message used in the signal for when a VM has started.
+// Message used in the signal for when a VM has started, and can be controlled
+// via DBus methods.
 message VmStartedSignal {
   // The name of the VM which has started.
   string name = 1;

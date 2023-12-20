@@ -538,7 +538,9 @@
     </method>
     <method name="StartArcVm">
       <tp:docstring>
-        Starts ARCVM VM.
+        Starts ARCVM VM. Returns when the crosvm child process starts. Wait for
+        VmStartedSignal instead before making control requests to the VM, as the
+        control socket may not be ready when StartVmResponse is sent.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
@@ -555,7 +557,9 @@
     </method>
     <method name="StartPluginVm">
       <tp:docstring>
-        Starts Plugin VM.
+        Starts Plugin VM. Returns when the crosvm child process starts. Wait for
+        VmStartedSignal instead before making control requests to the VM, as the
+        control socket may not be ready when StartVmResponse is sent.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
@@ -572,7 +576,9 @@
     </method>
     <method name="StartVm">
       <tp:docstring>
-        Starts VM.
+        Starts VM. Returns when the crosvm child process starts. Wait for
+        VmStartedSignal instead before making control requests to the VM, as the
+        control socket may not be ready when StartVmResponse is sent.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
       <!--
@@ -722,7 +728,9 @@
     <signal name="VmStartedSignal">
       <tp:docstring>
         Indicates that the concierge successfully launched crosvm as its child
-        process. If you want guest userland state use VmGuestUserlandReadySignal.
+        process, and can accept control requests through the crosvm control
+        socket. If you want guest userland state use VmGuestUserlandReadySignal
+        instead.
       </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
