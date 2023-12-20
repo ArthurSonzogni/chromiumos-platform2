@@ -110,9 +110,9 @@ SessionStateManager::SessionStateManager(dbus::Bus* bus)
       fw_dumps_allowed_by_policy_(false) {
   session_manager_proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionStateManager::OnSessionStateChanged,
-                          weak_factory.GetWeakPtr()),
+                          weak_factory_.GetWeakPtr()),
       base::BindOnce(&SessionStateManager::OnSignalConnected,
-                     weak_factory.GetWeakPtr()));
+                     weak_factory_.GetWeakPtr()));
 }
 
 void SessionStateManager::OnSessionStateChanged(const std::string& state) {

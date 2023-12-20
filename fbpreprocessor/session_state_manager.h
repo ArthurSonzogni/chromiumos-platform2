@@ -117,7 +117,7 @@ class SessionStateManager : public SessionStateManagerInterface {
   // List of SessionStateManager observers
   base::ObserverList<Observer>::Unchecked observers_;
 
-  base::WeakPtrFactory<SessionStateManager> weak_factory{this};
+  base::WeakPtrFactory<SessionStateManager> weak_factory_{this};
 };
 
 }  // namespace fbpreprocessor
