@@ -19,7 +19,8 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 namespace {
-constexpr int kDbusTimeoutMs = 200;
+// Long timeout required as concierge/crosvm may respond slowly during vm boot.
+constexpr int kNonBlockingDbusTimeoutMs = 5000;
 
 // Handles the result of an attempt to connect to a D-Bus signal, logging an
 // error on failure.
@@ -118,7 +119,7 @@ void VmConciergeClient::DoAttachTapDevice(const std::string& tap_name,
   }
   base::OnceCallback<void(dbus::Response*)> dbus_callback =
       base::BindOnce(&ReadAttachResponse).Then(std::move(callback));
-  concierge_proxy_->CallMethod(&method_call, kDbusTimeoutMs,
+  concierge_proxy_->CallMethod(&method_call, kNonBlockingDbusTimeoutMs,
                                std::move(dbus_callback));
 }
 bool VmConciergeClient::AttachTapDevice(int64_t vm_cid,
@@ -159,7 +160,7 @@ void VmConciergeClient::DoDetachTapDevice(uint32_t bus_num,
   }
   base::OnceCallback<void(dbus::Response*)> dbus_callback =
       base::BindOnce(&ReadDetachResponse).Then(std::move(callback));
-  concierge_proxy_->CallMethod(&method_call, kDbusTimeoutMs,
+  concierge_proxy_->CallMethod(&method_call, kNonBlockingDbusTimeoutMs,
                                std::move(dbus_callback));
 }
 
