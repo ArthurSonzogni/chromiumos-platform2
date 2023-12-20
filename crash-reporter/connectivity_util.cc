@@ -34,11 +34,21 @@ namespace {
 // onboarded.
 constexpr std::array<std::string_view, 1> kUserAllowlist{
     "testuser@managedchrome.com"};
-constexpr char kGooglerAccountSuffix[] = "@google.com";
 
-// Checks if the user is a googler and returns true if that is the case.
-bool IsUserGoogler(const std::string& username) {
-  return username.ends_with(kGooglerAccountSuffix);
+// Allowlist of domains whose users can add firmware dumps to feedback reports.
+constexpr int kDomainAllowlistSize = 2;
+constexpr std::array<std::string_view, kDomainAllowlistSize> kDomainAllowlist{
+    "@google.com", "@managedchrome.com"};
+
+// Checks if the user is a googler or a google test account and
+// returns true if that is the case.
+bool IsUserInAllowedDomain(std::string_view username) {
+  for (std::string_view domain : kDomainAllowlist) {
+    if (username.ends_with(domain)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // This function checks if a given user is in connectivity fwdump collection
@@ -93,7 +103,7 @@ std::optional<enterprise_management::CloudPolicySettings> FetchUserPolicy(
 
 // Checks if crash reporter is allowed to collect fw dump for given user.
 bool ConnectivityFwdumpCollectionForUserAllowed(const std::string& username) {
-  if (IsUserGoogler(username)) {
+  if (IsUserInAllowedDomain(username)) {
     return true;
   }
 

@@ -36,6 +36,7 @@ constexpr char kDeviceUserNotAllowed1[] = "randomusergoogle.com.xyz@gmail.com";
 constexpr char kDeviceUserNotAllowed2[] = "deviceuser@disallowed_domain.com";
 constexpr char kDeviceUserNotAllowed3[] = "randomuser@google.com.xyz@gmail.com";
 constexpr char kDeviceUserInAllowList[] = "testuser@managedchrome.com";
+constexpr char kUserInAllowedDomain[] = "someuser@managedchrome.com";
 constexpr char kAffiliationID[] = "affiliation_id";
 
 class ConnectivityUtilTest : public ::testing::Test {
@@ -141,6 +142,26 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedUser) {
 
   EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
                                           kDeviceUserInAllowList));
+}
+
+// Test connectivity fwdump is allowed if user is in managedchrome domain.
+// Test also validates connectivity debug data collection with policy set.
+TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedDomain) {
+  EXPECT_CALL(
+      *session_manager_.get(),
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kUserInAllowedDomain),
+                       _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "wifi");
+        return true;
+      })));
+
+  EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
+                                          kUserInAllowedDomain));
 }
 
 // Test to ensure that no session manager proxy is correctly handled
