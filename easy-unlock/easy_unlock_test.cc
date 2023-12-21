@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -269,8 +270,7 @@ TEST_F(EasyUnlockTest, WrapPublicKeyRSA) {
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(easy_unlock::kKeyAlgorithmRSA);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(public_key.data()),
-                            public_key.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(public_key));
   method_call_handlers_->CallWrapPublicKey(
       &method_call,
       base::BindOnce(&EasyUnlockTest::VerifyDataResponse,
@@ -287,8 +287,7 @@ TEST_F(EasyUnlockTest, WrapPublicKeyRSA_IUnvalid_UnknownAlgorithm) {
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("UNKNOWN");
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(public_key.data()),
-                            public_key.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(public_key));
   method_call_handlers_->CallWrapPublicKey(
       &method_call, base::BindOnce(&EasyUnlockTest::VerifyNoDataResponse,
                                    base::Unretained(this)));
@@ -304,11 +303,8 @@ TEST_F(EasyUnlockTest, PerformECDHKeyAgreement) {
   const std::string public_key = "public_key_2";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(private_key.data()),
-      private_key.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(public_key.data()),
-                            public_key.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(private_key));
+  writer.AppendArrayOfBytes(base::as_byte_span(public_key));
 
   method_call_handlers_->CallPerformECDHKeyAgreement(
       &method_call,
@@ -331,22 +327,12 @@ TEST_F(EasyUnlockTest, CreateSecureMessage) {
   const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
-                            payload.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(public_metadata.data()),
-      public_metadata.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
-      verification_key_id.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
-      decryption_key_id.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(payload));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
+  writer.AppendArrayOfBytes(base::as_byte_span(public_metadata));
+  writer.AppendArrayOfBytes(base::as_byte_span(verification_key_id));
+  writer.AppendArrayOfBytes(base::as_byte_span(decryption_key_id));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
@@ -380,19 +366,11 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
   const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
-                            payload.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
-      verification_key_id.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
-      decryption_key_id.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(payload));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
+  writer.AppendArrayOfBytes(base::as_byte_span(verification_key_id));
+  writer.AppendArrayOfBytes(base::as_byte_span(decryption_key_id));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
@@ -415,22 +393,12 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
   const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
-                            payload.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(public_metadata.data()),
-      public_metadata.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
-      verification_key_id.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
-      decryption_key_id.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(payload));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
+  writer.AppendArrayOfBytes(base::as_byte_span(public_metadata));
+  writer.AppendArrayOfBytes(base::as_byte_span(verification_key_id));
+  writer.AppendArrayOfBytes(base::as_byte_span(decryption_key_id));
   writer.AppendString("UNKNOWN");
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
@@ -453,22 +421,12 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
   const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
-                            payload.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(public_metadata.data()),
-      public_metadata.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
-      verification_key_id.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
-      decryption_key_id.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(payload));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
+  writer.AppendArrayOfBytes(base::as_byte_span(public_metadata));
+  writer.AppendArrayOfBytes(base::as_byte_span(verification_key_id));
+  writer.AppendArrayOfBytes(base::as_byte_span(decryption_key_id));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString("UNKOWN");
 
@@ -488,13 +446,9 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage) {
   const std::string associated_data = "ad";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
-                            message.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(message));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
@@ -523,13 +477,9 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownEncryptionType) {
   const std::string associated_data = "ad";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
-                            message.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(message));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
   writer.AppendString("UNKNOWN");
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
@@ -549,13 +499,9 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownSignatureType) {
   const std::string associated_data = "ad";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
-                            message.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(message));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
+  writer.AppendArrayOfBytes(base::as_byte_span(associated_data));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString("UNKNOWN");
 
@@ -574,10 +520,8 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_MissingParam) {
   const std::string key = "secret key";
 
   dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
-                            message.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
+  writer.AppendArrayOfBytes(base::as_byte_span(message));
+  writer.AppendArrayOfBytes(base::as_byte_span(key));
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
