@@ -5,6 +5,7 @@
 #include "hammerd/dbus_wrapper.h"
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
@@ -34,7 +35,7 @@ void DBusWrapper::SendSignalWithArg(const std::string& signal_name,
   dbus::Signal signal(kHammerdInterface, signal_name);
   if (length > 0) {
     dbus::MessageWriter writer(&signal);
-    writer.AppendArrayOfBytes(values, length);
+    writer.AppendArrayOfBytes(base::make_span(values, length));
   }
   exported_object_->SendSignal(&signal);
 }
