@@ -10,6 +10,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -49,23 +50,22 @@ class FanRoutineTest : public BaseFileTest {
     SetFanCrosConfig("1");
   }
 
-  void SetupAndStartRoutine(bool passed, base::RunLoop* run_loop) {
+  void SetupAndStartRoutine(bool passed, base::OnceClosure on_finish) {
     routine_->SetOnExceptionCallback(
         base::BindOnce([](uint32_t error, const std::string& reason) {
           ADD_FAILURE() << "An exception has occurred when it shouldn't have.";
         }));
     observer_ =
-        std::make_unique<RoutineObserverForTesting>(run_loop->QuitClosure());
+        std::make_unique<RoutineObserverForTesting>(std::move(on_finish));
     routine_->SetObserver(observer_->receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   void SetFanCrosConfig(const std::string& value) {
@@ -106,9 +106,9 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedIncrease) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
-  run_loop.Run();
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -158,10 +158,10 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -222,13 +222,13 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
   // 3 updates for increase.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
   // 1 update for decrease.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -297,13 +297,13 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
   // 3 updates for increase.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
   // 3 update for decrease.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -370,13 +370,13 @@ TEST_F(FanRoutineTest, RoutineFailureByNoFanSpeedChange) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
   // 3 updates for increase.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
   // 3 update for decrease.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -450,13 +450,13 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
   // 3 updates for increase.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
   // 3 update for decrease.
   task_environment_.FastForwardBy(FanRoutine::kFanRoutineUpdatePeriod * 3);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -537,9 +537,9 @@ TEST_F(FanRoutineTest, MultipleFanRoutineSuccess) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
-  run_loop.Run();
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -615,9 +615,9 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
-  run_loop.Run();
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -643,9 +643,9 @@ TEST_F(FanRoutineTest, RoutineFailureByTooLittleFan) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
-  run_loop.Run();
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);
@@ -686,9 +686,9 @@ TEST_F(FanRoutineTest, RoutineFailureByTooManyFan) {
   ASSERT_TRUE(routine_create.has_value());
   routine_ = std::move(routine_create.value());
 
-  base::RunLoop run_loop;
-  SetupAndStartRoutine(true, &run_loop);
-  run_loop.Run();
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
   mojom::RoutineStatePtr result = std::move(observer_->state_);
 
   EXPECT_EQ(result->percentage, 100);

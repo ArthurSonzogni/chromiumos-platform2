@@ -11,6 +11,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -94,21 +95,20 @@ class CpuStressRoutineTest : public CpuStressRoutineTestBase {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    base::RunLoop run_loop;
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    RoutineObserverForTesting observer{run_loop.QuitClosure()};
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
     return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   std::unique_ptr<CpuStressRoutine> routine_;
@@ -319,12 +319,11 @@ TEST_F(CpuStressRoutineAdapterTest, IncrementalProgress) {
 // Test that the CPU stress routine will raise error if the executor
 // disconnects.
 TEST_F(CpuStressRoutineTest, ExecutorDisconnectBeforeFinishedError) {
-  base::RunLoop run_loop;
-  routine_->SetOnExceptionCallback(
-      base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+  base::test::TestFuture<uint32_t, const std::string&> future;
+  routine_->SetOnExceptionCallback(future.GetCallback());
   routine_->Start();
   fake_process_control_.receiver().reset();
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 // Test that the CPU stress routine will raise error if the executor

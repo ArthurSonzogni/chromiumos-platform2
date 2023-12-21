@@ -72,12 +72,12 @@ class LedLitUpRoutineV2Test : public testing::Test {
   }
 
   mojom::RoutineStatePtr StartRoutineAndWaitForResult() {
-    base::RunLoop run_loop;
-    RoutineObserverForTesting observer{run_loop.QuitClosure()};
     routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
     routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
     return std::move(observer.state_);
   }
 

@@ -11,11 +11,11 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
@@ -88,23 +88,21 @@ class FloatingPointRoutineV2Test : public FloatingPointRoutineV2TestBase {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit(bool passed) {
-    base::RunLoop run_loop;
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(run_loop.QuitClosure());
-    routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishFloatingPointDelegate(passed);
-    run_loop.Run();
-    return std::move(observer->state_);
+    EXPECT_TRUE(future.Wait());
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   std::unique_ptr<FloatingPointRoutineV2> routine_;

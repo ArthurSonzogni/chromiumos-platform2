@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -22,7 +22,7 @@
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -90,21 +90,20 @@ class AudioDriverRoutineTest : public testing::Test {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    base::RunLoop run_loop;
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    RoutineObserverForTesting observer{run_loop.QuitClosure()};
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
     return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(base::BindLambdaForTesting(
-        [&](uint32_t error, const std::string& reason) { run_loop.Quit(); }));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   base::test::TaskEnvironment task_environment_;

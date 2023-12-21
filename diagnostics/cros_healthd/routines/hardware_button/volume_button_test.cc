@@ -8,7 +8,6 @@
 #include <tuple>
 #include <utility>
 
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -128,12 +127,12 @@ TEST_F(VolumeButtonRoutineTest, PassedWhenEventReceived) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 kArbitraryTimeout);
 
-  base::RunLoop run_loop;
-  auto observer = StartRoutineAndObserve(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  auto observer = StartRoutineAndObserve(future.GetCallback());
 
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeUp);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -147,12 +146,12 @@ TEST_F(VolumeButtonRoutineTest, FailedWhenTimeout) {
   const base::TimeDelta timeout = base::Seconds(10);
   CreateRoutine(kArbitraryButtonType, timeout);
 
-  base::RunLoop run_loop;
-  auto observer = StartRoutineAndObserve(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  auto observer = StartRoutineAndObserve(future.GetCallback());
 
   task_environment_.FastForwardBy(timeout);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -167,14 +166,14 @@ TEST_F(VolumeButtonRoutineTest, FailedWhenTimeoutIfNoCorrectButtonPressed) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 timeout);
 
-  base::RunLoop run_loop;
-  auto observer = StartRoutineAndObserve(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  auto observer = StartRoutineAndObserve(future.GetCallback());
 
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeDown);
 
   task_environment_.FastForwardBy(timeout);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -189,12 +188,12 @@ TEST_F(VolumeButtonRoutineTest, NoCrashAfterRoutineFinished) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 timeout);
 
-  base::RunLoop run_loop;
-  auto observer = StartRoutineAndObserve(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  auto observer = StartRoutineAndObserve(future.GetCallback());
 
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeUp);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   const auto& result = observer->state_;
   EXPECT_TRUE(result->state_union->is_finished());

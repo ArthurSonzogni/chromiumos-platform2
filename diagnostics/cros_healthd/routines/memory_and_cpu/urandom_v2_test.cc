@@ -11,6 +11,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,8 +19,8 @@
 #include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -56,26 +57,21 @@ class UrandomRoutineV2Test : public testing::Test {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit(bool passed) {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          ADD_FAILURE() << "An exception has occurred when it shouldn't have.";
-        }));
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(run_loop.QuitClosure());
-    routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishUrandomDelegate(passed);
-    run_loop.Run();
-    return std::move(observer->state_);
+    EXPECT_TRUE(future.Wait());
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   // Sets the mock executor response by running the callback and returning

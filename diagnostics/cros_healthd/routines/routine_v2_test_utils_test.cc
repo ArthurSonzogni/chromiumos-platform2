@@ -4,8 +4,8 @@
 
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
@@ -27,14 +27,14 @@ class FakeExceptionRoutine final : public BaseRoutineControl {
 };
 
 void StartFakeExceptionRoutineButDontExpectExceptions() {
-  base::RunLoop run_loop;
-  RoutineObserverForTesting observer{run_loop.QuitClosure()};
+  base::test::TestFuture<void> future;
+  RoutineObserverForTesting observer{future.GetCallback()};
 
   FakeExceptionRoutine routine;
   routine.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
   routine.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine.Start();
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST(RoutineV2TestUtilsDeathTest,
@@ -45,7 +45,7 @@ TEST(RoutineV2TestUtilsDeathTest,
 }
 
 TEST(RoutineV2TestUtilsDeathTest,
-     UnexpectedRoutineExceptionCallbackCheckInRunLoop) {
+     UnexpectedRoutineExceptionCallbackCheckInTestFuture) {
   base::test::TaskEnvironment task_environment;
   EXPECT_DEATH(StartFakeExceptionRoutineButDontExpectExceptions(),
                "An unexpected routine exception has occurred.*");

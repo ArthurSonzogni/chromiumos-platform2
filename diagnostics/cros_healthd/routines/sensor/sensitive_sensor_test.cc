@@ -13,6 +13,7 @@
 #include <base/json/json_reader.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -144,15 +145,15 @@ class SensitiveSensorRoutineTest : public testing::Test {
 // Test that the SensitiveSensorRoutine can be run successfully.
 TEST_F(SensitiveSensorRoutineTest, RoutineSuccess) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0, MakeSensorDevice({cros::mojom::kTimestampChannel,
                                          "accel_x", "accel_y", "accel_z"},
-                                        run_loop.QuitClosure()));
+                                        future.GetCallback()));
   StartRoutine();
 
   // Wait for the observer remote to be bound.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   // Send sample data.
   remote->OnSampleUpdated({{0, 21}, {1, 14624}, {2, 6373}, {3, 2389718579704}});
@@ -178,9 +179,9 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithMultipleSensors) {
       {10000, {cros::mojom::DeviceType::GRAVITY}},
   });
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   auto barrier =
-      std::make_unique<CallbackBarrier>(/*on_success=*/run_loop.QuitClosure(),
+      std::make_unique<CallbackBarrier>(/*on_success=*/future.GetCallback(),
                                         /*on_error=*/base::DoNothing());
   auto& remote1 = SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0, MakeSensorDevice({cros::mojom::kTimestampChannel,
@@ -203,7 +204,7 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithMultipleSensors) {
   StartRoutine();
 
   // Wait for the observer remotes to be bound.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   // Send sample data.
   remote1->OnSampleUpdated({{0, 2}, {1, 14624}, {2, 6373}, {3, 2389718579704}});
@@ -344,15 +345,15 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSetChannelsEnabledError) {
 // device return error.
 TEST_F(SensitiveSensorRoutineTest, RoutineReadSampleError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0, MakeSensorDevice({cros::mojom::kTimestampChannel,
                                          "accel_x", "accel_y", "accel_z"},
-                                        run_loop.QuitClosure()));
+                                        future.GetCallback()));
   StartRoutine();
 
   // Wait for the observer remote to be bound.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   // Send observer error.
   remote->OnErrorOccurred(cros::mojom::ObserverErrorType::READ_TIMEOUT);
@@ -369,15 +370,15 @@ TEST_F(SensitiveSensorRoutineTest, RoutineReadSampleError) {
 // device cannot read changed sample before timeout.
 TEST_F(SensitiveSensorRoutineTest, RoutineTimeoutOccurredError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0, MakeSensorDevice({cros::mojom::kTimestampChannel,
                                          "accel_x", "accel_y", "accel_z"},
-                                        run_loop.QuitClosure()));
+                                        future.GetCallback()));
   StartRoutine();
 
   // Wait for the observer remote to be bound.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   remote->OnSampleUpdated({{0, 2}, {1, 14624}, {2, 6373}, {3, 2389718579704}});
   remote->OnSampleUpdated({{0, 2}, {1, 14624}, {2, 6373}, {3, 2389718579704}});

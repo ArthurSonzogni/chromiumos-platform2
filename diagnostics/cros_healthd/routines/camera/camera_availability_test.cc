@@ -60,12 +60,12 @@ service_manager_mojom::ErrorOrServiceStatePtr NewServiceManagerError() {
 
 mojom::RoutineStatePtr StartRoutineAndGetFinalState(
     std::unique_ptr<BaseRoutineControl>& routine) {
-  base::RunLoop run_loop;
   routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  RoutineObserverForTesting observer(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  RoutineObserverForTesting observer(future.GetCallback());
   routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine->Start();
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
   return observer.state_.Clone();
 }
 

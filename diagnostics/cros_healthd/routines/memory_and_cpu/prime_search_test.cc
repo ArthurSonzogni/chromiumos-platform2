@@ -11,6 +11,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -88,23 +89,21 @@ class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit(bool passed) {
-    base::RunLoop run_loop;
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(run_loop.QuitClosure());
-    routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    base::test::TestFuture<void> future;
+    RoutineObserverForTesting observer{future.GetCallback()};
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishPrimeSearchDelegate(passed);
-    run_loop.Run();
-    return std::move(observer->state_);
+    EXPECT_TRUE(future.Wait());
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
-    base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
+    base::test::TestFuture<uint32_t, const std::string&> future;
+    routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
 
   std::unique_ptr<PrimeSearchRoutine> routine_;
