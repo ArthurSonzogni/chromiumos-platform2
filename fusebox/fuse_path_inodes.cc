@@ -160,7 +160,7 @@ bool InodeTable::Forget(ino_t ino, uint64_t nlookup) {
 
   Node* node = Lookup(ino);
   if (!node)
-    return true;
+    return false;
 
   if (nlookup < node->refcount) {
     node->refcount -= nlookup;

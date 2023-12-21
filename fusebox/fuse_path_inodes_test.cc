@@ -221,6 +221,9 @@ TEST(FusePathInodesTest, ChildNodeForget) {
   EXPECT_FALSE(inodes.Lookup(ino));
   EXPECT_EQ(ENOENT, errno);
   EXPECT_TRUE(inodes.GetName(ino).empty());
+
+  // Forgetting a non-existent ino should fail.
+  EXPECT_FALSE(inodes.Forget(FIRST_UNRESERVED_INO + 999));
 }
 
 TEST(FusePathInodesTest, ChildNodeChild) {
