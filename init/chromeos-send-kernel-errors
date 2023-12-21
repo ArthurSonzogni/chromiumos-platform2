@@ -45,43 +45,28 @@ gather_wifi_error() {
 
 gather_fs_error() {
   # Gather filesystem errors.
-  local dev dev_name fs_error_count
-  local DEV_Stateful
-  local DEV_EncStateful
+  local dev_stateful fs_error_count
 
   # shellcheck disable=SC2034
-  DEV_Stateful="$(
+  dev_stateful="$(
     get_stateful_df_data | awk '{print $1}' | sed -e 's#^/dev/##')"
-  if [ -e /dev/mapper/encstateful ] || \
-      [ "${FLAGS_test}" -eq "${FLAGS_TRUE}" ]; then
-    # shellcheck disable=SC2034
-    DEV_EncStateful="$(printf "dm-%d" \
-                       "$(stat -c "%T" /dev/mapper/encstateful)")"
-  else
-    # shellcheck disable=SC2034
-    DEV_EncStateful=""
+
+  if [ -z "${dev_stateful}" ]; then
+    return
   fi
 
-  for dev in "Stateful" "EncStateful"; do
-    eval "dev_name=\"\${DEV_${dev}}\""
+  metrics_client -e "Platform.FileSystem.Stateful_RecoveryNeeded" \
+    "$(dmesg_matches "EXT4-fs (${dev_stateful}): recovery complete")" 2
 
-    if [ -z "${dev_name}" ]; then
-      continue
-    fi
+  metrics_client -e "Platform.FileSystem.Stateful_FsckNeeded" \
+    "$(dmesg_matches \
+      "EXT4-fs (${dev_stateful}): warning: mounting fs with errors")" 2
 
-    metrics_client -e "Platform.FileSystem.${dev}_RecoveryNeeded" \
-      "$(dmesg_matches "EXT4-fs (${dev_name}): recovery complete")" 2
-
-    metrics_client -e "Platform.FileSystem.${dev}_FsckNeeded" \
-      "$(dmesg_matches \
-        "EXT4-fs (${dev_name}): warning: mounting fs with errors")" 2
-
-    fs_error_count="$(dumpe2fs -h "/dev/${dev_name}" 2>/dev/null | \
-                      sed -En '/FS Error count/s/.* +([0-9]+)$/\1/p')"
-    : "${fs_error_count:=0}"
-    metrics_client "Platform.FileSystem.${dev}_ErrorCount" \
-      "${fs_error_count}" 0 100000 20
-  done
+  fs_error_count="$(dumpe2fs -h "/dev/${dev_stateful}" 2>/dev/null | \
+                    sed -En '/FS Error count/s/.* +([0-9]+)$/\1/p')"
+  : "${fs_error_count:=0}"
+  metrics_client "Platform.FileSystem.Stateful_ErrorCount" \
+    "${fs_error_count}" 0 100000 20
 }
 
 gather_errors() {
