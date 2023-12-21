@@ -111,16 +111,12 @@ void PPP::OnConnect(const std::string& ifname) {
   if (ipcp_gotoptions[0].dnsaddr[0]) {
     dict[kPPPDNS1] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[0]);
   }
-  if (ipcp_gotoptions[0].dnsaddr[1]) {
+  if (ipcp_gotoptions[0].dnsaddr[1] &&
+      ipcp_gotoptions[0].dnsaddr[1] != ipcp_gotoptions[0].dnsaddr[0]) {
     dict[kPPPDNS2] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
   }
   if (lcp_gotoptions[0].mru) {
     dict[kPPPMRU] = base::NumberToString(lcp_gotoptions[0].mru);
-  }
-  std::string lns_address;
-  if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {
-    // Really an L2TP/IPsec option rather than a PPP one. But oh well.
-    dict[kPPPLNSAddress] = lns_address;
   }
   if (CreateProxy()) {
     proxy_->Notify(kPPPReasonConnect, dict);

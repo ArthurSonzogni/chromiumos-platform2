@@ -148,17 +148,13 @@ TEST_F(PPPDaemonTest, ParseIPConfiguration) {
       PPPDaemon::ParseNetworkConfig(config);
   EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("4.5.6.7/32"),
             network_config.ipv4_address);
-  // The presence of kPPPExternalIP4Address suggests that this is a p2p network,
-  // thus no gateway is needed.
+  // We don't set gateway address for a point-to-point network.
   EXPECT_FALSE(network_config.ipv4_gateway.has_value());
   ASSERT_EQ(2, network_config.dns_servers.size());
   EXPECT_EQ(*net_base::IPAddress::CreateFromString("1.1.1.1"),
             network_config.dns_servers[0]);
   EXPECT_EQ(*net_base::IPAddress::CreateFromString("2.2.2.2"),
             network_config.dns_servers[1]);
-  EXPECT_EQ(*net_base::IPCIDR::CreateFromCIDRString("99.88.77.66/32"),
-            network_config.excluded_route_prefixes[0]);
-  EXPECT_EQ(1, network_config.excluded_route_prefixes.size());
   EXPECT_EQ(1492, network_config.mtu);
 }
 

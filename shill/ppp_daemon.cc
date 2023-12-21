@@ -139,7 +139,6 @@ std::string PPPDaemon::GetInterfaceName(
 net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
     const std::map<std::string, std::string>& configuration) {
   net_base::NetworkConfig config;
-  std::optional<net_base::IPv4Address> external_address;
   for (const auto& [key, value] : configuration) {
     SLOG(2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
@@ -147,16 +146,6 @@ net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
           value, net_base::IPv4CIDR::kMaxPrefixLength);
       if (!config.ipv4_address.has_value()) {
         LOG(ERROR) << "Failed to parse internal IPv4 address: " << value;
-      }
-    } else if (key == kPPPExternalIP4Address) {
-      external_address = net_base::IPv4Address::CreateFromString(value);
-      if (!external_address.has_value()) {
-        LOG(WARNING) << "Failed to parse external IPv4 address: " << value;
-      }
-    } else if (key == kPPPGatewayAddress) {
-      config.ipv4_gateway = net_base::IPv4Address::CreateFromString(value);
-      if (!config.ipv4_gateway.has_value()) {
-        LOG(WARNING) << "Failed to parse internal gateway address: " << value;
       }
     } else if (key == kPPPDNS1) {
       const std::optional<net_base::IPAddress> dns_server =
@@ -174,17 +163,6 @@ net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
         continue;
       }
       config.dns_servers.push_back(*dns_server);
-    } else if (key == kPPPLNSAddress) {
-      // This is really a L2TPIPsec property. But it's sent to us by
-      // our PPP plugin.
-      const std::optional<net_base::IPCIDR> prefix =
-          net_base::IPCIDR::CreateFromStringAndPrefix(
-              value, net_base::IPv4CIDR::kMaxPrefixLength);
-      if (!prefix.has_value()) {
-        LOG(WARNING) << "Failed to parse LNS address: " << value;
-        continue;
-      }
-      config.excluded_route_prefixes.push_back(*prefix);
     } else if (key == kPPPMRU) {
       int mru;
       if (!base::StringToInt(value, &mru)) {
@@ -203,11 +181,6 @@ net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
     }
   }
 
-  // The presence of the external address suggests that this is a p2p network.
-  // No gateway is needed.
-  if (external_address.has_value()) {
-    config.ipv4_gateway = std::nullopt;
-  }
   return config;
 }
 
