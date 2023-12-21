@@ -1099,8 +1099,20 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryId(
   return LoadStoredRecoveryIdFromFile(recovery_id_path);
 }
 
+bool RecoveryCryptoImpl::EnsureRecoveryIdPresent(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  return GenerateRecoveryIdToFile(recovery_id_path, /*rotate=*/false);
+}
+
+bool RecoveryCryptoImpl::GenerateFreshRecoveryId(
+    const AccountIdentifier& account_id) const {
+  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
+  return GenerateRecoveryIdToFile(recovery_id_path, /*rotate=*/true);
+}
+
 bool RecoveryCryptoImpl::GenerateRecoveryIdToFile(
-    const base::FilePath& recovery_id_path) const {
+    const base::FilePath& recovery_id_path, bool rotate) const {
   if (recovery_id_path.empty()) {
     LOG(ERROR) << "Unable to get path to serialized RecoveryId container";
     return false;
@@ -1113,18 +1125,16 @@ bool RecoveryCryptoImpl::GenerateRecoveryIdToFile(
     // clearing it up before trying to generate a fresh one.
     recovery_id_pb.Clear();
   }
+  if (!rotate && recovery_id_pb.has_seed()) {
+    return true;
+  }
+
   GenerateRecoveryIdProto(&recovery_id_pb);
   if (!PersistRecoveryIdContainer(recovery_id_path, recovery_id_pb)) {
     LOG(ERROR) << "Unable to serialize the new Recovery Id";
     return false;
   }
   return true;
-}
-
-bool RecoveryCryptoImpl::GenerateRecoveryId(
-    const AccountIdentifier& account_id) const {
-  base::FilePath recovery_id_path = GetRecoveryIdPath(account_id);
-  return GenerateRecoveryIdToFile(recovery_id_path);
 }
 
 void RecoveryCryptoImpl::GenerateRecoveryIdProto(

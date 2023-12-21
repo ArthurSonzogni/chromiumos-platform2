@@ -579,19 +579,34 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
                                              &mediated_recovery_key));
 }
 
-TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
+TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryId) {
   AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
   // Generate a new seed and compute recovery_id.
-  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(recovery_id.empty());
   // Re-generate a recovery id from the existing persisted data.
-  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_FALSE(new_recovery_id.empty());
   EXPECT_NE(recovery_id, new_recovery_id);
+}
+
+TEST_F(RecoveryCryptoTest, GenerateFreshRecoveryIdWithoutRotation) {
+  AccountIdentifier account_id;
+  account_id.set_account_id(kFakeUserId);
+
+  // Generate a new seed and compute recovery_id.
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
+  std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_FALSE(recovery_id.empty());
+  // Retrieve the recovery id from the existing persisted data.
+  EXPECT_TRUE(recovery_->EnsureRecoveryIdPresent(account_id));
+  std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
+  EXPECT_FALSE(new_recovery_id.empty());
+  EXPECT_EQ(recovery_id, new_recovery_id);
 }
 
 TEST_F(RecoveryCryptoTest, NoRecoveryId) {
@@ -613,7 +628,7 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
   std::vector<std::string> recovery_id;
   // Generate an initial recovery_id and re-compute it a few times.
   for (int i = 0; i < kMaxRecoveryIdDepth; i++) {
-    EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+    EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
     std::string current_recovery_id =
         recovery_->LoadStoredRecoveryId(account_id);
     EXPECT_FALSE(current_recovery_id.empty());
@@ -635,7 +650,7 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
   std::vector<std::string> recovery_id;
   // Generate an initial recovery_id and re-compute it a few times.
   for (int i = 0; i < kRecoveryIdDepth; i++) {
-    EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+    EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
     std::string current_recovery_id =
         recovery_->LoadStoredRecoveryId(account_id);
     EXPECT_FALSE(current_recovery_id.empty());
@@ -654,7 +669,7 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
-  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   brillo::Blob pub_key;
   ASSERT_TRUE(HexStringToBlob(kHsmPublicKey, &pub_key));
@@ -672,14 +687,14 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
-  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_TRUE(platform_.WriteStringToFileAtomicDurable(
       GetRecoveryIdPath(account_id), kCorruptedRecoveryIdContainer,
       kKeyFilePermissions));
   // recovery_id from a corrupted container is empty and must be re-generated.
   EXPECT_THAT(recovery_->LoadStoredRecoveryId(account_id), testing::IsEmpty());
-  EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
+  EXPECT_TRUE(recovery_->GenerateFreshRecoveryId(account_id));
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
       kFakeGaiaId, kFakeDeviceId, new_recovery_id, mediator_pub_key_,

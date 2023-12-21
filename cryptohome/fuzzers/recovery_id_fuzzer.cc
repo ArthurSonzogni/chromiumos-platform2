@@ -61,7 +61,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       cryptorecovery::RecoveryCryptoImpl::Create(
           recovery_crypto_fake_backend.get(), &platform);
   CHECK(recovery);
-  if (recovery->GenerateRecoveryId(account_id)) {
+  if (recovery->GenerateFreshRecoveryId(account_id)) {
     // Generating a recovery_id from file was successful - we can now load the
     // value that was stored.
     std::ignore = recovery->LoadStoredRecoveryId(account_id).empty();

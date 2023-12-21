@@ -168,7 +168,7 @@ void CryptohomeRecoveryAuthBlock::Create(
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
   account_id.set_email(*auth_input.username);
-  if (!recovery->GenerateRecoveryId(account_id)) {
+  if (!recovery->GenerateFreshRecoveryId(account_id)) {
     LOG(ERROR) << "Unable to generate a new recovery_id";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(

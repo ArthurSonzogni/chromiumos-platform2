@@ -59,17 +59,23 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   std::string LoadStoredRecoveryIdFromFile(
       const base::FilePath& recovery_id_path) const;
   std::string LoadStoredRecoveryId(const AccountIdentifier& account_id) const;
-  // Creates a random seed and computes Recovery Id from it or (if the
-  // Recovery Id already exists) re-hashes and persists it in the cryptohome.
   // This method should be called on the initial creation of OnboardingMetadata
   // and after every successful recovery operation to refresh the Recovery Id.
   // Secrets used to generate Recovery Id are stored in cryptohome but the
   // resulting Recovery Id is part of OnboardingMetadata stored outside of the
   // cryptohome.
-  [[nodiscard]] bool GenerateRecoveryIdToFile(
-      const base::FilePath& recovery_id_path) const;
-  [[nodiscard]] bool GenerateRecoveryId(
+  // Creates a random seed and computes Recovery Id from it.
+  // If Recovery Id already exists - noop.
+  [[nodiscard]] bool EnsureRecoveryIdPresent(
       const AccountIdentifier& account_id) const;
+  // Creates a random seed and computes Recovery Id from it.
+  // If Recovery Id already exists - re-hashes and persists it in the
+  // cryptohome.
+  [[nodiscard]] bool GenerateFreshRecoveryId(
+      const AccountIdentifier& account_id) const;
+  [[nodiscard]] bool GenerateRecoveryIdToFile(
+      const base::FilePath& recovery_id_path, bool rotate) const;
+
   // Returns a vector of last |max_depth| Recovery ids. The current recovery_id
   // is returned as the first entry.
   std::vector<std::string> GetLastRecoveryIds(

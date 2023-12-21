@@ -226,7 +226,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   }
 
   // Generates a new recovery_id to be persisted on a chromebook.
-  if (!recovery_crypto->GenerateRecoveryIdToFile(recovery_id_file_path)) {
+  if (!recovery_crypto->GenerateRecoveryIdToFile(recovery_id_file_path,
+                                                 /*rotate=*/true)) {
     LOG(ERROR) << "Failed to generate a new recovery_id.";
     return false;
   }
