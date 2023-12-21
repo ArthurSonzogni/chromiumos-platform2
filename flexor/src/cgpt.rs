@@ -11,7 +11,8 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use gpt_disk_types::{guid, Guid, LbaRangeInclusive};
+use gpt_disk_types::{guid, LbaRangeInclusive};
+use uguid::Guid;
 use libchromeos::rand;
 use vboot_reference_sys::vboot_host;
 
