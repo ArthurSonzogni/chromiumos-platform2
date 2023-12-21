@@ -1,0 +1,10 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
+# The entries below are formatted as UID1:UID2, meaning:
+# "a process with UID1 is allowed to change its UID to UID2"
+
+# VM's root user (0) maps to hosts nobody (65534)
+# VM's default user (1000) maps to hosts shadercached (333)
+# nobody:shadercached
+65534:333
