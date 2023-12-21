@@ -1748,6 +1748,13 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
 
   // Report error.
   if (!error.IsSuccess()) {
+    // A failure in a DUN as DEFAULT disconnection procedure means that the
+    // attempt to connect back to the DEFAULT APN failed, so we must report
+    // the modem as disconnected.
+    if (operation->type == TetheringOperationType::kDisconnectDunAsDefaultPdn) {
+      OnDisconnected();
+    }
+
     LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
     std::move(operation->callback).Run(error);
     return;

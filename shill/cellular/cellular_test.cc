@@ -4078,6 +4078,9 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefaultFailedConnect) {
   device_->ReleaseTetheringNetwork(default_pdn_, future.GetCallback());
   Mock::VerifyAndClearExpectations(adaptor);
 
+  // Device must be disconnected after the failure.
+  VerifyDisconnect();
+
   // Operation should have finished already.
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get<Error>().IsFailure());
