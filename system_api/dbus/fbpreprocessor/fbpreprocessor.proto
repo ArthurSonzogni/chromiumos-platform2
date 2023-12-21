@@ -23,6 +23,13 @@ message WiFiDump {
     ATH11K = 3;
   }
   Vendor vendor = 3;
+  enum Compression {
+    COMPRESSION_UNSPECIFIED = 0;
+    UNCOMPRESSED = 1;
+    GZIP = 2;
+    ZSTD = 3;
+  }
+  Compression compression = 4;
 }
 
 message DebugDump {
