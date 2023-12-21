@@ -239,7 +239,7 @@ std::unique_ptr<dbus::MethodCall> GenerateFuzzedDBusCallMessage(
   if (provider.ConsumeBool()) {
     FuzzedProtoGenerator generator(breadcrumbs, provider);
     Blob argument = generator.Generate();
-    dbus_writer.AppendArrayOfBytes(argument.data(), argument.size());
+    dbus_writer.AppendArrayOfBytes(argument);
   }
 
   return dbus_call;
