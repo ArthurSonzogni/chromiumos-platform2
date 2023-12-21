@@ -83,7 +83,7 @@ class EncryptedFsTest : public ::testing::Test {
     ASSERT_TRUE(platform_.CreateDirectory(base::FilePath("/home/chronos")));
   }
 
-  void ExpectSetup(bool is_formatted) {
+  void ExpectSetup() {
     EXPECT_CALL(platform_, GetBlkSize(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(40920000), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
@@ -113,7 +113,7 @@ class EncryptedFsTest : public ::testing::Test {
 };
 
 TEST_F(EncryptedFsTest, RebuildStateful) {
-  ExpectSetup(/*is_formatted=*/false);
+  ExpectSetup();
   ExpectCreate();
 
   // Check if dm device is mounted and has the correct key.
@@ -136,7 +136,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
 }
 
 TEST_F(EncryptedFsTest, OldStateful) {
-  ExpectSetup(/*is_formatted=*/true);
+  ExpectSetup();
 
   // Create the fake backing device.
   ASSERT_TRUE(backing_device_->Create());
@@ -173,7 +173,7 @@ TEST_F(EncryptedFsTest, LoopdevTeardown) {
 
 TEST_F(EncryptedFsTest, DevmapperTeardown) {
   // Mount failed --> Teardown devmapper
-  ExpectSetup(/*is_formatted=*/true);
+  ExpectSetup();
   EXPECT_CALL(platform_, Mount(_, _, _, _, _)).WillOnce(Return(false));
 
   // Create the fake backing device.
