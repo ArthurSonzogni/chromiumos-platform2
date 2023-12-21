@@ -20,6 +20,7 @@ namespace arc::keymint {
 class CertStoreInstance : public mojom::CertStoreInstance {
  public:
   explicit CertStoreInstance(base::WeakPtr<KeyMintServer> keymint_server);
+  CertStoreInstance() = delete;
   CertStoreInstance(const CertStoreInstance&) = delete;
   CertStoreInstance& operator=(const CertStoreInstance&) = delete;
 

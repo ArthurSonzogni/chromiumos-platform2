@@ -35,6 +35,7 @@ class ChapsCryptoOperation : public CryptoOperation {
                        ContextAdaptor::Slot slot,
                        const std::string& label,
                        const brillo::Blob& id);
+  ChapsCryptoOperation() = delete;
   ~ChapsCryptoOperation() override;
   // Not copyable nor assignable.
   ChapsCryptoOperation(const ChapsCryptoOperation&) = delete;

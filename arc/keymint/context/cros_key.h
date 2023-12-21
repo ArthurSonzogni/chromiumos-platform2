@@ -30,6 +30,7 @@ class CrosKeyFactory : public ::keymaster::KeyFactory {
  public:
   CrosKeyFactory(base::WeakPtr<ContextAdaptor> context_adaptor,
                  keymaster_algorithm_t algorithm);
+  CrosKeyFactory() = delete;
   // Not copyable nor assignable.
   CrosKeyFactory(const CrosKeyFactory&) = delete;
   CrosKeyFactory& operator=(const CrosKeyFactory&) = delete;

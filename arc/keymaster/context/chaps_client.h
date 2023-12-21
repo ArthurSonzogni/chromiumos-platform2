@@ -31,6 +31,7 @@ class ChapsClient {
  public:
   ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor,
               ContextAdaptor::Slot slot);
+  ChapsClient() = delete;
   // Not copyable nor assignable.
   ChapsClient(const ChapsClient&) = delete;
   ChapsClient& operator=(const ChapsClient&) = delete;

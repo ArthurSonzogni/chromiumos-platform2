@@ -21,6 +21,7 @@ namespace keymaster {
 class CertStoreInstance : public mojom::CertStoreInstance {
  public:
   explicit CertStoreInstance(base::WeakPtr<KeymasterServer> keymaster_server);
+  CertStoreInstance() = delete;
   CertStoreInstance(const CertStoreInstance&) = delete;
   CertStoreInstance& operator=(const CertStoreInstance&) = delete;
 

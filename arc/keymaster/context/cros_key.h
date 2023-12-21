@@ -109,6 +109,7 @@ class CrosKey : public ::keymaster::Key {
           ::keymaster::AuthorizationSet&& sw_enforced,
           const CrosKeyFactory* key_factory,
           KeyData&& key_data);
+  CrosKey() = delete;
   ~CrosKey() override;
   // Not copyable nor assignable.
   CrosKey(const CrosKey&) = delete;
@@ -130,6 +131,7 @@ class ChapsKey : public CrosKey {
            ::keymaster::AuthorizationSet&& sw_enforced,
            const CrosKeyFactory* key_factory,
            KeyData&& key_data);
+  ChapsKey() = delete;
   ChapsKey(ChapsKey&& chaps_key);
   ~ChapsKey() override;
   ChapsKey& operator=(ChapsKey&&);
@@ -166,6 +168,7 @@ class CrosOperationFactory : public ::keymaster::OperationFactory {
  public:
   CrosOperationFactory(keymaster_algorithm_t algorithm,
                        keymaster_purpose_t purpose);
+  CrosOperationFactory() = delete;
   ~CrosOperationFactory() override;
   // Not copyable nor assignable.
   CrosOperationFactory(const CrosOperationFactory&) = delete;
@@ -188,6 +191,7 @@ class CrosOperationFactory : public ::keymaster::OperationFactory {
 class CrosOperation : public ::keymaster::Operation {
  public:
   CrosOperation(keymaster_purpose_t purpose, ChapsKey&& key);
+  CrosOperation() = delete;
   ~CrosOperation() override;
   // Not copyable nor assignable.
   CrosOperation(const CrosOperation&) = delete;
