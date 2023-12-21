@@ -168,7 +168,7 @@ void SessionStateManagerTest::EmitSuspendDone(const std::vector<uint8_t>& msg) {
   dbus::Signal signal(power_manager::kPowerManagerInterface,
                       power_manager::kSuspendDoneSignal);
   dbus::MessageWriter writer(&signal);
-  writer.AppendArrayOfBytes(msg.data(), msg.size());
+  writer.AppendArrayOfBytes(msg);
   it->second.Run(&signal);
 }
 
