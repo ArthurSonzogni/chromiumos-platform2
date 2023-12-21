@@ -11,14 +11,16 @@
 #include <base/files/file_util.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
-#include <base/run_loop.h>
 #include <base/strings/string_split.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_device.h>
 #include <brillo/udev/mock_udev_monitor.h>
 #include <brillo/unittest_utils.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -27,6 +29,7 @@
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/utils/mojo_test_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -39,6 +42,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::ByMove;
+using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
@@ -271,14 +275,12 @@ class ExternalDisplayEventsImplTest : public testing::Test {
   }
 
   void SetExecutorGetExternalDisplay(
-      base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors) {
-    connectors_ = std::move(connectors);
+      base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors,
+      base::OnceClosure on_finish = base::DoNothing()) {
     EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run(std::move(connectors_), std::nullopt);
-            }));
+        .WillOnce(DoAll(base::test::RunOnceClosure(std::move(on_finish)),
+                        base::test::RunOnceCallback<1>(std::move(connectors),
+                                                       std::nullopt)));
   }
 
   void TriggerExternalDisplayEvent() {
@@ -318,7 +320,6 @@ class ExternalDisplayEventsImplTest : public testing::Test {
   UdevEventsImpl* udev_events_impl() { return udev_events_impl_.get(); }
 
  private:
-  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors_;
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   std::unique_ptr<StrictMock<MockEventObserver>> event_observer_;
@@ -326,83 +327,81 @@ class ExternalDisplayEventsImplTest : public testing::Test {
 };
 
 TEST_F(ThunderboltEventTest, TestThunderboltAddEvent) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnAdd()).WillOnce([&]() { run_loop.Quit(); });
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_observer(), OnAdd())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   TriggerUdevEvent(kUdevActionAdd, nullptr);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(ThunderboltEventTest, TestThunderboltRemoveEvent) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnRemove()).WillOnce([&]() {
-    run_loop.Quit();
-  });
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_observer(), OnRemove())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   TriggerUdevEvent(kUdevActionRemove, nullptr);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(ThunderboltEventTest, TestThunderboltAuthorizedEvent) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnAuthorized()).WillOnce([&]() {
-    run_loop.Quit();
-  });
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_observer(), OnAuthorized())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   TriggerUdevEvent(kUdevActionChange, kThunderboltAuthorized);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(ThunderboltEventTest, TestThunderboltUnAuthorizedEvent) {
-  base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnUnAuthorized()).WillOnce([&]() {
-    run_loop.Quit();
-  });
+  base::test::TestFuture<void> future;
+  EXPECT_CALL(*mock_observer(), OnUnAuthorized())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   TriggerUdevEvent(kUdevActionChange, kThunderboltUnAuthorized);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(UsbEventTest, TestUsbAddEvent) {
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
+  mojom::UsbEventInfoPtr info;
   EXPECT_CALL(*mock_observer(), OnAdd(_))
-      .WillOnce([&](mojom::UsbEventInfoPtr info) {
-        EXPECT_EQ(info->vendor, kFakeUsbVendor);
-        EXPECT_EQ(info->name, kFakeUsbName);
-        EXPECT_EQ(info->vid, kFakeUsbVid);
-        EXPECT_EQ(info->pid, kFakeUsbPid);
-        EXPECT_THAT(info->categories,
-                    testing::UnorderedElementsAreArray(
-                        {"Wireless", "Human Interface Device", "Video"}));
-        run_loop.Quit();
-      });
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
 
   TriggerUdevEvent(kUdevActionAdd);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->vendor, kFakeUsbVendor);
+  EXPECT_EQ(info->name, kFakeUsbName);
+  EXPECT_EQ(info->vid, kFakeUsbVid);
+  EXPECT_EQ(info->pid, kFakeUsbPid);
+  EXPECT_THAT(info->categories,
+              testing::UnorderedElementsAreArray(
+                  {"Wireless", "Human Interface Device", "Video"}));
 }
 
 TEST_F(UsbEventTest, TestUsbRemoveEvent) {
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
+  mojom::UsbEventInfoPtr info;
   EXPECT_CALL(*mock_observer(), OnRemove(_))
-      .WillOnce([&](mojom::UsbEventInfoPtr info) {
-        EXPECT_EQ(info->vendor, kFakeUsbVendor);
-        EXPECT_EQ(info->name, kFakeUsbName);
-        EXPECT_EQ(info->vid, kFakeUsbVid);
-        EXPECT_EQ(info->pid, kFakeUsbPid);
-        EXPECT_THAT(info->categories,
-                    testing::UnorderedElementsAreArray(
-                        {"Wireless", "Human Interface Device", "Video"}));
-        run_loop.Quit();
-      });
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
 
   TriggerUdevEvent(kUdevActionRemove);
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->vendor, kFakeUsbVendor);
+  EXPECT_EQ(info->name, kFakeUsbName);
+  EXPECT_EQ(info->vid, kFakeUsbVid);
+  EXPECT_EQ(info->pid, kFakeUsbPid);
+  EXPECT_THAT(info->categories,
+              testing::UnorderedElementsAreArray(
+                  {"Wireless", "Human Interface Device", "Video"}));
 }
 
 TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
@@ -411,32 +410,24 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
     // difficulty of setting up udev_monitor dependency. Here we manually set up
     // the starting state through triggering a external_display event before
     // initializing observer.
-    base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run({}, std::nullopt);
-              run_loop.Quit();
-            }));
+    base::test::TestFuture<void> future;
+    SetExecutorGetExternalDisplay({}, future.GetCallback());
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   InitializeObserver();
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     mojom::EventInfoPtr recv_info;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info = std::move(info);
-          run_loop.Quit();
-        });
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
+                        base::test::RunOnceClosure(future.GetCallback())));
     TriggerExternalDisplayEvent();
-    run_loop.Run();
-    recv_info->is_external_display_event_info();
+    EXPECT_TRUE(future.Wait());
+    EXPECT_TRUE(recv_info->is_external_display_event_info());
     EXPECT_EQ(recv_info->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
@@ -450,32 +441,24 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
     // difficulty of setting up udev_monitor dependency. Here we manually set up
     // the starting state through triggering a external_display event before
     // initializing observer.
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
-    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run(std::move(connectors), std::nullopt);
-              run_loop.Quit();
-            }));
+    SetExecutorGetExternalDisplay(std::move(connectors), future.GetCallback());
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   InitializeObserver();
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     mojom::EventInfoPtr recv_info;
     SetExecutorGetExternalDisplay({});
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info = std::move(info);
-          run_loop.Quit();
-        });
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
+                        base::test::RunOnceClosure(future.GetCallback())));
     TriggerExternalDisplayEvent();
-    run_loop.Run();
-    recv_info->is_external_display_event_info();
+    EXPECT_TRUE(future.Wait());
+    EXPECT_TRUE(recv_info->is_external_display_event_info());
     EXPECT_EQ(
         recv_info->get_external_display_event_info()->state,
         ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kRemove);
@@ -490,51 +473,44 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     // difficulty of setting up udev_monitor dependency. Here we manually set up
     // the starting state through triggering a external_display event before
     // initializing observer.
-    base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run({}, std::nullopt);
-              run_loop.Quit();
-            }));
+    base::test::TestFuture<void> future;
+    base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
+    SetExecutorGetExternalDisplay(std::move(connectors), future.GetCallback());
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   InitializeObserver();
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
+        .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
+        .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     mojom::EventInfoPtr recv_info;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display2");
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info = std::move(info);
-          run_loop.Quit();
-        });
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
+                        base::test::RunOnceClosure(future.GetCallback())));
     TriggerExternalDisplayEvent();
-    run_loop.Run();
-    recv_info->is_external_display_event_info();
+    EXPECT_TRUE(future.Wait());
+    EXPECT_TRUE(recv_info->is_external_display_event_info());
     EXPECT_EQ(recv_info->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
@@ -548,20 +524,14 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
     // difficulty of setting up udev_monitor dependency. Here we manually set up
     // the starting state through triggering a external_display event before
     // initializing observer.
-    base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run({}, std::nullopt);
-              run_loop.Quit();
-            }));
+    base::test::TestFuture<void> future;
+    SetExecutorGetExternalDisplay({}, future.GetCallback());
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   InitializeObserver();
   {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     mojom::EventInfoPtr recv_info_1;
     mojom::EventInfoPtr recv_info_2;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
@@ -569,23 +539,20 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
     connectors[2] = GenerateExternalDisplayInfo("display2");
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-        .WillOnce(
-            [&](mojom::EventInfoPtr info) { recv_info_1 = std::move(info); })
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info_2 = std::move(info);
-          run_loop.Quit();
-        });
+        .WillOnce(SaveMojomArg<0>(&recv_info_1))
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info_2),
+                        base::test::RunOnceClosure(future.GetCallback())));
 
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
 
-    recv_info_1->is_external_display_event_info();
+    EXPECT_TRUE(recv_info_1->is_external_display_event_info());
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
 
-    recv_info_2->is_external_display_event_info();
+    EXPECT_TRUE(recv_info_2->is_external_display_event_info());
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
@@ -599,16 +566,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
     // difficulty of setting up udev_monitor dependency. Here we manually set up
     // the starting state through triggering a external_display event before
     // initializing observer.
-    base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
-        .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
-                    callback) {
-              std::move(callback).Run({}, std::nullopt);
-              run_loop.Quit();
-            }));
+    base::test::TestFuture<void> future;
+    SetExecutorGetExternalDisplay({}, future.GetCallback());
     TriggerExternalDisplayEvent();
-    run_loop.Run();
+    EXPECT_TRUE(future.Wait());
   }
   mojo::PendingRemote<mojom::EventObserver> external_display_observer_1;
   mojo::PendingReceiver<mojom::EventObserver> observer_receiver_1(
@@ -627,32 +588,28 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
       std::move(external_display_observer_2));
 
   {
-    base::RunLoop run_loop_1;
-    base::RunLoop run_loop_2;
+    base::test::TestFuture<void> future_1;
+    base::test::TestFuture<void> future_2;
     mojom::EventInfoPtr recv_info_1;
     mojom::EventInfoPtr recv_info_2;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
     SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*event_observer_1.get(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info_1 = std::move(info);
-          run_loop_1.Quit();
-        });
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info_1),
+                        base::test::RunOnceClosure(future_1.GetCallback())));
     EXPECT_CALL(*event_observer_2.get(), OnEvent(_))
-        .WillOnce([&](mojom::EventInfoPtr info) {
-          recv_info_2 = std::move(info);
-          run_loop_2.Quit();
-        });
+        .WillOnce(DoAll(SaveMojomArg<0>(&recv_info_2),
+                        base::test::RunOnceClosure(future_2.GetCallback())));
     TriggerExternalDisplayEvent();
-    run_loop_1.Run();
-    run_loop_2.Run();
-    recv_info_1->is_external_display_event_info();
+    EXPECT_TRUE(future_1.Wait());
+    EXPECT_TRUE(future_2.Wait());
+    EXPECT_TRUE(recv_info_1->is_external_display_event_info());
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
-    recv_info_2->is_external_display_event_info();
+    EXPECT_TRUE(recv_info_2->is_external_display_event_info());
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,

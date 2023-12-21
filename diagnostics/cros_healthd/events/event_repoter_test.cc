@@ -2,15 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/run_loop.h>
+#include "diagnostics/cros_healthd/events/event_reporter.h"
+
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/events/event_reporter.h"
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/utils/mojo_test_utils.h"
 #include "diagnostics/mojom/external/input.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -20,6 +23,7 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
+using ::testing::DoAll;
 
 class EventReporterTest : public testing::Test {
   void SetUp() {
@@ -42,18 +46,18 @@ TEST_F(EventReporterTest, KeyboardDiagnostic) {
   keyboard_diagnostic_event_info->keyboard_info =
       ash::diagnostics::mojom::KeyboardInfo::New();
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
+  mojom::EventInfoPtr recv_info;
   EXPECT_CALL(mock_observer_, OnEvent(_))
-      .WillOnce([&](mojom::EventInfoPtr info) {
-        EXPECT_TRUE(info->is_keyboard_diagnostic_event_info());
-        EXPECT_EQ(info->get_keyboard_diagnostic_event_info(),
-                  keyboard_diagnostic_event_info);
-        run_loop.Quit();
-      });
+      .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
+                      base::test::RunOnceClosure(future.GetCallback())));
 
   event_reporter_->SendKeyboardDiagnosticEvent(
       keyboard_diagnostic_event_info.Clone());
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
+  EXPECT_TRUE(recv_info->is_keyboard_diagnostic_event_info());
+  EXPECT_EQ(recv_info->get_keyboard_diagnostic_event_info(),
+            keyboard_diagnostic_event_info);
 }
 
 }  // namespace

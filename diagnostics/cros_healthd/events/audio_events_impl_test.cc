@@ -9,14 +9,15 @@
 
 #include <base/check.h>
 #include <base/functional/callback.h>
-#include <base/run_loop.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
+#include <cras/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -110,27 +111,23 @@ class AudioEventsImplTest : public testing::Test {
 };
 
 TEST_F(AudioEventsImplTest, UnderrunEvent) {
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   SetExpectedEvent(mojom::AudioEventInfo::State::kUnderrun);
-  EXPECT_CALL(*mock_deprecated_observer(), OnUnderrun()).WillOnce([&]() {
-    run_loop.Quit();
-  });
+  EXPECT_CALL(*mock_deprecated_observer(), OnUnderrun())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   InvokeUnderrunEvent();
-
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(AudioEventsImplTest, SevereUnderrunEvent) {
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   SetExpectedEvent(mojom::AudioEventInfo::State::kSevereUnderrun);
-  EXPECT_CALL(*mock_deprecated_observer(), OnSevereUnderrun()).WillOnce([&]() {
-    run_loop.Quit();
-  });
+  EXPECT_CALL(*mock_deprecated_observer(), OnSevereUnderrun())
+      .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
   InvokeSevereUnderrunEvent();
-
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 }  // namespace
