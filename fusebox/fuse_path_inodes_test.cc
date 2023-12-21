@@ -16,7 +16,6 @@ TEST(FusePathInodesTest, RootNode) {
   EXPECT_TRUE(root);
   EXPECT_EQ(0, root->device);
   EXPECT_EQ(1, root->ino);
-  EXPECT_EQ(1, root->refcount);
 
   // Root has a name and full path name.
   EXPECT_EQ("/", inodes.GetName(root->ino));
@@ -176,7 +175,6 @@ TEST(FusePathInodesTest, ChildNode) {
   EXPECT_TRUE(node);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, node->ino);
   EXPECT_EQ(1, node->parent);
-  EXPECT_EQ(1, node->refcount);
 
   // Node can be found by ino lookup.
   EXPECT_EQ(node, inodes.Lookup(node->ino));
@@ -200,22 +198,11 @@ TEST(FusePathInodesTest, ChildNodeForget) {
   // Create a child of the root node.
   Node* node = inodes.Create(1, "foo");
   EXPECT_TRUE(node);
-  EXPECT_EQ(FIRST_UNRESERVED_INO + 0, node->ino);
+  const ino_t ino = FIRST_UNRESERVED_INO + 0;
+  EXPECT_EQ(ino, node->ino);
   EXPECT_EQ(1, node->parent);
-  EXPECT_EQ(1, node->refcount);
 
-  // Nodes have a refcount.
-  node->refcount = 2;
-  Node* lookup = inodes.Lookup(FIRST_UNRESERVED_INO + 0);
-  EXPECT_EQ(node, lookup);
-  EXPECT_EQ(2, node->refcount);
-
-  // Forget reduces the node refcount by 1.
-  const ino_t ino = node->ino;
-  EXPECT_FALSE(inodes.Forget(ino));
-  EXPECT_EQ(1, node->refcount);
-
-  // And removes the node at refcount 0.
+  // Forget removes the node.
   EXPECT_TRUE(inodes.Forget(ino));
   errno = 0;
   EXPECT_FALSE(inodes.Lookup(ino));
@@ -234,14 +221,12 @@ TEST(FusePathInodesTest, ChildNodeChild) {
   EXPECT_TRUE(node);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, node->ino);
   EXPECT_EQ(1, node->parent);
-  EXPECT_EQ(1, node->refcount);
 
   // Create a child of the "foo" node.
   Node* child = inodes.Create(FIRST_UNRESERVED_INO + 0, "bar");
   EXPECT_TRUE(child);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 1, child->ino);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, child->parent);
-  EXPECT_EQ(1, child->refcount);
 
   // Child node has a name and a full path name.
   EXPECT_EQ("/bar", inodes.GetName(child->ino));
@@ -348,38 +333,20 @@ TEST(FusePathInodesTest, ChildNodeEnsure) {
   EXPECT_TRUE(foo);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, foo->ino);
   EXPECT_EQ(1, foo->parent);
-  EXPECT_EQ(1, foo->refcount);
 
   // Ensure and Lookup should return that node.
   EXPECT_EQ(foo, inodes.Ensure(1, "foo"));
-  EXPECT_EQ(1, foo->refcount);
   EXPECT_EQ(foo, inodes.Lookup(1, "foo"));
-  EXPECT_EQ(1, foo->refcount);
-
-  // Ensure and Lookup can change the node refcount.
-  EXPECT_EQ(foo, inodes.Ensure(1, "foo", 2));
-  EXPECT_EQ(3, foo->refcount);
-  EXPECT_EQ(foo, inodes.Lookup(1, "foo", 2));
-  EXPECT_EQ(5, foo->refcount);
 
   // Create a child of the "foo" node.
-  Node* bar = inodes.Ensure(FIRST_UNRESERVED_INO + 0, "bar", 1);
+  Node* bar = inodes.Ensure(FIRST_UNRESERVED_INO + 0, "bar");
   EXPECT_TRUE(bar);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 1, bar->ino);
   EXPECT_EQ(FIRST_UNRESERVED_INO + 0, bar->parent);
-  EXPECT_EQ(2, bar->refcount);
 
   // Ensure and Lookup should return that node.
   EXPECT_EQ(bar, inodes.Lookup(FIRST_UNRESERVED_INO + 0, "bar"));
-  EXPECT_EQ(2, bar->refcount);
   EXPECT_EQ(bar, inodes.Ensure(FIRST_UNRESERVED_INO + 0, "bar"));
-  EXPECT_EQ(2, bar->refcount);
-
-  // Ensure and Lookup can change the node refcount.
-  EXPECT_EQ(bar, inodes.Lookup(FIRST_UNRESERVED_INO + 0, "bar", 3));
-  EXPECT_EQ(5, bar->refcount);
-  EXPECT_EQ(bar, inodes.Ensure(FIRST_UNRESERVED_INO + 0, "bar", 3));
-  EXPECT_EQ(8, bar->refcount);
 }
 
 TEST(FusePathInodesTest, NodeStatCache) {

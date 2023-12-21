@@ -72,8 +72,8 @@ void BuiltInReadPing(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
 }  // namespace
 
 void BuiltInEnsureNodes(InodeTable& itab) {
-  itab.Ensure(INO_BUILT_IN, kFuseStatusFilename, 0, INO_BUILT_IN_FUSE_STATUS);
-  itab.Ensure(INO_BUILT_IN, kPingFilename, 0, INO_BUILT_IN_PING);
+  itab.Ensure(INO_BUILT_IN, kFuseStatusFilename, INO_BUILT_IN_FUSE_STATUS);
+  itab.Ensure(INO_BUILT_IN, kPingFilename, INO_BUILT_IN_PING);
 }
 
 void BuiltInGetStat(ino_t ino, struct stat* stat) {

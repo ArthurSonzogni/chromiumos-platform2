@@ -30,11 +30,10 @@ enum {
 };
 
 struct Node {
-  dev_t device;       // Device number
-  ino_t parent;       // Parent ino
-  ino_t ino;          // Inode ino
-  std::string name;   // Entry name with "/" prefix
-  uint64_t refcount;  // Ref count
+  dev_t device;      // Device number
+  ino_t parent;      // Parent ino
+  ino_t ino;         // Inode ino
+  std::string name;  // Entry name with "/" prefix
 };
 
 struct Device {
@@ -59,28 +58,27 @@ class InodeTable {
   // global counter if |ino| is zero.
   Node* Create(ino_t parent, const char* name, ino_t ino = 0);
 
-  // Lookup the node table by |ino| and return its node. The node refcount is
-  // increased by |ref|. Returns null on failure.
-  Node* Lookup(ino_t ino, uint64_t ref = 0);
+  // Lookup the node table by |ino| and return its node. Returns null on
+  // failure.
+  Node* Lookup(ino_t ino);
 
   // Lookup the table by |parent| and child node |name|, and return the node.
-  // The node refcount is increased by |ref|. Returns null on failure.
-  Node* Lookup(ino_t parent, const char* name, uint64_t ref = 0);
+  // Returns null on failure.
+  Node* Lookup(ino_t parent, const char* name);
 
-  // Lookup(parent, name, ref) that creates the |parent| child node |name| if
-  // it does not exist. Returns null on failure.
+  // Lookup(parent, name) that creates the |parent| child node |name| if it
+  // does not exist. Returns null on failure.
   //
   // The new node will have the given |ino|, or an automatically incremented
   // global counter if |ino| is zero.
-  Node* Ensure(ino_t parent, const char* name, uint64_t ref = 0, ino_t ino = 0);
+  Node* Ensure(ino_t parent, const char* name, ino_t ino = 0);
 
   // Move a table |node| to be the child node |name| of |parent| ino. Returns
   // the node or null on failure.
   Node* Move(Node* node, ino_t parent, const char* name);
 
-  // Forget |nlookup| refcounts to an |ino|. Deletes the node if its refcount
-  // becomes 0. Returns true if the node was deleted.
-  bool Forget(ino_t ino, uint64_t nlookup = 1);
+  // Deletes the node for |ino|. Returns true if the node was deleted.
+  bool Forget(ino_t ino);
 
   // Returns the node |name| field, or empty string if the node was not found
   // in the node table.

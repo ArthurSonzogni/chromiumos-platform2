@@ -24,7 +24,6 @@ Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
   node->parent = parent;
   node->ino = ino;
   node->name = child;
-  node->refcount = 1;
   return node;
 }
 
@@ -82,17 +81,15 @@ Node* InodeTable::Create(ino_t parent, const char* name, ino_t ino) {
   return node;
 }
 
-Node* InodeTable::Lookup(ino_t ino, uint64_t ref) {
+Node* InodeTable::Lookup(ino_t ino) {
   auto n = node_map_.find(ino);
   if (n == node_map_.end())
     return NodeError(ENOENT);
 
-  Node* node = n->second.get();
-  node->refcount += ref;
-  return node;
+  return n->second.get();
 }
 
-Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
+Node* InodeTable::Lookup(ino_t parent, const char* name) {
   std::string child = GetChildNodeName(name);
   if (child.empty())
     return NodeError(EINVAL);
@@ -101,15 +98,10 @@ Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
   if (p == parent_map_.end())
     return NodeError(ENOENT);
 
-  Node* node = p->second;
-  node->refcount += ref;
-  return node;
+  return p->second;
 }
 
-Node* InodeTable::Ensure(ino_t parent,
-                         const char* name,
-                         uint64_t ref,
-                         ino_t ino) {
+Node* InodeTable::Ensure(ino_t parent, const char* name, ino_t ino) {
   std::string child = GetChildNodeName(name);
   if (child.empty() || !parent)
     return NodeError(EINVAL);
@@ -120,13 +112,11 @@ Node* InodeTable::Ensure(ino_t parent,
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
   if (p != parent_map_.end()) {
-    p->second->refcount += ref;
     return p->second;
   }
 
   Node* node = InsertNode(CreateNode(parent, child, ino ? ino : CreateIno()));
   node->device = parent_it->second->device;
-  node->refcount += ref;
   return node;
 }
 
@@ -154,18 +144,13 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   return InsertNode(node);
 }
 
-bool InodeTable::Forget(ino_t ino, uint64_t nlookup) {
+bool InodeTable::Forget(ino_t ino) {
   if (!ino || ino == root_node_->ino)
     return false;  // Ignore root node.
 
   Node* node = Lookup(ino);
   if (!node)
     return false;
-
-  if (nlookup < node->refcount) {
-    node->refcount -= nlookup;
-    return false;
-  }
 
   delete RemoveNode(node);
   ForgetStat(ino);
