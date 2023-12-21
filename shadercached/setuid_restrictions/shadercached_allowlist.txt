@@ -8,3 +8,4 @@
 # VM's default user (1000) maps to hosts shadercached (333)
 # nobody:shadercached
 65534:333
+333:333
