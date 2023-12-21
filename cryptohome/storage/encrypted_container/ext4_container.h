@@ -20,6 +20,8 @@
 
 namespace cryptohome {
 
+constexpr uint64_t kExt4BlockSize = 4096;
+
 // `DmcryptContainer` is a block-level encrypted container, complete with its
 // own filesystem (by default ext4). The backing storage for the dm-crypt
 // container is currently a loopback device over a sparse file.
@@ -45,6 +47,8 @@ class Ext4Container : public EncryptedContainer {
   bool Teardown() override { return backing_container_->Teardown(); }
 
   bool Exists() override;
+
+  bool Resize(int64_t size_in_bytes) override;
 
   EncryptedContainerType GetType() const override {
     // Filesystem is not important since this layer is not encrypted.
@@ -86,6 +90,9 @@ class Ext4Container : public EncryptedContainer {
   // Store the prefix to use for filesystem metrics, if the container is
   // tracked on UMA, an empty string otherwise.
   std::string metrics_prefix_;
+
+  // size of the filesystem in blocks, collected at Setup() and Resize().
+  int64_t blk_count_;
 
   // To send data to UMA. Since templated methods must be implemented in the
   // headers, implements all the needed functions here.

@@ -83,6 +83,10 @@ class EncryptedContainer {
   virtual bool Teardown() = 0;
   // Checks if the container exists on disk.
   virtual bool Exists() = 0;
+  // Resize the container
+  // Return false when resizing failed.
+  // size of 0 resize to the size of the underlaying container / backing device.
+  virtual bool Resize(int64_t size_in_bytes) { return false; }
   // Gets the type of the encrypted container.
   virtual EncryptedContainerType GetType() const = 0;
   // Resets the backing storage of the container. While Purge removes the

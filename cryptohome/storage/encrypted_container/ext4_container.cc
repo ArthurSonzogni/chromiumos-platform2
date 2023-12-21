@@ -130,7 +130,8 @@ Ext4Container::Ext4Container(
       backing_container_(std::move(backing_container)),
       platform_(platform),
       metrics_(metrics),
-      metrics_prefix_(GetMetricsPrefix(GetBackingLocation())) {}
+      metrics_prefix_(GetMetricsPrefix(GetBackingLocation())),
+      blk_count_(0) {}
 
 bool Ext4Container::Purge() {
   return backing_container_->Purge();
@@ -140,7 +141,8 @@ bool Ext4Container::Exists() {
   if (!backing_container_->Exists())
     return false;
 
-  // TODO(gwendal): Check there is a valid superblock.
+  // TODO(gwendal): Check there is a valid superblock by checking the signature,
+  // sb->s_magic == EXT2_SUPER_MAGIC.
   return true;
 }
 
@@ -254,7 +256,50 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
   // Gather Filesystem errors from superblock.
   SendSample("_ErrorCount", super_block.s_error_count, 0, 100000, 20);
 
+  blk_count_ = ext2fs_blocks_count(&super_block);
+
   std::move(device_cleanup_runner).Cancel();
+  return true;
+}
+
+bool Ext4Container::Resize(int64_t size_in_bytes) {
+  if (size_in_bytes % kExt4BlockSize) {
+    LOG(WARNING) << "Only multiple of block allowed: requested size: "
+                 << size_in_bytes << "will be truncated.";
+  }
+
+  base::FilePath device = GetBackingLocation();
+  uint64_t device_size_in_bytes;
+  if (!platform_->GetBlkSize(device, &device_size_in_bytes) ||
+      device_size_in_bytes < kExt4BlockSize) {
+    PLOG(ERROR) << "Failed to get block device size";
+    return false;
+  }
+
+  uint64_t desired_blk_count;
+  if (size_in_bytes == 0) {
+    desired_blk_count = device_size_in_bytes / kExt4BlockSize;
+  } else {
+    desired_blk_count = size_in_bytes / kExt4BlockSize;
+    if (desired_blk_count > device_size_in_bytes / kExt4BlockSize) {
+      LOG(ERROR) << "Resizing the underlying device is not supported yet. "
+                    "Requested size "
+                 << size_in_bytes << " greater than block size "
+                 << device_size_in_bytes << ".";
+      return false;
+    }
+  }
+
+  if (blk_count_ != desired_blk_count) {
+    LOG(INFO) << "Filesystem resized for " << device << " from "
+              << blk_count_ * kExt4BlockSize << " bytes to "
+              << desired_blk_count * kExt4BlockSize << " bytes.";
+    if (!platform_->ResizeFilesystem(device, desired_blk_count)) {
+      PLOG(ERROR) << "Filesystem resize failed for " << device;
+      return false;
+    }
+    blk_count_ = desired_blk_count;
+  }
   return true;
 }
 

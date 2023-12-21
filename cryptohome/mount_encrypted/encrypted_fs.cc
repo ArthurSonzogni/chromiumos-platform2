@@ -43,9 +43,8 @@ constexpr char kDumpe2fsLogPath[] = "/run/mount_encrypted/dumpe2fs.log";
 constexpr char kProcDirtyExpirePath[] = "/proc/sys/vm/dirty_expire_centisecs";
 constexpr float kSizePercent = 0.3;
 constexpr uint64_t kExt4BlockSize = 4096;
-constexpr uint64_t kExt4MinBytes = 16 * 1024 * 1024;
-constexpr unsigned int kResizeStepSeconds = 2;
-constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
+// Block size is 4k => Minimum free space available to try resizing is 400MB.
+constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 constexpr uid_t kRootUid = 0;
@@ -79,44 +78,6 @@ bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
   }
 
   return true;
-}
-
-// TODO(sarthakkukreti): Evaulate resizing: it is a no-op on new encrypted
-// stateful setups and would slow down boot once for legacy devices on update,
-// as long as we do not iteratively resize.
-// Spawns a filesystem resizing process and waits for it to finish.
-void SpawnResizer(cryptohome::Platform* platform,
-                  const base::FilePath& device,
-                  uint64_t blocks,
-                  uint64_t blocks_max) {
-  // Ignore resizing if we know the filesystem was built to max size.
-  if (blocks >= blocks_max) {
-    PLOG(ERROR) << " Resizing aborted";
-    return;
-  }
-
-  // TODO(keescook): Read superblock to find out the current size of
-  // the filesystem (since statvfs does not report the correct value).
-  // For now, instead of doing multi-step resizing, just resize to the
-  // full size of the block device in one step.
-  blocks = blocks_max;
-
-  LOG(INFO) << "Resizing started in " << kResizeStepSeconds << " second steps.";
-
-  do {
-    blocks += kExt4ResizeBlocks;
-
-    if (blocks > blocks_max)
-      blocks = blocks_max;
-
-    // Run the resizing function. For a fresh setup, the resize should be
-    // a no-op, the only case where this might be slow is legacy devices which
-    // have a smaller encrypted stateful partition.
-    platform->ResizeFilesystem(device, blocks);
-  } while (blocks < blocks_max);
-
-  LOG(INFO) << "Resizing done.";
-  return;
 }
 
 std::string GetMountOpts() {
@@ -325,6 +286,18 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     return RESULT_FAIL_FATAL;
   }
 
+  // Trigger filesystem resizer, in case growth was interrupted.
+  // TODO(keescook): if already full size, don't resize.
+  // If there aren't enough blocks
+  // available, we might succeed here but eventually fail to resize and corrupt
+  // the encrypted stateful file system. Check if there are at least a few
+  // blocks available on the stateful partition.
+  if (stateful_statbuf.f_bfree > kMinBlocksAvailForResize &&
+      !container_->Resize(0)) {
+    LOG(ERROR) << "Failed to resize stateful";
+    return RESULT_FAIL_FATAL;
+  }
+
   // Mount the dm-crypt partition finally.
   LOG(INFO) << "Mounting " << dmcrypt_dev_ << " onto " << encrypted_mount_;
   if (platform_->Access(encrypted_mount_, R_OK) &&
@@ -347,11 +320,6 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     TeardownByStage(TeardownStage::kTeardownContainer, true);
     return RESULT_FAIL_FATAL;
   }
-
-  // Always spawn filesystem resizer, in case growth was interrupted.
-  // TODO(keescook): if already full size, don't resize.
-  SpawnResizer(platform_, dmcrypt_dev_, kExt4MinBytes / kExt4BlockSize,
-               fs_size_ / kExt4BlockSize);
 
   // Perform bind mounts.
   for (auto& bind : bind_mounts_) {
