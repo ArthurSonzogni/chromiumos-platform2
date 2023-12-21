@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/message.h>
@@ -36,9 +37,7 @@ void WriteEmptyProtoToSignal(dbus::Signal* signal) {
   ASSERT_TRUE(signal);
   const std::string kSerializedProto;
   dbus::MessageWriter writer(signal);
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(kSerializedProto.data()),
-      kSerializedProto.size());
+  writer.AppendArrayOfBytes(base::as_byte_span(kSerializedProto));
 }
 
 class MockPowerdAdapterPowerObserver : public PowerdAdapter::PowerObserver {
