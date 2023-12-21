@@ -243,8 +243,7 @@ class DlpAdaptorTest : public ::testing::Test {
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
 
-    std::vector<uint8_t> proto_blob = RandomProtoBlob();
-    writer.AppendArrayOfBytes(proto_blob.data(), proto_blob.size());
+    writer.AppendArrayOfBytes(RandomProtoBlob());
     std::move(*response_callback).Run(response.get());
   }
 
