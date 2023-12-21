@@ -343,6 +343,7 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
           .height = blob_stream_->height,
           .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
           .usage = GRALLOC_USAGE_SW_READ_OFTEN,
+          .physical_camera_id = blob_stream_->physical_camera_id,
           .crop_rotate_scale_degrees = hal_crs_degrees,
       };
       yuv_stream_for_blob_ = &yuv_stream_for_blob_owned_.value();
