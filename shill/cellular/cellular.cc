@@ -1739,29 +1739,25 @@ bool Cellular::IsTetheringOperationDunMultiplexedDisconnectOngoing() {
 }
 
 void Cellular::CompleteTetheringOperation(const Error& error) {
-  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
-  bool multiplexed_dun_ongoing =
-      (IsTetheringOperationDunMultiplexedConnectOngoing() ||
-       IsTetheringOperationDunMultiplexedDisconnectOngoing());
-  CHECK(dun_as_default_ongoing || multiplexed_dun_ongoing);
-
-  // Reset operation info right away, as there are certain generic actions
-  // updated to ignore events if a tethering operation is ongoing.
-  ResultCallback callback = std::move(tethering_operation_->callback);
-  bool apn_connected = tethering_operation_->apn_connected;
-  tethering_operation_ = std::nullopt;
+  // Steal the operation info from the private member, as there are certain
+  // generic actions updated to ignore events if a tethering operation is
+  // ongoing.
+  CHECK(tethering_operation_);
+  auto operation = std::move(tethering_operation_);
+  tethering_operation_.reset();
 
   // Report error.
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
-    std::move(callback).Run(error);
+    std::move(operation->callback).Run(error);
     return;
   }
 
   // On a successful completion of any DUN as DEFAULT operation (either
   // connect or disconnect, the APN must have been connected.
-  if (dun_as_default_ongoing) {
-    CHECK(apn_connected);
+  if (operation->type == TetheringOperationType::kConnectDunAsDefaultPdn ||
+      operation->type == TetheringOperationType::kDisconnectDunAsDefaultPdn) {
+    CHECK(operation->apn_connected);
   }
 
   // If the tethering specific multiplexed Network was just connected, start
@@ -1770,17 +1766,18 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   // TODO(b/291845893): Remove this special case once the portal detection state
   // machine is entirely controlled from Network and once Device is not involved
   // anymore.
-  if (multiplexed_dun_ongoing && multiplexed_tethering_pdn_) {
+  if (operation->type == TetheringOperationType::kConnectDunMultiplexed &&
+      multiplexed_tethering_pdn_) {
     // On a successful completion of a multiplexed DUN connection, the APN must
     // have been connected.
-    CHECK(apn_connected);
+    CHECK(operation->apn_connected);
     multiplexed_tethering_pdn_->network()->StartPortalDetection(
         NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
   }
 
   // Report success.
   LOG(INFO) << LoggingTag() << ": Tethering operation successful";
-  std::move(callback).Run(Error(Error::kSuccess));
+  std::move(operation->callback).Run(Error(Error::kSuccess));
 }
 
 void Cellular::NotifyCellularConnectionResultInTetheringOperation(
