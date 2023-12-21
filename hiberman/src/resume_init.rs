@@ -40,11 +40,11 @@ impl ResumeInitConductor {
         if cookie == HibernateCookieValue::ResumeReady || self.options.force {
             if cookie == HibernateCookieValue::ResumeReady {
                 let volume_manager = VOLUME_MANAGER.read().unwrap();
-                let _hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
+                let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
                 metrics_logger.log_event(HibernateEvent::ResumePending);
-                metrics_logger.flush()?;
+                metrics_logger.flush(&hibermeta_mount)?;
             } else {
                 info!("Hibernate cookie was not set, continuing anyway due to --force");
             }

@@ -124,7 +124,7 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::Syslog);
 
         // Mount hibermeta for access to logs and metrics. Create it if it doesn't exist yet.
-        let _hibermeta_mount = {
+        let hibermeta_mount = {
             let volume_manager = VOLUME_MANAGER.read().unwrap();
             let res = volume_manager.setup_hibermeta_lv(true);
             match res {
@@ -151,7 +151,7 @@ impl ResumeConductor {
         // dm-snapshots to merge with their origins.
         drop(pending_merge);
         // Read the metrics files to send out samples.
-        read_and_send_metrics();
+        read_and_send_metrics(&hibermeta_mount);
 
         result
     }
@@ -358,7 +358,7 @@ impl ResumeConductor {
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
             // Flush the metrics file before unmounting 'hibermeta'.
-            metrics_logger.flush()?;
+            metrics_logger.flush(&hibermeta_mount)?;
         }
 
         // Keep logs in memory for now.

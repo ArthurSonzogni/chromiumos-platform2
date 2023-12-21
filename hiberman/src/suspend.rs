@@ -104,11 +104,11 @@ impl SuspendConductor<'_> {
         log_metric_event(HibernateEvent::SuspendAttempt);
 
         if let Err(e) = self.hibernate_inner() {
-            let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+            let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
 
             log_metric_event(HibernateEvent::SuspendFailure);
 
-            read_and_send_metrics();
+            read_and_send_metrics(&hibermeta_mount);
 
             return Err(e);
         }
@@ -175,7 +175,7 @@ impl SuspendConductor<'_> {
             // SuspendFailure event is recorded in hibernate()
         }
 
-        let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+        let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
 
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
@@ -190,7 +190,7 @@ impl SuspendConductor<'_> {
         }
 
         // Read the metrics files and send out the samples.
-        read_and_send_metrics();
+        read_and_send_metrics(&hibermeta_mount);
 
         result
     }
@@ -216,7 +216,7 @@ impl SuspendConductor<'_> {
 
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
-            metrics_logger.flush()?;
+            metrics_logger.flush(&hibermeta_mount)?;
         }
 
         mem::drop(log_file);
@@ -305,7 +305,7 @@ impl SuspendConductor<'_> {
 
                 // Flush the metrics file before unmounting hibermeta. The metrics will be
                 // sent on resume.
-                metrics_logger.flush()?;
+                metrics_logger.flush(&hibermeta_mount)?;
             }
 
             hibermeta_mount.write_hiberimage_size(image_size)?;

@@ -28,6 +28,7 @@ use serde::Serialize;
 
 use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateError;
+use crate::volume::ActiveMount;
 
 lazy_static! {
     pub static ref METRICS_LOGGER: Mutex<MetricsLogger> = Mutex::new(MetricsLogger::new());
@@ -120,7 +121,7 @@ impl MetricsLogger {
     }
 
     /// Write the MetricsLogger buffer to the MetricsLogger file.
-    pub fn flush(&mut self) -> Result<()> {
+    pub fn flush(&mut self, _: &ActiveMount) -> Result<()> {
         if self.buf.is_empty() {
             return Ok(());
         }
@@ -291,10 +292,10 @@ fn metrics_send_enum_sample(sample: &MetricsSample) -> Result<()> {
     Ok(())
 }
 
-pub fn read_and_send_metrics() {
+pub fn read_and_send_metrics(am: &ActiveMount) {
     // Flush any metrics in the buffer to the file before sending the metrics
     let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
-    let _ = metrics_logger.flush();
+    let _ = metrics_logger.flush(am);
 
     let metrics_file_path = METRICS_FILE_PATH.as_path();
     if !metrics_file_path.exists() {
