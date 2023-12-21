@@ -17,11 +17,13 @@
 
 #include <base/run_loop.h>
 #include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/sane_client_fake.h"
@@ -32,11 +34,13 @@
 using ::testing::_;
 using ::testing::Each;
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::Not;
 using ::testing::Pointee;
 using ::testing::Property;
 using ::testing::UnorderedElementsAre;
+using ::testing::UnorderedPointwise;
 
 namespace lorgnette {
 
@@ -64,6 +68,7 @@ struct UsbDeviceBundle {
   std::unique_ptr<libusb_interface> interface;
   std::unique_ptr<UsbDeviceFake> device;
   std::string connection_string;
+  std::string ippusb_string;
   base::File ippusb_socket;
 };
 
@@ -208,6 +213,17 @@ class DeviceTrackerTest : public testing::Test {
                 device.device->GetDeviceDescriptor()->iProduct)
             ->c_str(),
         socket_name.c_str());
+    device.ippusb_string = base::StringPrintf(
+        "ippusb:escl:%s %s:%04x_%04x/eSCL/",
+        device.device
+            ->GetStringDescriptor(
+                device.device->GetDeviceDescriptor()->iManufacturer)
+            ->c_str(),
+        device.device
+            ->GetStringDescriptor(
+                device.device->GetDeviceDescriptor()->iProduct)
+            ->c_str(),
+        device.device->GetVid(), device.device->GetPid());
   }
 
   SaneDeviceFake* CreateFakeScanner(const std::string& name) {
@@ -837,6 +853,9 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
   device_list.emplace_back(std::move(ippusb_device2.device));
   libusb_->SetDevices(std::move(device_list));
   sane_client_->SetListDevicesResult(true);
+  tracker_->SetCacheDirectoryForTesting(socket_dir_.GetPath());
+  base::FilePath cache_file = socket_dir_.GetPath().Append("known_devices");
+  brillo::DeleteFile(cache_file);  // Start off with no saved devices.
 
   EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
       .WillRepeatedly([] {
@@ -856,18 +875,83 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
   EXPECT_FALSE(response1.session_id().empty());
   open_sessions_.insert(response1.session_id());
   run_loop1.Run();
-  std::map<std::string, size_t> device_ids;
+  std::map<std::string, std::set<std::string>> device_ids1;
   std::string ippusb_device_id;
   for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
     EXPECT_FALSE(scanner->device_uuid().empty());
-    device_ids[scanner->device_uuid()]++;
-    if (scanner->name().starts_with("ippusb:") &&
-        scanner->model() == "Scanner 1") {
+    device_ids1[scanner->device_uuid()].insert(scanner->name());
+    if (scanner->name() == ippusb_device1.ippusb_string) {
       ippusb_device_id = scanner->device_uuid();
     }
   }
-  EXPECT_EQ(device_ids.size(), 4);
-  EXPECT_EQ(device_ids[ippusb_device_id], 3);
+  EXPECT_EQ(device_ids1.size(), 4);
+  EXPECT_THAT(device_ids1[ippusb_device_id],
+              UnorderedElementsAre(ippusb_device1.ippusb_string, dup_by_vidpid,
+                                   dup_by_busdev));
+
+  // Saved devices file is non-empty after session.
+  int64_t file_size;
+  EXPECT_TRUE(base::GetFileSize(cache_file, &file_size));
+  EXPECT_GT(file_size, 0);
+
+  // Clear saved devices to simulate a lorgnette shutdown.  Then the second
+  // session should produce the same set of devices and IDs because it reloads
+  // from the cache.
+  tracker_->ClearKnownDevicesForTesting();
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("DiscoverySessionStableDevicesIds");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  open_sessions_.insert(response2.session_id());
+  run_loop2.Run();
+  std::map<std::string, std::set<std::string>> device_ids2;
+  for (const auto& scanner : discovered_scanners_[response2.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    device_ids2[scanner->device_uuid()].insert(scanner->name());
+    if (scanner->name() == ippusb_device1.ippusb_string) {
+      EXPECT_EQ(scanner->device_uuid(), ippusb_device_id);
+    }
+  }
+  EXPECT_EQ(device_ids2.size(), 4);
+  EXPECT_EQ(device_ids2[ippusb_device_id].size(), 3);
+  for (const auto& [id, names] : device_ids2) {
+    EXPECT_THAT(device_ids1[id], UnorderedPointwise(Eq(), names));
+  }
+
+  // Clear saved devices to simulate a lorgnette shutdown and remove the cache.
+  // Then the third session should produce a set of results with the same
+  // structure as the first session, but new IDs.
+  tracker_->ClearKnownDevicesForTesting();
+  brillo::DeleteFile(cache_file);
+  base::RunLoop run_loop3;
+  SetQuitClosure(run_loop3.QuitClosure());
+  StartScannerDiscoveryRequest start_request3;
+  start_request3.set_client_id("DiscoverySessionStableDevicesIds");
+  StartScannerDiscoveryResponse response3 =
+      tracker_->StartScannerDiscovery(start_request3);
+  EXPECT_TRUE(response3.started());
+  EXPECT_FALSE(response3.session_id().empty());
+  open_sessions_.insert(response3.session_id());
+  run_loop3.Run();
+  std::map<std::string, std::set<std::string>> device_ids3;
+  for (const auto& scanner : discovered_scanners_[response3.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    device_ids3[scanner->device_uuid()].insert(scanner->name());
+    if (scanner->name() == ippusb_device1.ippusb_string) {
+      ippusb_device_id = scanner->device_uuid();
+    }
+  }
+  EXPECT_EQ(device_ids3.size(), 4);
+  EXPECT_THAT(device_ids3[ippusb_device_id],
+              UnorderedElementsAre(ippusb_device1.ippusb_string, dup_by_vidpid,
+                                   dup_by_busdev));
+  for (const auto& [id, names] : device_ids3) {
+    EXPECT_FALSE(base::Contains(device_ids1, id));
+  }
 }
 
 TEST_F(DeviceTrackerTest, OpenScannerEmptyDevice) {

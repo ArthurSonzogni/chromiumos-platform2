@@ -4,11 +4,13 @@
 
 #include "lorgnette/device_tracker.h"
 
+#include <fcntl.h>
 #include <memory>
 #include <optional>
 #include <utility>
 
 #include <base/containers/contains.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -17,6 +19,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <re2/re2.h>
 
 #include "lorgnette/constants.h"
@@ -31,6 +34,9 @@
 namespace lorgnette {
 
 namespace {
+
+constexpr char kDefaultCacheDirectory[] = "/run/lorgnette/cache";
+constexpr char kKnownDevicesFileName[] = "known_devices";
 
 lorgnette::OperationResult ToOperationResult(SANE_Status status) {
   switch (status) {
@@ -80,7 +86,9 @@ DeviceTracker::ScanBuffer::~ScanBuffer() {
 }
 
 DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
-    : sane_client_(sane_client), libusb_(libusb) {
+    : cache_dir_(kDefaultCacheDirectory),
+      sane_client_(sane_client),
+      libusb_(libusb) {
   DCHECK(sane_client_);
   DCHECK(libusb_);
 }
@@ -139,9 +147,6 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
                << ": Missing client_id in StartScannerDiscovery request";
     return response;
   }
-
-  // TODO(b/311196232): Load saved devices IDs and prepopulate
-  // canonical_scanners_.
 
   std::string session_id;
   for (auto& kv : discovery_sessions_) {
@@ -233,8 +238,77 @@ void DeviceTracker::SendScannerAddedSignal(std::string session_id,
   signal_sender_.Run(signal);
 }
 
+void DeviceTracker::SetCacheDirectoryForTesting(base::FilePath cache_dir) {
+  cache_dir_ = std::move(cache_dir);
+}
+
+void DeviceTracker::ClearKnownDevicesForTesting() {
+  known_devices_.clear();
+  canonical_scanners_ = ScannerMatcher();
+}
+
+void DeviceTracker::SaveDeviceCache() {
+  // The list of known scanners isn't really a ListScannersResponse, but the
+  // same message can be reused to store a list of ScannerInfo messages by
+  // ignoring the result field.
+  ListScannersResponse list;
+  for (const auto& device : known_devices_) {
+    *list.add_scanners() = device;
+  }
+  std::string serialized;
+  if (!list.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Unable to serialize known devices";
+    return;
+  }
+
+  base::FilePath cache_path = cache_dir_.Append(kKnownDevicesFileName);
+  LOG(INFO) << "Saving " << list.scanners_size() << " devices to "
+            << cache_path;
+  brillo::WriteStringToFile(cache_path, serialized);
+}
+
+void DeviceTracker::LoadDeviceCache() {
+  base::FilePath cache_path = cache_dir_.Append(kKnownDevicesFileName);
+  if (!base::PathIsReadable(cache_path)) {
+    return;
+  }
+
+  base::ScopedFD fd = brillo::OpenSafely(cache_path, O_RDONLY, 0);
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Unable to open cache file " << cache_path;
+    return;
+  }
+
+  ListScannersResponse list;
+  if (!list.ParseFromFileDescriptor(fd.get())) {
+    LOG(ERROR) << "Unable to decode cache file";
+    return;
+  }
+
+  if (list.scanners_size() == 0) {
+    return;
+  }
+
+  LOG(INFO) << "Loading " << list.scanners_size() << " devices from "
+            << cache_path;
+  for (auto& scanner : *list.mutable_scanners()) {
+    known_devices_.emplace_back(std::move(scanner));
+  }
+}
+
 void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // If there are already known devices, they would have come from a previous
+  // discovery session in the running instance of lorgnette.  This means they're
+  // already current, so nothing needs to be loaded.
+  // If there aren't any existing entries, this may be because lorgnette
+  // previously exited for inactivity. Try to reload the previously saved state.
+  // The canonical device mappings will then get re-filled when USB devices are
+  // probed.
+  if (known_devices_.empty()) {
+    LoadDeviceCache();
+  }
 
   auto maybe_session = GetSession(session_id);
   if (!maybe_session) {
@@ -390,10 +464,6 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
                                   std::move(scanner_info)));
   }
 
-  // TODO(b/311196232): Persist the set of active device IDs to somewhere under
-  // /run/lorgnette so they can remain stable across lorgnette runs within the
-  // same login session.
-
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DeviceTracker::SendEnumerationCompletedSignal,
                                 weak_factory_.GetWeakPtr(), session_id));
@@ -484,6 +554,12 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
 
 void DeviceTracker::SendEnumerationCompletedSignal(std::string session_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // When devices have all been enumerated, persist the current list so it can
+  // be reused for future sessions.  Nothing else will update or access the set
+  // of devices until another discovery session starts, so this saved state will
+  // remain accurate indefinitely.
+  SaveDeviceCache();
 
   auto maybe_session = GetSession(session_id);
   if (!maybe_session) {

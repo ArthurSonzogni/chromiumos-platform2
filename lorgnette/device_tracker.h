@@ -13,7 +13,8 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
-#include "base/containers/flat_set.h"
+#include <base/containers/flat_set.h>
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
@@ -63,6 +64,8 @@ class DeviceTracker {
   base::Time LastDiscoverySessionActivity() const;
   size_t NumOpenScanners() const;
   base::Time LastOpenScannerActivity() const;
+  void SetCacheDirectoryForTesting(base::FilePath cache_dir);
+  void ClearKnownDevicesForTesting();
 
   // StartScannerDiscovery kicks off a new scanner discovery session.  The
   // session as a whole follows roughly these phases:
@@ -165,6 +168,8 @@ class DeviceTracker {
 
   std::optional<OpenScannerState*> GetScanner(const std::string& handle);
   void SendScannerAddedSignal(std::string session_id, ScannerInfo scanner);
+  void SaveDeviceCache();
+  void LoadDeviceCache();
 
   // Individual phases of discovery.  Each function is posted as a separate task
   // on the event loop to break up the amount of time spent blocking.
@@ -181,6 +186,9 @@ class DeviceTracker {
   void SendSessionEndingSignal(std::string session_id);
 
   SEQUENCE_CHECKER(sequence_checker_);
+
+  // Directory where known_devices_ cache will be written and read.
+  base::FilePath cache_dir_;
 
   // Manages connection to SANE for listing and connecting to scanners.
   // Not owned.
