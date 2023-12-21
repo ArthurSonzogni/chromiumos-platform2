@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/message.h>
@@ -99,9 +100,7 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
                              const std::string& signal_name) {
     dbus::Signal signal(kPowerManagerInterface, signal_name);
     dbus::MessageWriter writer(&signal);
-    writer.AppendArrayOfBytes(
-        reinterpret_cast<const uint8_t*>(serialized_proto.data()),
-        serialized_proto.size());
+    writer.AppendArrayOfBytes(base::as_byte_span(serialized_proto));
 
     auto callback_iter = on_signal_callbacks_.find(signal_name);
     ASSERT_NE(callback_iter, on_signal_callbacks_.end());
