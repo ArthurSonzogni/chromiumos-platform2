@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_OR_H_
 #define LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_OR_H_
 
+#include <concepts>
 #include <initializer_list>
 #include <memory>
 #include <type_traits>
@@ -28,6 +29,7 @@ namespace status {
 // * go/clang-tidy/checks/google3-runtime-unchecked-statusor-access.md
 //
 template <typename _Vt, typename _Et>
+  requires(ErrorType<_Et>)
 class [[clang::consumable(unknown)]]   //
 [[clang::consumable_auto_cast_state]]  //
 [[nodiscard]] StatusChainOr {
@@ -47,42 +49,40 @@ class [[clang::consumable(unknown)]]   //
       : value_(std::move(status_or.value_)) {}
 
   // Implicit conversion to StatusChainOr to allow transparent "return"s.
-  template <typename _Ut,
-            typename =
-                std::enable_if_t<std::is_constructible_v<value_type, _Ut>>>
+  template <typename _Ut>
+    requires(std::constructible_from<value_type, _Ut>)
   [[clang::return_typestate(consumed)]] StatusChainOr(
-      _Ut && v)  // NOLINT(runtime/explicit)
+      _Ut&& v)  // NOLINT(runtime/explicit)
       : value_(container_type{std::in_place_type<value_type>,
                               std::forward<_Ut>(v)}) {}
 
   // Constructs the inner value in-place using the provided args, using the
   // `value_type(args...)` constructor.
-  template <typename... Args,
-            typename =
-                std::enable_if_t<std::is_constructible_v<value_type, Args...>>>
+  template <typename... Args>
+    requires(std::constructible_from<value_type, Args...>)
   [[clang::return_typestate(consumed)]] StatusChainOr(
-      std::in_place_t, Args && ... args)  // NOLINT(runtime/explicit)
+      std::in_place_t, Args&&... args)  // NOLINT(runtime/explicit)
       : value_(container_type{std::in_place_type<value_type>,
                               std::forward<Args>(args)...}) {}
 
   // Constructs the inner value in-place using the provided args, using the
   // `value_type(args...)` constructor.
-  template <typename _Ut, typename... Args,
-            typename = std::enable_if_t<std::is_constructible_v<
-                value_type, std::initializer_list<_Ut>, Args...>>>
+  template <typename _Ut, typename... Args>
+    requires(std::constructible_from<value_type,
+                                     std::initializer_list<_Ut>,
+                                     Args...>)
   [[clang::return_typestate(consumed)]] StatusChainOr(
-      std::in_place_t, std::initializer_list<_Ut> ilist,
-      Args && ... args)  // NOLINT(runtime/explicit)
+      std::in_place_t,
+      std::initializer_list<_Ut> ilist,
+      Args&&... args)  // NOLINT(runtime/explicit)
       : value_(container_type{std::in_place_type<value_type>, ilist,
                               std::forward<Args>(args)...}) {}
 
-  template <int&... ExplicitArgumentBarrier, typename _Ut,
-            typename = std::enable_if_t<
-                std::is_convertible_v<_Ut*,
-                                      typename StatusChain<_Et>::pointer>>>
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::convertible_to<_Ut*, typename StatusChain<_Et>::pointer>)
   [[clang::return_typestate(unconsumed)]] static StatusChainOr
   MakeFromStatusChain(
-      StatusChain<_Ut> && other               //
+      StatusChain<_Ut>&& other                //
       [[clang::param_typestate(unconsumed)]]  //
       [[clang::return_typestate(consumed)]])  // NOLINT(runtime/explicit)
   {
@@ -108,12 +108,12 @@ class [[clang::consumable(unknown)]]   //
     return *std::get_if<value_type>(&value_);
   }
 
-  [[clang::callable_when("consumed")]] value_type& operator*()& {
+  [[clang::callable_when("consumed")]] value_type& operator*() & {
     CHECK(ok()) << " Dereferencing a non-OK StatusChainOr is not allowed";
     return *std::get_if<value_type>(&value_);
   }
 
-  [[clang::callable_when("consumed")]] value_type&& operator*()&& {
+  [[clang::callable_when("consumed")]] value_type&& operator*() && {
     CHECK(ok()) << " Dereferencing a non-OK StatusChainOr is not allowed";
     return std::move(*std::get_if<value_type>(&value_));
   }
@@ -124,18 +124,18 @@ class [[clang::consumable(unknown)]]   //
     return *std::get_if<value_type>(&value_);
   }
 
-  [[clang::callable_when("consumed")]] value_type& value()& noexcept {
+  [[clang::callable_when("consumed")]] value_type& value() & noexcept {
     CHECK(ok()) << " Get the value of a non-OK StatusChainOr is not allowed";
     return *std::get_if<value_type>(&value_);
   }
 
-  [[clang::callable_when("consumed")]] value_type&& value()&& noexcept {
+  [[clang::callable_when("consumed")]] value_type&& value() && noexcept {
     CHECK(ok()) << " Get the value of a non-OK StatusChainOr is not allowed";
     return std::move(*std::get_if<value_type>(&value_));
   }
 
   template <typename U>
-  value_type value_or(U && default_value) const& noexcept {
+  value_type value_or(U&& default_value) const& noexcept {
     if (ok()) {
       return *std::get_if<value_type>(&value_);
     }
@@ -143,7 +143,7 @@ class [[clang::consumable(unknown)]]   //
   }
 
   template <typename U>
-  value_type value_or(U && default_value)&& noexcept {
+  value_type value_or(U&& default_value) && noexcept {
     if (ok()) {
       return std::move(*std::get_if<value_type>(&value_));
     }
@@ -176,7 +176,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(consumed)]]            //
   [[clang::callable_when("consumed", "unknown")]]  //
   StatusChainOr
-  AssertOk()&& {
+  AssertOk() && {
     CHECK(ok()) << "The status should be ok.";
     return std::move(*this);
   }
@@ -194,7 +194,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]            //
   [[clang::callable_when("unconsumed", "unknown")]]  //
   StatusChainOr
-  AssertNotOk()&& {
+  AssertNotOk() && {
     CHECK(!ok()) << "The status should not be ok.";
     return std::move(*this);
   }
@@ -213,7 +213,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(consumed)]]            //
   [[clang::callable_when("consumed", "unknown")]]  //
   StatusChainOr
-  HintOk()&& noexcept {
+  HintOk() && noexcept {
     return std::move(*this);
   }
 
@@ -229,7 +229,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]            //
   [[clang::callable_when("unconsumed", "unknown")]]  //
   StatusChainOr
-  HintNotOk()&& noexcept {
+  HintNotOk() && noexcept {
     return std::move(*this);
   }
 
@@ -254,7 +254,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::callable_when("unconsumed")]]   //
   [[clang::return_typestate(unconsumed)]]  //
   status_type
-  err_status()&& noexcept {
+  err_status() && noexcept {
     return std::move(*std::get_if<status_type>(&value_));
   }
 
@@ -271,13 +271,12 @@ class [[clang::consumable(unknown)]]   //
   // lead to breaking invariant of the head object being castable to class
   // template type |_Et|, we use |ExplicitArgumentBarrier| idiom to make |_Ut|
   // auto-deducible only.
-  template <int&... ExplicitArgumentBarrier, typename _Ut,
-            typename = std::enable_if_t<std::is_convertible_v<
-                _Ut*, typename StatusChain<_Et>::pointer>>>
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::convertible_to<_Ut*, typename StatusChain<_Et>::pointer>)
   [[clang::return_typestate(unconsumed)]] StatusChainOr(
-      StatusChain<_Ut> && other                   //
-          [[clang::param_typestate(unconsumed)]]  //
-          [[clang::return_typestate(consumed)]],  //
+      StatusChain<_Ut>&& other                //
+      [[clang::param_typestate(unconsumed)]]  //
+      [[clang::return_typestate(consumed)]],  //
       StatusChainCtorTag)
       : value_(
             container_type{std::in_place_type<status_type>, std::move(other)}) {

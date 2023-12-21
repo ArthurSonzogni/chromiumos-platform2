@@ -15,6 +15,21 @@ namespace _impl_ {
 // Base instantiable error class.
 class Error;
 
+// Type trait checkers to determine if the class, intended to use with the
+// status chain, is well-formed.
+template <typename _Et>
+concept HasMakeStatusTrait =
+    requires(typename _Et::MakeStatusTrait trait) { trait; };
+
+template <typename _Et>
+concept HasBaseErrorType =
+    std::convertible_to<typename _Et::BaseErrorType*, Error*> &&
+    std::convertible_to<_Et*, typename _Et::BaseErrorType*> &&
+    requires(typename _Et::BaseErrorType err) { err; };
+
+template <typename _Et>
+concept ErrorType = HasMakeStatusTrait<_Et> && HasBaseErrorType<_Et>;
+
 // The backend type definition. update the comment for |error_stack_| member of
 // the |StackableError| if this changes.
 
@@ -30,6 +45,7 @@ using StackHolderType = std::list<StackPointerHolderType<_Bt>>;
 
 // The stack of errors.
 template <typename _Et>
+  requires(ErrorType<_Et>)
 class StackableError;
 
 // Iterators for the errors.
@@ -46,7 +62,12 @@ class StackableErrorRange;
 
 }  // namespace _impl_
 
+// Alias the traits to be publicly visible.
+template <typename _Et>
+concept ErrorType = _impl_::ErrorType<_Et>;
+
 template <typename _Vt, typename _Et>
+  requires(ErrorType<_Et>)
 class StatusChainOr;
 
 }  // namespace status

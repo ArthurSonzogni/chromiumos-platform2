@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_MACROS_H_
 #define LIBHWSEC_FOUNDATION_STATUS_STATUS_CHAIN_MACROS_H_
 
+#include <concepts>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -120,20 +121,15 @@ class StatusLinker {
 
   ~StatusLinker() = default;
 
-  template <int&... ExplicitArgumentBarrier,
-            typename U,
-            typename = std::enable_if_t<
-                std::is_convertible_v<StatusChain<T>, StatusChain<U>>>>
+  template <int&... ExplicitArgumentBarrier, typename U>
+    requires(std::constructible_from<StatusChain<U>, StatusChain<T>>)
   operator StatusChain<U>() {
     LogIfNeeded();
     return std::move(internal_);
   }
 
-  template <int&... ExplicitArgumentBarrier,
-            typename V,
-            typename U,
-            typename = std::enable_if_t<
-                std::is_convertible_v<StatusChain<T>, StatusChainOr<V, U>>>>
+  template <int&... ExplicitArgumentBarrier, typename V, typename U>
+    requires(std::constructible_from<StatusChainOr<V, U>, StatusChain<T>>)
   operator StatusChainOr<V, U>() {
     LogIfNeeded();
     return std::move(internal_);
@@ -153,14 +149,13 @@ class StatusLinker {
   }
 
   // Rewraps the internal status chain with the other status chain.
-  template <typename U, int&... ExplicitArgumentBarrier, typename... Args>
-  StatusLinker<U> WithStatus(Args&&... args) {
-    static_assert(std::is_base_of_v<Error, U> || std::is_same_v<Error, U>,
-                  "Supplied type is not derived from |Error|.");
-    using MakeStatusTrait = typename U::MakeStatusTrait;
-    return StatusLinker<U>(MakeStatusTrait()(std::forward<Args>(args)...)
-                               .Wrap(std::move(internal_)),
-                           std::move(log_detail_));
+  template <typename _Et, int&... ExplicitArgumentBarrier, typename... Args>
+    requires(ErrorType<_Et>)
+  StatusLinker<_Et> WithStatus(Args&&... args) {
+    using MakeStatusTrait = typename _Et::MakeStatusTrait;
+    return StatusLinker<_Et>(MakeStatusTrait()(std::forward<Args>(args)...)
+                                 .Wrap(std::move(internal_)),
+                             std::move(log_detail_));
   }
 
   // Returns the value directly.

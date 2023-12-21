@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_STATUS_IMPL_STACKABLE_ERROR_ITERATOR_H_
 #define LIBHWSEC_FOUNDATION_STATUS_IMPL_STACKABLE_ERROR_ITERATOR_H_
 
+#include <concepts>
 #include <type_traits>
 
 #include <base/logging.h>
@@ -202,23 +203,14 @@ struct IntrospectStackableErrorIterator {
 // comparison operators in one go. It works as following:
 // |_Ct1| and |_Ct2| are templated themselves and represent the "container".
 // |_Et| is the element type of the container.
-// |DisambiguationGuard| is an |ExplicitArgumentBarrier| idiom, but with the
-// reference type specialized to disambiguate other broad templates like this.
-// That is needed because the SFINAE guards can not disabmiguate broad templates
-// against similarly formed (we have another instance of it in range object).
-// Then the SFINAE |enable_if_t| cut any possible instantiation where the
-// actual container type is not what we expect in the comparator.
 template <template <typename> typename _Ct1,
           template <typename>
           typename _Ct2,
-          typename _Et,
-          StackableErrorIterator<_Et>&... DisambiguationGuard,
-          typename = std::enable_if_t<
-              std::is_same_v<_Ct1<_Et>, StackableErrorConstIterator<_Et>> ||
-              std::is_same_v<_Ct1<_Et>, StackableErrorIterator<_Et>>>,
-          typename = std::enable_if_t<
-              std::is_same_v<_Ct2<_Et>, StackableErrorConstIterator<_Et>> ||
-              std::is_same_v<_Ct2<_Et>, StackableErrorIterator<_Et>>>>
+          typename _Et>
+  requires((std::same_as<_Ct1<_Et>, StackableErrorConstIterator<_Et>> ||
+            std::same_as<_Ct1<_Et>, StackableErrorIterator<_Et>>) &&
+           (std::same_as<_Ct2<_Et>, StackableErrorConstIterator<_Et>> ||
+            std::same_as<_Ct2<_Et>, StackableErrorIterator<_Et>>))
 inline bool operator==(const _Ct1<_Et>& it1, const _Ct2<_Et>& it2) noexcept {
   return IntrospectStackableErrorIterator()(it1) ==
          IntrospectStackableErrorIterator()(it2);
@@ -227,14 +219,11 @@ inline bool operator==(const _Ct1<_Et>& it1, const _Ct2<_Et>& it2) noexcept {
 template <template <typename> typename _Ct1,
           template <typename>
           typename _Ct2,
-          typename _Et,
-          StackableErrorIterator<_Et>&... DisambiguationGuard,
-          typename = std::enable_if_t<
-              std::is_same_v<_Ct1<_Et>, StackableErrorConstIterator<_Et>> ||
-              std::is_same_v<_Ct1<_Et>, StackableErrorIterator<_Et>>>,
-          typename = std::enable_if_t<
-              std::is_same_v<_Ct2<_Et>, StackableErrorConstIterator<_Et>> ||
-              std::is_same_v<_Ct2<_Et>, StackableErrorIterator<_Et>>>>
+          typename _Et>
+  requires((std::same_as<_Ct1<_Et>, StackableErrorConstIterator<_Et>> ||
+            std::same_as<_Ct1<_Et>, StackableErrorIterator<_Et>>) &&
+           (std::same_as<_Ct2<_Et>, StackableErrorConstIterator<_Et>> ||
+            std::same_as<_Ct2<_Et>, StackableErrorIterator<_Et>>))
 inline bool operator!=(const _Ct1<_Et>& it1, const _Ct2<_Et>& it2) noexcept {
   return !(it1 == it2);
 }

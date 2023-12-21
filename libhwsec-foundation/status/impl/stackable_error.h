@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FOUNDATION_STATUS_IMPL_STACKABLE_ERROR_H_
 #define LIBHWSEC_FOUNDATION_STATUS_IMPL_STACKABLE_ERROR_H_
 
+#include <concepts>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -22,27 +23,6 @@
 namespace hwsec_foundation {
 namespace status {
 namespace _impl_ {
-
-// Type trait checkers to determine if the class, intended to use with the
-// status chain, is well-formed.
-// TODO(dlunev): add a trait to verify callability of MakeStatusTrait.
-
-template <typename, typename = void>
-struct has_make_status_trait : public std::false_type {};
-template <typename _Et>
-struct has_make_status_trait<_Et, std::void_t<typename _Et::MakeStatusTrait>>
-    : public std::true_type {};
-template <typename _Et>
-inline constexpr bool has_make_status_trait_v =
-    has_make_status_trait<_Et>::value;
-
-template <typename, typename = void>
-struct has_base_error_type : public std::false_type {};
-template <typename _Et>
-struct has_base_error_type<_Et, std::void_t<typename _Et::BaseErrorType>>
-    : public std::true_type {};
-template <typename _Et>
-inline constexpr bool has_base_error_type_v = has_base_error_type<_Et>::value;
 
 // A tag-struct to provide into |Wrap| to explicitly discard the previous
 // stack  after |WrapTransform|. That allows calling |Wrap| on a chain with
@@ -79,15 +59,10 @@ struct WrapTransformOnly {};
 // _Ut - uptype of |_Et| Type
 // _Dt - a dynamic castable from |_Et| type
 template <typename _Et = Error>
+  requires(ErrorType<_Et>)
 class [[clang::consumable(unknown)]]   //
 [[clang::consumable_auto_cast_state]]  //
 [[nodiscard]] StackableError {
- public:
-  static_assert(has_make_status_trait_v<_Et>,
-                "|_Et| type doesn't define |MakeStatusTrait|");
-  static_assert(has_base_error_type_v<_Et>,
-                "|_Et| type doesn't define |BaseErrorType|");
-
  private:
   // The use of |BaseErrorType| is a tranistional stop gap. Eventually the
   // type stored in stack should be equivalent to |_Et|. That may cause a
@@ -99,6 +74,7 @@ class [[clang::consumable(unknown)]]   //
 
   // Allow the other StackableError to access the head and error_stack.
   template <typename T>
+    requires(ErrorType<T>)
   friend class StackableError;
 
  public:
@@ -130,13 +106,6 @@ class [[clang::consumable(unknown)]]   //
   // Iterators can be obtained from range with |begin()| and |end()|
   using iterator_range = StackableErrorRange<base_element_type>;
   using const_iterator_range = StackableErrorConstRange<base_element_type>;
-
-  static_assert(std::is_base_of_v<Error, base_element_type> ||
-                    std::is_same_v<Error, base_element_type>,
-                "|_Et::BaseErrorType| is not derived from |Error|");
-  static_assert(std::is_base_of_v<base_element_type, _Et> ||
-                    std::is_same_v<base_element_type, _Et>,
-                "|_Et| is not derived from |_Et::BaseErrorType|");
 
  private:
   // Implementation details of the internal holder's types so the rest of the
@@ -196,9 +165,7 @@ class [[clang::consumable(unknown)]]   //
   }
 
   // Check if the object already wraps a stack.
-  bool IsWrappingInternal() const noexcept {
-    return !error_stack_.empty();
-  }
+  bool IsWrappingInternal() const noexcept { return !error_stack_.empty(); }
 
   // Returns a range object to use with range-for loops. Ensures const access
   // to the underlying object.
@@ -229,7 +196,7 @@ class [[clang::consumable(unknown)]]   //
   // the class'es trait.
   template <typename... Args>
   [[clang::return_typestate(unconsumed)]] static StackableError<_Et> Make(
-      Args && ... args) {
+      Args&&... args) {
     using MakeStatusTrait = typename _Et::MakeStatusTrait;
     return MakeStatusTrait()(std::forward<Args>(args)...);
   }
@@ -247,7 +214,7 @@ class [[clang::consumable(unknown)]]   //
 
   // Move constructor. Releases the backend object of |other| into our
   // backend object.
-  StackableError(StackableError && other [[clang::return_typestate(consumed)]])
+  StackableError(StackableError&& other [[clang::return_typestate(consumed)]])
       : head_(std::move(other.head_)),
         error_stack_(std::move(other.error_stack_)) {}
 
@@ -258,16 +225,13 @@ class [[clang::consumable(unknown)]]   //
   // breaking invariant of the head object being castable to class template type
   // |_Et|, we use |ExplicitArgumentBarrier| idiom to make |_Ut| auto-deducible
   // only.
-  template <int&... ExplicitArgumentBarrier, typename _Ut,
-            typename = std::enable_if_t<std::is_convertible_v<_Ut*, pointer>>>
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::convertible_to<_Ut*, pointer> &&
+             std::same_as<base_element_type, typename _Ut::BaseErrorType>)
   [[clang::return_typestate(unconsumed)]] StackableError(
-      StackableError<_Ut> && other [[clang::return_typestate(consumed)]])
+      StackableError<_Ut>&& other [[clang::return_typestate(consumed)]])
       : head_(std::move(other.head_)),
-        error_stack_(std::move(other.error_stack_)) {
-    static_assert(
-        std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
-        "|BaseErrorType| of |other| must be the same with |this|.");
-  }
+        error_stack_(std::move(other.error_stack_)) {}
 
   // Move-assign operator. Releases the backend object of |other| into our
   // backend object.
@@ -280,13 +244,11 @@ class [[clang::consumable(unknown)]]   //
 
   // Converting move-assign operator from a compatible type. See the comments
   // on converting constructor for the template arguments explanation.
-  template <int&... ExplicitArgumentBarrier, typename _Ut,
-            typename = std::enable_if_t<std::is_convertible_v<_Ut*, pointer>>>
+  template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::convertible_to<_Ut*, pointer> &&
+             std::same_as<base_element_type, typename _Ut::BaseErrorType>)
   [[clang::return_typestate(unconsumed)]] StackableError& operator=(
       StackableError<_Ut>&& other [[clang::return_typestate(consumed)]]) {
-    static_assert(
-        std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
-        "|BaseErrorType| of |other| must be the same with |this|.");
     head_ = std::move(other.head_);
     error_stack_ = std::move(other.error_stack_);
     return *this;
@@ -309,7 +271,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(consumed)]]            //
   [[clang::callable_when("consumed", "unknown")]]  //
   StackableError
-  AssertOk()&& {
+  AssertOk() && {
     CHECK(ok()) << "The status should be ok.";
     return std::move(*this);
   }
@@ -327,7 +289,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]            //
   [[clang::callable_when("unconsumed", "unknown")]]  //
   StackableError
-  AssertNotOk()&& {
+  AssertNotOk() && {
     CHECK(!ok()) << "The status should not be ok.";
     return std::move(*this);
   }
@@ -346,7 +308,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(consumed)]]            //
   [[clang::callable_when("consumed", "unknown")]]  //
   StackableError
-  HintOk()&& noexcept {
+  HintOk() && noexcept {
     return std::move(*this);
   }
 
@@ -362,7 +324,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]            //
   [[clang::callable_when("unconsumed", "unknown")]]  //
   StackableError
-  HintNotOk()&& noexcept {
+  HintNotOk() && noexcept {
     return std::move(*this);
   }
 
@@ -376,7 +338,7 @@ class [[clang::consumable(unknown)]]   //
 
   [[clang::return_typestate(unknown)]]  //
   StackableError
-  HintUnknown()&& {
+  HintUnknown() && {
     return std::move(*this);
   }
 
@@ -389,9 +351,7 @@ class [[clang::consumable(unknown)]]   //
 
   // Returns self.
   constexpr const StackableError& status() const& noexcept { return *this; }
-  StackableError status()&& noexcept {
-    return std::move(*this);
-  }
+  StackableError status() && noexcept { return std::move(*this); }
 
   // Returns error status.
   [[clang::callable_when("unconsumed")]]   //
@@ -404,7 +364,7 @@ class [[clang::consumable(unknown)]]   //
   [[clang::callable_when("unconsumed")]]   //
   [[clang::return_typestate(unconsumed)]]  //
   StackableError
-  err_status()&& noexcept {
+  err_status() && noexcept {
     return std::move(*this);
   }
 
@@ -448,9 +408,7 @@ class [[clang::consumable(unknown)]]   //
   }
 
   // Resets current stack.
-  [[clang::set_typestate(consumed)]] void reset() {
-    ResetInternal();
-  }
+  [[clang::set_typestate(consumed)]] void reset() { ResetInternal(); }
 
   // Don't reset from the std::nullptr_t.
   void reset(std::nullptr_t) = delete;
@@ -506,13 +464,10 @@ class [[clang::consumable(unknown)]]   //
   // add |ExplicitArgumentBarrier| just for the safety of mind to make |_Ut|
   // automatically deducible only.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
+    requires(std::same_as<base_element_type, typename _Ut::BaseErrorType>)
   [[clang::callable_when("unconsumed")]] void WrapInPlace(
-      StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
-                             [[clang::return_typestate(consumed)]]) {
-    static_assert(
-        std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
-        "|BaseErrorType| of |other| must be the same with |this|. "
-        "Use |WrapTransformOnly| tag to drop previous stack.");
+      StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+      [[clang::return_typestate(consumed)]]) {
     CHECK(!other.ok()) << " Can't wrap an OK object.";
     CHECK(!ok()) << " OK object can't be wrapping.";
     CHECK(!IsWrapping()) << " Object can wrap only once.";
@@ -535,8 +490,8 @@ class [[clang::consumable(unknown)]]   //
   // stack.
   template <int&... ExplicitArgumentBarrier, typename _Ut>
   [[clang::callable_when("unconsumed")]] void WrapInPlace(
-      StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
-                             [[clang::return_typestate(consumed)]],
+      StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+      [[clang::return_typestate(consumed)]],
       WrapTransformOnly tag) {
     CHECK(!other.ok()) << " Can't wrap an OK object.";
     CHECK(!ok()) << " OK object can't be wrapping.";
@@ -559,8 +514,8 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]  //
   [[clang::callable_when("unconsumed")]]   //
   [[nodiscard]] auto&&
-  Wrap(StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
-                              [[clang::return_typestate(consumed)]])&& {
+  Wrap(StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+       [[clang::return_typestate(consumed)]]) && {
     WrapInPlace(std::move(other));
     return std::move(*this);
   }
@@ -572,9 +527,9 @@ class [[clang::consumable(unknown)]]   //
   [[clang::return_typestate(unconsumed)]]  //
   [[clang::callable_when("unconsumed")]]   //
   [[nodiscard]] auto&&
-  Wrap(StackableError<_Ut> && other [[clang::param_typestate(unconsumed)]]  //
-                              [[clang::return_typestate(consumed)]],
-       WrapTransformOnly tag)&& {
+  Wrap(StackableError<_Ut>&& other [[clang::param_typestate(unconsumed)]]  //
+       [[clang::return_typestate(consumed)]],
+       WrapTransformOnly tag) && {
     WrapInPlace(std::move(other), tag);
     return std::move(*this);
   }
@@ -582,10 +537,10 @@ class [[clang::consumable(unknown)]]   //
   // A workaround for the StatusChainOr that the param_typestate doesn't work
   // with the constructor.
   template <typename _Vt, typename _Et2>
-  [[clang::callable_when("unconsumed")]]   //
-  [[clang::return_typestate(unconsumed)]]  //
-  [[clang::set_typestate(consumed)]]       //
-  operator StatusChainOr<_Vt, _Et2>()&& {  // NOLINT(runtime/explicit)
+  [[clang::callable_when("unconsumed")]]    //
+  [[clang::return_typestate(unconsumed)]]   //
+  [[clang::set_typestate(consumed)]]        //
+  operator StatusChainOr<_Vt, _Et2>() && {  // NOLINT(runtime/explicit)
     return StatusChainOr<_Vt, _Et2>::MakeFromStatusChain(std::move(*this));
   }
 };
