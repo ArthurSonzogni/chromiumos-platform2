@@ -182,8 +182,6 @@ message StartVmRequest {
   // If true, concierge should also perform termina-specific setup.
   bool start_termina = 5;
 
-  reserved 6;
-
   // The owner of the vm.
   string owner_id = 7;
 
@@ -209,8 +207,6 @@ message StartVmRequest {
   // The number of CPUs to give to the VM.  Cannot be larger than the number of
   // CPUs on the device and cannot be 0.
   uint32 cpus = 12;
-
-  reserved 13, 14;
 
   // Make the rootfs writable.
   bool writable_rootfs = 15;
@@ -367,9 +363,6 @@ message StartArcVmRequest {
 
   // How much memory to give ARCVM, in MiB. Optional.
   uint32 memory_mib = 12;
-
-  // Deprecated BalloonPolicyOptions. Do not use.
-  reserved 13;
 
   // Whether per-VM core scheduling should be used instead of the default one
   // (per-vCPU core scheduing.) This option is no-op on devices that have
