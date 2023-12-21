@@ -2258,41 +2258,36 @@ void Cellular::AbortTetheringOperation(const Error& error,
 
   LOG(INFO) << LoggingTag() << ": Tethering operation aborted: " << error;
 
-  // The abort logic is exclusively used during a connection attempt, because it
-  // allows us to go back to the default state without tethering enabled. There
-  // is no point in trying to abort a tethering disconnection attempt.
+  // Decide whether aborting the operation will require additional procedures
+  // after completing it.
+  bool disconnect_dun_as_default = false;
+  bool disconnect_multiplexed_dun = false;
   if (tethering_operation_->type ==
-          TetheringOperationType::kDisconnectDunMultiplexed ||
-      tethering_operation_->type ==
-          TetheringOperationType::kDisconnectDunAsDefaultPdn) {
-    LOG(WARNING) << LoggingTag() << ": Ignoring tethering abort request while"
-                 << " disconnecting operation is ongoing.";
-    dispatcher()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), Error(Error::kSuccess)));
-    return;
+      TetheringOperationType::kConnectDunAsDefaultPdn) {
+    SLOG(2) << LoggingTag() << ": Need to disconnect DUN as DEFAULT.";
+    disconnect_dun_as_default = true;
+  } else if (tethering_operation_->type ==
+             TetheringOperationType::kConnectDunMultiplexed) {
+    SLOG(2) << LoggingTag() << ": Need to disconnect multiplexed DUN.";
+    disconnect_multiplexed_dun = true;
   }
 
-  // Keep track of which operation was being done.
-  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
-  bool multiplexed_dun_ongoing =
-      IsTetheringOperationDunMultiplexedConnectOngoing();
-
-  // Abort the original connection attempt.
+  // Abort and complete the original operation.
   LOG(INFO) << LoggingTag()
-            << ": Completing tethering connect during abort sequence.";
+            << ": Completing tethering operation during abort sequence.";
   CompleteTetheringOperation(error);
 
-  // Launch a new disconnection attempt. The disconnection logic needs to
-  // be able to recover the state with tethering disabled from any point in the
-  // logic.
-  LOG(INFO) << LoggingTag()
-            << ": Launching tethering disconnect during abort sequence.";
-  if (dun_as_default_ongoing) {
+  // If needed, launch a new disconnection attempt. The disconnection logic
+  // needs to be able to recover the state with tethering disabled from any
+  // point in the logic.
+  if (disconnect_dun_as_default) {
+    LOG(INFO) << LoggingTag()
+              << ": Disconnecting DUN as DEFAULT during abort sequence.";
     DisconnectTetheringAsDefaultPdn(std::move(callback));
-  } else if (multiplexed_dun_ongoing) {
+  } else if (disconnect_multiplexed_dun) {
+    LOG(INFO) << LoggingTag()
+              << ": Disconnecting multiplexed DUN during abort sequence.";
     DisconnectMultiplexedTetheringPdn(std::move(callback));
-  } else {
-    NOTREACHED_NORETURN();
   }
 }
 
@@ -2301,9 +2296,26 @@ void Cellular::ReleaseTetheringNetwork(Network* network,
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
   tethering_event_callback_.Reset();
+
   // No explicit network given, which means there is an ongoing tethering
   // network acquisition operation that needs to be aborted.
   if (!network) {
+    // The abort logic is exclusively used during a connection attempt, because
+    // it allows us to go back to the default state without tethering enabled.
+    // There is no point in trying to abort a tethering disconnection attempt,
+    // unless it is an error handled internally.
+    if (tethering_operation_ &&
+        (tethering_operation_->type ==
+             TetheringOperationType::kDisconnectDunMultiplexed ||
+         tethering_operation_->type ==
+             TetheringOperationType::kDisconnectDunAsDefaultPdn)) {
+      LOG(WARNING) << LoggingTag() << ": Ignoring tethering abort request while"
+                   << " disconnecting operation is ongoing.";
+      dispatcher()->PostTask(FROM_HERE, base::BindOnce(std::move(callback),
+                                                       Error(Error::kSuccess)));
+      return;
+    }
+
     AbortTetheringOperation(Error(Error::kOperationAborted, "Aborted."),
                             std::move(callback));
     return;
