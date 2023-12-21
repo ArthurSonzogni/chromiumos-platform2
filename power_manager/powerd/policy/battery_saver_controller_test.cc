@@ -129,8 +129,8 @@ TEST_F(BatterySaverControllerTest, BadSetBatterySaverModeState) {
     dbus::MethodCall method_call(kPowerManagerInterface,
                                  kSetBatterySaverModeState);
     dbus::MessageWriter writer(&method_call);
-    uint8_t nul_byte = 0;
-    writer.AppendArrayOfBytes(&nul_byte, 1);
+    constexpr uint8_t nul_byte[1] = {0};
+    writer.AppendArrayOfBytes({nul_byte});
     std::unique_ptr<dbus::Response> response =
         dbus_.CallExportedMethodSync(&method_call);
     EXPECT_EQ(response->GetErrorName(), DBUS_ERROR_INVALID_ARGS);
