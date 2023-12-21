@@ -1232,20 +1232,18 @@ bool FuzzedPlatform::SameVFS(const base::FilePath& mnt_a,
   return fuzzed_data_provider_.ConsumeBool();
 }
 
-bool FuzzedPlatform::FindFilesystemDevice(const base::FilePath& filesystem,
-                                          std::string* device) {
+base::FilePath FuzzedPlatform::FindFilesystemDevice(
+    const base::FilePath& filesystem) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(filesystem);
-  CHECK(device);
   // FS devices are not simulated, hence return random result.
   base::FilePath path(fuzzed_data_provider_.ConsumeRandomLengthString());
   if (!path.IsAbsolute() || path.ReferencesParent() ||
       path != CanonicalizePath(path)) {
     // If the generation gave invalid value, don't return it.
-    return false;
+    return base::FilePath();
   }
-  *device = path.value();
-  return true;
+  return path;
 }
 
 bool FuzzedPlatform::ReportFilesystemDetails(const base::FilePath& filesystem,

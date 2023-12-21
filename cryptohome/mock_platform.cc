@@ -218,7 +218,7 @@ MockPlatform::MockPlatform()
       .WillByDefault(Return(base::Time::NowFromSystemTime()));
   ON_CALL(*this, ReportFilesystemDetails(_, _))
       .WillByDefault(CallReportFilesystemDetails());
-  ON_CALL(*this, FindFilesystemDevice(_, _))
+  ON_CALL(*this, FindFilesystemDevice(_))
       .WillByDefault(CallFindFilesystemDevice());
   ON_CALL(*this, ComputeDirectoryDiskUsage(_))
       .WillByDefault(CallComputeDirectoryDiskUsage());

@@ -83,7 +83,12 @@ bool StatefulRecovery::CopyPartitionInfo() {
   if (!platform_->WriteStringToFile(FilePath(kRecoverBlockUsage), output))
     return false;
 
-  if (!platform_->ReportFilesystemDetails(FilePath(kRecoverSource),
+  FilePath device = platform_->FindFilesystemDevice(FilePath(kRecoverSource));
+  if (device.empty()) {
+    return false;
+  }
+
+  if (!platform_->ReportFilesystemDetails(device,
                                           FilePath(kRecoverFilesystemDetails)))
     return false;
 

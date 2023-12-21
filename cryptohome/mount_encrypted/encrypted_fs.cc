@@ -104,16 +104,6 @@ std::string GetMountOpts() {
   return "discard,commit=" + std::to_string(commit_interval);
 }
 
-void Dumpe2fs(const base::FilePath& device_path) {
-  brillo::ProcessImpl dumpe2fs;
-  dumpe2fs.AddArg("/sbin/dumpe2fs");
-  dumpe2fs.AddArg("-fh");
-  dumpe2fs.AddArg(device_path.value());
-  dumpe2fs.RedirectOutput(base::FilePath(kDumpe2fsLogPath));
-
-  dumpe2fs.Run();
-}
-
 }  // namespace
 
 EncryptedFs::EncryptedFs(
@@ -316,7 +306,8 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     // the unencrypted block device that failed to mount. Since mount-encrypted
     // cleans up afterwards, this is the only point where this data can be
     // collected.
-    Dumpe2fs(dmcrypt_dev_);
+    platform_->ReportFilesystemDetails(dmcrypt_dev_,
+                                       base::FilePath(kDumpe2fsLogPath));
     TeardownByStage(TeardownStage::kTeardownContainer, true);
     return RESULT_FAIL_FATAL;
   }

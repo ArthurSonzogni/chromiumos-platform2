@@ -184,8 +184,8 @@ class FuzzedPlatform : public Platform {
   bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool SameVFS(const base::FilePath& mnt_a,
                const base::FilePath& mnt_b) override;
-  bool FindFilesystemDevice(const base::FilePath& filesystem,
-                            std::string* device) override;
+  base::FilePath FindFilesystemDevice(
+      const base::FilePath& filesystem) override;
   bool ReportFilesystemDetails(const base::FilePath& filesystem,
                                const base::FilePath& logfile) override;
   bool SetupProcessKeyring() override;

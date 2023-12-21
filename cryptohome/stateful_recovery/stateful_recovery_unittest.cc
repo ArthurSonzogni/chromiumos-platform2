@@ -69,6 +69,9 @@ class StatefulRecoveryTest : public ::testing::Test {
   // The Stateful Recovery that we want to test.
   std::unique_ptr<StatefulRecovery> recovery_;
 
+  // Reocvery Device file
+  const FilePath recovery_device_ = FilePath("myrecoverydevice");
+
   // Location of the flag_file
   const std::string flag_file_ = "mylocalflagfile";
 
@@ -178,8 +181,11 @@ TEST_F(StatefulRecoveryTest, ValidRequestV1) {
       WriteStringToFile(FilePath(StatefulRecovery::kRecoverBlockUsage), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_,
+              FindFilesystemDevice(FilePath(StatefulRecovery::kRecoverSource)))
+      .WillOnce(Return(recovery_device_));
+  EXPECT_CALL(*platform_,
               ReportFilesystemDetails(
-                  FilePath(StatefulRecovery::kRecoverSource),
+                  recovery_device_,
                   FilePath(StatefulRecovery::kRecoverFilesystemDetails)))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_, Copy(FilePath(StatefulRecovery::kRecoverSource),
@@ -243,8 +249,11 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
       WriteStringToFile(FilePath(StatefulRecovery::kRecoverBlockUsage), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_,
+              FindFilesystemDevice(FilePath(StatefulRecovery::kRecoverSource)))
+      .WillOnce(Return(recovery_device_));
+  EXPECT_CALL(*platform_,
               ReportFilesystemDetails(
-                  FilePath(StatefulRecovery::kRecoverSource),
+                  recovery_device_,
                   FilePath(StatefulRecovery::kRecoverFilesystemDetails)))
       .WillOnce(Return(true));
 
@@ -337,8 +346,11 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUserNotWriteProtected) {
       WriteStringToFile(FilePath(StatefulRecovery::kRecoverBlockUsage), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_,
+              FindFilesystemDevice(FilePath(StatefulRecovery::kRecoverSource)))
+      .WillOnce(Return(recovery_device_));
+  EXPECT_CALL(*platform_,
               ReportFilesystemDetails(
-                  FilePath(StatefulRecovery::kRecoverSource),
+                  recovery_device_,
                   FilePath(StatefulRecovery::kRecoverFilesystemDetails)))
       .WillOnce(Return(true));
 
@@ -384,8 +396,11 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
       WriteStringToFile(FilePath(StatefulRecovery::kRecoverBlockUsage), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_,
+              FindFilesystemDevice(FilePath(StatefulRecovery::kRecoverSource)))
+      .WillOnce(Return(recovery_device_));
+  EXPECT_CALL(*platform_,
               ReportFilesystemDetails(
-                  FilePath(StatefulRecovery::kRecoverSource),
+                  recovery_device_,
                   FilePath(StatefulRecovery::kRecoverFilesystemDetails)))
       .WillOnce(Return(true));
 
@@ -497,8 +512,11 @@ TEST_F(StatefulRecoveryTest, FilesystemDetailsFailure) {
       WriteStringToFile(FilePath(StatefulRecovery::kRecoverBlockUsage), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_,
+              FindFilesystemDevice(FilePath(StatefulRecovery::kRecoverSource)))
+      .WillOnce(Return(recovery_device_));
+  EXPECT_CALL(*platform_,
               ReportFilesystemDetails(
-                  FilePath(StatefulRecovery::kRecoverSource),
+                  recovery_device_,
                   FilePath(StatefulRecovery::kRecoverFilesystemDetails)))
       .WillOnce(Return(false));
 

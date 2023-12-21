@@ -51,8 +51,8 @@ class FakePlatform final : public Platform {
   bool IsDirectoryEmpty(const base::FilePath& path) override;
 
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
-  bool FindFilesystemDevice(const base::FilePath& filesystem,
-                            std::string* device) override;
+  base::FilePath FindFilesystemDevice(
+      const base::FilePath& filesystem) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
   bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool TouchFileDurable(const base::FilePath& path) override;

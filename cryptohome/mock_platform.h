@@ -66,7 +66,7 @@ ACTION(CallReportFilesystemDetails) {
   return Platform().ReportFilesystemDetails(arg0, arg1);
 }
 ACTION(CallFindFilesystemDevice) {
-  return Platform().FindFilesystemDevice(arg0, arg1);
+  return Platform().FindFilesystemDevice(arg0);
 }
 
 class MockPlatform : public Platform {
@@ -330,9 +330,9 @@ class MockPlatform : public Platform {
               ReportFilesystemDetails,
               (const base::FilePath&, const base::FilePath&),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(base::FilePath,
               FindFilesystemDevice,
-              (const base::FilePath&, std::string*),
+              (const base::FilePath&),
               (override));
   MOCK_METHOD(bool, SetupProcessKeyring, (), (override));
   MOCK_METHOD(dircrypto::KeyState,

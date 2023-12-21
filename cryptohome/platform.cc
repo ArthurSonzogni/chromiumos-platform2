@@ -95,6 +95,7 @@ constexpr char kLvmSignature[] = "LABELONE";
 
 constexpr char kProcDir[] = "/proc";
 constexpr char kMountInfoFile[] = "mountinfo";
+constexpr char kPathDumpe2fs[] = "/sbin/dumpe2fs";
 constexpr char kPathE2fsck[] = "/sbin/e2fsck";
 constexpr char kPathTune2fs[] = "/sbin/tune2fs";
 constexpr char kEcryptFS[] = "ecryptfs";
@@ -1084,48 +1085,52 @@ bool Platform::SameVFS(const base::FilePath& mnt_a,
   return (stat_a.st_dev == stat_b.st_dev);
 }
 
-bool Platform::FindFilesystemDevice(const FilePath& filesystem_in,
-                                    std::string* device) {
+base::FilePath Platform::FindFilesystemDevice(const FilePath& filesystem_in) {
   DCHECK(filesystem_in.IsAbsolute()) << "filesystem_in=" << filesystem_in;
 
-  /* Clear device to indicate failure case. */
-  device->clear();
-
-  base::FilePath result = brillo::GetBackingLogicalDeviceForFile(filesystem_in);
-
-  if (result.empty()) {
-    return false;
-  }
-
-  *device = result.value();
-
-  return true;
+  return brillo::GetBackingLogicalDeviceForFile(filesystem_in);
 }
 
-bool Platform::ReportFilesystemDetails(const FilePath& filesystem,
+bool Platform::ReportFilesystemDetails(const FilePath& device,
                                        const FilePath& logfile) {
-  DCHECK(filesystem.IsAbsolute()) << "filesystem=" << filesystem;
+  DCHECK(device.IsAbsolute()) << "device=" << device;
   DCHECK(logfile.IsAbsolute()) << "logfile=" << logfile;
 
-  brillo::ProcessImpl process;
-  int rc;
-  std::string device;
-  if (!FindFilesystemDevice(filesystem, &device)) {
-    LOG(ERROR) << "Failed to find device for " << filesystem.value();
-    return false;
+  int tune2fs_rc = 0, dumpe2fs_rc = 0;
+
+  if (FileExists(FilePath(kPathTune2fs))) {
+    brillo::ProcessImpl tune2fs_process;
+    tune2fs_process.RedirectOutputToMemory(true);
+    tune2fs_process.AddArg(kPathTune2fs);
+    tune2fs_process.AddArg("-l");
+    tune2fs_process.AddArg(device.value());
+
+    tune2fs_rc = tune2fs_process.Run();
+    if (tune2fs_rc == 0)
+      base::AppendToFile(logfile,
+                         tune2fs_process.GetOutputString(STDOUT_FILENO));
+    else
+      LOG(ERROR) << "Failed to run tune2fs on " << device.value() << ", exit "
+                 << tune2fs_rc << ")";
   }
 
-  process.RedirectOutput(logfile);
-  process.AddArg(kPathTune2fs);
-  process.AddArg("-l");
-  process.AddArg(device);
+  if (FileExists(FilePath(kPathDumpe2fs))) {
+    brillo::ProcessImpl dumpe2fs_process;
+    dumpe2fs_process.RedirectOutputToMemory(true);
+    dumpe2fs_process.AddArg(kPathDumpe2fs);
+    dumpe2fs_process.AddArg("-fh");
+    dumpe2fs_process.AddArg(device.value());
 
-  rc = process.Run();
-  if (rc == 0)
-    return true;
-  LOG(ERROR) << "Failed to run tune2fs on " << device << " ("
-             << filesystem.value() << ", exit " << rc << ")";
-  return false;
+    dumpe2fs_rc = dumpe2fs_process.Run();
+    if (dumpe2fs_rc == 0)
+      base::AppendToFile(logfile,
+                         dumpe2fs_process.GetOutputString(STDOUT_FILENO));
+    else
+      LOG(ERROR) << "Failed to run dumpe2fs on " << device.value() << ", exit "
+                 << dumpe2fs_rc << ")";
+  }
+
+  return (dumpe2fs_rc == 0) && (tune2fs_rc == 0);
 }
 
 bool Platform::FirmwareWriteProtected() {
@@ -1382,7 +1387,7 @@ bool Platform::Tune2Fs(const base::FilePath& file,
   DCHECK(file.IsAbsolute()) << "file=" << file;
 
   brillo::ProcessImpl tune_process;
-  tune_process.AddArg("/sbin/tune2fs");
+  tune_process.AddArg(kPathTune2fs);
   for (const auto& arg : opts)
     tune_process.AddArg(arg);
 

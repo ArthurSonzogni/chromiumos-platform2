@@ -706,8 +706,7 @@ class BRILLO_EXPORT Platform {
   // Parameters
   //   filesystem - the filesystem to examine
   //   device - output: the device name that "filesystem" in mounted on
-  virtual bool FindFilesystemDevice(const base::FilePath& filesystem,
-                                    std::string* device);
+  virtual base::FilePath FindFilesystemDevice(const base::FilePath& filesystem);
 
   // Runs "tune2fs -l" with redirected output.
   //

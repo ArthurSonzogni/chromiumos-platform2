@@ -211,9 +211,9 @@ bool FakePlatform::Rename(const base::FilePath& from,
   return real_platform_.Rename(TestFilePath(from), TestFilePath(to));
 }
 
-bool FakePlatform::FindFilesystemDevice(const base::FilePath& filesystem,
-                                        std::string* device) {
-  return real_platform_.FindFilesystemDevice(TestFilePath(filesystem), device);
+base::FilePath FakePlatform::FindFilesystemDevice(
+    const base::FilePath& filesystem) {
+  return real_platform_.FindFilesystemDevice(TestFilePath(filesystem));
 }
 
 bool FakePlatform::Copy(const base::FilePath& from, const base::FilePath& to) {
