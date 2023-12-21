@@ -5,17 +5,19 @@
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "AppListIntegrationTest"
+name: "QuickSettingsIntegrationTest"
 harness: "crosier"
 category: "integration"
 owners:
   - email: "jamescook@chromium.org"
-  - email: "chromeos-launcher@google.com"
+  - email: "brettw@chromium.org"
   - email: "chromeos-sw-engprod@google.com"
 hw_agnostic: True
 criteria: |
-  Basic smoke test of the bubble launcher.
+  Testing the OS Settings system web app.
 cases:
-  - id: "BubbleSmoke"
-    tags: []
+  - id: "OpenOsSettings"
+    tags: ["crosier:crosierdemosuite"]
+  - id: "ManagedDeviceInfo"
+    tags: ["crosier:crosierdemosuite"]
 ...

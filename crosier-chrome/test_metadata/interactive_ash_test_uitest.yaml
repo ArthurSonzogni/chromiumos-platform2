@@ -5,17 +5,17 @@
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "ExternalMetricsIntegrationTest"
+name: "InteractiveAshTestUITest"
 harness: "crosier"
 category: "integration"
 owners:
+  - email: "jamescook@chromium.org"
   - email: "brettw@chromium.org"
   - email: "chromeos-sw-engprod@google.com"
 hw_agnostic: True
 criteria: |
-  Integration test between histograms reported by libmetrics in ChromeOS and
-  Ash's importer of these metrics.
+  Basic Ash UI Crosier test.
 cases:
-  - id: "SyncHistograms"
+  - id: "Basics"
     tags: ["crosier:crosierdemosuite"]
 ...
