@@ -52,6 +52,22 @@ bool LoopbackDevice::Purge() {
 }
 
 bool LoopbackDevice::Setup() {
+  // Check the size of the sparse file and resize if necessary.
+  // It may have been created small and resized slowly to improve boot time.
+  // Resizing the sparse file via truncate() should be a no-op.
+  base::File file;
+  platform_->InitializeFile(&file, backing_file_path_,
+                            base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+
+  if (!file.IsValid()) {
+    LOG(ERROR) << "Unable to open backing device";
+    return false;
+  }
+  if (file.GetLength() < size_) {
+    LOG(INFO) << "Expanding underlying sparse file to " << size_;
+    file.SetLength(size_);
+  }
+
   // Set up loopback device.
   std::unique_ptr<brillo::LoopDevice> loopdev =
       platform_->GetLoopDeviceManager()->AttachDeviceToFile(backing_file_path_);

@@ -46,8 +46,6 @@ constexpr uint64_t kExt4BlockSize = 4096;
 constexpr uint64_t kExt4MinBytes = 16 * 1024 * 1024;
 constexpr unsigned int kResizeStepSeconds = 2;
 constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
-// Block size is 4k => Minimum free space available to try resizing is 400MB.
-constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 constexpr uid_t kRootUid = 0;
@@ -151,15 +149,6 @@ static std::vector<std::string> BuildExt4FormatOpts() {
           "-m", "0",
           "-O", "^huge_file,^flex_bg",
           "-E", kExt4ExtendedOptions};
-}
-
-void CheckSparseFileSize(const base::FilePath& sparse_file, int64_t file_size) {
-  base::File file(sparse_file, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-
-  if (file.IsValid() && file.GetLength() < file_size) {
-    LOG(INFO) << "Expanding underlying sparse file to " << file_size;
-    file.SetLength(file_size);
-  }
 }
 
 void Dumpe2fs(const base::FilePath& device_path) {
@@ -318,19 +307,6 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     PLOG(ERROR) << "stat() failed on: " << stateful_mount_;
     return RESULT_FAIL_FATAL;
   }
-
-  // b/131123943: Check the size of the sparse file and resize if necessary.
-  // Resizing the sparse file via truncate() should be a no-op but resizing
-  // the filesystem residing on the file is a bit more involved and may need
-  // to write metadata to several blocks. If there aren't enough blocks
-  // available, we might succeed here but eventually fail to resize and corrupt
-  // the encrypted stateful file system. Check if there are at least a few
-  // blocks available on the stateful partition.
-  if (stateful_statbuf.f_bfree > kMinBlocksAvailForResize)
-    CheckSparseFileSize(block_path_, fs_size_);
-  else
-    LOG(WARNING) << "Low space on stateful partition; not attempting to resize "
-                 << "the underlying block file.";
 
   if (rebuild) {
     // Wipe out the old files, and ignore errors.

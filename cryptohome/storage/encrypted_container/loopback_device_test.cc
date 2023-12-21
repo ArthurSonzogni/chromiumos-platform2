@@ -14,6 +14,9 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
+using testing::DoAll;
+using testing::SetArgPointee;
+
 namespace cryptohome {
 
 class LoopbackDeviceTest : public ::testing::Test {
@@ -56,6 +59,7 @@ TEST_F(LoopbackDeviceTest, LoopbackPurge) {
 
 // Tests setup for a loopback device succeeded.
 TEST_F(LoopbackDeviceTest, LoopbackSetup) {
+  EXPECT_TRUE(backing_device_->Create());
   EXPECT_TRUE(backing_device_->Setup());
 
   EXPECT_NE(backing_device_->GetPath(), std::nullopt);
@@ -64,10 +68,27 @@ TEST_F(LoopbackDeviceTest, LoopbackSetup) {
 
 // Tests teardown of a loopback device doesn't leave the loop device attached.
 TEST_F(LoopbackDeviceTest, ValidLoopbackDeviceTeardown) {
+  EXPECT_TRUE(backing_device_->Create());
   EXPECT_TRUE(backing_device_->Setup());
   EXPECT_TRUE(backing_device_->Teardown());
 
   EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
+}
+
+// Tests that a backing device created smaller see its size increased.
+TEST_F(LoopbackDeviceTest, LoopbackDeviceSetupBigger) {
+  int64_t old_size = 512 * 1024 * 1024, created_size;
+  EXPECT_TRUE(
+      platform_.CreateSparseFile(config_.loopback.backing_file_path, old_size));
+  EXPECT_TRUE(
+      platform_.GetFileSize(config_.loopback.backing_file_path, &created_size));
+  EXPECT_EQ(old_size, created_size);
+
+  EXPECT_TRUE(backing_device_->Setup());
+
+  EXPECT_TRUE(
+      platform_.GetFileSize(config_.loopback.backing_file_path, &created_size));
+  EXPECT_EQ(config_.size, created_size);
 }
 
 // Test creating and purging of a fixed loopback device does not succeed.
