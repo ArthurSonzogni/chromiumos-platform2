@@ -12,6 +12,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/timer/timer.h"

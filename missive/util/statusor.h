@@ -7,8 +7,6 @@
 
 #include <base/types/expected.h>
 
-#include <base/logging.h>
-
 #include "missive/util/status.h"
 
 namespace reporting {
