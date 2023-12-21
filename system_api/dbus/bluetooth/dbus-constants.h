@@ -667,4 +667,16 @@ constexpr char kBluetoothManagerRegisterCallback[] = "RegisterCallback";
 constexpr char kBluetoothManagerOnHciEnabledChanged[] = "OnHciEnabledChanged";
 }  // namespace bluetooth_manager
 
+// Floss's battery manager.
+namespace battery_manager {
+constexpr char kFlossBatteryProviderManagerInterface[] =
+    "org.chromium.bluetooth.BatteryProviderManager";
+constexpr char kFlossBatteryProviderManagerServicePath[] =
+    "/org/chromium/bluetooth/hci0/battery_provider_manager";
+constexpr char kFlossBatteryProviderManagerServiceName[] =
+    "org.chromium.bluetooth";
+constexpr char kFlossBatteryProviderManagerCallbackInterface[] =
+    "org.chromium.bluetooth.BatteryProviderCallback";
+}  // namespace battery_manager
+
 #endif  // SYSTEM_API_DBUS_BLUETOOTH_DBUS_CONSTANTS_H_
