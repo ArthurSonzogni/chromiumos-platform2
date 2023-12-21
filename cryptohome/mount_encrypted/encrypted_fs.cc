@@ -311,14 +311,12 @@ bool EncryptedFs::Purge() {
 // Do all the work needed to actually set up the encrypted partition.
 result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
                                bool rebuild) {
-  result_code rc = RESULT_FAIL_FATAL;
-  struct statvfs stateful_statbuf;
-
   // Get stateful partition statistics. This acts as an indicator of how large
   // we want the encrypted stateful partition to be.
+  struct statvfs stateful_statbuf;
   if (!platform_->StatVFS(stateful_mount_, &stateful_statbuf)) {
     PLOG(ERROR) << "stat() failed on: " << stateful_mount_;
-    return rc;
+    return RESULT_FAIL_FATAL;
   }
 
   // b/131123943: Check the size of the sparse file and resize if necessary.
@@ -343,13 +341,13 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
   } else if (!container_->Exists()) {
     // If not rebuilding, we expect the container to be present.
     LOG(ERROR) << "Encrypted container doesn't exist";
-    return rc;
+    return RESULT_FAIL_FATAL;
   }
 
   if (!container_->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to set up encrypted container";
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return rc;
+    return RESULT_FAIL_FATAL;
   }
 
   // Mount the dm-crypt partition finally.
@@ -360,7 +358,7 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
                                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))) {
     PLOG(ERROR) << dmcrypt_dev_;
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return rc;
+    return RESULT_FAIL_FATAL;
   }
   if (!platform_->Mount(dmcrypt_dev_, encrypted_mount_, kEncryptedFSType,
                         MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
@@ -372,7 +370,7 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     // collected.
     Dumpe2fs(dmcrypt_dev_);
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return rc;
+    return RESULT_FAIL_FATAL;
   }
 
   // Always spawn filesystem resizer, in case growth was interrupted.
@@ -385,12 +383,12 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
     LOG(INFO) << "Bind mounting " << bind.src << " onto " << bind.dst;
     if (!CheckBind(platform_, bind)) {
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
-      return rc;
+      return RESULT_FAIL_FATAL;
     }
     if (!platform_->Bind(bind.src, bind.dst)) {
       PLOG(ERROR) << "mount: " << bind.src << ", " << bind.dst;
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
-      return rc;
+      return RESULT_FAIL_FATAL;
     }
   }
 
