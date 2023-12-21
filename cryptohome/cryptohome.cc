@@ -259,6 +259,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "prepare_and_add_auth_factor",
                                     "prepare_and_authenticate_auth_factor",
                                     "restore_device_key",
+                                    "get_recovery_ids",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -321,6 +322,7 @@ enum ActionEnum {
   ACTION_PREPARE_AND_ADD_AUTH_FACTOR,
   ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
   ACTION_RESTORE_DEVICE_KEY,
+  ACTION_GET_RECOVERY_IDS,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -2990,6 +2992,30 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintHumanOutput("Restored device key.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_RECOVERY_IDS],
+                     action.c_str())) {
+    user_data_auth::GetAuthFactorExtendedInfoRequest req;
+    if (!BuildAccountId(printer, cl, req.mutable_account_id())) {
+      return 1;
+    }
+    *req.mutable_auth_factor_label() =
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+    user_data_auth::RecoveryExtendedInfoRequest req_extended_info;
+    req_extended_info.set_max_depth(/*depth=*/5);
+    *req.mutable_recovery_info_request() = std::move(req_extended_info);
+
+    user_data_auth::GetAuthFactorExtendedInfoReply reply;
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetAuthFactorExtendedInfo(req, &reply, &error,
+                                                      timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "GetAuthFactorExtendedInfo call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply.recovery_info_reply());
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
