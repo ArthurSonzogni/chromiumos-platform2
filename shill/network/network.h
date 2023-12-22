@@ -37,6 +37,7 @@
 #include "shill/network/network_applier.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
+#include "shill/network/validation_log.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/technology.h"
@@ -159,27 +160,6 @@ class Network {
     // IPv6 configuration has been provisioned, and the other one can still be
     // in the configuring state.
     kConnected,
-  };
-
-  // Helper struct which keeps a history of network validation results over time
-  // until network validation stops for the first time or until the Network
-  // disconnect.
-  class ValidationLog {
-   public:
-    ValidationLog(Technology technology, Metrics* metrics);
-    void AddResult(const NetworkMonitor::Result& result);
-    void SetCapportDHCPSupported();
-    void SetCapportRASupported();
-    void RecordMetrics() const;
-
-   private:
-    Technology technology_;
-    Metrics* metrics_;
-    base::TimeTicks connection_start_;
-    std::vector<std::pair<base::TimeTicks, PortalDetector::ValidationState>>
-        results_;
-    bool capport_dhcp_supported_ = false;
-    bool capport_ra_supported_ = false;
   };
 
   Network(int interface_index,
