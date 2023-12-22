@@ -32,7 +32,7 @@ constexpr char kSystemSaltFile[] = "salt";
 constexpr int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
 constexpr mode_t kSaltFilePermissions = 0644;
 
-constexpr char kRecoverableKeyStoreDir[] = "recoverable_key_store_backend_cert";
+constexpr char kRecoverableKeyStoreDir[] = "key_store_certs";
 
 constexpr char kSkelPath[] = "/etc/skel";
 constexpr char kLogicalVolumePrefix[] = "cryptohome";

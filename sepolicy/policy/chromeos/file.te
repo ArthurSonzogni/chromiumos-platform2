@@ -239,6 +239,7 @@ type cros_home_chronos_crash, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_low_entropy_creds, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_key_store_certs, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_user, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_android, file_type, cros_file_type, cros_home_file_type;
