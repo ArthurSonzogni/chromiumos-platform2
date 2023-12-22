@@ -24,6 +24,11 @@ class CommandList {
     return Helper<N, Commands...>::Get();
   }
 
+  template <typename Func>
+  static constexpr bool IsExist() {
+    return IsExistInternal<Func, Commands...>();
+  }
+
  private:
   template <size_t N, auto Head, auto... Tails>
   struct Helper {
@@ -34,8 +39,20 @@ class CommandList {
   struct Helper<0, Head, Tails...> {
     static constexpr auto Get() { return Head; }
   };
+
+  template <typename Func, auto Head, auto... Tails>
+  static constexpr bool IsExistInternal() {
+    return std::is_same_v<Func, decltype(Head)> ||
+           IsExistInternal<Func, Tails...>();
+  }
+
+  template <typename Func>
+  static constexpr bool IsExistInternal() {
+    return false;
+  }
 };
 
+// All exposed backend command should be fuzzed.
 using FuzzCommandList =
     CommandList<&Backend::Attestation::Quote,
                 &Backend::Attestation::IsQuoted,
@@ -153,6 +170,18 @@ using FuzzCommandList =
                 &Backend::Vendor::GetRwVersion,
                 &Backend::Vendor::SendRawCommand,
                 &Backend::VersionAttestation::AttestVersion>;
+
+// If the function cannot be fuzzed, please add it into this this exception
+// list.
+using FuzzExceptionCommandList = CommandList<
+    // This command will stuck forever, because it need to wait for the signal
+    // from tpm_manager.
+    &Backend::State::WaitUntilReady>;
+
+// The backend command is in the fuzzer list or not.
+template <typename Func>
+concept FuzzedBackendCommand = FuzzCommandList::IsExist<Func>() ||
+                               FuzzExceptionCommandList::IsExist<Func>();
 
 }  // namespace hwsec
 

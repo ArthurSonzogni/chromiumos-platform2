@@ -14,6 +14,10 @@
 
 #include "libhwsec/status.h"
 
+#if USE_FUZZER
+#include "libhwsec/fuzzers/backend_command_list.h"
+#endif
+
 #ifndef BUILD_LIBHWSEC
 #error "Don't include this file outside libhwsec!"
 #endif
@@ -69,8 +73,17 @@ template <typename Func>
 concept SyncBackendMethod = SubClassHelper<Func>::type == CallType::kSync;
 template <typename Func>
 concept AsyncBackendMethod = SubClassHelper<Func>::type == CallType::kAsync;
+
+#if USE_FUZZER
+// To save the build time in the normal build, we only do the fuzzed command
+// check in the fuzzer build.
+template <typename Func>
+concept BackendMethod = FuzzedBackendCommand<Func> &&
+                        (SyncBackendMethod<Func> || AsyncBackendMethod<Func>);
+#else
 template <typename Func>
 concept BackendMethod = SyncBackendMethod<Func> || AsyncBackendMethod<Func>;
+#endif
 
 // The custom parameter forwarding rules.
 template <typename T>
