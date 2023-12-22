@@ -108,12 +108,8 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BasicTrue);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfBreakpad);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_FalseIfBreakpad);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfCrashpadIsChild);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfCrashpadReady);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfRenderer);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNonChrome);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BadProcFilesIgnored);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, BadProcFilesIgnored);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfTooOld);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome);
   friend class CopyStdinToCoreFileTest;
   FRIEND_TEST(CopyStdinToCoreFileTest, Test);

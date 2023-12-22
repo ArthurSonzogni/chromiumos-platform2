@@ -28,6 +28,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+#include <chromeos/constants/crash_reporter.h>
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
@@ -113,66 +114,6 @@ std::string ExecNameToSuppliedName(std::string_view name) {
   // When checking a kernel-supplied name, it should be truncated to 15 chars.
   return "supplied_" + std::string(name.data(), 0, kKernelProcessNameLength);
 }
-
-#if !USE_FORCE_BREAKPAD
-// |status_file| is the path to a /proc/<pid>/status file. Returns true if the
-// process described by the status file is (a) the crashpad handled program and
-// (b) a child of |desired_parent|.
-bool IsACrashpadChildOf(const base::FilePath& status_file,
-                        pid_t desired_parent) {
-  std::string status_contents;
-  // Don't log error messages on failures reading or parsing the files;
-  // processes may go away in between the time we scan the directory and the
-  // time we try to read the status file. That's expected and we'll generate a
-  // lot of log-spam if we write a message on each failure.
-  if (!base::ReadFileToString(status_file, &status_contents)) {
-    VPLOG(3) << "Failed to read " << status_file.value();
-    return false;
-  }
-
-  bool has_correct_parent = false;
-  bool is_crashpad = false;
-  base::StringPairs pairs;
-  if (!base::SplitStringIntoKeyValuePairs(status_contents, ':', '\n', &pairs)) {
-    VLOG(3) << "Failed to convert " << status_file.value();
-    return false;
-  }
-  for (const auto& key_value : pairs) {
-    if (key_value.first == "PPid") {
-      std::string value;
-      int ppid;
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
-      if (base::StringToInt(value, &ppid) && ppid == desired_parent) {
-        has_correct_parent = true;
-      } else {
-        return false;  // No need to continue looking at this process's
-                       // status file; it's a child of a different process.
-      }
-    } else if (key_value.first == "Name") {
-      // Names in status are truncated to 15 characters. (TASK_COMM_LEN is 16
-      // and one byte is used for the terminating nul internally.)
-      constexpr std::string_view kCrashpadName(
-          std::string_view("chrome_crashpad_handler")
-              .substr(0, kKernelProcessNameLength));
-      std::string value;
-      base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
-      if (value == kCrashpadName) {
-        is_crashpad = true;
-      } else {
-        return false;  // No need to continue looking at this process's
-                       // status file; it's not crashpad.
-      }
-    }
-
-    if (is_crashpad && has_correct_parent) {
-      return true;
-    }
-  }
-
-  VLOG(3) << status_file.value() << " didn't have Name and PPid";
-  return false;
-}
-#endif  // !USE_FORCE_BREAKPAD
 }  // namespace
 
 UserCollector::UserCollector(
@@ -574,21 +515,29 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
   // Rules:
   //   1. Only the main browser process needs to be captured this way. Crashpad
   //      can capture very early crashes in subprocesses.
-  //   2. Only capture if the process does not have a child process named
-  //      "chrome_crashpad_handler". Once this process exists, crashpad should
-  //      be capturing the crash.
+  //   2. Only capture if the process has not initialized crashpad. We rely
+  //      on the browser process creating /run/crash_reporter/crashpad_ready/pid
+  //      to let us know when crashpad is ready.
+  //      Note: In guest mode, Chrome is running in a private mount and we
+  //            can't see the write to /run/crash_reporter/crashpad_ready/.
+  //            For end-users, we'll never get here because IsFeedbackAllowed()
+  //            will return false, so we don't need a separate check for guest
+  //            mode.
   //   3. Don't capture on boards with USE flag force_breakpad. We can't tell if
   //      breakpad is initialized from the outside.
-  //   4. If the process has been up for more than 10 seconds, don't capture.
-  //      Long-running processes will have cores which are larger than
-  //      kMaxChromeCoreSize, and the lack of a chrome_crashpad_handler probably
-  //      indicates we're trying to shutdown, not start up.
 #if USE_FORCE_BREAKPAD
   return false;  // Doesn't meet rule #3.
 #else
   if (exec != kChromeExecName &&
       exec != ExecNameToSuppliedName(kChromeExecName)) {
     return false;  // Doesn't meet rule #1.
+  }
+
+  base::FilePath crashpad_ready_path =
+      paths::Get(crash_reporter::kCrashpadReadyDirectory)
+          .Append(base::NumberToString(pid));
+  if (base::PathExists(crashpad_ready_path)) {
+    return false;  // Doesn't meet rule #2.
   }
 
   base::FilePath process_path = GetProcessPath(pid);
@@ -613,30 +562,6 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
       if (base::StartsWith(arg, "--type=")) {
         return false;  // Not the browser process. Doesn't meet rule #1.
       }
-    }
-  }
-
-  // Check uptime before checking for a child crashpad process. The uptime
-  // check requires far fewer system calls and will usually return false.
-  base::TimeDelta current_uptime;
-  base::TimeDelta process_start_uptime;
-  constexpr base::TimeDelta kMaxProcessAge = base::Seconds(10);
-  if (!GetUptime(&current_uptime) ||
-      !GetUptimeAtProcessStart(pid, &process_start_uptime) ||
-      (current_uptime - process_start_uptime) > kMaxProcessAge) {
-    return false;  // Doesn't meet rule #4.
-  }
-
-  // Enumerate all /proc/<pid>/status files to look for one that's a child of
-  // the crashed process and which is a crashpad handler.
-  base::FileEnumerator status_files(
-      paths::Get("/proc"), true /*recursive*/, base::FileEnumerator::FILES,
-      "status", base::FileEnumerator::FolderSearchPolicy::ALL,
-      base::FileEnumerator::ErrorPolicy::IGNORE_ERRORS);
-  for (base::FilePath status_file = status_files.Next(); !status_file.empty();
-       status_file = status_files.Next()) {
-    if (IsACrashpadChildOf(status_file, pid)) {
-      return false;  // Doesn't meet rule #2.
     }
   }
 
