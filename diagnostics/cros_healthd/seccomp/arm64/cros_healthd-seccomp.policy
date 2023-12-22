@@ -9,7 +9,6 @@ bind: 1
 brk: 1
 capget: 1
 chdir: 1
-chroot: 1
 clock_gettime: 1
 clock_nanosleep: 1
 clone: 1
@@ -100,7 +99,6 @@ madvise: 1
 memfd_create: 1
 mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mount: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 # Used occasionally by glibc discovered in production use (b/167617776)
 mremap: 1
@@ -109,7 +107,6 @@ nanosleep: 1
 newfstatat: 1
 openat: 1
 pipe2: 1
-pivot_root: 1
 ppoll: 1
 prctl: arg0 == PR_SET_SECCOMP || arg0 == PR_SET_NO_NEW_PRIVS || \
        arg0 == PR_SET_NAME

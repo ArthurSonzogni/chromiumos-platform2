@@ -70,8 +70,6 @@ setpgid: 1
 rt_sigtimedwait: 1
 mkdirat: 1
 rmdir: 1
-pivot_root: 1
-chroot: 1
 setgroups32: 1
 setresgid32: 1
 setresuid32: 1

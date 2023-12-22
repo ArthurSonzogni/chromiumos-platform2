@@ -72,8 +72,6 @@ setpgid: 1
 rt_sigtimedwait: 1
 mkdirat: 1
 rmdir: 1
-pivot_root: 1
-chroot: 1
 setgroups: 1
 setresgid: 1
 setresuid: 1
