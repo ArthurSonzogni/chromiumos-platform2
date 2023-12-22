@@ -76,6 +76,8 @@ using FuzzCommandList =
                 &Backend::PinWeaverManager::RemoveCredential,
                 &Backend::PinWeaverManager::ResetCredential,
                 &Backend::PinWeaverManager::StartBiometricsAuth,
+                &Backend::PinWeaverManager::StateIsReady,
+                &Backend::PinWeaverManager::SyncHashTree,
                 &Backend::PinWeaver::IsEnabled,
                 &Backend::PinWeaver::GetVersion,
                 &Backend::PinWeaver::Reset,
