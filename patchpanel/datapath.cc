@@ -104,7 +104,13 @@ constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 //  and some other network interface unrelated to tethering.
 // Note that the upstream network interface may be used for other forwarded
 // traffic legitimately.
-constexpr char kAcceptTetheringChain[] = "accept_tethering";
+constexpr char kForwardTetheringChain[] = "forward_tethering";
+// OUPUT filter chain to accept egress traffic sent by ChromeOS on the
+// downstream network interface of a tethered connection.
+constexpr char kEgressTetheringChain[] = "egress_tethering";
+// INPUT filter chain to accept ingress traffic received by ChromeOS on the
+// downstream network interface of a tethered connection by a tethering client.
+constexpr char kIngressTetheringChain[] = "ingress_tethering";
 
 // OUTPUT filter chain to drop host-initiated connection to Bruschetta and
 // FORWARD filter chain to drop external- and other-vm-initiated connection.
@@ -329,8 +335,10 @@ void Datapath::Start() {
        kAcceptDownstreamNetworkChain},
       // Create OUTPUT filter chain to enforce source IP on egress IPv6 packets.
       {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain},
-      // Create FORWARD filter chain for tethering forwarded traffic.
-      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptTetheringChain},
+      // Create filter chains for tethering traffic.
+      {IpFamily::kDual, Iptables::Table::kFilter, kForwardTetheringChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kEgressTetheringChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kIngressTetheringChain},
       // Create OUTPUT and FORWARD filter chains to drop host-to-bruschetta
       // traffic.
       {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain},
@@ -384,9 +392,10 @@ void Datapath::Start() {
        kApplyAutoDNATToParallelsChain},
       // Jump to the chain accepting tethering traffic between the upstream and
       // downstream network interfaces and reject any other forwarded traffic
-      // between the downstream and another network interface
+      // between the downstream and another network interface. Jump rules for
+      // the OUTPUT and INPUT filter chains are created dynamically.
       {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
-       kAcceptTetheringChain},
+       kForwardTetheringChain},
       // Jump to chains to drop packets into Bruschetta. OUTPUT one needs to be
       // after --state NEW,RELATED,ESTABLISHED rule, and FORWARD one needs to be
       // before --state RELATED,ESTABLISHED rule.
@@ -593,6 +602,38 @@ void Datapath::Start() {
                << kEnforceSourcePrefixChain;
   }
 
+  // Create static tethering rules for ingress and egress traffic on the
+  // downstream network interface:
+  //   - allow ICMPv4 and ICMPv6 both ways.
+  //   - allow DHCPv4 in one direction (ChromeOS is the server).
+  //   - drop anything else.
+  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kEgressTetheringChain,
+                 {"-p", "icmp", "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kIngressTetheringChain,
+                 {"-p", "icmp", "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kEgressTetheringChain,
+                 {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kIngressTetheringChain,
+                 {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kEgressTetheringChain,
+                 {"-p", "udp", "-m", "udp", "--sport", "67", "--dport", "68",
+                  "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kIngressTetheringChain,
+                 {"-p", "udp", "-m", "udp", "--sport", "68", "--dport", "67",
+                  "-j", "ACCEPT", "-w"});
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kIngressTetheringChain,
+                 {"-j", "DROP", "-w"});
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
+                 Iptables::Command::kA, kEgressTetheringChain,
+                 {"-j", "DROP", "-w"});
+
   SetupQoSDetectChain();
   SetupQoSApplyDSCPChain();
 }
@@ -693,7 +734,9 @@ void Datapath::ResetIptables() {
        true},
       {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain,
        true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptTetheringChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kForwardTetheringChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kEgressTetheringChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kIngressTetheringChain, true},
       {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain,
        true},
       {IpFamily::kDual, Iptables::Table::kFilter, kDropForwardToBruschettaChain,
@@ -1347,18 +1390,18 @@ void Datapath::AddDownstreamInterfaceRules(
     // Explicitly accept any traffic forwarded between the upstream and
     // downstream network interfaces.
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                   Iptables::Command::kA, kAcceptTetheringChain, "ACCEPT",
+                   Iptables::Command::kA, kForwardTetheringChain, "ACCEPT",
                    upstream_device->ifname, int_ifname);
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                   Iptables::Command::kA, kAcceptTetheringChain, "ACCEPT",
+                   Iptables::Command::kA, kForwardTetheringChain, "ACCEPT",
                    int_ifname, upstream_device->ifname);
     // Then, reject any other forwarded traffic between the downstream network
     // interface and any other interface.
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                   Iptables::Command::kA, kAcceptTetheringChain, "DROP",
+                   Iptables::Command::kA, kForwardTetheringChain, "DROP",
                    /*iif=*/"", int_ifname);
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                   Iptables::Command::kA, kAcceptTetheringChain, "DROP",
+                   Iptables::Command::kA, kForwardTetheringChain, "DROP",
                    int_ifname, /*oif=*/"");
     // If the upstream network is shared with the device (e.g. non-cellular
     // upstream, DEFAULT PDN used as upstream, DUN PDN upstream also used as
@@ -1518,7 +1561,7 @@ void Datapath::StopRoutingDevice(const std::string& int_ifname,
     // Therefore, the tethering accept and drop rules can be removed by flushing
     // the relevant chain.
     FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
-               kAcceptTetheringChain);
+               kForwardTetheringChain);
   }
   if (forward_firewall_rule_type == ForwardFirewallRuleType::kOpen) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
@@ -2020,28 +2063,13 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
 
-  // Ensure any prior tethering iptables setup that might not have been
-  // properly torn down is removed.
-  if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
-                  kAcceptDownstreamNetworkChain)) {
-    LOG(ERROR) << __func__ << " " << info << ": Failed to flush "
-               << kAcceptDownstreamNetworkChain;
-  }
-
-  // Accept DHCP traffic if DHCP is used.
-  if (info.enable_ipv4_dhcp &&
-      !ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                      Iptables::Command::kI, kAcceptDownstreamNetworkChain,
-                      {"-p", "udp", "--dport", "67", "--sport", "68", "-j",
-                       "ACCEPT", "-w"})) {
-    LOG(ERROR) << "Failed to create ACCEPT rule for DHCP traffic on "
-               << kAcceptDownstreamNetworkChain;
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                      Iptables::Command::kI, "OUTPUT", kEgressTetheringChain,
+                      /*iif=*/"", /*oif=*/info.downstream_ifname)) {
     return false;
   }
-
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kI, "INPUT",
-                      kAcceptDownstreamNetworkChain,
+                      Iptables::Command::kI, "INPUT", kIngressTetheringChain,
                       /*iif=*/info.downstream_ifname, /*oif=*/"")) {
     return false;
   }
@@ -2062,10 +2090,11 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // or flip it back to client mode and restart a Network on top.
   StopRoutingDevice(info.downstream_ifname,
                     DownstreamNetworkInfoTrafficSource(info));
-  FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
-             kAcceptDownstreamNetworkChain);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "INPUT", kAcceptDownstreamNetworkChain,
+                 Iptables::Command::kD, "OUTPUT", kEgressTetheringChain,
+                 /*iif=*/"", /*oif=*/info.downstream_ifname);
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                 Iptables::Command::kD, "INPUT", kIngressTetheringChain,
                  /*iif=*/info.downstream_ifname, /*oif=*/"");
 }
 
