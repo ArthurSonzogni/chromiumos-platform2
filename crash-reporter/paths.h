@@ -18,6 +18,13 @@ inline constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
 // available.
 inline constexpr char kSystemRunCrashDirectory[] = "/run/crash_reporter/crash";
 
+// Subdirectory that Chrome browser writes to in order to indicate that
+// crashpad is ready and we don't need to use early crash handler in
+// UserCollector. MUST MATCH kCrashReporterCrashpadReadyDirectory in Chrome's
+// components/crash/core/app/crashpad_linux.cc.
+inline constexpr char kCrashReporterCrashpadReadyDirectory[] =
+    "/run/crash_reporter/crashpad_ready";
+
 // Directory where crash_reporter stores flag for metrics_daemon.
 inline constexpr char kSystemRunMetricsFlagDirectory[] =
     "/run/metrics/external/crash-reporter";

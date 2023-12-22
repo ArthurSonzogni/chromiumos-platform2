@@ -2083,8 +2083,10 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
   if (early) {
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunCrashDirectory),
                                      kSystemRunStateDirectoryMode,
-                                     constants::kRootUid, kRootGroup, nullptr))
+                                     constants::kRootUid, kRootGroup,
+                                     nullptr)) {
       return false;
+    }
   } else {
     gid_t directory_group;
     if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
@@ -2101,8 +2103,24 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
     if (!CreateDirectoryWithSettings(
             FilePath(paths::kCrashReporterStateDirectory),
             kCrashReporterStateDirectoryMode, constants::kRootUid, kRootGroup,
-            nullptr))
+            nullptr)) {
       return false;
+    }
+
+    // Don't abort on errors creating /run/crash_reporter/crashpad_ready; the
+    // system will continue working without it (it will just struggle a bit).
+    uid_t chronos_uid = -1;
+    gid_t chronos_gid = -1;
+    if (!brillo::userdb::GetUserInfo(kDefaultUserName, &chronos_uid,
+                                     &chronos_gid)) {
+      LOG(ERROR) << "User " << kDefaultUserName << " doesn't exist";
+    } else if (!CreateDirectoryWithSettings(
+                   FilePath(paths::kCrashReporterCrashpadReadyDirectory),
+                   kSystemRunStateDirectoryMode, chronos_uid, chronos_gid,
+                   nullptr)) {
+      LOG(ERROR) << "Could not create "
+                 << paths::kCrashReporterCrashpadReadyDirectory;
+    }
   }
 
   return true;

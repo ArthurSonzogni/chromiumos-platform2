@@ -407,6 +407,14 @@ However, now we can make [crash-boot-collect.conf] wait for [metrics_daemon],
 we should be able to switch to its more standard existing IPC methods.
 ***
 
+This is used to communicate with Chrome:
+
+*   `/run/crash_reporter/crashpad_ready/<pid>`: Used by Chrome browser process
+    to signal that crashpad is ready to handle Chrome crashes for the given pid.
+    If this file does not exist for a Chrome browser crash, UserCollector will
+    attempt to handle it, assuming the crash happened before crashpad was set
+    up.
+
 ### VM-specific configuration
 
 VMs may ship `/etc/vm_crash_filter.textproto` within the VM filesystem. If
