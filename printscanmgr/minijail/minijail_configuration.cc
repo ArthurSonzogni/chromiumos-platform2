@@ -86,6 +86,7 @@ void EnterExecutorMinijail() {
   CHECK_EQ(0, minijail_enter_pivot_root(jail.get(), "/mnt/empty"));
 
   CHECK_EQ(0, minijail_bind(jail.get(), "/", "/", 0));
+  CHECK_EQ(1, minijail_add_fs_restriction_ro(jail.get(), "/"));
 
   // Create a new tmpfs filesystem for /run and mount necessary files.
   CHECK_EQ(
