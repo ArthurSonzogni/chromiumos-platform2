@@ -4,6 +4,7 @@
 
 #include "chaps/fuzzers/fuzzed_chaps_factory.h"
 
+#include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "chaps/chaps_factory.h"
@@ -13,7 +14,9 @@
 namespace chaps {
 
 FuzzedChapsFactory::FuzzedChapsFactory(FuzzedDataProvider* data_provider)
-    : data_provider_(data_provider) {}
+    : data_provider_(data_provider),
+      random_seed_(
+          brillo::SecureBlob(data_provider_->ConsumeRandomLengthString())) {}
 
 Session* FuzzedChapsFactory::CreateSession(int slot_id,
                                            ObjectPool* token_object_pool,
@@ -49,6 +52,10 @@ SlotPolicy* FuzzedChapsFactory::CreateSlotPolicy(bool is_shared_slot) {
 
 ObjectPolicy* FuzzedChapsFactory::GetObjectPolicyForType(CK_OBJECT_CLASS type) {
   return nullptr;
+}
+
+const brillo::SecureBlob& FuzzedChapsFactory::GetRandomSeed() const {
+  return random_seed_;
 }
 
 }  // namespace chaps

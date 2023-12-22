@@ -355,6 +355,7 @@ proto_library("system_api-chaps-protos") {
   proto_out_dir = "include/chaps/proto_bindings"
   sources = [
     "${proto_in_dir}/attributes.proto",
+    "${proto_in_dir}/chaps_wrapped_key_info.proto",
     "${proto_in_dir}/ck_structs.proto",
     "${proto_in_dir}/key_permissions.proto",
   ]

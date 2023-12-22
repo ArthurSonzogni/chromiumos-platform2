@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <brillo/secure_blob.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 
 #include "pkcs11/cryptoki.h"
@@ -40,6 +41,7 @@ class ChapsFactory {
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
   virtual SlotPolicy* CreateSlotPolicy(bool is_shared_slot) = 0;
+  virtual const brillo::SecureBlob& GetRandomSeed() const = 0;
 };
 
 }  // namespace chaps

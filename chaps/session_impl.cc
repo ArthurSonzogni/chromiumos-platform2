@@ -21,6 +21,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
+#include <chaps/proto_bindings/attributes.pb.h>
+#include <chaps/proto_bindings/chaps_wrapped_key_info.pb.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -825,6 +827,48 @@ AllowDecrypt IsHwsecObjectAllowDecrypt(const Object& object) {
     return AllowDecrypt::kNotAllow;
 }
 
+std::optional<string> AESKeyWrapWithPadding(bool is_encrypt,
+                                            const string& key_material,
+                                            const string& data_in) {
+  crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
+  // Reasons for using AES wrap pad here:
+  // - AES Key Wrap provides both confidentiality and authentication. There are
+  //   other schemes that provides the same but they requires the use of a
+  //   unique IV, adding unnecessary complexity.
+  // - Performance is not critical in this use case (otherwise AES GCM would
+  //   standout), so it's OK to use a slower scheme such as AES Key Wrap.
+  // - AES Key Wrap guarantees that each bit of output can be expected to depend
+  //   in a nontrivial fashion on each bit of input.
+  const EVP_CIPHER* cipher = EVP_aes_256_wrap_pad();
+  EVP_CIPHER_CTX_set_flags(ctx.get(), EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr,
+                         ConvertStringToByteBuffer(key_material.data()),
+                         nullptr, is_encrypt)) {
+    LOG(ERROR) << "EVP_CipherInit failed: " << GetOpenSSLError();
+    return std::nullopt;
+  }
+
+  int update_length = data_in.length() + kMaxCipherBlockBytes;
+  string data_out;
+  data_out.resize(update_length + 2 * kMaxCipherBlockBytes);
+  if (!EVP_CipherUpdate(
+          ctx.get(), ConvertStringToByteBuffer(data_out.data()), &update_length,
+          ConvertStringToByteBuffer(data_in.data()), data_in.length())) {
+    LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
+    return std::nullopt;
+  }
+
+  int final_length;
+  if (!EVP_CipherFinal_ex(
+          ctx.get(), ConvertStringToByteBuffer(data_out.data()) + update_length,
+          &final_length)) {
+    LOG(ERROR) << "EVP_CipherFinal failed: " << GetOpenSSLError();
+    return std::nullopt;
+  }
+  data_out.resize(update_length + final_length);
+  return data_out;
+}
+
 }  // namespace
 
 SessionImpl::SessionImpl(int slot_id,
@@ -1528,12 +1572,38 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
                            const Object* wrapping_key,
                            const Object* key,
                            int* required_out_length,
-                           std::string* wrapped_key) {
-  CHECK(wrapping_key);
+                           string* wrapped_key) {
   CHECK(key);
   CHECK(required_out_length);
   CHECK(wrapped_key);
 
+  string data;
+  // kChapsKeyWrapMechanism is a chaps-specific mechanism that doesn't require
+  // a wrapping key.
+  CHECK_EQ(mechanism == kChapsKeyWrapMechanism, !wrapping_key);
+  CK_RV result = mechanism == kChapsKeyWrapMechanism
+                     ? WrapKeyWithChaps(mechanism_parameter, key, &data)
+                     : WrapKeyInternal(mechanism, mechanism_parameter,
+                                       wrapping_key, key, &data);
+
+  if (result != CKR_OK) {
+    return result;
+  }
+  int out_length = data.size();
+  int max_length = *required_out_length;
+  *required_out_length = out_length;
+  if (max_length < out_length) {
+    return CKR_BUFFER_TOO_SMALL;
+  }
+  *wrapped_key = data;
+  return CKR_OK;
+}
+
+CK_RV SessionImpl::WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
+                                   const std::string& mechanism_parameter,
+                                   const Object* wrapping_key,
+                                   const Object* key,
+                                   string* wrapped_key) {
   LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_EXTRACTABLE, false),
                           CKR_KEY_UNEXTRACTABLE);
   LOG_CK_RV_AND_RETURN_IF(!wrapping_key->GetAttributeBool(CKA_WRAP, false),
@@ -1543,12 +1613,12 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
           !wrapping_key->GetAttributeBool(CKA_TRUSTED, false),
       CKR_KEY_NOT_WRAPPABLE);
 
-  string data;
   switch (mechanism) {
     case CKM_RSA_PKCS_OAEP: {
       LOG_CK_RV_AND_RETURN_IF(key->GetObjectClass() != CKO_SECRET_KEY,
                               CKR_KEY_NOT_WRAPPABLE);
-      LOG_CK_RV_AND_RETURN_IF_ERR(WrapKeyRSAOAEP(wrapping_key, key, &data));
+      LOG_CK_RV_AND_RETURN_IF_ERR(
+          WrapKeyRSAOAEP(wrapping_key, key, wrapped_key));
       break;
     }
     default: {
@@ -1556,14 +1626,6 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
       return CKR_MECHANISM_INVALID;
     }
   }
-
-  int out_length = data.size();
-  int max_length = *required_out_length;
-  *required_out_length = out_length;
-  if (max_length < out_length) {
-    return CKR_BUFFER_TOO_SMALL;
-  }
-  *wrapped_key = data;
   return CKR_OK;
 }
 
@@ -1602,6 +1664,53 @@ CK_RV SessionImpl::WrapKeyRSAOAEP(const Object* wrapping_key,
   return CKR_OK;
 }
 
+CK_RV SessionImpl::WrapKeyWithChaps(const std::string& mechanism_parameter,
+                                    const Object* key,
+                                    string* wrapped_key) {
+  LOG_CK_RV_AND_RETURN_IF(
+      !key->GetAttributeBool(kChapsWrappableAttribute, false),
+      CKR_KEY_NOT_WRAPPABLE);
+
+  // Generates a temporary random AES key of length=32 (not accessible to the
+  // user).
+  string base_aes_key = GenerateRandomSoftware(32);
+  // Using the base_aes_key and Chaps' secret random seed to derive the actual
+  // wrapping key.
+  string derived_aes_key = HmacSha512(base_aes_key, factory_->GetRandomSeed());
+
+  // Wraps the target key with derived_aes_key using CKM_AES_KEY_WRAP_KWP
+  const AttributeMap* attribute_map = key->GetAttributeMap();
+  AttributeMap::const_iterator it;
+  AttributeList attribute_list;
+  for (const auto& entry : *attribute_map) {
+    Attribute* next = attribute_list.add_attributes();
+    next->set_type(entry.first);
+    next->set_length(entry.second.length());
+    next->set_value(entry.second);
+  }
+  string serialized_key_object;
+  if (!attribute_list.SerializeToString(&serialized_key_object)) {
+    LOG(ERROR) << "Failed to serialize object.";
+    return CKR_FUNCTION_FAILED;
+  }
+  auto data = AESKeyWrapWithPadding(/* is_encrypt */ true, derived_aes_key,
+                                    serialized_key_object);
+  if (data == std::nullopt)
+    return CKR_FUNCTION_FAILED;
+  const string& wrapped_target_key = data.value();
+
+  // Zeroizes the temporary AES key
+  derived_aes_key.clear();
+
+  // Fill the sealed AES key and the wrapped target key into some protobuf and
+  // output the serialized result.
+  ChapsWrappedKeyInfo key_info;
+  key_info.set_base_aes_key(base_aes_key);
+  key_info.set_wrapped_attribute_list(wrapped_target_key);
+  *wrapped_key = key_info.SerializeAsString();
+  return CKR_OK;
+}
+
 CK_RV SessionImpl::UnwrapKey(CK_MECHANISM_TYPE mechanism,
                              const std::string& mechanism_parameter,
                              const Object* unwrapping_key,
@@ -1609,9 +1718,25 @@ CK_RV SessionImpl::UnwrapKey(CK_MECHANISM_TYPE mechanism,
                              const CK_ATTRIBUTE_PTR attributes,
                              int num_attributes,
                              int* new_key_handle) {
-  CHECK(unwrapping_key);
   CHECK(new_key_handle);
+  // kChapsKeyWrapMechanism is a chaps-specific mechanism that doesn't require
+  // an unwrapping key.
+  CHECK_EQ(mechanism == kChapsKeyWrapMechanism, !unwrapping_key);
+  return mechanism == kChapsKeyWrapMechanism
+             ? UnwrapKeyWithChaps(mechanism_parameter, wrapped_key,
+                                  new_key_handle)
+             : UnwrapKeyInternal(mechanism, mechanism_parameter, unwrapping_key,
+                                 wrapped_key, attributes, num_attributes,
+                                 new_key_handle);
+}
 
+CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
+                                     const std::string& mechanism_parameter,
+                                     const Object* unwrapping_key,
+                                     const string& wrapped_key,
+                                     const CK_ATTRIBUTE_PTR attributes,
+                                     int num_attributes,
+                                     int* new_key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!unwrapping_key->GetAttributeBool(CKA_UNWRAP, false),
                           CKR_KEY_FUNCTION_NOT_PERMITTED);
 
@@ -1704,6 +1829,61 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object* unwrapping_key,
   return CKR_OK;
 }
 
+CK_RV SessionImpl::UnwrapKeyWithChaps(const std::string& mechanism_parameter,
+                                      const string& wrapped_key,
+                                      int* new_key_handle) {
+  std::unique_ptr<Object> object(factory_->CreateObject());
+  CHECK(object.get());
+
+  // Deserializes the input protobuf and obtains the sealed AES key and the
+  // wrapped target key.
+  ChapsWrappedKeyInfo key_info;
+  key_info.ParseFromString(wrapped_key);
+  string base_aes_key = key_info.base_aes_key();
+  string wrapped_target_key = key_info.wrapped_attribute_list();
+
+  // Using the base_aes_key and Chaps' secret random seed to derive the actual
+  // unwrapping key.
+  string derived_aes_key = HmacSha512(base_aes_key, factory_->GetRandomSeed());
+
+  // Unwraps the target key from the second part with derived_aes_key using
+  // CKM_AES_KEY_WRAP_KWP.
+  auto data = AESKeyWrapWithPadding(/* is_encrypt */ false, derived_aes_key,
+                                    wrapped_target_key);
+  if (data == std::nullopt)
+    return CKR_FUNCTION_FAILED;
+
+  AttributeList attribute_list;
+  attribute_list.ParseFromString(data.value());
+
+  for (int i = 0; i < attribute_list.attributes_size(); ++i) {
+    const Attribute& attribute = attribute_list.attributes(i);
+    if (!attribute.has_value()) {
+      LOG(WARNING) << "No value found for attribute: " << attribute.type();
+      continue;
+    }
+    object->SetAttributeString(attribute.type(), attribute.value());
+    // Correct the length of integral attributes since they may have been
+    // serialized with a different sizeof(CK_ULONG).
+    if (IsIntegralAttribute(attribute.type()) &&
+        attribute.value().length() != sizeof(CK_ULONG)) {
+      CK_ULONG int_value = object->GetAttributeInt(attribute.type(), 0);
+      object->SetAttributeInt(attribute.type(), int_value);
+    }
+  }
+
+  LOG_CK_RV_AND_RETURN_IF_ERR(object->FinalizeNewObject());
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
+  auto pool_res = pool->Insert(object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  *new_key_handle = object.release()->handle();
+
+  // Zeroizes the temporary AES key.
+  derived_aes_key.clear();
+  return CKR_OK;
+}
 CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
                              const std::string& mechanism_parameter,
                              const Object* base_key,

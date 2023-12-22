@@ -30,11 +30,13 @@ class FuzzedChapsFactory : public ChapsFactory {
   Object* CreateObject() override;
   ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) override;
   SlotPolicy* CreateSlotPolicy(bool is_shared_slot) override;
+  const brillo::SecureBlob& GetRandomSeed() const override;
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
 
  private:
   FuzzedDataProvider* data_provider_;
+  const brillo::SecureBlob random_seed_;
 };
 
 }  // namespace chaps

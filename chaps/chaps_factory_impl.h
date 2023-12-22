@@ -7,6 +7,7 @@
 
 #include "chaps/chaps_factory.h"
 
+#include <brillo/secure_blob.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 
 #include "chaps/chaps_metrics.h"
@@ -32,11 +33,15 @@ class ChapsFactoryImpl : public ChapsFactory {
   Object* CreateObject() override;
   ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) override;
   SlotPolicy* CreateSlotPolicy(bool is_shared_slot) override;
+  const brillo::SecureBlob& GetRandomSeed() const override {
+    return random_seed_;
+  };
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
 
  private:
   ChapsMetrics* chaps_metrics_;
+  const brillo::SecureBlob random_seed_;
 };
 
 }  // namespace chaps

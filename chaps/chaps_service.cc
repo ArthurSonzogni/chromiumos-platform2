@@ -969,10 +969,14 @@ uint32_t ChapsServiceImpl::WrapKey(const SecureBlob& isolate_credential,
       !slot_manager_->GetSession(isolate_credential, session_id, &session),
       CKR_SESSION_HANDLE_INVALID);
   const Object* wrapping_key = NULL;
-  LOG_CK_RV_AND_RETURN_IF(
-      !session->GetObject(wrapping_key_handle, &wrapping_key),
-      CKR_WRAPPING_KEY_HANDLE_INVALID);
-  CHECK(wrapping_key);
+  // kChapsKeyWrapMechanism is a chaps-specific mechanism that doesn't require
+  // an wrapping key.
+  if (mechanism_type != kChapsKeyWrapMechanism) {
+    LOG_CK_RV_AND_RETURN_IF(
+        !session->GetObject(wrapping_key_handle, &wrapping_key),
+        CKR_WRAPPING_KEY_HANDLE_INVALID);
+    CHECK(wrapping_key);
+  }
   const Object* key = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
                           CKR_KEY_HANDLE_INVALID);
@@ -998,10 +1002,14 @@ uint32_t ChapsServiceImpl::UnwrapKey(const SecureBlob& isolate_credential,
       !slot_manager_->GetSession(isolate_credential, session_id, &session),
       CKR_SESSION_HANDLE_INVALID);
   const Object* unwrapping_key = NULL;
-  LOG_CK_RV_AND_RETURN_IF(
-      !session->GetObject(unwrapping_key_handle, &unwrapping_key),
-      CKR_WRAPPING_KEY_HANDLE_INVALID);
-  CHECK(unwrapping_key);
+  // kChapsKeyWrapMechanism is a chaps-specific mechanism that doesn't require
+  // an unwrapping key.
+  if (mechanism_type != kChapsKeyWrapMechanism) {
+    LOG_CK_RV_AND_RETURN_IF(
+        !session->GetObject(unwrapping_key_handle, &unwrapping_key),
+        CKR_WRAPPING_KEY_HANDLE_INVALID);
+    CHECK(unwrapping_key);
+  }
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   return session->UnwrapKey(

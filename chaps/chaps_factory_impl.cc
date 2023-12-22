@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <libhwsec/frontend/chaps/frontend.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "chaps/object_impl.h"
 #include "chaps/object_policy_cert.h"
@@ -30,8 +31,15 @@ using std::string;
 
 namespace chaps {
 
+namespace {
+
+const int kRandomSeedSize = 32;
+
+}  // namespace
+
 ChapsFactoryImpl::ChapsFactoryImpl(ChapsMetrics* chaps_metrics)
-    : chaps_metrics_(chaps_metrics) {
+    : chaps_metrics_(chaps_metrics),
+      random_seed_(hwsec_foundation::CreateSecureRandomBlob(kRandomSeedSize)) {
   CHECK(chaps_metrics_);
 }
 

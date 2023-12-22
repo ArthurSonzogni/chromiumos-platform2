@@ -17,6 +17,7 @@
 #include <base/check_op.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <brillo/secure_blob.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -58,6 +59,7 @@ using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using Result = chaps::ObjectPool::Result;
@@ -171,6 +173,7 @@ const char kChapsSessionDigest[] = "Platform.Chaps.Session.Digest";
 const char kChapsSessionEncrypt[] = "Platform.Chaps.Session.Encrypt";
 const char kChapsSessionSign[] = "Platform.Chaps.Session.Sign";
 const char kChapsSessionVerify[] = "Platform.Chaps.Session.Verify";
+const char kChapsRandomSeed[] = "random_seed";
 
 // Test fixture for an initialized SessionImpl instance.
 class TestSession : public ::testing::Test {
@@ -348,6 +351,7 @@ class TestSession : public ::testing::Test {
   std::unique_ptr<SessionImpl> session_;
   StrictMock<MetricsLibraryMock> mock_metrics_library_;
   ChapsMetrics chaps_metrics_;
+  const brillo::SecureBlob random_seed_ = brillo::SecureBlob(kChapsRandomSeed);
 };
 
 // Session Test that uses real Object implementation (ObjectImpl)
@@ -362,6 +366,8 @@ class TestSessionWithRealObject : public TestSession {
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     EXPECT_CALL(factory_, CreateObjectPolicy(_))
         .WillRepeatedly(Invoke(ChapsFactoryImpl::GetObjectPolicyForType));
+    EXPECT_CALL(factory_, GetRandomSeed())
+        .WillRepeatedly(ReturnRef(random_seed_));
     EXPECT_CALL(handle_generator_, CreateHandle()).WillRepeatedly(Return(1));
     ConfigureObjectPool(&token_pool_, 0);
     ConfigureHwsec(&hwsec_);
@@ -2311,6 +2317,36 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
   EXPECT_EQ(CKR_OK,
             session_->UnwrapKey(CKM_RSA_PKCS_OAEP, "", rsapriv, wrapped_key,
                                 attr, std::size(attr), &handle));
+}
+
+TEST_F(TestSessionWithTpmSimulator, WrapKeyWithChaps) {
+  const Object *rsapub, *rsapriv;
+  GenerateRSAKeyPair(true, 1024, &rsapub, &rsapriv);
+
+  int len = 0;
+  string wrapped_key;
+  EXPECT_EQ(CKR_KEY_NOT_WRAPPABLE,
+            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, rsapriv,
+                              &len, &wrapped_key));
+  const_cast<Object*>(rsapriv)->SetAttributeBool(kChapsWrappableAttribute,
+                                                 true);
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, rsapriv,
+                              &len, &wrapped_key));
+  EXPECT_EQ(CKR_OK, session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr,
+                                      rsapriv, &len, &wrapped_key));
+
+  int handle = 0;
+  EXPECT_EQ(CKR_OK, session_->UnwrapKey(kChapsKeyWrapMechanism, "", nullptr,
+                                        wrapped_key, {}, 0, &handle));
+  const Object* rsapriv_new = nullptr;
+  session_->GetObject(handle, &rsapriv_new);
+  EXPECT_TRUE(rsapriv_new->GetAttributeBool(CKA_LOCAL, false));
+  EXPECT_TRUE(rsapriv_new->GetAttributeBool(kChapsWrappableAttribute, false));
+  EXPECT_TRUE(rsapriv_new->GetAttributeBool(CKA_ALWAYS_SENSITIVE, false));
+  EXPECT_TRUE(rsapriv_new->GetAttributeBool(CKA_NEVER_EXTRACTABLE, false));
+  EXPECT_EQ(rsapriv->GetAttributeString(kKeyBlobAttribute),
+            rsapriv_new->GetAttributeString(kKeyBlobAttribute));
 }
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {
