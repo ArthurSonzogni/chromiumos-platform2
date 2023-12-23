@@ -441,6 +441,44 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
   ExpectReset();
 }
 
+TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
+  auto probe_url =
+      *net_base::HttpUrl::CreateFromString("http://service.google.com");
+
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
+  EXPECT_EQ(0, portal_detector()->attempt_count());
+  StartPortalRequest();
+  StartTrialTask();
+  EXPECT_EQ(1, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  PortalDetector::Result result;
+  result.http_result = PortalDetector::ProbeResult::kPortalSuspected;
+  result.http_status_code = 200;
+  result.http_content_length = 345;
+  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
+  result.probe_url = probe_url;
+  ASSERT_TRUE(result.IsHTTPProbeComplete());
+  ASSERT_TRUE(result.IsHTTPSProbeComplete());
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            result.GetValidationState());
+
+  portal_detector()->CompleteTrial(result);
+  ExpectCleanupTrial();
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
+  StartPortalRequest();
+  StartTrialTask();
+  EXPECT_EQ(portal_detector()->http_url_, probe_url);
+  EXPECT_EQ(2, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  portal_detector()->Stop();
+  ExpectReset();
+}
+
 TEST_F(PortalDetectorTest, ResetAttemptDelaysAndRestart) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
 

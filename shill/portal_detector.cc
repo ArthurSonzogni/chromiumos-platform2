@@ -120,9 +120,12 @@ void PortalDetector::Start(const std::string& ifname,
   SLOG(this, 3) << "In " << __func__;
 
   // If this is not the first attempt and if the previous attempt found a
-  // captive portal, reuse the same HTTP URL probe to ensure the same
-  // kPortalRedirect result is returned.
-  if (previous_result_ && previous_result_->IsHTTPProbeRedirected()) {
+  // captive portal (redirect or suspected redirect answer, reuse the same HTTP
+  // URL probe to ensure the same kPortalRedirect or kPortalSuspected result is
+  // returned.
+  if (previous_result_ &&
+      (previous_result_->IsHTTPProbeRedirected() ||
+       previous_result_->IsHTTPProbeRedirectionSuspected())) {
     http_url_ = *previous_result_->probe_url;
   } else {
     http_url_ = PickProbeUrl(probing_configuration_.portal_http_url,

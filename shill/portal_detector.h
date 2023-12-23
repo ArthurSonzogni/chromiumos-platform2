@@ -323,6 +323,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, ResetAttemptDelaysAndRestart);
   FRIEND_TEST(PortalDetectorTest, Restart);
   FRIEND_TEST(PortalDetectorTest, RestartAfterRedirect);
+  FRIEND_TEST(PortalDetectorTest, RestartAfterSuspectedRedirect);
 
   // Picks the next probe URL based on |attempt_count_|. Rotates first through
   // |default_url| and |fallback_urls| to pick each URL in order at least once,
