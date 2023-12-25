@@ -801,6 +801,7 @@ if (use.test) {
       "network/mock_routing_policy_service.cc",
       "network/mock_routing_table.cc",
       "network/mock_slaac_controller.cc",
+      "network/mock_validation_log.cc",
       "network/network_applier_test.cc",
       "network/network_monitor_test.cc",
       "network/network_test.cc",

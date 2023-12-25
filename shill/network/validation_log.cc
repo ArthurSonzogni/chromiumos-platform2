@@ -18,6 +18,8 @@ ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
       metrics_(metrics),
       connection_start_(base::TimeTicks::Now()) {}
 
+ValidationLog::~ValidationLog() = default;
+
 void ValidationLog::AddResult(const NetworkMonitor::Result& result) {
   // Make sure that the total memory taken by ValidationLog is bounded.
   static constexpr size_t kValidationLogMaxSize = 128;

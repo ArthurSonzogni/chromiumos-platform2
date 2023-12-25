@@ -105,14 +105,12 @@ void Network::Start(const Network::StartOptions& opts) {
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
   ipv4_gateway_found_ = false;
   ipv6_gateway_found_ = false;
-  network_validation_log_ =
-      std::make_unique<ValidationLog>(technology_, metrics_);
 
   probing_configuration_ = opts.probing_configuration;
   network_monitor_ = network_monitor_factory_->Create(
       dispatcher_, interface_name_, probing_configuration_,
       base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()),
-      logging_tag_);
+      std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
 
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
@@ -271,7 +269,6 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   StopPortalDetection();
   network_monitor_.reset();
   StopConnectionDiagnostics();
-  StopNetworkValidationLog();
 
   const bool should_trigger_callback =
       state_ != State::kIdle && trigger_callback;
@@ -428,9 +425,9 @@ void Network::OnIPConfigUpdatedFromDHCP(
                         technology_, dhcp_duration->InMilliseconds());
   }
 
-  if (network_validation_log_ &&
-      network_config.captive_portal_uri.has_value()) {
-    network_validation_log_->SetCapportDHCPSupported();
+  if (network_config.captive_portal_uri.has_value()) {
+    network_monitor_->SetCapportAPI(*network_config.captive_portal_uri,
+                                    NetworkMonitor::CapportSource::kDHCP);
   }
 }
 
@@ -508,9 +505,9 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
   LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
 
-  if (network_validation_log_ &&
-      slaac_network_config.captive_portal_uri.has_value()) {
-    network_validation_log_->SetCapportRASupported();
+  if (slaac_network_config.captive_portal_uri.has_value()) {
+    network_monitor_->SetCapportAPI(*slaac_network_config.captive_portal_uri,
+                                    NetworkMonitor::CapportSource::kRA);
   }
 
   auto old_network_config = config_.Get();
@@ -850,10 +847,6 @@ void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
     ev.OnNetworkValidationResult(interface_index_, result);
   }
 
-  if (network_validation_log_) {
-    network_validation_log_->AddResult(result);
-  }
-
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
       // If network validation failed, also start additional connection
@@ -865,9 +858,6 @@ void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
       // "online" state. Stop portal detection.
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
                           technology_, total_duration);
-      // Stop recording results in |network_validation_log_| as soon as the
-      // first kInternetConnectivity result is observed.
-      StopNetworkValidationLog();
       StopPortalDetection();
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
@@ -900,13 +890,6 @@ void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
       result.http_content_length) {
     metrics_->SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength,
                         technology_, *result.http_content_length);
-  }
-}
-
-void Network::StopNetworkValidationLog() {
-  if (network_validation_log_) {
-    network_validation_log_->RecordMetrics();
-    network_validation_log_.reset();
   }
 }
 

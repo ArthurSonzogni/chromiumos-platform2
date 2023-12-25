@@ -12,10 +12,12 @@
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_portal_detector.h"
+#include "shill/network/mock_validation_log.h"
 #include "shill/portal_detector.h"
 
 namespace shill {
@@ -27,6 +29,8 @@ const std::vector<net_base::IPAddress> kDnsList = {
 };
 constexpr std::string_view kInterface = "wlan1";
 constexpr std::string_view kLoggingTag = "logging_tag";
+const net_base::HttpUrl kCapportAPI =
+    *net_base::HttpUrl::CreateFromString("https://example.org/api");
 
 using ::testing::_;
 using ::testing::Eq;
@@ -48,11 +52,16 @@ class NetworkMonitorTest : public ::testing::Test {
         std::make_unique<MockPortalDetectorFactory>();
     mock_portal_detector_factory_ = mock_portal_detector_factory.get();
 
+    auto mock_validation_log = std::make_unique<MockValidationLog>();
+    mock_validation_log_ = mock_validation_log.get();
+    EXPECT_CALL(*mock_validation_log_, RecordMetrics).Times(1);
+
     network_monitor_ = std::make_unique<NetworkMonitor>(
         &dispatcher_, kInterface, probing_configuration_,
         base::BindRepeating(&MockClient::OnNetworkMonitorResult,
                             base::Unretained(&client_)),
-        kLoggingTag, std::move(mock_portal_detector_factory));
+        std::move(mock_validation_log), kLoggingTag,
+        std::move(mock_portal_detector_factory));
   }
 
  protected:
@@ -64,7 +73,8 @@ class NetworkMonitorTest : public ::testing::Test {
   MockClient client_;
   std::unique_ptr<NetworkMonitor> network_monitor_;
   MockPortalDetectorFactory*
-      mock_portal_detector_factory_;  // Owned by |network_monitor_|.
+      mock_portal_detector_factory_;        // Owned by |network_monitor_|.
+  MockValidationLog* mock_validation_log_;  // Owned by |network_monitor_|.
 };
 
 TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
@@ -174,12 +184,25 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
                 });
             return portal_detector;
           }));
+  EXPECT_CALL(*mock_validation_log_, AddResult(result));
   EXPECT_CALL(client_, OnNetworkMonitorResult(result)).Times(1);
 
   EXPECT_TRUE(
       network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest,
                               net_base::IPFamily::kIPv4, kDnsList));
   task_environment_.RunUntilIdle();
+}
+
+TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
+  EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
+  network_monitor_->SetCapportAPI(kCapportAPI,
+                                  NetworkMonitor::CapportSource::kDHCP);
+}
+
+TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
+  EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
+  network_monitor_->SetCapportAPI(kCapportAPI,
+                                  NetworkMonitor::CapportSource::kRA);
 }
 
 }  // namespace

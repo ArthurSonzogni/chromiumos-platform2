@@ -9,7 +9,7 @@
 namespace shill {
 
 MockNetworkMonitor::MockNetworkMonitor()
-    : NetworkMonitor(nullptr, "", {}, base::DoNothing()) {}
+    : NetworkMonitor(nullptr, "", {}, base::DoNothing(), nullptr) {}
 
 MockNetworkMonitor::~MockNetworkMonitor() = default;
 

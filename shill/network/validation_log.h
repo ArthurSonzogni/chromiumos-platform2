@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 
 #include "shill/metrics.h"
+#include "shill/mockable.h"
 #include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
@@ -23,10 +24,12 @@ namespace shill {
 class ValidationLog {
  public:
   ValidationLog(Technology technology, Metrics* metrics);
-  void AddResult(const NetworkMonitor::Result& result);
-  void SetCapportDHCPSupported();
-  void SetCapportRASupported();
-  void RecordMetrics() const;
+  virtual ~ValidationLog();
+
+  mockable void AddResult(const NetworkMonitor::Result& result);
+  mockable void SetCapportDHCPSupported();
+  mockable void SetCapportRASupported();
+  mockable void RecordMetrics() const;
 
  private:
   Technology technology_;

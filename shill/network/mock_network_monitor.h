@@ -12,6 +12,7 @@
 #include <net-base/ip_address.h>
 
 #include "shill/network/network_monitor.h"
+#include "shill/network/validation_log.h"
 
 namespace shill {
 
@@ -40,6 +41,7 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
                std::string_view,
                PortalDetector::ProbingConfiguration,
                NetworkMonitor::ResultCallback,
+               std::unique_ptr<ValidationLog>,
                std::string_view),
               (override));
 };

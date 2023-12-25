@@ -19,6 +19,9 @@
 
 namespace shill {
 
+// Forward declaration to avoid circular inclusion.
+class ValidationLog;
+
 // The NetworkMonitor class monitors the general Internet connectivity and the
 // existence of the captive portal by triggering the PortalDetector and
 // CapportClient.
@@ -49,6 +52,12 @@ class NetworkMonitor {
     kRetryValidation,
   };
 
+  // Indicates the source of the CAPPORT API.
+  enum class CapportSource {
+    kDHCP,
+    kRA,
+  };
+
   // TODO(b/305129516): Define a dedicated struct when supporting CAPPORT.
   using Result = PortalDetector::Result;
   using ResultCallback = base::RepeatingCallback<void(const Result&)>;
@@ -58,6 +67,7 @@ class NetworkMonitor {
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       ResultCallback result_callback,
+      std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "",
       std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
           std::make_unique<PortalDetectorFactory>());
@@ -100,12 +110,20 @@ class NetworkMonitor {
   // running.
   mockable bool Stop();
 
+  // Sets the CAPPORT API and records the source of the API.
+  mockable void SetCapportAPI(const net_base::HttpUrl& capport_api,
+                              CapportSource source);
+
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(
       std::unique_ptr<PortalDetector> portal_detector);
 
  private:
+  // Callback when |portal_detector_| returns the result.
   void OnPortalDetectorResult(const PortalDetector::Result& result);
+
+  // Stops the |validation_log_| and records metrics.
+  void StopNetworkValidationLog();
 
   EventDispatcher* dispatcher_;
   std::string interface_;
@@ -115,6 +133,8 @@ class NetworkMonitor {
 
   std::unique_ptr<PortalDetectorFactory> portal_detector_factory_;
   std::unique_ptr<PortalDetector> portal_detector_;
+
+  std::unique_ptr<ValidationLog> validation_log_;
 
   base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_{this};
 };
@@ -129,6 +149,7 @@ class NetworkMonitorFactory {
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       NetworkMonitor::ResultCallback result_callback,
+      std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "");
 };
 

@@ -293,7 +293,6 @@ class Network {
       const {
     return network_validation_result_;
   }
-  void StopNetworkValidationLog();
 
   // Initiates connection diagnostics on this Network.
   mockable void StartConnectionDiagnostics();
@@ -524,7 +523,6 @@ class Network {
   // Validates the network connectivity and detect the captive portal.
   // The instance is created at Start() and destroyed at Stop().
   std::unique_ptr<NetworkMonitor> network_monitor_;
-  std::unique_ptr<ValidationLog> network_validation_log_;
   // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
   std::optional<NetworkMonitor::Result> network_validation_result_;

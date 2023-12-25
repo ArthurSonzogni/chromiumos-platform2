@@ -10,6 +10,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 
+#include "shill/network/validation_log.h"
+
 namespace shill {
 namespace {
 
@@ -45,6 +47,7 @@ NetworkMonitor::NetworkMonitor(
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     ResultCallback result_callback,
+    std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
     std::unique_ptr<PortalDetectorFactory> portal_detector_factory)
     : dispatcher_(dispatcher),
@@ -52,9 +55,12 @@ NetworkMonitor::NetworkMonitor(
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
       result_callback_(std::move(result_callback)),
-      portal_detector_factory_(std::move(portal_detector_factory)) {}
+      portal_detector_factory_(std::move(portal_detector_factory)),
+      validation_log_(std::move(network_validation_log)) {}
 
-NetworkMonitor::~NetworkMonitor() = default;
+NetworkMonitor::~NetworkMonitor() {
+  StopNetworkValidationLog();
+}
 
 bool NetworkMonitor::Start(ValidationReason reason,
                            net_base::IPFamily ip_family,
@@ -105,9 +111,43 @@ bool NetworkMonitor::Stop() {
   return true;
 }
 
+void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
+                                   CapportSource source) {
+  if (validation_log_) {
+    switch (source) {
+      case CapportSource::kDHCP:
+        validation_log_->SetCapportDHCPSupported();
+        break;
+      case CapportSource::kRA:
+        validation_log_->SetCapportRASupported();
+        break;
+    }
+  }
+
+  // TODO(b/305129516): Initiate CapportClient.
+}
+
 void NetworkMonitor::OnPortalDetectorResult(
     const PortalDetector::Result& result) {
+  if (validation_log_) {
+    validation_log_->AddResult(result);
+  }
+
+  // Stop recording results in |network_validation_log_| as soon as the
+  // first kInternetConnectivity result is observed.
+  if (result.GetValidationState() ==
+      PortalDetector::ValidationState::kInternetConnectivity) {
+    StopNetworkValidationLog();
+  }
+
   result_callback_.Run(result);
+}
+
+void NetworkMonitor::StopNetworkValidationLog() {
+  if (validation_log_) {
+    validation_log_->RecordMetrics();
+    validation_log_.reset();
+  }
 }
 
 void NetworkMonitor::set_portal_detector_for_testing(
@@ -120,10 +160,11 @@ std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     NetworkMonitor::ResultCallback result_callback,
+    std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
       dispatcher, interface, probing_configuration, std::move(result_callback),
-      logging_tag);
+      std::move(network_validation_log), logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,
