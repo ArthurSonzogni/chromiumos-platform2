@@ -171,18 +171,12 @@ void PortalDetector::StartTrialTask() {
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
-  http_request_->Start(
-      LoggingTag() + " HTTP probe", http_url_, kHeaders,
-      base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&PortalDetector::HttpRequestErrorCallback,
-                     weak_ptr_factory_.GetWeakPtr()));
-  https_request_->Start(
-      LoggingTag() + " HTTPS probe", https_url_, kHeaders,
-      base::BindOnce(&PortalDetector::HttpsRequestSuccessCallback,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
-                     weak_ptr_factory_.GetWeakPtr()));
+  http_request_->Start(LoggingTag() + " HTTP probe", http_url_, kHeaders,
+                       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
+                                      weak_ptr_factory_.GetWeakPtr()));
+  https_request_->Start(LoggingTag() + " HTTPS probe", https_url_, kHeaders,
+                        base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
+                                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PortalDetector::CompleteTrial(Result result) {
@@ -209,91 +203,63 @@ void PortalDetector::Stop() {
   CleanupTrial();
 }
 
-void PortalDetector::HttpRequestSuccessCallback(
-    std::shared_ptr<brillo::http::Response> response) {
-  int status_code = response->GetStatusCode();
-  result_->http_status_code = status_code;
-  result_->http_content_length = GetContentLength(response);
-  if (status_code == brillo::http::status_code::NoContent) {
-    result_->http_result = ProbeResult::kSuccess;
-  } else if (status_code == brillo::http::status_code::Ok) {
-    // 200 responses are treated as 204 responses if there is no content. This
-    // is consistent with AOSP and helps support networks that transparently
-    // proxy or redirect web content but do not handle 204 content completely
-    // correctly. See b/33498325 for an example. In addition, single byte
-    // answers are also considered as 204 responses (b/122999481).
-    if (result_->http_content_length == 0 ||
-        result_->http_content_length == 1) {
+void PortalDetector::ProcessHTTPProbeResult(const HttpRequest::Result& result) {
+  if (!result.has_value()) {
+    result_->http_result = GetProbeResultFromRequestError(result.error());
+  } else {
+    int status_code = (*result)->GetStatusCode();
+    result_->http_status_code = status_code;
+    result_->http_content_length = GetContentLength(*result);
+    if (status_code == brillo::http::status_code::NoContent) {
       result_->http_result = ProbeResult::kSuccess;
-    } else if (result_->http_content_length.value_or(0) > 1) {
-      // Any 200 response including some content in the response body is a
-      // strong indication of an evasive portal indirectly redirecting the HTTP
-      // probe without a 302 response code.
-      // TODO(b/309175584): Validate that the response is a valid HTML page
+    } else if (status_code == brillo::http::status_code::Ok) {
+      // 200 responses are treated as 204 responses if there is no content. This
+      // is consistent with AOSP and helps support networks that transparently
+      // proxy or redirect web content but do not handle 204 content completely
+      // correctly. See b/33498325 for an example. In addition, single byte
+      // answers are also considered as 204 responses (b/122999481).
+      if (result_->http_content_length == 0 ||
+          result_->http_content_length == 1) {
+        result_->http_result = ProbeResult::kSuccess;
+      } else if (result_->http_content_length.value_or(0) > 1) {
+        // Any 200 response including some content in the response body is a
+        // strong indication of an evasive portal indirectly redirecting the
+        // HTTP probe without a 302 response code.
+        // TODO(b/309175584): Validate that the response is a valid HTML page
+        result_->probe_url = http_url_;
+        result_->http_result = ProbeResult::kPortalSuspected;
+      } else {
+        result_->http_result = ProbeResult::kFailure;
+      }
+    } else if (IsRedirectResponse(status_code)) {
       result_->probe_url = http_url_;
-      result_->http_result = ProbeResult::kPortalSuspected;
+      result_->redirect_url = net_base::HttpUrl::CreateFromString(
+          (*result)->GetHeader(brillo::http::response_header::kLocation));
+      result_->http_result = result_->redirect_url.has_value()
+                                 ? ProbeResult::kPortalRedirect
+                                 : ProbeResult::kPortalInvalidRedirect;
     } else {
+      // Any other result is considered a failure.
       result_->http_result = ProbeResult::kFailure;
     }
-  } else if (IsRedirectResponse(status_code)) {
-    // If a redirection code is received, verify that there is a valid Location
-    // redirection URL, otherwise consider the HTTP probe as failed.
-    std::string redirect_url_string =
-        response->GetHeader(brillo::http::response_header::kLocation);
-    if (!redirect_url_string.empty()) {
-      result_->probe_url = http_url_;
-      result_->redirect_url =
-          net_base::HttpUrl::CreateFromString(redirect_url_string);
-      if (result_->redirect_url) {
-        LOG(INFO) << LoggingTag() << ": Redirect response, Redirect URL: "
-                  << redirect_url_string
-                  << ", response status code: " << status_code;
-        result_->http_result = ProbeResult::kPortalRedirect;
-      } else {
-        // Do not log the Location header if it is not a valid URL and cannot
-        // be obfuscated by the redaction tool.
-        LOG(INFO) << LoggingTag() << ": Received redirection status code "
-                  << status_code << " but Location header was not a valid URL.";
-        result_->http_result = ProbeResult::kPortalInvalidRedirect;
-      }
-    } else {
-      LOG(INFO) << LoggingTag() << ": Received redirection status code "
-                << status_code << " but there was no Location header";
-      result_->http_result = ProbeResult::kPortalInvalidRedirect;
-    }
+  }
+  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
+  LOG(INFO) << LoggingTag() << ": " << *result_;
+  if (result_->IsComplete()) {
+    CompleteTrial(*result_);
+  }
+}
+
+void PortalDetector::ProcessHTTPSProbeResult(
+    const HttpRequest::Result& result) {
+  if (!result.has_value()) {
+    result_->https_result = GetProbeResultFromRequestError(result.error());
   } else {
-    // Any other result is considered a failure.
-    result_->http_result = ProbeResult::kFailure;
+    // Assume that HTTPS prevent any tempering with the content of the response
+    // and always consider the HTTPS probe as successful if the request
+    // completed.
+    result_->https_result = ProbeResult::kSuccess;
   }
-  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": " << *result_;
-  if (result_->IsComplete()) {
-    CompleteTrial(*result_);
-  }
-}
-
-void PortalDetector::HttpsRequestSuccessCallback(
-    std::shared_ptr<brillo::http::Response> response) {
-  // Assume that HTTPS prevent any tempering with the content of the response
-  // and always consider the HTTPS probe as successful if the request completed.
-  result_->https_result = ProbeResult::kSuccess;
-  result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": " << *result_;
-  if (result_->IsComplete())
-    CompleteTrial(*result_);
-}
-
-void PortalDetector::HttpRequestErrorCallback(HttpRequest::Error http_error) {
-  result_->http_result = GetProbeResultFromRequestError(http_error);
-  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": " << *result_;
-  if (result_->IsComplete()) {
-    CompleteTrial(*result_);
-  }
-}
-
-void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Error https_error) {
-  result_->https_result = GetProbeResultFromRequestError(https_error);
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": " << *result_;
   if (result_->IsComplete()) {
@@ -582,20 +548,20 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(std::ostream& stream,
                          const PortalDetector::Result& result) {
-  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe ";
+  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe";
   if (result.IsHTTPProbeComplete()) {
-    stream << "in-flight";
+    stream << " in-flight";
   } else {
-    stream << "result=" << result.http_result
+    stream << " result=" << result.http_result
            << " code=" << result.http_status_code;
     if (result.http_content_length) {
       stream << " content-length=" << *result.http_content_length;
     }
     stream << " duration=" << result.http_duration;
   }
-  stream << ", HTTPS probe ";
+  stream << ", HTTPS probe";
   if (result.IsHTTPSProbeComplete()) {
-    stream << "in-flight";
+    stream << " in-flight";
   } else {
     stream << " result=" << result.https_result
            << " duration=" << result.https_duration;

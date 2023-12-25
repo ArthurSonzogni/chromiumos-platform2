@@ -63,15 +63,13 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() = default;
 
-  MOCK_METHOD(
-      void,
-      Start,
-      (std::string_view,
-       const net_base::HttpUrl&,
-       const brillo::http::HeaderList&,
-       base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
-       base::OnceCallback<void(HttpRequest::Error)>),
-      (override));
+  MOCK_METHOD(void,
+              Start,
+              (std::string_view,
+               const net_base::HttpUrl&,
+               const brillo::http::HeaderList&,
+               base::OnceCallback<void(const HttpRequest::Result&)>),
+              (override));
 };
 
 }  // namespace
@@ -210,17 +208,21 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(status_code));
     auto response =
         std::make_shared<brillo::http::Response>(http_probe_connection_);
-    portal_detector_->HttpRequestSuccessCallback(response);
+    portal_detector_->ProcessHTTPProbeResult(response);
+  }
+
+  void HTTPRequestFailure(HttpRequest::Error error) {
+    portal_detector_->ProcessHTTPProbeResult(base::unexpected(error));
   }
 
   void HTTPSRequestSuccess() {
     auto response =
         std::make_shared<brillo::http::Response>(https_probe_connection_);
-    portal_detector_->HttpsRequestSuccessCallback(response);
+    portal_detector_->ProcessHTTPSProbeResult(response);
   }
 
   void HTTPSRequestFailure(HttpRequest::Error error) {
-    portal_detector_->HttpsRequestErrorCallback(error);
+    portal_detector_->ProcessHTTPSProbeResult(base::unexpected(error));
   }
 
  protected:
@@ -329,8 +331,8 @@ TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart) {
   EXPECT_CALL(*http_request(), Start);
   EXPECT_CALL(*https_request(), Start);
   portal_detector()->StartTrialTask();
-  portal_detector_->HttpRequestErrorCallback(HttpRequest::Error::kDNSFailure);
-  portal_detector_->HttpsRequestErrorCallback(HttpRequest::Error::kDNSFailure);
+  HTTPRequestFailure(HttpRequest::Error::kDNSFailure);
+  HTTPSRequestFailure(HttpRequest::Error::kDNSFailure);
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());

@@ -56,6 +56,9 @@ class HttpRequest {
 
   static std::string_view ErrorName(Error error);
 
+  // The client callback returns the HTTP response on success, or an Error
+  using Result = base::expected<std::shared_ptr<brillo::http::Response>, Error>;
+
   // |allow_non_google_https| determines whether or not secure (HTTPS)
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
@@ -73,17 +76,13 @@ class HttpRequest {
 
   virtual ~HttpRequest();
 
-  // Start an http GET request to the URL |url|. If the request succeeds,
-  // |request_success_callback| is called asynchronously with the response data.
-  // Otherwise, if the request fails |request_error_callback| is called with the
-  // error reason.
-  virtual void Start(
-      std::string_view logging_tag,
-      const net_base::HttpUrl& url,
-      const brillo::http::HeaderList& headers,
-      base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
-          request_success_callback,
-      base::OnceCallback<void(Error)> request_error_callback);
+  // Start an http GET request to the URL |url|. |callback| is called
+  // asynchronously with the response data or the error if the request has
+  // failed.
+  virtual void Start(std::string_view logging_tag,
+                     const net_base::HttpUrl& url,
+                     const brillo::http::HeaderList& headers,
+                     base::OnceCallback<void(const Result& result)> callback);
 
   // Stop the current HttpRequest.  No callback is called as a side
   // effect of this function.
@@ -128,9 +127,7 @@ class HttpRequest {
   std::string logging_tag_;
   net_base::HttpUrl url_;
   brillo::http::HeaderList headers_;
-  base::OnceCallback<void(Error)> request_error_callback_;
-  base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
-      request_success_callback_;
+  base::OnceCallback<void(const Result& result)> callback_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_{this};
 };

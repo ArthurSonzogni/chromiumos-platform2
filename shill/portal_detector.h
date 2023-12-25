@@ -336,19 +336,11 @@ class PortalDetector {
   // the start delay completes.
   void StartTrialTask();
 
-  // Callback used to return data read from the HTTP HttpRequest.
-  void HttpRequestSuccessCallback(
-      std::shared_ptr<brillo::http::Response> response);
+  // Process the HttpRequest Result of the HTTP probe.
+  void ProcessHTTPProbeResult(const HttpRequest::Result& result);
 
-  // Callback used to return data read from the HTTPS HttpRequest.
-  void HttpsRequestSuccessCallback(
-      std::shared_ptr<brillo::http::Response> response);
-
-  // Callback used to return the error from the HTTP HttpRequest.
-  void HttpRequestErrorCallback(HttpRequest::Error http_error);
-
-  // Callback used to return the error from the HTTPS HttpRequest.
-  void HttpsRequestErrorCallback(HttpRequest::Error https_error);
+  // Process the HttpRequest Result of the HTTPS probe.
+  void ProcessHTTPSProbeResult(const HttpRequest::Result& result);
 
   // Called after each trial to return |result| after attempting to determine
   // connectivity status.

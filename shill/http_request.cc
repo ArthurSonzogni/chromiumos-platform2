@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/http/http_utils.h>
 #include <net-base/dns_client.h>
 #include <net-base/http_url.h>
@@ -86,17 +87,14 @@ void HttpRequest::Start(
     std::string_view logging_tag,
     const net_base::HttpUrl& url,
     const brillo::http::HeaderList& headers,
-    base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
-        request_success_callback,
-    base::OnceCallback<void(Error)> request_error_callback) {
+    base::OnceCallback<void(const Result& result)> callback) {
   DCHECK(!is_running_);
   logging_tag_ = logging_tag;
   url_ = url;
   headers_ = headers;
   is_running_ = true;
   transport_->SetDefaultTimeout(kRequestTimeout);
-  request_success_callback_ = std::move(request_success_callback);
-  request_error_callback_ = std::move(request_error_callback);
+  callback_ = std::move(callback);
 
   // Name resolution is not needed if the hostname is an IP address literal.
   if (const auto server_addr =
@@ -145,12 +143,11 @@ void HttpRequest::SuccessCallback(
     return;
   }
 
-  base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
-      request_success_callback = std::move(request_success_callback_);
+  auto callback = std::move(callback_);
   Stop();
 
-  if (!request_success_callback.is_null()) {
-    std::move(request_success_callback).Run(std::move(response));
+  if (!callback.is_null()) {
+    std::move(callback).Run(std::move(response));
   }
 }
 
@@ -205,8 +202,7 @@ void HttpRequest::Stop() {
   dns_queries_.clear();
   is_running_ = false;
   request_id_ = -1;
-  request_error_callback_.Reset();
-  request_success_callback_.Reset();
+  callback_.Reset();
 }
 
 // DnsClient callback that fires when the DNS request completes.
@@ -249,12 +245,12 @@ void HttpRequest::GetDNSResult(net_base::IPAddress dns,
 
 void HttpRequest::SendError(Error error) {
   // Save copies on the stack, since Stop() will remove them.
-  auto request_error_callback = std::move(request_error_callback_);
+  auto callback = std::move(callback_);
   Stop();
   // Call the callback last, since it may delete us and |this| may no longer
   // be valid.
-  if (!request_error_callback.is_null()) {
-    std::move(request_error_callback).Run(error);
+  if (!callback.is_null()) {
+    std::move(callback).Run(base::unexpected(error));
   }
 }
 

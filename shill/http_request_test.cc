@@ -18,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/mime_utils.h>
@@ -163,19 +164,10 @@ class HttpRequestTest : public Test {
  protected:
   class CallbackTarget {
    public:
-    MOCK_METHOD(void,
-                RequestSuccessCallTarget,
-                (std::shared_ptr<brillo::http::Response>));
-    MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Error));
+    MOCK_METHOD(void, RequestCallback, (const HttpRequest::Result& result));
 
-    base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
-    request_success_callback() {
-      return base::BindOnce(&CallbackTarget::RequestSuccessCallTarget,
-                            base::Unretained(this));
-    }
-
-    base::OnceCallback<void(HttpRequest::Error)> request_error_callback() {
-      return base::BindOnce(&CallbackTarget::RequestErrorCallTarget,
+    base::OnceCallback<void(const HttpRequest::Result& result)> callback() {
+      return base::BindOnce(&CallbackTarget::RequestCallback,
                             base::Unretained(this));
     }
   };
@@ -213,9 +205,11 @@ class HttpRequestTest : public Test {
     EXPECT_TRUE(dns_list_copy.empty());
   }
   void ExpectRequestErrorCallback(HttpRequest::Error error) {
-    EXPECT_CALL(target_, RequestErrorCallTarget(error));
+    EXPECT_CALL(target_, RequestCallback(Eq(base::unexpected(error))));
   }
-  void InvokeResultVerify(std::shared_ptr<brillo::http::Response> response) {
+  void InvokeResultVerifySuccess(const HttpRequest::Result& result) {
+    ASSERT_TRUE(result.has_value());
+    std::shared_ptr<brillo::http::Response> response = *result;
     EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
         .WillOnce(Return(brillo::http::status_code::Partial));
     EXPECT_EQ(brillo::http::status_code::Partial, response->GetStatusCode());
@@ -233,8 +227,8 @@ class HttpRequestTest : public Test {
   }
   void ExpectRequestSuccessCallback(const std::string& resp_data) {
     expected_response_ = resp_data;
-    EXPECT_CALL(target_, RequestSuccessCallTarget(_))
-        .WillOnce(Invoke(this, &HttpRequestTest::InvokeResultVerify));
+    EXPECT_CALL(target_, RequestCallback)
+        .WillOnce(Invoke(this, &HttpRequestTest::InvokeResultVerifySuccess));
   }
   void CreateRequest(std::string_view interface_name,
                      net_base::IPFamily ip_family,
@@ -258,8 +252,7 @@ class HttpRequestTest : public Test {
   void StartRequest(std::string_view url_string) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     ASSERT_TRUE(url.has_value());
-    request_->Start(kLoggingTag, *url, {}, target_.request_success_callback(),
-                    target_.request_error_callback());
+    request_->Start(kLoggingTag, *url, {}, target_.callback());
   }
   void ExpectCreateConnection(std::string_view url) {
     EXPECT_CALL(*transport_,
