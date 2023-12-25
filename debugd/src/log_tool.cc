@@ -4,22 +4,21 @@
 
 #include "debugd/src/log_tool.h"
 
-#include <algorithm>
-#include <array>
-#include <brillo/process/process.h>
 #include <glob.h>
 #include <grp.h>
 #include <inttypes.h>
-#include <libchrome/base/time/time.h>
 #include <lzma.h>
-#include <memory>
-#include <optional>
 #include <pwd.h>
 #include <stdint.h>
-#include <string>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <array>
+#include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,32 +29,31 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversion_utils.h>
+#include <base/time/time.h>
 #include <base/values.h>
-
+#include <brillo/cryptohome.h>
+#include <brillo/files/file_util.h>
+#include <brillo/files/safe_fd.h>
+#include <brillo/key_value_store.h>
+#include <brillo/osrelease_reader.h>
+#include <brillo/process/process.h>
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
-#include "base/functional/bind.h"
-#include "base/time/time.h"
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/error_utils.h"
 #include "debugd/src/metrics.h"
 #include "debugd/src/perfetto_tool.h"
 #include "debugd/src/process_with_output.h"
-
-#include <brillo/files/safe_fd.h>
-#include <brillo/files/file_util.h>
-#include "brillo/key_value_store.h"
 #include "debugd/src/sandboxed_process.h"
-#include <brillo/osrelease_reader.h>
-#include <brillo/cryptohome.h>
 
 namespace debugd {
 
