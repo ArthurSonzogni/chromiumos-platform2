@@ -59,7 +59,6 @@ namespace debugd {
 
 using std::string;
 
-using Strings = std::vector<string>;
 using FuncMap = std::map<string, base::OnceCallback<void()>>;
 
 namespace {
