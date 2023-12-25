@@ -63,8 +63,8 @@ using FuncMap = std::map<string, base::OnceCallback<void()>>;
 
 namespace {
 
-const char kRoot[] = "root";
-const char kShell[] = "/bin/sh";
+constexpr char kRoot[] = "root";
+constexpr char kShell[] = "/bin/sh";
 constexpr char kLpAdmin[] = "lpadmin";
 constexpr char kLpGroup[] = "lp";
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
