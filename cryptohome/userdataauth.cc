@@ -1968,6 +1968,17 @@ void UserDataAuth::OnPreparedUserForRemoval(
   if (!auth_session_manager_->RemoveAuthSession(token)) {
     NOTREACHED() << "Failed to remove AuthSession when removing user.";
   }
+
+  // TODO(b/306423754): Ensure this is robust and well-tested.
+  // We should have removed the only auth session of the user-to-be-removed. Try
+  // to unload the encrypted USS from manager otherwise the same account can't
+  // be added again. If the unload failed, the same account can't be added again
+  // until the next boot.
+  CryptohomeStatus status = uss_manager_->DiscardEncrypted(obfuscated);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to discard encrypted USS: " << status;
+  }
+
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 

@@ -2421,6 +2421,13 @@ class UserDataAuthExTest : public UserDataAuthTest {
         return;
       }
     }
+    auto status = userdataauth_->uss_manager_->AddDecrypted(obfuscated_username,
+                                                            std::move(*uss));
+    if (!status.ok()) {
+      ADD_FAILURE() << "Making a test USS failed during AddDecrypted: "
+                    << status.status();
+      return;
+    }
   }
 
  protected:
@@ -2593,6 +2600,8 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
 
   const Username kUsername1("foo@gmail.com");
 
+  MakeUssWithLabels(GetObfuscatedUsername(kUsername1), {"password"});
+
   remove_homedir_req_->mutable_identifier()->set_account_id(*kUsername1);
 
   // Test for successful case.
@@ -2604,6 +2613,10 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
       remove_reply_future1.GetCallback<const user_data_auth::RemoveReply&>());
   EXPECT_EQ(remove_reply_future1.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+
+  // The USS state should have been removed. Test by adding the same user's USS
+  // again.
+  MakeUssWithLabels(GetObfuscatedUsername(kUsername1), {"password"});
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
