@@ -93,6 +93,7 @@ getuid: 1
 #   0xc0306480 == DRM_IOCTL_NOUVEAU_GEM_NEW
 #   0xc0**6447 == DRM_IOCTL_NOUVEAU_NVIF
 #   0xc0406481 == DRM_IOCTL_NOUVEAU_GEM_PUSHBUF
+#   0xc0286484 == DRM_IOCTL_NOUVEAU_GEM_INFO
 #   0xc0586442 == DRM_IOCTL_NOUVEAU_CHANNEL_ALLOC
 #   0x40046443 == DRM_IOCTL_NOUVEAU_CHANNEL_FREE
 #   0x40086464 == DRM_IOCTL_RADEON_GEM_WAIT_IDLE
@@ -143,7 +144,10 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc010646d || arg1 == 0xc01064ac || arg1 == 0xc0106462 || \
        arg1 == 0x40086478 || arg1 == 0xc0286442 || arg1 == 0x4008646f || \
        arg1 == 0x40046443 || arg1 == 0xc0206447 || arg1 == 0xc0506447 || \
-       arg1 == 0xc0806447 || arg1 == 0xc0186447 || arg1 == 0x40086446
+       arg1 == 0xc0806447 || arg1 == 0xc0186447 || arg1 == 0x40086446 || \
+       arg1 == 0xc0286484 || arg1 == 0xc0586447 || arg1 == 0xc0686447 || \
+       arg1 == 0xc0706447 || arg1 == 0xc0286447 || arg1 == 0xc0306447 || \
+       arg1 == 0xc0406447 || arg1 == 0xc0606447 || arg1 == 0xc0786447
 kcmp: 1
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
