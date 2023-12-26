@@ -1804,7 +1804,9 @@ def _build_detachable_base(form_factor, detachable_base):
         _upsert(f"{ec_image_name}-touch.fw", result, "touch-image-name")
 
     _upsert(db_files, result, "files")
+
     _upsert(f"{ec_image_name}.fw", result, "ec-image-name")
+    _upsert(detachable_base.i2c_path, result, "i2c-path")
     _upsert(detachable_base.usb_path, result, "usb-path")
     _upsert(detachable_base.product_id, result, "product-id")
     _upsert(detachable_base.vendor_id, result, "vendor-id")

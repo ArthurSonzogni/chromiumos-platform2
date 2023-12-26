@@ -1526,6 +1526,19 @@
             }
           ]
         },
+        "detachable-base": {
+          "ec-image-name": "Fake_Detachable.fw",
+          "files": [
+            {
+              "destination": "/opt/google/detachable_base/firmware/Fake_Detachable.bin",
+              "source": "detachable_base/firmware/Fake_Detachable.bin",
+              "symlink": "/lib/firmware/Fake_Detachable.fw"
+            }
+          ],
+          "i2c-path": "i2c-0",
+          "product-id": 1000,
+          "vendor-id": 6353
+        },
         "firmware": {
           "bcs-overlay": "overlay-fake_program-private",
           "build-targets": {
@@ -1542,7 +1555,7 @@
           "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
-          "firmware-config": 66336,
+          "firmware-config": 2163488,
           "image-name": "project_b",
           "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
           "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
