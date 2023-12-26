@@ -14,10 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
 #include <net-base/ipv4_address.h>
-
-namespace patchpanel {
-class Socket;
-}  // namespace patchpanel
+#include <net-base/socket.h>
 
 namespace system_proxy {
 
@@ -62,7 +59,7 @@ class HttpTestServer : public base::SimpleThread {
   net_base::IPv4Address listening_addr_;
   int listening_port_;
   std::queue<HttpConnectReply> expected_responses_;
-  std::unique_ptr<patchpanel::Socket> listening_socket_;
+  std::unique_ptr<net_base::Socket> listening_socket_;
   base::WeakPtrFactory<HttpTestServer> weak_ptr_factory_{this};
 };
 }  // namespace system_proxy

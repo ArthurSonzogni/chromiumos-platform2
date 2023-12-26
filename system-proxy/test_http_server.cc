@@ -8,11 +8,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <memory>
+
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/patchpanel/socket.h>
+#include <net-base/socket.h>
 
 namespace {
 constexpr int kMaxConn = 10;
@@ -45,10 +47,10 @@ HttpTestServer::~HttpTestServer() {
   if (!HasBeenStarted()) {
     return;
   }
-  int fd = listening_socket_->release();
-  if (close(fd) != 0) {
-    LOG(ERROR) << "Failed to close the listening socket";
-  }
+
+  // Close the listening socket.
+  listening_socket_.reset();
+
   Join();
 }
 
@@ -56,37 +58,41 @@ void HttpTestServer::Run() {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
   while (!expected_responses_.empty()) {
-    if (auto client_conn = listening_socket_->Accept(
-            (struct sockaddr*)&client_src, &sockaddr_len)) {
+    if (std::unique_ptr<net_base::Socket> client_conn =
+            listening_socket_->Accept((struct sockaddr*)&client_src,
+                                      &sockaddr_len)) {
       std::string_view server_reply =
           GetConnectReplyString(expected_responses_.front());
       expected_responses_.pop();
-      client_conn->SendTo(server_reply.data(), server_reply.size());
+      client_conn->Send(server_reply);
     }
   }
 }
 
 void HttpTestServer::BeforeStart() {
-  listening_socket_ =
-      std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
+  listening_socket_ = net_base::Socket::Create(AF_INET, SOCK_STREAM);
+  if (!listening_socket_) {
+    PLOG(ERROR) << "Cannot create the listening socket" << std::endl;
+    return;
+  }
 
   struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(listening_port_);
   addr.sin_addr = listening_addr_.ToInAddr();
   if (!listening_socket_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
-    LOG(ERROR) << "Cannot bind source socket" << std::endl;
+    PLOG(ERROR) << "Cannot bind source socket" << std::endl;
     return;
   }
 
   if (!listening_socket_->Listen(kMaxConn)) {
-    LOG(ERROR) << "Cannot listen on source socket." << std::endl;
+    PLOG(ERROR) << "Cannot listen on source socket." << std::endl;
     return;
   }
 
   socklen_t len = sizeof(addr);
-  if (getsockname(listening_socket_->fd(), (struct sockaddr*)&addr, &len)) {
-    LOG(ERROR) << "Cannot get the listening port " << std::endl;
+  if (!listening_socket_->GetSockName((struct sockaddr*)&addr, &len)) {
+    PLOG(ERROR) << "Cannot get the listening port " << std::endl;
     return;
   }
   listening_port_ = ntohs(addr.sin_port);
