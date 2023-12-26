@@ -25,7 +25,9 @@ namespace cryptohome {
 class RecoverableKeyStoreBackendCertProviderImpl
     : public RecoverableKeyStoreBackendCertProvider {
  public:
-  explicit RecoverableKeyStoreBackendCertProviderImpl(Platform* platform);
+  // Creates a RecoverableKeyStoreBackendCertProviderImpl and starts fetching.
+  static std::unique_ptr<RecoverableKeyStoreBackendCertProviderImpl> Create(
+      Platform* platform);
 
   RecoverableKeyStoreBackendCertProviderImpl(
       const RecoverableKeyStoreBackendCertProviderImpl&) = delete;
@@ -40,15 +42,15 @@ class RecoverableKeyStoreBackendCertProviderImpl
   // For testing.
   friend class RecoverableKeyStoreBackendProviderPeer;
 
+  explicit RecoverableKeyStoreBackendCertProviderImpl(Platform* platform);
+
   // Initialize the backend cert provider with the certificates persisted on
   // disk.
   void InitializeWithPersistedCert();
 
-  // Starts the fetch routine, and each fetched certs will be reported to the
-  // |on_cert_fetched| callback.
-  void StartFetching(base::RepeatingCallback<void(const std::string& cert_xml,
-                                                  const std::string& sig_xml)>
-                         on_cert_fetched);
+  // Starts the fetch routine, and each fetched certs will be reported to
+  // OnCertificateFetched.
+  void StartFetching();
 
   // If the certificate list fetched is newer, verify and parse the certificate.
   // If successful, update |cert_list_| and the on-disk certificates.

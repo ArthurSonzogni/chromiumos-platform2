@@ -45,6 +45,7 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_platform.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
@@ -353,6 +354,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
   MockDbusWithProxies bus, mount_thread_bus;
+  NiceMock<MockRecoverableKeyStoreBackendCertProvider> key_store_cert_provider;
 
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
@@ -363,6 +365,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
   userdataauth->set_hwsec_factory(&hwsec_factory);
+  userdataauth->set_key_store_cert_provider(&key_store_cert_provider);
   if (!userdataauth->Initialize(mount_thread_bus.refptr)) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;

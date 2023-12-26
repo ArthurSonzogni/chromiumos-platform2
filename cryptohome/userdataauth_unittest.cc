@@ -78,6 +78,7 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
@@ -223,6 +224,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
+    userdataauth_->set_key_store_cert_provider(&key_store_cert_provider_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_->set_key_challenge_service_factory(
@@ -355,6 +357,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Fingerprint Manager object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockFingerprintManager> fingerprint_manager_;
+
+  // Mock Recoverable Key Store Backend Cert Provider object, will be passed to
+  // UserDataAuth for its internal use.
+  NiceMock<MockRecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;
 
   // Biometrics service object and the mock biometrics command processor object
   // that it is wrapping, the service object will be passed into UserDataAuth.

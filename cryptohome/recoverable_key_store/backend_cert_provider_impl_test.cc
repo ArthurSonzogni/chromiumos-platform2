@@ -10,6 +10,7 @@
 #include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/memory/ptr_util.h>
 #include <base/test/task_environment.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -26,12 +27,21 @@ namespace cryptohome {
 // some private methods we want to test.
 class RecoverableKeyStoreBackendProviderPeer {
  public:
-  explicit RecoverableKeyStoreBackendProviderPeer(
-      std::unique_ptr<RecoverableKeyStoreBackendCertProviderImpl> provider)
-      : provider_(std::move(provider)) {}
+  explicit RecoverableKeyStoreBackendProviderPeer(Platform* platform)
+      : provider_(base::WrapUnique(
+            new RecoverableKeyStoreBackendCertProviderImpl(platform))) {}
+
+  // Methods to execute RecoverableKeyStoreBackendCertProviderImpl public
+  // methods.
+
+  std::optional<RecoverableKeyStoreBackendCert> GetBackendCert() const {
+    return provider_->GetBackendCert();
+  }
 
   // Methods to execute RecoverableKeyStoreBackendCertProviderImpl private
   // methods.
+
+  void StartFetching() { provider_->StartFetching(); }
 
   void OnCertificateFetched(const std::string& cert_xml,
                             const std::string& sig_xml) {
@@ -49,12 +59,8 @@ using ::testing::SaveArg;
 
 class RecoverableKeyStoreBackendCertProviderTest : public ::testing::Test {
   void SetUp() override {
-    auto provider =
-        std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>(
-            &platform_);
-    provider_ = provider.get();
-    provider_peer_ = std::make_unique<RecoverableKeyStoreBackendProviderPeer>(
-        std::move(provider));
+    provider_ =
+        std::make_unique<RecoverableKeyStoreBackendProviderPeer>(&platform_);
   }
 
  protected:
@@ -93,8 +99,7 @@ class RecoverableKeyStoreBackendCertProviderTest : public ::testing::Test {
 
   FakePlatform platform_;
 
-  std::unique_ptr<RecoverableKeyStoreBackendProviderPeer> provider_peer_;
-  RecoverableKeyStoreBackendCertProviderImpl* provider_;
+  std::unique_ptr<RecoverableKeyStoreBackendProviderPeer> provider_;
 };
 
 TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
@@ -104,7 +109,7 @@ TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
   // Update with cert list version 10013.
   CertificateListData data_10013;
   Get10013Data(&data_10013);
-  provider_peer_->OnCertificateFetched(data_10013.cert_xml, data_10013.sig_xml);
+  provider_->OnCertificateFetched(data_10013.cert_xml, data_10013.sig_xml);
   std::optional<RecoverableKeyStoreBackendCert> cert =
       provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
@@ -116,7 +121,7 @@ TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
   // Update with cert list version 10014.
   CertificateListData data_10014;
   Get10014Data(&data_10014);
-  provider_peer_->OnCertificateFetched(data_10014.cert_xml, data_10014.sig_xml);
+  provider_->OnCertificateFetched(data_10014.cert_xml, data_10014.sig_xml);
   cert = provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
@@ -125,23 +130,40 @@ TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
       Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
 
   // Update back with cert list version 10013 won't take affect.
-  provider_peer_->OnCertificateFetched(data_10013.cert_xml, data_10013.sig_xml);
+  provider_->OnCertificateFetched(data_10013.cert_xml, data_10013.sig_xml);
   cert = provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
 
   // Failed to verify and parse new certs will not break existing state.
-  provider_peer_->OnCertificateFetched("not a xml", "not a xml");
+  provider_->OnCertificateFetched("not a xml", "not a xml");
   cert = provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
 
   // Certs are persisted.
   auto new_provider =
-      std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>(&platform_);
+      std::make_unique<RecoverableKeyStoreBackendProviderPeer>(&platform_);
   cert = new_provider->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
+}
+
+TEST_F(RecoverableKeyStoreBackendCertProviderTest, StartFetching) {
+  // At the start, there are no loaded certs.
+  EXPECT_FALSE(provider_->GetBackendCert().has_value());
+
+  // The provider should be updated with the hardcoded certificate list.
+  provider_->StartFetching();
+  std::optional<RecoverableKeyStoreBackendCert> cert =
+      provider_->GetBackendCert();
+  ASSERT_TRUE(cert.has_value());
+  CertificateListData data_10014;
+  Get10014Data(&data_10014);
+  EXPECT_EQ(cert->version, data_10014.list.version);
+  EXPECT_THAT(
+      data_10014.list.certs,
+      Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
 }
 
 }  // namespace
