@@ -7,11 +7,11 @@
 #include "features/frame_annotator/libs/frame_annotator_stream_manipulator.h"
 
 #include <cinttypes>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/functional/callback.h>
-#include <base/strings/string_piece.h>
 #include <libyuv.h>
 #include <skia/core/SkCanvas.h>
 #include <skia/core/SkColorSpace.h>

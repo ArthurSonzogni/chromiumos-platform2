@@ -5,6 +5,7 @@
 #include "biod/cros_fp_biometrics_manager.h"
 
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include <errno.h>
@@ -17,7 +18,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/threading/platform_thread.h>
 #include <crypto/random.h>
 #include <dbus/bus.h>

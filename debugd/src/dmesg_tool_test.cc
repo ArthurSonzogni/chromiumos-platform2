@@ -5,8 +5,8 @@
 #include "debugd/src/dmesg_tool.h"
 
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 

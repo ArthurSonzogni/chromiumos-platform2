@@ -9,9 +9,9 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/environment.h>
-#include <base/strings/string_piece.h>
 #include <base/values.h>
 
 namespace base {

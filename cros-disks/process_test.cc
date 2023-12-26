@@ -7,6 +7,7 @@
 #include <csignal>
 #include <memory>
 #include <ostream>
+#include <string_view>
 #include <utility>
 
 #include <fcntl.h>
@@ -19,7 +20,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>

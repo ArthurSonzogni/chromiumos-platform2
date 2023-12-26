@@ -6,11 +6,11 @@
 
 #include "debugd/src/dmesg_tool.h"
 
+#include <string_view>
 #include <vector>
 
 #include <base/containers/span.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 

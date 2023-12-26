@@ -7,11 +7,12 @@
 #include <errno.h>
 #include <string.h>
 
+#include <string_view>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <libsmbclient.h>
 
 #include "smbprovider/constants.h"

@@ -6,8 +6,7 @@
 #define DNS_PROXY_DNS_UTIL_H_
 
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace dns_proxy {
 // TODO(crbug.com/751899): The DNS name validation code is adapted from

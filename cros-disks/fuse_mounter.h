@@ -10,11 +10,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/mounter.h"

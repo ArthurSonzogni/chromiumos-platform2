@@ -8,9 +8,8 @@
 
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
-
-#include <base/strings/string_piece.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_report_getter.h"

@@ -5,10 +5,10 @@
 #include "debugd/src/route_tool.h"
 
 #include <map>
+#include <string_view>
 
 #include <base/containers/flat_set.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>

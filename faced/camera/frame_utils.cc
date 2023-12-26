@@ -6,9 +6,9 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <linux/videodev2.h>
 
 #include "faced/camera/frame.h"

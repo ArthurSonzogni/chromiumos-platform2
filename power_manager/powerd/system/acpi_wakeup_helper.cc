@@ -4,12 +4,12 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_tokenizer.h>
 
 namespace power_manager::system {

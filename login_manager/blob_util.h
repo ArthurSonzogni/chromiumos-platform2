@@ -8,9 +8,8 @@
 #include <stdint.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 namespace base {
 class FilePath;

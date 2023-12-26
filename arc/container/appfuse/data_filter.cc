@@ -8,13 +8,13 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/strings/string_piece.h>
 #include <base/task/single_thread_task_runner.h>
 
 namespace arc {

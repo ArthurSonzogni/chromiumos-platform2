@@ -5,9 +5,10 @@
 #ifndef FACED_FACED_CLI_FACED_CLIENT_H_
 #define FACED_FACED_CLI_FACED_CLIENT_H_
 
+#include <string_view>
+
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
-#include <base/strings/string_piece.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>

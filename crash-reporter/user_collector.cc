@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -23,7 +24,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

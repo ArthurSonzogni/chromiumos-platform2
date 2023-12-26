@@ -6,12 +6,12 @@
 #define FACED_ENROLLMENT_STORAGE_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 
 #include "faced/mojom/faceauth.mojom.h"
 

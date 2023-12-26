@@ -7,8 +7,7 @@
 #define HARDWARE_VERIFIER_HW_VERIFICATION_REPORT_GETTER_H_
 
 #include <optional>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 

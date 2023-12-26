@@ -8,8 +8,7 @@
 #include <fuse_lowlevel.h>
 
 #include <memory>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace smbfs {
 namespace internal {

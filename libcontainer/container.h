@@ -5,8 +5,9 @@
 #ifndef LIBCONTAINER_CONTAINER_H_
 #define LIBCONTAINER_CONTAINER_H_
 
+#include <string_view>
+
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 #include <brillo/brillo_export.h>
 
 #include "libcontainer/libcontainer.h"

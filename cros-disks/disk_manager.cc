@@ -12,6 +12,7 @@
 #include <time.h>
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -19,7 +20,6 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

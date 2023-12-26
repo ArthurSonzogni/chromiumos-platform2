@@ -4,10 +4,10 @@
 
 #include <limits>
 #include <string>
+#include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 

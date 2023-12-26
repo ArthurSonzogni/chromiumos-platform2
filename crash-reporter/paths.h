@@ -5,8 +5,9 @@
 #ifndef CRASH_REPORTER_PATHS_H_
 #define CRASH_REPORTER_PATHS_H_
 
+#include <string_view>
+
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 
 namespace paths {
 

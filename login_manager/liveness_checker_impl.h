@@ -6,12 +6,12 @@
 #define LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 
 #include <optional>
+#include <string_view>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 #include "login_manager/liveness_checker.h"

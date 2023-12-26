@@ -7,9 +7,10 @@
 
 #include <linux/msdos_fs.h>
 
+#include <string_view>
+
 #include <base/files/file.h>
 #include <base/functional/callback_forward.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 namespace fat {

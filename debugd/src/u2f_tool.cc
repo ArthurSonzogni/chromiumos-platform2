@@ -6,12 +6,12 @@
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>

@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <absl/strings/match.h>
 #include <base/command_line.h>
@@ -16,7 +17,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>

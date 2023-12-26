@@ -5,10 +5,9 @@
 #include "cups_proxy/mhd_http_request.h"
 
 #include <algorithm>
+#include <string_view>
 #include <utility>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 namespace cups_proxy {
 

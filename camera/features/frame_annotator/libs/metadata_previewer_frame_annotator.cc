@@ -8,10 +8,10 @@
 
 #include <cinttypes>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <skia/core/SkFont.h>
 
 #include "common/camera_metadata_string_utils.h"

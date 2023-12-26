@@ -16,7 +16,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vboot/crossystem.h>

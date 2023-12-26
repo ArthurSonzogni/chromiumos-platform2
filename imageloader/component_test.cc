@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/check.h>
@@ -16,7 +17,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>

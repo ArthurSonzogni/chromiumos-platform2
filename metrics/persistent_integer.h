@@ -8,10 +8,10 @@
 #include <stdint.h>
 
 #include <string>
+#include <string_view>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
-#include <base/strings/string_piece.h>
 
 namespace chromeos_metrics {
 

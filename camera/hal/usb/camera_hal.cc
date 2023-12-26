@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -15,7 +16,6 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/no_destructor.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 

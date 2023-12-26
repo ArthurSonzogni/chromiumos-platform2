@@ -8,6 +8,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -15,7 +16,6 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/sandboxed_init.h"

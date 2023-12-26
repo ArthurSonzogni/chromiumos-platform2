@@ -11,11 +11,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <policy/libpolicy.h>
 

@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/brillo_export.h>
 #include <brillo/daemons/daemon.h>

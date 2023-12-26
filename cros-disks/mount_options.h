@@ -6,10 +6,9 @@
 #define CROS_DISKS_MOUNT_OPTIONS_H_
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 #include "cros-disks/platform.h"
 

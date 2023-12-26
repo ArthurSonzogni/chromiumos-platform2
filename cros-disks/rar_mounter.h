@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/archive_mounter.h"

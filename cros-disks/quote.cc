@@ -5,8 +5,8 @@
 #include "cros-disks/quote.h"
 
 #include <iomanip>
+#include <string_view>
 
-#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 
 namespace cros_disks {

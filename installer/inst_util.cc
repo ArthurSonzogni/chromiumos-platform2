@@ -5,6 +5,7 @@
 #include "installer/inst_util.h"
 
 #include <array>
+#include <string_view>
 
 #include <ctype.h>
 #include <dirent.h>
@@ -30,7 +31,6 @@ extern "C" {
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>

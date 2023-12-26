@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 
 #include <fuzzer/FuzzedDataProvider.h>
 

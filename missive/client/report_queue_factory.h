@@ -6,9 +6,9 @@
 #define MISSIVE_CLIENT_REPORT_QUEUE_FACTORY_H_
 
 #include <memory>
+#include <string_view>
 
 #include <base/functional/callback.h>
-#include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 #include <brillo/backoff_entry.h>
 

@@ -7,9 +7,9 @@
 
 #include <list>
 #include <string>
+#include <string_view>
 #include <utility>
 
-#include "base/strings/string_piece.h"
 #include "base/time/time.h"
 
 #include "croslog/severity.h"

@@ -5,6 +5,7 @@
 #include "cros-disks/format_manager.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -14,7 +15,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <chromeos/libminijail.h>

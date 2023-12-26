@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>

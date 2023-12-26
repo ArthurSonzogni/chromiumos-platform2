@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/at_exit.h>
@@ -24,7 +25,6 @@
 #include <base/notreached.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>

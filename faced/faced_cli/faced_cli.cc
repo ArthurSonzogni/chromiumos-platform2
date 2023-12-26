@@ -5,6 +5,7 @@
 #include "faced/faced_cli/faced_cli.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -12,7 +13,6 @@
 #include <absl/strings/str_format.h>
 #include <base/check.h>
 #include <base/command_line.h>
-#include <base/strings/string_piece.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
 #include <brillo/flag_helper.h>

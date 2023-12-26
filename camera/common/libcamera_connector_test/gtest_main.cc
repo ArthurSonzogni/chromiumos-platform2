@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <set>
+#include <string_view>
 #include <vector>
 
 #include <base/check_op.h>
@@ -14,7 +15,6 @@
 #include <base/process/launch.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

@@ -6,12 +6,12 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/string_piece.h>
 #include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 

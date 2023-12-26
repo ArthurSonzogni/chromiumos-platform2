@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
@@ -16,7 +17,6 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 
 #include "faced/mojom/faceauth.mojom.h"
 

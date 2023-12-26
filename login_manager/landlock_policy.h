@@ -6,9 +6,10 @@
 #define LOGIN_MANAGER_LANDLOCK_POLICY_H_
 
 #include <base/containers/span.h>
-#include <base/strings/string_piece.h>
 
 #include <libminijail.h>
+
+#include <string_view>
 
 namespace login_manager {
 

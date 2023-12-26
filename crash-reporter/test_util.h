@@ -7,10 +7,10 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <session_manager/dbus-proxy-mocks.h>

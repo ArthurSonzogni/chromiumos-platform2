@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -18,7 +19,6 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>

@@ -7,9 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 #include "cros-disks/fuse_mounter.h"
 

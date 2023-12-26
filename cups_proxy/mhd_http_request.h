@@ -8,9 +8,8 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 namespace cups_proxy {
 

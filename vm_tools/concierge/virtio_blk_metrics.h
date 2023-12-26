@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/sequence_checker.h>
-#include <base/strings/string_piece.h>
 #include <base/timer/timer.h>
 #include <metrics/metrics_library.h>
 #include <vm_applications/apps.pb.h>

@@ -11,6 +11,7 @@
 
 #include <limits>
 #include <memory>
+#include <string_view>
 
 #include <base/at_exit.h>
 #include <base/files/file.h>
@@ -18,7 +19,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/time/default_clock.h>
 #include <brillo/array_utils.h>
 #include <brillo/syslog_logging.h>

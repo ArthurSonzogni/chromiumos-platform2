@@ -7,9 +7,8 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 #include "diagnostics/cros_minidiag/minidiag_metrics.h"
 

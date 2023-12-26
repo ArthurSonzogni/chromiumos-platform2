@@ -5,6 +5,7 @@
 #include "smbfs/smb_filesystem.h"
 
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -16,7 +17,6 @@
 #include <base/notreached.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 
 #include "smbfs/samba_interface_impl.h"

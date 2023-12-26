@@ -13,7 +13,6 @@
 #include <string_view>
 
 #include "base/memory/ref_counted.h"
-#include "base/strings/string_piece.h"
 #include "brillo/brillo_export.h"
 
 namespace base {

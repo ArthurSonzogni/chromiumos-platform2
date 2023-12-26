@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,7 +26,6 @@
 #include <base/process/launch.h>
 #include <base/scoped_generic.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

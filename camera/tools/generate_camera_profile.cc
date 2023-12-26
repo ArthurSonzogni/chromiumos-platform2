@@ -6,6 +6,7 @@
 #include "tools/generate_camera_profile.h"
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <base/at_exit.h>
@@ -15,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>

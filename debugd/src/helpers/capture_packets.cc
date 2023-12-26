@@ -12,12 +12,12 @@
 #include <sys/types.h>
 
 #include <iterator>
+#include <string_view>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <chromeos/libminijail.h>
 #include <pcap.h>
 

@@ -9,13 +9,13 @@
 #include <sys/mount.h>
 #include <time.h>
 
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>

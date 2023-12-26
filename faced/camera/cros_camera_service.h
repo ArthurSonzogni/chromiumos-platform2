@@ -7,8 +7,7 @@
 
 #include <memory>
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 #include "faced/camera/camera_service.h"
 

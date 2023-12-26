@@ -6,19 +6,20 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-#include <cstring>
-#include <string>
-#include <sys/types.h>
-#include <utility>
-#include <vector>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <netdb.h>
+#include <sys/types.h>
+
+#include <cstring>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/process/launch.h"
-#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "vm_tools/garcon/package_kit_proxy.h"

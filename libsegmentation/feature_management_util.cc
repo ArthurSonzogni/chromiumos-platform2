@@ -2,23 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <map>
-#include <glob.h>
-#include <optional>
-#include <utility>
-#include <vector>
-
 #include <fcntl.h>
+#include <glob.h>
+#include <linux/fs.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <linux/fs.h>
+
+#include <map>
+#include <optional>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/values.h>
 #include <brillo/process/process.h>

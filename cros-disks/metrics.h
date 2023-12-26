@@ -6,9 +6,9 @@
 #define CROS_DISKS_METRICS_H_
 
 #include <string>
+#include <string_view>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>

@@ -6,8 +6,7 @@
 #define CROS_DISKS_URI_H_
 
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace cros_disks {
 

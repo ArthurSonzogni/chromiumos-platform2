@@ -8,10 +8,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <string_view>
+
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 
 #include "base/check.h"
 #include "faced/util/status.h"

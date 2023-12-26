@@ -6,13 +6,13 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <absl/status/status.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <chromeos/dbus/service_constants.h>

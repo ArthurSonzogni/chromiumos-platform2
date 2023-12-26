@@ -8,8 +8,8 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <brillo/any.h>
 #include <brillo/brillo_export.h>
 

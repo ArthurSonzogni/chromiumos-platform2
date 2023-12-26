@@ -5,12 +5,12 @@
 #include "faced/testing/face_service.h"
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

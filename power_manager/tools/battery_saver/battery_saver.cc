@@ -12,6 +12,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -23,7 +24,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>

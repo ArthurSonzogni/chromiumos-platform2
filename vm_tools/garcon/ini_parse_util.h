@@ -6,10 +6,9 @@
 #define VM_TOOLS_GARCON_INI_PARSE_UTIL_H_
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
-
-#include <base/strings/string_piece.h>
 
 namespace vm_tools {
 namespace garcon {
