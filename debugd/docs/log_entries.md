@@ -318,6 +318,10 @@ Current state of the system as reported by [fwupd] daemon.
 
 The [fwupd] client and daemon versions.
 
+## gsclog
+
+The Google Security Chip console log.
+
 ## hammerd
 
 ## hardware_class

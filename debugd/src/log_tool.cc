@@ -621,6 +621,8 @@ const std::array kVarLogFileLogs {
   Log{kFile, "eventlog", "/var/log/eventlog.txt"},
   Log{kFile, "extensions.log", "/var/log/extensions.log"},
   Log{kFile, "fwupd_log", "/var/log/fwupd.log"},
+  Log{kCommand, "gsclog", "/usr/bin/gsclog; cat /var/log/gsc.log", kRoot,
+      kRoot},
   Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
   Log{kGlob, "memd clips", "/var/log/memd/memd.clip*"},
