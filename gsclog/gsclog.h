@@ -20,7 +20,7 @@ class GscLog {
   int Fetch();
 
  private:
-  base::FilePath log_;
+  base::FilePath log_path_;
   std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
   trunks::TrunksFactory* trunks_factory_{nullptr};
   std::unique_ptr<trunks::TpmUtility> trunks_utility_;
