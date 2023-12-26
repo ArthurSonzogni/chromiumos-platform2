@@ -378,10 +378,8 @@ impl VolumeManager {
         let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
         // Use -K to tell mkfs not to run a discard on the block device, which
         // would destroy all the nice thickening done above.
-        checked_command_output(Command::new(MKFS_EXT2_PATH).arg("-K").arg(path))
-            .context("Cannot format hibermeta volume")?;
-
-        Ok(())
+        checked_command(Command::new(MKFS_EXT2_PATH).arg("-K").arg(path))
+            .context("Cannot format hibermeta volume")
     }
 
     /// Create snapshot storage files for all active LVs.
@@ -539,9 +537,7 @@ impl VolumeManager {
         );
         debug!("Creating snapshot table: {}", &snapshot_table);
         DeviceMapper::create_device(&format!("{name}-rw"), &snapshot_table)
-            .context(format!("Cannot setup dm-snapshot for {}", name))?;
-
-        Ok(())
+            .context(format!("Cannot setup dm-snapshot for {}", name))
     }
 
     /// Create monitor threads for each dm-snapshot set up by hiberman that

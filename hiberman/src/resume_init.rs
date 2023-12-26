@@ -91,9 +91,7 @@ impl ResumeInitConductor {
                 // hiberman resume process that it should immediately abort and
                 // merge.
                 set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::ResumeAborting)
-                    .context("Failed to set hibernate cookie to ResumeAborting")?;
-
-                Ok(())
+                    .context("Failed to set hibernate cookie to ResumeAborting")
             }
 
             // This is the bad error path, where the previous attempt to resume
@@ -151,8 +149,6 @@ impl ResumeInitConductor {
         // the activation seems to flip the pool back to being writeable.
         volmgr
             .activate_thinpool_ro()
-            .context("Failed to activate thinpool RO")?;
-
-        Ok(())
+            .context("Failed to activate thinpool RO")
     }
 }

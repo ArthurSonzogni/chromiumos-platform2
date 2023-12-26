@@ -202,8 +202,7 @@ impl HibernateCookie {
 
         self.blockdev
             .sync_all()
-            .context("Failed to sync hibernate cookie")?;
-        Ok(())
+            .context("Failed to sync hibernate cookie")
     }
 }
 

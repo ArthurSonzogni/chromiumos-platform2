@@ -502,7 +502,5 @@ fn drop_pagecache() -> Result<()> {
         .write(true)
         .open(DROP_CACHES_ATTR_PATH)
         .context("Failed to open {DROP_CACHES_ATTR_PATH}")?;
-    f.write_all("1".as_bytes())?;
-
-    Ok(())
+    Ok(f.write_all("1".as_bytes())?)
 }

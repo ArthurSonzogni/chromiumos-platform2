@@ -90,9 +90,7 @@ pub fn activate_lv(volume_group: &str, name: &str) -> Result<()> {
 
     let full_name = full_lv_name(volume_group, name);
     run_lvm_command(Command::new("/sbin/lvchange").args(["-ay", &full_name]))
-        .context("Failed to activate logical volume '{full_name}'")?;
-
-    Ok(())
+        .context("Failed to activate logical volume '{full_name}'")
 }
 
 /// Create a new thinpool volume under the given volume group, with the
