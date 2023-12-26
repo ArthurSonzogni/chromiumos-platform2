@@ -11,8 +11,10 @@
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
 
+#include "shill/metrics.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/validation_log.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -38,6 +40,8 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
   MOCK_METHOD(std::unique_ptr<NetworkMonitor>,
               Create,
               (EventDispatcher*,
+               Metrics*,
+               Technology,
                std::string_view,
                PortalDetector::ProbingConfiguration,
                NetworkMonitor::ResultCallback,

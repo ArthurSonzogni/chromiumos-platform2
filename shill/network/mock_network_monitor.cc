@@ -6,10 +6,18 @@
 
 #include <base/functional/callback_helpers.h>
 
+#include "shill/technology.h"
+
 namespace shill {
 
 MockNetworkMonitor::MockNetworkMonitor()
-    : NetworkMonitor(nullptr, "", {}, base::DoNothing(), nullptr) {}
+    : NetworkMonitor(nullptr,
+                     nullptr,
+                     Technology::kUnknown,
+                     "",
+                     {},
+                     base::DoNothing(),
+                     nullptr) {}
 
 MockNetworkMonitor::~MockNetworkMonitor() = default;
 

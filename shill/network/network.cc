@@ -108,7 +108,8 @@ void Network::Start(const Network::StartOptions& opts) {
 
   probing_configuration_ = opts.probing_configuration;
   network_monitor_ = network_monitor_factory_->Create(
-      dispatcher_, interface_name_, probing_configuration_,
+      dispatcher_, metrics_, technology_, interface_name_,
+      probing_configuration_,
       base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()),
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
 
@@ -840,8 +841,6 @@ void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
   }
 
   network_validation_result_ = result;
-  auto total_duration = std::max(result.http_duration.InMilliseconds(),
-                                 result.https_duration.InMilliseconds());
 
   for (auto& ev : event_handlers_) {
     ev.OnNetworkValidationResult(interface_index_, result);
@@ -856,40 +855,17 @@ void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
     case PortalDetector::ValidationState::kInternetConnectivity:
       // Conclusive result that allows the Service to transition to the
       // "online" state. Stop portal detection.
-      metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
-                          technology_, total_duration);
       StopPortalDetection();
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
       // Conclusive result that allows to start the portal detection sign-in
       // flow.
-      metrics_->SendToUMA(Metrics::kPortalDetectorPortalDiscoveryDuration,
-                          technology_, total_duration);
       break;
     case PortalDetector::ValidationState::kPortalSuspected:
       // b/309175584: the "portal-suspected" also starts the portal detection
       // sign-in flow and is considered conclusive. Do not run additional
       // connection diagnostics.
       break;
-  }
-
-  if (result.http_duration.is_positive()) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration, technology_,
-                        result.http_duration.InMilliseconds());
-  }
-  if (result.https_duration.is_positive()) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
-                        result.https_duration.InMilliseconds());
-  }
-  if (const auto http_response_code =
-          result.GetHTTPResponseCodeMetricResult()) {
-    metrics_->SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
-                              technology_, *http_response_code);
-  }
-  if (result.http_status_code == brillo::http::status_code::Ok &&
-      result.http_content_length) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength,
-                        technology_, *result.http_content_length);
   }
 }
 

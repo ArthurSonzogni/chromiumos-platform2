@@ -14,8 +14,10 @@
 #include <base/memory/weak_ptr.h>
 #include <net-base/http_url.h>
 
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/portal_detector.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -24,7 +26,7 @@ class ValidationLog;
 
 // The NetworkMonitor class monitors the general Internet connectivity and the
 // existence of the captive portal by triggering the PortalDetector and
-// CapportClient.
+// CapportClient. Also, the class sends the network validation metrics.
 // TODO(b/305129516): Integrate the CapportClient into this class.
 class NetworkMonitor {
  public:
@@ -64,6 +66,8 @@ class NetworkMonitor {
 
   NetworkMonitor(
       EventDispatcher* dispatcher,
+      Metrics* metrics,
+      Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       ResultCallback result_callback,
@@ -126,6 +130,9 @@ class NetworkMonitor {
   void StopNetworkValidationLog();
 
   EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+
+  Technology technology_;
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
@@ -146,6 +153,8 @@ class NetworkMonitorFactory {
 
   mockable std::unique_ptr<NetworkMonitor> Create(
       EventDispatcher* dispatcher,
+      Metrics* metrics,
+      Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       NetworkMonitor::ResultCallback result_callback,

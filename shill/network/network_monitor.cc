@@ -4,6 +4,7 @@
 
 #include "shill/network/network_monitor.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -44,6 +45,8 @@ bool ShouldScheduleNetworkValidationImmediately(
 
 NetworkMonitor::NetworkMonitor(
     EventDispatcher* dispatcher,
+    Metrics* metrics,
+    Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     ResultCallback result_callback,
@@ -51,6 +54,8 @@ NetworkMonitor::NetworkMonitor(
     std::string_view logging_tag,
     std::unique_ptr<PortalDetectorFactory> portal_detector_factory)
     : dispatcher_(dispatcher),
+      metrics_(metrics),
+      technology_(technology),
       interface_(std::string(interface)),
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
@@ -133,11 +138,43 @@ void NetworkMonitor::OnPortalDetectorResult(
     validation_log_->AddResult(result);
   }
 
-  // Stop recording results in |network_validation_log_| as soon as the
-  // first kInternetConnectivity result is observed.
-  if (result.GetValidationState() ==
-      PortalDetector::ValidationState::kInternetConnectivity) {
-    StopNetworkValidationLog();
+  const int64_t total_duration =
+      std::max(result.http_duration.InMilliseconds(),
+               result.https_duration.InMilliseconds());
+  switch (result.GetValidationState()) {
+    case PortalDetector::ValidationState::kNoConnectivity:
+      break;
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                          technology_, total_duration);
+      // Stop recording results in |network_validation_log_| as soon as the
+      // first kInternetConnectivity result is observed.
+      StopNetworkValidationLog();
+      break;
+    case PortalDetector::ValidationState::kPortalRedirect:
+      metrics_->SendToUMA(Metrics::kPortalDetectorPortalDiscoveryDuration,
+                          technology_, total_duration);
+      break;
+    case PortalDetector::ValidationState::kPortalSuspected:
+      break;
+  }
+  if (result.http_duration.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration, technology_,
+                        result.http_duration.InMilliseconds());
+  }
+  if (result.https_duration.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
+                        result.https_duration.InMilliseconds());
+  }
+  if (const auto http_response_code =
+          result.GetHTTPResponseCodeMetricResult()) {
+    metrics_->SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              technology_, *http_response_code);
+  }
+  if (result.http_status_code == brillo::http::status_code::Ok &&
+      result.http_content_length) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength,
+                        technology_, *result.http_content_length);
   }
 
   result_callback_.Run(result);
@@ -157,14 +194,17 @@ void NetworkMonitor::set_portal_detector_for_testing(
 
 std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     EventDispatcher* dispatcher,
+    Metrics* metrics,
+    Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     NetworkMonitor::ResultCallback result_callback,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
-      dispatcher, interface, probing_configuration, std::move(result_callback),
-      std::move(network_validation_log), logging_tag);
+      dispatcher, metrics, technology, interface, probing_configuration,
+      std::move(result_callback), std::move(network_validation_log),
+      logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,
