@@ -14057,8 +14057,7 @@ mno {
     mccmnc: "310995"
     mccmnc: "311270"
     mccmnc: "311480"
-    # TODO(b/311268236): disable before feature release
-    # tethering_allowed: false
+    tethering_allowed: false
     mobile_apn {
       apn: "vzwinternet"
       localized_name {
