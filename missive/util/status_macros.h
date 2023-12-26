@@ -14,6 +14,11 @@
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
+// Nocompile tests for this file are missing in this repo because platform2
+// packages do not yet have nocompile test support. See
+// https://groups.google.com/a/google.com/g/chromeos-build-discuss/c/xy1Onm4YskM/m/LJKXy8rrBgAJ.
+// Please sync code to components/reporting/util and add nocompile tests there.
+
 namespace reporting::internal {
 
 // Helper functions for the macro RETURN_IF_ERROR_STATUS. Overloads of the
