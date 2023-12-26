@@ -1148,13 +1148,26 @@ class AuthSessionWithUssTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
+    // Setting cert provider expectation.
+    std::optional<RecoverableKeyStoreBackendCert> backend_cert =
+        GetValidBackendCert();
+    if (backend_cert.has_value()) {
+      ON_CALL(cert_provider_, GetBackendCert)
+          .WillByDefault(Return(*backend_cert));
+    }
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
     add_pin_request.set_auth_session_id(auth_session.serialized_token());
     add_pin_request.mutable_auth_factor()->set_type(
         user_data_auth::AUTH_FACTOR_TYPE_PIN);
     add_pin_request.mutable_auth_factor()->set_label(kFakePinLabel);
-    add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
+    user_data_auth::KnowledgeFactorHashInfo hash_info;
+    hash_info.set_algorithm(
+        KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
+    hash_info.set_salt("fake_salt");
+    *add_pin_request.mutable_auth_factor()
+         ->mutable_pin_metadata()
+         ->mutable_hash_info() = hash_info;
     add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
     TestFuture<CryptohomeStatus> add_future;
     auth_session.GetAuthForDecrypt()->AddAuthFactor(add_pin_request,
@@ -5154,6 +5167,36 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
   EXPECT_NE(updated_auth_factor->auth_block_state()
                 .recoverable_key_store_state->key_store_proto,
             key_store_state->key_store_proto);
+}
+
+TEST_F(AuthSessionWithUssTest, AddPinCreatesRecoverableKeyStoreState) {
+  // Setup.
+  fake_features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore,
+                                      true);
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  // Test. Adding the PIN factor.
+  user_data_auth::CryptohomeErrorCode error =
+      AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify. The PIN factor is added and the key store state is generated.
+  CryptohomeStatusOr<AuthFactor> pin_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(SanitizeUserName(kFakeUsername),
+                                          AuthFactorType::kPin, kFakePinLabel);
+  ASSERT_THAT(pin_auth_factor, IsOk());
+  EXPECT_TRUE(pin_auth_factor->auth_block_state()
+                  .recoverable_key_store_state.has_value());
 }
 
 }  // namespace cryptohome

@@ -45,7 +45,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
@@ -1139,9 +1138,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   FakeFeaturesForTesting features;
-  MockRecoverableKeyStoreBackendCertProvider cert_provider;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, &cert_provider, &hwsec_pw_manager_);
+  auto auth_block =
+      std::make_unique<PinWeaverAuthBlock>(features.async, &hwsec_pw_manager_);
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
                           false,
@@ -1180,9 +1178,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   brillo::SecureBlob reset_seed = CreateSecureRandomBlob(kAesBlockSize);
 
   FakeFeaturesForTesting features;
-  MockRecoverableKeyStoreBackendCertProvider cert_provider;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, &cert_provider, crypto_.GetPinWeaverManager());
+      features.async, crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
                           false,
@@ -1207,9 +1204,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   FakeFeaturesForTesting features;
-  MockRecoverableKeyStoreBackendCertProvider cert_provider;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, &cert_provider, crypto_.GetPinWeaverManager());
+      features.async, crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {
       brillo::SecureBlob(44, 'A'),   false, Username("unused"),
@@ -1241,9 +1237,8 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   vk.InitializeFromSerialized(serialized);
 
   FakeFeaturesForTesting features;
-  MockRecoverableKeyStoreBackendCertProvider cert_provider;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, &cert_provider, crypto_.GetPinWeaverManager());
+      features.async, crypto_.GetPinWeaverManager());
 
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::optional<AuthBlock::SuggestedAction>>

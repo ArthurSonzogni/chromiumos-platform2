@@ -37,7 +37,6 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -151,15 +150,12 @@ class GenericAuthBlockFunctions {
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service,
-      AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
-          key_store_cert_provider,
       Crypto* crypto)
       : parameters_(std::forward_as_tuple(*platform,
                                           *features,
                                           challenge_credentials_helper,
                                           key_challenge_service_factory,
                                           std::move(bio_service),
-                                          std::move(key_store_cert_provider),
                                           *crypto,
                                           *crypto->GetHwsec(),
                                           *crypto->GetRecoveryCrypto(),
@@ -207,7 +203,6 @@ class GenericAuthBlockFunctions {
              AsyncInitPtr<ChallengeCredentialsHelper>,
              KeyChallengeServiceFactory*,
              AsyncInitPtr<BiometricsAuthBlockService>,
-             AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>,
              Crypto&,
              const hwsec::CryptohomeFrontend&,
              const hwsec::RecoveryCryptoFrontend&,

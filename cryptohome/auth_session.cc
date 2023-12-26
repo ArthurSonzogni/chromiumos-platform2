@@ -987,8 +987,8 @@ void AuthSession::OnMigrationUssCreated(
       std::move(migration_performance_timer), std::move(on_done),
       std::move(pre_migration_status));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type, migration_auth_input_status.value(),
+  CreateAuthBlockStateAndKeyBlobs(
+      auth_factor_type, auth_block_type, migration_auth_input_status.value(),
       auth_factor_metadata, std::move(create_callback));
 }
 
@@ -1800,9 +1800,9 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
       auth_input_status.value(), stored_auth_factor->storage_type(),
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input_status.value(), auth_factor_metadata,
-      std::move(create_callback));
+  session_->CreateAuthBlockStateAndKeyBlobs(
+      auth_factor_type, auth_block_type.value(), auth_input_status.value(),
+      auth_factor_metadata, std::move(create_callback));
 }
 
 AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
@@ -2309,9 +2309,9 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
       weak_factory_.GetWeakPtr(), std::move(*original_auth_factor), *auth_input,
       auth_factor_type, std::move(auth_factor_label), auth_factor_metadata,
       std::move(perf_timer), std::move(on_done));
-  session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      *auth_block_type, *auth_input, auth_factor_metadata,
-      std::move(create_callback));
+  session_->CreateAuthBlockStateAndKeyBlobs(auth_factor_type, *auth_block_type,
+                                            *auth_input, auth_factor_metadata,
+                                            std::move(create_callback));
 }
 
 void AuthSession::AuthForDecrypt::RelabelAuthFactorEphemeral(
@@ -2893,8 +2893,9 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
   AuthBlock::CreateCallback create_callback = base::BindOnce(
       &AuthSession::ResaveKeysetOnKeyBlobsGenerated, weak_factory_.GetWeakPtr(),
       std::move(updated_vault_keyset));
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      out_auth_block_type.value(), auth_input, /*metadata=*/{},
+  CreateAuthBlockStateAndKeyBlobs(
+      AuthFactorType::kPassword, out_auth_block_type.value(), auth_input,
+      /*metadata=*/{},
       /*CreateCallback*/ std::move(create_callback));
 
   return out_auth_block_type.value();
@@ -3545,8 +3546,9 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
     return;
   }
 
-  session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input_status.value(), auth_factor_metadata,
+  session_->CreateAuthBlockStateAndKeyBlobs(
+      auth_factor_type, auth_block_type.value(), auth_input_status.value(),
+      auth_factor_metadata,
       base::BindOnce(
           &AuthSession::PersistAuthFactorToUserSecretStash,
           session_->weak_factory_.GetWeakPtr(), auth_factor_type,
@@ -3968,9 +3970,9 @@ void AuthSession::RecreateUssAuthFactor(
       weak_factory_.GetWeakPtr(), auth_factor.type(), auth_factor.label(),
       auth_factor.metadata(), *auth_input_for_add,
       std::move(auth_session_performance_timer), std::move(status_callback));
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      *auth_block_type, *auth_input_for_add, auth_factor.metadata(),
-      std::move(create_callback));
+  CreateAuthBlockStateAndKeyBlobs(auth_factor.type(), *auth_block_type,
+                                  *auth_input_for_add, auth_factor.metadata(),
+                                  std::move(create_callback));
 }
 
 void AuthSession::ResetLECredentials() {
@@ -4224,6 +4226,83 @@ CryptohomeStatus AuthSession::PrepareChapsKey() {
   }
 
   return OkStatus<CryptohomeCryptoError>();
+}
+
+void AuthSession::CreateAuthBlockStateAndKeyBlobs(
+    AuthFactorType auth_factor_type,
+    AuthBlockType auth_block_type,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    AuthBlock::CreateCallback create_callback) {
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
+      auth_block_type, auth_input, auth_factor_metadata,
+      base::BindOnce(&AuthSession::CreateCommonAuthBlockState,
+                     weak_factory_.GetWeakPtr(), auth_factor_type, auth_input,
+                     auth_factor_metadata, std::move(create_callback)));
+}
+
+void AuthSession::CreateCommonAuthBlockState(
+    AuthFactorType auth_factor_type,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    AuthBlock::CreateCallback create_callback,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state) {
+  // If creation failed, pass on to the original callback to do error handling.
+  if (!error.ok() || !key_blobs || !auth_block_state) {
+    std::move(create_callback)
+        .Run(std::move(error), std::move(key_blobs),
+             std::move(auth_block_state));
+    return;
+  }
+  // Now, create the common part of auth block state. Currently it's only the
+  // recoverable key store state.
+  if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
+    CreateRecoverableKeyStore(auth_factor_type, auth_factor_metadata,
+                              auth_input, *auth_block_state);
+  }
+  // Pass on the results to the original callback, with the auth_block_state
+  // updated.
+  std::move(create_callback)
+      .Run(std::move(error), std::move(key_blobs), std::move(auth_block_state));
+}
+
+void AuthSession::CreateRecoverableKeyStore(
+    AuthFactorType auth_factor_type,
+    const AuthFactorMetadata& auth_factor_metadata,
+    AuthInput auth_input,
+    AuthBlockState& auth_block_state) {
+  // TODO(b/312628857): Report metrics for the create result.
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  std::optional<KnowledgeFactorType> knowledge_factor_type =
+      factor_driver.GetKnowledgeFactorType();
+  if (!knowledge_factor_type.has_value() || !decrypt_token_) {
+    return;
+  }
+  const SecurityDomainKeys* security_domain_keys =
+      uss_manager_->GetDecrypted(*decrypt_token_).GetSecurityDomainKeys();
+  if (!security_domain_keys) {
+    LOG(WARNING) << "Failed to get security domain keys.";
+    return;
+  }
+  auth_input.security_domain_keys = *security_domain_keys;
+  RecoverableKeyStoreBackendCertProvider* provider =
+      key_store_cert_provider_.get();
+  if (!provider) {
+    LOG(WARNING) << "Failed to get key store backend cert provider.";
+    return;
+  }
+  CryptohomeStatusOr<RecoverableKeyStoreState> key_store_state =
+      CreateRecoverableKeyStoreState(*knowledge_factor_type, auth_input,
+                                     auth_factor_metadata, *provider);
+  if (!key_store_state.ok()) {
+    LOG(WARNING) << "Failed to create recoverable key store state: "
+                 << key_store_state.status();
+    return;
+  }
+  auth_block_state.recoverable_key_store_state = std::move(*key_store_state);
 }
 
 void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,

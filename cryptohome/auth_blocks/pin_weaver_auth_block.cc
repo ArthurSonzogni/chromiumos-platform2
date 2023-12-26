@@ -19,7 +19,6 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -28,7 +27,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/auth_blocks/recoverable_key_store.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -40,7 +38,6 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/util/async_init.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -145,26 +142,17 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
 
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
     AsyncInitFeatures& features,
-    AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
-        key_store_cert_provider,
     const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
-  if (!key_store_cert_provider) {
-    return nullptr;
-  }
-  return std::make_unique<PinWeaverAuthBlock>(
-      features, key_store_cert_provider.get(), &hwsec_pw_manager);
+  return std::make_unique<PinWeaverAuthBlock>(features, &hwsec_pw_manager);
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
     AsyncInitFeatures& features,
-    RecoverableKeyStoreBackendCertProvider* key_store_cert_provider,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager)
     : AuthBlock(kLowEntropyCredential),
       features_(&features),
-      key_store_cert_provider_(key_store_cert_provider),
       hwsec_pw_manager_(hwsec_pw_manager) {
   CHECK(features_);
-  CHECK(key_store_cert_provider_);
   CHECK(hwsec_pw_manager_);
 }
 
@@ -311,21 +299,6 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   pin_auth_state.le_label = result.value();
   pin_auth_state.salt = std::move(salt);
   auth_block_state->state = std::move(pin_auth_state);
-
-  // Generate recoverable key state for PIN. If it fails, just keep the field
-  // empty instead of failing the whole Create operation.
-  if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
-    CryptohomeStatusOr<RecoverableKeyStoreState> key_store_state =
-        CreateRecoverableKeyStoreState(
-            KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN, auth_input,
-            auth_factor_metadata, *key_store_cert_provider_);
-    if (!key_store_state.ok()) {
-      LOG(WARNING) << "Failed to generate recoverable key store state: "
-                   << key_store_state.status();
-    } else {
-      auth_block_state->recoverable_key_store_state = *key_store_state;
-    }
-  }
 
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_block_state));

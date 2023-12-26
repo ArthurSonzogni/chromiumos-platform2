@@ -823,7 +823,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
         async_cc_helper, key_challenge_service_factory_,
-        async_biometrics_service, async_key_store_cert_provider);
+        async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 

@@ -48,7 +48,6 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
@@ -316,7 +315,6 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   FakeFeaturesForTesting features_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
-  NiceMock<MockRecoverableKeyStoreBackendCertProvider> cert_provider_;
 
   AuthBlockUtilityImpl auth_block_utility_{
       &keyset_management_,
@@ -325,8 +323,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       &features_.async,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(&cert_provider_)};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,

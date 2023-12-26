@@ -820,6 +820,35 @@ class AuthSession final {
   // during PrepareUserForRemoval.
   void RemoveRateLimiters();
 
+  // Calls |AuthBlockUtility::CreateKeyBlobsWithAuthBlock|, and creates the
+  // rest of the common (non-AuthBlockType-specific) fields of the
+  // AuthBlockState after it returns.
+  void CreateAuthBlockStateAndKeyBlobs(
+      AuthFactorType auth_factor_type,
+      AuthBlockType auth_block_type,
+      const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata,
+      AuthBlock::CreateCallback create_callback);
+
+  // Used as a callback for |CreateAuthBlockStateAndKeyBlobs|. Creates the
+  // rest of the common (non-AuthBlockType-specific) fields of the
+  // AuthBlockState after it returns.
+  void CreateCommonAuthBlockState(
+      AuthFactorType auth_factor_type,
+      const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata,
+      AuthBlock::CreateCallback create_callback,
+      CryptohomeStatus error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
+  // Create the recoverable key store auth block state, if |auth_factor_type|
+  // is a knowledge factor.
+  void CreateRecoverableKeyStore(AuthFactorType auth_factor_type,
+                                 const AuthFactorMetadata& auth_factor_metadata,
+                                 AuthInput auth_input,
+                                 AuthBlockState& auth_block_state);
+
   // Check whether the recoverable key store state of |auth_factor| is outdated,
   // and update it if so.
   void MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
