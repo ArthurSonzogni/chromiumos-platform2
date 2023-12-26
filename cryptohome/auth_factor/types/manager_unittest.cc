@@ -480,7 +480,8 @@ TEST_F(AuthFactorDriverManagerTest, GetKnowledgeFactorType) {
     return manager_.GetDriver(type).GetKnowledgeFactorType();
   };
 
-  EXPECT_FALSE(knowledge_factor_type(AuthFactorType::kPassword).has_value());
+  EXPECT_THAT(knowledge_factor_type(AuthFactorType::kPassword),
+              Optional(KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PASSWORD));
   EXPECT_THAT(knowledge_factor_type(AuthFactorType::kPin),
               Optional(KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PIN));
   EXPECT_FALSE(

@@ -63,7 +63,8 @@ class PasswordAuthFactorDriver final
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter,
-      public AfDriverNoKnowledgeFactor {
+      public AfDriverWithKnowledgeFactorType<
+          KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PASSWORD> {
  public:
   PasswordAuthFactorDriver() = default;
 

@@ -914,7 +914,6 @@ class AuthSessionWithUssTest : public AuthSessionTest {
   user_data_auth::CryptohomeErrorCode AddPasswordAuthFactor(
       const std::string& label,
       const std::string& password,
-      bool first_factor,
       AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
@@ -934,11 +933,24 @@ class AuthSessionWithUssTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
+    // Setting cert provider expectation.
+    std::optional<RecoverableKeyStoreBackendCert> backend_cert =
+        GetValidBackendCert();
+    if (backend_cert.has_value()) {
+      ON_CALL(cert_provider_, GetBackendCert)
+          .WillByDefault(Return(*backend_cert));
+    }
     user_data_auth::AddAuthFactorRequest request;
     request.mutable_auth_factor()->set_type(
         user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
     request.mutable_auth_factor()->set_label(label);
-    request.mutable_auth_factor()->mutable_password_metadata();
+    user_data_auth::KnowledgeFactorHashInfo hash_info;
+    hash_info.set_algorithm(
+        KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
+    hash_info.set_salt("fake_salt");
+    *request.mutable_auth_factor()
+         ->mutable_password_metadata()
+         ->mutable_hash_info() = hash_info;
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
     request.set_auth_session_id(auth_session.serialized_token());
@@ -1393,8 +1405,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                  /*first_factor=*/true, auth_session));
+            AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session));
   // Add the user session. Expect that no verification calls are made.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
@@ -3069,8 +3080,7 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                /*first_factor=*/true, auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3151,8 +3161,7 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3243,11 +3252,9 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                /*first_factor=*/true, auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  error = AddPasswordAuthFactor(kFakeOtherLabel, kFakeOtherPass,
-                                /*first_factor=*/false, auth_session);
+  error = AddPasswordAuthFactor(kFakeOtherLabel, kFakeOtherPass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both passwords are available, the first one should supply a verifier.
@@ -3333,8 +3340,7 @@ TEST_F(AuthSessionWithUssTest, RemoveAndReAddAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                /*first_factor=*/true, auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3379,8 +3385,7 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorFailsForLastFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                /*first_factor=*/true, auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3427,8 +3432,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactor) {
         user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
     // Calling AddAuthFactor.
-    error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                  auth_session);
+    error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
     EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
     // Test.
@@ -3488,8 +3492,7 @@ TEST_F(AuthSessionWithUssTest, AddPinAfterRecoveryAuth) {
                              backing_apis_);
     // Create the user with password and recovery factors.
     EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
-    EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                    /*first_factor=*/true, auth_session),
+    EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
     EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
                                     auth_session),
@@ -3556,8 +3559,7 @@ TEST_F(AuthSessionWithUssTest, UpdatePasswordAfterRecoveryAuth) {
     // Create the user.
     EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
     // Add password AuthFactor.
-    EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass,
-                                    /*first_factor=*/true, auth_session),
+    EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
     // Add recovery AuthFactor.
@@ -3623,8 +3625,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsForWrongLabel) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   std::string new_pass = "update fake pass";
@@ -3674,8 +3675,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsForWrongType) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3722,8 +3722,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsWhenLabelDoesntExist) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3774,8 +3773,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsInAuthBlock) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Setting the expectations for the new auth block creation. The mock is set
@@ -3831,8 +3829,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataSuccess) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3884,8 +3881,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataEmptyLabelFailure) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3918,8 +3914,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataWrongLabelFailure) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3952,8 +3947,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataLongNameFailure) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3989,8 +3983,7 @@ TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataWrongTypeFailure) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -4303,8 +4296,7 @@ TEST_F(AuthSessionWithUssTest, RelabelAuthFactor) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Calling AddAuthFactor.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -4343,8 +4335,7 @@ TEST_F(AuthSessionWithUssTest, RelabelAuthFactorWithBadInputs) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Add a couple of auth factors.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -4443,8 +4434,7 @@ TEST_F(AuthSessionWithUssTest, RelabelAuthFactorWithFileFailure) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Add a couple of auth factors.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Disable the writing of the USS file. The rename should fail and we should
@@ -4541,8 +4531,8 @@ TEST_F(AuthSessionWithUssTest, ReplaceAuthFactor) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   // Add the initial auth factor.
-  user_data_auth::CryptohomeErrorCode error = AddPasswordAuthFactor(
-      kFakeLabel, kFakePass, /*first_factor=*/true, auth_session);
+  user_data_auth::CryptohomeErrorCode error =
+      AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -4609,8 +4599,7 @@ TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorWithBadInputs) {
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
   // Add a couple of auth factors.
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -5196,6 +5185,37 @@ TEST_F(AuthSessionWithUssTest, AddPinCreatesRecoverableKeyStoreState) {
                                           AuthFactorType::kPin, kFakePinLabel);
   ASSERT_THAT(pin_auth_factor, IsOk());
   EXPECT_TRUE(pin_auth_factor->auth_block_state()
+                  .recoverable_key_store_state.has_value());
+}
+
+TEST_F(AuthSessionWithUssTest, AddPasswordCreatesRecoverableKeyStoreState) {
+  // Setup.
+  fake_features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore,
+                                      true);
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  // Test. Adding the password factor.
+  user_data_auth::CryptohomeErrorCode error =
+      AddPasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify. The password factor is added and the key store state is generated.
+  CryptohomeStatusOr<AuthFactor> password_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(SanitizeUserName(kFakeUsername),
+                                          AuthFactorType::kPassword,
+                                          kFakeLabel);
+  ASSERT_THAT(password_auth_factor, IsOk());
+  EXPECT_TRUE(password_auth_factor->auth_block_state()
                   .recoverable_key_store_state.has_value());
 }
 
