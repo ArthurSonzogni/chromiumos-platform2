@@ -12,16 +12,18 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <net-base/byte_utils.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_response.h"
 #include "patchpanel/net_util.h"
-#include "patchpanel/socket.h"
 #include "patchpanel/system.h"
 
 namespace {
@@ -387,8 +389,9 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
     return true;
   }
 
-  patchpanel::Socket temp_socket(dst->sa_family, SOCK_DGRAM);
-  if (!temp_socket.is_valid()) {
+  std::unique_ptr<net_base::Socket> temp_socket =
+      net_base::Socket::Create(dst->sa_family, SOCK_DGRAM);
+  if (!temp_socket) {
     PLOG(ERROR) << "Failed to create UDP socket to forward to " << *dst;
     return false;
   }
@@ -396,8 +399,8 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, lan_ifname_.c_str(), IFNAMSIZ);
-  if (setsockopt(temp_socket.fd(), SOL_SOCKET, SO_BINDTODEVICE, &ifr,
-                 sizeof(ifr))) {
+  if (!temp_socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                               net_base::byte_utils::AsBytes(ifr))) {
     PLOG(ERROR) << "setsockopt(SO_BINDTODEVICE) failed";
     return false;
   }
@@ -418,24 +421,26 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
   SetSockaddr(&bind_addr_storage, dst->sa_family, src_port, nullptr);
 
   int flag = 0;
-  if (setsockopt(temp_socket.fd(), level, optname, &flag, sizeof(flag))) {
+  if (!temp_socket->SetSockOpt(level, optname,
+                               net_base::byte_utils::AsBytes(flag))) {
     PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed";
     return false;
   }
 
   flag = 1;
-  if (setsockopt(temp_socket.fd(), SOL_SOCKET, SO_REUSEADDR, &flag,
-                 sizeof(flag))) {
+  if (!temp_socket->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                               net_base::byte_utils::AsBytes(flag))) {
     PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
     return false;
   }
 
-  if (!temp_socket.Bind(bind_addr, sizeof(struct sockaddr_storage))) {
+  if (!temp_socket->Bind(bind_addr, sizeof(struct sockaddr_storage))) {
     PLOG(ERROR) << "Failed to bind to " << bind_addr_storage;
     return false;
   }
 
-  if (temp_socket.SendTo(data, len, dst, dst_len) < 0) {
+  if (!temp_socket->SendTo({reinterpret_cast<const uint8_t*>(data), len},
+                           MSG_NOSIGNAL, dst, dst_len)) {
     // Use |lan_socket_| to track last errno. The only expected difference
     // between |temp_socket| and |lan_socket_| is port number.
     if (lan_socket->last_errno != errno) {
