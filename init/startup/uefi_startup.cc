@@ -50,15 +50,14 @@ UefiDelegateImpl::GetFwupdUserAndGroup() const {
   return fwupd;
 }
 
-bool UefiDelegateImpl::MountEfivarfs(const UserAndGroup& fwupd) {
+bool UefiDelegateImpl::MountEfivarfs() {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
-  const std::string data =
-      "uid=" + std::to_string(fwupd.uid) + ",gid=" + std::to_string(fwupd.gid);
+
   if (!platform_.Mount(/*src=*/kFsTypeEfivarfs,
                        /*dst=*/efivars_dir,
                        /*type=*/kFsTypeEfivarfs,
                        /*flags=*/kCommonMountFlags,
-                       /*data=*/data)) {
+                       /*data=*/"")) {
     PLOG(WARNING) << "Unable to mount " << efivars_dir;
     return false;
   }
@@ -66,8 +65,9 @@ bool UefiDelegateImpl::MountEfivarfs(const UserAndGroup& fwupd) {
   return true;
 }
 
-bool UefiDelegateImpl::MakeUefiVarMutable(const std::string& vendor,
-                                          const std::string& name) {
+bool UefiDelegateImpl::MakeUefiVarWritableByFwupd(const std::string& vendor,
+                                                  const std::string& name,
+                                                  const UserAndGroup& fwupd) {
   const base::FilePath var_path =
       root_dir_.Append(kEfivarsDir).Append(name + '-' + vendor);
   base::ScopedFD var_fd = platform_.Open(var_path, O_RDONLY | O_CLOEXEC);
@@ -86,6 +86,13 @@ bool UefiDelegateImpl::MakeUefiVarMutable(const std::string& vendor,
     PLOG(WARNING) << "Failed to set attributes for " << var_path;
     return false;
   }
+
+  if (!platform_.Fchown(var_fd.get(), fwupd.uid, fwupd.gid)) {
+    PLOG(WARNING) << "Failed to change ownership of " << var_path << " to "
+                  << fwupd.uid << ":" << fwupd.gid;
+    return false;
+  }
+
   return true;
 }
 
@@ -146,8 +153,9 @@ void MaybeRunUefiStartup(UefiDelegate& uefi_delegate) {
     return;
   }
 
-  if (uefi_delegate.MountEfivarfs(fwupd.value())) {
-    uefi_delegate.MakeUefiVarMutable(kEfiImageSecurityDatabaseGuid, "dbx");
+  if (uefi_delegate.MountEfivarfs()) {
+    uefi_delegate.MakeUefiVarWritableByFwupd(kEfiImageSecurityDatabaseGuid,
+                                             "dbx", fwupd.value());
   }
 
   uefi_delegate.MakeEsrtReadableByFwupd(fwupd.value());
