@@ -62,7 +62,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider provider(data, size);
   auto ares_client = std::make_unique<FakeAresClient>(&provider);
   auto curl_client = std::make_unique<FakeCurlClient>(&provider);
-  Resolver resolver(std::move(ares_client), std::move(curl_client));
+  auto socket_factory = std::make_unique<net_base::SocketFactory>();
+  Resolver resolver(std::move(ares_client), std::move(curl_client),
+                    std::move(socket_factory));
 
   while (provider.remaining_bytes() > 0) {
     size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);

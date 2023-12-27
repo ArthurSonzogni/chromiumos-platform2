@@ -167,6 +167,7 @@ if (use.test) {
     deps = [
       ":libdnsproxy",
       "//common-mk/testrunner:testrunner",
+      "//net-base:net_base_test_support",
     ]
   }
 }

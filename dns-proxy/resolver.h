@@ -18,7 +18,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dns/dns_response.h>
-#include <chromeos/patchpanel/socket.h>
+#include <net-base/socket.h>
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"
@@ -122,6 +122,7 @@ class Resolver {
   // Provided for testing only.
   Resolver(std::unique_ptr<AresClient> ares_client,
            std::unique_ptr<DoHCurlClientInterface> curl_client,
+           std::unique_ptr<net_base::SocketFactory> socket_factory,
            bool disable_probe = true,
            std::unique_ptr<Metrics> metrics = nullptr);
   virtual ~Resolver() = default;
@@ -207,10 +208,10 @@ class Resolver {
  private:
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
-    TCPConnection(std::unique_ptr<patchpanel::Socket> sock,
+    TCPConnection(std::unique_ptr<net_base::Socket> sock,
                   const base::RepeatingCallback<void(int, int)>& callback);
 
-    std::unique_ptr<patchpanel::Socket> sock;
+    std::unique_ptr<net_base::Socket> sock;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
   };
 
@@ -256,6 +257,9 @@ class Resolver {
   // Resolvers owner by other Proxy instances.
   base::RepeatingCallback<void(std::ostream& stream)> logger_;
 
+  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
+      std::make_unique<net_base::SocketFactory>();
+
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;
 
@@ -263,14 +267,14 @@ class Resolver {
   bool doh_enabled_;
 
   // Watch |tcp_src_| for incoming TCP connections.
-  std::unique_ptr<patchpanel::Socket> tcp_src_;
+  std::unique_ptr<net_base::Socket> tcp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> tcp_src_watcher_;
 
   // Map of TCP connections keyed by their file descriptor.
   std::map<int, std::unique_ptr<TCPConnection>> tcp_connections_;
 
   // Watch queries from |udp_src_|.
-  std::unique_ptr<patchpanel::Socket> udp_src_;
+  std::unique_ptr<net_base::Socket> udp_src_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
 
   // Name servers and DoH providers validated through probes.

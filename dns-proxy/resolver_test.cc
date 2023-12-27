@@ -4,14 +4,17 @@
 
 #include "dns-proxy/resolver.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_socket.h>
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"
@@ -127,27 +130,70 @@ class ResolverTest : public testing::Test {
         sock_fd->weak_factory.GetWeakPtr(),
         probe_state->weak_factory.GetWeakPtr(),
         DoHCurlClient::CurlResult(CURLE_OUT_OF_MEMORY, /*http_code=*/0,
-                                  /*timeout=*/0),
+                                  /*retry_delay_ms=*/0),
         nullptr, 0);
   }
 
  protected:
   void SetUp() override {
-    std::unique_ptr<MockAresClient> scoped_ares_client(new MockAresClient());
-    std::unique_ptr<MockDoHCurlClient> scoped_curl_client(
-        new MockDoHCurlClient());
+    auto scoped_ares_client = std::make_unique<MockAresClient>();
+    auto scoped_curl_client = std::make_unique<MockDoHCurlClient>();
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     ares_client_ = scoped_ares_client.get();
     curl_client_ = scoped_curl_client.get();
+    socket_factory_ = socket_factory.get();
+
     resolver_ = std::make_unique<Resolver>(std::move(scoped_ares_client),
-                                           std::move(scoped_curl_client));
+                                           std::move(scoped_curl_client),
+                                           std::move(socket_factory));
   }
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   MockAresClient* ares_client_;
   MockDoHCurlClient* curl_client_;
+  net_base::MockSocketFactory* socket_factory_;
   std::unique_ptr<Resolver> resolver_;
 };
+
+TEST_F(ResolverTest, ListenTCP) {
+  struct sockaddr_in6 addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = 13568;
+  addr.sin6_addr = in6addr_any;
+
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK, _))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Bind(_, sizeof(struct sockaddr_in6)))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*socket, Listen).WillOnce(Return(true));
+        return socket;
+      });
+
+  EXPECT_TRUE(resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr)));
+}
+
+TEST_F(ResolverTest, ListenUDP) {
+  struct sockaddr_in6 addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = 13568;
+  addr.sin6_addr = in6addr_any;
+
+  EXPECT_CALL(*socket_factory_, Create(AF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, _))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Bind(_, sizeof(struct sockaddr_in6)))
+            .WillOnce(Return(true));
+        return socket;
+      });
+
+  EXPECT_TRUE(resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr)));
+}
 
 TEST_F(ResolverTest, SetNameServers) {
   for (const auto& name_server : kTestNameServers) {

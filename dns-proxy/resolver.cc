@@ -8,7 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
+#include <memory>
 #include <optional>
 #include <set>
 #include <utility>
@@ -25,6 +25,7 @@
 #include <chromeos/patchpanel/dns/io_buffer.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <net-base/ip_address.h>
+#include <net-base/socket.h>
 
 // Using directive is necessary to have the overloaded function for socket data
 // structure available.
@@ -154,12 +155,12 @@ Resolver::SocketFd::SocketFd(int type, int fd)
 }
 
 Resolver::TCPConnection::TCPConnection(
-    std::unique_ptr<patchpanel::Socket> sock,
+    std::unique_ptr<net_base::Socket> sock,
     const base::RepeatingCallback<void(int, int)>& callback)
     : sock(std::move(sock)) {
   watcher = base::FileDescriptorWatcher::WatchReadable(
-      TCPConnection::sock->fd(),
-      base::BindRepeating(callback, TCPConnection::sock->fd(), SOCK_STREAM));
+      TCPConnection::sock->Get(),
+      base::BindRepeating(callback, TCPConnection::sock->Get(), SOCK_STREAM));
 }
 
 Resolver::ProbeState::ProbeState(const std::string& target,
@@ -183,9 +184,11 @@ Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
 
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
+                   std::unique_ptr<net_base::SocketFactory> socket_factory,
                    bool disable_probe,
                    std::unique_ptr<Metrics> metrics)
     : logger_(base::DoNothing()),
+      socket_factory_(std::move(socket_factory)),
       always_on_doh_(false),
       doh_enabled_(false),
       disable_probe_(disable_probe),
@@ -194,9 +197,9 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
       curl_client_(std::move(curl_client)) {}
 
 bool Resolver::ListenTCP(struct sockaddr* addr) {
-  auto tcp_src = std::make_unique<patchpanel::Socket>(
-      addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK);
-  if (!tcp_src->is_valid()) {
+  std::unique_ptr<net_base::Socket> tcp_src =
+      socket_factory_->Create(addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!tcp_src) {
     PLOG(ERROR) << *this << " Failed to create TCP socket";
     return false;
   }
@@ -216,17 +219,17 @@ bool Resolver::ListenTCP(struct sockaddr* addr) {
   // Run the accept loop.
   LOG(INFO) << *this << " Accepting TCP connections on " << *addr;
   tcp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      tcp_src->fd(), base::BindRepeating(&Resolver::OnTCPConnection,
-                                         weak_factory_.GetWeakPtr()));
+      tcp_src->Get(), base::BindRepeating(&Resolver::OnTCPConnection,
+                                          weak_factory_.GetWeakPtr()));
   tcp_src_ = std::move(tcp_src);
 
   return true;
 }
 
 bool Resolver::ListenUDP(struct sockaddr* addr) {
-  auto udp_src = std::make_unique<patchpanel::Socket>(
-      addr->sa_family, SOCK_DGRAM | SOCK_NONBLOCK);
-  if (!udp_src->is_valid()) {
+  std::unique_ptr<net_base::Socket> udp_src =
+      socket_factory_->Create(addr->sa_family, SOCK_DGRAM | SOCK_NONBLOCK);
+  if (!udp_src) {
     PLOG(ERROR) << *this << " Failed to create UDP socket";
     return false;
   }
@@ -241,9 +244,9 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
   // Start listening.
   LOG(INFO) << *this << " Accepting UDP queries on " << *addr;
   udp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      udp_src->fd(),
+      udp_src->Get(),
       base::BindRepeating(&Resolver::OnDNSQuery, weak_factory_.GetWeakPtr(),
-                          udp_src->fd(), SOCK_DGRAM));
+                          udp_src->Get(), SOCK_DGRAM));
   udp_src_ = std::move(udp_src);
   return true;
 }
@@ -251,14 +254,14 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
 void Resolver::OnTCPConnection() {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
-  auto client_conn =
+  std::unique_ptr<net_base::Socket> client_conn =
       tcp_src_->Accept((struct sockaddr*)&client_src, &sockaddr_len);
   if (!client_conn) {
     PLOG(ERROR) << *this << " Failed to accept TCP connection";
     return;
   }
   tcp_connections_.emplace(
-      client_conn->fd(),
+      client_conn->Get(),
       new TCPConnection(std::move(client_conn),
                         base::BindRepeating(&Resolver::OnDNSQuery,
                                             weak_factory_.GetWeakPtr())));
