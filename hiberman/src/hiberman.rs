@@ -13,6 +13,7 @@ mod device_mapper;
 mod files;
 mod hiberutil;
 mod ioctl;
+mod journal;
 mod lvm;
 mod mmapbuf;
 mod powerd;

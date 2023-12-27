@@ -3,15 +3,11 @@
 // found in the LICENSE file.
 
 //! Implement consistent logging across the hibernate and resume transition.
-use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::Path;
-use std::path::PathBuf;
 use std::str;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -32,8 +28,8 @@ use syslog::BasicLogger;
 use syslog::Facility;
 use syslog::Formatter3164;
 
-use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateStage;
+use crate::journal::LogFile;
 use crate::volume::ActiveMount;
 
 /// Define the path to kmsg, used to send log lines into the kernel buffer in
@@ -41,11 +37,6 @@ use crate::volume::ActiveMount;
 const KMSG_PATH: &str = "/dev/kmsg";
 /// Define the prefix to go on log messages.
 const LOG_PREFIX: &str = "hiberman";
-
-/// Define the name of the resume log file.
-const RESUME_LOG_FILE_NAME: &str = "resume_log";
-/// Define the name of the suspend log file.
-const SUSPEND_LOG_FILE_NAME: &str = "suspend_log";
 
 static STATE: OnceCell<Mutex<Hiberlog>> = OnceCell::new();
 
@@ -204,102 +195,6 @@ where
     F: FnMut(&[u8]),
 {
     entries.iter().filter(|e| !e.is_empty()).for_each(|e| f(e.as_slice()));
-}
-
-/// Struct with associated functions for creating and opening hibernate
-/// log files.
-///
-/// The structure will redirect the hibernate logs to a buffer in memory
-/// when the struct goes out of scope.
-///
-/// The struct is used during the suspend and resume process to ensure
-/// that an open log file is always closed before unmounting 'hibermeta'
-/// (which hosts the log file).
-pub struct LogFile<'m>(pub &'m ActiveMount);
-
-impl<'m> LogFile<'m> {
-    /// Divert the log to a file. If the log was previously pointing to syslog
-    /// those messages are flushed.
-    pub fn new(stage: HibernateStage, create: bool, am: &'m ActiveMount) -> Result<Self> {
-        let log_file = if create {
-            Self::create(stage)
-        } else {
-            Self::open(stage)
-        }?;
-        redirect_log(HiberlogOut::File(Box::new(log_file)));
-        Ok(LogFile(am))
-    }
-
-    /// Create the log file at given hibernate stage, truncate the file if it already
-    /// exists. The file is opened with O_SYNC to make sure data from writes
-    /// isn't buffered by the kernel but submitted to storage immediately.
-    fn create(stage: HibernateStage) -> Result<File> {
-        let path = Self::get_path(stage);
-
-        let opts = OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .custom_flags(libc::O_SYNC)
-            .clone();
-
-        Self::open_file(path, &opts)
-    }
-
-    /// Open existing log file at given hibernation stage. The file is opened with
-    /// O_SYNC to make sure data from writes isn't buffered by the kernel but
-    /// submitted to storage immediately.
-    fn open(stage: HibernateStage) -> Result<File> {
-        let path = Self::get_path(stage);
-
-        let opts = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(libc::O_SYNC)
-            .clone();
-
-        Self::open_file(path, &opts)
-    }
-
-    /// Check if log file exists for a given hibernation stage.
-    fn exists(stage: HibernateStage) -> bool {
-        let path = Self::get_path(stage);
-        path.exists()
-    }
-
-    /// Clear the log file for a given hibernation stage.
-    fn clear(stage: HibernateStage) {
-        let path = Self::get_path(stage);
-        if let Err(e) = fs::remove_file(&path) {
-            warn!("Failed to remove {}: {}", path.display(), e);
-        }
-    }
-
-    /// Get the path of the log file for a given hibernate stage.
-    fn get_path(stage: HibernateStage) -> PathBuf {
-        let name = match stage {
-            HibernateStage::Suspend => SUSPEND_LOG_FILE_NAME,
-            HibernateStage::Resume => RESUME_LOG_FILE_NAME,
-        };
-
-        Path::new(HIBERMETA_DIR).join(name)
-    }
-
-    fn open_file<P: AsRef<Path>>(path: P, open_options: &OpenOptions) -> Result<File> {
-        match open_options.open(&path) {
-            Ok(f) => Ok(f),
-            Err(e) => Err(anyhow!(e).context(format!(
-                "Failed to open log file '{}'",
-                path.as_ref().display()
-            ))),
-        }
-    }
-}
-
-impl Drop for LogFile<'_> {
-    fn drop(&mut self) {
-        redirect_log(HiberlogOut::BufferInMemory);
-    }
 }
 
 /// Divert the log to a new output. If the log was previously pointing to syslog

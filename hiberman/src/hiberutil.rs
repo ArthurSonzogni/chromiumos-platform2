@@ -39,11 +39,9 @@ use thiserror::Error as ThisError;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::files::HIBERMETA_DIR;
 use crate::files::TMPFS_DIR;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
-use crate::volume::ActiveMount;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
 
@@ -576,45 +574,4 @@ pub fn keyctl_remove_key(description: &str) -> Result<()> {
     checked_command(Command::new(KEYCTL_PATH).args(["purge", "-s", "logon", description])).context(
         format!("Failed to remove key '{description}' from the kernel key ring"),
     )
-}
-
-/// Provides an API for recording and reading timestamps from disk.
-#[allow(dead_code)]
-pub struct TimestampFile<'a> { am: &'a ActiveMount }
-
-impl<'a> TimestampFile<'a> {
-    /// Create new timestamp file record.
-    pub fn new(am: &'a ActiveMount) -> Self {
-        TimestampFile {am}
-    }
-
-    /// Record a timestamp to a file.
-    pub fn record_timestamp(&self, name: &str, timestamp: &Duration) -> Result<()> {
-        let path = Self::full_path(name);
-
-        let mut f = File::options()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(&path)?;
-
-        f.write_all(timestamp.as_millis().to_string().as_bytes())
-            .context(format!("Failed to write timestamp to {}", path.display()))
-    }
-
-    /// Read a timestamp from a file.
-    pub fn read_timestamp(&self, name: &str) -> Result<Duration> {
-        let path = Self::full_path(name);
-        let ts = fs::read_to_string(&path)
-            .context(format!("Failed to read timestamp from {}", path.display()))?;
-        let millis =
-            ts.parse()
-                .context(format!("invalid timestamp in {}: {}", path.display(), ts))?;
-
-        Ok(Duration::from_millis(millis))
-    }
-
-    fn full_path(name: &str) -> PathBuf {
-        PathBuf::from(format!("/{HIBERMETA_DIR}/{name}"))
-    }
 }

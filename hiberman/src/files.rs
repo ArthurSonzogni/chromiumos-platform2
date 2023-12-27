@@ -16,7 +16,7 @@ use lazy_static::lazy_static;
 use log::warn;
 
 /// Define the directory where hibernate state files are kept.
-pub const HIBERMETA_DIR: &str = "/mnt/hibermeta";
+pub const HIBERMETA_DIR: &str = "/mnt/hibermeta"; // TODO(quasisec): move to journal.rs
 /// Define the ramfs location where ephemeral files are stored that should not
 /// persist across even an unexpected reboot.
 pub const TMPFS_DIR: &str = "/run/hibernate/";
