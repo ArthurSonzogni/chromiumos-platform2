@@ -25,6 +25,7 @@ executable("diagnostics_dpsl_test_listener") {
     ":libcommon",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
   ]
+  install_path = "bin"
 }
 
 # Executable for E2E VM tests.
@@ -35,4 +36,5 @@ executable("diagnostics_dpsl_test_requester") {
     ":libcommon",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
   ]
+  install_path = "bin"
 }
