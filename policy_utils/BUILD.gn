@@ -30,6 +30,7 @@ executable("policy") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":libmgmt" ]
+  install_path = "sbin"
 }
 
 if (use.test) {
