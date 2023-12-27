@@ -103,15 +103,30 @@ impl SuspendConductor<'_> {
 
         log_metric_event(HibernateEvent::SuspendAttempt);
 
-        if let Err(e) = self.hibernate_inner() {
-            let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+        let success = self.hibernate_inner().is_ok();
 
+        // Now send any remaining logs and future logs to syslog.
+        redirect_log(HiberlogOut::Syslog);
+
+        let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+
+        // Replay the suspend (and maybe resume) logs to the syslogger.
+        // replay logs first because they happened earlier.
+        replay_logs(
+            &hibermeta_mount,
+            success && !self.options.dry_run, // push_resume_logs
+            !self.options.dry_run, // clear
+        );
+
+        if success {
+            log_metric_event(HibernateEvent::ResumeSuccess);
+            self.record_total_resume_time(&hibermeta_mount);
+        } else {
             log_metric_event(HibernateEvent::SuspendFailure);
-
-            read_and_send_metrics(&hibermeta_mount);
-
-            return Err(e);
         }
+
+        // Read the metrics files and send out the samples.
+        read_and_send_metrics(&hibermeta_mount);
 
         Ok(())
     }
@@ -167,33 +182,7 @@ impl SuspendConductor<'_> {
 
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system(hibermeta_mount);
-
-        if result.is_ok() {
-            log_metric_event(HibernateEvent::ResumeSuccess);
-        } else {
-            // SuspendFailure event is recorded in hibernate()
-        }
-
-        let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
-
-        // Now send any remaining logs and future logs to syslog.
-        redirect_log(HiberlogOut::Syslog);
-        // Replay logs first because they happened earlier.
-        replay_logs(
-            &hibermeta_mount,
-            result.is_ok() && !self.options.dry_run,
-            !self.options.dry_run,
-        );
-
-        if result.is_ok() {
-            self.record_total_resume_time(&hibermeta_mount);
-        }
-
-        // Read the metrics files and send out the samples.
-        read_and_send_metrics(&hibermeta_mount);
-
-        result
+        self.suspend_system(hibermeta_mount)
     }
 
     /// Inner helper function to actually take the snapshot, save it to disk,
