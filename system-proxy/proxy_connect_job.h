@@ -16,10 +16,10 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/socket.h>
 
 namespace patchpanel {
 class SocketForwarder;
-class Socket;
 }  // namespace patchpanel
 
 namespace system_proxy {
@@ -69,7 +69,7 @@ class ProxyConnectJob {
       base::RepeatingCallback<void(const std::string& credentials)>
           on_auth_acquired_callback)>;
 
-  ProxyConnectJob(std::unique_ptr<patchpanel::Socket> socket,
+  ProxyConnectJob(std::unique_ptr<net_base::Socket> socket,
                   const std::string& credentials,
                   int64_t curl_auth_schemes,
                   ResolveProxyCallback resolve_proxy_callback,
@@ -184,7 +184,7 @@ class ProxyConnectJob {
   bool store_headers_for_testing_ = false;
   std::string request_headers_for_testing_;
 
-  std::unique_ptr<patchpanel::Socket> client_socket_;
+  std::unique_ptr<net_base::Socket> client_socket_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
   base::WeakPtrFactory<ProxyConnectJob> weak_ptr_factory_{this};
 };

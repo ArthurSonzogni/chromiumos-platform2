@@ -299,8 +299,8 @@ void ServerProxy::OnConnectionAccept() {
   if (std::unique_ptr<net_base::Socket> client_conn =
           listening_fd_->Accept((struct sockaddr*)&client_src, &sockaddr_len)) {
     auto connect_job = std::make_unique<ProxyConnectJob>(
-        patchpanel::Socket::FromNetBaseSocket(std::move(client_conn)),
-        system_credentials_, system_credentials_auth_schemes_,
+        std::move(client_conn), system_credentials_,
+        system_credentials_auth_schemes_,
         base::BindOnce(&ServerProxy::ResolveProxy, base::Unretained(this)),
         base::BindRepeating(&ServerProxy::AuthenticationRequired,
                             base::Unretained(this)),

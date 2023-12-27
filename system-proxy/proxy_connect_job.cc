@@ -4,7 +4,6 @@
 
 #include "system-proxy/proxy_connect_job.h"
 
-#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -24,6 +23,7 @@
 #include <brillo/http/http_transport.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
+#include <net-base/socket.h>
 
 #include "system-proxy/curl_socket.h"
 #include "system-proxy/http_util.h"
@@ -122,7 +122,7 @@ static size_t WriteDebugInfoCallback(CURL* handle,
 }
 
 ProxyConnectJob::ProxyConnectJob(
-    std::unique_ptr<patchpanel::Socket> socket,
+    std::unique_ptr<net_base::Socket> socket,
     const std::string& credentials,
     int64_t curl_auth_schemes,
     ResolveProxyCallback resolve_proxy_callback,
@@ -146,10 +146,9 @@ ProxyConnectJob::~ProxyConnectJob() = default;
 
 bool ProxyConnectJob::Start() {
   // Make the socket non-blocking.
-  if (!base::SetNonBlocking(client_socket_->fd())) {
+  if (!base::SetNonBlocking(client_socket_->Get())) {
     PLOG(ERROR) << *this << " Failed to mark the socket as non-blocking";
-    if (client_socket_->SendTo(kHttpInternalServerError.data(),
-                               kHttpInternalServerError.size()) < 0) {
+    if (!client_socket_->Send(kHttpInternalServerError)) {
       PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
     }
     return false;
@@ -158,7 +157,7 @@ bool ProxyConnectJob::Start() {
       FROM_HERE, client_connect_timeout_callback_.callback(),
       kWaitClientConnectTimeout);
   read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      client_socket_->fd(),
+      client_socket_->Get(),
       base::BindRepeating(&ProxyConnectJob::OnClientReadReady,
                           weak_ptr_factory_.GetWeakPtr()));
   return true;
@@ -174,16 +173,15 @@ std::string ProxyConnectJob::GetRequestHeadersForTesting() {
 void ProxyConnectJob::OnClientReadReady() {
   // The first message should be a HTTP CONNECT request.
   std::vector<char> buf(kMaxHttpRequestHeadersSize);
-  size_t read_byte_count = 0;
 
-  read_byte_count = client_socket_->RecvFrom(buf.data(), buf.size());
-  if (read_byte_count < 0) {
+  const std::optional<size_t> read_byte_count = client_socket_->RecvFrom(buf);
+  if (!read_byte_count.has_value()) {
     PLOG(ERROR) << *this << " Failure to read client request";
     OnError(kHttpBadRequest);
     return;
   }
   connect_data_.insert(connect_data_.end(), buf.begin(),
-                       buf.begin() + read_byte_count);
+                       buf.begin() + *read_byte_count);
 
   std::vector<char> connect_request, payload_data;
   if (!ExtractHTTPRequest(connect_data_, &connect_request, &payload_data)) {
@@ -375,8 +373,9 @@ void ProxyConnectJob::DoCurlServerConnection() {
   }
 
   auto fwd = std::make_unique<patchpanel::SocketForwarder>(
-      base::StringPrintf("%d-%d", client_socket_->fd(), server_conn->fd()),
-      std::move(client_socket_), std::move(server_conn));
+      base::StringPrintf("%d-%d", client_socket_->Get(), server_conn->fd()),
+      patchpanel::Socket::FromNetBaseSocket(std::move(client_socket_)),
+      std::move(server_conn));
   // Start forwarding data between sockets.
   fwd->Start();
   std::move(setup_finished_callback_).Run(std::move(fwd), this);
@@ -387,8 +386,8 @@ bool ProxyConnectJob::SendHttpResponseToClient(
     const std::vector<char>& http_response_body) {
   if (http_response_code_ == 0) {
     // No HTTP CONNECT response code is available.
-    if (client_socket_->SendTo(kHttpInternalServerError.data(),
-                               kHttpInternalServerError.size()) < 0) {
+
+    if (!client_socket_->Send(kHttpInternalServerError)) {
       PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
       return false;
     }
@@ -398,8 +397,7 @@ bool ProxyConnectJob::SendHttpResponseToClient(
   if (http_response_code_ == kHttpCodeProxyAuthRequired) {
     // This will be a hint for the user to authenticate via the Browser or
     // acquire a Kerberos ticket.
-    if (client_socket_->SendTo(kHttpProxyAuthRequired.data(),
-                               kHttpProxyAuthRequired.size()) < 0) {
+    if (!client_socket_->Send(kHttpProxyAuthRequired)) {
       PLOG(ERROR) << *this
                   << " Failed to send back 407 Credential required response";
       return false;
@@ -411,7 +409,7 @@ bool ProxyConnectJob::SendHttpResponseToClient(
     VLOG(1) << "Failed to set up HTTP tunnel with code " << http_response_code_;
     std::string http_error = base::StringPrintf(
         kHttpErrorTunnelFailed, std::to_string(http_response_code_).c_str());
-    if (client_socket_->SendTo(http_error.c_str(), http_error.size()) < 0) {
+    if (!client_socket_->Send(http_error)) {
       PLOG(ERROR) << *this << " Failed to send back " << http_response_code_
                   << " Error creating tunnel response";
       return false;
@@ -420,8 +418,7 @@ bool ProxyConnectJob::SendHttpResponseToClient(
   }
 
   if (http_response_headers.empty()) {
-    if (client_socket_->SendTo(kHttpInternalServerError.data(),
-                               kHttpInternalServerError.size()) < 0) {
+    if (!client_socket_->Send(kHttpInternalServerError)) {
       PLOG(ERROR) << *this << " Failed to send back 500 Server Error response";
       return false;
     }
@@ -429,14 +426,12 @@ bool ProxyConnectJob::SendHttpResponseToClient(
   }
 
   VLOG(1) << "Sending server reply to client";
-  if (client_socket_->SendTo(http_response_headers.data(),
-                             http_response_headers.size()) < 0) {
+  if (!client_socket_->Send(http_response_headers)) {
     PLOG(ERROR) << "Failed to send HTTP server response headers to client";
     return false;
   }
   if (!http_response_body.empty()) {
-    if (client_socket_->SendTo(http_response_body.data(),
-                               http_response_body.size()) < 0) {
+    if (!client_socket_->Send(http_response_body)) {
       PLOG(ERROR) << "Failed to send HTTP server response payload to client";
       return false;
     }
@@ -445,8 +440,7 @@ bool ProxyConnectJob::SendHttpResponseToClient(
 }
 
 void ProxyConnectJob::OnError(const std::string_view& http_error_message) {
-  if (client_socket_->SendTo(http_error_message.data(),
-                             http_error_message.size()) < 0) {
+  if (!client_socket_->Send(http_error_message)) {
     PLOG(ERROR) << "Failed to send back error response: " << http_error_message;
   }
   std::move(setup_finished_callback_).Run(nullptr, this);
@@ -470,7 +464,7 @@ void ProxyConnectJob::OnAuthenticationTimeout() {
 }
 
 std::ostream& operator<<(std::ostream& stream, const ProxyConnectJob& job) {
-  stream << "{fd: " << job.client_socket_->fd();
+  stream << "{fd: " << job.client_socket_->Get();
   if (!job.target_url_.empty()) {
     stream << ", url: " << job.target_url_;
   }

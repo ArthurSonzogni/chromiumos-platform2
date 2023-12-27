@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -72,7 +73,7 @@ class MockServerProxy : public ServerProxy {
 
 class MockProxyConnectJob : public ProxyConnectJob {
  public:
-  MockProxyConnectJob(std::unique_ptr<patchpanel::Socket> socket,
+  MockProxyConnectJob(std::unique_ptr<net_base::Socket> socket,
                       const std::string& credentials,
                       ResolveProxyCallback resolve_proxy_callback,
                       AuthenticationRequiredCallback auth_required_callback,
@@ -249,8 +250,8 @@ TEST_F(ServerProxyTest, HandlePendingJobs) {
   int failure_count = 49;
   // Create |connection_count| connections.
   for (int i = 0; i < connection_count; ++i) {
-    auto client_socket =
-        std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
+    std::unique_ptr<net_base::Socket> client_socket =
+        net_base::Socket::Create(AF_INET, SOCK_STREAM);
     auto mock_connect_job = std::make_unique<MockProxyConnectJob>(
         std::move(client_socket), "" /* credentials */,
         base::BindOnce([](const std::string& target_url,

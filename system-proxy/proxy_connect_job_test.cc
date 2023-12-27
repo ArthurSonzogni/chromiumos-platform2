@@ -8,11 +8,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <string>
+#include <string_view>
 #include <utility>
-
-#include <curl/curl.h>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -22,19 +20,21 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
+#include <curl/curl.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <net-base/socket.h>
 
-#include "bindings/worker_common.pb.h"
-#include "system-proxy/protobuf_util.h"
 #include "system-proxy/test_http_server.h"
 
 namespace {
 
-constexpr char kCredentials[] = "username:pwd";
-constexpr char kValidConnectRequest[] =
+constexpr std::string_view kCredentials = "username:pwd";
+constexpr std::string_view kValidConnectRequest =
     "CONNECT www.example.server.com:443 HTTP/1.1\r\n\r\n";
-constexpr char kProxyAuthorizationHeaderToken[] = "Proxy-Authorization:";
+constexpr std::string_view kProxyAuthorizationHeaderToken =
+    "Proxy-Authorization:";
 }  // namespace
 
 namespace system_proxy {
@@ -61,7 +61,7 @@ class ProxyConnectJobTest : public ::testing::Test {
   ProxyConnectJobTest() = default;
   ProxyConnectJobTest(const ProxyConnectJobTest&) = delete;
   ProxyConnectJobTest& operator=(const ProxyConnectJobTest&) = delete;
-  ~ProxyConnectJobTest() = default;
+  ~ProxyConnectJobTest() override = default;
 
   void SetUp() override {
     int fds[2];
@@ -69,10 +69,10 @@ class ProxyConnectJobTest : public ::testing::Test {
               socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
                          0 /* protocol */, fds));
     cros_client_socket_ =
-        std::make_unique<patchpanel::Socket>(base::ScopedFD(fds[1]));
+        net_base::Socket::CreateFromFd(base::ScopedFD(fds[1]));
 
     connect_job_ = std::make_unique<ProxyConnectJob>(
-        std::make_unique<patchpanel::Socket>(base::ScopedFD(fds[0])), "",
+        net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "",
         CURLAUTH_ANY,
         base::BindOnce(&ProxyConnectJobTest::ResolveProxy,
                        base::Unretained(this)),
@@ -104,15 +104,16 @@ class ProxyConnectJobTest : public ::testing::Test {
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
   std::unique_ptr<brillo::BaseMessageLoop> brillo_loop_{
       std::make_unique<brillo::BaseMessageLoop>(task_executor_.task_runner())};
-  std::unique_ptr<patchpanel::Socket> cros_client_socket_;
+  std::unique_ptr<net_base::Socket> cros_client_socket_;
 
   FRIEND_TEST(ProxyConnectJobTest, ClientConnectTimeoutJobCanceled);
 };
 
 TEST_F(ProxyConnectJobTest, BadHttpRequestWrongMethod) {
   connect_job_->Start();
-  char badConnRequest[] = "GET www.example.server.com:443 HTTP/1.1\r\n\r\n";
-  cros_client_socket_->SendTo(badConnRequest, std::strlen(badConnRequest));
+  constexpr std::string_view badConnRequest =
+      "GET www.example.server.com:443 HTTP/1.1\r\n\r\n";
+  cros_client_socket_->Send(badConnRequest);
   brillo_loop_->RunOnce(false);
 
   EXPECT_EQ("", connect_job_->target_url_);
@@ -121,7 +122,7 @@ TEST_F(ProxyConnectJobTest, BadHttpRequestWrongMethod) {
       "HTTP/1.1 400 Bad Request - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
   ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->fd(), buf.data(), buf.size()));
+      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
   std::string actual_response(buf.data(), buf.size());
   EXPECT_EQ(expected_http_response, actual_response);
 }
@@ -136,8 +137,9 @@ TEST_F(ProxyConnectJobTest, SlowlorisTimeout) {
 
   connect_job_->Start();
   // No empty line after http message.
-  char badConnRequest[] = "CONNECT www.example.server.com:443 HTTP/1.1\r\n";
-  cros_client_socket_->SendTo(badConnRequest, std::strlen(badConnRequest));
+  constexpr std::string_view badConnRequest =
+      "CONNECT www.example.server.com:443 HTTP/1.1\r\n";
+  cros_client_socket_->Send(badConnRequest);
   task_runner->RunUntilIdle();
 
   EXPECT_EQ(1, task_runner->GetPendingTaskCount());
@@ -152,7 +154,7 @@ TEST_F(ProxyConnectJobTest, SlowlorisTimeout) {
       "HTTP/1.1 408 Request Timeout - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
   ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->fd(), buf.data(), buf.size()));
+      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
   std::string actual_response(buf.data(), buf.size());
   EXPECT_EQ(expected_http_response, actual_response);
 }
@@ -176,7 +178,7 @@ TEST_F(ProxyConnectJobTest, WaitClientConnectTimeout) {
       "HTTP/1.1 408 Request Timeout - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
   ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->fd(), buf.data(), buf.size()));
+      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
   std::string actual_response(buf.data(), buf.size());
 
   EXPECT_EQ(expected_http_response, actual_response);
@@ -198,11 +200,10 @@ TEST_F(ProxyConnectJobTest, ClientConnectTimeoutJobCanceled) {
     ASSERT_NE(-1,
               socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
                          0 /* protocol */, fds));
-    auto client_socket =
-        std::make_unique<patchpanel::Socket>(base::ScopedFD(fds[1]));
+    base::ScopedFD client_socket(fds[1]);
 
     auto connect_job = std::make_unique<ProxyConnectJob>(
-        std::make_unique<patchpanel::Socket>(base::ScopedFD(fds[0])), "",
+        net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "",
         CURLAUTH_ANY,
         base::BindOnce(&ProxyConnectJobTest::ResolveProxy,
                        base::Unretained(this)),
@@ -224,7 +225,7 @@ class HttpServerProxyConnectJobTest : public ProxyConnectJobTest {
   HttpServerProxyConnectJobTest(const HttpServerProxyConnectJobTest&) = delete;
   HttpServerProxyConnectJobTest& operator=(
       const HttpServerProxyConnectJobTest&) = delete;
-  ~HttpServerProxyConnectJobTest() = default;
+  ~HttpServerProxyConnectJobTest() override = default;
 
  protected:
   HttpTestServer http_test_server_;
@@ -294,8 +295,7 @@ TEST_F(HttpServerProxyConnectJobTest, SuccessfulConnection) {
   http_test_server_.Start();
 
   connect_job_->Start();
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
   EXPECT_EQ("www.example.server.com:443", connect_job_->target_url_);
   EXPECT_EQ(1, connect_job_->proxy_servers_.size());
@@ -307,12 +307,13 @@ TEST_F(HttpServerProxyConnectJobTest, MultipleReadConnectRequest) {
   AddServerReply(HttpTestServer::HttpConnectReply::kOk);
   http_test_server_.Start();
   connect_job_->Start();
-  char part1[] = "CONNECT www.example.server.com:443 HTTP/1.1\r\n";
-  char part2[] = "\r\n";
-  cros_client_socket_->SendTo(part1, std::strlen(part1));
+  constexpr std::string_view part1 =
+      "CONNECT www.example.server.com:443 HTTP/1.1\r\n";
+  constexpr std::string_view part2 = "\r\n";
+  cros_client_socket_->Send(part1);
   // Process the partial CONNECT request.
   brillo_loop_->RunOnce(false);
-  cros_client_socket_->SendTo(part2, std::strlen(part2));
+  cros_client_socket_->Send(part2);
   brillo_loop_->RunOnce(false);
   EXPECT_EQ("www.example.server.com:443", connect_job_->target_url_);
   EXPECT_EQ(1, connect_job_->proxy_servers_.size());
@@ -325,17 +326,17 @@ TEST_F(HttpServerProxyConnectJobTest, TunnelFailedBadGatewayFromRemote) {
   http_test_server_.Start();
 
   connect_job_->Start();
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
   EXPECT_FALSE(forwarder_created_);
 
   std::string expected_server_reply =
       "HTTP/1.1 502 Error creating tunnel - Origin: local proxy\r\n\r\n";
-  std::vector<char> buf(expected_server_reply.size());
+  std::vector<uint8_t> buf(expected_server_reply.size());
 
-  ASSERT_TRUE(cros_client_socket_->RecvFrom(buf.data(), buf.size()));
-  std::string actual_server_reply(buf.data(), buf.size());
+  std::optional<size_t> count = cros_client_socket_->RecvFrom(buf);
+  ASSERT_TRUE(count.has_value());
+  std::string actual_server_reply(reinterpret_cast<char*>(buf.data()), *count);
   EXPECT_EQ(expected_server_reply, actual_server_reply);
 }
 
@@ -344,8 +345,9 @@ TEST_F(HttpServerProxyConnectJobTest, SuccessfulConnectionAltEnding) {
   http_test_server_.Start();
 
   connect_job_->Start();
-  char validConnRequest[] = "CONNECT www.example.server.com:443 HTTP/1.1\r\n\n";
-  cros_client_socket_->SendTo(validConnRequest, std::strlen(validConnRequest));
+  constexpr std::string_view validConnRequest =
+      "CONNECT www.example.server.com:443 HTTP/1.1\r\n\n";
+  cros_client_socket_->Send(validConnRequest);
   brillo_loop_->RunOnce(false);
 
   EXPECT_EQ("www.example.server.com:443", connect_job_->target_url_);
@@ -362,11 +364,10 @@ TEST_F(HttpServerProxyConnectJobTest, ResendWithCredentials) {
   http_test_server_.Start();
 
   AddHttpAuthEntry(http_test_server_.GetUrl(), "Basic", "\"My Proxy\"",
-                   kCredentials);
+                   std::string(kCredentials));
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   ASSERT_TRUE(AuthRequested());
@@ -382,8 +383,7 @@ TEST_F(HttpServerProxyConnectJobTest, NoCredentials) {
   http_test_server_.Start();
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   ASSERT_TRUE(AuthRequested());
@@ -399,8 +399,7 @@ TEST_F(HttpServerProxyConnectJobTest, KerberosAuth) {
 
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   ASSERT_FALSE(AuthRequested());
@@ -425,8 +424,7 @@ TEST_F(HttpServerProxyConnectJobTest, AuthenticationTimeout) {
 
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   task_runner->RunUntilIdle();
   // We need to manually invoke the method which reads from the client socket
   // because |task_runner| will not execute the FileDescriptorWatcher's tasks.
@@ -443,7 +441,7 @@ TEST_F(HttpServerProxyConnectJobTest, AuthenticationTimeout) {
       "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
   ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->fd(), buf.data(), buf.size()));
+      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
   std::string actual_response(buf.data(), buf.size());
 
   // Check that the auth failure was forwarded to the client.
@@ -458,12 +456,11 @@ TEST_F(HttpServerProxyConnectJobTest, CancelIfBadCredentials) {
   http_test_server_.Start();
 
   AddHttpAuthEntry(http_test_server_.GetUrl(), "Basic", "\"My Proxy\"",
-                   kCredentials);
+                   std::string(kCredentials));
 
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   ASSERT_TRUE(AuthRequested());
@@ -472,7 +469,7 @@ TEST_F(HttpServerProxyConnectJobTest, CancelIfBadCredentials) {
       "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
   ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->fd(), buf.data(), buf.size()));
+      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
   std::string actual_response(buf.data(), buf.size());
 
   EXPECT_EQ(expected_http_response, actual_response);
@@ -481,18 +478,17 @@ TEST_F(HttpServerProxyConnectJobTest, CancelIfBadCredentials) {
 //  This test verifies that any data sent by a client immediately after the end
 //  of the HTTP CONNECT request is cached correctly.
 TEST_F(HttpServerProxyConnectJobTest, BufferedClientData) {
-  char connectRequestwithData[] =
+  constexpr std::string_view connectRequestwithData =
       "CONNECT www.example.server.com:443 HTTP/1.1\r\n\r\nTest body";
   AddServerReply(HttpTestServer::HttpConnectReply::kAuthRequiredBasic);
   AddServerReply(HttpTestServer::HttpConnectReply::kOk);
   http_test_server_.Start();
 
   AddHttpAuthEntry(http_test_server_.GetUrl(), "Basic", "\"My Proxy\"",
-                   kCredentials);
+                   std::string(kCredentials));
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(connectRequestwithData,
-                              std::strlen(connectRequestwithData));
+  cros_client_socket_->Send(connectRequestwithData);
   brillo_loop_->RunOnce(false);
 
   const std::string expected = "Test body";
@@ -501,18 +497,17 @@ TEST_F(HttpServerProxyConnectJobTest, BufferedClientData) {
 }
 
 TEST_F(HttpServerProxyConnectJobTest, BufferedClientDataAltEnding) {
-  char connectRequestwithData[] =
+  constexpr std::string_view connectRequestwithData =
       "CONNECT www.example.server.com:443 HTTP/1.1\r\n\nTest body";
   AddServerReply(HttpTestServer::HttpConnectReply::kAuthRequiredBasic);
   AddServerReply(HttpTestServer::HttpConnectReply::kOk);
   http_test_server_.Start();
 
   AddHttpAuthEntry(http_test_server_.GetUrl(), "Basic", "\"My Proxy\"",
-                   kCredentials);
+                   std::string(kCredentials));
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(connectRequestwithData,
-                              std::strlen(connectRequestwithData));
+  cros_client_socket_->Send(connectRequestwithData);
   brillo_loop_->RunOnce(false);
 
   const std::string expected = "Test body";
@@ -529,8 +524,7 @@ TEST_F(HttpServerProxyConnectJobTest, PolicyAuthSchemeOk) {
   connect_job_->StoreRequestHeadersForTesting();
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   std::size_t pos = connect_job_->GetRequestHeadersForTesting().find(
@@ -550,8 +544,7 @@ TEST_F(HttpServerProxyConnectJobTest, PolicyAuthBadScheme) {
   connect_job_->StoreRequestHeadersForTesting();
   connect_job_->Start();
 
-  cros_client_socket_->SendTo(kValidConnectRequest,
-                              std::strlen(kValidConnectRequest));
+  cros_client_socket_->Send(kValidConnectRequest);
   brillo_loop_->RunOnce(false);
 
   std::size_t pos = connect_job_->GetRequestHeadersForTesting().find(

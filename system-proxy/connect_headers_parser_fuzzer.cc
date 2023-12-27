@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <curl/curl.h>
+#include <memory>
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -16,8 +16,9 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
+#include <curl/curl.h>
+#include <net-base/socket.h>
 
 #include "system-proxy/proxy_connect_job.h"
 
@@ -70,16 +71,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
              0 /* protocol */, fds);
-  patchpanel::Socket cros_client_socket((base::ScopedFD(fds[1])));
+  std::unique_ptr<net_base::Socket> cros_client_socket =
+      net_base::Socket::CreateFromFd(base::ScopedFD(fds[1]));
 
   auto connect_job = std::make_unique<system_proxy::ProxyConnectJob>(
-      std::make_unique<patchpanel::Socket>(base::ScopedFD(fds[0])), "",
-      CURLAUTH_ANY,
+      net_base::Socket::CreateFromFd(base::ScopedFD(fds[0])), "", CURLAUTH_ANY,
       base::BindOnce(&ResolveProxyCallback, run_loop.QuitClosure()),
       base::BindRepeating(&NullAuthenticationRequiredCallback),
       base::BindOnce(&OnConnectionSetupFinished, run_loop.QuitClosure()));
   connect_job->Start();
-  cros_client_socket.SendTo(data, size);
+  cros_client_socket->Send({data, size});
 
   run_loop.Run();
   return 0;
