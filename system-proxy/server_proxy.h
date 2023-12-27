@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
@@ -17,9 +16,9 @@
 #include <brillo/asynchronous_signal_handler.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv4_address.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
-class Socket;
 class SocketForwarder;
 }  // namespace patchpanel
 
@@ -131,7 +130,7 @@ class ServerProxy {
   // used with the policy set credentials.
   int64_t system_credentials_auth_schemes_ = 0;
 
-  std::unique_ptr<patchpanel::Socket> listening_fd_;
+  std::unique_ptr<net_base::Socket> listening_fd_;
 
   // List of SocketForwarders that corresponds to the TCP tunnel between the
   // local client and the remote proxy, forwarding data between the TCP

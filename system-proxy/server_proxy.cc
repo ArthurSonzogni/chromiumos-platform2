@@ -5,12 +5,11 @@
 #include "system-proxy/server_proxy.h"
 
 #include <signal.h>
-#include <string.h>
 
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <curl/curl.h>
 
@@ -27,9 +26,9 @@
 #include <brillo/http/http_transport.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
+#include <net-base/socket.h>
 
 #include "bindings/worker_common.pb.h"
-#include "system-proxy/http_util.h"
 #include "system-proxy/protobuf_util.h"
 #include "system-proxy/proxy_connect_job.h"
 
@@ -267,9 +266,9 @@ void ServerProxy::CreateListeningSocket() {
     return;
   }
 
-  listening_fd_ = std::make_unique<patchpanel::Socket>(
-      AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
-  if (!listening_fd_->is_valid()) {
+  listening_fd_ =
+      net_base::Socket::Create(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!listening_fd_) {
     PLOG(ERROR) << "Cannot created listening socket";
     return;
   }
@@ -289,18 +288,19 @@ void ServerProxy::CreateListeningSocket() {
   }
 
   fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      listening_fd_->fd(), base::BindRepeating(&ServerProxy::OnConnectionAccept,
-                                               weak_ptr_factory_.GetWeakPtr()));
+      listening_fd_->Get(),
+      base::BindRepeating(&ServerProxy::OnConnectionAccept,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ServerProxy::OnConnectionAccept() {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
-  if (auto client_conn =
+  if (std::unique_ptr<net_base::Socket> client_conn =
           listening_fd_->Accept((struct sockaddr*)&client_src, &sockaddr_len)) {
     auto connect_job = std::make_unique<ProxyConnectJob>(
-        std::move(client_conn), system_credentials_,
-        system_credentials_auth_schemes_,
+        patchpanel::Socket::FromNetBaseSocket(std::move(client_conn)),
+        system_credentials_, system_credentials_auth_schemes_,
         base::BindOnce(&ServerProxy::ResolveProxy, base::Unretained(this)),
         base::BindRepeating(&ServerProxy::AuthenticationRequired,
                             base::Unretained(this)),

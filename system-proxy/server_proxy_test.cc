@@ -8,11 +8,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <curl/curl.h>
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -26,8 +23,11 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
-#include "bindings/worker_common.pb.h"
+#include <curl/curl.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
+#include "bindings/worker_common.pb.h"
 #include "system-proxy/protobuf_util.h"
 #include "system-proxy/proxy_connect_job.h"
 
@@ -99,7 +99,7 @@ class ServerProxyTest : public ::testing::Test {
 
   ServerProxyTest(const ServerProxyTest&) = delete;
   ServerProxyTest& operator=(const ServerProxyTest&) = delete;
-  ~ServerProxyTest() override {}
+  ~ServerProxyTest() override = default;
 
  protected:
   // Redirects the standard streams of the worker so that the tests can write
@@ -182,7 +182,7 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   // Redirect the worker stdin and stdout pipes.
   RedirectStdPipes();
   server_proxy_->CreateListeningSocket();
-  CHECK_NE(-1, server_proxy_->listening_fd_->fd());
+  CHECK_NE(-1, server_proxy_->listening_fd_->Get());
   brillo_loop_.RunOnce(false);
 
   struct sockaddr_in ipv4addr;
@@ -302,7 +302,7 @@ TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
   // Redirect the worker stdin and stdout pipes.
   RedirectStdPipes();
   server_proxy_->CreateListeningSocket();
-  CHECK_NE(-1, server_proxy_->listening_fd_->fd());
+  CHECK_NE(-1, server_proxy_->listening_fd_->Get());
   brillo_loop_.RunOnce(false);
 
   struct sockaddr_in ipv4addr;
