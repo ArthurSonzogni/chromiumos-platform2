@@ -1,0 +1,59 @@
+// Copyright 2015 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// NOTE: All tpm_manager protobufs are in the same file because the Android
+// build system cannot handle import statements without using Android-specific
+// paths.
+
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+
+package hwsec_foundation;
+
+// The possible states of Install Attributes module.
+enum InstallAttributesState {
+  UNKNOWN = 0;
+  TPM_NOT_OWNED = 1;
+  FIRST_INSTALL = 2;
+  VALID = 3;
+  INVALID = 4;
+}
+
+// The useful fields for debugging hwsec daemon issue.
+message HwsecStatus {
+  optional bool is_enabled = 1;
+  optional bool is_owned = 2;
+  optional bool is_owner_password_present = 3;
+  optional bool has_reset_lock_permissions = 4;
+  optional bool is_srk_default_auth = 5;
+  optional bool support_u2f = 7;
+  optional bool support_pinweaver = 8;
+  optional bool support_runtime_selection = 9;
+  optional bool is_allowed = 10;
+  optional bool support_clear_request = 11;
+  optional bool support_clear_without_prompt = 12;
+  optional uint32 family = 13;
+  optional uint64 spec_level = 14;
+  optional uint32 manufacturer = 15;
+  optional uint32 tpm_model = 16;
+  optional uint64 firmware_version = 17;
+  optional bytes vendor_specific = 18;
+  optional string gsc_rw_version = 20;
+  optional uint32 dictionary_attack_counter = 21;
+  optional uint32 dictionary_attack_threshold = 22;
+  optional bool dictionary_attack_lockout_in_effect = 23;
+  optional uint32 dictionary_attack_lockout_seconds_remaining = 24;
+  optional bool prepared_for_enrollment = 25;
+  optional bool enrolled = 26;
+  optional bool verified_boot = 27;
+  optional int32 inst_attrs_count = 28;
+  optional bool inst_attrs_is_secure = 29;
+  optional InstallAttributesState inst_attrs_state = 30;
+  optional uint32 fwmp_flags = 31;
+  optional bool user_token_ready = 32;
+  optional bool owner_user_exists = 33;
+  optional bool is_locked_to_single_user = 34;
+  optional bool is_mounted = 35;
+  optional bool is_ephemeral_mount = 36;
+}

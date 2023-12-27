@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -30,6 +31,9 @@ group("all") {
       ":install_no_tpm_checker",
       ":install_tpm_version",
     ]
+  }
+  if (!use.cros_host) {
+    deps += [ ":hwsec_status" ]
   }
 }
 
@@ -125,6 +129,65 @@ static_library("libhwsec-profiling") {
     ":target_defaults",
   ]
   install_path = "lib"
+}
+
+if (!use.cros_host) {
+  proto_library("tool_proto") {
+    proto_in_dir = "tool"
+    proto_out_dir = "include/libhwsec-foundation/tool"
+    proto_lib_dirs =
+        [ "${sysroot}/usr/include/chromeos/dbus/libhwsec-foundation/" ]
+    sources = [ "${proto_in_dir}/hwsec_status.proto" ]
+  }
+
+  action("print_tool_proto_library") {
+    script = "utility/proto_print.py"
+    inputs = [ "${platform2_root}/libhwsec-foundation/tool/hwsec_status.proto" ]
+    outputs = [ "${target_gen_dir}/tool/print_hwsec_status_proto.cc" ]
+    args = [
+             "--package-dir",
+             "libhwsec-foundation",
+             "--subdir",
+             "tool",
+             "--output-dir",
+             "${target_gen_dir}/tool",
+           ] + inputs
+  }
+
+  config("local_print_proto_include") {
+    # This config is used when any build target used the print_proto.
+    include_dirs = [ "${target_gen_dir}/.." ]
+  }
+
+  static_library("proto_library") {
+    sources = get_target_outputs(":print_tool_proto_library")
+    configs += [
+      ":local_print_proto_include",
+      ":target_defaults",
+    ]
+    public_deps = [
+      ":print_tool_proto_library",
+      ":tool_proto",
+    ]
+  }
+
+  executable("hwsec_status") {
+    sources = [ "tool/hwsec_status.cc" ]
+    configs += [
+      ":target_defaults",
+      ":local_print_proto_include",
+    ]
+    deps = [ ":proto_library" ]
+    pkg_deps = [
+      "libattestation-client",
+      "libdevice_management-client",
+      "libtpm_manager-client",
+      "libuser_data_auth-client",
+      "protobuf",
+      "system_api",
+    ]
+    install_path = "sbin"
+  }
 }
 
 executable("tpm_version_client") {
