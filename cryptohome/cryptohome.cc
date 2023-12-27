@@ -260,6 +260,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "prepare_and_authenticate_auth_factor",
                                     "restore_device_key",
                                     "get_recovery_ids",
+                                    "get_recoverable_key_stores",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -323,6 +324,7 @@ enum ActionEnum {
   ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
   ACTION_RESTORE_DEVICE_KEY,
   ACTION_GET_RECOVERY_IDS,
+  ACTION_GET_RECOVERABLE_KEY_STORES,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -364,6 +366,8 @@ constexpr char kFingerprintSwitch[] = "fingerprint";
 constexpr char kPreparePurposeAddSwitch[] = "add";
 constexpr char kPreparePurposeAuthSwitch[] = "auth";
 constexpr char kUseTimeLockout[] = "timed_lockout";
+constexpr char kHashSalt[] = "hash_salt";
+constexpr char kHashAlgorithm[] = "hash_algorithm";
 }  // namespace
 }  // namespace switches
 
@@ -581,6 +585,43 @@ int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
   return 0;
 }
 
+bool HasKnowledgeFactorHashInfo(base::CommandLine* cl) {
+  return cl->HasSwitch(switches::kHashSalt) ||
+         cl->HasSwitch(switches::kHashAlgorithm);
+}
+
+// Build up a knowledge factor hash info from switches.
+bool BuildKnowledgeFactorHashInfo(
+    Printer& printer,
+    base::CommandLine* cl,
+    user_data_auth::KnowledgeFactorHashInfo* info) {
+  if (!(cl->HasSwitch(switches::kHashSalt) &&
+        cl->HasSwitch(switches::kHashAlgorithm))) {
+    printer.PrintFormattedHumanOutput(
+        "One or more of the switches for knowledge factor hash info is "
+        "missing.\n");
+    return false;
+  }
+  std::string salt_hex = cl->GetSwitchValueASCII(switches::kHashSalt);
+  std::string salt;
+  if (!base::HexStringToString(salt_hex.c_str(), &salt)) {
+    printer.PrintHumanOutput("Couldn't convert salt_hex to string\n");
+    return false;
+  }
+
+  std::string algo_str = cl->GetSwitchValueASCII(switches::kHashAlgorithm);
+  cryptohome::KnowledgeFactorHashAlgorithm algorithm;
+  if (!KnowledgeFactorHashAlgorithm_Parse(algo_str, &algorithm)) {
+    printer.PrintFormattedHumanOutput(
+        "Invalid knowledge factor hash algorithm \"%s\".\n", algo_str.c_str());
+    return false;
+  }
+
+  info->set_algorithm(algorithm);
+  info->set_salt(salt);
+  return true;
+}
+
 // Build up an auth factor from switches. The caller must specify what switch to
 // use for the label as different commands require different switches.
 bool BuildAuthFactor(Printer& printer,
@@ -595,13 +636,31 @@ bool BuildAuthFactor(Printer& printer,
   auth_factor->set_label(label);
   if (cl->HasSwitch(switches::kPasswordSwitch)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-    // Password metadata has no fields currently.
     auth_factor->mutable_password_metadata();
+    if (HasKnowledgeFactorHashInfo(cl)) {
+      user_data_auth::KnowledgeFactorHashInfo hash_info;
+      if (!BuildKnowledgeFactorHashInfo(printer, cl, &hash_info)) {
+        printer.PrintHumanOutput(
+            "Failed to build knowledge factor hash info proto.\n");
+        return false;
+      }
+      *auth_factor->mutable_password_metadata()->mutable_hash_info() =
+          std::move(hash_info);
+    }
     return true;
   } else if (cl->HasSwitch(switches::kPinSwitch)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-    // Pin metadata has no fields currently.
     auth_factor->mutable_pin_metadata();
+    if (HasKnowledgeFactorHashInfo(cl)) {
+      user_data_auth::KnowledgeFactorHashInfo hash_info;
+      if (!BuildKnowledgeFactorHashInfo(printer, cl, &hash_info)) {
+        printer.PrintHumanOutput(
+            "Failed to build knowledge factor hash info proto.\n");
+        return false;
+      }
+      *auth_factor->mutable_pin_metadata()->mutable_hash_info() =
+          std::move(hash_info);
+    }
     auth_factor->mutable_common_metadata()->set_lockout_policy(
         cl->HasSwitch(switches::kUseTimeLockout)
             ? user_data_auth::LOCKOUT_POLICY_TIME_LIMITED
@@ -3016,6 +3075,35 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintReplyProtobuf(reply.recovery_info_reply());
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_GET_RECOVERABLE_KEY_STORES],
+                     action.c_str())) {
+    user_data_auth::GetRecoverableKeyStoresRequest req;
+    user_data_auth::GetRecoverableKeyStoresReply reply;
+
+    cryptohome::Username account_id;
+
+    if (!GetAccountId(printer, cl, account_id)) {
+      return 1;
+    }
+    req.mutable_account_id()->set_account_id(*account_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetRecoverableKeyStores(req, &reply, &error,
+                                                    timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "GetRecoverableKeyStores call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to get recoverable key stores.\n");
+      return static_cast<int>(reply.error());
+    }
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
