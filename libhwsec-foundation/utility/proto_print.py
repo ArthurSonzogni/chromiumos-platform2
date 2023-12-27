@@ -459,7 +459,7 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
         "name": message.name
     }
     define_end = """
-  output += indent + "}\\n";
+  output += indent + "}";
   return output;
 }
 """
@@ -478,9 +478,13 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
   output += indent + "  %(name)s: {";
   for (int i = 0; i < value.%(name)s_size(); ++i) {
     if (i > 0) {
-      base::StringAppendF(&output, ", ");
+      output += ",";
     }
+    output += "\\n    " + indent;
     base::StringAppendF(&output, %(format)s);
+    if (i == value.%(name)s_size() - 1) {
+      output += "\\n  " + indent;
+    }
   }
   output += "}\\n";"""
     singular_field_get = "value.%(name)s()"
@@ -497,7 +501,7 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
     }
     subtype_format = (
         '"%%s", GetProtoDebugStringWithIndent(%(value)s, '
-        "indent_size + 2).c_str()"
+        "indent_size + %(indent_incr)s).c_str()"
     )
 
     header_file.write(declare)
@@ -515,7 +519,10 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
         if field.type_ in formats:
             value_format = formats[field.type_] % {"value": value_get}
         else:
-            value_format = subtype_format % {"value": value_get}
+            value_format = subtype_format % {
+                "value": value_get,
+                "indent_incr": 4 if field.repeated else 2,
+            }
         impl_file.write(
             field_code % {"name": field.name, "format": value_format}
         )

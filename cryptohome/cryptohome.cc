@@ -125,7 +125,7 @@ class Printer {
   void PrintReplyProtobuf(const T& protobuf) {
     switch (output_format_) {
       case OutputFormat::kDefault:
-        std::cout << GetProtoDebugString(protobuf);
+        std::cout << GetProtoDebugString(protobuf) << "\n";
         return;
       case OutputFormat::kBinaryProtobuf:
         protobuf.SerializeToOstream(&std::cout);
