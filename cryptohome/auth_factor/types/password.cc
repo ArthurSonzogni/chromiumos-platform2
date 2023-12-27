@@ -4,8 +4,11 @@
 
 #include "cryptohome/auth_factor/types/password.h"
 
+#include <utility>
+
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
@@ -54,7 +57,16 @@ PasswordAuthFactorDriver::TypedConvertToProto(
     const PasswordMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  proto.mutable_password_metadata();
+  user_data_auth::PasswordMetadata& password_metadata =
+      *proto.mutable_password_metadata();
+  if (typed_metadata.hash_info.has_value() &&
+      typed_metadata.hash_info->algorithm.has_value()) {
+    user_data_auth::KnowledgeFactorHashInfo& hash_info =
+        *password_metadata.mutable_hash_info();
+    hash_info.set_algorithm(SerializedKnowledgeFactorAlgorithmToProto(
+        *typed_metadata.hash_info->algorithm));
+    hash_info.set_salt(brillo::BlobToString(typed_metadata.hash_info->salt));
+  }
   return proto;
 }
 

@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -118,7 +119,15 @@ PinAuthFactorDriver::TypedConvertToProto(
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
   proto.mutable_common_metadata()->set_lockout_policy(
       LockoutPolicyToAuthFactor(common.lockout_policy));
-  proto.mutable_pin_metadata();
+  user_data_auth::PinMetadata& pin_metadata = *proto.mutable_pin_metadata();
+  if (typed_metadata.hash_info.has_value() &&
+      typed_metadata.hash_info->algorithm.has_value()) {
+    user_data_auth::KnowledgeFactorHashInfo& hash_info =
+        *pin_metadata.mutable_hash_info();
+    hash_info.set_algorithm(SerializedKnowledgeFactorAlgorithmToProto(
+        *typed_metadata.hash_info->algorithm));
+    hash_info.set_salt(brillo::BlobToString(typed_metadata.hash_info->salt));
+  }
   return proto;
 }
 

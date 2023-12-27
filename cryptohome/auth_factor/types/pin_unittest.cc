@@ -44,9 +44,15 @@ class PinDriverTest : public AuthFactorDriverGenericTest {
 
 TEST_F(PinDriverTest, PinConvertToProto) {
   // Setup
+  const std::string kSalt = "fake_salt";
   PinAuthFactorDriver pin_driver(&crypto_);
   AuthFactorDriver& driver = pin_driver;
-  AuthFactorMetadata metadata = CreateMetadataWithType<PinMetadata>();
+  AuthFactorMetadata metadata = CreateMetadataWithType<PinMetadata>(
+      {.hash_info = SerializedKnowledgeFactorHashInfo{
+           .algorithm =
+               SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
+           .salt = brillo::BlobFromString(kSalt),
+       }});
   metadata.common.lockout_policy = SerializedLockoutPolicy::ATTEMPT_LIMITED;
 
   // Test
@@ -63,7 +69,10 @@ TEST_F(PinDriverTest, PinConvertToProto) {
               Eq(kChromeVersion));
   EXPECT_THAT(proto->common_metadata().lockout_policy(),
               Eq(user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED));
-  EXPECT_THAT(proto.value().has_pin_metadata(), IsTrue());
+  ASSERT_THAT(proto.value().has_pin_metadata(), IsTrue());
+  EXPECT_EQ(proto->pin_metadata().hash_info().algorithm(),
+            KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
+  EXPECT_EQ(proto->pin_metadata().hash_info().salt(), kSalt);
 }
 
 TEST_F(PinDriverTest, PinConvertToProtoNullOpt) {

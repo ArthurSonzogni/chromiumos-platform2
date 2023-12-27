@@ -37,9 +37,14 @@ class PasswordDriverTest : public AuthFactorDriverGenericTest {
 
 TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   // Setup
+  const std::string kSalt = "fake_salt";
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
-  AuthFactorMetadata metadata = CreateMetadataWithType<PasswordMetadata>();
+  AuthFactorMetadata metadata = CreateMetadataWithType<PasswordMetadata>(
+      {.hash_info = SerializedKnowledgeFactorHashInfo{
+           .algorithm = SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF,
+           .salt = brillo::BlobFromString(kSalt),
+       }});
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -56,7 +61,10 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   EXPECT_THAT(proto.value().type(),
               Eq(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
   EXPECT_THAT(proto.value().label(), Eq(kLabel));
-  EXPECT_THAT(proto.value().has_password_metadata(), IsTrue());
+  ASSERT_THAT(proto.value().has_password_metadata(), IsTrue());
+  EXPECT_EQ(proto->password_metadata().hash_info().algorithm(),
+            KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
+  EXPECT_EQ(proto->password_metadata().hash_info().salt(), kSalt);
 }
 
 TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
