@@ -103,8 +103,7 @@ class UdevCollector : public CrashCollector {
   // with this function. The path for connectivity fw dump is different than
   // general fw dumps is because, unlike regular fwdumps we want to upload
   // connectivity fwdumps only with feedback reports.
-  std::optional<base::FilePath> GetConnectivityFwdumpStoragePath(
-      const connectivity_util::Session& primary_session);
+  std::optional<base::FilePath> GetConnectivityFwdumpStoragePath();
 
   // Process udev crash logs, collecting log files according to the config
   // file (crash_reporter_logs.conf).
@@ -142,7 +141,7 @@ class UdevCollector : public CrashCollector {
 
   // This function emits DebugDumpCreated signal when connectivity
   // firmware dump is created.
-  void EmitConnectivityDebugDumpCreatedSignal(const std::string& file_name);
+  void EmitConnectivityDebugDumpCreatedSignal(const base::FilePath& file_name);
 
   // This variable is set false by default and set to true from
   // unit test to invoke connectivity fwdump feature for testing.
@@ -151,6 +150,10 @@ class UdevCollector : public CrashCollector {
   // when the feature is fully ready. TODO(b/291344512): Remove this
   // flag support once fwdump feature is fully ready.
   bool connectivity_fwdump_feature_enabled_ = false;
+
+  // Variable to store the session value when the connectivity
+  // firmware dump is triggered.
+  std::optional<connectivity_util::Session> user_session_;
 };
 
 #endif  // CRASH_REPORTER_UDEV_COLLECTOR_H_

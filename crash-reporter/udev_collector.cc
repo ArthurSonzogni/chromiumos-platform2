@@ -195,10 +195,9 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
                          udev_event_map[kUdevKernelNumber].c_str()));
 
   bool is_connectivity_fwdump = false;
-  std::optional<connectivity_util::Session> user_session =
-      ConnectivityFwdumpAllowedForUserSession(udev_event_map, instance_number,
-                                              coredump_path);
-  if (user_session.has_value()) {
+  user_session_ = ConnectivityFwdumpAllowedForUserSession(
+      udev_event_map, instance_number, coredump_path);
+  if (user_session_.has_value()) {
     is_connectivity_fwdump = true;
     LOG(INFO) << "Process Connectivity intel wifi fwdumps.";
   } else if (bluetooth_util::IsCoredumpEnabled() &&
@@ -225,7 +224,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     // GetConnectivityFwdumpStoragePath opens fbpreprocessord cryptohome
     // directory and returns a symlinked handle.
     std::optional<base::FilePath> maybe_crash_directory =
-        GetConnectivityFwdumpStoragePath(*user_session);
+        GetConnectivityFwdumpStoragePath();
     if (!maybe_crash_directory.has_value()) {
       LOG(ERROR)
           << "Could not get storage directory for connectivity fw dumps.";
@@ -250,10 +249,10 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
                               udev_event_map[kUdevSubsystem]);
 }
 
-std::optional<base::FilePath> UdevCollector::GetConnectivityFwdumpStoragePath(
-    const connectivity_util::Session& user_session) {
+std::optional<base::FilePath>
+UdevCollector::GetConnectivityFwdumpStoragePath() {
   std::optional<base::FilePath> maybe_directory =
-      connectivity_util::GetDaemonStoreFbPreprocessordDirectory(user_session);
+      connectivity_util::GetDaemonStoreFbPreprocessordDirectory(*user_session_);
 
   if (!maybe_directory) {
     LOG(ERROR) << "Could not get connectivity fwdump storage directory.";
@@ -383,17 +382,26 @@ bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
 }
 
 void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
-    const std::string& file_name) {
+    const base::FilePath& file_name) {
   SetUpDBus();
   auto crash_interface = std::make_unique<CrashAdaptor>(bus_);
 
   ::fbpreprocessor::DebugDumps fw_dumps;
   ::fbpreprocessor::DebugDump* dump = fw_dumps.add_dump();
 
+  std::optional<base::FilePath> daemon_store_dir =
+      GetDaemonStoreFbPreprocessordDirectory(*user_session_);
+
+  if (!daemon_store_dir.has_value()) {
+    LOG(ERROR) << "Could not get connectivity firmware dump storage directory.";
+    return;
+  }
+  base::FilePath firmware_path = daemon_store_dir->Append(file_name);
+
   // TODO(b/313483598): Support other DebugDump types e.g. BT, cellular.
   dump->set_type(fbpreprocessor::DebugDump::WIFI);
   auto wifi_dump = dump->mutable_wifi_dump();
-  wifi_dump->set_dmpfile(file_name);
+  wifi_dump->set_dmpfile(firmware_path.value());
   wifi_dump->set_state(fbpreprocessor::WiFiDump::RAW);
   wifi_dump->set_vendor(fbpreprocessor::WiFiDump::IWLWIFI);
 
@@ -449,7 +457,10 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
   if (is_connectivity_fwdump) {
     // Generate debug dump created signal for connectivity firmware dumps
     // for fbpreprocessord to process.
-    EmitConnectivityDebugDumpCreatedSignal(core_path.value());
+
+    // Get the filename and drop the parent directory path.
+    base::FilePath filename = core_path.BaseName();
+    EmitConnectivityDebugDumpCreatedSignal(filename);
   } else {
     // Collect additional logs if one is specified in the config file.
     std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +

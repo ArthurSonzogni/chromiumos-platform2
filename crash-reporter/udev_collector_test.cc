@@ -17,14 +17,17 @@
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
+#include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <crash-reporter-client/crash-reporter/dbus-constants.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
+#include <re2/re2.h>
 #include <session_manager-client-test/session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/paths.h"
@@ -60,6 +63,8 @@ const char kCrashLogFilePattern[] = "*.log.gz";
 const char kDevCoredumpFilePattern[] = "*.devcore.gz";
 const char kBluetoothCoredumpFilePattern[] = "bt_firmware.*";
 const char kWiFiCoredumpFilePattern[] = "devcoredump_iwlwifi.*.devcore.gz";
+const char kWiFiCoredumpDirectoryPattern[] =
+    "run/daemon-store/fbpreprocessord/user_hash/raw_dumps";
 
 // Dummy content for device coredump data file.
 const char kDevCoredumpDataContents[] = "coredump";
@@ -76,7 +81,8 @@ constexpr char kDeviceGmailUser[] = "alice@gmail.com";
 constexpr char kAffiliationID[] = "affiliation_id";
 
 // Driver names for a coredump that should be collected:
-constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus", "amdgpu"};
+constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus",
+                                                 "amdgpu"};
 
 const char kCrashReporterInterface[] = "org.chromium.CrashReporterInterface";
 const char kDebugDumpCreatedSignalName[] = "DebugDumpCreated";
@@ -218,8 +224,23 @@ class UdevCollectorTest : public ::testing::Test {
   }
 
   void OnDebugDumpCreated(dbus::Signal* signal) {
+    dbus::MessageReader signal_reader(signal);
+    fbpreprocessor::DebugDumps dumps;
+
     EXPECT_EQ(signal->GetInterface(), kCrashReporterInterface);
     EXPECT_EQ(signal->GetMember(), kDebugDumpCreatedSignalName);
+
+    EXPECT_TRUE(signal_reader.PopArrayOfBytesAsProto(&dumps));
+
+    for (auto dump : dumps.dump()) {
+      EXPECT_TRUE(dump.has_wifi_dump());
+      base::FilePath path(dump.wifi_dump().dmpfile());
+
+      EXPECT_TRUE(
+          RE2::FullMatch(path.BaseName().value(), kWiFiCoredumpFilePattern));
+      EXPECT_EQ(path.DirName(), temp_dir_generator_.GetPath().Append(
+                                    kWiFiCoredumpDirectoryPattern));
+    }
   }
 
   void SetDebugDumpCreatedSignalExpectation(
