@@ -11,17 +11,12 @@
 #include <base/logging.h>
 #include <brillo/files/file_util.h>
 
-namespace {
-constexpr char kFirmwareDumpFileExtension[] = ".dmp";
-}  // namespace
-
 namespace fbpreprocessor {
 
-FirmwareDump::FirmwareDump(const base::FilePath& path)
-    : dmp_file_(path.AddExtension(kFirmwareDumpFileExtension)) {}
+FirmwareDump::FirmwareDump(const base::FilePath& path) : dmp_file_(path) {}
 
 base::FilePath FirmwareDump::BaseName() const {
-  return dmp_file_.BaseName().RemoveExtension();
+  return dmp_file_.BaseName();
 }
 
 bool FirmwareDump::Delete() const {

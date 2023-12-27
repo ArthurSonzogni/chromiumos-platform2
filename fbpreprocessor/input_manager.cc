@@ -79,7 +79,7 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) const {
   for (auto dump : dumps.dump()) {
     if (dump.has_wifi_dump()) {
       base::FilePath path(dump.wifi_dump().dmpfile());
-      FirmwareDump fw_dump(path.RemoveExtension());
+      FirmwareDump fw_dump(path);
       LOG(INFO) << __func__ << ": New WiFi dump file detected.";
       VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
 

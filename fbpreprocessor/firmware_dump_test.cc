@@ -30,7 +30,7 @@ TEST_F(FirmwareDumpTest, BaseNameSimple) {
 }
 
 TEST_F(FirmwareDumpTest, BaseNameDots) {
-  std::string name("devcoredump_iwlwifi.20230901.231459.05766.1");
+  std::string name("devcoredump_iwlwifi.20230901.231459.05766.1.gz");
   FirmwareDump fw(tmp_dir_.GetPath().Append(name));
   EXPECT_EQ(fw.BaseName(), base::FilePath(name));
 }
@@ -39,27 +39,25 @@ TEST_F(FirmwareDumpTest, DumpFileSimple) {
   std::string name("test");
   base::FilePath base_path(tmp_dir_.GetPath().Append(name));
   FirmwareDump fw(base_path);
-  EXPECT_EQ(fw.DumpFile(), base_path.AddExtension("dmp"));
+  EXPECT_EQ(fw.DumpFile(), base_path);
 }
 
 TEST_F(FirmwareDumpTest, DumpFileDots) {
   std::string name("devcoredump_iwlwifi.20230901.231459.05766.1");
   base::FilePath base_path(tmp_dir_.GetPath().Append(name));
   FirmwareDump fw(base_path);
-  EXPECT_EQ(fw.DumpFile(), base_path.AddExtension("dmp"));
+  EXPECT_EQ(fw.DumpFile(), base_path);
 }
 
 TEST_F(FirmwareDumpTest, DeleteRemovesFiles) {
-  base::FilePath base_path(tmp_dir_.GetPath().Append("test"));
+  base::FilePath dmp(tmp_dir_.GetPath().Append("test"));
 
-  // Create the .dmp file
-  base::FilePath dmp = base_path.AddExtension("dmp");
   ASSERT_TRUE(base::WriteFile(dmp, "testdata"));
   ASSERT_TRUE(base::PathExists(dmp));
 
-  FirmwareDump fw(base_path);
+  FirmwareDump fw(dmp);
   ASSERT_TRUE(fw.Delete());
-  // .dmp file no longer exists.
+  // dmp file no longer exists.
   ASSERT_FALSE(base::PathExists(dmp));
 }
 
