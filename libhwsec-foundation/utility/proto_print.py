@@ -33,7 +33,7 @@ import sys
 #   repeated: Whether the field is a repeated field.
 #   type_: The type of the field. E.g. int32.
 #   name: The name of the field.
-Field = collections.namedtuple("Field", "repeated type_ name proto3")
+Field = collections.namedtuple("Field", "repeated type_ name")
 
 
 class Message:
@@ -53,21 +53,19 @@ class Message:
         self.name = name
         self.fields = []
 
-    def AddField(self, attribute, field_type, field_name, proto3):
+    def AddField(self, attribute, field_type, field_name):
         """Adds a new field to the message.
 
         Args:
             attribute: This should be 'optional', 'required', or 'repeated'.
             field_type: The type of the field. E.g. int32.
             field_name: The name of the field.
-            proto3: The field is proto3 style or not.
         """
         self.fields.append(
             Field(
                 repeated=attribute == "repeated",
                 type_=field_type,
                 name=field_name,
-                proto3=proto3,
             )
         )
 
@@ -172,7 +170,6 @@ def ParseProto(input_file):
                 field_match.group(1),
                 field_match.group(2),
                 field_match.group(3),
-                False,
             )
         elif (
             current_message_stack
@@ -183,7 +180,6 @@ def ParseProto(input_file):
                 field_match3.group(1).strip(),
                 field_match3.group(2),
                 field_match3.group(3),
-                True,
             )
         elif enum_match:
             prefix = ""
@@ -463,17 +459,20 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
   return output;
 }
 """
+    # As long as the field has a has_name method, call it to check whether the
+    # field exists. We don't need to print it if it doesn't.
     singular_field = """
-  if (value.has_%(name)s()) {
+  []<typename T>(const T& value, int indent_size,
+                 const std::string& indent, std::string& output) {
+    if constexpr (requires(T t) { t.has_%(name)s(); }) {
+      if (!value.has_%(name)s()) {
+        return;
+      }
+    }
     output += indent + "  %(name)s: ";
     base::StringAppendF(&output, %(format)s);
     output += "\\n";
-  }"""
-    proto3_singular_field = """
-  output += indent + "  %(name)s: ";
-  base::StringAppendF(&output, %(format)s);
-  output += "\\n";
-  """
+  }(value, indent_size, indent, output);"""
     repeated_field = """
   output += indent + "  %(name)s: {";
   for (int i = 0; i < value.%(name)s_size(); ++i) {
@@ -510,9 +509,6 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
         if field.repeated:
             value_get = repeated_field_get % {"name": field.name}
             field_code = repeated_field
-        elif field.proto3:
-            value_get = singular_field_get % {"name": field.name}
-            field_code = proto3_singular_field
         else:
             value_get = singular_field_get % {"name": field.name}
             field_code = singular_field
