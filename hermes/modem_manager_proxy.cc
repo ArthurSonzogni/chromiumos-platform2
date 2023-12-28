@@ -322,8 +322,9 @@ bool ModemManagerProxy::IsModemSafeToInhibit() {
   if (!resp)
     return false;
   std::int32_t state;
-  if (!brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
-                                                    &state)) {
+  dbus::MessageReader reader(resp.get());
+  if (!reader.PopVariantOfInt32(&state)) {
+    LOG(WARNING) << "Error popping Int32 entry from D-Bus message";
     return false;
   }
 
