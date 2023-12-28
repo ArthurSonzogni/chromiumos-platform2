@@ -45,6 +45,7 @@ use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
 use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
+use crate::volume::ActiveMount;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
 
@@ -681,11 +682,17 @@ pub fn keyctl_remove_key(description: &str) -> Result<()> {
 }
 
 /// Provides an API for recording and reading timestamps from disk.
-pub struct TimestampFile {}
+#[allow(dead_code)]
+pub struct TimestampFile<'a> { am: &'a ActiveMount }
 
-impl TimestampFile {
+impl<'a> TimestampFile<'a> {
+    /// Create new timestamp file record.
+    pub fn new(am: &'a ActiveMount) -> Self {
+        TimestampFile {am}
+    }
+
     /// Record a timestamp to a file.
-    pub fn record_timestamp(name: &str, timestamp: &Duration) -> Result<()> {
+    pub fn record_timestamp(&self, name: &str, timestamp: &Duration) -> Result<()> {
         let path = Self::full_path(name);
 
         let mut f = File::options()
@@ -699,7 +706,7 @@ impl TimestampFile {
     }
 
     /// Read a timestamp from a file.
-    pub fn read_timestamp(name: &str) -> Result<Duration> {
+    pub fn read_timestamp(&self, name: &str) -> Result<Duration> {
         let path = Self::full_path(name);
         let ts = fs::read_to_string(&path)
             .context(format!("Failed to read timestamp from {}", path.display()))?;

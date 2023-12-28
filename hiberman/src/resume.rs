@@ -342,7 +342,8 @@ impl ResumeConductor {
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
 
-        TimestampFile::record_timestamp("resume_start.ts", &self.timestamp_start)?;
+        let tsf = TimestampFile::new(&hibermeta_mount);
+        tsf.record_timestamp("resume_start.ts", &self.timestamp_start)?;
 
         let resume_prep_done = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
         let prep_time = resume_prep_done

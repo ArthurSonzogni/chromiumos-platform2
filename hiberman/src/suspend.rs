@@ -187,7 +187,7 @@ impl SuspendConductor<'_> {
         );
 
         if result.is_ok() {
-            self.record_total_resume_time();
+            self.record_total_resume_time(&hibermeta_mount);
         }
 
         // Read the metrics files and send out the samples.
@@ -384,12 +384,13 @@ impl SuspendConductor<'_> {
     }
 
     /// Record the total resume time.
-    fn record_total_resume_time(&self) {
+    fn record_total_resume_time(&self, hibermeta_mount: &ActiveMount) {
         if self.timestamp_resumed.is_none() {
             return;
         }
 
-        let res = TimestampFile::read_timestamp("resume_start.ts");
+        let tsf = TimestampFile::new(hibermeta_mount);
+        let res = tsf.read_timestamp("resume_start.ts");
         if let Err(e) = res {
             warn!("Failed to read resume start timestap: {e}");
             return;
