@@ -46,7 +46,7 @@ const size_t kMaxDeviceIdLength = 36;
 enum class RestoreResult {
   kNoDevicePolicy = 0,
   kSuccessWithEmpty = 1,
-  kSuccessWtihEnterprise = 2,
+  kSuccessWithEnterprise = 2,
   kFailed = 3,
   kMaxValue = kFailed,
 };
@@ -250,7 +250,7 @@ bool RestoreInstallAttributes(const base::FilePath& lockbox_path,
   if (RestoreEnterpriseInstallAttributes(lockbox_path, policy_data, platform,
                                          lockbox, lockbox_data)) {
     metrics.SendEnumToUMA(kInstallAttributesRestoreState,
-                          RestoreResult::kSuccessWtihEnterprise);
+                          RestoreResult::kSuccessWithEnterprise);
     return true;
   }
 
