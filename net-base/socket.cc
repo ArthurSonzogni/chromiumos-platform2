@@ -14,10 +14,13 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+
+#include "net-base/byte_utils.h"
 
 namespace net_base {
 namespace {
@@ -30,6 +33,11 @@ std::optional<size_t> ToOptionalSizeT(ssize_t size) {
 }
 
 }  // namespace
+
+// static
+std::unique_ptr<Socket> Socket::Create(int domain, int type, int protocol) {
+  return Socket::CreateFromFd(base::ScopedFD(socket(domain, type, protocol)));
+}
 
 // static
 std::unique_ptr<Socket> Socket::CreateFromFd(base::ScopedFD fd) {
@@ -91,6 +99,13 @@ std::optional<int> Socket::Ioctl(unsigned long request, void* argp) const {
   return res;
 }
 
+std::optional<size_t> Socket::RecvFrom(base::span<char> buf,
+                                       int flags,
+                                       struct sockaddr* src_addr,
+                                       socklen_t* addrlen) const {
+  return RecvFrom(base::as_writable_bytes(buf), flags, src_addr, addrlen);
+}
+
 std::optional<size_t> Socket::RecvFrom(base::span<uint8_t> buf,
                                        int flags,
                                        struct sockaddr* src_addr,
@@ -117,10 +132,22 @@ bool Socket::RecvMessage(std::vector<uint8_t>* message) const {
   return RecvFrom(*message, 0, nullptr, nullptr) == *read_size;
 }
 
+std::optional<size_t> Socket::Send(base::span<const char> buf,
+                                   int flags) const {
+  return Send(base::as_bytes(buf), flags);
+}
+
 std::optional<size_t> Socket::Send(base::span<const uint8_t> buf,
                                    int flags) const {
   ssize_t res = HANDLE_EINTR(send(fd_.get(), buf.data(), buf.size(), flags));
   return ToOptionalSizeT(res);
+}
+
+std::optional<size_t> Socket::SendTo(base::span<const char> buf,
+                                     int flags,
+                                     const struct sockaddr* dest_addr,
+                                     socklen_t addrlen) const {
+  return SendTo(base::as_bytes(buf), flags, dest_addr, addrlen);
 }
 
 std::optional<size_t> Socket::SendTo(base::span<const uint8_t> buf,
@@ -138,15 +165,21 @@ bool Socket::SetNonBlocking() const {
 }
 
 bool Socket::SetReceiveBuffer(int size) const {
-  // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead
-  return setsockopt(fd_.get(), SOL_SOCKET, SO_RCVBUFFORCE, &size,
-                    sizeof(size)) == 0;
+  // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead.
+  return SetSockOpt(SOL_SOCKET, SO_RCVBUFFORCE, byte_utils::AsBytes(size));
+}
+
+bool Socket::SetSockOpt(int level,
+                        int optname,
+                        base::span<const uint8_t> opt_bytes) const {
+  return setsockopt(fd_.get(), level, optname, opt_bytes.data(),
+                    static_cast<socklen_t>(opt_bytes.size())) == 0;
 }
 
 std::unique_ptr<Socket> SocketFactory::Create(int domain,
                                               int type,
                                               int protocol) {
-  return Socket::CreateFromFd(base::ScopedFD(socket(domain, type, protocol)));
+  return Socket::Create(domain, type, protocol);
 }
 
 std::unique_ptr<Socket> SocketFactory::CreateNetlink(

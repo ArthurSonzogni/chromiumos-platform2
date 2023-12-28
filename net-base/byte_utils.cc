@@ -30,6 +30,10 @@ std::vector<uint8_t> ByteStringToBytes(std::string_view bytes) {
           reinterpret_cast<const uint8_t*>(bytes.data() + bytes.size())};
 }
 
+base::span<const uint8_t> ByteStringAsBytes(std::string_view bytes) {
+  return {reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()};
+}
+
 std::string ByteStringFromBytes(base::span<const uint8_t> bytes) {
   return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
 }

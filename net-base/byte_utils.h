@@ -82,6 +82,11 @@ NET_BASE_EXPORT std::string StringFromCStringBytes(
 // std::string("abc\0d", 5) => {'a', 'b', 'c', '\0', 'd'}
 NET_BASE_EXPORT std::vector<uint8_t> ByteStringToBytes(std::string_view bytes);
 
+// Converts a string to the view of immutable byte buffer. Similar to
+// ByteStringToBytes() but it does not copy the content.
+NET_BASE_EXPORT base::span<const uint8_t> ByteStringAsBytes(
+    std::string_view bytes);
+
 // Converts a byte buffer to a std:string. The size of the returned string is
 // the same as the input byte buffer, even if the buffer contains null
 // character. e.g.

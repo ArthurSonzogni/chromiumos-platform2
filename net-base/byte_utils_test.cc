@@ -90,6 +90,27 @@ TEST(Bytes, ByteStringToBytes) {
             (std::vector<uint8_t>{'a', 'b', 'c', '\0', 'd'}));
 }
 
+TEST(Bytes, ByteStringAsBytesWithoutTrailingZero) {
+  const std::string str("abc", 3);
+  base::span<const uint8_t> bytes = ByteStringAsBytes(str);
+  EXPECT_EQ(memcmp(bytes.data(), str.data(), 3), 0);
+  EXPECT_EQ(bytes.size(), 3);
+}
+
+TEST(Bytes, ByteStringAsBytesWithTrailingZero) {
+  const std::string str("abc\0", 4);
+  base::span<const uint8_t> bytes = ByteStringAsBytes(str);
+  EXPECT_EQ(memcmp(bytes.data(), str.data(), 4), 0);
+  EXPECT_EQ(bytes.size(), 4);
+}
+
+TEST(Bytes, ByteStringAsBytesWithZero) {
+  const std::string str("abc\0d", 5);
+  base::span<const uint8_t> bytes = ByteStringAsBytes(str);
+  EXPECT_EQ(memcmp(bytes.data(), str.data(), 5), 0);
+  EXPECT_EQ(bytes.size(), 5);
+}
+
 TEST(Bytes, ByteStringFromBytes) {
   EXPECT_EQ(ByteStringFromBytes(std::vector<uint8_t>{'a', 'b', 'c'}),
             std::string("abc", 3));

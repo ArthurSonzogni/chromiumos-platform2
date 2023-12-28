@@ -35,11 +35,11 @@ class NET_BASE_EXPORT MockSocket : public Socket {
               GetSockName,
               (struct sockaddr*, socklen_t*),
               (const, override));
-  MOCK_METHOD(bool, Listen, (int backlog), (const, override));
+  MOCK_METHOD(bool, Listen, (int), (const, override));
   MOCK_METHOD(std::optional<int>,
               Ioctl,
               // NOLINTNEXTLINE(runtime/int)
-              (unsigned long request, void* argp),
+              (unsigned long, void*),
               (const, override));
   MOCK_METHOD(std::optional<size_t>,
               RecvFrom,
@@ -50,15 +50,17 @@ class NET_BASE_EXPORT MockSocket : public Socket {
               Send,
               (base::span<const uint8_t>, int),
               (const, override));
-  MOCK_METHOD(std::optional<size_t>,
-              SendTo,
-              (base::span<const uint8_t>,
-               int,
-               const struct sockaddr* dest_addr,
-               socklen_t),
-              (const, override));
+  MOCK_METHOD(
+      std::optional<size_t>,
+      SendTo,
+      (base::span<const uint8_t>, int, const struct sockaddr*, socklen_t),
+      (const, override));
   MOCK_METHOD(bool, SetNonBlocking, (), (const, override));
-  MOCK_METHOD(bool, SetReceiveBuffer, (int size), (const, override));
+  MOCK_METHOD(bool, SetReceiveBuffer, (int), (const, override));
+  MOCK_METHOD(bool,
+              SetSockOpt,
+              (int, int, base::span<const uint8_t>),
+              (const, override));
 };
 
 class NET_BASE_EXPORT MockSocketFactory : public SocketFactory {
@@ -66,15 +68,10 @@ class NET_BASE_EXPORT MockSocketFactory : public SocketFactory {
   MockSocketFactory();
   ~MockSocketFactory() override;
 
-  MOCK_METHOD(std::unique_ptr<Socket>,
-              Create,
-              (int domain, int type, int protocol),
-              (override));
+  MOCK_METHOD(std::unique_ptr<Socket>, Create, (int, int, int), (override));
   MOCK_METHOD(std::unique_ptr<Socket>,
               CreateNetlink,
-              (int netlink_family,
-               uint32_t netlink_groups_mask,
-               std::optional<int> receive_buffer_size),
+              (int, uint32_t, std::optional<int>),
               (override));
 };
 

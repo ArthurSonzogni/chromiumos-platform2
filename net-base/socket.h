@@ -23,6 +23,10 @@ namespace net_base {
 // the standard POSIX and Linux socket operations.
 class NET_BASE_EXPORT Socket {
  public:
+  // Creates the socket instance by socket(...) method. On failure, returns
+  // nullptr and the errno is set. The caller should use PLOG() to print errno.
+  static std::unique_ptr<Socket> Create(int domain, int type, int protocol = 0);
+
   // Creates the socket instance with the socket descriptor. Returns nullptr if
   // |fd| is invalid.
   static std::unique_ptr<Socket> CreateFromFd(base::ScopedFD fd);
@@ -66,10 +70,14 @@ class NET_BASE_EXPORT Socket {
   // Delegates to recvfrom(fd_.get(), ...). On success, returns the length of
   // the received message in bytes. On failure, returns std::nullopt and the
   // errno is set. The caller should use PLOG() to print errno.
+  virtual std::optional<size_t> RecvFrom(base::span<char> buf,
+                                         int flags = 0,
+                                         struct sockaddr* src_addr = nullptr,
+                                         socklen_t* addrlen = nullptr) const;
   virtual std::optional<size_t> RecvFrom(base::span<uint8_t> buf,
-                                         int flags,
-                                         struct sockaddr* src_addr,
-                                         socklen_t* addrlen) const;
+                                         int flags = 0,
+                                         struct sockaddr* src_addr = nullptr,
+                                         socklen_t* addrlen = nullptr) const;
 
   // Reads data from the socket into |message| and returns true if successful.
   // The |message| parameter will be resized to hold the entirety of the read
@@ -79,12 +87,18 @@ class NET_BASE_EXPORT Socket {
   // Delegates to send(fd_.get(), ...). On success, returns the number of bytes
   // sent. On failure, returns std::nullopt and the errno is set. The caller
   // should use PLOG() to print errno.
+  virtual std::optional<size_t> Send(base::span<const char> buf,
+                                     int flags = MSG_NOSIGNAL) const;
   virtual std::optional<size_t> Send(base::span<const uint8_t> buf,
-                                     int flags) const;
+                                     int flags = MSG_NOSIGNAL) const;
 
   // Delegates to sendto(fd_.get(), ...). On success, returns the number of
   // bytes sent. On failure, returns std::nullopt and the errno is set. The
   // caller should use PLOG() to print errno.
+  virtual std::optional<size_t> SendTo(base::span<const char> buf,
+                                       int flags,
+                                       const struct sockaddr* dest_addr,
+                                       socklen_t addrlen) const;
   virtual std::optional<size_t> SendTo(base::span<const uint8_t> buf,
                                        int flags,
                                        const struct sockaddr* dest_addr,
@@ -93,6 +107,12 @@ class NET_BASE_EXPORT Socket {
   // Sets the socket file descriptor non-blocking. Returns true if successful.
   // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool SetNonBlocking() const;
+
+  // Delegates to setsockopt(fd_.get(), ...). Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
+  virtual bool SetSockOpt(int level,
+                          int optname,
+                          base::span<const uint8_t> opt_bytes) const;
 
   // Set the size of receiver buffer in bytes for the socket file descriptor.
   // Returns true if successful.
@@ -118,10 +138,12 @@ class NET_BASE_EXPORT SocketFactory {
   SocketFactory() = default;
   virtual ~SocketFactory() = default;
 
-  // Creates the socket instance. Delegates to socket(...) method.
+  // Creates the socket instance by the Socket::Create() method.
   // On failure, returns nullptr and the errno is set. The caller should use
   // PLOG() to print errno.
-  virtual std::unique_ptr<Socket> Create(int domain, int type, int protocol);
+  virtual std::unique_ptr<Socket> Create(int domain,
+                                         int type,
+                                         int protocol = 0);
 
   // Creates the socket instance and binds to netlink. Sets the received buffer
   // size to |receive_buffer_size| if it is set.
