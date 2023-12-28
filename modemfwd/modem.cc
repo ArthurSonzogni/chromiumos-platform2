@@ -70,11 +70,11 @@ std::unique_ptr<Inhibitor> GetInhibitor(
     return nullptr;
 
   std::string mm_physdev_uid;
-  if (!brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
-                                                    &mm_physdev_uid)) {
+  dbus::MessageReader reader(resp.get());
+  if (!reader.PopVariantOfString(&mm_physdev_uid)) {
+    LOG(WARNING) << "Error popping string entry from D-Bus message";
     return nullptr;
   }
-
   EVLOG(1) << "Modem " << mm_object_path.value() << " has physdev UID "
            << mm_physdev_uid;
   auto mm_proxy = std::make_unique<org::freedesktop::ModemManager1Proxy>(
@@ -110,8 +110,9 @@ std::string GetModemPrimaryPort(scoped_refptr<dbus::Bus> bus,
     return "";
 
   std::string primary_port;
-  if (!brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
-                                                    &primary_port)) {
+  dbus::MessageReader reader(resp.get());
+  if (!reader.PopVariantOfString(&primary_port)) {
+    LOG(WARNING) << "Error popping string entry from D-Bus message";
     return "";
   }
 
