@@ -2700,13 +2700,7 @@ int main(int argc, char** argv) {
         !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
-    // By default, old and new labels are equal; if requested, the new label can
-    // be overridden.
     req.set_auth_factor_label(req.auth_factor().label());
-    if (!cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch).empty()) {
-      req.mutable_auth_factor()->set_label(
-          cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
-    }
 
     brillo::ErrorPtr error;
     VLOG(1) << "Attempting to Update AuthFactor";
