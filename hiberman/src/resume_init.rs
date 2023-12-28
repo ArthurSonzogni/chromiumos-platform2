@@ -24,6 +24,8 @@ use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::volume::VOLUME_MANAGER;
 
+const NO_RESUME_PENDING: i32 = 0x23;
+
 pub struct ResumeInitConductor {
     options: ResumeInitOptions,
 }
@@ -61,17 +63,14 @@ impl ResumeInitConductor {
         match cookie {
             // In the most common case, no resume from hibernate will be imminent.
             HibernateCookieValue::NoResume | HibernateCookieValue::Uninitialized => {
-                debug!("Hibernate cookie was not set, doing nothing");
+                debug!("No resume from hibernate pending");
 
                 if cookie == HibernateCookieValue::Uninitialized {
                     set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
                         .context("Failed to set hibernate cookie to NoResume")?;
                 }
 
-                Err(HibernateError::CookieError(
-                    "Cookie not set, doing nothing".to_string(),
-                ))
-                .context("Not preparing for resume")
+                std::process::exit(NO_RESUME_PENDING);
             }
 
             // This is the error path, where the system rebooted unexpectedly
