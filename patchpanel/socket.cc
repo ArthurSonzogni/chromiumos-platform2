@@ -11,10 +11,13 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <memory>
 #include <utility>
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
 namespace {
@@ -23,6 +26,12 @@ bool WouldBlock() {
   return errno == EAGAIN || errno == EWOULDBLOCK;
 }
 }  // namespace
+
+std::unique_ptr<Socket> Socket::FromNetBaseSocket(
+    std::unique_ptr<net_base::Socket> socket) {
+  return std::make_unique<Socket>(
+      base::ScopedFD(net_base::Socket::Release(std::move(socket))));
+}
 
 Socket::Socket(int family, int type) : fd_(socket(family, type, 0)) {}
 

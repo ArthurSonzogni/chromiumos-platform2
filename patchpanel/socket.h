@@ -14,12 +14,18 @@
 
 #include <base/files/scoped_file.h>
 #include <brillo/brillo_export.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
 
 // Wrapper around various syscalls used for socket communications.
 class BRILLO_EXPORT Socket {
  public:
+  // Converts from net_base::Socket to patchpanel::Socket.
+  // It's used to migrate patchpanel::Socket to net_base::Socket.
+  static std::unique_ptr<Socket> FromNetBaseSocket(
+      std::unique_ptr<net_base::Socket> socket);
+
   Socket(int family, int type);
   explicit Socket(base::ScopedFD fd);
   Socket(const Socket&) = delete;
