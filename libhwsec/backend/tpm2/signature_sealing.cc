@@ -70,18 +70,32 @@ StatusOr<AlgorithmDetail> GetAlgIdsByAlgorithm(Algorithm algorithm) {
 }
 
 StatusOr<AlgorithmDetail> ChooseAlgorithm(
-    const std::vector<Algorithm>& key_algorithms) {
+    TrunksContext& context, const std::vector<Algorithm>& key_algorithms) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
   // the exception of considering SHA-1 as the least preferred option.
   std::optional<AlgorithmDetail> sha1_fallback;
 
+  trunks::TpmState& tpm_state = context.GetTpmState();
+
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(tpm_state.Initialize()))
+      .WithStatus<TPMError>("Failed to initialize TPM state");
+
   for (Algorithm algorithm : key_algorithms) {
     if (StatusOr<AlgorithmDetail> detail = GetAlgIdsByAlgorithm(algorithm);
         detail.ok()) {
+      // Ignore the unsupported algorithms.
+      if (!tpm_state.GetAlgorithmProperties(detail->scheme, nullptr)) {
+        continue;
+      }
+      if (!tpm_state.GetAlgorithmProperties(detail->hash_alg, nullptr)) {
+        continue;
+      }
+
       if (detail->hash_alg == trunks::TPM_ALG_SHA1) {
         sha1_fallback = std::move(detail).value();
         continue;
       }
+
       return detail;
     }
   }
@@ -105,7 +119,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   current_challenge_data_ = std::nullopt;
 
   ASSIGN_OR_RETURN(const AlgorithmDetail& algorithm,
-                   ChooseAlgorithm(key_algorithms));
+                   ChooseAlgorithm(context_, key_algorithms));
 
   if (policies.empty()) {
     return MakeStatus<TPMError>("No policy for signature sealing",

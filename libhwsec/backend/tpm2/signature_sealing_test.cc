@@ -18,6 +18,7 @@
 #include <openssl/x509.h>
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_policy_session.h>
+#include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
@@ -103,6 +104,12 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
             .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
         }) {
     EXPECT_TRUE(GenerateRsaKey(2048, &pkey_, &public_key_spki_der_));
+  }
+
+  void SetUp() override {
+    BackendTpm2TestBase::SetUp();
+    EXPECT_CALL(proxy_->GetMockTpmState(), GetAlgorithmProperties(_, nullptr))
+        .WillRepeatedly(Return(true));
   }
 
   StatusOr<SignatureSealedData> SetupSealing() {
@@ -317,6 +324,54 @@ TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmPriorityReverse) {
   };
 
   EXPECT_THAT(SetupSealing(), IsOkAndHolds(expected_seal_result));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmNoSha512) {
+  EXPECT_CALL(proxy_->GetMockTpmState(),
+              GetAlgorithmProperties(trunks::TPM_ALG_SHA512, nullptr))
+      .WillRepeatedly(Return(false));
+
+  key_algorithms_ = std::vector<Algorithm>{
+      Algorithm::kRsassaPkcs1V15Sha512,
+      Algorithm::kRsassaPkcs1V15Sha256,
+      Algorithm::kRsassaPkcs1V15Sha384,
+      Algorithm::kRsassaPkcs1V15Sha1,
+  };
+
+  SignatureSealedData expected_seal_result = Tpm2PolicySignedData{
+      .public_key_spki_der = public_key_spki_der_,
+      .srk_wrapped_secret = brillo::BlobFromString(trunks_sealed_data_),
+      .scheme = trunks::TPM_ALG_RSASSA,
+      .hash_alg = trunks::TPM_ALG_SHA256,
+      .pcr_policy_digests =
+          {
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests1_)},
+              Tpm2PolicyDigest{.digest =
+                                   brillo::BlobFromString(fake_digests2_)},
+          },
+  };
+
+  EXPECT_THAT(SetupSealing(), IsOkAndHolds(expected_seal_result));
+}
+
+TEST_F(BackendSignatureSealingTpm2Test, SealAlgorithmNoRsassa) {
+  EXPECT_CALL(proxy_->GetMockTpmState(),
+              GetAlgorithmProperties(trunks::TPM_ALG_RSASSA, nullptr))
+      .WillRepeatedly(Return(false));
+
+  key_algorithms_ = std::vector<Algorithm>{
+      Algorithm::kRsassaPkcs1V15Sha512,
+      Algorithm::kRsassaPkcs1V15Sha256,
+      Algorithm::kRsassaPkcs1V15Sha384,
+      Algorithm::kRsassaPkcs1V15Sha1,
+  };
+
+  auto seal_result = backend_->GetSignatureSealingTpm2().Seal(
+      operation_policy_setting_, unsealed_data_, public_key_spki_der_,
+      key_algorithms_);
+
+  EXPECT_FALSE(seal_result.ok());
 }
 
 TEST_F(BackendSignatureSealingTpm2Test, SealNoPubKey) {
