@@ -181,6 +181,7 @@ impl SuspendConductor<'_> {
         redirect_log(HiberlogOut::Syslog);
         // Replay logs first because they happened earlier.
         replay_logs(
+            &hibermeta_mount,
             result.is_ok() && !self.options.dry_run,
             !self.options.dry_run,
         );

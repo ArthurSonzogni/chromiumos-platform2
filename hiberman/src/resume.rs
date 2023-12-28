@@ -143,7 +143,7 @@ impl ResumeConductor {
 
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
-        replay_logs(true, !self.options.dry_run);
+        replay_logs(&hibermeta_mount, true, !self.options.dry_run);
         // Remove the resume_in_progress token file if it exists.
         remove_resume_in_progress_file();
         // Since resume_inner() returned, we are no longer in a viable resume

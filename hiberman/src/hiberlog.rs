@@ -385,7 +385,7 @@ pub fn reset_log() {
 }
 
 /// Replay the suspend (and maybe resume) logs to the syslogger.
-pub fn replay_logs(push_resume_logs: bool, clear: bool) {
+pub fn replay_logs(_: &ActiveMount, push_resume_logs: bool, clear: bool) {
     // Push the hibernate logs that were taken after the snapshot (and
     // therefore after syslog became frozen) back into the syslog now.
     // These should be there on both success and failure cases.
