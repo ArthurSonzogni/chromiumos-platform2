@@ -125,7 +125,6 @@ const std::set<std::string_view> kEmptyEntries{
     "top thread",
     "touch_fw_version",
     "tpm-firmware-updater",
-    "tpm_version",
     "typecd",
     "ui_log",
     "upstart",

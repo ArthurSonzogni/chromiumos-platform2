@@ -286,6 +286,7 @@ const std::array kCommandLogs {
   Log{kFile, "hardware_verification_report",
     "/var/cache/hardware_verifier.result"},
   Log{kCommand, "hostname", "/bin/hostname"},
+  Log{kCommand, "hwsec_status", "/usr/sbin/hwsec_status"},
   Log{kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
@@ -376,7 +377,6 @@ const std::array kCommandLogs {
     "/usr/bin/top -o \"+%MEM\" -w128 -bcn 1 | head -n 57"},
   Log{kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
   Log{kFile, "touch_fw_version", "/run/touch-updater/firmware-versions"},
-  Log{kCommand, "tpm_version", "/usr/bin/tpm_manager_client get_version_info"},
   // Type-C data from the type-c connector class.
   Log{kCommand, "typec_connector_class",
     "/usr/libexec/debugd/helpers/typec_connector_class_helper"},

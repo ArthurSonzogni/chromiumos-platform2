@@ -315,6 +315,10 @@ The [fwupd] client and daemon versions.
 
 ## hostname
 
+## hwsec_status
+
+The internal state of the hwsec daemons.
+
 ## hypervisor.log
 
 The kernel log from the ManaTEE hypervisor.
@@ -522,8 +526,6 @@ explanation of each field.
 ## touch_fw_version
 
 ## tpm-firmware-updater
-
-## tpm_version
 
 ## typec_connector_class
 
