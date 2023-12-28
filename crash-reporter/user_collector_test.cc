@@ -1415,10 +1415,14 @@ TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
 }
 
 TEST_F(BeginHandlingCrashTest,
-       ComputeSeverity_HandleEarlyChromeCrashes_Lacros) {
-  EXPECT_TRUE(collector_.ShouldCaptureEarlyChromeCrash("chrome",
-                                                       kEarlyBrowserProcessID));
-  collector_.SetHandlingEarlyChromeCrashForTesting(true);
+#if USE_FORCE_BREAKPAD
+       // ShouldCaptureEarlyChromeCrash will always return false for breakpad,
+       // so BeginHandlingCrash will never activate early-crash mode.
+       DISABLED_ComputeSeverity_HandleEarlyChromeCrashes_Lacros
+#else
+       ComputeSeverity_HandleEarlyChromeCrashes_Lacros
+#endif
+) {
   collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
                                 paths::Get("/run/lacros"));
 

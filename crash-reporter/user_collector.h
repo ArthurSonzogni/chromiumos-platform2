@@ -123,6 +123,8 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(BeginHandlingCrashTest, NoEffectIfNotChrome);
   FRIEND_TEST(BeginHandlingCrashTest,
               ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
+  FRIEND_TEST(BeginHandlingCrashTest,
+              DISABLED_ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
 
   // Returns true if we want to try to capture a crash of Chrome because we
   // think it may have happened early -- specifically, before crashpad was
