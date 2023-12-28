@@ -376,9 +376,6 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryHealthRoutine) {
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunUrandomRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
 
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunUrandomRoutine(

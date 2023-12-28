@@ -403,8 +403,15 @@ void CrosHealthdDiagnosticsService::RunSmartctlCheckRoutine(
 void CrosHealthdDiagnosticsService::RunUrandomRoutine(
     mojom::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeUrandomRoutine(std::move(length_seconds)),
-             mojom::DiagnosticRoutineEnum::kUrandom, std::move(callback));
+  std::optional<base::TimeDelta> exec_duration;
+  if (!length_seconds.is_null()) {
+    exec_duration = base::Seconds(length_seconds->value);
+  }
+
+  auto args = mojom::RoutineArgument::NewUrandom(
+      mojom::UrandomRoutineArgument::New(exec_duration));
+  RunRoutineWithAdapter(std::move(args), mojom::DiagnosticRoutineEnum::kUrandom,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunVideoConferencingRoutine(
