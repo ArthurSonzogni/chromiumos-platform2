@@ -104,10 +104,6 @@ class NET_BASE_EXPORT Socket {
                                        const struct sockaddr* dest_addr,
                                        socklen_t addrlen) const;
 
-  // Sets the socket file descriptor non-blocking. Returns true if successful.
-  // On failure, the errno is set. The caller should use PLOG() to print errno.
-  virtual bool SetNonBlocking() const;
-
   // Delegates to setsockopt(fd_.get(), ...). Returns true if successful.
   // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool SetSockOpt(int level,

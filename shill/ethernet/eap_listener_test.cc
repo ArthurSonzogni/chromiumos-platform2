@@ -118,7 +118,6 @@ void EapListenerTest::StartListener() {
               Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
       .WillOnce([]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
         EXPECT_CALL(*socket, Bind(IsEapLinkAddress(kInterfaceIndex),
                                   sizeof(sockaddr_ll)))
             .WillOnce(Return(true));
@@ -145,23 +144,6 @@ TEST_F(EapListenerTest, SocketOpenFail) {
   EXPECT_EQ(CreateSocket(), nullptr);
 }
 
-TEST_F(EapListenerTest, SocketNonBlockingFail) {
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
-                       HasSubstr("Could not set socket to be non-blocking")))
-      .Times(1);
-
-  EXPECT_CALL(*socket_factory_,
-              Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
-      .WillOnce([]() {
-        auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(false));
-        return socket;
-      });
-
-  EXPECT_EQ(CreateSocket(), nullptr);
-}
-
 TEST_F(EapListenerTest, SocketBindFail) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -172,7 +154,6 @@ TEST_F(EapListenerTest, SocketBindFail) {
               Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
       .WillOnce([]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(true));
         EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
         return socket;
       });

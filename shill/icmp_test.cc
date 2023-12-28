@@ -87,32 +87,11 @@ TEST_F(IcmpTest, SocketOpenFail) {
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
-TEST_F(IcmpTest, SocketNonBlockingFail) {
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
-                       HasSubstr("Could not set socket to be non-blocking")))
-      .Times(1);
-
-  EXPECT_CALL(*socket_factory_,
-              Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
-      .WillOnce([]() {
-        auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(false));
-        return socket;
-      });
-
-  EXPECT_FALSE(icmp_.Start(kIPAddress, kInterfaceIndex));
-  EXPECT_FALSE(icmp_.IsStarted());
-}
-
 TEST_F(IcmpTest, StartMultipleTimes) {
   EXPECT_CALL(*socket_factory_,
               Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
-      .WillRepeatedly([]() {
-        auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
-        return socket;
-      });
+      .WillRepeatedly(
+          []() { return std::make_unique<net_base::MockSocket>(); });
 
   EXPECT_TRUE(icmp_.Start(kIPAddress, kInterfaceIndex));
   EXPECT_TRUE(icmp_.IsStarted());
@@ -147,7 +126,6 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
               Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce([&]() {
         auto socket = std::make_unique<net_base::MockSocket>();
-        EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
 
         EXPECT_CALL(*socket,
                     SendTo(IsIcmpHeader(icmp_header), 0,

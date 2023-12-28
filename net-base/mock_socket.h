@@ -55,7 +55,6 @@ class NET_BASE_EXPORT MockSocket : public Socket {
       SendTo,
       (base::span<const uint8_t>, int, const struct sockaddr*, socklen_t),
       (const, override));
-  MOCK_METHOD(bool, SetNonBlocking, (), (const, override));
   MOCK_METHOD(bool, SetReceiveBuffer, (int), (const, override));
   MOCK_METHOD(bool,
               SetSockOpt,

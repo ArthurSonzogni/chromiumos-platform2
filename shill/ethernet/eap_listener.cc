@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <net-base/byte_utils.h>
@@ -64,7 +65,7 @@ std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
     return nullptr;
   }
 
-  if (!socket->SetNonBlocking()) {
+  if (!base::SetNonBlocking(socket->Get())) {
     PLOG(ERROR) << LoggingTag() << ": Could not set socket to be non-blocking";
     return nullptr;
   }

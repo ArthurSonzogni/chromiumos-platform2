@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 
@@ -39,7 +40,7 @@ bool Icmp::Start(const net_base::IPAddress& destination, int interface_index) {
     return false;
   }
 
-  if (!socket->SetNonBlocking()) {
+  if (!base::SetNonBlocking(socket->Get())) {
     PLOG(ERROR) << "Could not set socket to be non-blocking";
     return false;
   }

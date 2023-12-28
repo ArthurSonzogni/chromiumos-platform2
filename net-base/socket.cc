@@ -159,11 +159,6 @@ std::optional<size_t> Socket::SendTo(base::span<const uint8_t> buf,
   return ToOptionalSizeT(res);
 }
 
-bool Socket::SetNonBlocking() const {
-  return HANDLE_EINTR(fcntl(fd_.get(), F_SETFL,
-                            fcntl(fd_.get(), F_GETFL) | O_NONBLOCK)) == 0;
-}
-
 bool Socket::SetReceiveBuffer(int size) const {
   // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead.
   return SetSockOpt(SOL_SOCKET, SO_RCVBUFFORCE, byte_utils::AsBytes(size));
