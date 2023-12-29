@@ -217,22 +217,22 @@ void TpmUtilityImpl::Shutdown() {
   }
 }
 
-TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState>* tpm_state) {
+TPM_RC TpmUtilityImpl::TpmBasicInit() {
   TPM_RC result = TPM_RC_SUCCESS;
+  TpmState* tpm_state = factory_.GetTpmState();
 
-  *tpm_state = factory_.GetTpmState();
-  result = (*tpm_state)->Refresh();
+  result = tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__
                << ": Failed to refresh TPM state: " << GetErrorString(result);
     return result;
   }
   // Warn about various unexpected conditions.
-  if (!(*tpm_state)->WasShutdownOrderly()) {
+  if (!tpm_state->WasShutdownOrderly()) {
     LOG(WARNING) << __func__
                  << ": WARNING: The last TPM shutdown was not orderly.";
   }
-  if ((*tpm_state)->IsInLockout()) {
+  if (tpm_state->IsInLockout()) {
     LOG(WARNING) << __func__ << ": WARNING: The TPM is currently in lockout.";
   }
 
@@ -241,9 +241,9 @@ TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState>* tpm_state) {
 
 TPM_RC TpmUtilityImpl::CheckState() {
   TPM_RC result;
-  std::unique_ptr<TpmState> tpm_state;
+  TpmState* tpm_state = factory_.GetTpmState();
 
-  result = TpmBasicInit(&tpm_state);
+  result = TpmBasicInit();
 
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
@@ -266,9 +266,9 @@ TPM_RC TpmUtilityImpl::CheckState() {
 
 TPM_RC TpmUtilityImpl::InitializeTpm() {
   TPM_RC result;
-  std::unique_ptr<TpmState> tpm_state;
+  TpmState* tpm_state = factory_.GetTpmState();
 
-  result = TpmBasicInit(&tpm_state);
+  result = TpmBasicInit();
   if (result) {
     LOG(ERROR) << __func__
                << ": Failed TPM basic init: " << GetErrorString(result);
@@ -374,7 +374,7 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
 }
 
 TPM_RC TpmUtilityImpl::PrepareForOwnership() {
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   TPM_RC result = tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__
@@ -431,7 +431,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
                << GetErrorString(result);
     return result;
   }
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   result = tpm_state->Refresh();
   if (result != TPM_RC_SUCCESS) {
     return result;
@@ -479,7 +479,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
 
 TPM_RC TpmUtilityImpl::ChangeOwnerPassword(const std::string& old_password,
                                            const std::string& new_password) {
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   TPM_RC result = tpm_state->Refresh();
   if (result != TPM_RC_SUCCESS) {
     return result;
@@ -2381,7 +2381,7 @@ TPM_RC TpmUtilityImpl::ManageCCDPwd(bool allow_pwd) {
 
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
     const std::string& known_owner_password) {
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   TPM_RC result = tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__ << ": Failed to initialize TPM state: "
@@ -3185,7 +3185,7 @@ void TpmUtilityImpl::CacheVendorId() {
   if (vendor_id_.has_value()) {
     return;
   }
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   TPM_RC result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": TpmState initialization failed: "
@@ -3507,7 +3507,7 @@ TpmUtilityImpl::GetPinwWeaverBackendType() {
 TPM_RC TpmUtilityImpl::GetMaxNVChunkSize(size_t* size) {
   CHECK(size);
   if (!max_nv_chunk_size_) {
-    std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+    TpmState* tpm_state = factory_.GetTpmState();
     TPM_RC result = tpm_state->Initialize();
     if (result) {
       LOG(ERROR) << __func__ << ": Failed to initialize TPM state: "

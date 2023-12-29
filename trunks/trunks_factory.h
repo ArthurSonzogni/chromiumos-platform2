@@ -41,8 +41,10 @@ class TRUNKS_EXPORT TrunksFactory {
   // value.
   virtual TpmCache* GetTpmCache() const = 0;
 
-  // Returns an uninitialized TpmState instance. The caller takes ownership.
-  virtual std::unique_ptr<TpmState> GetTpmState() const = 0;
+  // Returns a TpmState instance. The caller does not take ownership. All calls
+  // to this method on a given TrunksFactory instance will return the same
+  // value.
+  virtual TpmState* GetTpmState() const = 0;
 
   // Returns a TpmUtility instance. The caller takes ownership.
   virtual std::unique_ptr<TpmUtility> GetTpmUtility() const = 0;

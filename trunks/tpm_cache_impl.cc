@@ -59,7 +59,7 @@ TPM_ALG_ID TpmCacheImpl::GetBestSupportedKeyType() {
     return *best_key_type_;
   }
 
-  std::unique_ptr<TpmState> tpm_state = factory_.GetTpmState();
+  TpmState* tpm_state = factory_.GetTpmState();
   if (tpm_state->Initialize() != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to refresh tpm state.";
     return TPM_ALG_ERROR;

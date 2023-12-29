@@ -55,7 +55,7 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
   TpmCache* GetTpmCache() const override;
-  std::unique_ptr<TpmState> GetTpmState() const override;
+  TpmState* GetTpmState() const override;
   std::unique_ptr<TpmUtility> GetTpmUtility() const override;
   std::unique_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;

@@ -257,13 +257,13 @@ class FuzzedTrunksFactory : public trunks::TrunksFactoryImpl {
  public:
   FuzzedTrunksFactory(FuzzedDataProvider& data_provider,
                       trunks::CommandTransceiver* transceiver)
-      : trunks::TrunksFactoryImpl(transceiver), data_provider_(data_provider) {
+      : trunks::TrunksFactoryImpl(transceiver),
+        data_provider_(data_provider),
+        tpm_state_(std::make_unique<FuzzedTpmState>(data_provider_, *this)) {
     CHECK(Initialize());
   }
 
-  std::unique_ptr<trunks::TpmState> GetTpmState() const override {
-    return std::make_unique<FuzzedTpmState>(data_provider_, *this);
-  }
+  trunks::TpmState* GetTpmState() const override { return tpm_state_.get(); }
 
   std::unique_ptr<trunks::AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override {
@@ -289,6 +289,7 @@ class FuzzedTrunksFactory : public trunks::TrunksFactoryImpl {
 
  private:
   FuzzedDataProvider& data_provider_;
+  std::unique_ptr<FuzzedTpmState> tpm_state_;
 };
 
 class Tpm2BackendFuzzerProxy : public Proxy {

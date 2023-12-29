@@ -70,7 +70,7 @@ class Tpm2StatusImpl : public TpmStatus {
   bool initialized_{false};
   TpmOwnershipStatus ownership_status_{kTpmUnowned};
   const trunks::TrunksFactory& trunks_factory_;
-  std::unique_ptr<trunks::TpmState> trunks_tpm_state_;
+  trunks::TpmState* trunks_tpm_state_;
   std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
 };
 

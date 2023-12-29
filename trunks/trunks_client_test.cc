@@ -1144,7 +1144,7 @@ bool TrunksClientTest::IdentityKeyTest() {
     LOG(ERROR) << "CreateIdentityKey(RSA) failed: " << GetErrorString(result);
     return false;
   }
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TpmState* tpm_state = factory_.GetTpmState();
   tpm_state->Initialize();
   if (tpm_state->IsECCSupported()) {
     result = utility->CreateIdentityKey(TPM_ALG_ECC, session->GetDelegate(),

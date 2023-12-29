@@ -24,9 +24,8 @@ class TrunksContext {
                 trunks::TrunksFactory& factory)
       : command_transceiver_(command_transceiver),
         factory_(factory),
-        tpm_state_(factory_.GetTpmState()),
+        tpm_state_(*factory_.GetTpmState()),
         tpm_utility_(factory_.GetTpmUtility()) {
-    CHECK(tpm_state_);
     CHECK(tpm_utility_);
   }
 
@@ -34,13 +33,13 @@ class TrunksContext {
     return command_transceiver_;
   }
   trunks::TrunksFactory& GetTrunksFactory() { return factory_; }
-  trunks::TpmState& GetTpmState() { return *tpm_state_; }
+  trunks::TpmState& GetTpmState() { return tpm_state_; }
   trunks::TpmUtility& GetTpmUtility() { return *tpm_utility_; }
 
  private:
   trunks::CommandTransceiver& command_transceiver_;
   trunks::TrunksFactory& factory_;
-  std::unique_ptr<trunks::TpmState> tpm_state_;
+  trunks::TpmState& tpm_state_;
   std::unique_ptr<trunks::TpmUtility> tpm_utility_;
 };
 

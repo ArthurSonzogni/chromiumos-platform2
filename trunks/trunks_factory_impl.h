@@ -45,8 +45,8 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
   TpmCache* GetTpmCache() const override;
+  TpmState* GetTpmState() const override;
 
-  std::unique_ptr<TpmState> GetTpmState() const override;
   std::unique_ptr<TpmUtility> GetTpmUtility() const override;
   std::unique_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
@@ -71,8 +71,9 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
 
   std::unique_ptr<CommandTransceiver> default_transceiver_;
   std::unique_ptr<PostProcessingTransceiver> transceiver_;
-  std::unique_ptr<TpmCache> tpm_cache_;
   std::unique_ptr<Tpm> tpm_;
+  std::unique_ptr<TpmCache> tpm_cache_;
+  std::unique_ptr<TpmState> tpm_state_;
   bool initialized_ = false;
 };
 

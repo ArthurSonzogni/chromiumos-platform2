@@ -34,101 +34,6 @@ using testing::NiceMock;
 namespace trunks {
 
 // Forwards all calls to a target instance.
-class TpmStateForwarder : public TpmState {
- public:
-  explicit TpmStateForwarder(TpmState* target) : target_(target) {}
-  ~TpmStateForwarder() override = default;
-
-  TPM_RC Initialize() override { return target_->Initialize(); }
-
-  TPM_RC Refresh() override { return target_->Refresh(); }
-
-  bool IsOwnerPasswordSet() override { return target_->IsOwnerPasswordSet(); }
-
-  bool IsEndorsementPasswordSet() override {
-    return target_->IsEndorsementPasswordSet();
-  }
-
-  bool IsLockoutPasswordSet() override {
-    return target_->IsLockoutPasswordSet();
-  }
-
-  bool IsOwned() override { return target_->IsOwned(); }
-
-  bool IsInLockout() override { return target_->IsInLockout(); }
-
-  bool IsPlatformHierarchyEnabled() override {
-    return target_->IsPlatformHierarchyEnabled();
-  }
-
-  bool IsStorageHierarchyEnabled() override {
-    return target_->IsStorageHierarchyEnabled();
-  }
-
-  bool IsEndorsementHierarchyEnabled() override {
-    return target_->IsEndorsementHierarchyEnabled();
-  }
-
-  bool IsEnabled() override { return target_->IsEnabled(); }
-
-  bool WasShutdownOrderly() override { return target_->WasShutdownOrderly(); }
-
-  bool IsRSASupported() override { return target_->IsRSASupported(); }
-
-  bool IsECCSupported() override { return target_->IsECCSupported(); }
-
-  uint32_t GetLockoutCounter() override { return target_->GetLockoutCounter(); }
-
-  uint32_t GetLockoutThreshold() override {
-    return target_->GetLockoutThreshold();
-  }
-
-  uint32_t GetLockoutInterval() override {
-    return target_->GetLockoutInterval();
-  }
-
-  uint32_t GetLockoutRecovery() override {
-    return target_->GetLockoutRecovery();
-  }
-
-  uint32_t GetTpmFamily() override { return target_->GetTpmFamily(); }
-
-  uint32_t GetSpecificationLevel() override {
-    return target_->GetSpecificationLevel();
-  }
-
-  uint32_t GetSpecificationRevision() override {
-    return target_->GetSpecificationRevision();
-  }
-
-  uint32_t GetManufacturer() override { return target_->GetManufacturer(); }
-
-  uint32_t GetTpmModel() override { return target_->GetTpmModel(); }
-
-  uint64_t GetFirmwareVersion() override {
-    return target_->GetFirmwareVersion();
-  }
-
-  std::string GetVendorIDString() override {
-    return target_->GetVendorIDString();
-  }
-
-  uint32_t GetMaxNVSize() override { return target_->GetMaxNVSize(); }
-
-  bool GetTpmProperty(TPM_PT property, uint32_t* value) override {
-    return target_->GetTpmProperty(property, value);
-  }
-
-  bool GetAlgorithmProperties(TPM_ALG_ID algorithm,
-                              TPMA_ALGORITHM* properties) override {
-    return target_->GetAlgorithmProperties(algorithm, properties);
-  }
-
- private:
-  TpmState* target_;
-};
-
-// Forwards all calls to a target instance.
 class TpmUtilityForwarder : public TpmUtility {
  public:
   explicit TpmUtilityForwarder(TpmUtility* target) : target_(target) {}
@@ -1034,8 +939,8 @@ TpmCache* TrunksFactoryForTest::GetTpmCache() const {
   return tpm_cache_;
 }
 
-std::unique_ptr<TpmState> TrunksFactoryForTest::GetTpmState() const {
-  return std::make_unique<TpmStateForwarder>(tpm_state_);
+TpmState* TrunksFactoryForTest::GetTpmState() const {
+  return tpm_state_;
 }
 
 std::unique_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {

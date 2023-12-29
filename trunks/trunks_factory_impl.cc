@@ -129,6 +129,7 @@ bool TrunksFactoryImpl::Initialize() {
   }
   tpm_.reset(new Tpm(transceiver_.get()));
   tpm_cache_ = std::make_unique<TpmCacheImpl>(*this);
+  tpm_state_ = std::make_unique<TpmStateImpl>(*this);
   if (!IsDefaultTransceiverUsed()) {
     initialized_ = true;
   } else {
@@ -149,8 +150,8 @@ TpmCache* TrunksFactoryImpl::GetTpmCache() const {
   return tpm_cache_.get();
 }
 
-std::unique_ptr<TpmState> TrunksFactoryImpl::GetTpmState() const {
-  return std::make_unique<TpmStateImpl>(*this);
+TpmState* TrunksFactoryImpl::GetTpmState() const {
+  return tpm_state_.get();
 }
 
 std::unique_ptr<TpmUtility> TrunksFactoryImpl::GetTpmUtility() const {
