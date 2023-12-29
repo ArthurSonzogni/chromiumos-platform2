@@ -134,8 +134,6 @@ impl SuspendConductor<'_> {
     /// Hibernates the system, and returns either upon failure to hibernate or
     /// after the system has resumed from a successful hibernation.
     fn hibernate_inner(&mut self) -> Result<()> {
-        let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
-
         if !self.volume_manager.hiberimage_exists() {
             if has_user_logged_out() {
                 info!(
@@ -182,18 +180,16 @@ impl SuspendConductor<'_> {
 
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
-        self.suspend_system(hibermeta_mount)
+        self.suspend_system()
     }
 
     /// Inner helper function to actually take the snapshot, save it to disk,
     /// and shut down. Returns upon a failure to hibernate, or after a
     /// successful hibernation has resumed.
-    fn suspend_system(
-        &mut self,
-        hibermeta_mount: ActiveMount,
-    ) -> Result<()> {
+    fn suspend_system(&mut self) -> Result<()> {
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
+        let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
         let log_file = LogFile::new(HibernateStage::Suspend, true, &hibermeta_mount)?;
 
         // Push all non-file backed reclaimable memory to zram.
