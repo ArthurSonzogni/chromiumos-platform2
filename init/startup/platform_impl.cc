@@ -38,6 +38,8 @@ constexpr char kProcFilesystems[] = "proc/filesystems";
 
 const size_t kMaxReadSize = 4 * 1024;
 
+const int kNoResumeFromHibernatePending = 0x23;
+
 }  // namespace
 
 namespace startup {
@@ -216,7 +218,8 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
     PLOG(ERROR) << "Failed to run hiberman";
     return false;
   }
-  LOG(WARNING) << "hiberman returned non zero exit code: " << ret;
+  if (ret != kNoResumeFromHibernatePending)
+    LOG(WARNING) << "hiberman returned non zero exit code: " << ret;
   return false;
 }
 
