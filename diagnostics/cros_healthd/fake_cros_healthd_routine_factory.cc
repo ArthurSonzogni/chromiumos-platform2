@@ -208,12 +208,6 @@ void FakeCrosHealthdRoutineFactory::SetNonInteractiveStatus(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeUrandomRoutine(
-    mojom::NullableUint32Ptr length_seconds) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeBatteryCapacityRoutine() {
   return std::move(next_routine_);
 }

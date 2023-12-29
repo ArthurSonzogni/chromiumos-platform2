@@ -25,8 +25,6 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   ~CrosHealthdRoutineFactoryImpl() override;
 
   // CrosHealthdRoutineFactory overrides:
-  std::unique_ptr<DiagnosticRoutine> MakeUrandomRoutine(
-      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryCapacityRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryHealthRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine(

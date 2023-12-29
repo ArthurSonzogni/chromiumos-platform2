@@ -26,7 +26,6 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/cros_healthd/routines/network/captive_portal.h"
 #include "diagnostics/cros_healthd/routines/network/dns_latency.h"
 #include "diagnostics/cros_healthd/routines/network/dns_resolution.h"
@@ -56,15 +55,6 @@ CrosHealthdRoutineFactoryImpl::CrosHealthdRoutineFactoryImpl(Context* context)
 }
 
 CrosHealthdRoutineFactoryImpl::~CrosHealthdRoutineFactoryImpl() = default;
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeUrandomRoutine(
-    ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
-  return CreateUrandomRoutine(length_seconds.is_null()
-                                  ? std::nullopt
-                                  : std::optional<base::TimeDelta>(
-                                        base::Seconds(length_seconds->value)));
-}
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBatteryCapacityRoutine() {

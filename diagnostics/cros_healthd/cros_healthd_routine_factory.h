@@ -26,11 +26,6 @@ class CrosHealthdRoutineFactory {
  public:
   virtual ~CrosHealthdRoutineFactory() = default;
 
-  // Constructs a new instance of the urandom routine. See
-  // diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h for details on
-  // the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeUrandomRoutine(
-      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) = 0;
   // Constructs a new instance of the battery capacity routine. See
   // diagnostics/cros_healthd/routines/battery_and_power/battery_capacity.h for
   // details on the routine itself.

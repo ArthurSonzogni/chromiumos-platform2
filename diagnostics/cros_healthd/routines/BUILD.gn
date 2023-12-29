@@ -12,12 +12,6 @@ pkg_config("common_pkg_deps") {
   ]
 }
 
-executable("urandom") {
-  sources = [ "memory_and_cpu/urandom_main.cc" ]
-  configs += [ ":common_pkg_deps" ]
-  install_path = "/usr/libexec/diagnostics"
-}
-
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [
     "iioservice_ipc",
@@ -75,7 +69,6 @@ source_set("libdiag_routine") {
     "memory_and_cpu/floating_point_v2.cc",
     "memory_and_cpu/memory.cc",
     "memory_and_cpu/prime_search.cc",
-    "memory_and_cpu/urandom.cc",
     "memory_and_cpu/urandom_v2.cc",
     "network/captive_portal.cc",
     "network/dns_latency.cc",
