@@ -31,6 +31,7 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
 
   // TpmState methods.
   TPM_RC Initialize() override;
+  TPM_RC Refresh() override;
   bool IsOwnerPasswordSet() override;
   bool IsEndorsementPasswordSet() override;
   bool IsLockoutPasswordSet() override;

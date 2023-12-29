@@ -173,6 +173,16 @@ class FuzzedTpmState : public trunks::TpmStateImpl {
     return trunks::TPM_RC_SUCCESS;
   }
 
+  trunks::TPM_RC Refresh() override {
+    if (!use_real_.has_value()) {
+      use_real_ = data_provider_.ConsumeBool();
+    }
+    if (*use_real_) {
+      return trunks::TpmStateImpl::Refresh();
+    }
+    return trunks::TPM_RC_SUCCESS;
+  }
+
 #define FUZZED_COMMAND(type, command)            \
   type command() override {                      \
     CHECK(use_real_.has_value());                \

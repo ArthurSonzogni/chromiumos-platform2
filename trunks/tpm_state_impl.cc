@@ -33,6 +33,10 @@ namespace trunks {
 TpmStateImpl::TpmStateImpl(const TrunksFactory& factory) : factory_(factory) {}
 
 TPM_RC TpmStateImpl::Initialize() {
+  return Refresh();
+}
+
+TPM_RC TpmStateImpl::Refresh() {
   TPM_RC result = CacheTpmProperties();
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to query TPM properties: " << GetErrorString(result);

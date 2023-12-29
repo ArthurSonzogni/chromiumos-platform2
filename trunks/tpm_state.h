@@ -26,6 +26,9 @@ class TRUNKS_EXPORT TpmState {
   // state information.
   virtual TPM_RC Initialize() = 0;
 
+  // It may be called multiple times to refresh the state information.
+  virtual TPM_RC Refresh() = 0;
+
   // Returns true iff TPMA_PERMANENT:ownerAuthSet is set.
   virtual bool IsOwnerPasswordSet() = 0;
 

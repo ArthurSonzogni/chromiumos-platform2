@@ -41,6 +41,8 @@ class TpmStateForwarder : public TpmState {
 
   TPM_RC Initialize() override { return target_->Initialize(); }
 
+  TPM_RC Refresh() override { return target_->Refresh(); }
+
   bool IsOwnerPasswordSet() override { return target_->IsOwnerPasswordSet(); }
 
   bool IsEndorsementPasswordSet() override {

@@ -19,6 +19,7 @@ class MockTpmState : public TpmState {
   ~MockTpmState() override;
 
   MOCK_METHOD0(Initialize, TPM_RC());
+  MOCK_METHOD0(Refresh, TPM_RC());
   MOCK_METHOD0(IsOwnerPasswordSet, bool());
   MOCK_METHOD0(IsEndorsementPasswordSet, bool());
   MOCK_METHOD0(IsLockoutPasswordSet, bool());
