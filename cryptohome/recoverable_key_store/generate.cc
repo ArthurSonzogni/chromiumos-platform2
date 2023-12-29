@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/sys_byteorder.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -89,6 +90,7 @@ std::optional<RecoverableKeyStoreMetadata> GenerateRecoverableKeyStoreMetadata(
   metadata.set_hash_type(knowledge_factor.algorithm);
   metadata.set_hash_salt(brillo::BlobToString(knowledge_factor.salt));
   metadata.set_cert_list_version(cert.version);
+  metadata.set_timestamp(base::Time::Now().ToTimeT());
   return metadata;
 }
 

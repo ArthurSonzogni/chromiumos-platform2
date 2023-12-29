@@ -100,6 +100,9 @@ message RecoverableKeyStoreMetadata {
   // The version of certificate list used to pick the endpoint certificate
   // from.
   uint64 cert_list_version = 5;
+
+  // The Unix timestamp of the key store generation.
+  uint64 timestamp = 6;
 }
 
 // The recoverable key store that contains all the data required for another
