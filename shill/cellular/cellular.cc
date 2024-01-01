@@ -449,6 +449,15 @@ bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 }
 
 void Cellular::BringNetworkInterfaceDown() {
+  // The IPA network interface in a Qualcomm SoC should never be brought down
+  // by shill, because the modem processor may get in a bad state if we power
+  // up radio quickly after having brought down the interface (see b/305930007,
+  // and b/302714371).
+  if (IsQ6V5Modem()) {
+    SLOG(2) << LoggingTag() << ": skipping IPA net interface down.";
+    return;
+  }
+
   // The physical network interface always exists, unconditionally, so it can
   // be brought down safely regardless of whether a Network exists or not.
   // There is no need to bring down explicitly any additional multiplexed
