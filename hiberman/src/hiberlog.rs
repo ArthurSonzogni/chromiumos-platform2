@@ -193,7 +193,7 @@ impl Hiberlog {
     /// Write any ending lines to the file.
     fn flush_to_file(&mut self) {
         if let HiberlogOut::File(f) = &mut self.out {
-            flush_to_backend(&self.pending, |s| {
+            map_log_entries(&self.pending, |s| {
                 f.write_all(s.as_bytes()).unwrap();
                 f.write_all(&[b'\n']).unwrap();
             });
@@ -206,7 +206,7 @@ impl Hiberlog {
 
     /// Push any pending lines to the syslog.
     fn flush_to_syslog(&mut self) {
-        flush_to_backend(&self.pending, |s| {
+        map_log_entries(&self.pending, |s| {
             replay_line(&self.syslogger, "M", s.to_string());
         });
 
@@ -223,24 +223,13 @@ impl Hiberlog {
     }
 }
 
-fn flush_to_backend<F>(line_data: &Vec<Vec<u8>>, mut write_func: F)
+fn map_log_entries<F>(entries: &[Vec<u8>], mut f: F)
 where
     F: FnMut(&str),
 {
-    for line_vec in line_data {
-        let mut len = line_vec.len();
-        if len == 0 {
-            continue;
-        }
-
-        len -= 1;
-        let s = match str::from_utf8(&line_vec[0..len]) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-
-        write_func(s);
-    }
+    entries.iter().map(|v| {
+        str::from_utf8(v.as_slice()).unwrap_or_default()
+    } ).filter(|e| !e.is_empty()).for_each(|e| f(e));
 }
 
 /// Struct with associated functions for creating and opening hibernate
