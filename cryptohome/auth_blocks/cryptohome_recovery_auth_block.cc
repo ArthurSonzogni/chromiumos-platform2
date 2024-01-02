@@ -168,12 +168,26 @@ void CryptohomeRecoveryAuthBlock::Create(
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
   account_id.set_email(*auth_input.username);
-  if (!recovery->GenerateFreshRecoveryId(account_id)) {
+  if (cryptohome_recovery_auth_input.ensure_fresh_recovery_id &&
+      !recovery->GenerateFreshRecoveryId(account_id)) {
     LOG(ERROR) << "Unable to generate a new recovery_id";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocCryptohomeRecoveryAuthBlockNoRecoveryIdInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
+  }
+  if (!cryptohome_recovery_auth_input.ensure_fresh_recovery_id &&
+      !recovery->EnsureRecoveryIdPresent(account_id)) {
+    LOG(ERROR) << "Unable to ensure recovery_id is present";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocCryptohomeRecoveryAuthBlockNoPresentRecoveryIdInCreate),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                             PossibleAction::kReboot}),
             CryptoError::CE_OTHER_CRYPTO),

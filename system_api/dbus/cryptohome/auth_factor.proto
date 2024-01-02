@@ -88,6 +88,8 @@ message CryptohomeRecoveryAuthInput {
   string user_gaia_id = 2;
   // Unique id of the user's vault on the device.
   string device_user_id = 3;
+  // Whether the recovery id should be rotated.
+  optional bool ensure_fresh_recovery_id = 7;
 
   // These fields are used for `AuthenticateAuthFactor`:
   // Serialized cryptohome.cryptorecovery.CryptoRecoveryEpochResponse.

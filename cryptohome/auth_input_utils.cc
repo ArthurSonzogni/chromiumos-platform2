@@ -58,6 +58,14 @@ AuthInput FromCryptohomeRecoveryAuthInput(
       .ledger_public_key =
           brillo::BlobFromString(proto.ledger_info().public_key()),
   };
+  if (proto.has_ensure_fresh_recovery_id()) {
+    recovery_auth_input.ensure_fresh_recovery_id =
+        proto.ensure_fresh_recovery_id();
+  } else {
+    recovery_auth_input.ensure_fresh_recovery_id = true;
+    LOG(WARNING) << "ensure_fresh_recovery_id in AuthInput is not specified. "
+                    "The default value is true";
+  }
 
   return AuthInput{.cryptohome_recovery_auth_input = recovery_auth_input};
 }

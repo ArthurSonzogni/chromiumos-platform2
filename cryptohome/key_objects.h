@@ -20,13 +20,17 @@
 namespace cryptohome {
 
 // Data required for Cryptohome Recovery flow.
-// For creation of the recovery key, `mediator_pub_key` field should be set.
-// For derivation of the recovery key, `epoch_pub_key`, `ephemeral_pub_key`,
-// `recovery_response`, `ledger_name`, `ledger_key_hash`, `ledger_public_key`
-// fields should be set.
+// - For creation of the recovery key, `mediator_pub_key` and
+// `ensure_fresh_recovery_id` fields should be set.
+// - For derivation of the recovery key, `epoch_pub_key`,
+//   `ephemeral_pub_key`, `recovery_response`, `ledger_name`, `ledger_key_hash`,
+//   `ledger_public_key` fields should be set.
 struct CryptohomeRecoveryAuthInput {
   // Public key of the mediator for Cryptohome recovery flow.
   std::optional<brillo::Blob> mediator_pub_key;
+  // Whether the recovery id should be rotated.
+  bool ensure_fresh_recovery_id = true;
+
   // GaiaId of the owner of cryptohome to be recovered.
   std::string user_gaia_id;
   // Unique identifier generated on cryptohome creation.

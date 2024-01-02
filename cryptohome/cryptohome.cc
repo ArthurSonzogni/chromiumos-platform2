@@ -354,6 +354,7 @@ constexpr char kPinSwitch[] = "pin";
 constexpr char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
 constexpr char kRecoveryUserIdSwitch[] = "recovery_user_gaia_id";
 constexpr char kRecoveryDeviceIdSwitch[] = "recovery_device_user_id";
+constexpr char kEnsureFreshRecoveryIdSwitch[] = "ensure_fresh_recovery_id";
 constexpr char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
 constexpr char kRecoveryResponseSwitch[] = "recovery_response";
 constexpr char kRecoveryLedgerNameSwitch[] = "recovery_ledger_name";
@@ -743,6 +744,9 @@ bool BuildAuthInput(Printer& printer,
       auth_input->mutable_cryptohome_recovery_input()->set_device_user_id(
           device_user_id);
     }
+    auth_input->mutable_cryptohome_recovery_input()
+        ->set_ensure_fresh_recovery_id(
+            cl->HasSwitch(switches::kEnsureFreshRecoveryIdSwitch));
     return true;
   } else if (cl->HasSwitch(switches::kRecoveryResponseSwitch)) {
     std::string recovery_response_hex =
