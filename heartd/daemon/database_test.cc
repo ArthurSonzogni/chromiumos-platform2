@@ -85,6 +85,22 @@ TEST_F(DatabaseTest, InsertBootRecordVerifyTimeFilter) {
   VerifyEqualBootRecord(boot_record2, boot_records[0]);
 }
 
+TEST_F(DatabaseTest, RemoveOutdatedData) {
+  Init();
+  BootRecord boot_record1{"id_expired", base::Time().Now()};
+  db_->InsertBootRecord(boot_record1);
+
+  task_environment_.FastForwardBy(base::Days(31));
+  BootRecord boot_record2{"id_valid", base::Time().Now()};
+  db_->InsertBootRecord(boot_record2);
+  db_->RemoveOutdatedData(kBootRecordTable);
+
+  auto boot_records =
+      db_->GetBootRecordFromTime(base::Time().Now() - base::Days(90));
+  EXPECT_EQ(boot_records.size(), 1);
+  VerifyEqualBootRecord(boot_record2, boot_records[0]);
+}
+
 }  // namespace
 
 }  // namespace heartd

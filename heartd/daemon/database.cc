@@ -125,6 +125,23 @@ bool Database::TableExists(const std::string& table_name) const {
   return true;
 }
 
+void Database::RemoveOutdatedData(const std::string& table_name) const {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to modify table of a closed database";
+    return;
+  }
+
+  auto time_before_30_days = base::Time().Now() - base::Days(30);
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM %s WHERE time < %" PRId64, table_name.c_str(),
+      time_before_30_days.InMillisecondsSinceUnixEpoch());
+  ExecResult result = ExecSQL(sql);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to delete outdated data: " << result.msg;
+  }
+}
+
 void Database::InsertBootRecord(const BootRecord& boot_record) const {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to modify table of a closed database";

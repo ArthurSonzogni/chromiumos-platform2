@@ -28,6 +28,7 @@ class Database {
   void Init() const;
   bool IsOpen() const;
   bool TableExists(const std::string& table_name) const;
+  void RemoveOutdatedData(const std::string& table_name) const;
 
   // Boot metrics related methods.
   void InsertBootRecord(const BootRecord& boot_record) const;

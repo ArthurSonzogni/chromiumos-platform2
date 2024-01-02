@@ -34,6 +34,7 @@ HeartdDaemon::~HeartdDaemon() = default;
 
 int HeartdDaemon::OnEventLoopStarted() {
   RecordBootMetrics(base::FilePath("/"), database_.get());
+  database_->RemoveOutdatedData(kBootRecordTable);
 
   return EX_OK;
 }
