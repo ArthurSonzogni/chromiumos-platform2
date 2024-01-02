@@ -31,6 +31,7 @@
 #include "ml/grammar_library.h"
 #include "ml/handwriting.h"
 #include "ml/handwriting_recognizer_impl.h"
+#include "ml/heatmap_processor.h"
 #include "ml_core/dlc/dlc_client.h"
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
 #include "ml/image_content_annotation.h"
@@ -38,6 +39,7 @@
 #include "ml/image_content_annotation_impl.h"
 #include "ml/model_impl.h"
 #include "ml/mojom/handwriting_recognizer.mojom.h"
+#include "ml/mojom/heatmap_palm_rejection.mojom.h"
 #include "ml/mojom/image_content_annotation.mojom.h"
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/soda.mojom.h"
@@ -63,6 +65,7 @@ using ::chromeos::machine_learning::mojom::HandwritingRecognizer;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizerSpec;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr;
 using ::chromeos::machine_learning::mojom::LoadHandwritingModelResult;
+using ::chromeos::machine_learning::mojom::LoadHeatmapPalmRejectionResult;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::MachineLearningService;
 using ::chromeos::machine_learning::mojom::Model;
@@ -902,6 +905,35 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
     return;
   }
   ml_core_dlc_client_->InstallDlc();
+}
+
+void MachineLearningServiceImpl::LoadHeatmapPalmRejection(
+    chromeos::machine_learning::mojom::HeatmapPalmRejectionConfigPtr config,
+    mojo::PendingRemote<
+        chromeos::machine_learning::mojom::HeatmapPalmRejectionClient> client,
+    LoadHeatmapPalmRejectionCallback callback) {
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "HeatmapModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadHeatmapPalmRejection(std::move(config), std::move(client),
+                                   std::move(callback));
+    return;
+  }
+  // From here below is the worker process.
+
+  auto* const processor = ml::HeatmapProcessor::GetInstance();
+  auto result = processor->Start(std::move(client), std::move(config));
+  std::move(callback).Run(result);
 }
 
 void MachineLearningServiceImpl::InternalLoadImageAnnotator(

@@ -111,6 +111,11 @@ class MachineLearningServiceImpl
       mojo::PendingReceiver<
           ::chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
       LoadImageAnnotatorCallback callback) override;
+  void LoadHeatmapPalmRejection(
+      chromeos::machine_learning::mojom::HeatmapPalmRejectionConfigPtr config,
+      mojo::PendingRemote<
+          chromeos::machine_learning::mojom::HeatmapPalmRejectionClient> client,
+      LoadHeatmapPalmRejectionCallback callback) override;
 
   void InternalLoadImageAnnotator(
       chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
