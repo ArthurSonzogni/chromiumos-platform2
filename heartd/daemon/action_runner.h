@@ -17,6 +17,8 @@ class ActionRunner {
   ActionRunner& operator=(const ActionRunner&) = delete;
   ~ActionRunner();
 
+  void SetupSysrq(int sysrq_fd);
+
   // Run the |action| for service |name|.
   void Run(ash::heartd::mojom::ServiceName name,
            ash::heartd::mojom::ActionType action);
@@ -41,6 +43,8 @@ class ActionRunner {
   bool allow_normal_reboot_ = false;
   // Allows to force reboot or not.
   bool allow_force_reboot_ = false;
+  // /proc/sysrq-trigger fd.
+  int sysrq_fd_ = -1;
 };
 
 }  // namespace heartd

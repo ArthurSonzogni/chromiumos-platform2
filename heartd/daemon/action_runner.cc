@@ -23,7 +23,15 @@ ActionRunner::ActionRunner(DbusConnector* dbus_connector)
   CHECK(dbus_connector_) << "DbusConnector object is nullptr.";
 }
 
-ActionRunner::~ActionRunner() = default;
+ActionRunner::~ActionRunner() {
+  if (sysrq_fd_ != -1) {
+    close(sysrq_fd_);
+  }
+}
+
+void ActionRunner::SetupSysrq(int sysrq_fd) {
+  sysrq_fd_ = sysrq_fd;
+}
 
 void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
   switch (action) {
@@ -51,6 +59,14 @@ void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
       if (!allow_force_reboot_) {
         LOG(WARNING) << "Heartd is not allowed to force reboot the device.";
         break;
+      }
+      if (sysrq_fd_ == -1) {
+        LOG(ERROR) << "Heartd failed to open /proc/sysrq-trigger";
+        break;
+      }
+
+      if (!write(sysrq_fd_, "c", 1)) {
+        LOG(ERROR) << "Heartd failed to force reboot the device";
       }
       break;
   }

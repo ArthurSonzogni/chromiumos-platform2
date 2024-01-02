@@ -20,7 +20,7 @@ namespace heartd {
 
 class HeartdDaemon final : public brillo::Daemon {
  public:
-  HeartdDaemon();
+  explicit HeartdDaemon(int sysrq_fd);
   HeartdDaemon(const HeartdDaemon&) = delete;
   HeartdDaemon& operator=(const HeartdDaemon&) = delete;
   ~HeartdDaemon() override;

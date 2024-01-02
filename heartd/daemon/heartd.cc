@@ -12,7 +12,7 @@
 
 namespace heartd {
 
-HeartdDaemon::HeartdDaemon() {
+HeartdDaemon::HeartdDaemon(int sysrq_fd) {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
@@ -21,6 +21,8 @@ HeartdDaemon::HeartdDaemon() {
   heartbeat_manager_ = std::make_unique<HeartbeatManager>();
   mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
                                                       action_runner_.get());
+
+  action_runner_->SetupSysrq(sysrq_fd);
 }
 
 HeartdDaemon::~HeartdDaemon() = default;
