@@ -75,4 +75,44 @@ void HeartbeatTracker::SetupArgument(
   actions_ = std::move(argument->actions);
 }
 
+uint8_t HeartbeatTracker::GetFailureCount() {
+  return failure_count_;
+}
+
+bool HeartbeatTracker::VerifyTimeGap(const base::Time& current_time) {
+  auto gap = current_time - last_touch_time_;
+  // The `verification_window_` is always larger than the heartbeat frequency,
+  // so it's likely that we think client is alive while the mojo connection has
+  // dropped. It's not a big problem because the `failure_count_` will always
+  // increase in later verification. However, checking the mojo connection helps
+  // to catch the issue earlier, it's a nice to have.
+  if (gap > verification_window_ || !IsPacemakerBound()) {
+    ++failure_count_;
+    LOG(INFO) << "Service [" << ToStr(name_) << "] failure count increase: "
+              << static_cast<int>(failure_count_);
+    return false;
+  }
+
+  failure_count_ = 0;
+  return true;
+}
+
+std::vector<mojom::ActionType> HeartbeatTracker::GetFailureCountAction() {
+  std::vector<mojom::ActionType> result;
+  for (const auto& action : actions_) {
+    if (failure_count_ == action->failure_count) {
+      result.push_back(action->action);
+    } else if (failure_count_ > action->failure_count &&
+               (action->action == mojom::ActionType::kNormalReboot ||
+                action->action == mojom::ActionType::kForceReboot)) {
+      // It's possible that the reboot action is skipped due to the threshold
+      // setting. So even if the failure count is not exactly the same as the
+      // configuration, we should still report the action if it's reboot action.
+      result.push_back(action->action);
+    }
+  }
+
+  return result;
+}
+
 }  // namespace heartd

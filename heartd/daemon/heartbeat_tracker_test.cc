@@ -32,6 +32,15 @@ class HeartbeatTrackerTest : public testing::Test {
   }
   ~HeartbeatTrackerTest() override = default;
 
+  void SendHeartbeatSync() {
+    base::test::TestFuture<void> test_future;
+    pacemaker_->SendHeartbeat(test_future.GetCallback());
+    if (!test_future.Wait()) {
+      NOTREACHED_NORETURN();
+    }
+    return;
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -42,6 +51,7 @@ class HeartbeatTrackerTest : public testing::Test {
 TEST_F(HeartbeatTrackerTest, DefaultValueAfterCreation) {
   EXPECT_TRUE(heartbeat_tracker_->IsPacemakerBound());
   EXPECT_FALSE(heartbeat_tracker_->IsStopMonitor());
+  EXPECT_EQ(heartbeat_tracker_->GetFailureCount(), 0);
 }
 
 TEST_F(HeartbeatTrackerTest, PacemakerStopMonitor) {
@@ -70,6 +80,83 @@ TEST_F(HeartbeatTrackerTest, RebindPacemaker) {
 
   heartbeat_tracker_->RebindPacemaker(pacemaker_.BindNewPipeAndPassReceiver());
   EXPECT_TRUE(heartbeat_tracker_->IsPacemakerBound());
+}
+
+TEST_F(HeartbeatTrackerTest, VerifyTimeGap) {
+  SendHeartbeatSync();
+  task_environment_.FastForwardBy(base::Seconds(10));
+  EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+
+  // Without sending heartbeat and move on kMinVerificationWindow seconds.
+  task_environment_.FastForwardBy(kMinVerificationWindow);
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+}
+
+TEST_F(HeartbeatTrackerTest, SetVerificationWindowArgument) {
+  auto argument = mojom::HeartbeatServiceArgument::New();
+  auto verification_window_seconds = kMinVerificationWindow.InSeconds() + 10;
+  argument->verification_window_seconds = verification_window_seconds;
+
+  heartbeat_tracker_->SetupArgument(std::move(argument));
+  SendHeartbeatSync();
+  task_environment_.FastForwardBy(base::Seconds(verification_window_seconds));
+  EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+}
+
+TEST_F(HeartbeatTrackerTest, SetFailureCountActionArgument) {
+  auto action_noop = mojom::Action::New(
+      /*failure_count = */ 2, mojom::ActionType::kNoOperation);
+  auto action_reboot = mojom::Action::New(
+      /*failure_count = */ 3, mojom::ActionType::kNormalReboot);
+
+  auto argument = mojom::HeartbeatServiceArgument::New();
+  argument->actions.push_back(action_noop->Clone());
+  argument->actions.push_back(std::move(action_noop));
+  argument->actions.push_back(std::move(action_reboot));
+
+  heartbeat_tracker_->SetupArgument(std::move(argument));
+  SendHeartbeatSync();
+  task_environment_.FastForwardBy(kMinVerificationWindow + base::Seconds(1));
+
+  // VerifyTimeGap increases the failure count to 1.
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  auto actions = heartbeat_tracker_->GetFailureCountAction();
+  std::vector<mojom::ActionType> expected_actions;
+  EXPECT_EQ(actions, expected_actions);
+
+  // VerifyTimeGap increases the failure count to 2.
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  actions = heartbeat_tracker_->GetFailureCountAction();
+  expected_actions = {mojom::ActionType::kNoOperation,
+                      mojom::ActionType::kNoOperation};
+  EXPECT_EQ(actions, expected_actions);
+
+  // VerifyTimeGap increases the failure count to 3.
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  actions = heartbeat_tracker_->GetFailureCountAction();
+  expected_actions = {mojom::ActionType::kNormalReboot};
+  EXPECT_EQ(actions, expected_actions);
+
+  // VerifyTimeGap increases the failure count to 4.
+  // We should still get the reboot action.
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  actions = heartbeat_tracker_->GetFailureCountAction();
+  expected_actions = {mojom::ActionType::kNormalReboot};
+  EXPECT_EQ(actions, expected_actions);
+}
+
+TEST_F(HeartbeatTrackerTest, ResetFailureCount) {
+  SendHeartbeatSync();
+  task_environment_.FastForwardBy(kMinVerificationWindow + base::Seconds(1));
+  EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  EXPECT_EQ(static_cast<int>(heartbeat_tracker_->GetFailureCount()), 1);
+
+  SendHeartbeatSync();
+  EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
+  EXPECT_EQ(static_cast<int>(heartbeat_tracker_->GetFailureCount()), 0);
 }
 
 }  // namespace

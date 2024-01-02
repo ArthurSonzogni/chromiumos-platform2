@@ -6,11 +6,13 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/notreached.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
+#include "heartd/daemon/action_runner.h"
 #include "heartd/daemon/heartbeat_tracker.h"
 #include "heartd/daemon/utils/mojo_output.h"
 #include "heartd/mojom/heartd.mojom.h"
@@ -23,7 +25,8 @@ namespace mojom = ::ash::heartd::mojom;
 
 }  // namespace
 
-HeartbeatManager::HeartbeatManager() = default;
+HeartbeatManager::HeartbeatManager(ActionRunner* action_runner)
+    : action_runner_(action_runner) {}
 
 HeartbeatManager::~HeartbeatManager() = default;
 
@@ -55,6 +58,53 @@ void HeartbeatManager::EstablishHeartbeatTracker(
   }
 
   heartbeat_trackers_[name]->SetupArgument(std::move(argument));
+  StartVerifier();
+}
+
+void HeartbeatManager::RemoveUnusedHeartbeatTrackers() {
+  std::vector<mojom::ServiceName> stop_trackers;
+  for (const auto& [name, heartbeat_tracker] : heartbeat_trackers_) {
+    if (heartbeat_tracker->IsStopMonitor()) {
+      stop_trackers.push_back(name);
+    }
+  }
+
+  for (const auto& name : stop_trackers) {
+    heartbeat_trackers_.erase(name);
+  }
+}
+
+void HeartbeatManager::VerifyHeartbeatAndTakeAction() {
+  RemoveUnusedHeartbeatTrackers();
+  if (heartbeat_trackers_.empty()) {
+    verifier_timer_.Stop();
+    LOG(INFO) << "No heartbeat trackers, stop verifier.";
+    return;
+  }
+
+  auto current_time = base::Time().Now();
+  for (const auto& [name, heartbeat_tracker] : heartbeat_trackers_) {
+    if (heartbeat_tracker->VerifyTimeGap(current_time)) {
+      continue;
+    }
+
+    auto actions = heartbeat_tracker->GetFailureCountAction();
+    for (const auto& action : actions) {
+      action_runner_->Run(name, action);
+    }
+  }
+}
+
+void HeartbeatManager::StartVerifier() {
+  if (verifier_timer_.IsRunning()) {
+    return;
+  }
+
+  LOG(INFO) << "Heartd start periodic verifier.";
+  verifier_timer_.Start(
+      FROM_HERE, kVerificationPeriod,
+      base::BindRepeating(&HeartbeatManager::VerifyHeartbeatAndTakeAction,
+                          base::Unretained(this)));
 }
 
 }  // namespace heartd

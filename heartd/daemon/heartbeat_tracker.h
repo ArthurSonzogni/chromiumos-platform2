@@ -46,6 +46,17 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   // Set up the service argument.
   void SetupArgument(ash::heartd::mojom::HeartbeatServiceArgumentPtr argument);
 
+  // Returns the number of heartbeat verification failure. It'll be reset to
+  // zero every time when receiving a heartbeat.
+  uint8_t GetFailureCount();
+
+  // Verifies if the time gap between the |current_time| and the
+  // |last_touch_time_| is within the |verification_window_|.
+  bool VerifyTimeGap(const base::Time& current_time);
+
+  // Returns the actions that need to be taken at current |failure_count_|.
+  std::vector<ash::heartd::mojom::ActionType> GetFailureCountAction();
+
  private:
   // Handler when pacemaker mojo disconnects.
   void OnPacemakerDisconnect();
@@ -58,6 +69,8 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   // Once this is set to true, the whole HeartbeatTracker instance will be
   // cleaned up by HeartbeatManager.
   bool stop_monitor_ = false;
+  // Number of consecutive heartbeat verification failure.
+  uint8_t failure_count_ = 0;
   // The time when receiving the last heartbeat.
   base::Time last_touch_time_;
   // For every verification, we check if there is at least one heartbeat in the

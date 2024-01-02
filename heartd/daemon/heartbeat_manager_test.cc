@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/notreached.h>
 #include <base/test/task_environment.h>
@@ -15,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "heartd/daemon/test_utils/mock_dbus_connector.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
@@ -29,13 +31,16 @@ using ::testing::Exactly;
 class HeartbeatManagerTest : public testing::Test {
  public:
   HeartbeatManagerTest() {
-    heartbeat_manager_ = std::make_unique<HeartbeatManager>();
+    heartbeat_manager_ = std::make_unique<HeartbeatManager>(&action_runner_);
   }
   ~HeartbeatManagerTest() override = default;
 
   void EstablishHeartbeatTracker() {
+    auto action_reboot = mojom::Action::New(
+        /*failure_count = */ 2, mojom::ActionType::kNormalReboot);
     auto argument = mojom::HeartbeatServiceArgument::New();
 
+    argument->actions.push_back(std::move(action_reboot));
     heartbeat_manager_->EstablishHeartbeatTracker(
         mojom::ServiceName::kKiosk, pacemaker_.BindNewPipeAndPassReceiver(),
         std::move(argument));
@@ -54,6 +59,8 @@ class HeartbeatManagerTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   mojo::Remote<mojom::Pacemaker> pacemaker_;
+  MockDbusConnector mock_dbus_connector_;
+  ActionRunner action_runner_{&mock_dbus_connector_};
   std::unique_ptr<HeartbeatManager> heartbeat_manager_ = nullptr;
 };
 
@@ -78,6 +85,42 @@ TEST_F(HeartbeatManagerTest, RebindPacemaker) {
   EstablishHeartbeatTracker();
 
   EXPECT_TRUE(heartbeat_manager_->IsPacemakerBound(mojom::ServiceName::kKiosk));
+}
+
+TEST_F(HeartbeatManagerTest, RemoveUnusedHeartbeatTrackers) {
+  EstablishHeartbeatTracker();
+
+  base::test::TestFuture<void> test_future;
+  pacemaker_->StopMonitor(test_future.GetCallback());
+  if (!test_future.Wait()) {
+    NOTREACHED_NORETURN();
+  }
+
+  task_environment_.FastForwardBy(kVerificationPeriod);
+  task_environment_.RunUntilIdle();
+  EXPECT_FALSE(
+      heartbeat_manager_->IsPacemakerBound(mojom::ServiceName::kKiosk));
+}
+
+TEST_F(HeartbeatManagerTest, TakeRebootAction) {
+  action_runner_.EnableNormalRebootAction();
+  EstablishHeartbeatTracker();
+  EXPECT_CALL(*mock_dbus_connector_.power_manager_proxy(),
+              RequestRestartAsync(_, _, _, _, _))
+      .Times(Exactly(1));
+
+  task_environment_.FastForwardBy(kVerificationPeriod * 3);
+  task_environment_.RunUntilIdle();
+}
+
+TEST_F(HeartbeatManagerTest, NotEnableRebootAction) {
+  EstablishHeartbeatTracker();
+  EXPECT_CALL(*mock_dbus_connector_.power_manager_proxy(),
+              RequestRestartAsync(_, _, _, _, _))
+      .Times(Exactly(0));
+
+  task_environment_.FastForwardBy(kVerificationPeriod * 3);
+  task_environment_.RunUntilIdle();
 }
 
 }  // namespace
