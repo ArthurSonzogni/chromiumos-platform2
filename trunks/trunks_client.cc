@@ -79,8 +79,6 @@ void PrintUsage() {
   puts("TPM command options:");
   puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
-  puts("  --csme_test_pcr --index=<INDEX>.");
-  puts("  --csme_read_pcr --index=<INDEX>.");
   puts("  --help - Prints this message.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
@@ -557,77 +555,6 @@ int KeyTestShortEcc(const TrunksFactory& factory, uint32_t handle) {
   }
 
   printf("SUCCESS\n");
-  return 0;
-}
-
-int CsmeTestPcr(const TrunksFactory& factory, int index) {
-  const std::set kPcrsInUse = {0, 1, 2, 3, 4};
-  if (kPcrsInUse.count(index) > 0) {
-    LOG(ERROR) << "PCR Index " << index
-               << " is in use for Chrome OS, disallowed for testing.";
-    return -1;
-  }
-  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
-  std::string tpm_pcr_value, csme_pcr_value;
-  trunks::TPM_RC rc = tpm_utility->ReadPCR(index, &tpm_pcr_value);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to read TPM PRC value before extension.";
-    return -1;
-  }
-  rc = tpm_utility->ReadPCRFromCSME(index, &csme_pcr_value);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to read CSME PRC value before extension.";
-    return -1;
-  }
-  printf("TPM  PCR value: %s\n", HexEncode(tpm_pcr_value).c_str());
-  printf("CSME PCR value: %s\n", HexEncode(csme_pcr_value).c_str());
-  if (tpm_pcr_value != csme_pcr_value) {
-    LOG(ERROR) << "PCR value mismatch before extension.";
-    return -1;
-  }
-
-  constexpr static char kTestExtension[] = "test extension";
-  rc = tpm_utility->ExtendPCR(index, kTestExtension, nullptr);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to extend PCR for TPM.";
-    return -1;
-  }
-  rc = tpm_utility->ExtendPCRForCSME(index, kTestExtension);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to extend PCR for CSME.";
-    return -1;
-  }
-
-  rc = tpm_utility->ReadPCR(index, &tpm_pcr_value);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to read TPM PRC value after extension.";
-    return -1;
-  }
-  rc = tpm_utility->ReadPCRFromCSME(index, &csme_pcr_value);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to read CSME PRC value after extension.";
-    return -1;
-  }
-  printf("TPM  PCR value: %s\n", HexEncode(tpm_pcr_value).c_str());
-  printf("CSME PCR value: %s\n", HexEncode(csme_pcr_value).c_str());
-  if (tpm_pcr_value != csme_pcr_value) {
-    LOG(ERROR) << "PCR value mismatch after extension.";
-    return -1;
-  }
-
-  printf("SUCCESS\n");
-  return 0;
-}
-
-int CsmeReadPcr(const TrunksFactory& factory, int index) {
-  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
-  std::string csme_pcr_value;
-  trunks::TPM_RC rc = tpm_utility->ReadPCRFromCSME(index, &csme_pcr_value);
-  if (rc != trunks::TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Failed to read CSME PCR: " << trunks::GetErrorString(rc);
-    return -1;
-  }
-  printf("CSME PCR value: %s\n", HexEncode(csme_pcr_value).c_str());
   return 0;
 }
 
@@ -1365,14 +1292,6 @@ int main(int argc, char** argv) {
     uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
     return KeyTestShortEcc(factory, handle);
   }
-  if (cl->HasSwitch("csme_test_pcr") && cl->HasSwitch("index")) {
-    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
-    return CsmeTestPcr(factory, index);
-  }
-  if (cl->HasSwitch("csme_read_pcr") && cl->HasSwitch("index")) {
-    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
-    return CsmeReadPcr(factory, index);
-  }
   if (cl->HasSwitch("index_name") && cl->HasSwitch("index")) {
     uint32_t nv_index =
         std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
@@ -1412,8 +1331,7 @@ int main(int argc, char** argv) {
       digests.push_back(digest);
     }
     if (digests.size() > 8) {
-      LOG(ERROR) << "Syntax error: policy_or supports "
-                 << "up to 8 digests";
+      LOG(ERROR) << "Syntax error: policy_or supports up to 8 digests";
       return -1;
     }
     for (const auto& digest : digests) {
@@ -1539,8 +1457,7 @@ int main(int argc, char** argv) {
       digests.push_back(digest);
     }
     if (digests.size() > 8) {
-      LOG(ERROR) << "Syntax error: or supports "
-                 << "up to 8 digests";
+      LOG(ERROR) << "Syntax error: or supports up to 8 digests";
       return -1;
     }
     for (const auto& digest : digests) {

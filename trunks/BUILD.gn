@@ -12,8 +12,6 @@ group("all") {
     ":install_trunksd_conf",
     ":libtrunks",
     ":pinweaver_client",
-    ":pinweaver_provision",
-    ":tpm_tunneld",
     ":trunks",
     ":trunks_client",
     ":trunks_send",
@@ -58,10 +56,7 @@ pkg_config("target_default_pkg_deps") {
 
 config("target_defaults") {
   configs = [ ":target_default_pkg_deps" ]
-  defines = [
-    "USE_GENERIC_TPM2=${use.generic_tpm2}",
-    "USE_PINWEAVER_CSME=${use.pinweaver_csme}",
-  ]
+  defines = [ "USE_GENERIC_TPM2=${use.generic_tpm2}" ]
   libs = [ "hwsec-foundation" ]
 }
 
@@ -83,32 +78,6 @@ proto_library("pinweaver_proto") {
   # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
   standalone = true
-}
-
-# The static library of pinweaver-csme.
-# Note: this is dedicatedly built for `trunks.so` to link against.
-# multiple linkages could lead ODR violation.
-source_set("pinweaver_csme_lib") {
-  sources = [
-    "csme/mei_client_char_device.cc",
-    "csme/mei_client_factory.cc",
-    "csme/mei_client_socket.cc",
-    "csme/pinweaver_core_client.cc",
-    "csme/pinweaver_core_client_null.cc",
-    "csme/pinweaver_provision_client.cc",
-    "csme/pinweaver_provision_impl.cc",
-  ]
-  if (use.pinweaver_csme) {
-    sources += [ "csme/pinweaver_core_client_impl.cc" ]
-  }
-  configs += [
-    ":target_defaults",
-
-    # -fPIC needed for a shared library to link against.
-    "//common-mk:pic",
-  ]
-  defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
-  deps = [ ":pinweaver_proto" ]
 }
 
 shared_library("trunks") {
@@ -140,7 +109,6 @@ shared_library("trunks") {
     "vtpm_client_support/create_dbus_proxy.cc",
   ]
   configs += [ ":target_defaults" ]
-  defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
   if (use.ftdi_tpm) {
     sources += [
       "ftdi/mpsse.c",
@@ -153,19 +121,12 @@ shared_library("trunks") {
   pkg_deps = [ "absl" ]
   deps = [
     ":interface_proto",
-    ":pinweaver_csme_lib",
     ":pinweaver_proto",
   ]
 }
 
 executable("pinweaver_client") {
   sources = [ "pinweaver_client.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":trunks" ]
-}
-
-executable("pinweaver_provision") {
-  sources = [ "csme/pinweaver_provision_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }
@@ -240,16 +201,6 @@ executable("trunksd") {
   ]
 }
 
-executable("tpm_tunneld") {
-  sources = [
-    "csme/tpm_tunnel_service.cc",
-    "csme/tpm_tunneld.cc",
-  ]
-  pkg_deps = [ "libminijail" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":trunks" ]
-}
-
 static_library("trunks_test") {
   sources = [
     "fuzzed_command_transceiver.cc",
@@ -285,7 +236,6 @@ if (use.test) {
   executable("trunks_testrunner") {
     sources = [
       "background_command_transceiver_test.cc",
-      "csme/mei_client_char_device_test.cc",
       "hmac_authorization_delegate_test.cc",
       "hmac_session_test.cc",
       "multiple_authorization_delegate_test.cc",

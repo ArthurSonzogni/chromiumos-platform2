@@ -28,7 +28,6 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD0(InitializeTpm, TPM_RC());
   MOCK_METHOD0(CheckState, TPM_RC());
   MOCK_METHOD1(AllocatePCR, TPM_RC(const std::string&));
-  MOCK_METHOD0(PrepareForPinWeaver, TPM_RC());
   MOCK_METHOD0(PrepareForOwnership, TPM_RC());
   MOCK_METHOD3(TakeOwnership,
                TPM_RC(const std::string&,
@@ -42,9 +41,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD1(GetAlertsData, TPM_RC(TpmAlertsData*));
   MOCK_METHOD3(ExtendPCR,
                TPM_RC(int, const std::string&, AuthorizationDelegate*));
-  MOCK_METHOD2(ExtendPCRForCSME, TPM_RC(int, const std::string&));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));
-  MOCK_METHOD2(ReadPCRFromCSME, TPM_RC(int, std::string*));
   MOCK_METHOD6(AsymmetricEncrypt,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,

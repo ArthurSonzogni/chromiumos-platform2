@@ -146,10 +146,6 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->AllocatePCR(platform_password);
   }
 
-  TPM_RC PrepareForPinWeaver() override {
-    return target_->PrepareForPinWeaver();
-  }
-
   TPM_RC PrepareForOwnership() override {
     return target_->PrepareForOwnership();
   }
@@ -187,17 +183,8 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->ExtendPCR(pcr_index, extend_data, delegate);
   }
 
-  TPM_RC ExtendPCRForCSME(int pcr_index,
-                          const std::string& extend_data) override {
-    return target_->ExtendPCRForCSME(pcr_index, extend_data);
-  }
-
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override {
     return target_->ReadPCR(pcr_index, pcr_value);
-  }
-
-  TPM_RC ReadPCRFromCSME(int pcr_index, std::string* pcr_value) override {
-    return target_->ReadPCRFromCSME(pcr_index, pcr_value);
   }
 
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,

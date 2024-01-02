@@ -43,10 +43,6 @@
 #include "trunks/tpm_u2f.h"
 #include "trunks/trunks_factory.h"
 
-#include "trunks/csme/mei_client_factory.h"
-#include "trunks/csme/pinweaver_core_client.h"
-#include "trunks/csme/pinweaver_provision_client.h"
-
 namespace {
 
 enum class VendorVariant {
@@ -377,10 +373,6 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::PrepareForPinWeaver() {
-  return CreateCsmeSaltingKey();
-}
-
 TPM_RC TpmUtilityImpl::PrepareForOwnership() {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   TPM_RC result = tpm_state->Initialize();
@@ -398,43 +390,10 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
   return result;
 }
 
-TPM_RC TpmUtilityImpl::InitializeOwnerForCsme() {
-  // For GSC case, we don't have to create salting key for CSME.
-  if (IsGsc() || IsSimulator()) {
-    return TPM_RC_SUCCESS;
-  }
-  uint8_t protocol_version = 0;
-  TPM_RC result = PinWeaverIsSupported(0, &protocol_version);
-  // If pinweaver is not supported at all, skip the initialization.
-  if (result) {
-    return TPM_RC_SUCCESS;
-  }
-  result = CreateCsmeSaltingKey();
-  if (result) {
-    LOG(WARNING) << __func__ << ": Failed to create CSME Salting Key:"
-                 << GetErrorString(result);
-    return result;
-  }
-  csme::MeiClientFactory mei_client_factory;
-  csme::PinWeaverProvisionClient client(&mei_client_factory);
-  if (!client.InitOwner()) {
-    LOG(WARNING) << "Failed to call `InitOwner()`";
-    return TPM_RC_FAILURE;
-  }
-  return TPM_RC_SUCCESS;
-}
-
 TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
-  // Perform tasks that have to be done when owner auth is still empty.
-  TPM_RC result = InitializeOwnerForCsme();
-  if (result != TPM_RC_SUCCESS) {
-    // By design, don't hard-fail the TPM initialization flow.
-    LOG(WARNING) << __func__ << ": Failed to initialize owner for csme.";
-  }
-
   // First we set the storage hierarchy authorization to the well know default
   // password.
-  result = SetKnownOwnerPassword(kWellKnownPassword);
+  TPM_RC result = SetKnownOwnerPassword(kWellKnownPassword);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error injecting known password: "
                << GetErrorString(result);
@@ -598,25 +557,6 @@ TPM_RC TpmUtilityImpl::ExtendPCR(int pcr_index,
                                            delegate);
 }
 
-TPM_RC TpmUtilityImpl::ExtendPCRForCSME(int pcr_index,
-                                        const std::string& extend_data) {
-  // If csme is not applicable, just pretend it to be successful.
-  if (GetPinwWeaverBackendType() != PinWeaverBackendType::kCsme) {
-    return TPM_RC_SUCCESS;
-  }
-
-  csme::MeiClientFactory mei_client_factory;
-  std::unique_ptr<csme::PinWeaverCoreClient> client =
-      csme::PinWeaverCoreClient::Create(&mei_client_factory);
-  const std::string digest = crypto::SHA256HashString(extend_data);
-  if (!client->ExtendPcr(pcr_index, TPM_ALG_SHA256, digest)) {
-    LOG(ERROR) << __func__ << ": Failed to extend PCR " << pcr_index
-               << " for CSME.";
-    return TPM_RC_FAILURE;
-  }
-  return TPM_RC_SUCCESS;
-}
-
 TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
   TPML_PCR_SELECTION pcr_select_in;
   uint32_t pcr_update_counter;
@@ -653,31 +593,6 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
     return TPM_RC_FAILURE;
   }
   pcr_value->assign(StringFrom_TPM2B_DIGEST(pcr_values.digests[0]));
-  return TPM_RC_SUCCESS;
-}
-
-TPM_RC TpmUtilityImpl::ReadPCRFromCSME(int pcr_index, std::string* pcr_value) {
-  csme::MeiClientFactory mei_client_factory;
-  std::unique_ptr<csme::PinWeaverCoreClient> client =
-      csme::PinWeaverCoreClient::Create(&mei_client_factory);
-  uint32_t pcr_index_out, hash_alg_out;
-  if (!client->ReadPcr(pcr_index, TPM_ALG_SHA256, &pcr_index_out, &hash_alg_out,
-                       pcr_value)) {
-    LOG(ERROR) << __func__ << ": Failed to read PCR " << pcr_index
-               << " from CSME.";
-    return TPM_RC_FAILURE;
-  }
-  if (pcr_index != pcr_index_out) {
-    LOG(ERROR) << __func__
-               << ": Output PCR index mismatched: input=" << pcr_index
-               << ", output=" << pcr_index_out << ".";
-    return TPM_RC_FAILURE;
-  }
-  if (hash_alg_out != TPM_ALG_SHA256) {
-    LOG(ERROR) << __func__ << ": Unsupported algorithm ID: " << hash_alg_out
-               << ".";
-    return TPM_RC_FAILURE;
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -2323,66 +2238,6 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::CreateCsmeSaltingKey() {
-  bool exists = false;
-  TPM_RC result = DoesPersistentKeyExist(kCsmeSaltingKey, &exists);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Check Peristent CSME Salting Key failed: "
-               << GetErrorString(result);
-    return result;
-  }
-  if (exists) {
-    return TPM_RC_SUCCESS;
-  }
-
-  Tpm* tpm = factory_.GetTpm();
-  TPML_PCR_SELECTION creation_pcrs = {};
-  creation_pcrs.count = 0;
-  TPMS_SENSITIVE_CREATE sensitive;
-  sensitive.user_auth = Make_TPM2B_DIGEST("");
-  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
-  TPM_HANDLE object_handle;
-  TPM2B_CREATION_DATA creation_data;
-  TPM2B_DIGEST creation_digest;
-  TPMT_TK_CREATION creation_ticket;
-  TPM2B_NAME object_name;
-  object_name.size = 0;
-  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
-  public_area.object_attributes = kFixedTPM | kFixedParent | kDecrypt |
-                                  kSensitiveDataOrigin | kUserWithAuth | kNoDA;
-  TPM2B_PUBLIC tpm2b_public = Make_TPM2B_PUBLIC(public_area);
-
-  std::unique_ptr<AuthorizationDelegate> endorsement_delegate =
-      factory_.GetPasswordAuthorization("");
-  result = tpm->CreatePrimarySync(
-      TPM_RH_ENDORSEMENT, NameFromHandle(TPM_RH_ENDORSEMENT),
-      Make_TPM2B_SENSITIVE_CREATE(sensitive), tpm2b_public, Make_TPM2B_DATA(""),
-      creation_pcrs, &object_handle, &tpm2b_public, &creation_data,
-      &creation_digest, &creation_ticket, &object_name,
-      endorsement_delegate.get());
-  if (result) {
-    LOG(ERROR) << __func__
-               << ": CreatePrimarySync failed: " << GetErrorString(result);
-    return result;
-  }
-
-  ScopedKeyHandle key(factory_, object_handle);
-
-  std::unique_ptr<AuthorizationDelegate> owner_delegate =
-      factory_.GetPasswordAuthorization("");
-  result =
-      tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
-                            object_handle, StringFrom_TPM2B_NAME(object_name),
-                            kCsmeSaltingKey, owner_delegate.get());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__
-               << ": EvictControlSync failed: " << GetErrorString(result);
-    return result;
-  }
-  LOG(INFO) << __func__ << ": Created CSME Salting Key.";
-  return TPM_RC_SUCCESS;
-}
-
 TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
                                          AuthorizationDelegate* delegate,
                                          std::string* key_blob) {
@@ -3464,8 +3319,6 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
       rc = GscVendorCommand(kGscSubcmdPinWeaver, in, &out);
       break;
     case VendorVariant::kOther:
-      rc = PinWeaverCsmeCommand(in, &out);
-      break;
     default:
       LOG(WARNING) << "Pinweaver not supported with vendor variant: "
                    << static_cast<int>(vendor_variant);
@@ -3637,18 +3490,6 @@ TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ap_ro_status* status) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::PinWeaverCsmeCommand(const std::string& in,
-                                            std::string* out) {
-  csme::MeiClientFactory mei_client_factory;
-  std::unique_ptr<csme::PinWeaverCoreClient> client =
-      csme::PinWeaverCoreClient::Create(&mei_client_factory);
-  if (!client->PinWeaverCommand(in, out)) {
-    LOG(ERROR) << __func__ << ": Failed to call pinweaver-csme.";
-    return TPM_RC_FAILURE;
-  }
-  return TPM_RC_SUCCESS;
-}
-
 TpmUtilityImpl::PinWeaverBackendType
 TpmUtilityImpl::GetPinwWeaverBackendType() {
   if (pinweaver_backend_type_ != PinWeaverBackendType::kUnknown) {
@@ -3658,9 +3499,7 @@ TpmUtilityImpl::GetPinwWeaverBackendType() {
   if (PinWeaverIsSupported(0, &protocol_version) != TPM_RC_SUCCESS) {
     pinweaver_backend_type_ = PinWeaverBackendType::kNotSupported;
   } else {
-    pinweaver_backend_type_ = (IsGsc() || IsSimulator())
-                                  ? PinWeaverBackendType::kGsc
-                                  : PinWeaverBackendType::kCsme;
+    pinweaver_backend_type_ = PinWeaverBackendType::kGsc;
   }
   return pinweaver_backend_type_;
 }
