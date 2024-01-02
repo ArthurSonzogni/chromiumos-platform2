@@ -38,9 +38,13 @@ constexpr uint32_t kVendorIdStm = 0x53544D20;
 constexpr uint32_t kVendorIdNtc = 0x4e544300;
 // Winbond Vendor ID ("WEC").
 constexpr uint32_t kVendorIdWinbond = 0x57454300;
+// Atmel Vendor ID ("ATML").
+constexpr uint32_t kVendorIdAtmel = 0x41544D4C;
+// IBM Vendor ID ("IBM ").
+constexpr uint32_t kVendorIdIbm = 0x49424d00;
+// Infineon Vendor ID ("IFX  ").
+constexpr uint32_t kVendorIdIfx = 0x49465800;
 
-// The location of TPM DID & VID information.
-constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
 // The location of system vendor information.
 constexpr char kSysVendorPath[] = "/sys/class/dmi/id/sys_vendor";
 // The location of product name information.
@@ -48,29 +52,11 @@ constexpr char kProductNamePath[] = "/sys/class/dmi/id/product_name";
 // The location of product family information.
 constexpr char kProductFamilyPath[] = "/sys/class/dmi/id/product_family";
 
-struct TpmVidDid {
-  uint16_t vendor_id;
-  uint16_t device_id;
-};
-
-constexpr uint16_t kTpmVidAtmel = 0x1114;
-constexpr uint16_t kTpmVidIbm = 0x1014;
-constexpr uint16_t kTpmVidWinbond = 0x1050;
-constexpr uint16_t kTpmVidIfx = 0x15D1;
-
-constexpr TpmVidDid kTpm1DidVidAllowlist[] = {
-    // Atmel TPM used in some Dell Latitudes.
-    TpmVidDid{kTpmVidAtmel, 0x3204},
-    // Emulated TPM provided by the swtpm program, used with QEMU.
-    TpmVidDid{kTpmVidIbm, 0x1},
-    // Enable TPM chip in Toshiba TCXWave 6140 tablet kiosk.
-    TpmVidDid{kTpmVidWinbond, 0xFE},
-    // The vendor is INFINEON, HP Elitebook 840 G1.
-    TpmVidDid{kTpmVidIfx, 0xB},
-    // The vendor is INFINEON, HP Elitebook 840 G2.
-    TpmVidDid{kTpmVidIfx, 0x1A},
-    // The vendor is INFINEON, HP Elitebook 840 G3.
-    TpmVidDid{kTpmVidIfx, 0x1B},
+constexpr uint32_t kTpm1VendorAllowlist[] = {
+    kVendorIdAtmel,
+    kVendorIdIbm,
+    kVendorIdWinbond,
+    kVendorIdIfx,
 };
 
 struct DeviceFamily {
@@ -129,26 +115,6 @@ bool IsTpmSha256PcrSupported() {
   base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &pcr_str);
 
   return !pcr_str.empty();
-}
-
-bool GetDidVid(uint16_t* did, uint16_t* vid) {
-  base::FilePath file_path(kTpmDidVidPath);
-  std::string did_vid_s;
-
-  if (!base::ReadFileToString(file_path, &did_vid_s)) {
-    return false;
-  }
-
-  uint32_t did_vid = 0;
-  if (sscanf(did_vid_s.c_str(), "0x%X", &did_vid) != 1) {
-    LOG(ERROR) << __func__ << ": Failed to parse TPM DID & VID: " << did_vid_s;
-    return false;
-  }
-
-  *vid = did_vid & 0xFFFF;
-  *did = did_vid >> 16;
-
-  return true;
 }
 
 bool GetSysVendor(std::string* sys_vendor) {
@@ -345,23 +311,27 @@ bool TpmAllowlistImpl::IsAllowed() {
       return false;
     }
 
-    uint16_t device_id;
-    uint16_t vendor_id;
-
-    if (!GetDidVid(&device_id, &vendor_id)) {
-      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
+    uint32_t family;
+    uint64_t spec_level;
+    uint32_t manufacturer;
+    uint32_t tpm_model;
+    uint64_t firmware_version;
+    std::vector<uint8_t> vendor_specific;
+    if (!tpm_status_->GetVersionInfo(&family, &spec_level, &manufacturer,
+                                     &tpm_model, &firmware_version,
+                                     &vendor_specific)) {
+      LOG(ERROR) << __func__ << ": failed to get version info from tpm status.";
       return false;
     }
 
-    for (const TpmVidDid& match : kTpm1DidVidAllowlist) {
-      if (device_id == match.device_id && vendor_id == match.vendor_id) {
+    for (uint32_t vendor_id : kTpm1VendorAllowlist) {
+      if (manufacturer == vendor_id) {
         return true;
       }
     }
 
     LOG(INFO) << "Not allowed TPM1.2:";
-    LOG(INFO) << "  TPM Vendor ID: " << std::hex << vendor_id;
-    LOG(INFO) << "  TPM Device ID: " << std::hex << device_id;
+    LOG(INFO) << "  TPM Manufacturer: " << std::hex << manufacturer;
 
     return false;
   });
