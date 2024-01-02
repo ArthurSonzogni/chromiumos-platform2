@@ -236,7 +236,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/syslog-cat            u:object_r:cros_syslog_cat_exec:s0
 /usr/sbin/tcsd                  u:object_r:cros_tcsd_exec:s0
 /usr/sbin/tpm_managerd          u:object_r:cros_tpm_managerd_exec:s0
-/usr/sbin/tpm_tunneld           u:object_r:cros_tpm_tunneld_exec:s0
 /usr/sbin/trunksd               u:object_r:cros_trunksd_exec:s0
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/usbguard-daemon       u:object_r:cros_usbguard_exec:s0
