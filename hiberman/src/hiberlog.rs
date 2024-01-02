@@ -9,9 +9,7 @@ use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Cursor;
-use std::io::Read;
 use std::io::Write;
-use std::mem;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::path::PathBuf;
@@ -360,19 +358,19 @@ pub fn replay_logs(_: &ActiveMount, push_resume_logs: bool, clear: bool) {
     // Push the hibernate logs that were taken after the snapshot (and
     // therefore after syslog became frozen) back into the syslog now.
     // These should be there on both success and failure cases.
-    replay_log(HibernateStage::Suspend, clear);
+    replay_log_file(HibernateStage::Suspend, clear);
 
     // If successfully resumed from hibernate, or in the bootstrapping kernel
     // after a failed resume attempt, also gather the resume logs
     // saved by the bootstrapping kernel.
     if push_resume_logs {
-        replay_log(HibernateStage::Resume, clear);
+        replay_log_file(HibernateStage::Resume, clear);
     }
 }
 
-/// Helper function to replay the suspend or resume log to the syslogger, and
-/// potentially zero out the log as well.
-fn replay_log(stage: HibernateStage, clear: bool) {
+/// Helper function to replay the suspend or resume log file
+/// to the syslogger, and potentially zero out the log as well.
+fn replay_log_file(stage: HibernateStage, clear: bool) {
     if !LogFile::exists(stage) {
         return;
     }
@@ -382,26 +380,6 @@ fn replay_log(stage: HibernateStage, clear: bool) {
         HibernateStage::Resume => ("resume log", "R"),
     };
 
-    let mut opened_log = match LogFile::open(stage) {
-        Ok(f) => f,
-        Err(e) => {
-            warn!("{}", e);
-            return;
-        }
-    };
-
-    replay_log_file(&mut opened_log, prefix, name);
-
-    if clear {
-        mem::drop(opened_log);
-        LogFile::clear(stage);
-    }
-}
-
-/// Replay a generic log file to the syslogger.
-fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
-    let reader = BufReader::new(file);
-
     let syslogger = create_syslogger();
     syslogger.log(
         &Record::builder()
@@ -410,6 +388,15 @@ fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
             .build(),
     );
 
+    let f = match LogFile::open(stage) {
+        Ok(f) => f,
+        Err(e) => {
+            warn!("{}", e);
+            return;
+        }
+    };
+
+    let reader = BufReader::new(f);
     for line in reader.lines() {
         if let Ok(line) = line {
             replay_line(&syslogger, prefix, line);
@@ -424,6 +411,10 @@ fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
             .level(Level::Info)
             .build(),
     );
+
+    if clear {
+        LogFile::clear(stage);
+    }
 }
 
 /// Replay a single log line to the syslogger.
