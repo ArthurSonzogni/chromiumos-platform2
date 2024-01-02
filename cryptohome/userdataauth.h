@@ -806,7 +806,7 @@ class UserDataAuth {
   // |AuthSession::PrepareUserForRemoval| has completed.
   void OnPreparedUserForRemoval(
       const ObfuscatedUsername& obfuscated,
-      const base::UnguessableToken& token,
+      InUseAuthSession auth_session,
       base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done);
 
   // ================ Fingerprint Auth Related Methods ==================

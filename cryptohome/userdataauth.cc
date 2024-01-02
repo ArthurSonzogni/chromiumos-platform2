@@ -1935,14 +1935,16 @@ void UserDataAuth::RemoveWithSession(
     return;
   }
 
-  auth_session->PrepareUserForRemoval(base::BindOnce(
+  AuthSession* auth_session_ptr = auth_session.Get();
+  auth_session_ptr->PrepareUserForRemoval(base::BindOnce(
       &UserDataAuth::OnPreparedUserForRemoval, base::Unretained(this),
-      obfuscated, auth_session->token(), std::move(on_done)));
+      obfuscated, std::move(auth_session).BindForCallback(),
+      std::move(on_done)));
 }
 
 void UserDataAuth::OnPreparedUserForRemoval(
     const ObfuscatedUsername& obfuscated,
-    const base::UnguessableToken& token,
+    InUseAuthSession auth_session,
     base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done) {
   user_data_auth::RemoveReply reply;
   if (!homedirs_->Remove(obfuscated)) {
@@ -1957,13 +1959,11 @@ void UserDataAuth::OnPreparedUserForRemoval(
   }
 
   // Since the user is now removed, any further operations require a fresh
-  // AuthSession.
-  if (!auth_session_manager_->RemoveAuthSession(token)) {
-    NOTREACHED() << "Failed to remove AuthSession when removing user.";
-  }
+  // AuthSession. So terminate ALL auth sessions for the user.
+  auth_session_manager_->RemoveUserAuthSessions(obfuscated);
+  std::move(auth_session).Release();
 
-  // TODO(b/306423754): Ensure this is robust and well-tested.
-  // We should have removed the only auth session of the user-to-be-removed. Try
+  // We should have removed the auth sessions of the user-to-be-removed. Try
   // to unload the encrypted USS from manager otherwise the same account can't
   // be added again. If the unload failed, the same account can't be added again
   // until the next boot.

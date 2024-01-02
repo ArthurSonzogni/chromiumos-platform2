@@ -58,8 +58,10 @@ class AuthSessionManager {
   // Overload for remove to avoid deserialization client side.
   bool RemoveAuthSession(const std::string& serialized_token);
 
-  // Removes all the authsession and calls their destructor. This is supposed to
-  // be used when UnMountall() API is called.
+  // Removes all of the auth sessions for a specific user, or for all users.
+  // This is generally intended for use with by destructive APIs for Remove or
+  // Unmount operations that will invalidate all state for one or all users.
+  void RemoveUserAuthSessions(const ObfuscatedUsername& username);
   void RemoveAllAuthSessions();
 
   // Used to set the auth factor status update callback inside class so it could
@@ -232,6 +234,12 @@ class InUseAuthSession {
   // check AuthSessionStatus again once they execute, as a formerly valid in-use
   // object may have been timed out.
   std::unique_ptr<BoundAuthSession> BindForCallback() &&;
+
+  // Explicitly release the session. Useful when you want to terminate usage of
+  // a session early before the InUseAuthSession object will go out of scope.
+  // This is equivalent to overwriting the object with a default value but it
+  // makes the intent more explicit.
+  void Release() &&;
 
  private:
   friend class AuthSessionManager;

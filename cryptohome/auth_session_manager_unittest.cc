@@ -16,6 +16,7 @@
 #include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
+#include <brillo/cryptohome.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -37,6 +38,7 @@ namespace {
 
 using ::base::test::TaskEnvironment;
 using ::base::test::TestFuture;
+using ::brillo::cryptohome::home::SanitizeUserName;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
@@ -355,6 +357,52 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
+TEST_F(AuthSessionManagerTest, AddRemoveUser) {
+  base::UnguessableToken u1_token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  base::UnguessableToken u2_token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername2,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+
+  // We should be able to grab sessions for both tokens.
+  {
+    InUseAuthSession u1_session = TakeAuthSession(u1_token);
+    InUseAuthSession u2_session = TakeAuthSession(u2_token);
+    ASSERT_THAT(u1_session.AuthSessionStatus(), IsOk());
+    ASSERT_THAT(u2_session.AuthSessionStatus(), IsOk());
+  }
+
+  // Now remove all sessions for user 2. We should only be able to grab the
+  // session for u1 after this.
+  auth_session_manager_.RemoveUserAuthSessions(SanitizeUserName(kUsername2));
+  {
+    InUseAuthSession u1_session = TakeAuthSession(u1_token);
+    InUseAuthSession u2_session = TakeAuthSession(u2_token);
+    ASSERT_THAT(u1_session.AuthSessionStatus(), IsOk());
+    ASSERT_THAT(u2_session.AuthSessionStatus(), NotOk());
+  }
+
+  // Do the same for user 1.
+  auth_session_manager_.RemoveUserAuthSessions(SanitizeUserName(kUsername));
+  {
+    InUseAuthSession u1_session = TakeAuthSession(u1_token);
+    InUseAuthSession u2_session = TakeAuthSession(u2_token);
+    ASSERT_THAT(u1_session.AuthSessionStatus(), NotOk());
+    ASSERT_THAT(u2_session.AuthSessionStatus(), NotOk());
+  }
+}
+
 TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
   base::UnguessableToken token;
   bool is_called = false;
@@ -405,7 +453,7 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
 
   // Release the existing in-use instance. The callback should now happen with
   // an invalid session.
-  saved_session = InUseAuthSession();
+  std::move(saved_session).Release();
   EXPECT_TRUE(future.IsReady());
   EXPECT_THAT(future.Get().AuthSessionStatus(), NotOk());
 }

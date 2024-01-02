@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -113,10 +114,33 @@ bool AuthSessionManager::RemoveAuthSession(
   return RemoveAuthSession(token.value());
 }
 
+void AuthSessionManager::RemoveUserAuthSessions(
+    const ObfuscatedUsername& username) {
+  std::set<base::UnguessableToken> tokens_being_removed;
+  for (auto iter = token_to_user_.begin(); iter != token_to_user_.end();) {
+    if (iter->second == username) {
+      tokens_being_removed.insert(iter->first);
+      iter = token_to_user_.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  user_auth_sessions_.erase(username);
+  for (auto iter = expiration_map_.begin(); iter != expiration_map_.end();) {
+    if (tokens_being_removed.contains(iter->second)) {
+      iter = expiration_map_.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  ResetExpirationTimer();
+}
+
 void AuthSessionManager::RemoveAllAuthSessions() {
   token_to_user_.clear();
   user_auth_sessions_.clear();
   expiration_map_.clear();
+  ResetExpirationTimer();
 }
 
 void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
@@ -455,6 +479,10 @@ CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
 
 std::unique_ptr<BoundAuthSession> InUseAuthSession::BindForCallback() && {
   return std::make_unique<BoundAuthSession>(std::move(*this));
+}
+
+void InUseAuthSession::Release() && {
+  *this = InUseAuthSession();
 }
 
 BoundAuthSession::BoundAuthSession(InUseAuthSession auth_session)
