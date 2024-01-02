@@ -67,17 +67,17 @@ bool TrunksDBusProxy::Init() {
   if (!bus_) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(options);
+    bus_ = base::MakeRefCounted<dbus::Bus>(options);
   }
   if (!bus_->Connect()) {
     return false;
   }
-  if (!object_proxy_) {
-    object_proxy_ =
-        bus_->GetObjectProxy(dbus_name_, dbus::ObjectPath(dbus_path_));
-    if (!object_proxy_) {
-      return false;
-    }
+
+  trunks_proxy_ =
+      std::make_unique<org::chromium::TrunksProxy>(bus_, dbus_name_);
+
+  if (!trunks_proxy_) {
+    return false;
   }
   base::TimeTicks deadline = base::TimeTicks::Now() + init_timeout_;
   while (!IsServiceReady(false /* force_check */) &&
@@ -95,7 +95,7 @@ bool TrunksDBusProxy::IsServiceReady(bool force_check) {
 }
 
 bool TrunksDBusProxy::CheckIfServiceReady() {
-  if (!bus_ || !object_proxy_) {
+  if (!bus_ || !trunks_proxy_) {
     return false;
   }
   std::string owner = bus_->GetServiceOwnerAndBlock(trunks::kTrunksServiceName,
@@ -132,12 +132,11 @@ void TrunksDBusProxy::SendCommandInternal(const std::string& command,
         std::move(callback).Run(response.response());
       },
       std::move(split.first));
-  brillo::dbus_utils::CallMethodWithTimeout(
-      kDBusMaxTimeout, object_proxy_, dbus_interface_, trunks::kSendCommand,
-      std::move(on_success),
-      base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(),
-                     std::move(split.second)),
-      tpm_command_proto);
+  auto on_error = base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(),
+                                 std::move(split.second));
+
+  trunks_proxy_->SendCommandAsync(tpm_command_proto, std::move(on_success),
+                                  std::move(on_error), kDBusMaxTimeout);
 }
 
 void TrunksDBusProxy::OnError(ResponseCallback callback, brillo::Error* error) {
@@ -166,14 +165,10 @@ std::string TrunksDBusProxy::SendCommandAndWaitInternal(
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
   brillo::ErrorPtr error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-          kDBusMaxTimeout, object_proxy_, dbus_interface_, trunks::kSendCommand,
-          &error, tpm_command_proto);
   SendCommandResponse tpm_response_proto;
-  if (dbus_response.get() &&
-      brillo::dbus_utils::ExtractMethodCallResults(dbus_response.get(), &error,
-                                                   &tpm_response_proto)) {
+
+  if (trunks_proxy_->SendCommand(tpm_command_proto, &tpm_response_proto, &error,
+                                 kDBusMaxTimeout)) {
     return tpm_response_proto.response();
   } else {
     LOG(ERROR) << "TrunksProxy could not parse response: "
@@ -181,8 +176,6 @@ std::string TrunksDBusProxy::SendCommandAndWaitInternal(
     TPM_RC error_code;
     if (!IsServiceReady(true /* force_check */)) {
       error_code = SAPI_RC_NO_CONNECTION;
-    } else if (dbus_response == nullptr) {
-      error_code = SAPI_RC_NO_RESPONSE_RECEIVED;
     } else {
       error_code = SAPI_RC_MALFORMED_RESPONSE;
     }

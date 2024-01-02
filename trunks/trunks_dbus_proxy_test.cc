@@ -257,9 +257,8 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureNoResponse) {
 
 TEST_F(TrunksDBusProxyTest, SendCommandAndWaitFailureNoResponse) {
   std::string command = CreateCommand(TPM_CC_FIRST);
-  std::string trunks_response =
-      CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED);
-  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_NO_RESPONSE_RECEIVED};
+  std::string trunks_response = CreateErrorResponse(SAPI_RC_MALFORMED_RESPONSE);
+  TpmErrorData error_data{TPM_CC_FIRST, SAPI_RC_MALFORMED_RESPONSE};
   EXPECT_CALL(*uma_reporter_, ReportTpm2CommandAndResponse(error_data))
       .WillOnce(Return(true));
   // If Init() succeeded and the service is ready, it should return

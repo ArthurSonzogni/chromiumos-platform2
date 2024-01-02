@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <base/threading/platform_thread.h>
@@ -18,6 +17,9 @@
 
 #include "trunks/command_transceiver.h"
 #include "trunks/trunks_export.h"
+#include "trunks/trunks_interface.pb.h"
+// Requires trunks/trunks_interface.pb.h
+#include "trunks/dbus_proxies.h"
 
 namespace trunks {
 
@@ -107,7 +109,7 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
 
   base::PlatformThreadId origin_thread_id_;
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* object_proxy_ = nullptr;
+  std::unique_ptr<org::chromium::TrunksProxy> trunks_proxy_;
   std::unique_ptr<hwsec_foundation::TpmErrorUmaReporter> uma_reporter_;
 
   // Declared last so weak pointers are invalidated first on destruction.
