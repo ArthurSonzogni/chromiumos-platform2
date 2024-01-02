@@ -39,6 +39,11 @@ void EnterHeartdMinijail() {
   // Shared socket file for talking to the D-Bus daemon.
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
 
+  // Create a new tmpfs filesystem for /var and mount necessary files.
+  minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, "");
+  // For database.
+  minijail_bind(j.get(), "/var/lib/heartd", "/var/lib/heartd", 1);
+
   CHECK_EQ(0, minijail_change_user(j.get(), kHeartdUser));
   CHECK_EQ(0, minijail_change_group(j.get(), kHeartdGroup));
   minijail_inherit_usergroups(j.get());

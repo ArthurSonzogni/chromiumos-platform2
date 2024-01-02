@@ -57,3 +57,8 @@ clock_nanosleep: 1
 getsockname: 1
 poll: 1
 sendmsg: 1
+# For db
+pwrite64: 1
+fdatasync: 1
+unlink: 1
+getdents64: 1

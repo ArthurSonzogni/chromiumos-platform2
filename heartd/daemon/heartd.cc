@@ -16,6 +16,8 @@ HeartdDaemon::HeartdDaemon(int sysrq_fd) {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  database_ = std::make_unique<Database>();
+  database_->Init();
   dbus_connector_ = std::make_unique<DbusConnectorImpl>();
   action_runner_ = std::make_unique<ActionRunner>(dbus_connector_.get());
   heartbeat_manager_ = std::make_unique<HeartbeatManager>(action_runner_.get());

@@ -24,6 +24,7 @@ executable("heartd") {
   pkg_deps = [
     "libbrillo",
     "mojo_service_manager",
+    "sqlite3",
   ]
   deps = [
     "//heartd/daemon:libheartd",

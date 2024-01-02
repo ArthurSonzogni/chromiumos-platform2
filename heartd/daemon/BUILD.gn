@@ -9,12 +9,14 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libpower_manager-client",
     "mojo_service_manager",
+    "sqlite3",
   ]
 }
 
 source_set("libheartd") {
   sources = [
     "action_runner.cc",
+    "database.cc",
     "dbus_connector_impl.cc",
     "heartbeat_manager.cc",
     "heartbeat_tracker.cc",
@@ -33,6 +35,7 @@ if (use.test) {
     pkg_deps = [ "libpower_manager-client-test" ]
     sources = [
       "action_runner_test.cc",
+      "database_test.cc",
       "heartbeat_manager_test.cc",
       "heartbeat_tracker_test.cc",
     ]
