@@ -33,7 +33,6 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
-#include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist_impl.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
 
@@ -151,23 +150,19 @@ TpmManagerService::TpmManagerService(bool perform_preinit,
                         nullptr,
                         nullptr,
                         nullptr,
-                        nullptr,
                         &default_tpm_manager_metrics_) {
   CHECK(local_data_store_);
 }
 
-TpmManagerService::TpmManagerService(
-    bool perform_preinit,
-    LocalDataStore* local_data_store,
-    std::unique_ptr<PinWeaverProvision> pinweaver_provision,
-    TpmStatus* tpm_status,
-    TpmInitializer* tpm_initializer,
-    TpmNvram* tpm_nvram,
-    TpmManagerMetrics* tpm_manager_metrics)
+TpmManagerService::TpmManagerService(bool perform_preinit,
+                                     LocalDataStore* local_data_store,
+                                     TpmStatus* tpm_status,
+                                     TpmInitializer* tpm_initializer,
+                                     TpmNvram* tpm_nvram,
+                                     TpmManagerMetrics* tpm_manager_metrics)
     : dictionary_attack_timer_(
           base::Hours(kDictionaryAttackResetPeriodInHours)),
       local_data_store_(local_data_store),
-      pinweaver_provision_(std::move(pinweaver_provision)),
       tpm_status_(tpm_status),
       tpm_initializer_(tpm_initializer),
       tpm_nvram_(tpm_nvram),
@@ -250,8 +245,7 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
   VLOG(1) << "Initializing service...";
 
   auto reply = std::make_unique<GetTpmStatusReply>();
-  if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_ ||
-      !pinweaver_provision_) {
+  if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
     // Setup default objects.
     TPM_SELECT_BEGIN;
     TPM2_SECTION({
@@ -267,7 +261,6 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
         }
         trunks_factory_ = std::move(trunks_factory);
       }
-      pinweaver_provision_ = PinWeaverProvision::Create(*trunks_factory_);
       default_tpm_status_ = std::make_unique<Tpm2StatusImpl>(*trunks_factory_);
       tpm_status_ = default_tpm_status_.get();
       default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
@@ -278,7 +271,6 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
       tpm_nvram_ = default_tpm_nvram_.get();
     });
     TPM1_SECTION({
-      pinweaver_provision_ = PinWeaverProvision::CreateNoop();
       default_tpm_status_ = std::make_unique<TpmStatusImpl>(local_data_store_);
       tpm_status_ = default_tpm_status_.get();
       default_tpm_initializer_ =
@@ -289,7 +281,6 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     });
     OTHER_TPM_SECTION({
       LOG(WARNING) << __func__ << ": No TPM on the device.";
-      pinweaver_provision_ = PinWeaverProvision::CreateNoop();
       tpm_allowed_ = false;
       auto reply = std::make_unique<GetTpmStatusReply>();
       reply->set_enabled(false);

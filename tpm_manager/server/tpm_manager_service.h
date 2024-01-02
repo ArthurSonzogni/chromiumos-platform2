@@ -23,7 +23,6 @@
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/passive_timer.h"
-#include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
@@ -88,7 +87,6 @@ class TpmManagerService : public TpmNvramInterface,
   // |tpm_manager_metrics|.
   TpmManagerService(bool perform_preinit,
                     LocalDataStore* local_data_store,
-                    std::unique_ptr<PinWeaverProvision> pinweaver_provision,
                     TpmStatus* tpm_status,
                     TpmInitializer* tpm_initializer,
                     TpmNvram* tpm_nvram,
@@ -344,8 +342,6 @@ class TpmManagerService : public TpmNvramInterface,
 
   LocalDataStore* local_data_store_;
   OpensslCryptoUtilImpl openssl_util_;
-
-  std::unique_ptr<PinWeaverProvision> pinweaver_provision_;
 
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;

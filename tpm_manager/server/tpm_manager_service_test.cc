@@ -21,7 +21,6 @@
 #include <trunks/tpm_utility.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
-#include "tpm_manager/server/mock_pinweaver_provision.h"
 #include "tpm_manager/server/mock_tpm_allowlist.h"
 #include "tpm_manager/server/mock_tpm_initializer.h"
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
@@ -66,12 +65,8 @@ class TpmManagerServiceTestBase : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_))
         .Times(AtMost(1));
-    auto mock_pinweaver_provision =
-        std::make_unique<NiceMock<MockPinWeaverProvision>>();
-    mock_pinweaver_provision_ = mock_pinweaver_provision.get();
     service_.reset(new TpmManagerService(
-        perform_preinit, &mock_local_data_store_,
-        std::move(mock_pinweaver_provision), &mock_tpm_status_,
+        perform_preinit, &mock_local_data_store_, &mock_tpm_status_,
         &mock_tpm_initializer_, &mock_tpm_nvram_, &mock_tpm_manager_metrics_));
     service_->set_tpm_allowlist_for_testing(&mock_tpm_allowlist_);
     ON_CALL(mock_tpm_allowlist_, IsAllowed()).WillByDefault(Return(true));
@@ -79,9 +74,6 @@ class TpmManagerServiceTestBase : public testing::Test {
     if (shall_setup_service) {
       SetupService();
     }
-    // We remove the pinweaver provision from `TpmManagerService`. None should
-    // be all at any time.
-    EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(0);
   }
 
   // This should be a protected method, but it was moved to public to avoid
@@ -118,7 +110,6 @@ class TpmManagerServiceTestBase : public testing::Test {
   NiceMock<MockTpmAllowlist> mock_tpm_allowlist_;
   NiceMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
   // Owned by `service_` after `SetUp()`.
-  NiceMock<MockPinWeaverProvision>* mock_pinweaver_provision_;
   std::unique_ptr<TpmManagerService> service_;
 
  private:

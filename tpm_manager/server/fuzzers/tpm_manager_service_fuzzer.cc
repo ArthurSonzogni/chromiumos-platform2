@@ -23,7 +23,6 @@
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager/server/fuzzers/tpm_manager_service_fuzzer_data.pb.h"
 #include "tpm_manager/server/local_data_store_impl.h"
-#include "tpm_manager/server/mock_pinweaver_provision.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
 #include "tpm_manager/server/fuzzers/tpm_fuzzer_utils.h"
@@ -91,13 +90,9 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
 
     tpm_manager_metrics_.set_metrics_library_for_testing(&mock_metrics_);
 
-    auto mock_pinweaver_provision = std::make_unique<
-        testing::NiceMock<tpm_manager::MockPinWeaverProvision>>();
-
     tpm_manager_ = std::make_unique<tpm_manager::TpmManagerService>(
-        fuzzer_data_.perform_preinit(), &local_data_store_,
-        std::move(mock_pinweaver_provision), nullptr, nullptr, nullptr,
-        &tpm_manager_metrics_);
+        fuzzer_data_.perform_preinit(), &local_data_store_, nullptr, nullptr,
+        nullptr, &tpm_manager_metrics_);
     fuzzer_utils_->SetupTpm(tpm_manager_.get());
     CHECK(tpm_manager_->Initialize());
   }
