@@ -75,9 +75,6 @@ TEST_F(BackendConfigTpm2Test, SetCurrentUser) {
   EXPECT_CALL(proxy_->GetMockTpmUtility(), ExtendPCR(_, kFakeUser, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), ExtendPCRForCSME(_, kFakeUser))
-      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-
   auto result = backend_->GetConfigTpm2().SetCurrentUser(kFakeUser);
 
   EXPECT_TRUE(result.ok());

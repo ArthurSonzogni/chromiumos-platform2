@@ -157,11 +157,6 @@ Status ConfigTpm2::SetCurrentUser(const std::string& current_user) {
                       kCurrentUserPcr, current_user, delegate.get())))
       .WithStatus<TPMError>("Failed to extend current user PCR");
 
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context_.GetTpmUtility().ExtendPCRForCSME(
-          kCurrentUserPcr, current_user)))
-      .WithStatus<TPMError>("Failed to extend current user PCR for CSME");
-
   return OkStatus();
 }
 
