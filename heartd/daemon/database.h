@@ -7,8 +7,12 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <base/time/time.h>
 #include <sqlite3.h>
+
+#include "heartd/daemon/boot_record.h"
 
 namespace heartd {
 
@@ -24,6 +28,10 @@ class Database {
   void Init() const;
   bool IsOpen() const;
   bool TableExists(const std::string& table_name) const;
+
+  // Boot metrics related methods.
+  void InsertBootRecord(const BootRecord& boot_record) const;
+  std::vector<BootRecord> GetBootRecordFromTime(const base::Time& time) const;
 
  private:
   struct ExecResult {

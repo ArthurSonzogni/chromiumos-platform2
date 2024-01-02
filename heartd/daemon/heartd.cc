@@ -5,10 +5,13 @@
 #include "heartd/daemon/heartd.h"
 
 #include <memory>
+#include <sysexits.h>
 
+#include <base/files/file_path.h>
 #include <base/task/single_thread_task_runner.h>
 
 #include "heartd/daemon/dbus_connector_impl.h"
+#include "heartd/daemon/utils/boot_record_recorder.h"
 
 namespace heartd {
 
@@ -28,5 +31,11 @@ HeartdDaemon::HeartdDaemon(int sysrq_fd) {
 }
 
 HeartdDaemon::~HeartdDaemon() = default;
+
+int HeartdDaemon::OnEventLoopStarted() {
+  RecordBootMetrics(base::FilePath("/"), database_.get());
+
+  return EX_OK;
+}
 
 }  // namespace heartd

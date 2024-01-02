@@ -9,7 +9,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <sqlite3.h>
+
+#include "heartd/daemon/boot_record.h"
 
 namespace heartd {
 
@@ -28,6 +31,42 @@ int TableExistsCallback(void* const /* int* const */ data,
     LOG(ERROR) << "Table existence check failed";
     return SQLITE_ERROR;
   }
+  return SQLITE_OK;
+}
+
+int GetBootRecordCallback(void* const /* std::vector<BootRecord>* const */ data,
+                          const int col_count,
+                          char** const cols,
+                          char** const /* names */) {
+  DCHECK(data != nullptr);
+  DCHECK(cols != nullptr);
+
+  if (col_count != 2) {
+    LOG(ERROR) << "GetBootRecord failed";
+    return SQLITE_ERROR;
+  }
+
+  auto* const boot_records = static_cast<std::vector<BootRecord>*>(data);
+  BootRecord boot_record;
+  if (!cols[0]) {
+    LOG(ERROR) << "BootRecord.id is null";
+    return SQLITE_ERROR;
+  }
+  boot_record.id = std::string(cols[0]);
+
+  if (!cols[1]) {
+    LOG(ERROR) << "BootRecord.time is null";
+    return SQLITE_ERROR;
+  }
+
+  int64_t time;
+  if (!base::StringToInt64(cols[1], &time)) {
+    LOG(ERROR) << "BootRecord.time is not a number";
+    return SQLITE_ERROR;
+  }
+  boot_record.time = base::Time::FromMillisecondsSinceUnixEpoch(time);
+
+  boot_records->push_back(boot_record);
   return SQLITE_OK;
 }
 
@@ -84,6 +123,44 @@ bool Database::TableExists(const std::string& table_name) const {
                            << table_name << "'";
 
   return true;
+}
+
+void Database::InsertBootRecord(const BootRecord& boot_record) const {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to modify table of a closed database";
+    return;
+  }
+
+  const std::string sql = base::StringPrintf(
+      "INSERT INTO %s (id, time) VALUES (\"%s\", %" PRId64 ")",
+      kBootRecordTable, boot_record.id.c_str(),
+      boot_record.time.InMillisecondsSinceUnixEpoch());
+  ExecResult result = ExecSQL(sql);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to delete outdated data: " << result.msg;
+  }
+}
+
+std::vector<BootRecord> Database::GetBootRecordFromTime(
+    const base::Time& time) const {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Trying to query table of a closed database";
+    return {};
+  }
+
+  std::vector<BootRecord> boot_records;
+  const std::string sql =
+      base::StringPrintf("SELECT id,time FROM %s WHERE time >= %" PRId64,
+                         kBootRecordTable, time.InMillisecondsSinceUnixEpoch());
+  ExecResult result = ExecSQL(sql, GetBootRecordCallback, &boot_records);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to delete outdated data: " << result.msg;
+    return {};
+  }
+
+  return boot_records;
 }
 
 Database::ExecResult Database::ExecSQL(const std::string& sql) const {

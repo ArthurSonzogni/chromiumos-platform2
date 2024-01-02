@@ -26,6 +26,10 @@ class HeartdDaemon final : public brillo::Daemon {
   HeartdDaemon& operator=(const HeartdDaemon&) = delete;
   ~HeartdDaemon() override;
 
+ protected:
+  // brillo::Daemon overrides:
+  int OnEventLoopStarted() override;
+
  private:
   // For mojo thread initialization.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;

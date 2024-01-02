@@ -5,6 +5,8 @@
 #include "heartd/minijail/minijail_configuration.h"
 
 #include <base/check_op.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -43,6 +45,14 @@ void EnterHeartdMinijail() {
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, "");
   // For database.
   minijail_bind(j.get(), "/var/lib/heartd", "/var/lib/heartd", 1);
+  // Symlink for reading the previous shutdown metrics.
+  if (base::PathExists(base::FilePath("/var/log/metrics"))) {
+    minijail_bind(j.get(), "/var/log/metrics", "/var/log/metrics", 0);
+  }
+  // Boot id information.
+  if (base::PathExists(base::FilePath("/var/log/boot_id.log"))) {
+    minijail_bind(j.get(), "/var/log/boot_id.log", "/var/log/boot_id.log", 0);
+  }
 
   CHECK_EQ(0, minijail_change_user(j.get(), kHeartdUser));
   CHECK_EQ(0, minijail_change_group(j.get(), kHeartdGroup));
