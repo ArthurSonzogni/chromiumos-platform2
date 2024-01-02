@@ -18,7 +18,6 @@ const BASE_COMMANDS: &[&str] = &[
     "connectivity",
     "cras",
     "diag",
-    "dump_emk",
     "enroll_status",
     "evtest",
     "exit", // Included for the "exit" help entry.

@@ -1349,17 +1349,6 @@ help_diag() (
 )
 
 # shellcheck disable=SC2034
-USAGE_dump_emk=''
-# shellcheck disable=SC2034
-HELP_dump_emk='
-  Show the EMK (Enterprise Machine Key).
-'
-cmd_dump_emk() (
-  /usr/sbin/cryptohome --action=tpm_attestation_key_status \
-                       --name=attest-ent-machine
-)
-
-# shellcheck disable=SC2034
 USAGE_enroll_status='[--mode] [--domain] [--realm] [--user]'
 # shellcheck disable=SC2034
 HELP_enroll_status='
