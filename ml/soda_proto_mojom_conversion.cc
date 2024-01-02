@@ -9,8 +9,10 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
+using chromeos::machine_learning::mojom::AsrSwitchResult;
 using chromeos::machine_learning::mojom::EndpointerType;
 using speech::soda::chrome::SodaEndpointEvent;
+using speech::soda::chrome::SodaLangIdEvent;
 using speech::soda::chrome::SodaRecognitionResult;
 using speech::soda::chrome::SodaResponse;
 
@@ -58,6 +60,10 @@ SpeechRecognizerEventFromProto(const SodaResponse& soda_response) {
   } else if (soda_response.soda_type() ==
              SodaResponse::LOGS_ONLY_ARTIFICIAL_MESSAGE) {
     return std::nullopt;
+  } else if (soda_response.soda_type() == SodaResponse::LANGID) {
+    speech_recognizer_event =
+        chromeos::machine_learning::mojom::SpeechRecognizerEvent::
+            NewLangidEvent(internal::LangIdEventFromProto(soda_response));
   } else {
     LOG(ERROR) << "Unexpected type of soda type to convert: "
                << speech::soda::chrome::SodaResponse_SodaMessageType_Name(
@@ -208,6 +214,33 @@ chromeos::machine_learning::mojom::EndpointerEventPtr EndpointerEventFromProto(
         soda_response.recognition_result().timing_metrics());
   }
   return endpointer_event;
+}
+
+chromeos::machine_learning::mojom::LangIdEventPtr LangIdEventFromProto(
+    const speech::soda::chrome::SodaResponse& soda_response) {
+  auto langid_event = chromeos::machine_learning::mojom::LangIdEvent::New();
+  CHECK_EQ(soda_response.soda_type(), SodaResponse::LANGID);
+  const auto& langid_event_proto = soda_response.langid_event();
+  langid_event->language = langid_event_proto.language();
+  langid_event->confidence_level = langid_event_proto.confidence_level();
+  switch (langid_event_proto.asr_switch_result()) {
+    case SodaLangIdEvent::DEFAULT_NO_SWITCH:
+      langid_event->asr_switch_result = AsrSwitchResult::DEFAULT_NO_SWITCH;
+      break;
+    case SodaLangIdEvent::SWITCH_SUCCEEDED:
+      langid_event->asr_switch_result = AsrSwitchResult::SWITCH_SUCCEEDED;
+      break;
+    case SodaLangIdEvent::SWITCH_FAILED:
+      langid_event->asr_switch_result = AsrSwitchResult::SWITCH_FAILED;
+      break;
+    case SodaLangIdEvent::SWITCH_SKIPPED_NO_LP:
+      langid_event->asr_switch_result = AsrSwitchResult::SWITCH_SKIPPED_NO_LP;
+      break;
+    default:
+      LOG(FATAL) << "Unknown langid asr_switch_result_type.";
+      break;
+  }
+  return langid_event;
 }
 
 chromeos::machine_learning::mojom::TimingInfoPtr

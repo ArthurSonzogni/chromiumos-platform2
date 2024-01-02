@@ -140,6 +140,26 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
 }
 
+TEST(SodaProtoMojomConversionTest, LangIdTest) {
+  SodaResponse response;
+  response.set_soda_type(SodaResponse::LANGID);
+  {
+    auto* langid = response.mutable_langid_event();
+    langid->set_language("en-au");
+    langid->set_confidence_level(1);
+    langid->set_asr_switch_result(
+        speech::soda::chrome::SodaLangIdEvent::SWITCH_FAILED);
+  }
+  auto expected_langid_mojom =
+      chromeos::machine_learning::mojom::LangIdEvent::New();
+  expected_langid_mojom->language = "en-au";
+  expected_langid_mojom->confidence_level = 1;
+  expected_langid_mojom->asr_switch_result =
+      chromeos::machine_learning::mojom::AsrSwitchResult::SWITCH_FAILED;
+  auto actual_langid_mojom = internal::LangIdEventFromProto(response);
+  EXPECT_TRUE(actual_langid_mojom.Equals(expected_langid_mojom));
+}
+
 TEST(SodaProtoMojomConversionTest, FinalResultsTest) {
   SodaResponse response;
   response.set_soda_type(SodaResponse::RECOGNITION);

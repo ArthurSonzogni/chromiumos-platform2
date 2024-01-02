@@ -184,6 +184,19 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   cfg_msg.set_mask_offensive_words(spec->mask_offensive_words);
   cfg_msg.set_enable_speaker_change_detection(spec->speaker_change_detection);
 
+  if (spec->multi_lang_config) {
+    auto multi_lang_config_mojo = *(spec->multi_lang_config);
+    auto multi_lang_cfg_proto = cfg_msg.mutable_multilang_config();
+    multi_lang_cfg_proto->set_rewind_when_switching_language(
+        multi_lang_config_mojo.rewind_when_switching_language);
+    auto& directory =
+        *(multi_lang_cfg_proto->mutable_multilang_language_pack_directory());
+    for (auto& mojo_map_item :
+         multi_lang_config_mojo.locale_to_language_pack_map) {
+      directory[mojo_map_item.first] = mojo_map_item.second;
+    }
+  }
+
   std::string serialized = cfg_msg.SerializeAsString();
 
   ExtendedSodaConfig cfg;
