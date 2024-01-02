@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/metrics/crc32.h>
 #include <base/strings/stringprintf.h>
@@ -41,7 +42,7 @@ std::optional<std::string> HwidUtilsImpl::CalculateChecksum(
       base::StringPrintf("%s %s", parts[0].c_str(), parts[1].c_str());
 
   uint32_t crc32 =
-      ~base::Crc32(0xFFFFFFFF, stripped.c_str(), stripped.length()) &
+      ~base::Crc32(0xFFFFFFFF, base::as_bytes(base::make_span(stripped))) &
       kChecksumBitMask;
 
   std::string checksum =
