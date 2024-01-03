@@ -5,11 +5,13 @@
 #include "oobe_config/oobe_config_restore_service.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
+#include "oobe_config/load_oobe_config_flex.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/oobe_config.h"
@@ -35,13 +37,9 @@ void OobeConfigRestoreService::RegisterAsync(
   dbus_object_->RegisterAsync(std::move(completion_callback));
 }
 
-void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
-    int32_t* error, OobeRestoreData* oobe_config_proto) {
-  DCHECK(error);
-  DCHECK(oobe_config_proto);
+namespace {
 
-  LOG(INFO) << "Chrome requested OOBE config.";
-
+std::optional<std::string> ReadRollbackConfig() {
   hwsec::FactoryImpl hwsec_factory(hwsec::ThreadingMode::kCurrentThread);
   std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_oobe_config =
       hwsec_factory.GetOobeConfigFrontend();
@@ -49,19 +47,55 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   EnterpriseRollbackMetricsHandler rollback_metrics;
   LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config,
                                                    &rollback_metrics);
-  std::string chrome_config_json;
-
+  std::string rollback_config;
   // There is rollback data so attempt to parse it.
   const bool rollback_success =
-      load_oobe_config_rollback.GetOobeConfigJson(&chrome_config_json);
-  if (rollback_success) {
+      load_oobe_config_rollback.GetOobeConfigJson(&rollback_config);
+  return rollback_success ? std::optional<std::string>(rollback_config)
+                          : std::nullopt;
+}
+
+std::optional<std::string> ReadFlexConfig() {
+  LoadOobeConfigFlex load_oobe_config_flex;
+  std::string flex_config;
+  const bool flex_config_success =
+      load_oobe_config_flex.GetOobeConfigJson(&flex_config);
+  return flex_config_success ? std::optional<std::string>(flex_config)
+                             : std::nullopt;
+}
+
+}  // namespace
+
+void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
+    int32_t* error, OobeRestoreData* oobe_config_proto) {
+  DCHECK(error);
+  DCHECK(oobe_config_proto);
+
+  *error = 0;
+
+  LOG(INFO) << "Chrome requested OOBE config.";
+
+  std::optional<std::string> rollback_config = ReadRollbackConfig();
+  if (rollback_config.has_value()) {
     LOG(INFO) << "Rollback oobe config sent.";
-  } else {
-    LOG(INFO) << "No rollback oobe config found.";
+    oobe_config_proto->set_chrome_config_json(*rollback_config);
+    return;
   }
 
-  oobe_config_proto->set_chrome_config_json(chrome_config_json);
-  *error = 0;
+  LOG(INFO) << "No rollback OOBE config found.";
+
+  if (USE_REVEN_OOBE_CONFIG) {
+    std::optional<std::string> flex_config = ReadFlexConfig();
+    if (flex_config.has_value()) {
+      LOG(INFO) << "Flex oobe config sent.";
+      oobe_config_proto->set_chrome_config_json(*flex_config);
+      return;
+    }
+  }
+
+  LOG(INFO) << "No Flex OOBE config found.";
+
+  oobe_config_proto->set_chrome_config_json("");
 }
 
 }  // namespace oobe_config

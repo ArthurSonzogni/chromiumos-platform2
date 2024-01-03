@@ -83,6 +83,13 @@ class FileHandlerForTesting : public FileHandler {
   std::unique_ptr<brillo::Process> StartLockMetricsFileProcess(
       const base::FilePath& build_directory) const;
 
+  // Creates the flex_config directory for testing at `kFlexConfigPath`.
+  bool CreateFlexConfigDirectory() const;
+
+  // Creates writes `config` to a config.json file at the location previously
+  // created by `CreateFlexConfigDirectory()`.
+  bool WriteFlexConfigData(const std::string& config) const;
+
   base::FilePath GetFullPath(
       const std::string& path_without_root) const override;
 

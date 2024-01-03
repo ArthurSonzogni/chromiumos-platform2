@@ -73,6 +73,10 @@ class FileHandlerTest : public ::testing::Test {
       "enterprise-rollback-metrics-data";
   static constexpr char kTestPreserveData[] =
       "mnt/stateful_partition/unencrypted/preserve/test";
+  static constexpr char kExpectedFlexConfigPath[] =
+      "mnt/stateful_partition/unencrypted/flex_config";
+  static constexpr char kExpectedFlexConfigData[] =
+      "mnt/stateful_partition/unencrypted/flex_config/config.json";
 
   void VerifyHasFunction(const std::string& path,
                          base::RepeatingCallback<bool()> has_path) {
@@ -586,6 +590,18 @@ TEST_F(FileHandlerTest, LockAndTruncateFile) {
 
   file_handler_.UnlockFile(*file);
   ASSERT_TRUE(base::DeleteFile(path));
+}
+
+TEST_F(FileHandlerTest, HasFlexConfigPath) {
+  VerifyHasFunction(FileHandlerTest::kExpectedFlexConfigPath,
+                    base::BindRepeating(&FileHandler::HasFlexConfigPath,
+                                        base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, ReadFlexConfig) {
+  VerifyReadFunction(FileHandlerTest::kExpectedFlexConfigData,
+                     base::BindRepeating(&FileHandler::ReadFlexConfig,
+                                         base::Unretained(&file_handler_)));
 }
 
 }  // namespace oobe_config

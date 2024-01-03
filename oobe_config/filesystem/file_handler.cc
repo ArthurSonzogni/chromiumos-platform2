@@ -249,6 +249,15 @@ void FileHandler::UnlockFile(base::File& file) const {
   return;
 }
 
+bool FileHandler::HasFlexConfigPath() const {
+  return base::PathExists(GetFullPath(kFlexConfigPath));
+}
+
+bool FileHandler::ReadFlexConfig(std::string* config) {
+  return base::ReadFileToString(
+      GetFullPath(kFlexConfigPath).Append(kFlexConfigFileName), config);
+}
+
 base::FilePath FileHandler::GetFullPath(
     const std::string& path_without_root) const {
   return root_.Append(path_without_root);
