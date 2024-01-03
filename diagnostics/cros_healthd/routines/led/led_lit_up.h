@@ -5,10 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
@@ -19,14 +21,20 @@ namespace diagnostics {
 
 class LedLitUpV2Routine final : public BaseRoutineControl {
  public:
-  LedLitUpV2Routine(Context* context,
-                    ash::cros_healthd::mojom::LedLitUpRoutineArgumentPtr arg);
+  static base::expected<std::unique_ptr<BaseRoutineControl>,
+                        ash::cros_healthd::mojom::SupportStatusPtr>
+  Create(Context* context,
+         ash::cros_healthd::mojom::LedLitUpRoutineArgumentPtr arg);
   LedLitUpV2Routine(const LedLitUpV2Routine&) = delete;
   LedLitUpV2Routine& operator=(const LedLitUpV2Routine&) = delete;
   ~LedLitUpV2Routine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
+
+ protected:
+  LedLitUpV2Routine(Context* context,
+                    ash::cros_healthd::mojom::LedLitUpRoutineArgumentPtr arg);
 
  private:
   void RunNextStep();

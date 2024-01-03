@@ -320,23 +320,37 @@ TEST_F(RoutineServiceTest, VolumeButtonNoButton) {
 TEST_F(RoutineServiceTest, LedLitUp) {
   SetFile(paths::sysfs::kCrosEc, "");
 
-  CheckIsRoutineArgumentSupported(MakeSupported(),
-                                  mojom::RoutineArgument::NewLedLitUp(
-                                      mojom::LedLitUpRoutineArgument::New()));
+  // Use a lambda function since LedLitUpRoutineArgument cannot be cloned.
+  auto create_routine_arg = []() {
+    auto arg = mojom::LedLitUpRoutineArgument::New();
+    arg->name = mojom::LedName::kAdapter;
+    arg->color = mojom::LedColor::kAmber;
+    return arg;
+  };
+
+  CheckIsRoutineArgumentSupported(
+      MakeSupported(),
+      mojom::RoutineArgument::NewLedLitUp(create_routine_arg()));
   CheckCreateRoutine(MakeSupported(),
-                     mojom::RoutineArgument::NewLedLitUp(
-                         mojom::LedLitUpRoutineArgument::New()));
+                     mojom::RoutineArgument::NewLedLitUp(create_routine_arg()));
 }
 
 TEST_F(RoutineServiceTest, LedLitUpNoEc) {
   UnsetPath(paths::sysfs::kCrosEc);
 
+  // Use a lambda function since LedLitUpRoutineArgument cannot be cloned.
+  auto create_routine_arg = []() {
+    auto arg = mojom::LedLitUpRoutineArgument::New();
+    arg->name = mojom::LedName::kAdapter;
+    arg->color = mojom::LedColor::kAmber;
+    return arg;
+  };
+
   auto status = MakeUnsupported("Not supported on a non-CrosEC device");
-  CheckIsRoutineArgumentSupported(status,
-                                  mojom::RoutineArgument::NewLedLitUp(
-                                      mojom::LedLitUpRoutineArgument::New()));
-  CheckCreateRoutine(status, mojom::RoutineArgument::NewLedLitUp(
-                                 mojom::LedLitUpRoutineArgument::New()));
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewLedLitUp(create_routine_arg()));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewLedLitUp(create_routine_arg()));
 }
 
 TEST_F(RoutineServiceTest, BluetoothPower) {

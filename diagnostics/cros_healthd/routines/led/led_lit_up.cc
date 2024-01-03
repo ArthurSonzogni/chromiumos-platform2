@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -12,7 +13,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/types/expected.h>
 
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -28,6 +31,27 @@ void LogResetColorError(const std::optional<std::string>& err) {
 }
 
 }  // namespace
+
+base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
+LedLitUpV2Routine::Create(Context* context,
+                          mojom::LedLitUpRoutineArgumentPtr arg) {
+  CHECK(!arg.is_null());
+
+  auto status = context->ground_truth()->PrepareRoutineLedLitUp();
+  if (!status->is_supported()) {
+    return base::unexpected(std::move(status));
+  }
+  if (arg->name == mojom::LedName::kUnmappedEnumField) {
+    return base::unexpected(mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Unexpected LED name", /*reason=*/nullptr)));
+  }
+  if (arg->color == mojom::LedColor::kUnmappedEnumField) {
+    return base::unexpected(mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Unexpected LED color", /*reason=*/nullptr)));
+  }
+  return base::ok(
+      base::WrapUnique(new LedLitUpV2Routine(context, std::move(arg))));
+}
 
 LedLitUpV2Routine::LedLitUpV2Routine(Context* context,
                                      mojom::LedLitUpRoutineArgumentPtr arg)

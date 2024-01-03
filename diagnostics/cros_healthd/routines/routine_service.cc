@@ -88,9 +88,7 @@ CreateRoutineResult CreateRoutineHelperSync(
 
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::LedLitUpRoutineArgumentPtr arg) {
-  return MakeRoutineIfSupported<LedLitUpV2Routine>(
-      context->ground_truth()->PrepareRoutineLedLitUp(), context,
-      std::move(arg));
+  return LedLitUpV2Routine::Create(context, std::move(arg));
 }
 
 CreateRoutineResult CreateRoutineHelperSync(
