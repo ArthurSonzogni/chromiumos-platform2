@@ -112,6 +112,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
       base::OnceCallback<void()> close_callback,
       std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager,
+      mojom::CameraClientType client_type,
       const bool async_capture_request_call = false);
 
   CameraDeviceAdapter(const CameraDeviceAdapter&) = delete;
@@ -175,6 +176,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // Closes the camera as a fallback solution for HALs that have not implemented
   // HAL-level SW privacy switch yet.
   void ForceClose();
+
+  mojom::CameraClientType GetClientType() const;
 
  private:
   // Implementation of camera3_callback_ops_t.
@@ -369,6 +372,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   CameraMonitor capture_monitor_;
 
   std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager_;
+
+  // Indicate which kind of client is using the camera.
+  const mojom::CameraClientType client_type_;
 
   // If true, client can ignore the return value of process_capture_request.
   // Validation error during the process_capture_request will be treated like

@@ -186,6 +186,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
     base::OnceCallback<void()> close_callback,
     std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager,
+    mojom::CameraClientType client_type,
     const bool async_capture_request_call)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
@@ -199,6 +200,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
       stream_manipulator_manager_(std::move(stream_manipulator_manager)),
+      client_type_(client_type),
       async_capture_request_call_(async_capture_request_call),
       inflight_requests_empty_cv_(&inflight_requests_lock_) {
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
@@ -1314,8 +1316,8 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
 
   buffer_handles_[buffer_id] = std::move(buffer_handle);
 
-  VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
-           << "format: " << FormatToString(drm_format)
+  VLOGF(1) << std::hex << "Buffer 0x" << buffer_id
+           << " registered: " << "format: " << FormatToString(drm_format)
            << " dimension: " << std::dec << width << "x" << height
            << " num_planes: " << num_planes << " modifier: " << modifier;
   return 0;
@@ -1732,6 +1734,10 @@ bool CameraDeviceAdapter::IsBufferManagementSupported() const {
   }
   return entry.data.u8[0] ==
          ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION_HIDL_DEVICE_3_5;
+}
+
+mojom::CameraClientType CameraDeviceAdapter::GetClientType() const {
+  return client_type_;
 }
 
 }  // namespace cros

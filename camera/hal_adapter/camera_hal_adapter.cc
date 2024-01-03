@@ -205,7 +205,10 @@ int32_t CameraHalAdapter::OpenDevice(
   }
 
   if (device_adapters_.find(camera_id) != device_adapters_.end()) {
-    LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
+    LOGF(WARNING) << camera_client_type << " is trying to open camera "
+                  << camera_id << " when "
+                  << device_adapters_[camera_id]->GetClientType()
+                  << " already opened it.";
     if (device_adapters_[camera_id]->IsRequestOrResultStalling()) {
       LOGF(WARNING) << "The camera HAL probably hung. Restart camera service "
                        "to recover from bad state (b/155830039).";
@@ -319,7 +322,7 @@ int32_t CameraHalAdapter::OpenDevice(
               .diagnostics_config = camera_diagnostics_config_},
           &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
           mojo_manager_token_),
-      do_notify_invalid_capture_request);
+      camera_client_type, do_notify_invalid_capture_request);
 
   if (!device_adapters_[camera_id]->Start()) {
     device_adapters_.erase(camera_id);
@@ -379,9 +382,8 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
   bool dlc_available = stream_manipulator_runtime_options_.GetDlcRootPath() !=
                        base::FilePath("");
 
-  LOG(INFO) << "CameraHalAdapter::SetCameraEffect:"
-            << " blur: " << config->blur_enabled
-            << " relight: " << config->relight_enabled
+  LOG(INFO) << "CameraHalAdapter::SetCameraEffect: blur: "
+            << config->blur_enabled << " relight: " << config->relight_enabled
             << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level
             << " effects_enabled: " << effects_enabled_
