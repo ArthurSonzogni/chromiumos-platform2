@@ -423,7 +423,9 @@ shared_library("libbrillo-test") {
   if (use.cros_host) {
     install_path = "lib"
   } else {
-    install_path = "/build/lib"
+    # We want to install this shared lib on the test image.
+    # gnlint: disable=GnLintInstallPathAlias
+    install_path = "/usr/local/lib"
   }
 }
 

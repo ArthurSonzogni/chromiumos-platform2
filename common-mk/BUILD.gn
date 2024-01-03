@@ -238,6 +238,7 @@ config("test") {
     # The path where fake libraries are installed on the host. It is
     # for tests, implementing simple backend.
     _test_lib_dir = "build/lib"
+    _test_usr_local_lib_dir = "usr/local/lib"
 
     ldflags += [
       # The path where fake libraries are installed on the host. It is
@@ -251,6 +252,17 @@ config("test") {
                   [
                     "-Wl,-rpath=/",
                     _test_lib_dir,
+                    "64",
+                  ]),
+      string_join("",
+                  [
+                    "-Wl,-rpath=/",
+                    _test_usr_local_lib_dir,
+                  ]),
+      string_join("",
+                  [
+                    "-Wl,-rpath=/",
+                    _test_usr_local_lib_dir,
                     "64",
                   ]),
     ]
@@ -269,6 +281,17 @@ config("test") {
                   [
                     "${sysroot}/",
                     _test_lib_dir,
+                    "64",
+                  ]),
+      string_join("",
+                  [
+                    "${sysroot}/",
+                    _test_usr_local_lib_dir,
+                  ]),
+      string_join("",
+                  [
+                    "${sysroot}/",
+                    _test_usr_local_lib_dir,
                     "64",
                   ]),
     ]
