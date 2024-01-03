@@ -665,4 +665,5 @@ message ProbeSsfcComponentsResponse {
   repeated ApI2c ap_i2c = 11;
   repeated EcI2c ec_i2c = 12;
   repeated Tcpc tcpc = 13;
+  repeated InputDevice touchscreen = 14;
 }

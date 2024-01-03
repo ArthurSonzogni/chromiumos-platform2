@@ -92,8 +92,10 @@ using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
                                                 UsbCameraFunction,
                                                 WirelessNetworkFunction>;
 
-using SsfcAllowedProbeFunctions =
-    ProbeFunctions<ApI2cFunction, EcI2cFunction, TcpcFunction>;
+using SsfcAllowedProbeFunctions = ProbeFunctions<ApI2cFunction,
+                                                 EcI2cFunction,
+                                                 InputDeviceFunction,
+                                                 TcpcFunction>;
 }  // namespace runtime_probe
 
 #endif  // RUNTIME_PROBE_FUNCTIONS_ALL_FUNCTIONS_H_
