@@ -262,6 +262,7 @@ bool MetricsLibrary::AreMetricsEnabled() {
       // to opt in based on the current-as-of-2022-03 design, but add this as
       // a secondary layer of defense.)
       // If the user opted out, we opt out.
+      cached_enabled_ = false;
       return false;
     }
 
