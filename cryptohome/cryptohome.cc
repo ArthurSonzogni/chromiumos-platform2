@@ -669,8 +669,17 @@ bool BuildAuthFactor(Printer& printer,
     return true;
   } else if (cl->HasSwitch(switches::kRecoveryMediatorPubKeySwitch)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-    // Recovery metadata has no fields currently.
-    auth_factor->mutable_cryptohome_recovery_metadata();
+    std::string mediator_pub_key_hex =
+        cl->GetSwitchValueASCII(switches::kRecoveryMediatorPubKeySwitch);
+    std::string mediator_pub_key;
+    if (!base::HexStringToString(mediator_pub_key_hex.c_str(),
+                                 &mediator_pub_key)) {
+      printer.PrintHumanOutput(
+          "Couldn't convert mediator_pub_key_hex to string.\n");
+      return false;
+    }
+    auth_factor->mutable_cryptohome_recovery_metadata()->set_mediator_pub_key(
+        mediator_pub_key);
     return true;
   } else if (cl->HasSwitch(switches::kPublicMount)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
