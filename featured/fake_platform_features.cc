@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 #include "featured/fake_platform_features.h"
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -114,6 +116,12 @@ void FakePlatformFeatures::TriggerRefetchSignal() {
   for (const auto& cb : callbacks) {
     bus_->GetOriginTaskRunner()->PostTask(FROM_HERE, cb);
   }
+}
+
+std::optional<bool> FakePlatformFeatures::IsEarlyBootFeatureActive(
+    std::string_view feature_name, std::map<std::string, std::string>* params) {
+  // TODO(b/319289151): Implement this.
+  return std::nullopt;
 }
 
 }  // namespace feature

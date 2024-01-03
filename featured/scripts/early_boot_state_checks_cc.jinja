@@ -1,0 +1,40 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <featured/early_boot_state_checks.h>
+
+#include <optional>
+
+#include <featured/feature_library.h>
+
+namespace feature {
+
+{% for feature in features %}
+// static
+bool EarlyBootChecker::Is{{ feature.name }}Enabled(
+    std::map<std::string, std::string>* params) {
+  PlatformFeaturesInterface* platform_features = PlatformFeatures::Get();
+  CHECK(platform_features);
+
+  std::optional<bool> enabled = platform_features->IsEarlyBootFeatureActive(
+      "{{ feature.name }}", params);
+
+  if (!enabled.has_value()) {
+    if (params) {
+      params->clear();
+
+      {% for key, value in feature.params.items() %}
+      params->emplace("{{ key }}", "{{ value }}");
+      {% endfor %}
+    }
+    return {{ feature.default_val }};
+  }
+
+  // params is already populated.
+  return enabled.value();
+}
+{% endfor %}
+
+}  // namespace feature
+

@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 #include "featured/feature_library.h"
 
+#include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/files/file.h>
@@ -415,4 +418,11 @@ void PlatformFeatures::RecordActiveTrial(
     return;
   }
 }
+
+std::optional<bool> PlatformFeatures::IsEarlyBootFeatureActive(
+    std::string_view feature_name, std::map<std::string, std::string>* params) {
+  // TODO(b/319289151): Implement this.
+  return std::nullopt;
+}
+
 }  // namespace feature

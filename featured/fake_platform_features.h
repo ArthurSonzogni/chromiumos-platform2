@@ -5,7 +5,9 @@
 #define FEATURED_FAKE_PLATFORM_FEATURES_H_
 
 #include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
@@ -58,6 +60,10 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
   void TriggerRefetchSignal();
 
  private:
+  std::optional<bool> IsEarlyBootFeatureActive(
+      std::string_view feature_name,
+      std::map<std::string, std::string>* params) override;
+
   scoped_refptr<dbus::Bus> bus_;
 
   base::Lock enabled_lock_;

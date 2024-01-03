@@ -1,0 +1,32 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef {{ header_guard }}
+#define {{ header_guard }}
+
+#include <map>
+#include <string>
+#include <string_view>
+
+#include "featured/feature_export.h"
+
+namespace feature {
+
+// Serves as a PlatformFeaturesInterface wrapper to gate access to the
+// underlying private methods in it.
+class FEATURE_EXPORT EarlyBootChecker {
+  public:
+    {% for feature in features %}
+    // Determine if {{ feature.name }} is enabled, and optionally what params it
+    // has.
+    // Requires that PlatformFeatures::Initialize has been called.
+    static bool Is{{ feature.name }}Enabled(
+        std::map<std::string, std::string>* params = nullptr);
+    {% endfor %}
+};
+
+}  // namespace feature
+
+#endif  // {{ header_guard }}
+

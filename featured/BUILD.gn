@@ -73,9 +73,42 @@ executable("featured") {
   ]
 }
 
+action("early_boot_state_checks") {
+  visibility = [ ":libfeatures" ]
+  script = "scripts/generate_early_boot_checks.py"
+  inputs = [
+    "config/default_states.json",
+    "scripts/early_boot_state_checks_cc.jinja",
+    "scripts/early_boot_state_checks_h.jinja",
+  ]
+  outputs = [
+    "$target_gen_dir/early_boot_state_checks.cc",
+    "$target_gen_dir/early_boot_state_checks.h",
+  ]
+  args = [
+    "--default_states=" +
+        rebase_path("config/default_states.json", root_build_dir),
+    "--fileroot_output=" + rebase_path(target_gen_dir, root_build_dir) +
+        "/early_boot_state_checks",
+    "--template_folder=" + rebase_path("scripts/", root_build_dir),
+  ]
+  configs = [ ":target_defaults" ]
+}
+
+# Ensure everything that uses libfeatures has access to the generated file.
+config("early_boot_state_checks_config") {
+  include_dirs = [ root_gen_dir ]
+}
+
 shared_library("libfeatures") {
   sources = [ "feature_library.cc" ]
+  sources += get_target_outputs(":early_boot_state_checks")
   configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":early_boot_state_checks_config" ]
+
+  # This is load-bearing! The generated include path requires this.
+  include_dirs = [ root_gen_dir ]
+  public_deps = [ ":early_boot_state_checks" ]
 }
 
 shared_library("libfeatures_c") {
@@ -88,6 +121,7 @@ shared_library("libfeatures_c") {
 
 shared_library("libfake_platform_features") {
   sources = [ "fake_platform_features.cc" ]
+  all_dependent_configs = [ ":early_boot_state_checks_config" ]
   configs += [ ":target_defaults" ]
 }
 

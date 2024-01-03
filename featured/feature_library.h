@@ -9,7 +9,9 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,7 +27,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <featured/proto_bindings/featured.pb.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <featured/early_boot_state_checks.h>  // IWYU pragma: export
+#include <gtest/gtest_prod.h>                  // for FRIEND_TEST
 
 namespace feature {
 
@@ -166,6 +169,18 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
 
  protected:
   virtual ~PlatformFeaturesInterface() = default;
+
+ private:
+  // Allow generated code to run |IsEarlyBootFeatureActive|.
+  friend class EarlyBootChecker;
+
+  // Determine if a given early boot feature is active (true), inactive (false),
+  // or in default state (nullopt).
+  // Private to ensure there's a consistent default value; see
+  // default_states.json and early_boot_checks_h.jinja for public interface.
+  virtual std::optional<bool> IsEarlyBootFeatureActive(
+      std::string_view feature_name,
+      std::map<std::string, std::string>* params) = 0;
 };
 
 class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
@@ -296,6 +311,10 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   // For testing, callers can change what directory these files are created in
   // with SetActiveTrialFileDirectoryForTesting().
   void RecordActiveTrial(const featured::FeatureOverride& trial);
+
+  std::optional<bool> IsEarlyBootFeatureActive(
+      std::string_view feature_name,
+      std::map<std::string, std::string>* params) override;
 
   scoped_refptr<dbus::Bus> bus_;
   // An object proxy used for communicating with ash-chrome.

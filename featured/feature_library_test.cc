@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/dcheck_is_on.h>
@@ -23,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "featured/feature_library.h"
+#include <featured/early_boot_state_checks.h>
 
 namespace {
 
@@ -1020,6 +1022,22 @@ TEST_F(FeatureLibraryTest, EscapeTrialNameWithForwardSlash) {
   }
 
   EXPECT_EQ(num_found_files, 1);
+}
+
+// Since the underlying feature_library function is a stub, this should fall
+// back to defaults.
+TEST_F(FeatureLibraryTest, EarlyBootStateChecks) {
+  std::map<std::string, std::string> params;
+  EXPECT_TRUE(EarlyBootChecker::IsCrOSEarlyBootTestFeatureEnabled(&params));
+  EXPECT_THAT(params, testing::UnorderedElementsAre(
+                          std::make_pair("test_key_1", "test_value_1"),
+                          std::make_pair("test_key_2", "test_value_2")));
+}
+
+// Succeed if params is not passed.
+TEST_F(FeatureLibraryTest, EarlyBootStateChecks_NoParams) {
+  EXPECT_TRUE(EarlyBootChecker::IsCrOSEarlyBootTestFeatureEnabled(nullptr));
+  EXPECT_TRUE(EarlyBootChecker::IsCrOSEarlyBootTestFeatureEnabled());
 }
 
 #if DCHECK_IS_ON()
