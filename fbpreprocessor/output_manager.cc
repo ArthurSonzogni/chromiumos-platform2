@@ -134,6 +134,7 @@ void OutputManager::GetAllAvailableDebugDumps(
     wifi_dump->set_dmpfile(dump.DumpFile().value());
     wifi_dump->set_state(WiFiDump::RAW);
     wifi_dump->set_vendor(WiFiDump::IWLWIFI);
+    wifi_dump->set_compression(WiFiDump::GZIP);
   }
   files_lock_.Release();
   response->Return(out_DebugDumps);
