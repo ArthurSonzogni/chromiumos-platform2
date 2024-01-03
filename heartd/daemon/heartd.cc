@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
 
 #include "heartd/daemon/dbus_connector_impl.h"
 #include "heartd/daemon/utils/boot_record_recorder.h"
@@ -35,6 +36,11 @@ HeartdDaemon::~HeartdDaemon() = default;
 int HeartdDaemon::OnEventLoopStarted() {
   RecordBootMetrics(base::FilePath("/"), database_.get());
   database_->RemoveOutdatedData(kBootRecordTable);
+  // We have to cache the boot record when start up, because when we need to
+  // trigger the reboot action, it's possible that we can't read the database
+  // successfully.
+  action_runner_->CacheBootRecord(
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Days(7)));
 
   return EX_OK;
 }

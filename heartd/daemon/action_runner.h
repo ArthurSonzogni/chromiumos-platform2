@@ -5,6 +5,11 @@
 #ifndef HEARTD_DAEMON_ACTION_RUNNER_H_
 #define HEARTD_DAEMON_ACTION_RUNNER_H_
 
+#include <vector>
+
+#include <base/time/time.h>
+
+#include "heartd/daemon/boot_record.h"
 #include "heartd/daemon/dbus_connector.h"
 #include "heartd/mojom/heartd.mojom.h"
 
@@ -35,6 +40,24 @@ class ActionRunner {
   // Disable the force reboot action.
   void DisableForceRebootAction();
 
+  // Cache the BootRecord result to prevent unlimited reboot action.
+  void CacheBootRecord(const std::vector<BootRecord>& boot_records);
+
+  // Check if there are too many reboot. If it exceeds the threshold, we skip
+  // the reboot action.
+  bool IsNormalRebootTooManyTimes();
+
+  // Check if there are too many reboot. If it exceeds the threshold, we skip
+  // the reboot action.
+  bool IsForceRebootTooManyTimes();
+
+ private:
+  // Returns the normal reboot count after a certain time.
+  int GetNormalRebootCount(const base::Time& time);
+
+  // Returns the force reboot count after a certain time.
+  int GetForceRebootCount(const base::Time& time);
+
  private:
   // Unowned pointer. Should outlive this instance.
   // Used to communicate with other D-Bus services.
@@ -45,6 +68,8 @@ class ActionRunner {
   bool allow_force_reboot_ = false;
   // /proc/sysrq-trigger fd.
   int sysrq_fd_ = -1;
+  // Cache the BootRecord result to prevent unlimited reboot action.
+  std::vector<BootRecord> boot_records_;
 };
 
 }  // namespace heartd
