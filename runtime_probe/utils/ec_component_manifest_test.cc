@@ -72,7 +72,8 @@ TEST_F(EcComponentManifestTestBasic, EcComponentManifestReader_ReadSuccess) {
   const auto manifest = EcComponentManifestReader::Read();
 
   EXPECT_TRUE(manifest.has_value());
-  EXPECT_EQ(manifest->version, 1);
+  EXPECT_EQ(manifest->manifest_version, 1);
+  EXPECT_EQ(manifest->ec_version, "12345.67.0");
   EXPECT_EQ(manifest->component_list.size(), 2);
   {
     const EcComponentManifest::Component& comp = manifest->component_list[0];

@@ -1,5 +1,6 @@
 {
-  "version": 1,
+  "manifest_version": 1,
+  "ec_version": "12345.67.0",
   "component_list": [
     {
       "component_type": "charger",

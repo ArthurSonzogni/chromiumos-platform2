@@ -146,8 +146,12 @@ EcComponentManifest::Component::Create(const base::Value::Dict& dv) {
 std::optional<EcComponentManifest> EcComponentManifest::Create(
     const base::Value::Dict& dv) {
   EcComponentManifest ret{};
-  if (!SetValue(dv.FindInt("version"), ret.version)) {
-    LOG(ERROR) << "Invalid or missing field: version";
+  if (!SetValue(dv.FindInt("manifest_version"), ret.manifest_version)) {
+    LOG(ERROR) << "Invalid or missing field: manifest_version";
+    return std::nullopt;
+  }
+  if (!SetValue(dv.FindString("ec_version"), ret.ec_version)) {
+    LOG(ERROR) << "Invalid or missing field: ec_version";
     return std::nullopt;
   }
   if (!SetList(dv.FindList("component_list"), ret.component_list)) {

@@ -45,7 +45,8 @@ struct EcComponentManifest {
     static std::optional<Component> Create(const base::Value::Dict&);
   };
 
-  int version;
+  int manifest_version;
+  std::string ec_version;
   std::vector<Component> component_list;
 
   static std::optional<EcComponentManifest> Create(const base::Value::Dict&);
