@@ -105,43 +105,6 @@ class TpmStateTest : public testing::Test {
   std::map<TPM_ALG_ID, TPMA_ALGORITHM> fake_algorithm_properties_;
 };
 
-TEST(TpmState_DeathTest, NotInitialized) {
-  TrunksFactoryForTest factory;
-  TpmStateImpl tpm_state(factory);
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsOwnerPasswordSet(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEndorsementPasswordSet(),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsLockoutPasswordSet(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsOwned(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsInLockout(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsPlatformHierarchyEnabled(),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsStorageHierarchyEnabled(),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEndorsementHierarchyEnabled(),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEnabled(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.WasShutdownOrderly(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsRSASupported(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsECCSupported(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutCounter(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutThreshold(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutInterval(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutRecovery(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetMaxNVSize(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmFamily(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetSpecificationLevel(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetSpecificationRevision(),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetManufacturer(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmModel(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetFirmwareVersion(), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmProperty(0, nullptr),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetAlgorithmProperties(0, nullptr),
-                            "Check failed");
-}
-
 TEST_F(TpmStateTest, FlagsClear) {
   fake_tpm_properties_[TPM_PT_PERMANENT] = 0;
   fake_tpm_properties_[TPM_PT_STARTUP_CLEAR] = 0;
@@ -181,19 +144,19 @@ TEST_F(TpmStateTest, EnabledTpm) {
   EXPECT_TRUE(tpm_state.IsEnabled());
   // All hierarchies enabled.
   fake_tpm_properties_[TPM_PT_STARTUP_CLEAR] = 0x7;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsEnabled());
   // All hierarchies disabled.
   fake_tpm_properties_[TPM_PT_STARTUP_CLEAR] = 0x0;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsEnabled());
   // Storage disabled.
   fake_tpm_properties_[TPM_PT_STARTUP_CLEAR] = 0x5;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsEnabled());
   // Endorsement disabled.
   fake_tpm_properties_[TPM_PT_STARTUP_CLEAR] = 0x3;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsEnabled());
 }
 
@@ -203,19 +166,19 @@ TEST_F(TpmStateTest, OwnedTpm) {
   EXPECT_TRUE(tpm_state.IsOwned());
   // All auth missing.
   fake_tpm_properties_[TPM_PT_PERMANENT] = 0x0;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsOwned());
   // Owner auth missing.
   fake_tpm_properties_[TPM_PT_PERMANENT] = 0x6;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsOwned());
   // Endorsement auth missing.
   fake_tpm_properties_[TPM_PT_PERMANENT] = 0x5;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsOwned());
   // Lockout auth missing.
   fake_tpm_properties_[TPM_PT_PERMANENT] = 0x3;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_FALSE(tpm_state.IsOwned());
 }
 
@@ -250,7 +213,7 @@ TEST_F(TpmStateTest, LockoutValuePassthrough) {
   fake_tpm_properties_[TPM_PT_LOCKOUT_INTERVAL]++;
   fake_tpm_properties_[TPM_PT_LOCKOUT_RECOVERY]++;
   // Refresh and check for the new values.
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_EQ(tpm_state.GetLockoutCounter(),
             fake_tpm_properties_[TPM_PT_LOCKOUT_COUNTER]);
   EXPECT_EQ(tpm_state.GetLockoutThreshold(),
@@ -360,7 +323,7 @@ TEST_F(TpmStateTest, RawTpmProperty) {
   EXPECT_FALSE(tpm_state.GetTpmProperty(kProperty, &value));
 
   fake_tpm_properties_[kProperty] = 1234;
-  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Refresh());
   EXPECT_TRUE(tpm_state.GetTpmProperty(kProperty, nullptr));
   EXPECT_TRUE(tpm_state.GetTpmProperty(kProperty, &value));
   EXPECT_EQ(value, fake_tpm_properties_[kProperty]);

@@ -33,7 +33,16 @@ namespace trunks {
 TpmStateImpl::TpmStateImpl(const TrunksFactory& factory) : factory_(factory) {}
 
 TPM_RC TpmStateImpl::Initialize() {
-  return Refresh();
+  if (initialized_) {
+    return TPM_RC_SUCCESS;
+  }
+
+  TPM_RC result = Refresh();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to initialize TPM state: " << GetErrorString(result);
+  }
+
+  return result;
 }
 
 TPM_RC TpmStateImpl::Refresh() {
@@ -58,95 +67,128 @@ TPM_RC TpmStateImpl::Refresh() {
 }
 
 bool TpmStateImpl::IsOwnerPasswordSet() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_PERMANENT] & kOwnerAuthSetMask) ==
           kOwnerAuthSetMask);
 }
 
 bool TpmStateImpl::IsEndorsementPasswordSet() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_PERMANENT] & kEndorsementAuthSetMask) ==
           kEndorsementAuthSetMask);
 }
 
 bool TpmStateImpl::IsLockoutPasswordSet() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_PERMANENT] & kLockoutAuthSetMask) ==
           kLockoutAuthSetMask);
 }
 
 bool TpmStateImpl::IsOwned() {
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return (IsOwnerPasswordSet() && IsEndorsementPasswordSet() &&
           IsLockoutPasswordSet());
 }
 
 bool TpmStateImpl::IsInLockout() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_PERMANENT] & kInLockoutMask) ==
           kInLockoutMask);
 }
 
 bool TpmStateImpl::IsPlatformHierarchyEnabled() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_STARTUP_CLEAR] & kPlatformHierarchyMask) ==
           kPlatformHierarchyMask);
 }
 
 bool TpmStateImpl::IsStorageHierarchyEnabled() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_STARTUP_CLEAR] & kStorageHierarchyMask) ==
           kStorageHierarchyMask);
 }
 
 bool TpmStateImpl::IsEndorsementHierarchyEnabled() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_STARTUP_CLEAR] & kEndorsementHierarchyMask) ==
           kEndorsementHierarchyMask);
 }
 
 bool TpmStateImpl::IsEnabled() {
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return (!IsPlatformHierarchyEnabled() && IsStorageHierarchyEnabled() &&
           IsEndorsementHierarchyEnabled());
 }
 
 bool TpmStateImpl::WasShutdownOrderly() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return ((tpm_properties_[TPM_PT_STARTUP_CLEAR] & kOrderlyShutdownMask) ==
           kOrderlyShutdownMask);
 }
 
 bool TpmStateImpl::IsRSASupported() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return (algorithm_properties_.count(TPM_ALG_RSA) > 0);
 }
 
 bool TpmStateImpl::IsECCSupported() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return (algorithm_properties_.count(TPM_ALG_ECC) > 0);
 }
 
 uint32_t TpmStateImpl::GetLockoutCounter() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_LOCKOUT_COUNTER];
 }
 
 uint32_t TpmStateImpl::GetLockoutThreshold() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_MAX_AUTH_FAIL];
 }
 
 uint32_t TpmStateImpl::GetLockoutInterval() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_LOCKOUT_INTERVAL];
 }
 
 uint32_t TpmStateImpl::GetLockoutRecovery() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_LOCKOUT_RECOVERY];
 }
 
 uint32_t TpmStateImpl::GetMaxNVSize() {
-  CHECK(initialized_);
   uint32_t max_nv_size;
   if (!GetTpmProperty(TPM_PT_NV_INDEX_MAX, &max_nv_size)) {
     max_nv_size = 2048;
@@ -160,7 +202,9 @@ uint32_t TpmStateImpl::GetMaxNVSize() {
 }
 
 bool TpmStateImpl::GetTpmProperty(TPM_PT property, uint32_t* value) {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   if (tpm_properties_.count(property) == 0) {
     return false;
   }
@@ -171,40 +215,54 @@ bool TpmStateImpl::GetTpmProperty(TPM_PT property, uint32_t* value) {
 }
 
 uint32_t TpmStateImpl::GetTpmFamily() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_FAMILY_INDICATOR];
 }
 
 uint32_t TpmStateImpl::GetSpecificationLevel() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_LEVEL];
 }
 
 uint32_t TpmStateImpl::GetSpecificationRevision() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_REVISION];
 }
 
 uint32_t TpmStateImpl::GetManufacturer() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_MANUFACTURER];
 }
 
 uint32_t TpmStateImpl::GetTpmModel() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   return tpm_properties_[TPM_PT_VENDOR_TPM_TYPE];
 }
 
 uint64_t TpmStateImpl::GetFirmwareVersion() {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   uint64_t version_high = tpm_properties_[TPM_PT_FIRMWARE_VERSION_1];
   uint64_t version_low = tpm_properties_[TPM_PT_FIRMWARE_VERSION_2];
   return (version_high << 32) | version_low;
 }
 
 std::string TpmStateImpl::GetVendorIDString() {
-  CHECK(initialized_);
   std::string result;
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return result;
+  }
 
   for (TPM_PT property : {TPM_PT_VENDOR_STRING_1, TPM_PT_VENDOR_STRING_2,
                           TPM_PT_VENDOR_STRING_3, TPM_PT_VENDOR_STRING_4}) {
@@ -227,7 +285,9 @@ std::string TpmStateImpl::GetVendorIDString() {
 
 bool TpmStateImpl::GetAlgorithmProperties(TPM_ALG_ID algorithm,
                                           TPMA_ALGORITHM* properties) {
-  CHECK(initialized_);
+  if (Initialize() != TPM_RC_SUCCESS) {
+    return false;
+  }
   if (algorithm_properties_.count(algorithm) == 0) {
     return false;
   }
