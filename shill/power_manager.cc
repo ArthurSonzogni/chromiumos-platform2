@@ -33,7 +33,7 @@ PowerManager::PowerManager(ControlInterface* control_interface)
       current_suspend_id_(0),
       current_dark_suspend_id_(0),
       suspend_duration_us_(0),
-      wifi_reg_domain_is_set(false) {}
+      wifi_reg_domain_(std::nullopt) {}
 
 PowerManager::~PowerManager() = default;
 
@@ -143,15 +143,14 @@ void PowerManager::ChangeRegDomain(nl80211_dfs_regions domain) {
                    << std::to_string(domain);
       return;
   }
-  wifi_reg_domain_is_set = true;
 
-  if (new_domain == wifi_reg_domain_) {
+  if (wifi_reg_domain_.has_value() && new_domain == *wifi_reg_domain_) {
     return;
   }
   wifi_reg_domain_ = new_domain;
 
   if (power_manager_proxy_) {
-    power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
+    power_manager_proxy_->ChangeRegDomain(*wifi_reg_domain_);
   }
 }
 
@@ -240,8 +239,8 @@ void PowerManager::OnPowerManagerAppeared() {
       base::BindOnce(&PowerManager::OnDarkSuspendDelayRegistered,
                      weak_ptr_factory_.GetWeakPtr()));
 
-  if (wifi_reg_domain_is_set) {
-    power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
+  if (wifi_reg_domain_.has_value()) {
+    power_manager_proxy_->ChangeRegDomain(*wifi_reg_domain_);
   }
 }
 

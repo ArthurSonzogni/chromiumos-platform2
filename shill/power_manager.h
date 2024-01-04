@@ -155,8 +155,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // OnSuspendDone() and reset to 0 by OnSuspendImminent()
   int64_t suspend_duration_us_;
 
-  power_manager::WifiRegDomainDbus wifi_reg_domain_;
-  bool wifi_reg_domain_is_set;
+  std::optional<power_manager::WifiRegDomainDbus> wifi_reg_domain_;
 
   base::WeakPtrFactory<PowerManager> weak_ptr_factory_{this};
 };
