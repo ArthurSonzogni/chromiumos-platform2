@@ -54,7 +54,6 @@ const BASE_COMMANDS: &[&str] = &[
     "uptime",
     "vmstat",
     "vsh",
-    "wifi_fw_dump",
     "wifi_power_save",
 ];
 
