@@ -284,6 +284,7 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
 }
 
 void PacketCaptureTool::OnPacketCaptureStopped(std::string helper_process) {
+  LOG(INFO) << "packet_capture: stopped process id: " << helper_process;
   auto process_info_iter = helper_processes_.find(helper_process);
   if (process_info_iter == helper_processes_.end()) {
     // Helper process has already been cleaned up. Don't need to do anything.

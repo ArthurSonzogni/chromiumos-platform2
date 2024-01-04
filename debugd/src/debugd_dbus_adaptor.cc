@@ -383,6 +383,8 @@ bool DebugdDBusAdaptor::PacketCaptureStart(
       error);
   if (packet_capture_started) {
     SendPacketCaptureStartSignal();
+    // TODO(b/317159951): Change the mode to DLOG after the issue is resolved.
+    LOG(INFO) << "packet_capture: PacketCaptureStart signal is emitted";
   }
   return packet_capture_started;
 }
@@ -392,6 +394,8 @@ void DebugdDBusAdaptor::OnPacketCaptureStopped() {
   // processes running.
   if (!packet_capture_tool_->HasActivePacketCaptureProcess()) {
     SendPacketCaptureStopSignal();
+    // TODO(b/317159951): Change the mode to DLOG after the issue is resolved.
+    LOG(INFO) << "packet_capture: PacketCaptureStop signal is emitted";
   }
 }
 
