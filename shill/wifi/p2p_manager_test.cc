@@ -226,7 +226,7 @@ TEST_F(P2PManagerTest, GetP2PCapabilities) {
   EXPECT_TRUE(
       caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
   EXPECT_TRUE(
-      caps.Contains<Integers>(kP2PCapapabilitiesPreferredChannelsProperty));
+      caps.Contains<Integers>(kP2PCapabilitiesPreferredChannelsProperty));
 
   auto groupReadiness =
       caps.Get<String>(kP2PCapabilitiesGroupReadinessProperty);
@@ -235,7 +235,7 @@ TEST_F(P2PManagerTest, GetP2PCapabilities) {
   auto supportedChannels =
       caps.Get<Integers>(kP2PCapabilitiesSupportedChannelsProperty);
   auto preferredChannels =
-      caps.Get<Integers>(kP2PCapapabilitiesPreferredChannelsProperty);
+      caps.Get<Integers>(kP2PCapabilitiesPreferredChannelsProperty);
 
   // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
   // and interface combination checking to be supported by wifi phy.

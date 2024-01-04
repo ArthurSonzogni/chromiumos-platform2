@@ -1085,7 +1085,7 @@ constexpr char kP2PCapabilitiesGroupReadinessProperty[] = "GroupReadiness";
 constexpr char kP2PCapabilitiesClientReadinessProperty[] = "ClientReadiness";
 constexpr char kP2PCapabilitiesSupportedChannelsProperty[] =
     "SupportedChannels";
-constexpr char kP2PCapapabilitiesPreferredChannelsProperty[] =
+constexpr char kP2PCapabilitiesPreferredChannelsProperty[] =
     "PreferredChannels";
 
 // kP2PCapabilitiesGroupReadinessProperty values

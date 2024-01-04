@@ -89,7 +89,7 @@ KeyValueStore P2PManager::GetCapabilities(Error* /* error */) {
                      ClientReadiness());
     caps.Set<Integers>(kP2PCapabilitiesSupportedChannelsProperty,
                        SupportedChannels());
-    caps.Set<Integers>(kP2PCapapabilitiesPreferredChannelsProperty,
+    caps.Set<Integers>(kP2PCapabilitiesPreferredChannelsProperty,
                        PreferredChannels());
   } else {
     caps.Set<Boolean>(kP2PCapabilitiesP2PSupportedProperty, false);
