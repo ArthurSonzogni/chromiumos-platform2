@@ -239,7 +239,7 @@ int TakeOwnership(const std::string& owner_password,
 
 int DumpStatus(const TrunksFactory& factory) {
   std::unique_ptr<trunks::TpmState> state = factory.GetTpmState();
-  trunks::TPM_RC result = state->Initialize();
+  trunks::TPM_RC result = state->Refresh();
   if (result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to read TPM state: "
                << trunks::GetErrorString(result);

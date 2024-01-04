@@ -125,7 +125,7 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordUninitializedTrunksFactory) {
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordTpmStateError) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).Times(0);
 

@@ -267,7 +267,10 @@ bool Tpm2StatusImpl::GetVersionInfo(uint32_t* family,
   CHECK(firmware_version);
   CHECK(vendor_specific);
 
-  if (!Refresh()) {
+  TPM_RC result = trunks_tpm_state_->Initialize();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error initializing trunks tpm state: "
+               << trunks::GetErrorString(result);
     return false;
   }
 
@@ -289,9 +292,9 @@ bool Tpm2StatusImpl::GetVersionInfo(uint32_t* family,
 }
 
 bool Tpm2StatusImpl::Refresh() {
-  TPM_RC result = trunks_tpm_state_->Initialize();
+  TPM_RC result = trunks_tpm_state_->Refresh();
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error initializing trunks tpm state: "
+    LOG(ERROR) << "Error refreshing trunks tpm state: "
                << trunks::GetErrorString(result);
     return false;
   }

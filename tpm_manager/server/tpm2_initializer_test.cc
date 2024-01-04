@@ -170,7 +170,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsSuccess) {
-  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+  EXPECT_CALL(mock_trunks_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
       .WillOnce(Return(false));
@@ -195,7 +195,7 @@ TEST_F(Tpm2InitializerTest, PruneStoredPasswordsSuccess) {
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsRefreshTpmStateError) {
-  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+  EXPECT_CALL(mock_trunks_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   fake_local_data_.set_owner_password("owner");
@@ -209,7 +209,7 @@ TEST_F(Tpm2InitializerTest, PruneStoredPasswordsRefreshTpmStateError) {
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsDataInUse) {
-  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+  EXPECT_CALL(mock_trunks_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
       .WillOnce(Return(true));
@@ -225,7 +225,7 @@ TEST_F(Tpm2InitializerTest, PruneStoredPasswordsDataInUse) {
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsReadDataError) {
-  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+  EXPECT_CALL(mock_trunks_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
       .WillOnce(Return(false));
@@ -242,7 +242,7 @@ TEST_F(Tpm2InitializerTest, PruneStoredPasswordsReadDataError) {
 }
 
 TEST_F(Tpm2InitializerTest, PruneStoredPasswordsWriteDataError) {
-  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+  EXPECT_CALL(mock_trunks_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
       .WillOnce(Return(false));

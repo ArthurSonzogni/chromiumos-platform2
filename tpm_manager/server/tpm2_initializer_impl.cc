@@ -228,7 +228,7 @@ TpmInitializerStatus Tpm2InitializerImpl::DisableDictionaryAttackMitigation() {
 void Tpm2InitializerImpl::PruneStoredPasswords() {
   std::unique_ptr<trunks::TpmState> trunks_tpm_state =
       trunks_factory_.GetTpmState();
-  if (trunks_tpm_state->Initialize() != trunks::TPM_RC_SUCCESS) {
+  if (trunks_tpm_state->Refresh() != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": failed to refresh trunks tpm state";
     return;
   }

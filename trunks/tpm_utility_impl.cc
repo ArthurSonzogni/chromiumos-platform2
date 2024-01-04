@@ -221,10 +221,10 @@ TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState>* tpm_state) {
   TPM_RC result = TPM_RC_SUCCESS;
 
   *tpm_state = factory_.GetTpmState();
-  result = (*tpm_state)->Initialize();
+  result = (*tpm_state)->Refresh();
   if (result) {
-    LOG(ERROR) << __func__ << ": Failed to initialize TPM state: "
-               << GetErrorString(result);
+    LOG(ERROR) << __func__
+               << ": Failed to refresh TPM state: " << GetErrorString(result);
     return result;
   }
   // Warn about various unexpected conditions.
@@ -375,7 +375,7 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
 
 TPM_RC TpmUtilityImpl::PrepareForOwnership() {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
-  TPM_RC result = tpm_state->Initialize();
+  TPM_RC result = tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__
                << ": Error initializing state: " << GetErrorString(result);
@@ -432,7 +432,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
-  result = tpm_state->Initialize();
+  result = tpm_state->Refresh();
   if (result != TPM_RC_SUCCESS) {
     return result;
   }
@@ -480,7 +480,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
 TPM_RC TpmUtilityImpl::ChangeOwnerPassword(const std::string& old_password,
                                            const std::string& new_password) {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
-  TPM_RC result = tpm_state->Initialize();
+  TPM_RC result = tpm_state->Refresh();
   if (result != TPM_RC_SUCCESS) {
     return result;
   }
@@ -2382,7 +2382,7 @@ TPM_RC TpmUtilityImpl::ManageCCDPwd(bool allow_pwd) {
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
     const std::string& known_owner_password) {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
-  TPM_RC result = tpm_state->Initialize();
+  TPM_RC result = tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__ << ": Failed to initialize TPM state: "
                << GetErrorString(result);

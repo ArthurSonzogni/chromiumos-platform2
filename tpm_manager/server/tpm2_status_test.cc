@@ -117,7 +117,7 @@ TEST_F(Tpm2StatusTest, IsOwnedFailure) {
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .Times(2)
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillOnce(Return(false));
@@ -146,7 +146,7 @@ TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedNoRepeatedInitializationOnTrue) {
-  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, Refresh()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(true));
@@ -168,7 +168,7 @@ TEST_F(Tpm2StatusTest, IsOwnedNoRepeatedInitializationOnTrue) {
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedInitializeFailure) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).Times(0);
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet()).Times(0);
@@ -178,7 +178,7 @@ TEST_F(Tpm2StatusTest, IsOwnedInitializeFailure) {
 }
 
 TEST_F(Tpm2StatusTest, IsPreOwned) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
@@ -190,7 +190,7 @@ TEST_F(Tpm2StatusTest, IsPreOwned) {
 }
 
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoInitializeFailure) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   uint32_t count;
   uint32_t threshold;
@@ -225,7 +225,7 @@ TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoForwarding) {
 }
 
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoAlwaysRefresh) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   uint32_t count;
   uint32_t threshold;
@@ -236,14 +236,14 @@ TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoAlwaysRefresh) {
 }
 
 TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledInitializeFailure) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   bool is_enabled;
   EXPECT_FALSE(tpm_status_->IsDictionaryAttackMitigationEnabled(&is_enabled));
 }
 
 TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledSuccess) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
+  EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
 
   // Either lockout interval or lockout recovery indicates a positive test.

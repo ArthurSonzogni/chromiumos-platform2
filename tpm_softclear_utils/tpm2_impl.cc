@@ -35,7 +35,7 @@ std::optional<std::string> Tpm2Impl::GetAuthForOwnerReset() {
 
   std::unique_ptr<trunks::TpmState> trunks_tpm_state =
       trunks_factory_->GetTpmState();
-  trunks::TPM_RC result = trunks_tpm_state->Initialize();
+  trunks::TPM_RC result = trunks_tpm_state->Refresh();
   if (result) {
     LOG(ERROR) << __func__ << ": failed to initialize trunks tpm state: "
                << trunks::GetErrorString(result);
