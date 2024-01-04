@@ -306,8 +306,8 @@ bool migrate_tpm_owership_state_file() {
   }
 
   if (base::PathExists(base::FilePath(kOldTpmOwnershipStateFile))) {
-    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. "
-              << "Moving it to " << kTpmOwned;
+    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. " << "Moving it to "
+              << kTpmOwned;
     return base::Move(base::FilePath(kOldTpmOwnershipStateFile),
                       base::FilePath((kTpmOwned)));
   }
