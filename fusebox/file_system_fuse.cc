@@ -99,6 +99,13 @@ static void fs_release(fuse_req_t req,
   fs(req)->Release(std::make_unique<OkRequest>(req, fi), ino);
 }
 
+static void fs_fsync(fuse_req_t req,
+                     fuse_ino_t ino,
+                     int datasync,
+                     struct fuse_file_info* fi) {
+  fs(req)->Fsync(std::make_unique<OkRequest>(req, fi), ino, datasync);
+}
+
 static void fs_opendir(fuse_req_t req,
                        fuse_ino_t ino,
                        struct fuse_file_info* fi) {
@@ -149,6 +156,7 @@ fuse_lowlevel_ops FileSystem::FuseOps() {
       .read = fs_read,
       .write = fs_write,
       .release = fs_release,
+      .fsync = fs_fsync,
       .opendir = fs_opendir,
       .readdir = fs_readdir,
       .releasedir = fs_releasedir,

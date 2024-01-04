@@ -79,6 +79,10 @@ class FileSystem {
                      size_t size,
                      off_t off);
 
+  virtual void Fsync(std::unique_ptr<OkRequest> request,
+                     ino_t ino,
+                     int datasync);
+
   virtual void Release(std::unique_ptr<OkRequest> request, ino_t ino);
 
   virtual void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino);

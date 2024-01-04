@@ -101,6 +101,12 @@ void FileSystem::Write(std::unique_ptr<WriteRequest> request,
   FuseNotImplemented(request.get());
 }
 
+void FileSystem::Fsync(std::unique_ptr<OkRequest> request,
+                       ino_t ino,
+                       int datasync) {
+  FuseNotImplemented(request.get());
+}
+
 void FileSystem::Release(std::unique_ptr<OkRequest> request, ino_t ino) {
   FuseNotImplemented(request.get());
 }

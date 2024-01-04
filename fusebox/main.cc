@@ -1125,6 +1125,60 @@ class FuseBoxClient : public FileSystem {
     request->ReplyWrite(length);
   }
 
+  void Fsync(std::unique_ptr<OkRequest> request,
+             ino_t ino,
+             int datasync) override {
+    VLOG(1) << "fsync " << ino;
+
+    if (request->IsInterrupted())
+      return;
+
+    if (ino < FIRST_UNRESERVED_INO) {
+      errno = request->ReplyError(errno ? errno : EACCES);
+      PLOG(ERROR) << "fsync";
+      return;
+    }
+
+    uint64_t fuse_handle = request->fh();
+    if (fuse_handle == 0) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "fsync";
+      return;
+    }
+
+    FlushRequestProto request_proto;
+    request_proto.set_fuse_handle(fuse_handle);
+    if (datasync) {
+      request_proto.set_fdatasync(true);
+    }
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kFlushMethod);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto fsync_response =
+        base::BindOnce(&FuseBoxClient::FsyncResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request));
+    CallFuseBoxServerMethod(&method, std::move(fsync_response));
+  }
+
+  void FsyncResponse(std::unique_ptr<OkRequest> request,
+                     dbus::Response* response) {
+    VLOG(1) << "fsync-resp";
+
+    if (request->IsInterrupted())
+      return;
+
+    FlushResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "fsync-resp";
+      return;
+    }
+
+    request->ReplyOk();
+  }
+
   void Release(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "release fh " << request->fh();
 
