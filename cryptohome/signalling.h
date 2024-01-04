@@ -17,6 +17,8 @@ class SignallingInterface {
 
   // Send the given signal. All of these functions work the same way: calling
   // "SendXxx" will send the UserDataAuth D-Bus signal named "Xxx".
+  virtual void SendAuthScanResult(
+      const user_data_auth::AuthScanResult& signal) = 0;
   virtual void SendPrepareAuthFactorProgress(
       const user_data_auth::PrepareAuthFactorProgress& signal) = 0;
   virtual void SendAuthenticateAuthFactorCompleted(
@@ -40,6 +42,8 @@ class NullSignalling : public SignallingInterface {
   NullSignalling& operator=(const NullSignalling&) = delete;
 
  private:
+  void SendAuthScanResult(
+      const user_data_auth::AuthScanResult& signal) override {}
   void SendPrepareAuthFactorProgress(
       const user_data_auth::PrepareAuthFactorProgress& signal) override {}
   void SendAuthenticateAuthFactorCompleted(

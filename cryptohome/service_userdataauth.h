@@ -34,9 +34,6 @@ class UserDataAuthAdaptor
         base::Unretained(this)));
     service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
-    service_->SetFingerprintScanResultCallback(
-        base::BindRepeating(&UserDataAuthAdaptor::FingerprintScanResultCallback,
-                            base::Unretained(this)));
     service_->SetAuthSessionExpiringCallback(
         base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
                             base::Unretained(this)));
@@ -427,11 +424,6 @@ class UserDataAuthAdaptor
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);
 
-  // This is called by UserDataAuth for processing biod's fingerprint scan
-  // signal AuthScanDone. All it does is to construct and send a signal.
-  void FingerprintScanResultCallback(
-      user_data_auth::FingerprintScanResult result);
-
   // AuthSessionExpiringCallback is sent when AuthSession has less than a
   // minute remaining.
   void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
@@ -452,6 +444,10 @@ class UserDataAuthAdaptor
     Signalling& operator=(const Signalling&) = delete;
 
    private:
+    void SendAuthScanResult(
+        const user_data_auth::AuthScanResult& signal) override {
+      adaptor_->SendAuthScanResultSignal(signal);
+    }
     void SendPrepareAuthFactorProgress(
         const user_data_auth::PrepareAuthFactorProgress& signal) override {
       adaptor_->SendPrepareAuthFactorProgressSignal(signal);

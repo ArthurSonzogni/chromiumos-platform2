@@ -22,6 +22,8 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/mock_fingerprint_manager.h"
+#include "cryptohome/mock_signalling.h"
+#include "cryptohome/signalling.h"
 
 namespace cryptohome {
 namespace {
@@ -39,17 +41,22 @@ using ::testing::Optional;
 
 class LegacyFingerprintDriverTest : public AuthFactorDriverGenericTest {
  protected:
+  LegacyFingerprintDriverTest() {
+    // Handle the fingerprint signals sent by the auth block service, by
+    // capturing the result.
+    EXPECT_CALL(signalling_, SendAuthScanResult(_))
+        .WillRepeatedly([this](const user_data_auth::AuthScanResult& signal) {
+          signal_results_.push_back(signal.fingerprint_result());
+        });
+  }
+
   MockFingerprintManager fp_manager_;
+  MockSignalling signalling_;
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_),
-      base::BindRepeating(&LegacyFingerprintDriverTest::HandleSignal,
-                          base::Unretained(this))};
+      AsyncInitPtr<SignallingInterface>(&signalling_)};
 
-  // Handle the signals sent by the auth block service, by capturing the result.
   std::vector<user_data_auth::FingerprintScanResult> signal_results_;
-  void HandleSignal(user_data_auth::FingerprintScanResult result) {
-    signal_results_.push_back(std::move(result));
-  }
 };
 
 TEST_F(LegacyFingerprintDriverTest, ConvertToProto) {

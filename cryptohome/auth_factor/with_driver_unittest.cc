@@ -33,6 +33,8 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
@@ -116,8 +118,10 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   MockFingerprintManager fp_manager_;
+  NiceMock<MockSignalling> signalling_;
   FingerprintAuthBlockService fp_service_{
-      AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
+      AsyncInitPtr<FingerprintManager>(&fp_manager_),
+      AsyncInitPtr<SignallingInterface>(&signalling_)};
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
 

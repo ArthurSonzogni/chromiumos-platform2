@@ -6,7 +6,6 @@
 #define CRYPTOHOME_AUTH_BLOCKS_FP_SERVICE_H_
 
 #include <memory>
-#include <string>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -16,16 +15,15 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
 class FingerprintAuthBlockService {
  public:
-  FingerprintAuthBlockService(
-      AsyncInitPtr<FingerprintManager> fp_manager,
-      base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
-          signal_sender);
+  FingerprintAuthBlockService(AsyncInitPtr<FingerprintManager> fp_manager,
+                              AsyncInitPtr<SignallingInterface> signalling);
 
   FingerprintAuthBlockService(const FingerprintAuthBlockService&) = delete;
   FingerprintAuthBlockService& operator=(const FingerprintAuthBlockService&) =
@@ -100,9 +98,8 @@ class FingerprintAuthBlockService {
   // The token for the currently active auth session, if there is one. This will
   // be set to null otherwise.
   PreparedAuthFactorToken* active_token_ = nullptr;
-  // A callback to send cryptohome ScanResult signal.
-  base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
-      signal_sender_;
+  // The interface used to send scan result signals.
+  AsyncInitPtr<SignallingInterface> signalling_;
 
   // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<FingerprintAuthBlockService> weak_factory_{this};

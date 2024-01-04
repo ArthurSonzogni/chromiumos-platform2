@@ -216,12 +216,6 @@ class UserDataAuth {
   void SetLowDiskSpaceCallback(
       const base::RepeatingCallback<void(uint64_t)>& callback);
 
-  // Set the FingerprintScanResult callback. This is usually called by the
-  // DBus adaptor.
-  void SetFingerprintScanResultCallback(
-      const base::RepeatingCallback<
-          void(user_data_auth::FingerprintScanResult)>& callback);
-
   // Set the AuthSessionExpiring callback. This is usually called by the
   // DBus adaptor.
   void SetAuthSessionExpiringCallback(
@@ -820,11 +814,6 @@ class UserDataAuth {
   // and connects to signals.
   void CreateFingerprintManager();
 
-  // OnFingerprintScanResult will be called on every received fingerprint
-  // scan result. It will forward results to
-  // |fingerprint_scan_result_callback_|.
-  void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result);
-
   // OnFingerprintEnrollProgress will be called on every received
   // AuthEnrollmentProgress. It will forward results to
   // |prepare_auth_factor_progress_callback_|.
@@ -1214,10 +1203,6 @@ class UserDataAuth {
   // The signalling interface, including a null default interface.
   NullSignalling default_signalling_;
   SignallingInterface* signalling_intf_ = &default_signalling_;
-
-  // The repeating callback to send FingerprintScanResult signal.
-  base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
-      fingerprint_scan_result_callback_;
 
   // The repeating callback to send AuthSessionExpiring signal.
   base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>

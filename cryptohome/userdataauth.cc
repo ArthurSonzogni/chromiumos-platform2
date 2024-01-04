@@ -796,8 +796,12 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             return uda->fingerprint_manager_;
           },
           base::Unretained(this))),
-      base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
-                          base::Unretained(this)));
+      AsyncInitPtr<SignallingInterface>(base::BindRepeating(
+          [](UserDataAuth* uda) {
+            uda->AssertOnMountThread();
+            return uda->signalling_intf_;
+          },
+          base::Unretained(this))));
 
   AsyncInitPtr<ChallengeCredentialsHelper> async_cc_helper(base::BindRepeating(
       [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
@@ -1108,14 +1112,6 @@ void UserDataAuth::CreateFingerprintManager() {
                                .append(kCrosFpBiometricsManagerRelativePath)));
     }
     fingerprint_manager_ = default_fingerprint_manager_.get();
-  }
-}
-
-void UserDataAuth::OnFingerprintScanResult(
-    user_data_auth::FingerprintScanResult result) {
-  AssertOnMountThread();
-  if (fingerprint_scan_result_callback_) {
-    fingerprint_scan_result_callback_.Run(result);
   }
 }
 
@@ -1675,12 +1671,6 @@ void UserDataAuth::SetSignallingInterface(SignallingInterface& signalling) {
 void UserDataAuth::SetLowDiskSpaceCallback(
     const base::RepeatingCallback<void(uint64_t)>& callback) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
-}
-
-void UserDataAuth::SetFingerprintScanResultCallback(
-    const base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>&
-        callback) {
-  fingerprint_scan_result_callback_ = callback;
 }
 
 void UserDataAuth::SetEvictedKeyRestoredCallback(

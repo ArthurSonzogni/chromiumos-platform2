@@ -19,6 +19,8 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/storage.h"
 
 namespace cryptohome {
@@ -43,10 +45,12 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   MockFingerprintManager fp_manager_;
+  MockSignalling signalling_;
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   FingerprintAuthBlockService fp_service_{
-      AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
+      AsyncInitPtr<FingerprintManager>(&fp_manager_),
+      AsyncInitPtr<SignallingInterface>(&signalling_)};
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{

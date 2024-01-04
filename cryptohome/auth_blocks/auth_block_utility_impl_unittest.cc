@@ -65,8 +65,10 @@
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
@@ -96,6 +98,7 @@ using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Optional;
 using ::testing::Return;
+using ::testing::SaveArg;
 
 constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
 constexpr int kWorkFactor = 16384;
@@ -114,9 +117,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
                 &cryptohome_keys_manager_,
                 recovery_crypto_fake_backend_.get()),
         fp_service_(AsyncInitPtr<FingerprintManager>(&fp_manager_),
-                    base::BindRepeating(
-                        &AuthBlockUtilityImplTest::OnFingerprintScanResult,
-                        base::Unretained(this))) {}
+                    AsyncInitPtr<SignallingInterface>(&signalling_)) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
 
@@ -147,9 +148,6 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   }
 
  protected:
-  void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
-    result_ = result;
-  }
   BiometricsAuthBlockService* GetBioService() { return bio_service_.get(); }
 
   void SetupBiometricsService() {
@@ -190,7 +188,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
-  user_data_auth::FingerprintScanResult result_;
+  NiceMock<MockSignalling> signalling_;
   FingerprintAuthBlockService fp_service_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;

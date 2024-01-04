@@ -15,6 +15,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/fingerprint_manager.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -82,9 +83,8 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
 
 FingerprintAuthBlockService::FingerprintAuthBlockService(
     AsyncInitPtr<FingerprintManager> fp_manager,
-    base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
-        signal_sender)
-    : fp_manager_(fp_manager), signal_sender_(signal_sender) {}
+    AsyncInitPtr<SignallingInterface> signalling)
+    : fp_manager_(fp_manager), signalling_(signalling) {}
 
 std::unique_ptr<FingerprintAuthBlockService>
 FingerprintAuthBlockService::MakeNullService() {
@@ -92,7 +92,7 @@ FingerprintAuthBlockService::MakeNullService() {
   // return null and a signal sender that does nothing.
   return std::make_unique<FingerprintAuthBlockService>(
       AsyncInitPtr<FingerprintManager>(nullptr),
-      base::BindRepeating([](user_data_auth::FingerprintScanResult) {}));
+      AsyncInitPtr<SignallingInterface>(nullptr));
 }
 
 CryptohomeStatus FingerprintAuthBlockService::Verify() {
@@ -179,19 +179,23 @@ void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
     return;
   }
   scan_result_ = status;
-  user_data_auth::FingerprintScanResult outgoing_signal;
+  user_data_auth::AuthScanResult outgoing_signal;
   switch (status) {
     case FingerprintScanStatus::SUCCESS:
-      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS;
+      outgoing_signal.set_fingerprint_result(
+          user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
       break;
     case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
-      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY;
+      outgoing_signal.set_fingerprint_result(
+          user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY);
       break;
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
-      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT;
+      outgoing_signal.set_fingerprint_result(
+          user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
+      break;
   }
-  if (signal_sender_) {
-    signal_sender_.Run(outgoing_signal);
+  if (signalling_) {
+    signalling_->SendAuthScanResult(outgoing_signal);
   }
 }
 
