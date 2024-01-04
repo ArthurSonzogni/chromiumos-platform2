@@ -44,7 +44,6 @@ namespace cryptohome {
 // To be supported by this generic API, an AuthBlock class must implement a
 // specific static API. This is the GenericAuthBlock concept.
 //
-// TODO(b/272098290): Make this an actual concept when C++20 is available.
 // The generic auth block type must:
 //   - Have a static constexpr member kType of AuthBlockType
 //   - Have a StateType alias specifying the AuthBlockState type
