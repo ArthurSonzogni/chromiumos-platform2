@@ -15,6 +15,7 @@
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/ephemeral_container.h"
+#include "cryptohome/storage/encrypted_container/ext4_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
 #include "cryptohome/storage/keyring/keyring.h"
@@ -39,8 +40,9 @@ EncryptedContainerFactory::EncryptedContainerFactory(
 
 std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
     const EncryptedContainerConfig& config,
+    EncryptedContainerType type,
     const FileSystemKeyReference& key_reference) {
-  switch (config.type) {
+  switch (type) {
     case EncryptedContainerType::kFscrypt:
       return std::make_unique<FscryptContainer>(
           config.backing_dir, key_reference, allow_fscrypt_v2_, platform_,
@@ -48,6 +50,17 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
     case EncryptedContainerType::kEcryptfs:
       return std::make_unique<EcryptfsContainer>(
           config.backing_dir, key_reference, platform_, keyring_.get());
+    case EncryptedContainerType::kExt4: {
+      auto backing_device = Generate(
+          config, config.filesystem_config.backend_type, key_reference);
+      if (!backing_device) {
+        LOG(ERROR)
+            << "Could not create backing device for the filesystem container";
+        return nullptr;
+      }
+      return std::make_unique<Ext4Container>(
+          config.filesystem_config, std::move(backing_device), platform_);
+    }
     case EncryptedContainerType::kDmcrypt: {
       auto backing_device = backing_device_factory_->Generate(
           config.dmcrypt_config.backing_device_config);

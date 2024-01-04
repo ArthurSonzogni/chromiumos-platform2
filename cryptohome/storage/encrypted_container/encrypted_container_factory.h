@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <metrics/metrics_library.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
@@ -30,6 +31,7 @@ class EncryptedContainerFactory {
 
   virtual std::unique_ptr<EncryptedContainer> Generate(
       const EncryptedContainerConfig& config,
+      const EncryptedContainerType type,
       const FileSystemKeyReference& key_reference);
 
   void set_allow_fscrypt_v2(bool allow_fscrypt_v2) {

@@ -34,6 +34,7 @@ class FscryptContainer : public EncryptedContainer {
   EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kFscrypt;
   }
+  base::FilePath GetPath() const override { return GetBackingLocation(); }
   base::FilePath GetBackingLocation() const override;
 
  private:

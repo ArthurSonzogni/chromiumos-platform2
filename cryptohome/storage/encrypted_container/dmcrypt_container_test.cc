@@ -25,6 +25,7 @@
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
@@ -34,9 +35,7 @@ class DmcryptContainerTest : public ::testing::Test {
  public:
   DmcryptContainerTest()
       : config_({.dmcrypt_device_name = "crypt_device",
-                 .dmcrypt_cipher = "aes-xts-plain64",
-                 .mkfs_opts = {"-O", "encrypt,verity"},
-                 .tune2fs_opts = {"-Q", "project"}}),
+                 .dmcrypt_cipher = "aes-xts-plain64"}),
         key_({.fek = brillo::SecureBlob("random key")}),
         key_reference_({.fek_sig = brillo::SecureBlob("random reference")}),
         device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
@@ -49,8 +48,6 @@ class DmcryptContainerTest : public ::testing::Test {
         keyring_key_reference.fek_sig, key_.fek.size());
   }
   ~DmcryptContainerTest() override = default;
-
-  void SetIsRawDevice(bool value) { config_.is_raw_device = value; }
 
   void GenerateContainer() {
     container_ = std::make_unique<DmcryptContainer>(
@@ -78,27 +75,6 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
-
-  GenerateContainer();
-
-  EXPECT_TRUE(container_->Setup(key_));
-  // Check that the device mapper target exists.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            key_descriptor_);
-  EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
-}
-
-// Tests the creation path for the dm-crypt container with raw device only.
-TEST_F(DmcryptContainerTest, SetupCreateRawCheck) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, FormatExt4(_, _, _)).Times(0);
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).Times(0);
-
-  config_.is_raw_device = true;
 
   GenerateContainer();
 
@@ -114,7 +90,6 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
 
   backing_device_->Create();
   GenerateContainer();
@@ -126,44 +101,12 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 
-// Tests failure path if the filesystem setup fails.
-TEST_F(DmcryptContainerTest, SetupFailedFormatExt4) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillOnce(Return(false));
-
-  GenerateContainer();
-
-  EXPECT_FALSE(container_->Setup(key_));
-  // Check that the device mapper target doesn't exist.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlob());
-}
-
-// Tests the failure path on setting new filesystem features.
-TEST_F(DmcryptContainerTest, SetupFailedTune2fs) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(false));
-
-  backing_device_->Create();
-  GenerateContainer();
-
-  EXPECT_FALSE(container_->Setup(key_));
-  // Check that the device mapper target doesn't exist.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlob());
-}
-
 // Tests that teardown doesn't leave an active dm-crypt device or an attached
 // backing device.
 TEST_F(DmcryptContainerTest, TeardownCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
 
   backing_device_->Create();
   GenerateContainer();
@@ -181,7 +124,6 @@ TEST_F(DmcryptContainerTest, EvictKeyCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
 
   backing_device_->Create();
   GenerateContainer();
@@ -199,7 +141,6 @@ TEST_F(DmcryptContainerTest, RestoreKeyCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
 
   backing_device_->Create();
   GenerateContainer();
@@ -222,7 +163,6 @@ TEST_F(DmcryptContainerTest, RestoreKeyCheckOnValidTable) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
 
   backing_device_->Create();
   GenerateContainer();
@@ -239,32 +179,12 @@ TEST_F(DmcryptContainerTest, RestoreKeyCheckOnValidTable) {
             key_descriptor_);
 }
 
-// Tests that the dmcrypt container cannot be reset if it is set up with a
-// filesystem.
-TEST_F(DmcryptContainerTest, ResetFileSystemContainerTest) {
-  EXPECT_CALL(platform_, GetBlkSize(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
-
-  backing_device_->Create();
-  GenerateContainer();
-
-  EXPECT_TRUE(container_->Setup(key_));
-  // Attempt a reset of the device.
-  EXPECT_FALSE(container_->Reset());
-
-  EXPECT_TRUE(container_->Teardown());
-}
-
-// Tests that the dmcrypt container can be reset if the container only sets
-// up a raw device.
+// Tests that the dmcrypt container can be reset.
 TEST_F(DmcryptContainerTest, ResetRawDeviceContainerTest) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
   EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
 
-  SetIsRawDevice(true);
   backing_device_->Create();
   GenerateContainer();
 

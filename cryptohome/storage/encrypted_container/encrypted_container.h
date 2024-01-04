@@ -25,6 +25,7 @@ enum class EncryptedContainerType {
   kFscrypt,
   kDmcrypt,
   kEphemeral,
+  kExt4,
   kEcryptfsToFscrypt,
   kEcryptfsToDmcrypt,
   kFscryptToDmcrypt,
@@ -34,15 +35,18 @@ struct DmcryptConfig {
   BackingDeviceConfig backing_device_config;
   std::string dmcrypt_device_name;
   std::string dmcrypt_cipher;
-  bool is_raw_device;
   uint32_t iv_offset;
+};
+
+struct Ext4FileSystemConfig {
   std::vector<std::string> mkfs_opts;
   std::vector<std::string> tune2fs_opts;
+  EncryptedContainerType backend_type;
 };
 
 struct EncryptedContainerConfig {
-  EncryptedContainerType type;
   base::FilePath backing_dir;
+  Ext4FileSystemConfig filesystem_config;
   DmcryptConfig dmcrypt_config;
   std::string backing_file_name;
 };
@@ -82,6 +86,8 @@ class EncryptedContainer {
   // torn down and the container can be safely purged afterwards.
   virtual bool SetLazyTeardownWhenUnused() { return false; }
   virtual bool IsLazyTeardownSupported() const { return false; }
+  // Returns the container location if any.
+  virtual base::FilePath GetPath() const = 0;
   // Returns the backing location if any.
   virtual base::FilePath GetBackingLocation() const = 0;
 

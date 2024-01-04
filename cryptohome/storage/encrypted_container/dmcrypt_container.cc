@@ -44,10 +44,7 @@ DmcryptContainer::DmcryptContainer(
     std::unique_ptr<brillo::DeviceMapper> device_mapper)
     : dmcrypt_device_name_(config.dmcrypt_device_name),
       dmcrypt_cipher_(config.dmcrypt_cipher),
-      is_raw_device_(config.is_raw_device),
       iv_offset_(config.iv_offset),
-      mkfs_opts_(config.mkfs_opts),
-      tune2fs_opts_(config.tune2fs_opts),
       backing_device_(std::move(backing_device)),
       key_reference_(
           dmcrypt::GenerateKeyringDescription(key_reference.fek_sig)),
@@ -136,8 +133,6 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
       key_reference_.fek_sig, encryption_key.fek.size());
 
-  base::FilePath dmcrypt_device_path =
-      base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
   uint64_t sectors = blkdev_size / kSectorSize;
   brillo::SecureBlob dm_parameters =
       brillo::DevmapperTable::CryptCreateParameters(
@@ -169,25 +164,8 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // Wait for the dmcrypt device path to show up before continuing to setting
   // up the filesystem.
   LOG(INFO) << "Waiting for dm-crypt device to appear";
-  if (!platform_->UdevAdmSettle(dmcrypt_device_path, true)) {
+  if (!platform_->UdevAdmSettle(GetPath(), true)) {
     LOG(ERROR) << "udevadm settle failed.";
-    return false;
-  }
-
-  // Create filesystem, unless we only should provide a raw device.
-  if (created && !is_raw_device_) {
-    LOG(INFO) << "Running mke2fs on dm-crypt device";
-    if (!platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
-      LOG(ERROR) << "Failed to format ext4 filesystem";
-      return false;
-    }
-  }
-
-  // Modify features depending on whether we already have the following enabled.
-  LOG(INFO) << "Tuning filesystem features";
-  if (!is_raw_device_ && !tune2fs_opts_.empty() &&
-      !platform_->Tune2Fs(dmcrypt_device_path, tune2fs_opts_)) {
-    PLOG(ERROR) << "Failed to tune ext4 filesystem";
     return false;
   }
 
@@ -275,18 +253,8 @@ bool DmcryptContainer::RestoreKey(const FileSystemKey& encryption_key) {
 }
 
 bool DmcryptContainer::Reset() {
-  // Only allow resets for raw devices; discard will otherwise remove the
-  // filesystem as well.
-  if (!is_raw_device_) {
-    LOG(ERROR) << "Attempted to reset a container with a filesystem";
-    return false;
-  }
-
-  base::FilePath dmcrypt_device_path =
-      base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
-
   // Discard the entire device.
-  if (!platform_->DiscardDevice(dmcrypt_device_path)) {
+  if (!platform_->DiscardDevice(GetPath())) {
     LOG(ERROR) << "Failed to discard device";
     return false;
   }
@@ -325,6 +293,10 @@ bool DmcryptContainer::Teardown() {
   }
 
   return true;
+}
+
+base::FilePath DmcryptContainer::GetPath() const {
+  return base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
 }
 
 base::FilePath DmcryptContainer::GetBackingLocation() const {

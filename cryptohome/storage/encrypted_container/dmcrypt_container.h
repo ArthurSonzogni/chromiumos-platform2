@@ -64,6 +64,8 @@ class DmcryptContainer : public EncryptedContainer {
 
   bool SetLazyTeardownWhenUnused() override;
 
+  base::FilePath GetPath() const override;
+
   base::FilePath GetBackingLocation() const override;
 
  private:
@@ -71,10 +73,7 @@ class DmcryptContainer : public EncryptedContainer {
   const std::string dmcrypt_device_name_;
   const std::string dmcrypt_cipher_;
 
-  const bool is_raw_device_;
   const uint32_t iv_offset_;
-  const std::vector<std::string> mkfs_opts_;
-  const std::vector<std::string> tune2fs_opts_;
 
   // Backing device for the encrypted container.
   std::unique_ptr<BackingDevice> backing_device_;

@@ -18,6 +18,7 @@
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/encrypted_container/ext4_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
 #include "cryptohome/storage/keyring/keyring.h"
@@ -38,16 +39,17 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
 
   std::unique_ptr<EncryptedContainer> Generate(
       const EncryptedContainerConfig& config,
+      const EncryptedContainerType type,
       const FileSystemKeyReference& key_reference) override {
-    return Generate(config, key_reference, /*create=*/false);
+    return Generate(config, type, key_reference, /*create=*/false);
   }
 
   std::unique_ptr<EncryptedContainer> Generate(
       const EncryptedContainerConfig& config,
+      const EncryptedContainerType type,
       const FileSystemKeyReference& key_reference,
       bool create) {
-    std::unique_ptr<BackingDevice> backing_device;
-    switch (config.type) {
+    switch (type) {
       case EncryptedContainerType::kFscrypt:
         return std::make_unique<FscryptContainer>(
             config.backing_dir, key_reference,
@@ -55,9 +57,10 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
       case EncryptedContainerType::kEcryptfs:
         return std::make_unique<EcryptfsContainer>(
             config.backing_dir, key_reference, platform_, keyring_.get());
-      case EncryptedContainerType::kDmcrypt:
-        backing_device = backing_device_factory_.Generate(
-            config.dmcrypt_config.backing_device_config);
+      case EncryptedContainerType::kDmcrypt: {
+        std::unique_ptr<BackingDevice> backing_device =
+            backing_device_factory_.Generate(
+                config.dmcrypt_config.backing_device_config);
         if (create)
           backing_device->Create();
         return std::make_unique<DmcryptContainer>(
@@ -65,6 +68,15 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
             platform_, keyring_.get(),
             std::make_unique<brillo::DeviceMapper>(
                 base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
+      }
+      case EncryptedContainerType::kExt4: {
+        auto backing_device = Generate(
+            config, config.filesystem_config.backend_type, key_reference);
+        if (!backing_device)
+          return nullptr;
+        return std::make_unique<Ext4Container>(
+            config.filesystem_config, std::move(backing_device), platform_);
+      }
       default:
         return nullptr;
     }

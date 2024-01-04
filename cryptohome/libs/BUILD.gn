@@ -457,6 +457,7 @@ static_library("libcrosplatform") {
     "../storage/encrypted_container/ecryptfs_container.cc",
     "../storage/encrypted_container/encrypted_container_factory.cc",
     "../storage/encrypted_container/ephemeral_container.cc",
+    "../storage/encrypted_container/ext4_container.cc",
     "../storage/encrypted_container/fscrypt_container.cc",
     "../storage/encrypted_container/logical_volume_backing_device.cc",
     "../storage/encrypted_container/loopback_device.cc",

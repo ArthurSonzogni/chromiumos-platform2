@@ -76,10 +76,8 @@ class CryptohomeVaultTest
   }
 
   EncryptedContainerConfig ConfigFromType(EncryptedContainerType type,
-                                          const std::string& name,
-                                          bool is_raw_device) {
+                                          const std::string& name) {
     EncryptedContainerConfig config;
-    config.type = type;
     switch (type) {
       case EncryptedContainerType::kEcryptfs:
         config.backing_dir = backing_dir_.Append(kEcryptfsVaultDir);
@@ -87,29 +85,28 @@ class CryptohomeVaultTest
       case EncryptedContainerType::kFscrypt:
         config.backing_dir = backing_dir_.Append(kMountDir);
         break;
+      case EncryptedContainerType::kExt4:
+        config.filesystem_config = {
+            .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
+                          "discard,assume_storage_prezeroed=1"},
+            .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"},
+            .backend_type = EncryptedContainerType::kDmcrypt};
+        ABSL_FALLTHROUGH_INTENDED;
       case EncryptedContainerType::kDmcrypt:
-        config = {
-            .type = EncryptedContainerType::kDmcrypt,
-            .dmcrypt_config = {
-                .backing_device_config =
-                    {.type = BackingDeviceType::kLogicalVolumeBackingDevice,
-                     .name = name,
-                     .size = 100 * 1024 * 1024,
-                     .logical_volume =
-                         {.vg = std::make_shared<brillo::VolumeGroup>("vg",
-                                                                      nullptr),
-                          .thinpool = std::make_shared<brillo::Thinpool>(
-                              "thinpool", "vg", nullptr)}},
-                .dmcrypt_device_name = "dmcrypt-" + name,
-                .dmcrypt_cipher = "aes-xts-plain64",
-                .is_raw_device = is_raw_device,
-                .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
-                              "discard,assume_storage_prezeroed=1"},
-                .tune2fs_opts = {"-O", "verity,quota", "-Q",
-                                 "usrquota,grpquota"}}};
+        config.dmcrypt_config = {
+            .backing_device_config =
+                {.type = BackingDeviceType::kLogicalVolumeBackingDevice,
+                 .name = name,
+                 .size = 100 * 1024 * 1024,
+                 .logical_volume = {.vg = std::make_shared<brillo::VolumeGroup>(
+                                        "vg", nullptr),
+                                    .thinpool =
+                                        std::make_shared<brillo::Thinpool>(
+                                            "thinpool", "vg", nullptr)}},
+            .dmcrypt_device_name = "dmcrypt-" + name,
+            .dmcrypt_cipher = "aes-xts-plain64"};
         break;
       default:
-        config.type = EncryptedContainerType::kUnknown;
         break;
     }
 
@@ -124,14 +121,15 @@ class CryptohomeVaultTest
     EXPECT_CALL(platform_, UdevAdmSettle(dmcrypt_device, _))
         .WillOnce(Return(true));
     if (!is_raw_device) {
-      EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillRepeatedly(Return(true));
+      EXPECT_CALL(platform_, FormatExt4(dmcrypt_device, _, _))
+          .WillOnce(Return(true));
       EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device, _)).WillOnce(Return(true));
     }
   }
 
   void ExpectContainerSetup(EncryptedContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kDmcrypt:
+      case EncryptedContainerType::kExt4:
         ExpectDmcryptSetup("data", /*is_raw_device=*/false);
         break;
       default:
@@ -141,7 +139,7 @@ class CryptohomeVaultTest
 
   void ExpectCacheContainerSetup(EncryptedContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kDmcrypt:
+      case EncryptedContainerType::kExt4:
         ExpectDmcryptSetup("cache", /*is_raw_device=*/false);
         break;
       default:
@@ -226,23 +224,22 @@ class CryptohomeVaultTest
                      bool create_app_container) {
     std::unique_ptr<EncryptedContainer> container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(ContainerType(), "data", /*is_raw_device=*/false),
+            ConfigFromType(ContainerType(), "data"), ContainerType(),
             key_reference_, create_container);
     if (create_container)
       CreateExistingContainer(ContainerType());
 
     std::unique_ptr<EncryptedContainer> migrating_container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(MigratingContainerType(), "data",
-                           /*is_raw_device=*/false),
-            key_reference_, create_migrating_container);
+            ConfigFromType(MigratingContainerType(), "data"),
+            MigratingContainerType(), key_reference_,
+            create_migrating_container);
     if (create_migrating_container)
       CreateExistingContainer(MigratingContainerType());
 
     std::unique_ptr<EncryptedContainer> cache_container =
         encrypted_container_factory_.Generate(
-            ConfigFromType(CacheContainerType(), "cache",
-                           /*is_raw_device=*/false),
+            ConfigFromType(CacheContainerType(), "cache"), CacheContainerType(),
             key_reference_, create_cache_container);
     if (create_cache_container)
       CreateExistingContainer(CacheContainerType());
@@ -252,16 +249,15 @@ class CryptohomeVaultTest
 
     if (ContainerType() == EncryptedContainerType::kDmcrypt) {
       application_containers["arcvm"] = encrypted_container_factory_.Generate(
-          ConfigFromType(CacheContainerType(), "arcvm", /*is_raw_device=*/
-                         true),
-          key_reference_, create_app_container);
+          ConfigFromType(CacheContainerType(), "arcvm"),
+          EncryptedContainerType::kDmcrypt, key_reference_,
+          create_app_container);
 
       application_containers["crostini"] =
           encrypted_container_factory_.Generate(
-              ConfigFromType(CacheContainerType(),
-                             "crostini", /*is_raw_device=*/
-                             true),
-              key_reference_, create_app_container);
+              ConfigFromType(CacheContainerType(), "crostini"),
+              EncryptedContainerType::kDmcrypt, key_reference_,
+              create_app_container);
     }
 
     vault_ = std::make_unique<CryptohomeVault>(
@@ -308,12 +304,13 @@ INSTANTIATE_TEST_SUITE_P(WithFscryptMigration,
                              EncryptedContainerType::kFscrypt,
                              EncryptedContainerType::kUnknown)));
 
-INSTANTIATE_TEST_SUITE_P(WithDmcrypt,
-                         CryptohomeVaultTest,
-                         ::testing::Values(CryptohomeVaultTestParams(
-                             EncryptedContainerType::kDmcrypt,
-                             EncryptedContainerType::kUnknown,
-                             EncryptedContainerType::kDmcrypt)));
+INSTANTIATE_TEST_SUITE_P(
+    WithDmcrypt,
+    CryptohomeVaultTest,
+    ::testing::Values(CryptohomeVaultTestParams(
+        EncryptedContainerType::kExt4, /* dmcrypt backing */
+        EncryptedContainerType::kUnknown,
+        EncryptedContainerType::kExt4))); /* dmcrypt backing */
 
 // Tests failure path on failure to setup process keyring for eCryptfs and
 // fscrypt.
@@ -351,7 +348,7 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
 
   // In absence of a migrating container, the vault setup should succeed.
   int good_key_calls = 1;
-  if (ContainerType() == EncryptedContainerType::kDmcrypt) {
+  if (ContainerType() == EncryptedContainerType::kExt4) {
     good_key_calls = 8;
   } else if (CacheContainerType() != EncryptedContainerType::kUnknown) {
     good_key_calls = 2;
@@ -486,7 +483,7 @@ TEST_P(CryptohomeVaultTest, EvictKeyContainer) {
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   switch (ContainerType()) {
-    case EncryptedContainerType::kDmcrypt:
+    case EncryptedContainerType::kExt4:
       EXPECT_THAT(vault_->EvictKey(), IsOk());
       break;
     default:
@@ -511,18 +508,12 @@ TEST_P(CryptohomeVaultTest, RestoreKeyContainer) {
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   switch (ContainerType()) {
-    case EncryptedContainerType::kDmcrypt:
+    case EncryptedContainerType::kExt4:
       EXPECT_THAT(vault_->EvictKey(), IsOk());
-      break;
-    default:
-      EXPECT_THAT(vault_->EvictKey(), IsError(MOUNT_ERROR_INVALID_ARGS));
-  }
-
-  switch (ContainerType()) {
-    case EncryptedContainerType::kDmcrypt:
       EXPECT_THAT(vault_->RestoreKey(key_), IsOk());
       break;
     default:
+      EXPECT_THAT(vault_->EvictKey(), IsError(MOUNT_ERROR_INVALID_ARGS));
       EXPECT_THAT(vault_->RestoreKey(key_), IsError(MOUNT_ERROR_INVALID_ARGS));
   }
 

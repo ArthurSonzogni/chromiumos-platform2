@@ -42,7 +42,6 @@ class EphemeralContainerTest : public ::testing::Test {
 namespace {
 
 TEST_F(EphemeralContainerTest, Construct) {
-  EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillOnce(Return(true));
   auto container_ = CreateContainer();
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));

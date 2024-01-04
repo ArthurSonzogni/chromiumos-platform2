@@ -20,24 +20,6 @@
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/ramdisk_device.h"
 
-namespace {
-
-// Default ext4 format opts.
-constexpr const char* kDefaultExt4FormatOpts[] = {
-    // Always use 'default' configuration.
-    "-T", "default",
-    // reserved-blocks-percentage = 0%
-    "-m", "0",
-    // ^huge_file: Do not allow files larger than 2TB.
-    // ^flex_bg: Do not allow per-block group metadata to be placed anywhere.
-    // ^has_journal: Do not create journal.
-    "-O", "^huge_file,^flex_bg,^has_journal",
-    // Attempt to discard blocks at mkfs time.
-    // Assume that the storage device is already zeroed out.
-    "-E", "discard,assume_storage_prezeroed=1"};
-
-}  // namespace
-
 namespace cryptohome {
 
 EphemeralContainer::EphemeralContainer(
@@ -90,23 +72,6 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
   }
   if (!backing_device_->Setup()) {
     LOG(ERROR) << "Can't setup backing store for the mount.";
-    return false;
-  }
-
-  // Format the device. At this point, even if the backing device was already
-  // present, it will lose all of its content.
-  std::optional<base::FilePath> backing_device_path =
-      backing_device_->GetPath();
-  if (!backing_device_path.has_value()) {
-    LOG(ERROR) << "Failed to get backing device path";
-    return false;
-  }
-
-  std::vector<std::string> ext4_opts(std::begin(kDefaultExt4FormatOpts),
-                                     std::end(kDefaultExt4FormatOpts));
-
-  if (!platform_->FormatExt4(*backing_device_path, ext4_opts, 0)) {
-    LOG(ERROR) << "Can't format ephemeral backing device as ext4";
     return false;
   }
 

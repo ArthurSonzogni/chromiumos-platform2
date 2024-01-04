@@ -84,11 +84,9 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
   switch (type) {
     case EncryptedContainerType::kEcryptfs:
       config.backing_dir = GetEcryptfsUserVaultPath(obfuscated_username);
-      config.type = EncryptedContainerType::kEcryptfs;
       break;
     case EncryptedContainerType::kFscrypt:
       config.backing_dir = GetUserMountDirectory(obfuscated_username);
-      config.type = EncryptedContainerType::kFscrypt;
       break;
     case EncryptedContainerType::kDmcrypt: {
       if (!vg_ || !vg_->IsValid() || !thinpool_ || !thinpool_->IsValid())
@@ -135,30 +133,55 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
             .size = backing_size,
             .logical_volume = {.vg = vg_, .thinpool = thinpool_}};
       }
-
-      config.type = EncryptedContainerType::kDmcrypt;
       config.dmcrypt_config = {
           .backing_device_config = backing_config,
           .dmcrypt_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
           .dmcrypt_cipher = dm_options.keylocker_enabled
                                 ? "capi:xts-aes-aeskl-plain64"
-                                : "aes-xts-plain64",
-          .is_raw_device = dm_options.is_raw_device,
-          // TODO(sarthakkukreti): Add more dynamic checks for filesystem
-          // features once dm-crypt cryptohomes are stable.
-          .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
-                        base::StringPrintf("%" PRIu64,
-                                           CalculateInodeCount(stateful_size)),
-                        "-E", "discard"},
-          .tune2fs_opts = {"-O", "verity,quota,project", "-Q",
-                           "usrquota,grpquota,prjquota"}};
+                                : "aes-xts-plain64"};
+
+      if (!dm_options.is_raw_device) {
+        // Configure an ext4 filesystem device:
+        config.filesystem_config = {
+            // TODO(sarthakkukreti): Add more dynamic checks for filesystem
+            // features once dm-crypt cryptohomes are stable.
+            .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
+                          base::StringPrintf(
+                              "%" PRIu64, CalculateInodeCount(stateful_size)),
+                          "-E", "discard"},
+            .tune2fs_opts = {"-O", "verity,quota,project", "-Q",
+                             "usrquota,grpquota,prjquota"},
+            .backend_type = type,
+        };
+        type = EncryptedContainerType::kExt4;
+      }
       break;
     }
     case EncryptedContainerType::kEphemeral:
-      config.type = EncryptedContainerType::kEphemeral;
+      // Configure an ext4 filesystem that will use the backing device:
+      config.filesystem_config = {
+          // features once dm-crypt cryptohomes are stable.
+          .mkfs_opts =
+              {// Always use 'default' configuration.
+               "-T", "default",
+               // reserved-blocks-percentage = 0%
+               "-m", "0",
+               // ^huge_file: Do not allow files larger than 2TB.
+               // ^flex_bg: Do not allow per-block group metadata to be placed
+               // anywhere.
+               // ^has_journal: Do not create journal.
+               "-O", "^huge_file,^flex_bg,^has_journal",
+               // Attempt to discard blocks at mkfs time.
+               // Assume that the storage device is already zeroed out.
+               "-E", "discard,assume_storage_prezeroed=1"},
+          .backend_type = type,
+      };
+      type = EncryptedContainerType::kExt4;
       config.backing_file_name = *obfuscated_username;
       break;
+    case EncryptedContainerType::kExt4:
+      // Not given directly, passed with the raw block device.
     case EncryptedContainerType::kEcryptfsToFscrypt:
     case EncryptedContainerType::kEcryptfsToDmcrypt:
     case EncryptedContainerType::kFscryptToDmcrypt:
@@ -169,7 +192,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       return nullptr;
   }
 
-  return encrypted_container_factory_->Generate(config, key_reference);
+  return encrypted_container_factory_->Generate(config, type, key_reference);
 }
 
 std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
@@ -195,10 +218,8 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   // Generate containers for the vault.
-
   DmOptions vault_dm_options = {
       .keylocker_enabled = keylocker_enabled,
-      .is_raw_device = false,
   };
   DmOptions app_dm_options = {
       .keylocker_enabled = keylocker_enabled,

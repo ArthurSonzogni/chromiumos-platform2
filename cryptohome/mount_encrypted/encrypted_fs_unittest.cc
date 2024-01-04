@@ -21,6 +21,7 @@
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/encrypted_container/ext4_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
@@ -40,18 +41,25 @@ class EncryptedFsTest : public ::testing::Test {
       : dmcrypt_name_("encstateful"),
         dmcrypt_device_(base::FilePath("/dev/mapper/encstateful")),
         mount_point_(base::FilePath("/mnt/stateful_partition/encrypted")),
-        config_({.backing_device_config =
-                     {.type = cryptohome::BackingDeviceType::kLoopbackDevice,
-                      .name = "encstateful"},
-                 .dmcrypt_device_name = dmcrypt_name_,
-                 .dmcrypt_cipher = "aes-cbc-essiv:sha256",
-                 .mkfs_opts = {"-O", "encrypt,verity"},
-                 .tune2fs_opts = {"-Q", "project"}}),
+        config_(
+            {.filesystem_config =
+                 {
+                     .mkfs_opts = {"-O", "encrypt,verity"},
+                     .tune2fs_opts = {"-Q", "project"},
+                     .backend_type =
+                         cryptohome::EncryptedContainerType::kDmcrypt,
+                 },
+             .dmcrypt_config =
+                 {.backing_device_config =
+                      {.type = cryptohome::BackingDeviceType::kLoopbackDevice,
+                       .name = "encstateful"},
+                  .dmcrypt_device_name = dmcrypt_name_,
+                  .dmcrypt_cipher = "aes-cbc-essiv:sha256"}}),
         device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
         fake_backing_device_factory_(&platform_) {
     // Set up a fake backing device.
-    auto fake_backing_device =
-        fake_backing_device_factory_.Generate(config_.backing_device_config);
+    auto fake_backing_device = fake_backing_device_factory_.Generate(
+        config_.dmcrypt_config.backing_device_config);
     backing_device_ = fake_backing_device.get();
 
     // Set encryption key.
@@ -64,15 +72,17 @@ class EncryptedFsTest : public ::testing::Test {
     key_descriptor_ = cryptohome::dmcrypt::GenerateDmcryptKeyDescriptor(
         keyring_key_reference.fek_sig, key_.fek.size());
 
-    auto container = std::make_unique<cryptohome::DmcryptContainer>(
-        config_, std::move(fake_backing_device), key_reference_, &platform_,
-        &keyring_,
+    auto dmcrypt_container = std::make_unique<cryptohome::DmcryptContainer>(
+        config_.dmcrypt_config, std::move(fake_backing_device), key_reference_,
+        &platform_, &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
+    auto ext4_container = std::make_unique<cryptohome::Ext4Container>(
+        config_.filesystem_config, std::move(dmcrypt_container), &platform_);
 
     encrypted_fs_ = std::make_unique<EncryptedFs>(
         base::FilePath("/"), 3UL * 1024 * 1024 * 1024, dmcrypt_name_,
-        std::move(container), &platform_, &device_mapper_);
+        std::move(ext4_container), &platform_, &device_mapper_);
   }
   ~EncryptedFsTest() override = default;
 
@@ -87,7 +97,7 @@ class EncryptedFsTest : public ::testing::Test {
     EXPECT_CALL(platform_, GetBlkSize(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(40920000), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device_, _)).WillOnce(Return(true));
   }
 
   void ExpectCreate() {
@@ -99,7 +109,7 @@ class EncryptedFsTest : public ::testing::Test {
   const std::string dmcrypt_name_;
   const base::FilePath dmcrypt_device_;
   const base::FilePath mount_point_;
-  cryptohome::DmcryptConfig config_;
+  cryptohome::EncryptedContainerConfig config_;
 
   NiceMock<cryptohome::MockPlatform> platform_;
   cryptohome::FakeKeyring keyring_;

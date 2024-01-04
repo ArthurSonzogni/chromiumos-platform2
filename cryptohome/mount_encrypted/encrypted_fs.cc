@@ -143,14 +143,6 @@ std::string GetMountOpts() {
   return "discard,commit=" + std::to_string(commit_interval);
 }
 
-static std::vector<std::string> BuildExt4FormatOpts() {
-  return {"-T", "default",
-          "-b", std::to_string(kExt4BlockSize),
-          "-m", "0",
-          "-O", "^huge_file,^flex_bg",
-          "-E", kExt4ExtendedOptions};
-}
-
 void Dumpe2fs(const base::FilePath& device_path) {
   brillo::ProcessImpl dumpe2fs;
   dumpe2fs.AddArg("/sbin/dumpe2fs");
@@ -274,18 +266,25 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   }
 
   cryptohome::EncryptedContainerConfig container_config(
-      {.type = cryptohome::EncryptedContainerType::kDmcrypt,
-       .dmcrypt_config = {.backing_device_config = backing_device_config,
-                          .dmcrypt_device_name = dmcrypt_name,
-                          .dmcrypt_cipher = std::string(kDmCryptDefaultCipher),
-                          .mkfs_opts = BuildExt4FormatOpts(),
-                          .tune2fs_opts = {}}});
+      {.filesystem_config = {.mkfs_opts = {"-T", "default", "-b",
+                                           std::to_string(kExt4BlockSize), "-m",
+                                           "0", "-O", "^huge_file,^flex_bg",
+                                           "-E", kExt4ExtendedOptions},
+                             .tune2fs_opts = {},
+                             .backend_type =
+                                 cryptohome::EncryptedContainerType::kDmcrypt},
+       .dmcrypt_config = {
+           .backing_device_config = backing_device_config,
+           .dmcrypt_device_name = dmcrypt_name,
+           .dmcrypt_cipher = std::string(kDmCryptDefaultCipher)}});
 
   cryptohome::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob("encstateful");
 
   std::unique_ptr<cryptohome::EncryptedContainer> container =
-      encrypted_container_factory->Generate(container_config, key_reference);
+      encrypted_container_factory->Generate(
+          container_config, cryptohome::EncryptedContainerType::kExt4,
+          key_reference);
 
   return std::make_unique<EncryptedFs>(rootdir, fs_bytes_max, dmcrypt_name,
                                        std::move(container), platform,
@@ -490,5 +489,4 @@ result_code EncryptedFs::ReportInfo(void) const {
   }
   return RESULT_SUCCESS;
 }
-
 }  // namespace mount_encrypted

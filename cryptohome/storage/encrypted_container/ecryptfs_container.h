@@ -33,6 +33,7 @@ class EcryptfsContainer : public EncryptedContainer {
   EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kEcryptfs;
   }
+  base::FilePath GetPath() const override { return GetBackingLocation(); }
   base::FilePath GetBackingLocation() const override;
 
  private:

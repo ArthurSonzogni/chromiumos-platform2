@@ -40,6 +40,8 @@ class EphemeralContainer final : public EncryptedContainer {
     return EncryptedContainerType::kEphemeral;
   }
 
+  base::FilePath GetPath() const override { return GetBackingLocation(); }
+
   base::FilePath GetBackingLocation() const override;
 
  private:
