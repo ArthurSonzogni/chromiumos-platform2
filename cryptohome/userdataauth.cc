@@ -877,7 +877,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   if (!vault_factory_) {
     auto container_factory =
-        std::make_unique<EncryptedContainerFactory>(platform_);
+        std::make_unique<EncryptedContainerFactory>(platform_, GetMetrics());
     container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
     default_vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         platform_, std::move(container_factory));

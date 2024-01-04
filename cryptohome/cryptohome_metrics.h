@@ -335,6 +335,9 @@ void InitializeMetrics();
 // Cleans up and returns cryptohome metrics to an uninitialized state.
 void TearDownMetrics();
 
+// Get metrics handler for external libraries, when available.
+MetricsLibraryInterface* GetMetrics();
+
 // Override the internally used MetricsLibrary for testing purpose.
 void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib);
 

@@ -477,6 +477,7 @@ static_library("libcrosplatform") {
   ]
   libs = [
     "cbor",
+    "ext2fs",
     "keyutils",
     "rootdev",
     "secure_erase_file",

@@ -20,6 +20,7 @@ class MountEncryptedMetrics {
  public:
   static void Initialize(const std::string& output_file);
   static MountEncryptedMetrics* Get();
+  static MetricsLibrary* GetInternal();
   static void Reset();
 
   // Not copyable or movable.

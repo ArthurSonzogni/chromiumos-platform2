@@ -34,6 +34,11 @@ MountEncryptedMetrics* MountEncryptedMetrics::Get() {
   return g_metrics;
 }
 
+MetricsLibrary* MountEncryptedMetrics::GetInternal() {
+  CHECK(g_metrics);
+  return &g_metrics->metrics_library_;
+}
+
 // static
 void MountEncryptedMetrics::Reset() {
   CHECK(g_metrics);

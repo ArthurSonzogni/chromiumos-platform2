@@ -321,9 +321,6 @@ static result_code mount_encrypted_partition(
     bool safe_mount) {
   result_code rc;
 
-  mount_encrypted::ScopedMountEncryptedMetricsSingleton scoped_metrics(
-      kMountEncryptedMetricsPath);
-
   // For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
   // chromeos_startup do the stateful wipe.
   rc = encrypted_fs->CheckStates();
@@ -426,7 +423,11 @@ int main(int argc, const char* argv[]) {
   char* rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
   base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
   cryptohome::Platform platform;
-  cryptohome::EncryptedContainerFactory encrypted_container_factory(&platform);
+  mount_encrypted::ScopedMountEncryptedMetricsSingleton scoped_metrics(
+      kMountEncryptedMetricsPath);
+
+  cryptohome::EncryptedContainerFactory encrypted_container_factory(
+      &platform, mount_encrypted::MountEncryptedMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
   brillo::LogicalVolumeManager lvm;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(

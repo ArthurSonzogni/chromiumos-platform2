@@ -124,6 +124,8 @@ class CryptohomeVaultTest
       EXPECT_CALL(platform_, FormatExt4(dmcrypt_device, _, _))
           .WillOnce(Return(true));
       EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device, _)).WillOnce(Return(true));
+      ASSERT_TRUE(
+          platform_.WriteStringToFile(dmcrypt_device, std::string(2048, 0)));
     }
   }
 

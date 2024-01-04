@@ -137,7 +137,7 @@ std::unique_ptr<CryptohomeVaultFactory> CreateVaultFactory(
   // Only stub out `Keyring`, because unlike other classes its real
   // implementation does platform operations that don't go through `Platform`.
   auto container_factory = std::make_unique<EncryptedContainerFactory>(
-      &platform, std::make_unique<FakeKeyring>(),
+      &platform, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
       std::make_unique<BackingDeviceFactory>(&platform));
   container_factory->set_allow_fscrypt_v2(provider.ConsumeBool());
   auto vault_factory = std::make_unique<CryptohomeVaultFactory>(

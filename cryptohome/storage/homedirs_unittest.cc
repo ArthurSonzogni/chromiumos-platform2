@@ -102,7 +102,7 @@ class HomeDirsTest
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeKeyring>(),
+            &platform_, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
             std::make_unique<BackingDeviceFactory>(&platform_));
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));
@@ -873,7 +873,7 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
     NiceMock<MockPlatform> platform;
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform, std::make_unique<FakeKeyring>(),
+            &platform, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
             std::make_unique<BackingDeviceFactory>(&platform));
 
     std::unique_ptr<CryptohomeVaultFactory> vault_factory =

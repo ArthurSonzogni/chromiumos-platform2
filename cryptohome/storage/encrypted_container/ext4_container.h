@@ -27,7 +27,8 @@ class Ext4Container : public EncryptedContainer {
  public:
   Ext4Container(const Ext4FileSystemConfig& config,
                 std::unique_ptr<EncryptedContainer> backing_container,
-                Platform* platform);
+                Platform* platform,
+                MetricsLibraryInterface* metrics);
 
   ~Ext4Container() {}
 
@@ -79,6 +80,47 @@ class Ext4Container : public EncryptedContainer {
   std::unique_ptr<EncryptedContainer> backing_container_;
 
   Platform* platform_;
+
+  MetricsLibraryInterface* metrics_;
+
+  // Store the prefix to use for filesystem metrics, if the container is
+  // tracked on UMA, an empty string otherwise.
+  std::string metrics_prefix_;
+
+  // To send data to UMA. Since templated methods must be implemented in the
+  // headers, implements all the needed functions here.
+
+  // Sends a regular (exponential) histogram sample to Chrome for
+  // transport to UMA. See MetricsLibrary::SendToUMA in
+  // metrics_library.h for a description of the arguments.
+  void SendSample(
+      const std::string& name, int sample, int min, int max, int nbuckets) {
+    if (metrics_prefix_.empty() || !metrics_)
+      return;
+
+    metrics_->SendToUMA(metrics_prefix_ + name, sample, min, max, nbuckets);
+  }
+
+  // Sends a bool to Chrome for transport to UMA. See
+  // MetricsLibrary::SendBoolToUMA in metrics_library.h for a description of the
+  // arguments.
+  void SendBool(const std::string& name, int sample) {
+    if (metrics_prefix_.empty() || !metrics_)
+      return;
+
+    metrics_->SendBoolToUMA(metrics_prefix_ + name, sample);
+  }
+
+  // Sends an enum to Chrome for transport to UMA. See
+  // MetricsLibrary::SendEnumToUMA in metrics_library.h for a description of the
+  // arguments.
+  template <typename T>
+  void SendEnum(const std::string& name, T sample) {
+    if (metrics_prefix_.empty() || !metrics_)
+      return;
+
+    metrics_->SendEnumToUMA(metrics_prefix_ + name, sample);
+  }
 };
 
 }  // namespace cryptohome

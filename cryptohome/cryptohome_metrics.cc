@@ -266,6 +266,13 @@ void TearDownMetrics() {
   }
 }
 
+MetricsLibraryInterface* GetMetrics() {
+  if (!g_metrics || g_disable_error_metrics) {
+    return nullptr;
+  }
+  return g_metrics;
+}
+
 void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib) {
   g_metrics = lib;
 }

@@ -258,10 +258,6 @@ class PersistentSystemTest : public ::testing::Test {
     const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     SetHomedir(username);
-    ASSERT_TRUE(
-        platform_.TouchFileDurable(GetDmcryptDataVolume(obfuscated_username)));
-    ASSERT_TRUE(
-        platform_.TouchFileDurable(GetDmcryptCacheVolume(obfuscated_username)));
     ON_CALL(platform_, GetStatefulDevice())
         .WillByDefault(Return(base::FilePath("/dev/somedev")));
     ON_CALL(platform_, GetBlkSize(_, _))
@@ -269,6 +265,10 @@ class PersistentSystemTest : public ::testing::Test {
     ON_CALL(platform_, UdevAdmSettle(_, _)).WillByDefault(Return(true));
     ON_CALL(platform_, FormatExt4(_, _, _)).WillByDefault(Return(true));
     ON_CALL(platform_, Tune2Fs(_, _)).WillByDefault(Return(true));
+    ASSERT_TRUE(platform_.WriteStringToFile(
+        GetDmcryptDataVolume(obfuscated_username), std::string(2048, 0)));
+    ASSERT_TRUE(platform_.WriteStringToFile(
+        GetDmcryptCacheVolume(obfuscated_username), std::string(2048, 0)));
   }
 };
 
@@ -604,7 +604,7 @@ class EphemeralSystemTest : public ::testing::Test {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeKeyring>(),
+            &platform_, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
             std::make_unique<FakeBackingDeviceFactory>(&platform_));
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));

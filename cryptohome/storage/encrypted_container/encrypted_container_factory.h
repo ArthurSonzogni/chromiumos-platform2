@@ -22,9 +22,11 @@ namespace cryptohome {
 // `EncryptedContainerFactory` abstracts the creation of encrypted containers.
 class EncryptedContainerFactory {
  public:
-  explicit EncryptedContainerFactory(Platform* platform);
+  explicit EncryptedContainerFactory(Platform* platform,
+                                     MetricsLibraryInterface* metrics);
   EncryptedContainerFactory(
       Platform* platform,
+      MetricsLibraryInterface* metrics,
       std::unique_ptr<Keyring> keyring,
       std::unique_ptr<BackingDeviceFactory> backing_device_factory);
   virtual ~EncryptedContainerFactory() {}
@@ -40,6 +42,7 @@ class EncryptedContainerFactory {
 
  private:
   Platform* platform_;
+  MetricsLibraryInterface* metrics_;
   std::unique_ptr<Keyring> keyring_;
   std::unique_ptr<BackingDeviceFactory> backing_device_factory_;
   bool allow_fscrypt_v2_;

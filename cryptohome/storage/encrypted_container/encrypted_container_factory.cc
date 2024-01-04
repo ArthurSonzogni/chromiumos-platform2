@@ -23,17 +23,21 @@
 
 namespace cryptohome {
 
-EncryptedContainerFactory::EncryptedContainerFactory(Platform* platform)
+EncryptedContainerFactory::EncryptedContainerFactory(
+    Platform* platform, MetricsLibraryInterface* metrics)
     : EncryptedContainerFactory(
           platform,
+          metrics,
           std::make_unique<RealKeyring>(),
           std::make_unique<BackingDeviceFactory>(platform)) {}
 
 EncryptedContainerFactory::EncryptedContainerFactory(
     Platform* platform,
+    MetricsLibraryInterface* metrics,
     std::unique_ptr<Keyring> keyring,
     std::unique_ptr<BackingDeviceFactory> backing_device_factory)
     : platform_(platform),
+      metrics_(metrics),
       keyring_(std::move(keyring)),
       backing_device_factory_(std::move(backing_device_factory)),
       allow_fscrypt_v2_(false) {}
@@ -58,8 +62,9 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
             << "Could not create backing device for the filesystem container";
         return nullptr;
       }
-      return std::make_unique<Ext4Container>(
-          config.filesystem_config, std::move(backing_device), platform_);
+      return std::make_unique<Ext4Container>(config.filesystem_config,
+                                             std::move(backing_device),
+                                             platform_, metrics_);
     }
     case EncryptedContainerType::kDmcrypt: {
       auto backing_device = backing_device_factory_->Generate(

@@ -79,7 +79,8 @@ class EncryptedFsTest : public ::testing::Test {
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
     auto ext4_container = std::make_unique<cryptohome::Ext4Container>(
-        config_.filesystem_config, std::move(dmcrypt_container), &platform_);
+        config_.filesystem_config, std::move(dmcrypt_container), &platform_,
+        /* metrics */ nullptr);
 
     encrypted_fs_ = std::make_unique<EncryptedFs>(
         base::FilePath("/"), 3UL * 1024 * 1024 * 1024, dmcrypt_name_,
@@ -99,6 +100,8 @@ class EncryptedFsTest : public ::testing::Test {
         .WillRepeatedly(DoAll(SetArgPointee<1>(40920000), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
     EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device_, _)).WillOnce(Return(true));
+    ASSERT_TRUE(
+        platform_.WriteStringToFile(dmcrypt_device_, std::string(2048, 0)));
   }
 
   void ExpectCheck() {

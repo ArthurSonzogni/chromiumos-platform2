@@ -30,7 +30,7 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
  public:
   explicit FakeEncryptedContainerFactory(Platform* platform,
                                          std::unique_ptr<Keyring> keyring)
-      : EncryptedContainerFactory(platform),
+      : EncryptedContainerFactory(platform, /* metrics */ nullptr),
         platform_(platform),
         keyring_(std::move(keyring)),
         backing_device_factory_(platform) {}
@@ -75,7 +75,8 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
         if (!backing_device)
           return nullptr;
         return std::make_unique<Ext4Container>(
-            config.filesystem_config, std::move(backing_device), platform_);
+            config.filesystem_config, std::move(backing_device), platform_,
+            /* metrics */ nullptr);
       }
       default:
         return nullptr;
