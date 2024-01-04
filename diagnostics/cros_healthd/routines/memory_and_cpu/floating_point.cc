@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point.h"
 
 #include <cstdint>
 #include <memory>
@@ -23,7 +23,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-FloatingPointRoutineV2::FloatingPointRoutineV2(
+FloatingPointRoutine::FloatingPointRoutine(
     Context* context, const mojom::FloatingPointRoutineArgumentPtr& arg)
     : context_(context) {
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
@@ -37,22 +37,22 @@ FloatingPointRoutineV2::FloatingPointRoutineV2(
   CHECK(context_);
 }
 
-FloatingPointRoutineV2::~FloatingPointRoutineV2() = default;
+FloatingPointRoutine::~FloatingPointRoutine() = default;
 
-void FloatingPointRoutineV2::OnStart() {
+void FloatingPointRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   context_->memory_cpu_resource_queue()->Enqueue(base::BindOnce(
-      &FloatingPointRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+      &FloatingPointRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void FloatingPointRoutineV2::Run(
+void FloatingPointRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   SetRunningState();
 
   context_->executor()->RunFloatingPoint(
       exec_duration_, scoped_process_control_.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&FloatingPointRoutineV2::OnFinished,
+      base::BindOnce(&FloatingPointRoutine::OnFinished,
                      weak_ptr_factory_.GetWeakPtr()));
   scoped_process_control_.AddOnTerminateCallback(
       std::move(notify_resource_queue_finished));
@@ -60,18 +60,18 @@ void FloatingPointRoutineV2::Run(
   start_ticks_ = tick_clock_.NowTicks();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&FloatingPointRoutineV2::UpdatePercentage,
+      base::BindOnce(&FloatingPointRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ / 100);
 }
 
-void FloatingPointRoutineV2::OnFinished(bool passed) {
+void FloatingPointRoutine::OnFinished(bool passed) {
   scoped_process_control_.Reset();
   SetFinishedState(passed, mojom::RoutineDetail::NewFloatingPoint(
                                mojom::FloatingPointRoutineDetail::New()));
 }
 
-void FloatingPointRoutineV2::UpdatePercentage() {
+void FloatingPointRoutine::UpdatePercentage() {
   uint32_t percentage = static_cast<uint32_t>(
       100.0 * (tick_clock_.NowTicks() - start_ticks_) / exec_duration_);
   if (percentage > state()->percentage && percentage < 100) {
@@ -81,7 +81,7 @@ void FloatingPointRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&FloatingPointRoutineV2::UpdatePercentage,
+        base::BindOnce(&FloatingPointRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         exec_duration_ / 100);
   }

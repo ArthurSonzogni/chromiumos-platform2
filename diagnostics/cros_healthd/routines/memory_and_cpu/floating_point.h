@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_H_
 
 #include <cstdint>
 
@@ -21,14 +21,14 @@ namespace diagnostics {
 
 // The floating point routine checks that the device's CPU can calculate
 // correctly.
-class FloatingPointRoutineV2 final : public BaseRoutineControl {
+class FloatingPointRoutine final : public BaseRoutineControl {
  public:
-  explicit FloatingPointRoutineV2(
+  explicit FloatingPointRoutine(
       Context* context,
       const ash::cros_healthd::mojom::FloatingPointRoutineArgumentPtr& arg);
-  FloatingPointRoutineV2(const FloatingPointRoutineV2&) = delete;
-  FloatingPointRoutineV2& operator=(const FloatingPointRoutineV2&) = delete;
-  ~FloatingPointRoutineV2() override;
+  FloatingPointRoutine(const FloatingPointRoutine&) = delete;
+  FloatingPointRoutine& operator=(const FloatingPointRoutine&) = delete;
+  ~FloatingPointRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -59,9 +59,9 @@ class FloatingPointRoutineV2 final : public BaseRoutineControl {
   base::DefaultTickClock tick_clock_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<FloatingPointRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<FloatingPointRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_FLOATING_POINT_H_

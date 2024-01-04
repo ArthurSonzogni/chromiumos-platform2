@@ -24,7 +24,7 @@
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
@@ -170,7 +170,7 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kFloatingPoint: {
-      auto routine = std::make_unique<FloatingPointRoutineV2>(
+      auto routine = std::make_unique<FloatingPointRoutine>(
           context_, routine_arg->get_floating_point());
       std::move(callback).Run(base::ok(std::move(routine)));
       return;

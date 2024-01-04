@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point.h"
 
 #include <memory>
 #include <string>
@@ -33,15 +33,14 @@ namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-class FloatingPointRoutineV2TestBase : public testing::Test {
+class FloatingPointRoutineTestBase : public testing::Test {
  public:
-  FloatingPointRoutineV2TestBase(const FloatingPointRoutineV2TestBase&) =
+  FloatingPointRoutineTestBase(const FloatingPointRoutineTestBase&) = delete;
+  FloatingPointRoutineTestBase& operator=(const FloatingPointRoutineTestBase&) =
       delete;
-  FloatingPointRoutineV2TestBase& operator=(
-      const FloatingPointRoutineV2TestBase&) = delete;
 
  protected:
-  FloatingPointRoutineV2TestBase() = default;
+  FloatingPointRoutineTestBase() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunFloatingPoint(_, _, _))
@@ -71,18 +70,17 @@ class FloatingPointRoutineV2TestBase : public testing::Test {
   Executor::RunFloatingPointCallback received_callback_;
 };
 
-class FloatingPointRoutineV2Test : public FloatingPointRoutineV2TestBase {
+class FloatingPointRoutineTest : public FloatingPointRoutineTestBase {
  public:
-  FloatingPointRoutineV2Test(const FloatingPointRoutineV2Test&) = delete;
-  FloatingPointRoutineV2Test& operator=(const FloatingPointRoutineV2Test&) =
-      delete;
+  FloatingPointRoutineTest(const FloatingPointRoutineTest&) = delete;
+  FloatingPointRoutineTest& operator=(const FloatingPointRoutineTest&) = delete;
 
  protected:
-  FloatingPointRoutineV2Test() = default;
+  FloatingPointRoutineTest() = default;
 
   void SetUp() {
-    FloatingPointRoutineV2TestBase::SetUp();
-    routine_ = std::make_unique<FloatingPointRoutineV2>(
+    FloatingPointRoutineTestBase::SetUp();
+    routine_ = std::make_unique<FloatingPointRoutine>(
         &mock_context_, mojom::FloatingPointRoutineArgument::New(
                             /*exec_duration=*/std::nullopt));
   }
@@ -105,22 +103,21 @@ class FloatingPointRoutineV2Test : public FloatingPointRoutineV2TestBase {
     EXPECT_TRUE(future.Wait());
   }
 
-  std::unique_ptr<FloatingPointRoutineV2> routine_;
+  std::unique_ptr<FloatingPointRoutine> routine_;
 };
 
-class FloatingPointRoutineV2AdapterTest
-    : public FloatingPointRoutineV2TestBase {
+class FloatingPointRoutineAdapterTest : public FloatingPointRoutineTestBase {
  public:
-  FloatingPointRoutineV2AdapterTest(const FloatingPointRoutineV2AdapterTest&) =
+  FloatingPointRoutineAdapterTest(const FloatingPointRoutineAdapterTest&) =
       delete;
-  FloatingPointRoutineV2AdapterTest& operator=(
-      const FloatingPointRoutineV2AdapterTest&) = delete;
+  FloatingPointRoutineAdapterTest& operator=(
+      const FloatingPointRoutineAdapterTest&) = delete;
 
  protected:
-  FloatingPointRoutineV2AdapterTest() = default;
+  FloatingPointRoutineAdapterTest() = default;
 
   void SetUp() {
-    FloatingPointRoutineV2TestBase::SetUp();
+    FloatingPointRoutineTestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kFloatingPoint);
     routine_adapter_->SetupAdapter(
@@ -156,7 +153,7 @@ class FloatingPointRoutineV2AdapterTest
 };
 
 // Test that the routine can run successfully.
-TEST_F(FloatingPointRoutineV2Test, RoutineSuccess) {
+TEST_F(FloatingPointRoutineTest, RoutineSuccess) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(true);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -164,7 +161,7 @@ TEST_F(FloatingPointRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that the routine can run successfully through adapter.
-TEST_F(FloatingPointRoutineV2AdapterTest, RoutineSuccess) {
+TEST_F(FloatingPointRoutineAdapterTest, RoutineSuccess) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
 
   routine_adapter_->Start();
@@ -180,7 +177,7 @@ TEST_F(FloatingPointRoutineV2AdapterTest, RoutineSuccess) {
 }
 
 // Test that the routine can fail successfully.
-TEST_F(FloatingPointRoutineV2Test, RoutineFailure) {
+TEST_F(FloatingPointRoutineTest, RoutineFailure) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(false);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -188,7 +185,7 @@ TEST_F(FloatingPointRoutineV2Test, RoutineFailure) {
 }
 
 // Test that the routine can fail successfully through adapter.
-TEST_F(FloatingPointRoutineV2AdapterTest, RoutineFailure) {
+TEST_F(FloatingPointRoutineAdapterTest, RoutineFailure) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
 
   routine_adapter_->Start();
@@ -204,14 +201,14 @@ TEST_F(FloatingPointRoutineV2AdapterTest, RoutineFailure) {
 }
 
 // Test that the routine defaults to 60 seconds if no duration is provided.
-TEST_F(FloatingPointRoutineV2Test, DefaultTestSeconds) {
+TEST_F(FloatingPointRoutineTest, DefaultTestSeconds) {
   RunRoutineAndWaitForExit(true);
   EXPECT_EQ(received_exec_duration_, base::Seconds(60));
 }
 
 // Test that the routine can run with custom time.
-TEST_F(FloatingPointRoutineV2Test, CustomTestSeconds) {
-  routine_ = std::make_unique<FloatingPointRoutineV2>(
+TEST_F(FloatingPointRoutineTest, CustomTestSeconds) {
+  routine_ = std::make_unique<FloatingPointRoutine>(
       &mock_context_, mojom::FloatingPointRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit(true);
@@ -220,8 +217,8 @@ TEST_F(FloatingPointRoutineV2Test, CustomTestSeconds) {
 
 // Test that the routine defaults to minimum running time (1 second) if invalid
 // duration is provided.
-TEST_F(FloatingPointRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
-  routine_ = std::make_unique<FloatingPointRoutineV2>(
+TEST_F(FloatingPointRoutineTest, InvalidTestSecondsFallbackToMinimumDefault) {
+  routine_ = std::make_unique<FloatingPointRoutine>(
       &mock_context_, mojom::FloatingPointRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit(true);
@@ -229,8 +226,8 @@ TEST_F(FloatingPointRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
 }
 
 // Test that the routine can report progress correctly.
-TEST_F(FloatingPointRoutineV2Test, IncrementalProgress) {
-  routine_ = std::make_unique<FloatingPointRoutineV2>(
+TEST_F(FloatingPointRoutineTest, IncrementalProgress) {
+  routine_ = std::make_unique<FloatingPointRoutine>(
       &mock_context_, mojom::FloatingPointRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
@@ -257,7 +254,7 @@ TEST_F(FloatingPointRoutineV2Test, IncrementalProgress) {
 
 // Test that the routine can report progress correctly through
 // adapter.
-TEST_F(FloatingPointRoutineV2AdapterTest, IncrementalProgress) {
+TEST_F(FloatingPointRoutineAdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ = std::make_unique<RoutineAdapter>(
       mojom::RoutineArgument::Tag::kFloatingPoint);
