@@ -26,6 +26,10 @@ class BlkIdWrapperInterface {
   // Returns value associated for a given tag for a given device.
   virtual std::optional<std::string> GetTagValue(
       const std::string& tagname, const std::string& devname) const = 0;
+
+  // Updates cache and check for device before getting value.
+  virtual std::optional<std::string> CheckAndGetTagValue(
+      const std::string& tagname, const std::string& devname) = 0;
 };
 
 class BlkIdWrapper : public BlkIdWrapperInterface {
@@ -39,6 +43,9 @@ class BlkIdWrapper : public BlkIdWrapperInterface {
 
   std::optional<std::string> GetTagValue(
       const std::string& tagname, const std::string& devname) const override;
+
+  std::optional<std::string> CheckAndGetTagValue(
+      const std::string& tagname, const std::string& devname) override;
 
  private:
   FRIEND_TEST(BlkidTest, VerifyGetDevice);

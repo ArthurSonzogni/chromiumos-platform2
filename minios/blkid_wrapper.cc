@@ -41,4 +41,10 @@ std::optional<std::string> BlkIdWrapper::GetTagValue(
       devname);
 }
 
+std::optional<std::string> BlkIdWrapper::CheckAndGetTagValue(
+    const std::string& tagname, const std::string& devname) {
+  GetCache();
+  return FindDevice(devname) ? GetTagValue(tagname, devname) : std::nullopt;
+}
+
 }  // namespace minios

@@ -28,6 +28,11 @@ class MockBlkIdWrapper : public BlkIdWrapperInterface {
               GetTagValue,
               (const std::string& tagname, const std::string& devname),
               (const, override));
+
+  MOCK_METHOD(std::optional<std::string>,
+              CheckAndGetTagValue,
+              (const std::string& tagname, const std::string& devname),
+              (override));
 };
 
 }  // namespace minios
