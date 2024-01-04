@@ -18,6 +18,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include "base/containers/fixed_flat_map.h"
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -35,6 +36,7 @@
 #include <net-base/process_manager.h>
 #include <net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
+#include <re2/re2.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
@@ -4162,25 +4164,23 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
 bool Cellular::FirmwareSupportsTethering() {
   // This list should only include FW versions in which hotspot was fully
   // validated on.
-  static const std::map<Cellular::ModemType, std::vector<std::string_view>>
-      blocklist = {
-          {Cellular::ModemType::kL850GL,
-           {"18500.5001.00.02", "18500.5001.00.03", "18500.5001.00.04"}},
+  static constexpr auto blocklist =
+      base::MakeFixedFlatMap<Cellular::ModemType, std::string_view>({
+          {Cellular::ModemType::kL850GL, "^18500.5001.[0-9]{2}.0[2-4].*"},
           // 81600.0000.00.29.21* doesn't support multiple PDNs either, but we
           // don't disable it because this FW is only used by Japanese carriers,
           // which only use single PDNs.
-          {Cellular::ModemType::kFM350, {"81600.0000.00.29.19"}},
-      };
+          {Cellular::ModemType::kFM350, "^81600.0000.00.29.19.*"},
+      });
 
   const auto it = blocklist.find(modem_type_);
   if (it != blocklist.end()) {
-    for (const auto& prefix : it->second) {
-      if (firmware_revision_.starts_with(prefix)) {
-        SLOG(2) << LoggingTag() << ": " << __func__
-                << " : Firmware doesn't support tethering: "
-                << firmware_revision_;
-        return false;
-      }
+    // Use PartialMatch instead of FullMatch because some modems report FW
+    // versions with a suffix containing \r\n characters.
+    if (RE2::PartialMatch(firmware_revision_, re2::RE2(it->second))) {
+      SLOG(2) << LoggingTag() << ": " << __func__ << " : Firmware doesn't "
+              << "support tethering: " << firmware_revision_;
+      return false;
     }
   }
   return true;

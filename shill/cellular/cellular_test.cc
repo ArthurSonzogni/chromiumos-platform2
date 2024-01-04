@@ -4145,18 +4145,34 @@ TEST_F(CellularTest, FirmwareSupportsTetheringFM350) {
   auto device_id = std::make_unique<DeviceId>(
       cellular::kFM350BusType, cellular::kFM350Vid, cellular::kFM350Pid);
   device_->SetDeviceId(std::move(device_id));
-  const std::string unsupportedMR1 = "81600.0000.00.29.19.16";
-  const std::string supportedMR2_21 = "81600.0000.00.29.21.21";
-  const std::string supportedMR2_24 = "81600.0000.00.29.21.24";
-  const std::string supportedMR4 = "81600.0000.00.29.23.06";
+  // Unsupported FWs
+  const std::string mr1Generic = "81600.0000.00.29.19.16";
+  const std::string mr1Carrier = "81600.0000.00.29.19.16_GC\r\nC82";
 
-  device_->SetFirmwareRevision(unsupportedMR1);
+  device_->SetFirmwareRevision(mr1Generic);
   EXPECT_FALSE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR2_21);
+  device_->SetFirmwareRevision(mr1Carrier);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+
+  // Supported FWs
+  const std::string mr2_21Generic = "81600.0000.00.29.21.21";
+  const std::string mr2_21Carrier = "81600.0000.00.29.21.21_GC\r\nD66";
+  const std::string mr2_24Generic = "81600.0000.00.29.21.24";
+  const std::string mr2_24Carrier = "81600.0000.00.29.21.24_GC\r\nD66";
+  const std::string mr4Generic = "81600.0000.00.29.23.06";
+  const std::string mr4Carrier = "81600.0000.00.29.23.06_GC\r\nD66";
+
+  device_->SetFirmwareRevision(mr2_21Generic);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR2_24);
+  device_->SetFirmwareRevision(mr2_21Carrier);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR4);
+  device_->SetFirmwareRevision(mr2_24Generic);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr2_24Carrier);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4Generic);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4Carrier);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
 }
 
@@ -4164,35 +4180,65 @@ TEST_F(CellularTest, FirmwareSupportsTetheringL850GL) {
   auto device_id = std::make_unique<DeviceId>(
       cellular::kL850GLBusType, cellular::kL850GLVid, cellular::kL850GLPid);
   device_->SetDeviceId(std::move(device_id));
-  const std::string unsupportedMR2 = "18500.5001.00.02.24.09";
-  const std::string unsupportedMR3 = "18500.5001.00.03.25.18";
-  const std::string unsupportedMR4_01 = "18500.5001.00.04.26.01";
-  const std::string unsupportedMR4_06 = "18500.5001.00.04.26.06";
+  // Unsupported FWs
+  const std::string mr2Generic = "18500.5001.00.02.24.09";
+  const std::string mr2Carrier = "18500.5001.30.02.24.09";
+  const std::string mr3Generic = "18500.5001.00.03.25.18";
+  const std::string mr3Carrier = "18500.5001.02.03.25.18";
+  const std::string mr4_01Generic = "18500.5001.00.04.26.01";
+  const std::string mr4_01Carrier = "18500.5001.20.04.26.01";
+  const std::string mr4_06Generic = "18500.5001.00.04.26.06";
+  const std::string mr4_06Carrier = "18500.5001.07.04.26.06";
 
-  const std::string supportedMR5_12 = "18500.5001.00.05.27.12";
-  const std::string supportedMR5_16 = "18500.5001.00.05.27.16";
-  const std::string supportedMR5_17 = "18500.5001.00.05.27.17";
-  const std::string supportedMR6 = "18500.5001.00.06.28.01";
-  const std::string supportedMR8 = "18500.5001.00.07.29.08";
+  device_->SetFirmwareRevision(mr2Generic);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr2Carrier);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr3Generic);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr3Carrier);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4_01Generic);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4_01Carrier);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4_06Generic);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr4_06Carrier);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
 
-  device_->SetFirmwareRevision(unsupportedMR2);
-  EXPECT_FALSE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(unsupportedMR3);
-  EXPECT_FALSE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(unsupportedMR4_01);
-  EXPECT_FALSE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(unsupportedMR4_06);
-  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  // Supported FWs
+  const std::string mr5_12Generic = "18500.5001.00.05.27.12";
+  const std::string mr5_12Carrier = "18500.5001.30.05.27.12";
+  const std::string mr5_16Generic = "18500.5001.00.05.27.16";
+  const std::string mr5_16Carrier = "18500.5001.30.05.27.16";
+  const std::string mr5_17Generic = "18500.5001.00.05.27.17";
+  const std::string mr5_17Carrier = "18500.5001.30.05.27.17";
+  const std::string mr6Generic = "18500.5001.00.06.28.01";
+  const std::string mr6Carrier = "18500.5001.30.06.28.01";
+  const std::string mr8Generic = "18500.5001.00.07.29.08";
+  const std::string mr8Carrier = "18500.5001.30.07.29.08";
 
-  device_->SetFirmwareRevision(supportedMR5_12);
+  device_->SetFirmwareRevision(mr5_12Generic);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR5_16);
+  device_->SetFirmwareRevision(mr5_12Carrier);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR5_17);
+  device_->SetFirmwareRevision(mr5_16Generic);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR6);
+  device_->SetFirmwareRevision(mr5_16Carrier);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
-  device_->SetFirmwareRevision(supportedMR8);
+  device_->SetFirmwareRevision(mr5_17Generic);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr5_17Carrier);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr6Generic);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr6Carrier);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr8Generic);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(mr8Carrier);
   EXPECT_TRUE(device_->FirmwareSupportsTethering());
 }
+
 }  // namespace shill
