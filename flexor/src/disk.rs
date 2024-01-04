@@ -29,19 +29,29 @@ pub fn get_target_device() -> Result<PathBuf> {
         }
     }
 
-    bail!("Unable to locate disk");
+    bail!("Unable to locate payload on any disk");
 }
 
 /// Gets the data partition on a device, which is identified by [`DATA_PART_GUID`].
 pub fn get_data_partition(disk_path: &Path) -> Result<PathBuf> {
     let file = File::open(disk_path)?;
-    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512)?;
+    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512).with_context(|| {
+        format!(
+            "Unable to read the GPT partition table of {}",
+            disk_path.display()
+        )
+    })?;
 
     let (_, index) = gpt
         .get_entry_and_part_num_for_partition_with_guid(crate::DATA_PART_GUID)
-        .context("Unable to find a partition with the data guid")?;
+        .with_context(|| {
+            format!(
+                "Unable to find a partition with the data guid on {}",
+                disk_path.display()
+            )
+        })?;
     libchromeos::disk::get_partition_device(disk_path, index)
-        .context("Unable to find data partition on disk")
+        .with_context(|| format!("Unable get partition device on {}", disk_path.display()))
 }
 
 /// Reload the partition table on block devices.
@@ -77,7 +87,12 @@ pub fn mkfs_ext4(disk_path: &Path) -> Result<()> {
 /// on stateful partition will be re-created later.
 pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
     let file = File::open(disk_path)?;
-    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512)?;
+    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512).with_context(|| {
+        format!(
+            "Unable to read the GPT partition table of {}",
+            disk_path.display()
+        )
+    })?;
 
     let new_part_size_lba = crate::FLEX_DEPLOY_PART_NUM_BLOCKS;
 
@@ -112,7 +127,12 @@ pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
 /// deployment partition is mounted.
 pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {
     let file = File::open(disk_path)?;
-    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512)?;
+    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512).with_context(|| {
+        format!(
+            "Unable to read the GPT partition table of {}",
+            disk_path.display()
+        )
+    })?;
 
     // First make sure both the stateful and flex deployment partition exist.
     let stateful_part = gpt
@@ -209,7 +229,7 @@ fn extend_ext_filesystem(disk_path: &Path, part_to_grow: u32) -> Result<()> {
         cmd.arg("-p");
         // Pass in the path to the partition we want to check.
         cmd.arg("-f").arg(partition_path);
-        execute_command(cmd).context("Error executing e2fsck")
+        execute_command(cmd)
     }
 
     let partition_path = libchromeos::disk::get_partition_device(disk_path, part_to_grow)
@@ -221,7 +241,7 @@ fn extend_ext_filesystem(disk_path: &Path, part_to_grow: u32) -> Result<()> {
     // Then actually grow the filesystem.
     let mut cmd = Command::new("resize2fs");
     cmd.arg(&partition_path);
-    execute_command(cmd).context("Unable to grow filesystem of partition")?;
+    execute_command(cmd)?;
 
     // Finally check again if we were successful.
     execute_e2fsck(&partition_path)
@@ -239,7 +259,7 @@ fn add_partition_after(range: LbaRangeInclusive, size_in_lba: u64) -> Result<Lba
 
 /// Get information about all disk devices.
 fn get_disks() -> Result<Vec<PathBuf>> {
-    let devices = crate::lsblk::get_lsblk_devices().context("failed to get block devices")?;
+    let devices = crate::lsblk::get_lsblk_devices().context("Unable to get block devices")?;
 
     let mut disks = Vec::new();
     for device in devices {

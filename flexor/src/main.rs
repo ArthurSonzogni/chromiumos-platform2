@@ -4,7 +4,7 @@
 
 use std::{path::Path, process::ExitCode};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use gpt_disk_types::{guid, Guid};
 use libchromeos::{panic_handler, syslog};
 use log::{error, info};
@@ -38,13 +38,15 @@ fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
     // We expect our data on a partition with [`DATA_PART_GUID`], with a vFAT filesystem.
     let data_partition_path =
         disk::get_data_partition(disk_path).context("Unable to find correct partition path")?;
-    let mount = mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
+    let mount = mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)
+        .context("Unable to mount data partition")?;
 
     // Copy the image to rootfs.
     std::fs::copy(
         mount.mount_path().join(FLEX_IMAGE_FILENAME),
         Path::new("/root").join(FLEX_IMAGE_FILENAME),
-    )?;
+    )
+    .context("Unable to copy image to rootfs")?;
 
     Ok(())
 }
@@ -55,11 +57,13 @@ fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
 /// 2. Insert a thirteenth partition on disk for our own data.
 fn setup_disk(disk_path: &Path) -> Result<()> {
     // Install the layout and stateful partition.
-    chromeos_install::write_partition_table_and_stateful(disk_path)?;
+    chromeos_install::write_partition_table_and_stateful(disk_path)
+        .context("Unable to put initial partition table")?;
     // Insert a thirtheenth partition.
-    disk::insert_thirteenth_partition(disk_path)?;
+    disk::insert_thirteenth_partition(disk_path)
+        .context("Unable to insert thirtheenth partition")?;
     // Reread the partition table.
-    disk::reload_partitions(disk_path)
+    disk::reload_partitions(disk_path).context("Unable to reload partition table")
 }
 
 /// Sets up the thirteenth partition on disk and then proceeds to install the
@@ -69,15 +73,19 @@ fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
     let new_partition_path =
         libchromeos::disk::get_partition_device(disk_path, FLEX_DEPLOY_PART_NUM)
             .context("Unable to find correct partition path")?;
-    disk::mkfs_ext4(new_partition_path.as_path())?;
+    disk::mkfs_ext4(new_partition_path.as_path())
+        .context("Unable to write ext4 to the flex deployment partition")?;
+
     let new_part_mount =
-        mount::Mount::mount_by_path(new_partition_path.as_path(), mount::FsType::EXT4)?;
+        mount::Mount::mount_by_path(new_partition_path.as_path(), mount::FsType::EXT4)
+            .context("Unable to mount flex deployment partition")?;
 
     // Then uncompress the image on disk.
     let entries = util::uncompress_tar_xz(
         &Path::new("/root").join(FLEX_IMAGE_FILENAME),
         new_part_mount.mount_path(),
-    )?;
+    )
+    .context("Unable to uncompress the image")?;
     // A compressed ChromeOS image only contains the image path.
     let image_path = entries
         .get(0)
@@ -88,6 +96,7 @@ fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
         disk_path,
         new_part_mount.mount_path().join(image_path).as_path(),
     )
+    .context("Unable to install the image to disk")
 }
 
 /// Performs the actual installation of ChromeOS.
@@ -139,7 +148,8 @@ fn try_safe_logs(disk_path: &Path) -> Result<()> {
         if matches!(data_partition_path.try_exists(), Ok(true)) {
             let data_mount =
                 mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
-            std::fs::copy(FLEXOR_LOG_FILE, data_mount.mount_path())?;
+            std::fs::copy(FLEXOR_LOG_FILE, data_mount.mount_path())
+                .context("Unable to copy the logfile to the data partition")?;
             return Ok(());
         }
     }
@@ -152,7 +162,8 @@ fn try_safe_logs(disk_path: &Path) -> Result<()> {
     if let Ok(true) = flex_depl_partition_path.try_exists() {
         match mount::Mount::mount_by_path(&flex_depl_partition_path, mount::FsType::EXT4) {
             Ok(flex_depl_mount) => {
-                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())?;
+                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())
+                    .context("Unable to copy the logfile to the flex deployment partition")?;
             }
             Err(_) => {
                 // The partition seems to exist, but we can't mount it as ext4,
@@ -160,9 +171,16 @@ fn try_safe_logs(disk_path: &Path) -> Result<()> {
                 disk::mkfs_ext4(&flex_depl_partition_path)?;
                 let flex_depl_mount =
                     mount::Mount::mount_by_path(&flex_depl_partition_path, mount::FsType::EXT4)?;
-                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())?;
+                std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path()).context(
+                    "Unable to copy the logfile to the formatted flex deployment partition",
+                )?;
             }
         }
+    } else {
+        bail!(
+            "Unable to write logs since neither the data partition
+             nor the flex deployment partition exist"
+        );
     }
 
     Ok(())
@@ -176,8 +194,7 @@ fn main() -> ExitCode {
     }
 
     info!("Hello from Flexor!");
-    let disk_path = match disk::get_target_device().with_context(|| "Error getting the target disk")
-    {
+    let disk_path = match disk::get_target_device().context("Error getting the target disk") {
         Ok(path) => path,
         Err(err) => {
             error!("Error selecting the target disk: {err}");

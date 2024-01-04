@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, info};
 use std::{
     fs::File,
@@ -31,7 +31,7 @@ pub fn execute_command(mut command: Command) -> Result<()> {
         }
         Err(err) => {
             error!("Executed command failed: {err}");
-            Err(anyhow!("Unable to execute command: {err}"))
+            bail!("Unable to execute command: {err}");
         }
         Ok(status) => {
             let status_code = status.code().unwrap_or(-1);
@@ -45,7 +45,7 @@ pub fn execute_command(mut command: Command) -> Result<()> {
                 "Logs of the failing command: {}",
                 &format!("stdout: {}; stderr: {}", stdout, stderr,)
             );
-            Err(anyhow!("Got bad status code: {status_code}"))
+            bail!("Got bad status code: {status_code}");
         }
     }
 }
