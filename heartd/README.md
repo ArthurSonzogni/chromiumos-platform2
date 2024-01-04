@@ -8,4 +8,4 @@ corresponding actions to restore the device.
 
 ## Links
 
-1. [Design Doc](go/cros-heartd)
+1. [Design Doc](http://go/cros-heartd)
