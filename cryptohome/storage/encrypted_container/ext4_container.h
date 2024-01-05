@@ -73,6 +73,7 @@ class Ext4Container : public EncryptedContainer {
   // Configuration for the ext4 filesystem.
   const std::vector<std::string> mkfs_opts_;
   const std::vector<std::string> tune2fs_opts_;
+  RecoveryType recovery_;
 
   // Backing device for the file system container.
   std::unique_ptr<EncryptedContainer> backing_container_;

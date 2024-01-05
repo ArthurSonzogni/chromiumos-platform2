@@ -153,7 +153,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
             .tune2fs_opts = {"-O", "verity,quota,project", "-Q",
                              "usrquota,grpquota,prjquota"},
             .backend_type = type,
-        };
+            .recovery = dm_options.is_cache_device ? RecoveryType::kPurge
+                                                   : RecoveryType::kDoNothing};
         type = EncryptedContainerType::kExt4;
       }
       break;
@@ -176,6 +177,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                // Assume that the storage device is already zeroed out.
                "-E", "discard,assume_storage_prezeroed=1"},
           .backend_type = type,
+          // No need to specify recovery, the device is purge at destruction.
       };
       type = EncryptedContainerType::kExt4;
       config.backing_file_name = *obfuscated_username;
@@ -221,6 +223,10 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   DmOptions vault_dm_options = {
       .keylocker_enabled = keylocker_enabled,
   };
+  DmOptions cache_dm_options = {
+      .keylocker_enabled = keylocker_enabled,
+      .is_cache_device = true,
+  };
   DmOptions app_dm_options = {
       .keylocker_enabled = keylocker_enabled,
       .is_raw_device = true,
@@ -252,7 +258,7 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
       migrating_container_type == EncryptedContainerType::kDmcrypt) {
     cache_container = GenerateEncryptedContainer(
         EncryptedContainerType::kDmcrypt, obfuscated_username, key_reference,
-        kDmcryptCacheContainerSuffix, vault_dm_options);
+        kDmcryptCacheContainerSuffix, cache_dm_options);
     if (!cache_container) {
       LOG(ERROR) << "Could not create vault container for cache";
       return nullptr;

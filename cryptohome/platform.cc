@@ -95,6 +95,7 @@ constexpr char kLvmSignature[] = "LABELONE";
 
 constexpr char kProcDir[] = "/proc";
 constexpr char kMountInfoFile[] = "mountinfo";
+constexpr char kPathE2fsck[] = "/sbin/e2fsck";
 constexpr char kPathTune2fs[] = "/sbin/tune2fs";
 constexpr char kEcryptFS[] = "ecryptfs";
 
@@ -1340,6 +1341,40 @@ bool Platform::FormatExt4(const base::FilePath& file,
   // -c 0: Disable max mount count checking.
   // -i 0: Disable filesystem checking.
   return Tune2Fs(file, {"-c", "0", "-i", "0"});
+}
+
+bool Platform::Fsck(const base::FilePath& file,
+                    const FsckOption opts,
+                    int* err) {
+  DCHECK(file.IsAbsolute()) << "file=" << file;
+  std::vector<std::string> raw_opts;
+  switch (opts) {
+    case FsckOption::kPreen:
+      raw_opts = {"-p"};
+      break;
+    case FsckOption::kFull:
+      raw_opts = {"-f", "-y"};
+      break;
+    default:
+      *err = FSCK_USAGE_OR_SYNTAX_ERROR;
+      return false;
+  }
+
+  brillo::ProcessImpl fsck_process;
+  fsck_process.AddArg(kPathE2fsck);
+  for (const auto& arg : raw_opts)
+    fsck_process.AddArg(arg);
+
+  fsck_process.AddArg(file.value());
+
+  // Close unused file descriptors in child process.
+  fsck_process.SetCloseUnusedFileDescriptors(true);
+
+  // Avoid polluting the parent process' stdout.
+  fsck_process.RedirectOutput(base::FilePath("/dev/null"));
+
+  *err = fsck_process.Run();
+  return ((*err) & ~FSCK_ERROR_CORRECTED) == FSCK_SUCCESS;
 }
 
 bool Platform::Tune2Fs(const base::FilePath& file,

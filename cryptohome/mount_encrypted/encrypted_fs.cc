@@ -266,13 +266,13 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   }
 
   cryptohome::EncryptedContainerConfig container_config(
-      {.filesystem_config = {.mkfs_opts = {"-T", "default", "-b",
-                                           std::to_string(kExt4BlockSize), "-m",
-                                           "0", "-O", "^huge_file,^flex_bg",
-                                           "-E", kExt4ExtendedOptions},
-                             .tune2fs_opts = {},
-                             .backend_type =
-                                 cryptohome::EncryptedContainerType::kDmcrypt},
+      {.filesystem_config =
+           {.mkfs_opts = {"-T", "default", "-b", std::to_string(kExt4BlockSize),
+                          "-m", "0", "-O", "^huge_file,^flex_bg", "-E",
+                          kExt4ExtendedOptions},
+            .tune2fs_opts = {},
+            .backend_type = cryptohome::EncryptedContainerType::kDmcrypt,
+            .recovery = cryptohome::RecoveryType::kEnforceCleaning},
        .dmcrypt_config = {
            .backing_device_config = backing_device_config,
            .dmcrypt_device_name = dmcrypt_name,

@@ -365,6 +365,10 @@ class MockPlatform : public Platform {
                uint64_t),
               (override));
   MOCK_METHOD(bool,
+              Fsck,
+              (const base::FilePath&, const FsckOption, int*),
+              (override));
+  MOCK_METHOD(bool,
               Tune2Fs,
               (const base::FilePath&, const std::vector<std::string>&),
               (override));

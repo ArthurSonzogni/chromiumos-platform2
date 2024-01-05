@@ -48,6 +48,7 @@ class EncryptedFsTest : public ::testing::Test {
                      .tune2fs_opts = {"-Q", "project"},
                      .backend_type =
                          cryptohome::EncryptedContainerType::kDmcrypt,
+                     .recovery = cryptohome::RecoveryType::kEnforceCleaning,
                  },
              .dmcrypt_config =
                  {.backing_device_config =
@@ -100,6 +101,10 @@ class EncryptedFsTest : public ::testing::Test {
     EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device_, _)).WillOnce(Return(true));
   }
 
+  void ExpectCheck() {
+    EXPECT_CALL(platform_, Fsck(dmcrypt_device_, _, _)).WillOnce(Return(true));
+  }
+
   void ExpectCreate() {
     EXPECT_CALL(platform_, FormatExt4(dmcrypt_device_, _, _))
         .WillOnce(Return(true));
@@ -147,6 +152,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
 
 TEST_F(EncryptedFsTest, OldStateful) {
   ExpectSetup();
+  ExpectCheck();
 
   // Create the fake backing device.
   ASSERT_TRUE(backing_device_->Create());

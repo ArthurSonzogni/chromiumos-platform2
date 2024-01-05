@@ -82,6 +82,27 @@ inline constexpr uid_t kChronosUid = 1000;
 inline constexpr gid_t kChronosGid = 1000;
 inline constexpr gid_t kChronosAccessGid = 1001;
 
+// exit codes as defined in fsck(8)
+enum {
+  FSCK_SUCCESS = 0,
+  FSCK_ERROR_CORRECTED = 1 << 0,
+  FSCK_SYSTEM_SHOULD_REBOOT = 1 << 1,
+  FSCK_ERRORS_LEFT_UNCORRECTED = 1 << 2,
+  FSCK_OPERATIONAL_ERROR = 1 << 3,
+  FSCK_USAGE_OR_SYNTAX_ERROR = 1 << 4,
+  FSCK_USER_CANCELLED = 1 << 5,
+  FSCK_SHARED_LIB_ERROR = 1 << 7,
+};
+
+// Fsck opions
+enum class FsckOption {
+  kPreen,
+  kFull,
+
+  // Must be the last item.
+  kMaxValue = kFull,
+};
+
 // Decoded content of /proc/<id>/mountinfo file that has format:
 // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root .. // nocheck
 // rw,errors= (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9) (10)
@@ -838,6 +859,18 @@ class BRILLO_EXPORT Platform {
   virtual bool FormatExt4(const base::FilePath& file,
                           const std::vector<std::string>& opts,
                           uint64_t blocks);
+
+  // Fsck ext2/3/4 filesystems
+  // Run e2fsck and reports error.
+  // Return true when there are no error reported.
+  //
+  // Paratemers
+  //   file - Path to the file or device to be checked.
+  //   opts - fsck options.
+  //   err - error bit field returned by fsck, see fsck(8)
+  virtual bool Fsck(const base::FilePath& file,
+                    const FsckOption opts,
+                    int* err);
 
   // Tunes ext4 filesystem, adding features if needed.
   // Returns true if formatting succeeded.

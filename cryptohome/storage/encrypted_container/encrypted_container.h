@@ -38,10 +38,18 @@ struct DmcryptConfig {
   uint32_t iv_offset;
 };
 
+// Recovery option when the filesystem is not clean
+enum class RecoveryType {
+  kDoNothing = 0,
+  kEnforceCleaning,
+  kPurge,
+};
+
 struct Ext4FileSystemConfig {
   std::vector<std::string> mkfs_opts;
   std::vector<std::string> tune2fs_opts;
   EncryptedContainerType backend_type;
+  RecoveryType recovery;
 };
 
 struct EncryptedContainerConfig {
