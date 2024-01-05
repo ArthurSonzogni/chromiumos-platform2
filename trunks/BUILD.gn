@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -122,6 +124,7 @@ shared_library("trunks") {
   deps = [
     ":interface_proto",
     ":pinweaver_proto",
+    ":trunks_proxies",
   ]
 }
 
@@ -197,6 +200,7 @@ executable("trunksd") {
   }
   deps = [
     ":trunks",
+    ":trunks_adaptors",
     ":trunksd_lib",
   ]
 }
@@ -360,6 +364,17 @@ install_config("install_pre_init_config") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/trunks.conf" ]
   install_path = "tmpfilesd"
+}
+
+generate_dbus_adaptors("trunks_adaptors") {
+  sources = [ "dbus_bindings/org.chromium.Trunks.xml" ]
+  dbus_adaptors_out_dir = "include/trunks/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+}
+
+generate_dbus_proxies("trunks_proxies") {
+  sources = [ "./dbus_bindings/org.chromium.Trunks.xml" ]
+  proxy_output_file = "include/trunks/dbus_proxies.h"
 }
 
 generate_pkg_config("libtrunks") {
