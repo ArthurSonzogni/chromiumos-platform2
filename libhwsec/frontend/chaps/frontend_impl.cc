@@ -199,6 +199,15 @@ StatusOr<ScopedKey> ChapsFrontendImpl::LoadKey(
       });
 }
 
+StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Decrypt(
+    Key key, const brillo::Blob& ciphertext) const {
+  return middleware_.CallSync<&Backend::Encryption::Decrypt>(
+      key, ciphertext,
+      Encryption::EncryptionOptions{
+          .schema = Encryption::EncryptionOptions::Schema::kOaepSha1,
+      });
+}
+
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Unbind(
     Key key, const brillo::Blob& ciphertext) const {
   return middleware_.CallSync<&Backend::Encryption::Decrypt>(

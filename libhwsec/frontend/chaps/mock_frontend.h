@@ -87,6 +87,10 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
                const brillo::SecureBlob& auth_value),
               (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
+              Decrypt,
+              (Key key, const brillo::Blob& ciphertext),
+              (const override));
+  MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Unbind,
               (Key key, const brillo::Blob& ciphertext),
               (const override));

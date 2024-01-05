@@ -148,6 +148,13 @@ class ChapsFrontend : public Frontend {
       const brillo::Blob& key_blob,
       const brillo::SecureBlob& auth_value) const = 0;
 
+  // Decrypts the |ciphertext| with |key| using PKCS #1 RSA OAEP decryption with
+  // default SHA-1 hash algorithm.
+  //   key - The key handle that derived from ScopedKey.
+  //   ciphertext - Data to be decrypted.
+  virtual StatusOr<brillo::SecureBlob> Decrypt(
+      Key key, const brillo::Blob& ciphertext) const = 0;
+
   // Performs a 'unbind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
   // padding).

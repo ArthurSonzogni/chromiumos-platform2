@@ -22,6 +22,7 @@ class Encryption {
       kDefault,
       kNull,
       kRsaesSha1,
+      kOaepSha1,
     };
     Schema schema = Schema::kDefault;
   };

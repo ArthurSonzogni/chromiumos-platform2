@@ -57,6 +57,8 @@ class ChapsFrontendImpl : public ChapsFrontend, public FrontendImpl {
   StatusOr<ScopedKey> LoadKey(
       const brillo::Blob& key_blob,
       const brillo::SecureBlob& auth_value) const override;
+  StatusOr<brillo::SecureBlob> Decrypt(
+      Key key, const brillo::Blob& ciphertext) const override;
   StatusOr<brillo::SecureBlob> Unbind(
       Key key, const brillo::Blob& ciphertext) const override;
   StatusOr<brillo::Blob> Sign(Key key,
