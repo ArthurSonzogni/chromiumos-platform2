@@ -1673,12 +1673,6 @@ void UserDataAuth::SetLowDiskSpaceCallback(
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
 }
 
-void UserDataAuth::SetEvictedKeyRestoredCallback(
-    const base::RepeatingCallback<void(user_data_auth::EvictedKeyRestored)>&
-        callback) {
-  evicted_key_restored_callback_ = callback;
-}
-
 void UserDataAuth::SetAuthSessionExpiringCallback(
     const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
         callback) {
@@ -4451,9 +4445,7 @@ void UserDataAuth::RestoreDeviceKeyWithSession(
   // suspend request the key was evicted.
   user_data_auth::EvictedKeyRestored key_restored_signal;
   key_restored_signal.set_eviction_id(eviction_id);
-  if (evicted_key_restored_callback_) {
-    evicted_key_restored_callback_.Run(key_restored_signal);
-  }
+  signalling_intf_->SendEvictedKeyRestored(key_restored_signal);
 
   // Since key was restored, delete record of the suspend attempt key was
   // evicted on.

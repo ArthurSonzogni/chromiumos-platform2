@@ -37,9 +37,6 @@ class UserDataAuthAdaptor
     service_->SetAuthSessionExpiringCallback(
         base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
                             base::Unretained(this)));
-    service_->SetEvictedKeyRestoredCallback(
-        base::BindRepeating(&UserDataAuthAdaptor::EvictedKeyRestoredCallback,
-                            base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -428,10 +425,6 @@ class UserDataAuthAdaptor
   // minute remaining.
   void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
 
-  // This is called by UserDataAuth for sending a signal when DeviceKeyRestore
-  // succeeds.
-  void EvictedKeyRestoredCallback(user_data_auth::EvictedKeyRestored signal);
-
  private:
   // Implements the signalling interface for this service. All of the send
   // operations are implemented by forwarding to the relevant adaptor function.
@@ -468,6 +461,10 @@ class UserDataAuthAdaptor
     void SendAuthFactorUpdated(
         const user_data_auth::AuthFactorUpdated& signal) override {
       adaptor_->SendAuthFactorUpdatedSignal(signal);
+    }
+    void SendEvictedKeyRestored(
+        const user_data_auth::EvictedKeyRestored& signal) override {
+      adaptor_->SendEvictedKeyRestoredSignal(signal);
     }
 
     UserDataAuthInterfaceAdaptor* adaptor_;

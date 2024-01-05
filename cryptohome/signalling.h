@@ -29,6 +29,8 @@ class SignallingInterface {
       const user_data_auth::AuthFactorRemoved& signal) = 0;
   virtual void SendAuthFactorUpdated(
       const user_data_auth::AuthFactorUpdated& signal) = 0;
+  virtual void SendEvictedKeyRestored(
+      const user_data_auth::EvictedKeyRestored& signal) = 0;
 };
 
 // Null implementation of the signalling interface that considers every signal
@@ -54,6 +56,8 @@ class NullSignalling : public SignallingInterface {
       const user_data_auth::AuthFactorRemoved& signal) override {}
   void SendAuthFactorUpdated(
       const user_data_auth::AuthFactorUpdated& signal) override {}
+  void SendEvictedKeyRestored(
+      const user_data_auth::EvictedKeyRestored& signal) override {}
 };
 
 }  // namespace cryptohome

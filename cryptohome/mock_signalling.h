@@ -43,6 +43,10 @@ class MockSignalling : public SignallingInterface {
               SendAuthFactorUpdated,
               (const user_data_auth::AuthFactorUpdated&),
               (override));
+  MOCK_METHOD(void,
+              SendEvictedKeyRestored,
+              (const user_data_auth::EvictedKeyRestored&),
+              (override));
 };
 
 }  // namespace cryptohome
