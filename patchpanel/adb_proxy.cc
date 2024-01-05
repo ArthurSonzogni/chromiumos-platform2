@@ -10,11 +10,11 @@
 #include <sys/un.h>
 #include <sysexits.h>
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -27,12 +27,15 @@
 #include <dbus/object_path.h>
 #include <vboot/crossystem.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/byte_utils.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/patchpanel_daemon.h"
+#include "patchpanel/socket.h"
 
 namespace patchpanel {
 namespace {
@@ -102,13 +105,14 @@ void AdbProxy::Reset() {
 void AdbProxy::OnFileCanReadWithoutBlocking() {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
-  if (auto client_conn =
+  if (std::unique_ptr<net_base::Socket> client_conn =
           src_->Accept((struct sockaddr*)&client_src, &sockaddr_len)) {
     LOG(INFO) << "new adb connection from " << client_src;
-    if (auto adbd_conn = Connect()) {
+    if (std::unique_ptr<net_base::Socket> adbd_conn = Connect()) {
       auto fwd = std::make_unique<SocketForwarder>(
-          base::StringPrintf("adbp%d-%d", client_conn->fd(), adbd_conn->fd()),
-          std::move(client_conn), std::move(adbd_conn));
+          base::StringPrintf("adbp%d-%d", client_conn->Get(), adbd_conn->Get()),
+          patchpanel::Socket::FromNetBaseSocket(std::move(client_conn)),
+          patchpanel::Socket::FromNetBaseSocket(std::move(adbd_conn)));
       fwd->Start();
       fwd_.emplace_back(std::move(fwd));
     }
@@ -125,20 +129,21 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
   }
 }
 
-std::unique_ptr<Socket> AdbProxy::Connect() const {
+std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
   switch (arc_type_) {
     case GuestMessage::ARC: {
       struct sockaddr_un addr_un = {0};
       addr_un.sun_family = AF_UNIX;
       snprintf(addr_un.sun_path, sizeof(addr_un.sun_path), "%s",
                kUnixConnectAddr);
-      auto dst = std::make_unique<Socket>(AF_UNIX, SOCK_STREAM);
-      if (!dst->is_valid()) {
+      std::unique_ptr<net_base::Socket> dst =
+          net_base::Socket::Create(AF_UNIX, SOCK_STREAM);
+      if (!dst) {
         PLOG(ERROR) << "Failed to create UNIX domain socket";
         return nullptr;
       }
       if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un))) {
-        LOG(INFO) << "Established adbd connection to " << addr_un;
+        PLOG(INFO) << "Established adbd connection to " << addr_un;
         return dst;
       }
       PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
@@ -154,13 +159,14 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       addr_vm.svm_family = AF_VSOCK;
       addr_vm.svm_port = kVsockPort;
       addr_vm.svm_cid = arcvm_vsock_cid_.value();
-      auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
-      if (!dst->is_valid()) {
+      std::unique_ptr<net_base::Socket> dst =
+          net_base::Socket::Create(AF_VSOCK, SOCK_STREAM);
+      if (!dst) {
         PLOG(ERROR) << "Failed to create VSOCK socket";
         return nullptr;
       }
       if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
-        LOG(INFO) << "Established adbd connection to " << addr_vm;
+        PLOG(INFO) << "Established adbd connection to " << addr_vm;
         return dst;
       }
       PLOG(WARNING) << "Failed to connect VSOCK socket to adbd at " << addr_vm
@@ -177,13 +183,14 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpConnectPort);
   addr_in.sin_addr = kTcpAddr.ToInAddr();
-  auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-  if (!dst->is_valid()) {
+  std::unique_ptr<net_base::Socket> dst =
+      net_base::Socket::Create(AF_INET, SOCK_STREAM);
+  if (!dst) {
     PLOG(ERROR) << "Failed to create TCP socket";
     return nullptr;
   }
   if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))) {
-    LOG(INFO) << "Established adbd connection to " << addr_in;
+    PLOG(INFO) << "Established adbd connection to " << addr_in;
     return dst;
   }
   PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
@@ -254,15 +261,16 @@ void AdbProxy::Listen() {
   // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
   // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
   // explicitly turned on in the codebase.
-  std::unique_ptr<Socket> src =
-      std::make_unique<Socket>(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK);
-  if (!src->is_valid()) {
+  std::unique_ptr<net_base::Socket> src =
+      net_base::Socket::Create(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!src) {
     PLOG(ERROR) << "Failed to created TCP listening socket";
     return;
   }
   // Need to set this to reuse the port.
   int on = 1;
-  if (setsockopt(src->fd(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int)) < 0) {
+  if (!src->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                       net_base::byte_utils::AsBytes(on))) {
     PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
     return;
   }
@@ -271,12 +279,12 @@ void AdbProxy::Listen() {
   addr.sin6_port = htons(kAdbProxyTcpListenPort);
   addr.sin6_addr = in6addr_any;
   if (!src->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
-    LOG(ERROR) << "Cannot bind source socket to " << addr;
+    PLOG(ERROR) << "Cannot bind source socket to " << addr;
     return;
   }
 
   if (!src->Listen(kMaxConn)) {
-    LOG(ERROR) << "Cannot listen on " << addr;
+    PLOG(ERROR) << "Cannot listen on " << addr;
     return;
   }
 
@@ -285,8 +293,8 @@ void AdbProxy::Listen() {
   // Run the accept loop.
   LOG(INFO) << "Accepting connections on " << addr;
   src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      src_->fd(), base::BindRepeating(&AdbProxy::OnFileCanReadWithoutBlocking,
-                                      base::Unretained(this)));
+      src_->Get(), base::BindRepeating(&AdbProxy::OnFileCanReadWithoutBlocking,
+                                       base::Unretained(this)));
   return;
 }
 

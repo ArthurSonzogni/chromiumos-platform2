@@ -14,10 +14,10 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/bus.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
-#include "patchpanel/socket.h"
 #include "patchpanel/socket_forwarder.h"
 
 namespace patchpanel {
@@ -37,7 +37,7 @@ class AdbProxy : public brillo::DBusDaemon {
   AdbProxy(const AdbProxy&) = delete;
   AdbProxy& operator=(const AdbProxy&) = delete;
 
-  virtual ~AdbProxy();
+  ~AdbProxy() override;
 
  protected:
   int OnInit() override;
@@ -51,7 +51,7 @@ class AdbProxy : public brillo::DBusDaemon {
   void OnFileCanReadWithoutBlocking();
 
   // Attempts to establish a connection to ADB at well-known destinations.
-  std::unique_ptr<Socket> Connect() const;
+  std::unique_ptr<net_base::Socket> Connect() const;
 
   // Start listening for ADB connection. Only listen when ARC guest is started
   // and either Chrome OS is in developer mode or ADB sideloading is turned on.
@@ -64,7 +64,7 @@ class AdbProxy : public brillo::DBusDaemon {
   void CheckAdbSideloadingStatus(int num_try);
 
   MessageDispatcher<SubprocessMessage> msg_dispatcher_;
-  std::unique_ptr<Socket> src_;
+  std::unique_ptr<net_base::Socket> src_;
   std::deque<std::unique_ptr<SocketForwarder>> fwd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> src_watcher_;
 
