@@ -190,27 +190,26 @@ impl Hiberlog {
         }
     }
 
-    /// Write any ending lines to the file.
-    fn flush_to_file(&mut self) {
-        if let HiberlogOut::File(f) = &mut self.out {
-            map_log_entries(&self.pending, |s| {
-                f.write_all(s.as_bytes()).unwrap();
-                f.write_all(&[b'\n']).unwrap();
-            });
-
-            self.reset();
-        } else {
-            panic!("current log backend is not a file");
+    fn flush(&mut self) {
+        match &mut self.out {
+            // Write any ending lines to the file.
+            HiberlogOut::File(f) => {
+                map_log_entries(&self.pending, |s| {
+                    f.write_all(s.as_bytes()).unwrap();
+                    f.write_all(&[b'\n']).unwrap();
+                });
+                self.reset();
+            }
+            // Push any pending lines to the syslog.
+            HiberlogOut::Syslog => {
+                map_log_entries(&self.pending, |s| {
+                    replay_line(&self.syslogger, "M", s.to_string());
+                });
+                self.reset();
+            }
+            // In memory buffering flushes are a nop.
+            HiberlogOut::BufferInMemory => {}
         }
-    }
-
-    /// Push any pending lines to the syslog.
-    fn flush_to_syslog(&mut self) {
-        map_log_entries(&self.pending, |s| {
-            replay_line(&self.syslogger, "M", s.to_string());
-        });
-
-        self.reset();
     }
 
     /// Empty the pending log buffer, discarding any unwritten messages. This is
@@ -342,7 +341,7 @@ pub fn redirect_log(out: HiberlogOut) {
     state.out = out;
 
     match state.out {
-        HiberlogOut::Syslog => state.flush_to_syslog(),
+        HiberlogOut::Syslog => state.flush(),
         HiberlogOut::File(_) => {
             // Any time we're redirecting to a file, also send to kmsg as a
             // message in a bottle, in case we never get a chance to replay our
@@ -352,7 +351,7 @@ pub fn redirect_log(out: HiberlogOut) {
             state.to_kmsg = true;
 
             if prev_out_was_memory {
-                state.flush_to_file();
+                state.flush();
             }
         }
         _ => {}
