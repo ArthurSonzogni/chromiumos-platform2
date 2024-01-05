@@ -6,11 +6,10 @@
 
 #include <memory>
 
+#include <base/files/scoped_file.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
-
-#include <base/files/scoped_file.h>
-#include <chromeos/patchpanel/socket.h>
+#include <net-base/socket.h>
 
 namespace system_proxy {
 
@@ -21,9 +20,9 @@ struct FreeCurlEasyhandle {
 
 typedef std::unique_ptr<CURL, FreeCurlEasyhandle> ScopedCurlEasyhandle;
 
-// CurlSocket wraps a socket opened by curl in an patchpanel::Socket object
+// CurlSocket wraps a socket opened by curl in an net_base::Socket object
 // with an owned CURL handle.
-class CurlSocket : public patchpanel::Socket {
+class CurlSocket : public net_base::Socket {
  public:
   CurlSocket(base::ScopedFD fd, ScopedCurlEasyhandle curl_easyhandle);
   CurlSocket(const CurlSocket&) = delete;

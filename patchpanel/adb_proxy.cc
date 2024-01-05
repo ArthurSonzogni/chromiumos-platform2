@@ -35,7 +35,6 @@
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/patchpanel_daemon.h"
-#include "patchpanel/socket.h"
 
 namespace patchpanel {
 namespace {
@@ -111,8 +110,7 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
     if (std::unique_ptr<net_base::Socket> adbd_conn = Connect()) {
       auto fwd = std::make_unique<SocketForwarder>(
           base::StringPrintf("adbp%d-%d", client_conn->Get(), adbd_conn->Get()),
-          patchpanel::Socket::FromNetBaseSocket(std::move(client_conn)),
-          patchpanel::Socket::FromNetBaseSocket(std::move(adbd_conn)));
+          std::move(client_conn), std::move(adbd_conn));
       fwd->Start();
       fwd_.emplace_back(std::move(fwd));
     }

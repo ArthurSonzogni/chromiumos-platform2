@@ -22,7 +22,6 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 #include <curl/curl.h>
 #include <gmock/gmock.h>
@@ -281,9 +280,8 @@ TEST_F(ServerProxyTest, HandlePendingJobs) {
   // Resolve |success_count| successful connections.
   for (int i = 0; i < success_count; ++i) {
     auto fwd = std::make_unique<patchpanel::SocketForwarder>(
-        "" /* thread name */,
-        std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM),
-        std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM));
+        "" /* thread name */, net_base::Socket::Create(AF_INET, SOCK_STREAM),
+        net_base::Socket::Create(AF_INET, SOCK_STREAM));
     fwd->Start();
     auto job_iter = server_proxy_->pending_connect_jobs_.begin();
     std::move(job_iter->second->setup_finished_callback_)

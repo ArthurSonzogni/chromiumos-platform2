@@ -157,5 +157,8 @@ class NET_BASE_EXPORT SocketFactory {
       std::optional<int> receive_buffer_size = kNetlinkReceiveBufferSize);
 };
 
+NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                         const Socket& socket);
+
 }  // namespace net_base
 #endif  // NET_BASE_SOCKET_H_

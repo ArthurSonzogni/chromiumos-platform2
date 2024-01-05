@@ -12,13 +12,16 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
 namespace {
@@ -33,11 +36,11 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-bool SetPollEvents(Socket* socket, int cfd, uint32_t events) {
+bool SetPollEvents(const net_base::Socket& socket, int cfd, uint32_t events) {
   struct epoll_event ev;
   ev.events = events;
-  ev.data.fd = socket->fd();
-  if (epoll_ctl(cfd, EPOLL_CTL_MOD, socket->fd(), &ev) == -1) {
+  ev.data.fd = socket.Get();
+  if (epoll_ctl(cfd, EPOLL_CTL_MOD, socket.Get(), &ev) == -1) {
     PLOG(ERROR) << "epoll_ctl(" << ev << ") failed";
     return false;
   }
@@ -47,8 +50,8 @@ bool SetPollEvents(Socket* socket, int cfd, uint32_t events) {
 }  // namespace
 
 SocketForwarder::SocketForwarder(const std::string& name,
-                                 std::unique_ptr<Socket> sock0,
-                                 std::unique_ptr<Socket> sock1)
+                                 std::unique_ptr<net_base::Socket> sock0,
+                                 std::unique_ptr<net_base::Socket> sock1)
     : base::SimpleThread(name),
       sock0_(std::move(sock0)),
       sock1_(std::move(sock1)),
@@ -80,13 +83,12 @@ void SocketForwarder::Run() {
   LOG(INFO) << "Starting forwarder: " << *sock0_ << " <-> " << *sock1_;
 
   // We need these sockets to be non-blocking.
-  if (fcntl(sock0_->fd(), F_SETFL,
-            fcntl(sock0_->fd(), F_GETFL, 0) | O_NONBLOCK) < 0 ||
-      fcntl(sock1_->fd(), F_SETFL,
-            fcntl(sock1_->fd(), F_GETFL, 0) | O_NONBLOCK) < 0) {
-    PLOG(ERROR) << "fcntl failed";
-    if (stop_quit_closure_for_testing_)
+  if (!base::SetNonBlocking(sock0_->Get()) ||
+      !base::SetNonBlocking(sock1_->Get())) {
+    PLOG(ERROR) << "failed to set socket to non-blocking";
+    if (stop_quit_closure_for_testing_) {
       std::move(stop_quit_closure_for_testing_).Run();
+    }
     return;
   }
 
@@ -96,8 +98,9 @@ void SocketForwarder::Run() {
   done_ = true;
   sock1_.reset();
   sock0_.reset();
-  if (stop_quit_closure_for_testing_)
+  if (stop_quit_closure_for_testing_) {
     std::move(stop_quit_closure_for_testing_).Run();
+  }
 }
 
 void SocketForwarder::Poll() {
@@ -108,13 +111,13 @@ void SocketForwarder::Poll() {
   }
   struct epoll_event ev;
   ev.events = EPOLLIN;
-  ev.data.fd = sock0_->fd();
-  if (epoll_ctl(cfd.get(), EPOLL_CTL_ADD, sock0_->fd(), &ev) == -1) {
+  ev.data.fd = sock0_->Get();
+  if (epoll_ctl(cfd.get(), EPOLL_CTL_ADD, sock0_->Get(), &ev) == -1) {
     PLOG(ERROR) << "epoll_ctl failed";
     return;
   }
-  ev.data.fd = sock1_->fd();
-  if (epoll_ctl(cfd.get(), EPOLL_CTL_ADD, sock1_->fd(), &ev) == -1) {
+  ev.data.fd = sock1_->Get();
+  if (epoll_ctl(cfd.get(), EPOLL_CTL_ADD, sock1_->Get(), &ev) == -1) {
     PLOG(ERROR) << "epoll_ctl failed";
     return;
   }
@@ -150,10 +153,10 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
   }
 
   if (events & EPOLLOUT) {
-    Socket* dst;
+    net_base::Socket* dst;
     char* buf;
     size_t* len;
-    if (sock0_->fd() == efd) {
+    if (sock0_->Get() == efd) {
       dst = sock0_.get();
       buf = buf1_;
       len = &len1_;
@@ -163,32 +166,34 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
       len = &len0_;
     }
 
-    ssize_t r = dst->SendTo(buf, *len);
-    if (r < 0) {
+    const std::optional<size_t> send_bytes = dst->Send({buf, *len});
+    if (!send_bytes.has_value()) {
       PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
     }
-    size_t bytes = static_cast<size_t>(r);
 
     // Still unavailable.
-    if (bytes == 0)
+    if (*send_bytes == 0) {
       return true;
+    }
 
     // Partial write.
-    if (bytes < *len)
-      memmove(&buf[0], &buf[bytes], *len - bytes);
-    *len -= bytes;
+    if (*send_bytes < *len) {
+      memmove(&buf[0], &buf[*send_bytes], *len - *send_bytes);
+    }
+    *len -= *send_bytes;
 
     // If all the buffered data was written to the socket and the peer socket is
     // still open for writing, listen for read events on the socket.
-    if (*len == 0 && eof_ != dst->fd() && !SetPollEvents(dst, cfd, EPOLLIN))
+    if (*len == 0 && eof_ != dst->Get() && !SetPollEvents(*dst, cfd, EPOLLIN)) {
       return false;
+    }
   }
 
-  Socket *src, *dst;
+  net_base::Socket *src, *dst;
   char* buf;
   size_t* len;
-  if (sock0_->fd() == efd) {
+  if (sock0_->Get() == efd) {
     src = sock0_.get();
     dst = sock1_.get();
     buf = buf0_;
@@ -202,36 +207,39 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
 
   // Skip the read if this buffer is still pending write: requires that
   // epoll_wait is in level-triggered mode.
-  if (*len > 0)
+  if (*len > 0) {
     return true;
+  }
 
   if (events & EPOLLIN) {
-    ssize_t r = src->RecvFrom(buf, kBufSize);
-    if (r < 0) {
+    const std::optional<size_t> recv_bytes = src->RecvFrom({buf, kBufSize});
+    if (!recv_bytes.has_value()) {
       PLOG(ERROR) << "Failed to receive data from " << src;
       return false;
     }
-    *len = static_cast<size_t>(r);
+    *len = *recv_bytes;
 
-    if (*len == 0)
-      return HandleConnectionClosed(src, dst, cfd);
+    if (*len == 0) {
+      return HandleConnectionClosed(*src, *dst, cfd);
+    }
 
-    r = dst->SendTo(buf, *len);
-    if (r < 0) {
+    const std::optional<size_t> send_bytes = dst->Send({buf, *len});
+    if (!send_bytes) {
       PLOG(ERROR) << "Failed to send data to " << dst;
       return false;
     }
-    size_t bytes = static_cast<size_t>(r);
 
-    if (bytes > 0) {
+    if (*send_bytes > 0) {
       // Partial write.
-      if (bytes < *len)
-        memmove(&buf[0], &buf[bytes], *len - bytes);
-      *len -= bytes;
+      if (*send_bytes < *len) {
+        memmove(&buf[0], &buf[*send_bytes], *len - *send_bytes);
+      }
+      *len -= *send_bytes;
     }
 
-    if (*len > 0 && !SetPollEvents(dst, cfd, EPOLLOUT))
+    if (*len > 0 && !SetPollEvents(*dst, cfd, EPOLLOUT)) {
       return false;
+    }
   }
 
   if (events & EPOLLHUP) {
@@ -241,30 +249,31 @@ bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
   return true;
 }
 
-bool SocketForwarder::HandleConnectionClosed(Socket* src,
-                                             Socket* dst,
+bool SocketForwarder::HandleConnectionClosed(const net_base::Socket& src,
+                                             const net_base::Socket& dst,
                                              int cfd) {
-  LOG(INFO) << "Peer closed connection: " << *src;
-  if (eof_ == dst->fd()) {
+  LOG(INFO) << "Peer closed connection: " << src;
+  if (eof_ == dst.Get()) {
     // Stop the forwarder since the other peer has already closed the
     // connection.
     LOG(INFO) << "Closed connection: " << *sock0_ << " <-> " << *sock1_;
     return false;
   }
   // Stop listening for read ready events from |src|.
-  if (!SetPollEvents(src, cfd, 0))
+  if (!SetPollEvents(src, cfd, 0)) {
     return false;
+  }
 
   // Propagate the shut down for writing to the other peer. This is safe
   // to do since reading the EOF on |src| only happens if the buffer
   // associated with the |src| socket if empty, so there's no outstanding
   // data to be written to |dst|.
-  if (shutdown(dst->fd(), SHUT_WR) == -1) {
+  if (shutdown(dst.Get(), SHUT_WR) == -1) {
     PLOG(ERROR) << "Shutting down " << *socket << " for writing failed";
     return false;
   }
 
-  eof_ = src->fd();
+  eof_ = src.Get();
   return true;
 }
 }  // namespace patchpanel

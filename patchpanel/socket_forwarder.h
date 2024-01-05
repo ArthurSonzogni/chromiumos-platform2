@@ -16,8 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
 #include <brillo/brillo_export.h>
-
-#include "patchpanel/socket.h"
+#include <net-base/socket.h>
 
 namespace patchpanel {
 // Forwards data between a pair of sockets.
@@ -25,12 +24,12 @@ namespace patchpanel {
 class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
  public:
   SocketForwarder(const std::string& name,
-                  std::unique_ptr<Socket> sock0,
-                  std::unique_ptr<Socket> sock1);
+                  std::unique_ptr<net_base::Socket> sock0,
+                  std::unique_ptr<net_base::Socket> sock1);
   SocketForwarder(const SocketForwarder&) = delete;
   SocketForwarder& operator=(const SocketForwarder&) = delete;
 
-  virtual ~SocketForwarder();
+  ~SocketForwarder() override;
 
   // Runs the forwarder. The sockets are closed and released on exit,
   // so this can only be run once.
@@ -42,13 +41,13 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   void SetStopQuitClosureForTesting(base::OnceClosure closure);
 
  private:
-  static constexpr int kBufSize = 4096;
+  static constexpr size_t kBufSize = 4096;
 
   void Poll();
   bool ProcessEvents(uint32_t events, int efd, int cfd);
 
-  std::unique_ptr<Socket> sock0_;
-  std::unique_ptr<Socket> sock1_;
+  std::unique_ptr<net_base::Socket> sock0_;
+  std::unique_ptr<net_base::Socket> sock1_;
   char buf0_[kBufSize] = {0};
   char buf1_[kBufSize] = {0};
   size_t len0_;
@@ -64,7 +63,9 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   // other peer. If the |dst| socket is also closed for writing, it will return
   // false, which will stop the SocketForwarder instance. In case of error, it
   // returns false.
-  bool HandleConnectionClosed(Socket* src, Socket* dst, int cfd);
+  bool HandleConnectionClosed(const net_base::Socket& src,
+                              const net_base::Socket& dst,
+                              int cfd);
 
   std::atomic<bool> poll_;
   std::atomic<bool> done_;

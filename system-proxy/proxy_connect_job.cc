@@ -21,18 +21,11 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 #include <net-base/socket.h>
 
 #include "system-proxy/curl_socket.h"
 #include "system-proxy/http_util.h"
-
-// The libpatchpanel-util library overloads << for socket data structures.
-// By C++'s argument-dependent lookup rules, operators defined in a
-// different namespace are not visible. We need the using directive to make
-// the overload available this namespace.
-using patchpanel::operator<<;
 
 namespace {
 // There's no RFC recomandation for the max size of http request headers but
@@ -371,16 +364,15 @@ void ProxyConnectJob::DoCurlServerConnection() {
   }
   // Send the buffered playload data to the remote server.
   if (!connect_data_.empty()) {
-    if (server_conn->SendTo(connect_data_.data(), connect_data_.size()) < 0) {
+    if (!server_conn->Send(connect_data_)) {
       PLOG(ERROR) << *this << " Failed to send back FIXME";
     }
     connect_data_.clear();
   }
 
   auto fwd = std::make_unique<patchpanel::SocketForwarder>(
-      base::StringPrintf("%d-%d", client_socket_->Get(), server_conn->fd()),
-      patchpanel::Socket::FromNetBaseSocket(std::move(client_socket_)),
-      std::move(server_conn));
+      base::StringPrintf("%d-%d", client_socket_->Get(), server_conn->Get()),
+      std::move(client_socket_), std::move(server_conn));
   // Start forwarding data between sockets.
   fwd->Start();
   std::move(setup_finished_callback_).Run(std::move(fwd), this);

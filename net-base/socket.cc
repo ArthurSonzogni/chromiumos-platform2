@@ -221,4 +221,9 @@ std::unique_ptr<Socket> SocketFactory::CreateNetlink(
   return socket;
 }
 
+std::ostream& operator<<(std::ostream& stream, const Socket& socket) {
+  stream << "{fd: " << socket.Get() << "}";
+  return stream;
+}
+
 }  // namespace net_base
