@@ -692,6 +692,10 @@ void Datapath::ResetIptables() {
                  Iptables::Command::kD, "OUTPUT", kVpnEgressFiltersChain,
                  /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                 Iptables::Command::kD, "OUTPUT", kDropOutputToBruschettaChain,
+                 /*iif=*/"", /*oif=*/"",
+                 /*log_failures=*/false);
 
   // Flush chains used for routing and fwmark tagging. Also delete additional
   // chains made by patchpanel. Chains used by permission broker (nat
