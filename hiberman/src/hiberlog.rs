@@ -194,6 +194,8 @@ impl Hiberlog {
         match &mut self.out {
             // Write any ending lines to the file.
             HiberlogOut::File(f) => {
+                // self.pending will be empty if previously not logging to memory.
+                if self.pending.is_empty() { return; }
                 map_log_entries(&self.pending, |s| {
                     f.write_all(s.as_bytes()).unwrap();
                     f.write_all(&[b'\n']).unwrap();
@@ -336,26 +338,15 @@ pub fn redirect_log(out: HiberlogOut) {
     let mut state = lock!();
     state.to_kmsg = false;
 
-    let prev_out_was_memory = matches!(state.out, HiberlogOut::BufferInMemory);
-
+    // Any time we're redirecting to a file, also send to kmsg as a
+    // message in a bottle, in case we never get a chance to replay our
+    // own file logs. This shouldn't produce duplicate messages on
+    // success because when we're logging to a file we're also
+    // barrelling towards a kexec or shutdown.
+    state.to_kmsg = matches!(out, HiberlogOut::File(_));
     state.out = out;
 
-    match state.out {
-        HiberlogOut::Syslog => state.flush(),
-        HiberlogOut::File(_) => {
-            // Any time we're redirecting to a file, also send to kmsg as a
-            // message in a bottle, in case we never get a chance to replay our
-            // own file logs. This shouldn't produce duplicate messages on
-            // success because when we're logging to a file we're also
-            // barrelling towards a kexec or shutdown.
-            state.to_kmsg = true;
-
-            if prev_out_was_memory {
-                state.flush();
-            }
-        }
-        _ => {}
-    }
+    state.flush();
 }
 
 /// Discard any buffered but unsent logging data.
