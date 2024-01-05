@@ -195,8 +195,7 @@ impl Hiberlog {
                 // self.pending will be empty if previously not logging to memory.
                 if self.pending.is_empty() { return; }
                 map_log_entries(&self.pending, |s| {
-                    f.write_all(s.as_bytes()).unwrap();
-                    f.write_all(&[b'\n']).unwrap();
+                    let _ = f.write_all([s, "\n"].concat().as_bytes());
                 });
                 self.reset();
             }
