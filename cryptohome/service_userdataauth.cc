@@ -940,15 +940,6 @@ void UserDataAuthAdaptor::DoGetAccountDiskUsage(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::AuthFactorStatusUpdateCallback(
-    user_data_auth::AuthFactorWithStatus auth_factor_with_status,
-    const std::string& broadcast_id) {
-  user_data_auth::AuthFactorStatusUpdate status_update;
-  *status_update.mutable_auth_factor_with_status() = auth_factor_with_status;
-  status_update.set_broadcast_id(broadcast_id);
-  SendAuthFactorStatusUpdateSignal(status_update);
-}
-
 void UserDataAuthAdaptor::LowDiskSpaceCallback(uint64_t free_disk_space) {
   user_data_auth::LowDiskSpace signal_payload;
   signal_payload.set_disk_free_bytes(free_disk_space);

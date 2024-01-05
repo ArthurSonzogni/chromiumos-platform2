@@ -47,6 +47,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/manager.h"
@@ -131,6 +132,7 @@ class AuthSession final {
     UssStorage* user_secret_stash_storage = nullptr;
     UssManager* user_secret_stash_manager = nullptr;
     AsyncInitFeatures* features = nullptr;
+    AsyncInitPtr<SignallingInterface> signalling{nullptr};
     AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
         key_store_cert_provider{nullptr};
   };
@@ -447,10 +449,6 @@ class AuthSession final {
   // Send the auth factor status update signal and also set the timer for the
   // next signal based on |kAuthFactorStatusUpdateDelay|.
   void SendAuthFactorStatusUpdateSignal();
-
-  // Set the auth factor status update callback.
-  void SetAuthFactorStatusUpdateCallback(
-      const AuthFactorStatusUpdateCallback& callback);
 
   // Adds AuthFactor to the auth factor map, registered as a VaultKeyset backed
   // factor. This functionality is only used by the cryptohome-test-tool and
@@ -878,8 +876,6 @@ class AuthSession final {
 
   // Callbacks to be triggered when authentication occurs.
   std::vector<base::OnceClosure> on_auth_;
-  // The repeating callback to send AuthFactorStatusUpdateSignal.
-  AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
   // The USS storage and manager. These are used to access the USS.
   UserUssStorage uss_storage_;
@@ -898,8 +894,8 @@ class AuthSession final {
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
-  // Unowned pointer.
   AsyncInitFeatures* const features_;
+  AsyncInitPtr<SignallingInterface> signalling_;
   AsyncInitPtr<RecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.

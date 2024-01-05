@@ -143,11 +143,6 @@ void AuthSessionManager::RemoveAllAuthSessions() {
   ResetExpirationTimer();
 }
 
-void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
-    const AuthFactorStatusUpdateCallback& callback) {
-  auth_factor_status_update_callback_ = callback;
-}
-
 void AuthSessionManager::RunWhenAvailable(
     const base::UnguessableToken& token,
     base::OnceCallback<void(InUseAuthSession)> callback) {
@@ -228,12 +223,8 @@ base::UnguessableToken AuthSessionManager::AddAuthSession(
   expiration_map_.emplace(expiration_time, token);
   ResetExpirationTimer();
 
-  // Set the AuthFactorStatusUpdate signal handler to the auth session.
-  if (auth_factor_status_update_callback_) {
-    added_session.SetAuthFactorStatusUpdateCallback(
-        base::BindRepeating(auth_factor_status_update_callback_));
-    added_session.SendAuthFactorStatusUpdateSignal();
-  }
+  // Trigger a status update for the newly added session.
+  added_session.SendAuthFactorStatusUpdateSignal();
 
   // Attach the OnAuth handler to the AuthSession. It's important that we do
   // this after creating the map entries because the callback may immediately

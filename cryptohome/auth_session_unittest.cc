@@ -63,10 +63,12 @@
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/type.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash/manager.h"
@@ -356,6 +358,7 @@ class AuthSessionTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FakeFeaturesForTesting fake_features_;
+  NiceMock<MockSignalling> signalling_;
   AuthSession::BackingApis backing_apis_{
       &crypto_,
       &platform_,
@@ -367,6 +370,7 @@ class AuthSessionTest : public ::testing::Test {
       &uss_storage_,
       &uss_manager_,
       &fake_features_.async,
+      AsyncInitPtr<SignallingInterface>(&signalling_),
       AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(base::BindRepeating(
           [](AuthSessionTest* test) -> RecoverableKeyStoreBackendCertProvider* {
             return &test->cert_provider_;
@@ -2356,8 +2360,6 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
-  auth_session.SetAuthFactorStatusUpdateCallback(base::BindRepeating(
-      [](user_data_auth::AuthFactorWithStatus, const std::string&) {}));
   // Test.
   // Setting the expectation that the auth block utility will derive key
   // blobs.

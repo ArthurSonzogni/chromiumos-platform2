@@ -64,11 +64,6 @@ class AuthSessionManager {
   void RemoveUserAuthSessions(const ObfuscatedUsername& username);
   void RemoveAllAuthSessions();
 
-  // Used to set the auth factor status update callback inside class so it could
-  // be passed to each auth session.
-  void SetAuthFactorStatusUpdateCallback(
-      const AuthFactorStatusUpdateCallback& callback);
-
   // Finds existing auth session with token and invoke |callback| with the auth
   // session. If the auth session is available or doesn't exist, the callback is
   // invoked immediately. If the auth session exists but is currently active,
@@ -140,9 +135,6 @@ class AuthSessionManager {
 
   // The underlying backing APIs used to construct new sessions.
   AuthSession::BackingApis backing_apis_;
-
-  // The repeating callback to send AuthFactorStatusUpdateSignal.
-  AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
   // Map of session tokens to the session user.
   std::map<base::UnguessableToken, ObfuscatedUsername> token_to_user_;

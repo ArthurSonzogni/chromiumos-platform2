@@ -29,9 +29,6 @@ class UserDataAuthAdaptor
         dbus_object_(dbus_object),
         service_(service) {
     service_->SetSignallingInterface(signalling_);
-    service_->SetAuthFactorStatusUpdateCallback(base::BindRepeating(
-        &UserDataAuthAdaptor::AuthFactorStatusUpdateCallback,
-        base::Unretained(this)));
     service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
   }
@@ -408,12 +405,6 @@ class UserDataAuthAdaptor
           user_data_auth::GetArcDiskFeaturesReply>> response,
       const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
 
-  // This is called by UserDataAuth to update the status of locked out users in
-  // a passwordless login. This will create and send the signal.
-  void AuthFactorStatusUpdateCallback(
-      user_data_auth::AuthFactorWithStatus auth_factor_with_status,
-      const std::string& broadcast_id);
-
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);
@@ -430,6 +421,10 @@ class UserDataAuthAdaptor
     Signalling& operator=(const Signalling&) = delete;
 
    private:
+    void SendAuthFactorStatusUpdate(
+        const user_data_auth::AuthFactorStatusUpdate& signal) override {
+      adaptor_->SendAuthFactorStatusUpdateSignal(signal);
+    }
     void SendAuthScanResult(
         const user_data_auth::AuthScanResult& signal) override {
       adaptor_->SendAuthScanResultSignal(signal);

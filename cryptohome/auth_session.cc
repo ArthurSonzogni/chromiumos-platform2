@@ -414,7 +414,8 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
       features_(backing_apis.features),
-      key_store_cert_provider_(backing_apis.key_store_cert_provider),
+      signalling_(std::move(backing_apis.signalling)),
+      key_store_cert_provider_(std::move(backing_apis.key_store_cert_provider)),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
@@ -550,8 +551,8 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
 void AuthSession::SendAuthFactorStatusUpdateSignal() {
   // If the auth factor status update callback is not set (testing purposes),
   // then we won't need to send a signal.
-  if (!auth_factor_status_update_callback_) {
-    LOG(ERROR) << "Auth factor status update callback has not been set.";
+  if (!signalling_) {
+    LOG(WARNING) << "Signalling interface is not available to the session";
     return;
   }
   UserPolicyFile user_policy_file(platform_,
@@ -577,25 +578,27 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       continue;
     }
 
-    user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-    *auth_factor_with_status.mutable_auth_factor() =
+    user_data_auth::AuthFactorStatusUpdate status_update;
+    status_update.set_broadcast_id(serialized_public_token_);
+    *status_update.mutable_auth_factor_with_status()->mutable_auth_factor() =
         std::move(*auth_factor_proto);
+
     base::flat_set<AuthIntent> supported_intents = GetFullAuthAvailableIntents(
         obfuscated_username_, auth_factor, *auth_factor_driver_manager_,
         GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
-
     for (const auto& auth_intent : supported_intents) {
-      auth_factor_with_status.add_available_for_intents(
-          AuthIntentToProto(auth_intent));
+      status_update.mutable_auth_factor_with_status()
+          ->add_available_for_intents(AuthIntentToProto(auth_intent));
     }
 
     auto delay = driver.GetFactorDelay(obfuscated_username_, auth_factor);
     if (delay.ok()) {
-      auth_factor_with_status.mutable_status_info()->set_time_available_in(
-          delay->is_max() ? std::numeric_limits<uint64_t>::max()
-                          : delay->InMilliseconds());
-      auth_factor_status_update_callback_.Run(auth_factor_with_status,
-                                              serialized_public_token_);
+      status_update.mutable_auth_factor_with_status()
+          ->mutable_status_info()
+          ->set_time_available_in(delay->is_max()
+                                      ? std::numeric_limits<uint64_t>::max()
+                                      : delay->InMilliseconds());
+      signalling_->SendAuthFactorStatusUpdate(status_update);
       if (delay->is_zero()) {
         continue;
       }
@@ -4179,11 +4182,6 @@ void AuthSession::AddOnAuthCallback(base::OnceClosure on_auth) {
   } else {
     std::move(on_auth).Run();
   }
-}
-
-void AuthSession::SetAuthFactorStatusUpdateCallback(
-    const AuthFactorStatusUpdateCallback& callback) {
-  auth_factor_status_update_callback_ = callback;
 }
 
 CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {

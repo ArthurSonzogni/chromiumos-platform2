@@ -789,6 +789,14 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     keyset_management_ = default_keyset_management_.get();
   }
 
+  AsyncInitPtr<SignallingInterface> async_signalling(base::BindRepeating(
+      [](UserDataAuth* uda) -> SignallingInterface* {
+        if (uda->signalling_intf_ != &uda->default_signalling_) {
+          return uda->signalling_intf_;
+        }
+        return nullptr;
+      },
+      base::Unretained(this)));
   fingerprint_service_ = std::make_unique<FingerprintAuthBlockService>(
       AsyncInitPtr<FingerprintManager>(base::BindRepeating(
           [](UserDataAuth* uda) {
@@ -796,12 +804,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             return uda->fingerprint_manager_;
           },
           base::Unretained(this))),
-      AsyncInitPtr<SignallingInterface>(base::BindRepeating(
-          [](UserDataAuth* uda) {
-            uda->AssertOnMountThread();
-            return uda->signalling_intf_;
-          },
-          base::Unretained(this))));
+      async_signalling);
 
   AsyncInitPtr<ChallengeCredentialsHelper> async_cc_helper(base::BindRepeating(
       [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
@@ -863,7 +866,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
             auth_factor_manager_, uss_storage_, uss_manager_.get(),
-            &async_init_features_, async_key_store_cert_provider});
+            &async_init_features_, async_signalling,
+            async_key_store_cert_provider});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -1671,11 +1675,6 @@ void UserDataAuth::SetSignallingInterface(SignallingInterface& signalling) {
 void UserDataAuth::SetLowDiskSpaceCallback(
     const base::RepeatingCallback<void(uint64_t)>& callback) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
-}
-
-void UserDataAuth::SetAuthFactorStatusUpdateCallback(
-    const AuthFactorStatusUpdateCallback& callback) {
-  auth_session_manager_->SetAuthFactorStatusUpdateCallback(callback);
 }
 
 void UserDataAuth::HwsecReadyCallback(hwsec::Status status) {

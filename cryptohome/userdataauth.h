@@ -206,11 +206,6 @@ class UserDataAuth {
   // Set the D-Bus signalling interface.
   void SetSignallingInterface(SignallingInterface& signalling);
 
-  // Set the AuthFactorStatusUpdate callback which is called by the DBUS
-  // adaptor.
-  void SetAuthFactorStatusUpdateCallback(
-      const AuthFactorStatusUpdateCallback& callback);
-
   // Set the |low_disk_space_callback_| variable. This is usually called by the
   // DBus adaptor.
   void SetLowDiskSpaceCallback(
