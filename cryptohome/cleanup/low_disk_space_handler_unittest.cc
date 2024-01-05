@@ -9,6 +9,7 @@
 #include <base/test/bind.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <base/time/time.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -16,24 +17,28 @@
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/mock_homedirs.h"
-
-using ::testing::_;
-using ::testing::Invoke;
-using ::testing::Return;
-using ::testing::StrictMock;
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
+namespace {
+
+using ::testing::_;
+using ::testing::AtLeast;
+using ::testing::Eq;
+using ::testing::Invoke;
+using ::testing::IsTrue;
+using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::SaveArg;
+using ::testing::StrictMock;
 
 class LowDiskSpaceHandlerTest : public ::testing::Test {
  public:
-  LowDiskSpaceHandlerTest()
-      : handler_(&homedirs_, &platform_, &timestamp_manager_) {}
-  virtual ~LowDiskSpaceHandlerTest() = default;
-
-  void SetUp() {
+  void SetUp() override {
     handler_.set_disk_cleanup(&disk_cleanup_);
-    handler_.SetLowDiskSpaceCallback(base::BindRepeating([](uint64_t) {}));
     handler_.SetUpdateUserActivityTimestampCallback(
         base::BindRepeating([]() {}));
 
@@ -52,7 +57,7 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
         &LowDiskSpaceHandlerTest::PostDelayedTask, base::Unretained(this))));
   }
 
-  void TearDown() {
+  void TearDown() override {
     task_runner_->RunUntilIdle();
     handler_.Stop();
     task_runner_->RunUntilIdle();
@@ -66,13 +71,16 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
   }
 
   StrictMock<MockPlatform> platform_;
+  NiceMock<MockSignalling> signalling_;
   StrictMock<MockHomeDirs> homedirs_;
   StrictMock<MockUserOldestActivityTimestampManager> timestamp_manager_;
   StrictMock<MockDiskCleanup> disk_cleanup_;
   scoped_refptr<base::TestMockTimeTaskRunner> task_runner_ =
       new base::TestMockTimeTaskRunner();
 
-  LowDiskSpaceHandler handler_;
+  LowDiskSpaceHandler handler_{&homedirs_, &platform_,
+                               AsyncInitPtr<SignallingInterface>(&signalling_),
+                               &timestamp_manager_};
 
   base::Time current_time_;
 };
@@ -112,22 +120,18 @@ TEST_F(LowDiskSpaceHandlerTest, CallPeriodicCallback) {
 
   for (int i = 0; i < 10; i++) {
     uint64_t free_space = kFreeSpaceThresholdToTriggerCleanup - 115 - i;
-    bool callback_called = false;
 
     EXPECT_CALL(disk_cleanup_, AmountOfFreeDiskSpace())
         .WillOnce(Return(free_space));
 
-    handler_.SetLowDiskSpaceCallback(
-        base::BindLambdaForTesting([&](uint64_t val) {
-          EXPECT_EQ(free_space, val);
-          EXPECT_FALSE(callback_called);
-          callback_called = true;
-        }));
+    std::optional<user_data_auth::LowDiskSpace> signal;
+    EXPECT_CALL(signalling_, SendLowDiskSpace(_)).WillOnce(SaveArg<0>(&signal));
 
     task_runner_->FastForwardBy(handler_.low_disk_notification_period());
     task_runner_->RunUntilIdle();
 
-    EXPECT_TRUE(callback_called);
+    ASSERT_THAT(signal.has_value(), IsTrue());
+    EXPECT_THAT(signal->disk_free_bytes(), Eq(free_space));
   }
 }
 
@@ -138,14 +142,10 @@ TEST_F(LowDiskSpaceHandlerTest, CallLowDiskSpaceCallbackSkip) {
   EXPECT_CALL(disk_cleanup_, AmountOfFreeDiskSpace())
       .WillRepeatedly(Return(2LL * 1024 * 1024 * 1024));
 
-  bool callback_called = false;
-  handler_.SetLowDiskSpaceCallback(base::BindLambdaForTesting(
-      [&](uint64_t val) { callback_called = true; }));
+  EXPECT_CALL(signalling_, SendLowDiskSpace(_)).Times(0);
 
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
-
-  EXPECT_FALSE(callback_called);
 }
 
 TEST_F(LowDiskSpaceHandlerTest, CallLowDiskSpaceCallbackOnLowSpace) {
@@ -155,14 +155,10 @@ TEST_F(LowDiskSpaceHandlerTest, CallLowDiskSpaceCallbackOnLowSpace) {
           Return(DiskCleanup::FreeSpaceState::kNeedCriticalCleanup));
   EXPECT_CALL(disk_cleanup_, AmountOfFreeDiskSpace()).WillRepeatedly(Return(0));
 
-  bool callback_called = false;
-  handler_.SetLowDiskSpaceCallback(base::BindLambdaForTesting(
-      [&](uint64_t val) { callback_called = true; }));
+  EXPECT_CALL(signalling_, SendLowDiskSpace(_)).Times(AtLeast(1));
 
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
-
-  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
@@ -250,4 +246,5 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicLastActivityUpdate) {
   }
 }
 
+}  // namespace
 }  // namespace cryptohome

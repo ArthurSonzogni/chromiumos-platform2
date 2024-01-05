@@ -17,6 +17,9 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 
+#include "cryptohome/signalling.h"
+#include "cryptohome/util/async_init.h"
+
 namespace cryptohome {
 
 class DiskCleanup;
@@ -33,6 +36,7 @@ class LowDiskSpaceHandler {
  public:
   LowDiskSpaceHandler(HomeDirs* homedirs,
                       Platform* platform,
+                      AsyncInitPtr<SignallingInterface> signalling,
                       UserOldestActivityTimestampManager* timestamp_manager);
   virtual ~LowDiskSpaceHandler();
 
@@ -47,13 +51,6 @@ class LowDiskSpaceHandler {
   // Stop clears the post_delayed_task_ callback, ensuring the callback passed
   // to Init is no longer called.
   virtual void Stop();
-
-  // Set the callback that will be invoked when the device is low on disk space.
-  // Normally this is used to notify Chrome using DBUS.
-  virtual void SetLowDiskSpaceCallback(
-      const base::RepeatingCallback<void(uint64_t)>& callback) {
-    low_disk_space_callback_ = callback;
-  }
 
   // Set the callback that will be invoked periodically to update the current
   // users activity timestamps.
@@ -78,7 +75,8 @@ class LowDiskSpaceHandler {
   void FreeDiskSpace();
   void LowDiskSpaceCheck();
 
-  Platform* platform_ = nullptr;
+  Platform* platform_;
+  AsyncInitPtr<SignallingInterface> signalling_;
 
   std::unique_ptr<DiskCleanup> default_cleanup_;
   DiskCleanup* cleanup_;
@@ -87,7 +85,6 @@ class LowDiskSpaceHandler {
   base::TimeDelta update_user_activity_timestamp_period_;
 
   // Callbacks.
-  base::RepeatingCallback<void(uint64_t)> low_disk_space_callback_;
   base::RepeatingCallback<void()> update_user_activity_timestamp_callback_;
   base::RepeatingCallback<bool(
       const base::Location&, base::OnceClosure, const base::TimeDelta&)>

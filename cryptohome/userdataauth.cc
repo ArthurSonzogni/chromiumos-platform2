@@ -944,7 +944,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   if (!low_disk_space_handler_) {
     default_low_disk_space_handler_ = std::make_unique<LowDiskSpaceHandler>(
-        homedirs_, platform_, user_activity_timestamp_manager_);
+        homedirs_, platform_, async_signalling,
+        user_activity_timestamp_manager_);
     low_disk_space_handler_ = default_low_disk_space_handler_.get();
   }
   low_disk_space_handler_->disk_cleanup()->set_cleanup_threshold(
@@ -979,9 +980,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
       base::BindRepeating(
           base::IgnoreResult(&UserDataAuth::UpdateCurrentUserActivityTimestamp),
           base::Unretained(this), 0));
-
-  low_disk_space_handler_->SetLowDiskSpaceCallback(
-      base::BindRepeating([](uint64_t) {}));
 
   hwsec_->RegisterOnReadyCallback(base::BindOnce(
       &UserDataAuth::HwsecReadyCallback, base::Unretained(this)));
@@ -1670,11 +1668,6 @@ void UserDataAuth::set_target_free_space(uint64_t target_free_space) {
 
 void UserDataAuth::SetSignallingInterface(SignallingInterface& signalling) {
   signalling_intf_ = &signalling;
-}
-
-void UserDataAuth::SetLowDiskSpaceCallback(
-    const base::RepeatingCallback<void(uint64_t)>& callback) {
-  low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
 }
 
 void UserDataAuth::HwsecReadyCallback(hwsec::Status status) {

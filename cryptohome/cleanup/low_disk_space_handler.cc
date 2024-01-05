@@ -8,11 +8,14 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -36,8 +39,10 @@ bool IsDiskSpaceLow(DiskCleanup::FreeSpaceState state) {
 LowDiskSpaceHandler::LowDiskSpaceHandler(
     HomeDirs* homedirs,
     Platform* platform,
+    AsyncInitPtr<SignallingInterface> signalling,
     UserOldestActivityTimestampManager* timestamp_manager)
     : platform_(platform),
+      signalling_(signalling),
       default_cleanup_(new DiskCleanup(platform, homedirs, timestamp_manager)),
       cleanup_(default_cleanup_.get()),
       low_disk_notification_period_(kLowDiskNotificationPeriod),
@@ -114,7 +119,13 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
     if (IsDiskSpaceLow(free_space_state)) {
       LOG(INFO) << "Available disk space: |" << free_disk_space.value()
                 << "| bytes.  Emitting low disk space signal.";
-      low_disk_space_callback_.Run(free_disk_space.value());
+      if (signalling_) {
+        user_data_auth::LowDiskSpace signal;
+        signal.set_disk_free_bytes(*free_disk_space);
+        signalling_->SendLowDiskSpace(signal);
+      }
+      // Even if we couldn't actually send the signal because the D-Bus signal
+      // interface isn't available, act as if we did.
       low_disk_space_signal_emitted = true;
     }
   }

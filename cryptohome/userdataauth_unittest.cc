@@ -1256,7 +1256,6 @@ TEST_F(UserDataAuthTestNotInitialized, LowDiskSpaceHandlerInit) {
   // Both callbacks need to be set before Init.
   EXPECT_CALL(low_disk_space_handler_,
               SetUpdateUserActivityTimestampCallback(_));
-  EXPECT_CALL(low_disk_space_handler_, SetLowDiskSpaceCallback(_));
 
   InitializeUserDataAuth();
 }
@@ -2355,11 +2354,6 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   EXPECT_CALL(homedirs_, ComputeDiskUsage(kUsername1))
       .WillOnce(Return(kHomedirSize));
   EXPECT_EQ(kHomedirSize, userdataauth_->GetAccountDiskUsage(account));
-}
-
-TEST_F(UserDataAuthTest, LowDiskSpaceNotificationCallback) {
-  EXPECT_CALL(low_disk_space_handler_, SetLowDiskSpaceCallback(_));
-  userdataauth_->SetLowDiskSpaceCallback(base::BindRepeating([](uint64_t) {}));
 }
 
 TEST_F(UserDataAuthTest, LowDiskSpaceHandlerStopped) {

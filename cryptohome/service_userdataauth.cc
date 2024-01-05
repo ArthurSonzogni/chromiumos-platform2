@@ -940,12 +940,6 @@ void UserDataAuthAdaptor::DoGetAccountDiskUsage(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::LowDiskSpaceCallback(uint64_t free_disk_space) {
-  user_data_auth::LowDiskSpace signal_payload;
-  signal_payload.set_disk_free_bytes(free_disk_space);
-  SendLowDiskSpaceSignal(signal_payload);
-}
-
 void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,

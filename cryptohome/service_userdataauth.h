@@ -29,8 +29,6 @@ class UserDataAuthAdaptor
         dbus_object_(dbus_object),
         service_(service) {
     service_->SetSignallingInterface(signalling_);
-    service_->SetLowDiskSpaceCallback(base::BindRepeating(
-        &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -405,10 +403,6 @@ class UserDataAuthAdaptor
           user_data_auth::GetArcDiskFeaturesReply>> response,
       const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
 
-  // This is called by UserDataAuth when it detects that it's running low on
-  // disk space. All we do here is send the signal.
-  void LowDiskSpaceCallback(uint64_t free_disk_space);
-
  private:
   // Implements the signalling interface for this service. All of the send
   // operations are implemented by forwarding to the relevant adaptor function.
@@ -424,6 +418,9 @@ class UserDataAuthAdaptor
     void SendAuthFactorStatusUpdate(
         const user_data_auth::AuthFactorStatusUpdate& signal) override {
       adaptor_->SendAuthFactorStatusUpdateSignal(signal);
+    }
+    void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) override {
+      adaptor_->SendLowDiskSpaceSignal(signal);
     }
     void SendAuthScanResult(
         const user_data_auth::AuthScanResult& signal) override {

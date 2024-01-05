@@ -206,11 +206,6 @@ class UserDataAuth {
   // Set the D-Bus signalling interface.
   void SetSignallingInterface(SignallingInterface& signalling);
 
-  // Set the |low_disk_space_callback_| variable. This is usually called by the
-  // DBus adaptor.
-  void SetLowDiskSpaceCallback(
-      const base::RepeatingCallback<void(uint64_t)>& callback);
-
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
   void Remove(user_data_auth::RemoveRequest request,

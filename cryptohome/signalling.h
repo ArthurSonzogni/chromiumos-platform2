@@ -19,6 +19,7 @@ class SignallingInterface {
   // "SendXxx" will send the UserDataAuth D-Bus signal named "Xxx".
   virtual void SendAuthFactorStatusUpdate(
       const user_data_auth::AuthFactorStatusUpdate& signal) = 0;
+  virtual void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) = 0;
   virtual void SendAuthScanResult(
       const user_data_auth::AuthScanResult& signal) = 0;
   virtual void SendPrepareAuthFactorProgress(
@@ -50,6 +51,7 @@ class NullSignalling : public SignallingInterface {
  private:
   void SendAuthFactorStatusUpdate(
       const user_data_auth::AuthFactorStatusUpdate& signal) override {}
+  void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) override {}
   void SendAuthScanResult(
       const user_data_auth::AuthScanResult& signal) override {}
   void SendPrepareAuthFactorProgress(

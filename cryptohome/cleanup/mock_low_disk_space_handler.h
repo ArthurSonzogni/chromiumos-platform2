@@ -14,12 +14,18 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/signalling.h"
+#include "cryptohome/util/async_init.h"
+
 namespace cryptohome {
 
 class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
  public:
-  MockLowDiskSpaceHandler() : LowDiskSpaceHandler(nullptr, nullptr, nullptr) {}
-  virtual ~MockLowDiskSpaceHandler() = default;
+  MockLowDiskSpaceHandler()
+      : LowDiskSpaceHandler(nullptr,
+                            nullptr,
+                            AsyncInitPtr<SignallingInterface>(nullptr),
+                            nullptr) {}
 
   MOCK_METHOD(
       bool,
@@ -27,10 +33,6 @@ class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
       (base::RepeatingCallback<bool(
            const base::Location&, base::OnceClosure, const base::TimeDelta&)>),
       (override));
-  MOCK_METHOD(void,
-              SetLowDiskSpaceCallback,
-              (const base::RepeatingCallback<void(uint64_t)>&),
-              (override));
   MOCK_METHOD(void,
               SetUpdateUserActivityTimestampCallback,
               (const base::RepeatingCallback<void()>&),
