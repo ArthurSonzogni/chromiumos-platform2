@@ -77,7 +77,7 @@ void DisplayWatcher::Init(UdevInterface* udev) {
   udev_ = udev;
   udev_->AddSubsystemObserver(kI2CUdevSubsystem, this);
   udev_->AddSubsystemObserver(kDrmUdevSubsystem, this);
-  UpdateDisplays();
+  UpdateDisplays(NO_DEBOUNCE);
 }
 
 const std::vector<DisplayInfo>& DisplayWatcher::GetDisplays() const {
@@ -95,7 +95,7 @@ void DisplayWatcher::RemoveObserver(DisplayWatcherObserver* observer) {
 void DisplayWatcher::OnUdevEvent(const UdevEvent& event) {
   VLOG(1) << "Got udev event for " << event.device_info.sysname
           << " on subsystem " << event.device_info.subsystem;
-  UpdateDisplays();
+  UpdateDisplays(WITH_DEBOUNCE);
 }
 
 base::FilePath DisplayWatcher::GetSysPath(const base::FilePath& drm_dir) {
@@ -148,13 +148,17 @@ base::FilePath DisplayWatcher::FindI2CDeviceInDir(const base::FilePath& dir) {
   return base::FilePath();
 }
 
-void DisplayWatcher::HandleDebounceTimeout() {
-  TRACE_EVENT("power", "DisplayWatcher::HandleDebounceTimeout");
+void DisplayWatcher::PublishDisplayChanges() {
   for (DisplayWatcherObserver& observer : observers_)
     observer.OnDisplaysChanged(displays_);
 }
 
-void DisplayWatcher::UpdateDisplays() {
+void DisplayWatcher::HandleDebounceTimeout() {
+  TRACE_EVENT("power", "DisplayWatcher::HandleDebounceTimeout");
+  PublishDisplayChanges();
+}
+
+void DisplayWatcher::UpdateDisplays(UpdateMode update_mode) {
   std::vector<DisplayInfo> new_displays;
 
   base::FileEnumerator enumerator(
@@ -190,16 +194,21 @@ void DisplayWatcher::UpdateDisplays() {
     return;
 
   displays_.swap(new_displays);
-  if (!debounce_timer_.IsRunning()) {
-    // Advertise about display mode change after |kDebounceDelay| delay,
-    // giving enough time for things to settle.
-    debounce_timer_.Start(FROM_HERE, kDebounceDelay, this,
-                          &DisplayWatcher::HandleDebounceTimeout);
+
+  if (update_mode == WITH_DEBOUNCE) {
+    if (!debounce_timer_.IsRunning()) {
+      // Advertise about display mode change after |kDebounceDelay| delay,
+      // giving enough time for things to settle.
+      debounce_timer_.Start(FROM_HERE, kDebounceDelay, this,
+                            &DisplayWatcher::HandleDebounceTimeout);
+    } else {
+      // If the debounce timer is already running, avoid advertising about
+      // display configuration change immediately. Instead reset the timer to
+      // wait for things to settle.
+      debounce_timer_.Reset();
+    }
   } else {
-    // If the debounce timer is already running, avoid advertising about
-    // display configuration change immediately. Instead reset the timer to
-    // wait for things to settle.
-    debounce_timer_.Reset();
+    PublishDisplayChanges();
   }
 }
 

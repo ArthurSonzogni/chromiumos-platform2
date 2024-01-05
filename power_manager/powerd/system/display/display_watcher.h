@@ -95,13 +95,20 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // communication. Returns an empty path if the device isn't found.
   base::FilePath FindI2CDeviceInDir(const base::FilePath& dir);
 
+  // Notify any observers that the display list has been modified.
+  void PublishDisplayChanges();
+
   // Invoked by |debounce_timer_| used to delay publishing display changes. This
   // helps aggregating multiple display configuration events when they are
   // reported in short time spans.
   void HandleDebounceTimeout();
 
   // Scans /sys and updates |displays_|.
-  void UpdateDisplays();
+  enum UpdateMode {
+    WITH_DEBOUNCE,
+    NO_DEBOUNCE,
+  };
+  void UpdateDisplays(UpdateMode mode);
 
   UdevInterface* udev_ = nullptr;  // owned elsewhere
 
