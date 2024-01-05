@@ -283,6 +283,10 @@ inline constexpr char kCryptohomeErrorAuthenticateAuthFactorErrorBucket[] =
     "AuthenticateAuthFactorError";
 inline constexpr char kCryptohomeErrorRemoveAuthFactorErrorBucket[] =
     "RemoveAuthFactorError";
+inline constexpr char kCryptohomeErrorUpdateRecoverableKeyStoreErrorBucket[] =
+    "UpdateRecoverableKeyStoreError";
+inline constexpr char kCryptohomeErrorCreateRecoverableKeyStoreErrorBucket[] =
+    "CreateRecoverableKeyStoreError";
 
 // List of possible auth factor backing store configurations that a user can
 // have. This is determined by whether a user's factors are stored in vault

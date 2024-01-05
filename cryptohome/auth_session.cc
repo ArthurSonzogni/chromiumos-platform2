@@ -3828,17 +3828,26 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   SetAuthorizedForFullAuthIntents(auth_factor_type,
                                   auth_factor_type_user_policy);
 
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
   // Update the recoverable key store on the successful authentication.
   if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
-    MaybeUpdateRecoverableKeyStore(auth_factor, auth_input);
+    std::optional<KnowledgeFactorType> knowledge_factor_type =
+        factor_driver.GetKnowledgeFactorType();
+    if (knowledge_factor_type.has_value()) {
+      CryptohomeStatus update_status = MaybeUpdateRecoverableKeyStore(
+          auth_factor, *knowledge_factor_type, auth_input);
+      ReapAndReportError(
+          std::move(update_status),
+          {std::string(kCryptohomeErrorUpdateRecoverableKeyStoreErrorBucket)});
+    }
   }
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input,
                         auth_factor.metadata());
 
-  const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(auth_factor_type);
   // Reset all of the rate limiters and and credential lockouts.
   ResetLECredentials();
   ResetRateLimiterCredentials(factor_driver.GetResetCapability());
@@ -4267,8 +4276,18 @@ void AuthSession::CreateCommonAuthBlockState(
   // Now, create the common part of auth block state. Currently it's only the
   // recoverable key store state.
   if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
-    CreateRecoverableKeyStore(auth_factor_type, auth_factor_metadata,
-                              auth_input, *auth_block_state);
+    const AuthFactorDriver& factor_driver =
+        auth_factor_driver_manager_->GetDriver(auth_factor_type);
+    std::optional<KnowledgeFactorType> knowledge_factor_type =
+        factor_driver.GetKnowledgeFactorType();
+    if (knowledge_factor_type.has_value()) {
+      CryptohomeStatus create_status = CreateRecoverableKeyStore(
+          auth_factor_type, *knowledge_factor_type, auth_factor_metadata,
+          auth_input, *auth_block_state);
+      ReapAndReportError(
+          std::move(create_status),
+          {std::string(kCryptohomeErrorCreateRecoverableKeyStoreErrorBucket)});
+    }
   }
   // Pass on the results to the original callback, with the auth_block_state
   // updated.
@@ -4276,91 +4295,109 @@ void AuthSession::CreateCommonAuthBlockState(
       .Run(std::move(error), std::move(key_blobs), std::move(auth_block_state));
 }
 
-void AuthSession::CreateRecoverableKeyStore(
+CryptohomeStatus AuthSession::CreateRecoverableKeyStore(
     AuthFactorType auth_factor_type,
+    KnowledgeFactorType knowledge_factor_type,
     const AuthFactorMetadata& auth_factor_metadata,
     AuthInput auth_input,
     AuthBlockState& auth_block_state) {
-  // TODO(b/312628857): Report metrics for the create result.
-  const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(auth_factor_type);
-  std::optional<KnowledgeFactorType> knowledge_factor_type =
-      factor_driver.GetKnowledgeFactorType();
-  if (!knowledge_factor_type.has_value() || !decrypt_token_) {
-    return;
-  }
+  // This is always called when USS is decrypted.
+  CHECK(decrypt_token_);
+
+  // Cryptohome error codes in this function aren't carefully chosen, as these
+  // will never be returned in a dbus response. They're only for UMA reporting
+  // (which doesn't report the error code), and the error codes themselves are
+  // deprecating soon. Similarly, only the kDevCheckUnexpectedState action
+  // matters for UMA reporting.
   const SecurityDomainKeys* security_domain_keys =
       uss_manager_->GetDecrypted(*decrypt_token_).GetSecurityDomainKeys();
   if (!security_domain_keys) {
-    LOG(WARNING) << "Failed to get security domain keys.";
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocCreateKeyStoreNoDomainKeys),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   auth_input.security_domain_keys = *security_domain_keys;
   RecoverableKeyStoreBackendCertProvider* provider =
       key_store_cert_provider_.get();
   if (!provider) {
-    LOG(WARNING) << "Failed to get key store backend cert provider.";
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocCreateKeyStoreNoProvider),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   CryptohomeStatusOr<RecoverableKeyStoreState> key_store_state =
-      CreateRecoverableKeyStoreState(*knowledge_factor_type, auth_input,
+      CreateRecoverableKeyStoreState(knowledge_factor_type, auth_input,
                                      auth_factor_metadata, *provider);
   if (!key_store_state.ok()) {
-    LOG(WARNING) << "Failed to create recoverable key store state: "
-                 << key_store_state.status();
-    return;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocCreateKeyStoreCreateKeyStoreFailed),
+               ErrorActionSet())
+        .Wrap(std::move(key_store_state).err_status());
   }
   auth_block_state.recoverable_key_store_state = std::move(*key_store_state);
+  return OkStatus<CryptohomeError>();
 }
 
-void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
-                                                 AuthInput auth_input) {
-  // TODO(b/312628857): Report metrics for the update result.
-  const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(auth_factor.type());
-  std::optional<KnowledgeFactorType> knowledge_factor_type =
-      factor_driver.GetKnowledgeFactorType();
-  if (!knowledge_factor_type.has_value() || !decrypt_token_) {
-    return;
-  }
+CryptohomeStatus AuthSession::MaybeUpdateRecoverableKeyStore(
+    const AuthFactor& auth_factor,
+    KnowledgeFactorType knowledge_factor_type,
+    AuthInput auth_input) {
+  // This is always called after USS is decrypted.
+  CHECK(decrypt_token_);
+
+  // Cryptohome error codes in this function aren't carefully chosen, as these
+  // will never be returned in a dbus response. They're only for UMA reporting
+  // (which doesn't report the error code), and the error codes themselves are
+  // deprecating soon. Similarly, only the kDevCheckUnexpectedState action
+  // matters for UMA reporting.
   const SecurityDomainKeys* security_domain_keys =
       uss_manager_->GetDecrypted(*decrypt_token_).GetSecurityDomainKeys();
   if (!security_domain_keys) {
-    LOG(WARNING) << "Failed to get security domain keys.";
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreNoDomainKeys),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   auth_input.security_domain_keys = *security_domain_keys;
   RecoverableKeyStoreBackendCertProvider* provider =
       key_store_cert_provider_.get();
   if (!provider) {
-    LOG(WARNING) << "Failed to get key store backend cert provider.";
-    return;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreNoProvider),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   RecoverableKeyStoreState new_state;
   const std::optional<RecoverableKeyStoreState>& old_state =
       auth_factor.auth_block_state().recoverable_key_store_state;
   if (!old_state.has_value()) {
     CryptohomeStatusOr<RecoverableKeyStoreState> new_state_status =
-        CreateRecoverableKeyStoreState(*knowledge_factor_type, auth_input,
+        CreateRecoverableKeyStoreState(knowledge_factor_type, auth_input,
                                        auth_factor.metadata(), *provider);
     if (!new_state_status.ok()) {
-      LOG(WARNING) << "Failed to create recoverable key store state: "
-                   << new_state_status.status();
-      return;
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreCreateKeyStoreFailed),
+                 ErrorActionSet())
+          .Wrap(std::move(new_state_status).err_status());
     }
     new_state = std::move(*new_state_status);
   } else {
     CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
         new_state_status = MaybeUpdateRecoverableKeyStoreState(
-            *old_state, *knowledge_factor_type, auth_input,
+            *old_state, knowledge_factor_type, auth_input,
             auth_factor.metadata(), *provider);
     if (!new_state_status.ok()) {
-      LOG(WARNING) << "Failed to update recoverable key store state."
-                   << new_state_status.status();
-      return;
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreUpdateKeyStoreFailed),
+                 ErrorActionSet())
+          .Wrap(std::move(new_state_status).err_status());
     }
     if (!new_state_status->has_value()) {
-      return;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreUpdateNotNeeded),
+          ErrorActionSet(),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     new_state = std::move(**new_state_status);
   }
@@ -4373,11 +4410,14 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
   CryptohomeStatus save_status = auth_factor_manager_->SaveAuthFactorFile(
       obfuscated_username_, updated_auth_factor);
   if (!save_status.ok()) {
-    LOG(ERROR) << "Failed to save updated auth factor.";
-    return;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(kLocUpdateKeyStoreSaveFactorFailed),
+               ErrorActionSet())
+        .Wrap(std::move(save_status).err_status());
   }
   GetAuthFactorMap().Add(std::move(updated_auth_factor),
                          AuthFactorStorageType::kUserSecretStash);
+  return OkStatus<CryptohomeError>();
 }
 
 }  // namespace cryptohome

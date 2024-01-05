@@ -2039,6 +2039,24 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredAuthBlockNoMetadataInCreate = 3438,
   /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoMetadata = 3439,
+  /* ./auth_session.cc */
+  kLocCreateKeyStoreNoDomainKeys = 3440,
+  /* ./auth_session.cc */
+  kLocCreateKeyStoreNoProvider = 3441,
+  /* ./auth_session.cc */
+  kLocCreateKeyStoreCreateKeyStoreFailed = 3442,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreNoDomainKeys = 3443,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreNoProvider = 3444,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreCreateKeyStoreFailed = 3445,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreUpdateKeyStoreFailed = 3446,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreUpdateNotNeeded = 3447,
+  /* ./auth_session.cc */
+  kLocUpdateKeyStoreSaveFactorFailed = 3448,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

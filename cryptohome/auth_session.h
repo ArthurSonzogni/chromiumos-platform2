@@ -21,6 +21,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/structures/explicit_init.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -838,17 +839,20 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
-  // Create the recoverable key store auth block state, if |auth_factor_type|
-  // is a knowledge factor.
-  void CreateRecoverableKeyStore(AuthFactorType auth_factor_type,
-                                 const AuthFactorMetadata& auth_factor_metadata,
-                                 AuthInput auth_input,
-                                 AuthBlockState& auth_block_state);
+  // Create the recoverable key store auth block state for the auth factor.
+  CryptohomeStatus CreateRecoverableKeyStore(
+      AuthFactorType auth_factor_type,
+      KnowledgeFactorType knowledge_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata,
+      AuthInput auth_input,
+      AuthBlockState& auth_block_state);
 
   // Check whether the recoverable key store state of |auth_factor| is outdated,
   // and update it if so.
-  void MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
-                                      AuthInput auth_input);
+  CryptohomeStatus MaybeUpdateRecoverableKeyStore(
+      const AuthFactor& auth_factor,
+      KnowledgeFactorType knowledge_factor_type,
+      AuthInput auth_input);
 
   Username username_;
   ObfuscatedUsername obfuscated_username_;
