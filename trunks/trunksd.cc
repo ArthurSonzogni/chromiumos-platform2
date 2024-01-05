@@ -116,9 +116,6 @@ int main(int argc, char** argv) {
     PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
   }
 
-  // Create a service instance so objects like AtExitManager exist.
-  trunks::TrunksDBusService service(write_error_tracker);
-
   // This needs to be *after* opening the TPM handle and *before* starting the
   // background thread.
   InitMinijailSandbox();
@@ -136,7 +133,11 @@ int main(int argc, char** argv) {
                                 base::Unretained(&resource_manager)));
   trunks::BackgroundCommandTransceiver background_transceiver(
       &resource_manager, background_thread.task_runner());
-  service.set_transceiver(&background_transceiver);
+
+  // Create a service instance so objects like AtExitManager exist.
+  trunks::TrunksDBusService service(background_transceiver,
+                                    write_error_tracker);
+
   trunks::PowerManager power_manager(&resource_manager,
                                      background_thread.task_runner());
   service.set_power_manager(&power_manager);
