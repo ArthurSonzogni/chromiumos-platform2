@@ -82,6 +82,10 @@ bool Socket::Bind(const struct sockaddr* addr, socklen_t addrlen) const {
   return bind(fd_.get(), addr, addrlen) == 0;
 }
 
+bool Socket::Connect(const struct sockaddr* addr, socklen_t addrlen) const {
+  return connect(fd_.get(), addr, addrlen) == 0;
+}
+
 bool Socket::GetSockName(struct sockaddr* addr, socklen_t* addrlen) const {
   return getsockname(fd_.get(), addr, addrlen) == 0;
 }

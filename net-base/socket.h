@@ -53,6 +53,10 @@ class NET_BASE_EXPORT Socket {
   // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool Bind(const struct sockaddr* addr, socklen_t addrlen) const;
 
+  // Delegates to connect(fd_.get(), ...). Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
+  virtual bool Connect(const struct sockaddr* addr, socklen_t addrlen) const;
+
   // Delegates to getsockname(fd_.get(), ...). Returns true if successful.
   // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool GetSockName(struct sockaddr* addr, socklen_t* addrlen) const;

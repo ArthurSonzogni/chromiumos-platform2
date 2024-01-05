@@ -27,6 +27,7 @@
 #include <curl/curl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/socket.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system-proxy/protobuf_util.h"
@@ -194,8 +195,8 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   base::RunLoop run_loop;
   server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
 
-  auto client_socket =
-      std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
+  std::unique_ptr<net_base::Socket> client_socket =
+      net_base::Socket::Create(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
   // This loop will stop once a connection request is processed and added to the
@@ -205,7 +206,7 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
       "CONNECT www.example.server.com:443 HTTP/1.1\r\n\r\n";
-  client_socket->SendTo(http_req.data(), http_req.size());
+  client_socket->Send(http_req);
 
   EXPECT_CALL(*server_proxy_, GetStdoutPipe())
       .WillOnce(Return(stdout_write_fd_.get()));
@@ -235,7 +236,7 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   const std::string expected_http_reply =
       "HTTP/1.1 500 Internal Server Error - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_reply.size());
-  ASSERT_TRUE(base::ReadFromFD(client_socket->fd(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(client_socket->Get(), buf.data(), buf.size()));
   buf.push_back('\0');
   const std::string actual_http_reply(buf.data());
   EXPECT_EQ(expected_http_reply, actual_http_reply);
@@ -314,8 +315,8 @@ TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
   base::RunLoop run_loop;
   server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
 
-  auto client_socket =
-      std::make_unique<patchpanel::Socket>(AF_INET, SOCK_STREAM);
+  std::unique_ptr<net_base::Socket> client_socket =
+      net_base::Socket::Create(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
   // This loop will stop once a connection request is processed and added to the
@@ -325,7 +326,7 @@ TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
       "CONNECT www.example.server.com:443 HTTP/1.1\r\n\r\n";
-  client_socket->SendTo(http_req.data(), http_req.size());
+  client_socket->Send(http_req);
 
   EXPECT_CALL(*server_proxy_, GetStdoutPipe())
       .WillOnce(Return(stdout_write_fd_.get()));
