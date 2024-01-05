@@ -182,6 +182,22 @@
     ]
   },
   {
+    "name": "CrOSLateBootEEVDF",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/proc/sys/kernel/sched_use_eevdf",
+        "value": "1"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/proc/sys/kernel/sched_use_eevdf"
+      }
+    ]
+  },
+  {
     "name": "CrOSLateBootArcVmVcpuBoost",
     "commands": [
       {

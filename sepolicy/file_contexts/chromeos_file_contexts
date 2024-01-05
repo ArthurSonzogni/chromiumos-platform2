@@ -564,6 +564,7 @@ has_arc(`
 # Needed for featured to enable kernel features
 /proc/sys/kernel(/.*)?                 u:object_r:proc_sys_kernel:s0
 /proc/sys/kernel/timer_highres         u:object_r:proc_timer:s0
+/proc/sys/kernel/sched_use_eevdf       u:object_r:proc_sched:s0
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0

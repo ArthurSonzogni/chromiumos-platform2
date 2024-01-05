@@ -11,3 +11,5 @@ genfscon debugfs /dri/ u:object_r:debugfs_gpu:s0
 genfscon efivarfs / u:object_r:efivarfs:s0
 
 genfscon proc /sys/kernel/timer_highres u:object_r:proc_timer:s0
+
+genfscon proc /sys/kernel/sched_use_eevdf u:object_r:proc_sched:s0
