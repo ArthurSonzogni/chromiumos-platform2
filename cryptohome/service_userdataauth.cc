@@ -955,11 +955,6 @@ void UserDataAuthAdaptor::LowDiskSpaceCallback(uint64_t free_disk_space) {
   SendLowDiskSpaceSignal(signal_payload);
 }
 
-void UserDataAuthAdaptor::AuthSessionExpiringCallback(
-    user_data_auth::AuthSessionExpiring signal) {
-  SendAuthSessionExpiringSignal(signal);
-}
-
 void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,

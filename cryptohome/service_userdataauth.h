@@ -34,9 +34,6 @@ class UserDataAuthAdaptor
         base::Unretained(this)));
     service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
-    service_->SetAuthSessionExpiringCallback(
-        base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
-                            base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -421,10 +418,6 @@ class UserDataAuthAdaptor
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);
 
-  // AuthSessionExpiringCallback is sent when AuthSession has less than a
-  // minute remaining.
-  void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
-
  private:
   // Implements the signalling interface for this service. All of the send
   // operations are implemented by forwarding to the relevant adaptor function.
@@ -461,6 +454,10 @@ class UserDataAuthAdaptor
     void SendAuthFactorUpdated(
         const user_data_auth::AuthFactorUpdated& signal) override {
       adaptor_->SendAuthFactorUpdatedSignal(signal);
+    }
+    void SendAuthSessionExpiring(
+        const user_data_auth::AuthSessionExpiring& signal) override {
+      adaptor_->SendAuthSessionExpiringSignal(signal);
     }
     void SendEvictedKeyRestored(
         const user_data_auth::EvictedKeyRestored& signal) override {

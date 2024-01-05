@@ -29,6 +29,8 @@ class SignallingInterface {
       const user_data_auth::AuthFactorRemoved& signal) = 0;
   virtual void SendAuthFactorUpdated(
       const user_data_auth::AuthFactorUpdated& signal) = 0;
+  virtual void SendAuthSessionExpiring(
+      const user_data_auth::AuthSessionExpiring& signal) = 0;
   virtual void SendEvictedKeyRestored(
       const user_data_auth::EvictedKeyRestored& signal) = 0;
 };
@@ -56,6 +58,8 @@ class NullSignalling : public SignallingInterface {
       const user_data_auth::AuthFactorRemoved& signal) override {}
   void SendAuthFactorUpdated(
       const user_data_auth::AuthFactorUpdated& signal) override {}
+  void SendAuthSessionExpiring(
+      const user_data_auth::AuthSessionExpiring& signal) override {}
   void SendEvictedKeyRestored(
       const user_data_auth::EvictedKeyRestored& signal) override {}
 };

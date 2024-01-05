@@ -44,6 +44,10 @@ class MockSignalling : public SignallingInterface {
               (const user_data_auth::AuthFactorUpdated&),
               (override));
   MOCK_METHOD(void,
+              SendAuthSessionExpiring,
+              (const user_data_auth::AuthSessionExpiring&),
+              (override));
+  MOCK_METHOD(void,
               SendEvictedKeyRestored,
               (const user_data_auth::EvictedKeyRestored&),
               (override));

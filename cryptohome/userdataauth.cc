@@ -1673,12 +1673,6 @@ void UserDataAuth::SetLowDiskSpaceCallback(
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
 }
 
-void UserDataAuth::SetAuthSessionExpiringCallback(
-    const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
-        callback) {
-  auth_session_expiring_callback_ = callback;
-}
-
 void UserDataAuth::SetAuthFactorStatusUpdateCallback(
     const AuthFactorStatusUpdateCallback& callback) {
   auth_session_manager_->SetAuthFactorStatusUpdateCallback(callback);

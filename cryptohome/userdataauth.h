@@ -216,12 +216,6 @@ class UserDataAuth {
   void SetLowDiskSpaceCallback(
       const base::RepeatingCallback<void(uint64_t)>& callback);
 
-  // Set the AuthSessionExpiring callback. This is usually called by the
-  // DBus adaptor.
-  void SetAuthSessionExpiringCallback(
-      const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
-          callback);
-
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
   void Remove(user_data_auth::RemoveRequest request,
@@ -1197,10 +1191,6 @@ class UserDataAuth {
   // The signalling interface, including a null default interface.
   NullSignalling default_signalling_;
   SignallingInterface* signalling_intf_ = &default_signalling_;
-
-  // The repeating callback to send AuthSessionExpiring signal.
-  base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>
-      auth_session_expiring_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;
