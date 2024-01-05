@@ -148,9 +148,11 @@ const Log kPgmem =
     Log{kCommand, "chromeos-pgmem", "/usr/bin/chromeos-pgmem", kRoot, kRoot};
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
+// * get privacy approval first. Please visit http://go/pwg-cros-reviewer-guide.
+// * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
+//
+// Send an email to cros-feedback-app@ should you have questions.
 // clang-format off
 const std::array kCommandLogs {
   // We need to enter init's mount namespace because it has /home/chronos
@@ -409,9 +411,12 @@ const std::array kCommandLogs {
 // clang-format
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
+// * get privacy approval first. Please visit http://go/pwg-cros-reviewer-guide.
+// * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
+//
+// Send an email to cros-feedback-app@ should you have questions.
+// clang-format off
 const std::array kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
     Log{kCommand, "lspci_verbose", "/usr/bin/lspci -vvvnn", kRoot, kRoot},
@@ -421,10 +426,7 @@ const std::array kCommandLogsVerbose{
         LogTool::Encoding::kUtf8},
 };
 
-// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
-// (Eventually we'll have a better process, but for now please do this.)
+// Logs which should appear in chrome://system but not in feedback reports.
 const std::array kCommandLogsShort{
     Log{kCommand, "lspci", "/usr/bin/lspci"},
 };
@@ -432,12 +434,6 @@ const std::array kCommandLogsShort{
 // Extra logs are logs such as netstat and logcat which should appear in
 // chrome://system but not in feedback reports. Open sockets may have privacy
 // implications, and logcat is already incorporated via arc-bugreport.
-// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
-// (Eventually we'll have a better process, but for now please do this.)
-//
-// clang-format off
 const std::array kExtraLogs {
   Log{kCommand, "logcat",
     "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c '/system/bin/logcat -d'",
@@ -459,9 +455,11 @@ const std::array kExtraLogs {
 // clang-format on
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
+// * get privacy approval first. Please visit http://go/pwg-cros-reviewer-guide.
+// * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
+//
+// Send an email to cros-feedback-app@ should you have questions.
 // clang-format off
 const std::array kFeedbackLogs {
   Log{kFile, "amd_pmc_idlemask", "/sys/kernel/debug/amd_pmc/amd_pmc_idlemask",
@@ -541,9 +539,11 @@ const std::array kFeedbackLogs {
 // specific information.
 //
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
-// * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-feedback-app@
+// * get privacy approval first. Please visit http://go/pwg-cros-reviewer-guide.
+// * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
+//
+// Send an email to cros-feedback-app@ should you have questions.
 // clang-format off
 const std::array kVarLogFileLogs {
   Log{kFile, "atrus_logs", "/var/log/atrus.log"},
