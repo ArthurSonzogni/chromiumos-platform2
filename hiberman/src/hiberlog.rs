@@ -195,14 +195,14 @@ impl Hiberlog {
                 // self.pending will be empty if previously not logging to memory.
                 if self.pending.is_empty() { return; }
                 map_log_entries(&self.pending, |s| {
-                    let _ = f.write_all([s, "\n"].concat().as_bytes());
+                    let _ = f.write_all(&[s, &[b'\n']].concat());
                 });
                 self.reset();
             }
             // Push any pending lines to the syslog.
             HiberlogOut::Syslog => {
                 map_log_entries(&self.pending, |s| {
-                    replay_line(&self.syslogger, "M", s.to_string());
+                    replay_line(&self.syslogger, "M", str::from_utf8(s).unwrap_or_default().to_string());
                 });
                 self.reset();
             }
@@ -223,11 +223,9 @@ impl Hiberlog {
 
 fn map_log_entries<F>(entries: &[Vec<u8>], mut f: F)
 where
-    F: FnMut(&str),
+    F: FnMut(&[u8]),
 {
-    entries.iter().map(|v| {
-        str::from_utf8(v.as_slice()).unwrap_or_default()
-    } ).filter(|e| !e.is_empty()).for_each(|e| f(e));
+    entries.iter().filter(|e| !e.is_empty()).for_each(|e| f(e.as_slice()));
 }
 
 /// Struct with associated functions for creating and opening hibernate
@@ -417,7 +415,10 @@ fn replay_log_file(stage: HibernateStage, clear: bool) {
 }
 
 /// Replay a single log line to the syslogger.
-fn replay_line(syslogger: &BasicLogger, prefix: &str, line: String) {
+fn replay_line(syslogger: &BasicLogger, prefix: &str, line: String) { // TODO(quasisec): fix
+                                                                      // signature, work with byte
+                                                                      // lines and avoid lossy
+                                                                      // coercions.
     // The log lines are in kmsg format, like:
     // <11>hiberman: R [src/hiberman.rs:529] Hello 2004
     // Trim off the first colon, everything after is line contents.
