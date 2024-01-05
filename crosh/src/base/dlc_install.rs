@@ -11,6 +11,12 @@ use regex::Regex;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
+// Prevent specific DLC installation in crosh.
+// (blocklisting is not enforced at system service level)
+const BLOCKLIST: &[&str] = &[
+    // Add blocklisted DLC IDs here.
+];
+
 const EXECUTABLE: &str = "/usr/bin/dlcservice_util";
 // This is a magical string that dlcservice passes into udpate_engine daemon to
 // transform into the full https:// QA Omaha server URL.
@@ -71,6 +77,11 @@ fn validate_dlc(_dlc_id: &str) -> Result<(), dispatcher::Error> {
     if !RE.is_match(_dlc_id) {
         return Err(dispatcher::Error::CommandInvalidArguments(
             "DLC ID is not a valid format.".to_string(),
+        ));
+    }
+    if BLOCKLIST.contains(&_dlc_id) {
+        return Err(dispatcher::Error::CommandInvalidArguments(
+            "DLC ID is blocklisted.".to_string(),
         ));
     }
     match is_dlc_supported(_dlc_id) {

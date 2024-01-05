@@ -161,6 +161,22 @@ part of OS provisioning. Also, there are gRPC services that tast/tauto tests can
 directly invoke to provision a DLC - there however isn't a client that nicely
 wraps all of this for the test writer at the moment.
 
+### Security Considerations
+
+Currently, DLCs can be installed without policy checks. This poses a security
+risk, as code paths or flows that depend on the existence of DLCs could be
+inadvertently executed or triggered, potentially leading to unexpected behavior
+or vulnerabilities.
+
+To mitigate this risk, for DLCs that enforce installation behind a policy, we
+strongly recommend that developers avoid relying on code paths or flows that
+depend on the existence of DLCs. Ensure that DLCs are only installed when
+authorized (as needed) and that any code paths or flows that depend on them are
+executed only under controlled conditions.
+
+Blockling of DLC installation is avaialble in [crosh], but is not enforced at
+the system service level.
+
 ## Frequently Asked Questions
 
 ### How do I set up the DLC download server (upload artifacts, manage releases, etc.)?
@@ -216,6 +232,7 @@ Also, for legacy DLCs, this will only work for "live" images
 [Write tests dependant on a DLC]: #Write-tests-dependant-on-a-DLC
 
 [go/dlc-framework]: http://go/dlc-framework
+[crosh]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/crosh
 [dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
 [dlc.eclass]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/dlc.eclass
 [sandboxing]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
