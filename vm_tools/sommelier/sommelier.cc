@@ -12,6 +12,7 @@
 #ifdef GAMEPAD_SUPPORT
 #include "libevdev/libevdev-shim.h"
 #endif
+#include "viewporter-shim.h"  // NOLINT(build/include_directory)
 #include "xcb/xcb-shim.h"
 
 #include <assert.h>
@@ -3461,6 +3462,7 @@ static void sl_print_usage() {
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
       "  --timing-filename=PATH\tPath to timing output log\n"
       "  --direct-scale\t\tEnable direct scaling mode\n"
+      "  --viewport-resize\t\tUse viewport to resize unresizable windows."
 #ifdef PERFETTO_TRACING
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
@@ -3809,6 +3811,7 @@ void create_shims() {
   set_xdg_toplevel_shim(new XdgToplevelShim());
   set_xdg_surface_shim(new XdgSurfaceShim());
   set_xdg_wm_base_shim(new XdgWmBaseShim());
+  set_wp_viewport_shim(new WpViewportShim());
 
 #ifdef GAMEPAD_SUPPORT
   Libevdev::Set(new LibevdevShim());
@@ -3951,6 +3954,8 @@ int real_main(int argc, char** argv) {
       noop_driver = true;
     } else if (strstr(arg, "--stable-scaling") == arg) {
       ctx.stable_scaling = true;
+    } else if (strstr(arg, "--viewport-resize") == arg) {
+      ctx.viewport_resize = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

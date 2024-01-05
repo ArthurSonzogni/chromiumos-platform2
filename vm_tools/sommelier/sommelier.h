@@ -177,6 +177,7 @@ struct sl_host_surface {
   struct zwp_linux_surface_synchronization_v1* surface_sync;
   struct wl_list released_buffers;
   struct wl_list busy_buffers;
+  struct sl_window* window = nullptr;
   WeakResourcePtr<sl_host_output> output;
 };
 MAP_STRUCTS(wl_surface, sl_host_surface);
@@ -630,6 +631,9 @@ void sl_create_window(struct sl_context* ctx,
 void sl_handle_client_message(struct sl_context* ctx,
                               xcb_client_message_event_t* event);
 void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event);
+
+void sl_host_surface_commit(struct wl_client* client,
+                            struct wl_resource* resource);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

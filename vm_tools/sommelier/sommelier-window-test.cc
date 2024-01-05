@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mock-viewporter-shim.h"  // NOLINT(build/include_directory)
 #include "testing/x11-test-base.h"
 
 #include <gmock/gmock.h>
@@ -22,6 +23,220 @@ using ::testing::AllOf;
 using ::testing::PrintToString;
 
 using X11Test = X11TestBase;
+
+TEST_F(X11DirectScaleTest, ViewportOverrideStretchedVertically) {
+  // Arrange
+  ctx.viewport_resize = true;
+  AdvertiseOutputs(xwayland.get(),
+                   {{.logical_width = 1536, .logical_height = 864}});
+  sl_window* window = CreateToplevelWindow();
+  const int pixel_width = 1920;
+  const int pixel_height = 1080;
+  window->managed = true;
+  window->max_width = pixel_width;
+  window->min_height = pixel_height;
+  window->min_width = pixel_width;
+  window->max_height = pixel_height;
+  window->width = pixel_width;
+  window->height = pixel_height;
+  window->paired_surface->contents_width = pixel_width;
+  window->paired_surface->contents_height = pixel_height;
+  wl_array states;
+  wl_array_init(&states);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1393, 784))
+      .Times(1);
+
+  // Act: Configure with height smaller than min_height.
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1536 /*1920*/, 784 /*980*/,
+                  &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123);
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport size and pointer scale are set, width height are
+  // unchanged.
+  EXPECT_TRUE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, 1393);
+  EXPECT_EQ(window->viewport_height, 784);
+  EXPECT_FLOAT_EQ(window->viewport_pointer_scale, 1.1026561);
+  EXPECT_EQ(window->width, 1920);
+  EXPECT_EQ(window->height, 1080);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, -1, -1))
+      // Act: Configure with the size that is within the window bounds.
+      .Times(1);
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1536, 864, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 124);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1536, 864))
+      .Times(1);
+
+  // Act
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport override is no longer used.
+  EXPECT_FALSE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, -1);
+  EXPECT_EQ(window->viewport_height, -1);
+  EXPECT_EQ(window->width, pixel_width);
+  EXPECT_EQ(window->height, pixel_height);
+}
+
+TEST_F(X11DirectScaleTest, ViewportOverrideStretchedHorizontally) {
+  // Arrange
+  ctx.viewport_resize = true;
+  AdvertiseOutputs(xwayland.get(),
+                   {{.logical_width = 1536, .logical_height = 864}});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = true;
+  window->max_width = 1700;
+  window->max_height = 900;
+  window->min_width = 1600;
+  window->min_height = 800;
+  window->width = 1650;
+  window->height = 800;
+  window->paired_surface->contents_width = 1650;
+  window->paired_surface->contents_height = 800;
+  wl_array states;
+  wl_array_init(&states);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1200, 581))
+      .Times(1);
+
+  // Act: Height is set to equal to max height, width smaller than min
+  // width.
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1200 /*1500*/, 720 /*900*/,
+                  &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123);
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport size and pointer scale are set, width height are
+  // unchanged.
+  EXPECT_TRUE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, 1200);
+  EXPECT_EQ(window->viewport_height, 581);
+  EXPECT_FLOAT_EQ(window->viewport_pointer_scale, 1.1);
+  EXPECT_EQ(window->width, 1650);
+  EXPECT_EQ(window->height, 800);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, -1, -1))
+      .Times(1);
+
+  // Act: Configure with the size that is within the window bounds.
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1360 /*1700*/, 680 /*850*/,
+                  &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 124);
+  window->paired_surface->contents_width = 1700;
+  window->paired_surface->contents_height = 850;
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1360, 680))
+      .Times(1);
+
+  // Act
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport override is no longer used.
+  EXPECT_FALSE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, -1);
+  EXPECT_EQ(window->viewport_height, -1);
+  EXPECT_EQ(window->width, 1700);
+  EXPECT_EQ(window->height, 850);
+}
+
+TEST_F(X11DirectScaleTest, ViewportOverrideSameAspectRatio) {
+  // Arrange
+  ctx.viewport_resize = true;
+  AdvertiseOutputs(xwayland.get(),
+                   {{.logical_width = 1536, .logical_height = 864}});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = true;
+  const int pixel_width = 1920;
+  const int pixel_height = 1080;
+  window->max_width = pixel_width;
+  window->min_height = pixel_height;
+  window->min_width = pixel_width;
+  window->max_height = pixel_height;
+  window->paired_surface->contents_width = pixel_width;
+  window->paired_surface->contents_height = pixel_height;
+  window->width = pixel_width;
+  window->height = pixel_height;
+  wl_array states;
+  wl_array_init(&states);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1280, 720))
+      .Times(1);
+
+  // Act: Height and width squished while maintaining aspect ratio.
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1280 /*1600*/, 720 /*900*/,
+                  &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123);
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport size and pointer scale are set, width height are
+  // unchanged.
+  EXPECT_TRUE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, 1280);
+  EXPECT_EQ(window->viewport_height, 720);
+  EXPECT_FLOAT_EQ(window->viewport_pointer_scale, 1.2);
+  EXPECT_EQ(window->width, pixel_width);
+  EXPECT_EQ(window->height, pixel_height);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, -1, -1))
+      .Times(1);
+
+  // Act: Configure with the size that is within the window bounds.
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 1536, 864, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123);
+
+  // Assert
+  EXPECT_CALL(mock_viewport_shim_,
+              set_destination(window->paired_surface->viewport, 1536, 864))
+      .Times(1);
+
+  // Act
+  sl_host_surface_commit(nullptr, window->paired_surface->resource);
+  Pump();
+
+  // Assert: viewport override is no longer used.
+  EXPECT_FALSE(window->viewport_override);
+  EXPECT_EQ(window->viewport_width, -1);
+  EXPECT_EQ(window->viewport_height, -1);
+  EXPECT_EQ(window->width, 1920);
+  EXPECT_EQ(window->height, 1080);
+}
 
 TEST_F(X11Test, TogglesFullscreenOnWmStateFullscreen) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not fullscreen.

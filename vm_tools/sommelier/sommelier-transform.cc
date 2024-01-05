@@ -200,7 +200,10 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
   // when the virtual and logical space match.
   bool do_viewport = true;
 
-  if (ctx->use_direct_scale) {
+  if (surface && surface->window && surface->window->viewport_override) {
+    *width = surface->window->viewport_width;
+    *height = surface->window->viewport_height;
+  } else if (ctx->use_direct_scale) {
     sl_transform_direct_to_host(ctx, surface, width, height);
 
     // For very small windows (in pixels), the resulting logical dimensions
@@ -289,6 +292,21 @@ void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
     dx *= ctx->scale;
     dy *= ctx->scale;
 
+    *x = wl_fixed_from_double(dx);
+    *y = wl_fixed_from_double(dy);
+  }
+}
+
+void sl_transform_pointer(struct sl_context* ctx,
+                          struct sl_host_surface* surface,
+                          wl_fixed_t* x,
+                          wl_fixed_t* y) {
+  sl_transform_host_to_guest_fixed(ctx, surface, x, y);
+  if (surface && surface->window && surface->window->viewport_override) {
+    double dx = wl_fixed_to_double(*x);
+    double dy = wl_fixed_to_double(*y);
+    dx *= surface->window->viewport_pointer_scale;
+    dy *= surface->window->viewport_pointer_scale;
     *x = wl_fixed_from_double(dx);
     *y = wl_fixed_from_double(dy);
   }

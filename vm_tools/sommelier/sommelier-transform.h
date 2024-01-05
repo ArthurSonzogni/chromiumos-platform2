@@ -200,4 +200,10 @@ void sl_transform_output_dimensions(struct sl_context* ctx,
                                     int32_t* width,
                                     int32_t* height);
 
+// Used to transform pointer coordinates from host to guest.
+void sl_transform_pointer(struct sl_context* ctx,
+                          struct sl_host_surface* surface,
+                          wl_fixed_t* x,
+                          wl_fixed_t* y);
+
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_TRANSFORM_H_

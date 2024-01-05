@@ -9,7 +9,7 @@
 #include "../sommelier-xshape.h"     // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"   // NOLINT(build/include_directory)
 #include "sommelier-formats.h"       // NOLINT(build/include_directory)
-
+#include "viewporter-shim.h"         // NOLINT(build/include_directory)
 #include <assert.h>
 #include <errno.h>
 #include <libdrm/drm_fourcc.h>
@@ -600,8 +600,8 @@ static void copy_damaged_rect(sl_host_surface* host,
   }
 }
 
-static void sl_host_surface_commit(struct wl_client* client,
-                                   struct wl_resource* resource) {
+void sl_host_surface_commit(struct wl_client* client,
+                            struct wl_resource* resource) {
   auto resource_id = try_wl_resource_get_id(resource);
   TRACE_EVENT(
       "surface", "sl_host_surface_commit", "resource_id", resource_id,
@@ -741,12 +741,12 @@ static void sl_host_surface_commit(struct wl_client* client,
 
       int32_t vp_width = width;
       int32_t vp_height = height;
-
       // Consult with the transform function to see if the
       // viewport destination set is necessary
       if (sl_transform_viewport_scale(host->ctx, host, host->contents_scale,
                                       &vp_width, &vp_height)) {
-        wp_viewport_set_destination(host->viewport, vp_width, vp_height);
+        wp_viewport_shim()->set_destination(host->viewport, vp_width,
+                                            vp_height);
       }
     } else {
       wl_surface_set_buffer_scale(host->proxy, scale);

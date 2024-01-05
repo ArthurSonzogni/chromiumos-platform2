@@ -169,8 +169,7 @@ static void sl_pointer_motion(void* data,
   wl_fixed_t mx = x;
   wl_fixed_t my = y;
 
-  sl_transform_host_to_guest_fixed(host->seat->ctx, host->focus_surface, &mx,
-                                   &my);
+  sl_transform_pointer(host->seat->ctx, host->focus_surface, &mx, &my);
   wl_pointer_send_motion(host->resource, time, mx, my);
 }
 

@@ -10,7 +10,8 @@
 #include <string>
 
 #include "../xcb/mock-xcb-shim.h"
-#include "wayland-test-base.h"  // NOLINT(build/include_directory)
+#include "mock-viewporter-shim.h"  // NOLINT(build/include_directory)
+#include "wayland-test-base.h"     // NOLINT(build/include_directory)
 
 namespace vm_tools {
 namespace sommelier {
@@ -50,6 +51,7 @@ class X11TestBase : public WaylandTestBase {
 
   void Connect() override {
     set_xcb_shim(&xcb);
+    set_wp_viewport_shim(&mock_viewport_shim_);
     WaylandTestBase::Connect();
 
     // Pretend Xwayland has connected to Sommelier as a Wayland client.
@@ -116,6 +118,7 @@ class X11TestBase : public WaylandTestBase {
  protected:
   NiceMock<MockXcbShim> xcb;
   std::unique_ptr<FakeWaylandClient> xwayland;
+  NiceMock<MockWpViewportShim> mock_viewport_shim_;
 };
 
 // Fixture for unit tests which use direct scale.

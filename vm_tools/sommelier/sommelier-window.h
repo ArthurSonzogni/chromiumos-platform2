@@ -88,6 +88,10 @@ struct sl_window {
   int min_height = 0;
   int max_width = 0;
   int max_height = 0;
+  int viewport_width = -1;
+  int viewport_height = -1;
+  int viewport_override = false;
+  double viewport_pointer_scale = 0;
 
 #ifdef QUIRKS_SUPPORT
   // Quirk feature flags previously applied to this window, for which log
@@ -225,6 +229,12 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window);
 void sl_update_application_id(struct sl_context* ctx, struct sl_window* window);
 void sl_configure_window(struct sl_window* window);
 void sl_send_configure_notify(struct sl_window* window);
+void sl_internal_toplevel_configure(struct sl_window* window,
+                                    int32_t x,
+                                    int32_t y,
+                                    int32_t width,
+                                    int32_t height,
+                                    struct wl_array* states);
 
 int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface);

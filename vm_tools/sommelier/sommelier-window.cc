@@ -11,9 +11,11 @@
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "viewporter-shim.h"      // NOLINT(build/include_directory)
 #include "xcb/xcb-shim.h"
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 #ifdef QUIRKS_SUPPORT
@@ -160,8 +162,9 @@ int sl_process_pending_configure_acks(struct sl_window* window,
     uint32_t height = window->height + window->border_width * 2;
     // Early out if we expect contents to match window size at some point in
     // the future.
-    if (width != host_surface->contents_width ||
-        height != host_surface->contents_height) {
+    if (!window->viewport_override &&
+        (width != host_surface->contents_width ||
+         height != host_surface->contents_height)) {
       return 0;
     }
   }
@@ -247,16 +250,15 @@ static const int32_t kUnspecifiedCoord = INT32_MIN;
 //    for toplevel objects that don't send positions.
 // width, height: Configured size in host logical space.
 // states: Array of XDG_TOPLEVEL_STATE_* enum values.
-static void sl_internal_toplevel_configure(struct sl_window* window,
-                                           int32_t x,
-                                           int32_t y,
-                                           int32_t width,
-                                           int32_t height,
-                                           struct wl_array* states) {
+void sl_internal_toplevel_configure(struct sl_window* window,
+                                    int32_t x,
+                                    int32_t y,
+                                    int32_t width,
+                                    int32_t height,
+                                    struct wl_array* states) {
   int activated = 0;
   uint32_t* state;
   int i = 0;
-
   if (!window->managed)
     return;
 
@@ -280,9 +282,58 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
                                       window->width, window->height);
       }
     }
-
     sl_transform_host_to_guest(window->ctx, window->paired_surface,
                                &width_in_pixels, &height_in_pixels);
+
+    // Workaround using viewport for when Exo sets sizes that are not
+    // within the bounds the client requested.
+    if (window->ctx->viewport_resize &&
+        ((window->max_width != 0 && width_in_pixels > window->max_width) ||
+         (window->min_width != 0 && width_in_pixels < window->min_width) ||
+         (window->max_height != 0 && height_in_pixels > window->max_height) ||
+         (window->min_height != 0 && height_in_pixels < window->min_height))) {
+      window->viewport_override = true;
+      float width_ratio = static_cast<float>(window->width) / width_in_pixels;
+      float height_ratio =
+          static_cast<float>(window->height) / height_in_pixels;
+      if (std::abs(width_ratio - height_ratio) < 0.01) {
+        window->viewport_override = true;
+        window->viewport_width = width;
+        window->viewport_height = height;
+        // If Exo sets a size that is of a different aspect ratio we shrink
+        // the window to maintain aspect ratio. We do this by always shrinking
+        // the side that is now proportionally larger as if we expand the
+        // smaller side it might result in the window becoming larger than the
+        // allowed bounds of the screen.
+      } else if (width_ratio < height_ratio) {
+        window->viewport_width =
+            (static_cast<float>(window->width) * height) / window->height;
+        window->viewport_height = height;
+
+      } else if (width_ratio > height_ratio) {
+        window->viewport_height =
+            (static_cast<float>(window->height) * width) / window->width;
+        window->viewport_width = width;
+      }
+
+      int32_t window_width = window->width;
+      int32_t window_height = window->height;
+      sl_transform_guest_to_host(window->ctx, window->paired_surface,
+                                 &window_width, &window_height);
+      window->viewport_pointer_scale =
+          static_cast<float>(window_width) / window->viewport_width;
+      xdg_toplevel_set_min_size(window->xdg_toplevel, window->viewport_width,
+                                window->viewport_height);
+      xdg_toplevel_set_max_size(window->xdg_toplevel, window->viewport_width,
+                                window->viewport_height);
+    } else if (window->viewport_override) {
+      window->viewport_width = -1;
+      window->viewport_height = -1;
+      wp_viewport_shim()->set_destination(paired_surface->viewport,
+                                          window->viewport_width,
+                                          window->viewport_height);
+      window->viewport_override = false;
+    }
     window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
                                XCB_CONFIG_WINDOW_HEIGHT |
                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
@@ -313,9 +364,15 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
             window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
       }
     }
-    window->next_config.values[i++] = width_in_pixels;
-    window->next_config.values[i++] = height_in_pixels;
-    window->next_config.values[i++] = 0;
+    if (window->viewport_override) {
+      window->next_config.values[i++] = window->width;
+      window->next_config.values[i++] = window->height;
+      window->next_config.values[i++] = 0;
+    } else {
+      window->next_config.values[i++] = width_in_pixels;
+      window->next_config.values[i++] = height_in_pixels;
+      window->next_config.values[i++] = 0;
+    }
   }
 
   window->allow_resize = 1;
@@ -554,6 +611,7 @@ void sl_window_update(struct sl_window* window) {
     wl_list_remove(&window->link);
     wl_list_insert(&ctx->unpaired_windows, &window->link);
     window->unpaired = 1;
+    window->paired_surface->window = nullptr;
     window->paired_surface = nullptr;
   }
 
@@ -585,6 +643,7 @@ void sl_window_update(struct sl_window* window) {
 
   if (!window->unpaired) {
     window->paired_surface = host_surface;
+    host_surface->window = window;
     sl_transform_try_window_scale(ctx, host_surface, window->width,
                                   window->height);
   }
@@ -669,11 +728,10 @@ void sl_window_update(struct sl_window* window) {
     }
 
     zaura_surface_set_frame(window->aura_surface,
-                            window->decorated
-                                ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
-                                : window->depth == 32
-                                      ? ZAURA_SURFACE_FRAME_TYPE_NONE
-                                      : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
+                            window->decorated ? ZAURA_SURFACE_FRAME_TYPE_NORMAL
+                            : window->depth == 32
+                                ? ZAURA_SURFACE_FRAME_TYPE_NONE
+                                : ZAURA_SURFACE_FRAME_TYPE_SHADOW);
 
     frame_color = window->dark_frame ? ctx->dark_frame_color : ctx->frame_color;
     zaura_surface_set_frame_colors(window->aura_surface, frame_color,
