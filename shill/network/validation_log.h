@@ -5,7 +5,6 @@
 #ifndef SHILL_NETWORK_VALIDATION_LOG_H_
 #define SHILL_NETWORK_VALIDATION_LOG_H_
 
-#include <utility>
 #include <vector>
 
 #include <base/time/time.h>
@@ -32,11 +31,16 @@ class ValidationLog {
   mockable void RecordMetrics() const;
 
  private:
+  struct ResultData {
+    base::TimeTicks timestamp;
+    PortalDetector::ValidationState validation_state;
+    Metrics::PortalDetectorResult metric_result;
+  };
+
   Technology technology_;
   Metrics* metrics_;
   base::TimeTicks connection_start_;
-  std::vector<std::pair<base::TimeTicks, PortalDetector::ValidationState>>
-      results_;
+  std::vector<ResultData> results_;
   bool capport_dhcp_supported_ = false;
   bool capport_ra_supported_ = false;
 };

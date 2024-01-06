@@ -2834,16 +2834,9 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   result.http_status_code = 204;
   result.https_result = PortalDetector::ProbeResult::kSuccess;
 
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                                        Technology(Technology::kWiFi), _))
-      .Times(0);
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorRetryResult,
-                                        Technology(Technology::kWiFi), _))
-      .Times(0);
   ASSERT_NE(service_->network_event_handler(), nullptr);
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2858,12 +2851,8 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   result.http_status_code = 204;
   result.https_result = PortalDetector::ProbeResult::kSuccess;
 
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                                        Technology(Technology::kWiFi),
-                                        Metrics::kPortalDetectorResultOnline));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2871,7 +2860,6 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   SetStateField(Service::kStateOnline);
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
-  service_->increment_portal_detection_count_for_testing();
 
   NetworkMonitor::Result result;
   result.num_attempts = 1;
@@ -2879,14 +2867,8 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   result.http_status_code = 204;
   result.https_result = PortalDetector::ProbeResult::kSuccess;
 
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorRetryResult,
-                                        Technology(Technology::kWiFi),
-                                        Metrics::kPortalDetectorResultOnline));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  // portal_detection_count_for_testing is reset when reaching the
-  // kInternetConnectivity validation state.
-  EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2901,13 +2883,8 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   result.http_status_code = 0;
   result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultConnectionFailure));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2922,13 +2899,8 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   result.http_status_code = 0;
   result.https_result = PortalDetector::ProbeResult::kDNSFailure;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultDNSFailure));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2943,13 +2915,8 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   result.http_status_code = 0;
   result.https_result = PortalDetector::ProbeResult::kDNSTimeout;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultDNSTimeout));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2968,13 +2935,8 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
       net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
   result.https_result = PortalDetector::ProbeResult::kTLSFailure;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultRedirectFound));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
 }
 
@@ -2989,13 +2951,8 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   result.http_status_code = 302;
   result.https_result = PortalDetector::ProbeResult::kTLSFailure;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultRedirectNoUrl));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -3011,13 +2968,8 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   result.http_content_length = 123;
   result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                            Technology(Technology::kWiFi),
-                            Metrics::kPortalDetectorResultHTTPSFailure));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -3031,12 +2983,8 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   result.http_result = PortalDetector::ProbeResult::kNoResult;
   result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
 
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
-                                        Technology(Technology::kWiFi),
-                                        Metrics::kPortalDetectorResultUnknown));
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
 }
 

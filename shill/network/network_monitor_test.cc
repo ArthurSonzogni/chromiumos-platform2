@@ -42,6 +42,7 @@ const net_base::HttpUrl kCapportAPI =
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class MockClient : public NetworkMonitor::ClientNetwork {
@@ -136,7 +137,7 @@ class NetworkMonitorTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
+  StrictMock<MockMetrics> metrics_;
   PortalDetector::ProbingConfiguration probing_configuration_;
 
   net_base::NetworkConfig config_;
@@ -235,7 +236,20 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_duration = base::Milliseconds(100),
+      .https_duration = base::Milliseconds(200),
   };
+
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  kTechnology, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  kTechnology, 200));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                        kTechnology, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              kTechnology, 204));
 
   StartWithPortalDetectorResultReturned(result);
 }

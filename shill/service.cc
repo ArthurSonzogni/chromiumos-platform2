@@ -608,27 +608,6 @@ void Service::SetState(ConnectState state) {
     NoteFailureEvent();
   }
 
-  if (portal_detection_count_ > 0) {
-    switch (state) {
-      case kStateUnknown:        // FALLTHROUGH
-      case kStateIdle:           // FALLTHROUGH
-      case kStateAssociating:    // FALLTHROUGH
-      case kStateConfiguring:    // FALLTHROUGH
-      case kStateDisconnecting:  // FALLTHROUGH
-      case kStateFailure:
-        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToDisconnect,
-                             technology(), portal_detection_count_);
-        portal_detection_count_ = 0;
-        break;
-      case kStateRedirectFound:   // FALLTHROUGH
-      case kStateOnline:          // FALLTHROUGH
-      case kStateConnected:       // FALLTHROUGH
-      case kStateNoConnectivity:  // FALLTHROUGH
-      case kStatePortalSuspected:
-        break;
-    }
-  }
-
   previous_state_ = state_;
   state_ = state;
   if (state != kStateFailure) {
@@ -2676,13 +2655,6 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
     return;
   }
 
-  service_->portal_detection_count_++;
-  service_->metrics()->SendEnumToUMA(service_->portal_detection_count_ == 1
-                                         ? Metrics::kPortalDetectorInitialResult
-                                         : Metrics::kPortalDetectorRetryResult,
-                                     service_->technology(),
-                                     result.GetResultMetric());
-
   // Set the probe URL Service property if the network validation result was
   // kPortalRedirect, otherwise clear it.
   if (result.probe_url) {
@@ -2693,16 +2665,8 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kInternetConnectivity:
-      service_->metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
-                                     service_->technology(),
-                                     service_->portal_detection_count_);
-      service_->portal_detection_count_ = 0;
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
-      service_->metrics()->SendToUMA(
-          Metrics::kPortalDetectorAttemptsToRedirectFound,
-          service_->technology(), service_->portal_detection_count_);
-      // Do not reset |portal_detection_count_|, state might reach 'online'.
       break;
     case PortalDetector::ValidationState::kNoConnectivity:
       break;

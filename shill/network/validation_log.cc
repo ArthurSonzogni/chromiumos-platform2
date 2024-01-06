@@ -24,7 +24,8 @@ void ValidationLog::AddResult(const NetworkMonitor::Result& result) {
   // Make sure that the total memory taken by ValidationLog is bounded.
   static constexpr size_t kValidationLogMaxSize = 128;
   if (results_.size() < kValidationLogMaxSize) {
-    results_.emplace_back(base::TimeTicks::Now(), result.GetValidationState());
+    results_.emplace_back(base::TimeTicks::Now(), result.GetValidationState(),
+                          result.GetResultMetric());
   }
 }
 
@@ -41,14 +42,17 @@ void ValidationLog::RecordMetrics() const {
     return;
   }
 
+  int total_attempts = 0;
   bool has_internet = false;
   bool has_redirect = false;
   bool has_suspected_redirect = false;
-  base::TimeDelta time_to_internet;
-  base::TimeDelta time_to_redirect;
-  base::TimeDelta time_to_internet_after_redirect;
-  for (const auto& [time, result] : results_) {
-    switch (result) {
+  for (const auto& result_data : results_) {
+    total_attempts++;
+    metrics_->SendEnumToUMA(total_attempts == 1
+                                ? Metrics::kPortalDetectorInitialResult
+                                : Metrics::kPortalDetectorRetryResult,
+                            technology_, result_data.metric_result);
+    switch (result_data.validation_state) {
       case PortalDetector::ValidationState::kNoConnectivity:
         break;
       case PortalDetector::ValidationState::kPortalSuspected:
@@ -56,24 +60,40 @@ void ValidationLog::RecordMetrics() const {
         break;
       case PortalDetector::ValidationState::kPortalRedirect:
         if (!has_redirect) {
-          time_to_redirect = time - connection_start_;
+          has_redirect = true;
+          const base::TimeDelta time_to_redirect =
+              result_data.timestamp - connection_start_;
+          metrics_->SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
+                              technology_, time_to_redirect.InMilliseconds());
+          metrics_->SendToUMA(Metrics::kPortalDetectorAttemptsToRedirectFound,
+                              technology_, total_attempts);
         }
-        has_redirect = true;
         break;
       case PortalDetector::ValidationState::kInternetConnectivity:
-        if (!has_internet && !has_redirect) {
-          time_to_internet = time - connection_start_;
+        if (!has_internet) {
+          has_internet = true;
+          const auto& metric =
+              !has_redirect
+                  ? Metrics::kPortalDetectorTimeToInternet
+                  : Metrics::kPortalDetectorTimeToInternetAfterRedirect;
+          const base::TimeDelta time_to_internet =
+              result_data.timestamp - connection_start_;
+          metrics_->SendToUMA(metric, technology_,
+                              time_to_internet.InMilliseconds());
+          metrics_->SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
+                              technology_, total_attempts);
         }
-        if (!has_internet && has_redirect) {
-          time_to_internet_after_redirect = time - connection_start_;
-        }
-        has_internet = true;
         break;
     }
     // Ignores all results after the first kInternetConnectivity result.
     if (has_internet) {
       break;
     }
+  }
+
+  if (!has_internet) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorAttemptsToDisconnect,
+                        technology_, total_attempts);
   }
 
   Metrics::PortalDetectorAggregateResult netval_result =
@@ -95,20 +115,6 @@ void ValidationLog::RecordMetrics() const {
   }
   metrics_->SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, technology_,
                           netval_result);
-
-  if (time_to_internet.is_positive()) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToInternet, technology_,
-                        time_to_internet.InMilliseconds());
-  }
-  if (time_to_redirect.is_positive()) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToRedirect, technology_,
-                        time_to_redirect.InMilliseconds());
-  }
-  if (time_to_internet_after_redirect.is_positive()) {
-    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
-                        technology_,
-                        time_to_internet_after_redirect.InMilliseconds());
-  }
 
   std::optional<Metrics::CapportSupported> capport_support = std::nullopt;
   if (capport_dhcp_supported_ && capport_ra_supported_) {

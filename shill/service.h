@@ -732,12 +732,6 @@ class Service : public base::RefCounted<Service> {
     return traffic_counter_snapshot_;
   }
 
-  void increment_portal_detection_count_for_testing() {
-    portal_detection_count_++;
-  }
-  int portal_detection_count_for_testing() const {
-    return portal_detection_count_;
-  }
   const std::string& probe_url_string() const { return probe_url_string_; }
   int portal_detection_failure_status_code() {
     return portal_detection_failure_status_code_;
@@ -1191,10 +1185,6 @@ class Service : public base::RefCounted<Service> {
   TrafficCounterMap traffic_counter_snapshot_;
   // Represents when traffic counters were last reset.
   base::Time traffic_counter_reset_time_;
-
-  // Counts the total number of portal detection attempts for the current active
-  // connection.
-  int portal_detection_count_ = 0;
 
   // Uplink and downlink speed for the service in Kbps.
   uint32_t uplink_speed_kbps_ = 0;
