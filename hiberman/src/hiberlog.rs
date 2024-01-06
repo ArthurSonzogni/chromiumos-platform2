@@ -202,7 +202,7 @@ impl Hiberlog {
             // Push any pending lines to the syslog.
             HiberlogOut::Syslog => {
                 map_log_entries(&self.pending, |s| {
-                    replay_line(&self.syslogger, "M", str::from_utf8(s).unwrap_or_default().to_string());
+                    replay_line(&self.syslogger, "M", s);
                 });
                 self.reset();
             }
@@ -396,7 +396,7 @@ fn replay_log_file(stage: HibernateStage, clear: bool) {
     let reader = BufReader::new(f);
     for line in reader.lines() {
         if let Ok(line) = line {
-            replay_line(&syslogger, prefix, line);
+            replay_line(&syslogger, prefix, line.as_bytes());
         } else {
             warn!("Invalid line in log file!");
         }
@@ -415,13 +415,13 @@ fn replay_log_file(stage: HibernateStage, clear: bool) {
 }
 
 /// Replay a single log line to the syslogger.
-fn replay_line(syslogger: &BasicLogger, prefix: &str, line: String) { // TODO(quasisec): fix
-                                                                      // signature, work with byte
-                                                                      // lines and avoid lossy
-                                                                      // coercions.
+fn replay_line(syslogger: &BasicLogger, prefix: &str, s: &[u8]) {
     // The log lines are in kmsg format, like:
     // <11>hiberman: R [src/hiberman.rs:529] Hello 2004
     // Trim off the first colon, everything after is line contents.
+
+    // Non-UTF8 log lines shall be considered as empty strings.
+    let line = str::from_utf8(s).unwrap_or_default();
     if line.is_empty() {
         return;
     }
