@@ -80,6 +80,16 @@ extern "C" void BluetoothProfileConnectionStateChanged(const char* boot_id,
       .Record();
 }
 
+extern "C" void BluetoothSuspendIdStateChanged(const char* boot_id,
+                                               int64_t system_time,
+                                               int state) {
+  bluetooth::BluetoothSuspendIdStateChanged()
+      .SetBootId(boot_id)
+      .SetSystemTime(system_time)
+      .SetSuspendIdState(state)
+      .Record();
+}
+
 extern "C" void BluetoothDeviceInfoReport(const char* boot_id,
                                           int64_t system_time,
                                           const char* device_id,

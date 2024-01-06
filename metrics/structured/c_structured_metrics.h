@@ -83,6 +83,11 @@ BRILLO_EXPORT void BluetoothChipsetInfoReport(const char* boot_id,
                                               uint64_t chipset_string_hval);
 
 // C wrapper for
+// metrics::structured::events::bluetooth::BluetoothSuspendIdStateChanged.
+BRILLO_EXPORT void BluetoothSuspendIdStateChanged(const char* boot_id,
+                                                  int64_t system_time,
+                                                  int state);
+// C wrapper for
 // metrics::structured::events::bluetooth_device::BluetoothDeviceInfo.
 BRILLO_EXPORT void BluetoothDeviceInfo(int device_type,
                                        int device_class,

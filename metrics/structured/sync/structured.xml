@@ -153,6 +153,27 @@
     </metric>
   </event>
 
+  <event name="BluetoothSuspendIdStateChanged">
+    <summary>
+      Records the state of suspend id at resume.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="SuspendIdState" type="int">
+      <summary>
+        The state of the suspend id at resume, 0 for not recorded and 1 for recorded.
+      </summary>
+    </metric>
+  </event>
+
   <event name="BluetoothDeviceInfoReport">
     <summary>
       Records the bluetooth device info.
