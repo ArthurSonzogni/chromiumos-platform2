@@ -337,10 +337,10 @@ class PortalDetector {
   void StartTrialTask();
 
   // Process the HttpRequest Result of the HTTP probe.
-  void ProcessHTTPProbeResult(const HttpRequest::Result& result);
+  void ProcessHTTPProbeResult(HttpRequest::Result result);
 
   // Process the HttpRequest Result of the HTTPS probe.
-  void ProcessHTTPSProbeResult(const HttpRequest::Result& result);
+  void ProcessHTTPSProbeResult(HttpRequest::Result result);
 
   // Called after each trial to return |result| after attempting to determine
   // connectivity status.
@@ -352,7 +352,7 @@ class PortalDetector {
 
   // Extract the Content-Length from |response|.
   std::optional<size_t> GetContentLength(
-      std::shared_ptr<brillo::http::Response> response) const;
+      brillo::http::Response* response) const;
 
   EventDispatcher* dispatcher_;
   std::string logging_tag_;

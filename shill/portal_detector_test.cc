@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
@@ -68,7 +69,7 @@ class MockHttpRequest : public HttpRequest {
               (std::string_view,
                const net_base::HttpUrl&,
                const brillo::http::HeaderList&,
-               base::OnceCallback<void(const HttpRequest::Result&)>),
+               base::OnceCallback<void(HttpRequest::Result)>),
               (override));
 };
 
@@ -207,8 +208,8 @@ class PortalDetectorTest : public Test {
     EXPECT_CALL(*http_probe_connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code));
     auto response =
-        std::make_shared<brillo::http::Response>(http_probe_connection_);
-    portal_detector_->ProcessHTTPProbeResult(response);
+        std::make_unique<brillo::http::Response>(http_probe_connection_);
+    portal_detector_->ProcessHTTPProbeResult(std::move(response));
   }
 
   void HTTPRequestFailure(HttpRequest::Error error) {
@@ -217,8 +218,8 @@ class PortalDetectorTest : public Test {
 
   void HTTPSRequestSuccess() {
     auto response =
-        std::make_shared<brillo::http::Response>(https_probe_connection_);
-    portal_detector_->ProcessHTTPSProbeResult(response);
+        std::make_unique<brillo::http::Response>(https_probe_connection_);
+    portal_detector_->ProcessHTTPSProbeResult(std::move(response));
   }
 
   void HTTPSRequestFailure(HttpRequest::Error error) {

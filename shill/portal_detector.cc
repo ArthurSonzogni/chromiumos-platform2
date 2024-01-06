@@ -203,13 +203,14 @@ void PortalDetector::Stop() {
   CleanupTrial();
 }
 
-void PortalDetector::ProcessHTTPProbeResult(const HttpRequest::Result& result) {
+void PortalDetector::ProcessHTTPProbeResult(HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->http_result = GetProbeResultFromRequestError(result.error());
   } else {
-    int status_code = (*result)->GetStatusCode();
+    std::unique_ptr<brillo::http::Response> response = std::move(*result);
+    int status_code = response->GetStatusCode();
     result_->http_status_code = status_code;
-    result_->http_content_length = GetContentLength(*result);
+    result_->http_content_length = GetContentLength(response.get());
     if (status_code == brillo::http::status_code::NoContent) {
       result_->http_result = ProbeResult::kSuccess;
     } else if (status_code == brillo::http::status_code::Ok) {
@@ -234,7 +235,7 @@ void PortalDetector::ProcessHTTPProbeResult(const HttpRequest::Result& result) {
     } else if (IsRedirectResponse(status_code)) {
       result_->probe_url = http_url_;
       result_->redirect_url = net_base::HttpUrl::CreateFromString(
-          (*result)->GetHeader(brillo::http::response_header::kLocation));
+          response->GetHeader(brillo::http::response_header::kLocation));
       result_->http_result = result_->redirect_url.has_value()
                                  ? ProbeResult::kPortalRedirect
                                  : ProbeResult::kPortalInvalidRedirect;
@@ -250,8 +251,7 @@ void PortalDetector::ProcessHTTPProbeResult(const HttpRequest::Result& result) {
   }
 }
 
-void PortalDetector::ProcessHTTPSProbeResult(
-    const HttpRequest::Result& result) {
+void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->https_result = GetProbeResultFromRequestError(result.error());
   } else {
@@ -298,7 +298,7 @@ base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
 }
 
 std::optional<size_t> PortalDetector::GetContentLength(
-    std::shared_ptr<brillo::http::Response> response) const {
+    brillo::http::Response* response) const {
   std::string content_length_string =
       response->GetHeader(brillo::http::response_header::kContentLength);
   if (content_length_string.empty()) {

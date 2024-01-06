@@ -83,11 +83,10 @@ HttpRequest::~HttpRequest() {
   Stop();
 }
 
-void HttpRequest::Start(
-    std::string_view logging_tag,
-    const net_base::HttpUrl& url,
-    const brillo::http::HeaderList& headers,
-    base::OnceCallback<void(const Result& result)> callback) {
+void HttpRequest::Start(std::string_view logging_tag,
+                        const net_base::HttpUrl& url,
+                        const brillo::http::HeaderList& headers,
+                        base::OnceCallback<void(Result result)> callback) {
   DCHECK(!is_running_);
   logging_tag_ = logging_tag;
   url_ = url;

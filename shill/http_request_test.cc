@@ -164,9 +164,9 @@ class HttpRequestTest : public Test {
  protected:
   class CallbackTarget {
    public:
-    MOCK_METHOD(void, RequestCallback, (const HttpRequest::Result& result));
+    MOCK_METHOD(void, RequestCallback, (HttpRequest::Result result));
 
-    base::OnceCallback<void(const HttpRequest::Result& result)> callback() {
+    base::OnceCallback<void(HttpRequest::Result result)> callback() {
       return base::BindOnce(&CallbackTarget::RequestCallback,
                             base::Unretained(this));
     }
@@ -207,9 +207,9 @@ class HttpRequestTest : public Test {
   void ExpectRequestErrorCallback(HttpRequest::Error error) {
     EXPECT_CALL(target_, RequestCallback(Eq(base::unexpected(error))));
   }
-  void InvokeResultVerifySuccess(const HttpRequest::Result& result) {
+  void InvokeResultVerifySuccess(HttpRequest::Result result) {
     ASSERT_TRUE(result.has_value());
-    std::shared_ptr<brillo::http::Response> response = *result;
+    std::unique_ptr<brillo::http::Response> response = std::move(*result);
     EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
         .WillOnce(Return(brillo::http::status_code::Partial));
     EXPECT_EQ(brillo::http::status_code::Partial, response->GetStatusCode());
