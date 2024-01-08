@@ -59,7 +59,6 @@
 #include "debugd/src/tracepath_tool.h"
 #include "debugd/src/u2f_tool.h"
 #include "debugd/src/verify_ro_tool.h"
-#include "debugd/src/wifi_fw_dump_tool.h"
 #include "debugd/src/wifi_power_tool.h"
 
 namespace debugd {
@@ -199,7 +198,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string GetU2fFlags() override;
   void ContainerStarted() override;
   void ContainerStopped() override;
-  std::string WifiFWDump() override;
   std::string SetWifiPowerSave(bool enable) override;
   std::string GetWifiPowerSave() override;
   bool RunShillScriptStart(brillo::ErrorPtr* error,
@@ -312,7 +310,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<U2fTool> u2f_tool_;
   std::unique_ptr<VerifyRoTool> verify_ro_tool_;
   std::unique_ptr<SimpleServiceTool> vm_plugin_dispatcher_tool_;
-  std::unique_ptr<WifiFWDumpTool> wifi_fw_dump_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
   std::unique_ptr<KernelFeatureTool> kernel_feature_tool_;
