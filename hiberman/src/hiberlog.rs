@@ -272,7 +272,7 @@ impl<'m> LogFile<'m> {
             Self::open(stage)
         }?;
         redirect_log(HiberlogOut::File(Box::new(log_file)));
-        Ok(LogFile(&am))
+        Ok(LogFile(am))
     }
 
     /// Create the log file at given hibernate stage, truncate the file if it already
