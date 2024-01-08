@@ -118,12 +118,10 @@ struct Hiberlog {
     kmsg: File,
     start: Instant,
     pending: Vec<Vec<u8>>,
-    pending_size: usize,
     to_kmsg: bool,
     out: HiberlogOut,
     pid: u32,
     syslogger: BasicLogger,
-    is_empty: bool,
 }
 
 impl Hiberlog {
@@ -139,19 +137,16 @@ impl Hiberlog {
             kmsg,
             start: Instant::now(),
             pending: vec![],
-            pending_size: 0,
             to_kmsg: false,
             out: HiberlogOut::Syslog,
             pid: std::process::id(),
             syslogger,
-            is_empty: true,
         })
     }
 
     /// Log a record.
     fn log_record(&mut self, record: &Record) {
         let mut buf = [0u8; 1024];
-        self.is_empty = false;
 
         // If sending to the syslog, just forward there and exit.
         if matches!(self.out, HiberlogOut::Syslog) {
@@ -191,7 +186,6 @@ impl Hiberlog {
                 let _ = f.write_all(&buf[..*len]);
             } else {
                 self.pending.push(buf[..*len].to_vec());
-                self.pending_size += *len;
             }
         }
     }
@@ -225,9 +219,7 @@ impl Hiberlog {
     /// got flushed after the snapshot was taken, just before the machine shut
     /// down.
     pub fn reset(&mut self) {
-        self.pending_size = 0;
         self.pending = vec![];
-        self.is_empty = true;
     }
 }
 
