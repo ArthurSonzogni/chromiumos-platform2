@@ -63,6 +63,7 @@ enum class ProcessMode {
   UPDATE,
   INSTALL,
   SCALED_INSTALL,
+  FORCE_OTA_INSTALL,
 };
 
 class UpdateAttempter : public ActionProcessorDelegate,
@@ -170,7 +171,8 @@ class UpdateAttempter : public ActionProcessorDelegate,
   // This is the version of CheckForUpdate called by AttemptInstall API.
   virtual bool CheckForInstall(const std::vector<std::string>& dlc_ids,
                                const std::string& omaha_url,
-                               bool scaled = false);
+                               bool scaled = false,
+                               bool force_ota = false);
 
   // This is the internal entry point for going through a rollback. This will
   // attempt to run the postinstall on the non-active partition and set it as
@@ -368,6 +370,7 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest, TargetVersionPrefixSetAndReset);
   FRIEND_TEST(UpdateAttempterTest, UpdateAfterInstall);
   FRIEND_TEST(UpdateAttempterTest, UpdateAfterScaledInstall);
+  FRIEND_TEST(UpdateAttempterTest, UpdateAfterForceOTAInstall);
   FRIEND_TEST(UpdateAttempterTest, UpdateFlagsCachedAtUpdateStart);
   FRIEND_TEST(UpdateAttempterTest, UpdateDeferredByPolicyTest);
   FRIEND_TEST(UpdateAttempterTest, UpdateIsNotRunningWhenUpdateAvailable);

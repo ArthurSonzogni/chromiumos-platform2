@@ -42,6 +42,9 @@ class NoneType;
 class InstallAction;
 class OmahaRequestParams;
 
+extern const char kDefaultSlotting[];
+extern const char kForceOTASlotting[];
+
 template <>
 class ActionTraits<InstallAction> {
  public:

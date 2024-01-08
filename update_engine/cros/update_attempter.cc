@@ -119,6 +119,8 @@ string ConvertToString(ProcessMode op) {
       return "install";
     case ProcessMode::SCALED_INSTALL:
       return "scaled install";
+    case ProcessMode::FORCE_OTA_INSTALL:
+      return "force OTA install";
   }
 }
 
@@ -441,7 +443,9 @@ void UpdateAttempter::Install() {
   auto http_fetcher = std::make_unique<LibcurlHttpFetcher>(
       GetProxyResolver(), SystemState::Get()->hardware());
   auto install_action = std::make_unique<InstallAction>(
-      std::move(http_fetcher), dlc_id, /*slotting=*/"");
+      std::move(http_fetcher), dlc_id,
+      /*slotting=*/pm_ == ProcessMode::FORCE_OTA_INSTALL ? kForceOTASlotting
+                                                         : kDefaultSlotting);
   install_action->set_delegate(this);
   SetOutPipe(install_action.get());
   processor_->EnqueueAction(std::move(install_action));
@@ -1182,7 +1186,8 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
 
 bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
                                       const string& omaha_url,
-                                      bool scaled) {
+                                      bool scaled,
+                                      bool force_ota) {
   if (status_ != UpdateStatus::IDLE) {
     LOG(INFO) << "Refusing to do an install as there is an "
               << ConvertToString(pm_) << " already in progress.";
@@ -1193,10 +1198,14 @@ bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
   pm_ = ProcessMode::INSTALL;
   if (scaled) {
     pm_ = ProcessMode::SCALED_INSTALL;
-    if (dlc_ids_.size() != 1) {
-      LOG(ERROR) << "Can't install more than one scaled DLC at a time.";
-      return false;
-    }
+    // `force_ota` lower precedence than `scaled`.
+  } else if (force_ota) {
+    pm_ = ProcessMode::FORCE_OTA_INSTALL;
+  }
+
+  if (pm_ != ProcessMode::INSTALL && dlc_ids_.size() != 1) {
+    LOG(ERROR) << "Can't install more than one DLC at a time.";
+    return false;
   }
 
   forced_omaha_url_.clear();
@@ -1297,6 +1306,7 @@ void UpdateAttempter::OnUpdateScheduled(EvalStatus status) {
         Update(params);
         break;
       case ProcessMode::SCALED_INSTALL:
+      case ProcessMode::FORCE_OTA_INSTALL:
         Install();
         break;
     }
@@ -1403,6 +1413,7 @@ void UpdateAttempter::ProcessingDoneInternal(const ActionProcessor* processor,
       break;
     case ProcessMode::INSTALL:
     case ProcessMode::SCALED_INSTALL:
+    case ProcessMode::FORCE_OTA_INSTALL:
       ProcessingDoneInstall(processor, code);
       break;
   }
@@ -1910,7 +1921,8 @@ bool UpdateAttempter::GetStatus(UpdateEngineStatus* out_status) {
   out_status->is_enterprise_rollback =
       install_plan_ && install_plan_->is_rollback;
   out_status->is_install =
-      (pm_ == ProcessMode::INSTALL || pm_ == ProcessMode::SCALED_INSTALL);
+      (pm_ == ProcessMode::INSTALL || pm_ == ProcessMode::SCALED_INSTALL ||
+       pm_ == ProcessMode::FORCE_OTA_INSTALL);
   out_status->update_urgency_internal =
       install_plan_ ? install_plan_->update_urgency
                     : update_engine::UpdateUrgencyInternal::REGULAR;

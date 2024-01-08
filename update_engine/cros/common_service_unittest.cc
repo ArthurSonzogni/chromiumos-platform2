@@ -95,7 +95,7 @@ TEST_F(UpdateEngineServiceTest, UpdateReturnsFalse) {
 }
 
 TEST_F(UpdateEngineServiceTest, AttemptInstall) {
-  EXPECT_CALL(*mock_update_attempter_, CheckForInstall(_, _, _))
+  EXPECT_CALL(*mock_update_attempter_, CheckForInstall(_, _, _, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(common_service_.AttemptInstall(&error_, "", {}));
@@ -103,7 +103,7 @@ TEST_F(UpdateEngineServiceTest, AttemptInstall) {
 }
 
 TEST_F(UpdateEngineServiceTest, AttemptInstallReturnsFalse) {
-  EXPECT_CALL(*mock_update_attempter_, CheckForInstall(_, _, _))
+  EXPECT_CALL(*mock_update_attempter_, CheckForInstall(_, _, _, _))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(common_service_.AttemptInstall(&error_, "", {}));

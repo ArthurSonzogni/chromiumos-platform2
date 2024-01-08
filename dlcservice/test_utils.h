@@ -42,11 +42,13 @@
 
 namespace dlcservice {
 
+extern const char kScaledDlc[];
+
 extern const char kFirstDlc[];
 extern const char kSecondDlc[];
 extern const char kThirdDlc[];
 extern const char kFourthDlc[];
-extern const char kScaledDlc[];
+extern const char kForceOTADlc[];
 extern const char kPackage[];
 extern const char kDefaultOmahaUrl[];
 

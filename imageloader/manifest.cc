@@ -49,6 +49,7 @@ constexpr char kScaled[] = "scaled";
 constexpr char kPowerwashSafe[] = "powerwash-safe";
 constexpr char kArtifactsMeta[] = "artifacts-meta";
 constexpr char kArtifactsMetaUriKey[] = "uri";
+constexpr char kForceOTA[] = "force-ota";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -134,7 +135,8 @@ bool Manifest::operator==(const Manifest& rhs) const {
       use_logical_volume() == rhs.use_logical_volume() &&
       scaled() == rhs.scaled() &&
       powerwash_safe() == rhs.powerwash_safe() &&
-      artifacts_meta() == rhs.artifacts_meta();
+      artifacts_meta() == rhs.artifacts_meta() &&
+      force_ota() == force_ota();
 }
 // clang-format on
 
@@ -245,6 +247,9 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
 
   // If `powerwash-safe` field does not exist, by default it is false.
   powerwash_safe_ = manifest_dict.FindBool(kPowerwashSafe).value_or(false);
+
+  // If `force-ota` field does not exist, by default it is false.
+  force_ota_ = manifest_dict.FindBool(kForceOTA).value_or(false);
 
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindString(kId);

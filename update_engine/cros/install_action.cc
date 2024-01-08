@@ -47,8 +47,10 @@ constexpr char kLorryArtifactsMetaUrl[] = "https://dl.google.com";
 
 constexpr char kDefaultArtifact[] = "dlc.img";
 constexpr char kDefaultPackage[] = "package";
-constexpr char kDefaultSlotting[] = "dlc-scaled";
 }  // namespace
+
+const char kDefaultSlotting[] = "dlc-scaled";
+const char kForceOTASlotting[] = "dlc";
 
 InstallAction::InstallAction(std::unique_ptr<HttpFetcher> http_fetcher,
                              const std::string& id,

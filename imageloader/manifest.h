@@ -76,6 +76,7 @@ class BRILLO_EXPORT Manifest {
   bool scaled() const { return scaled_; }
   bool powerwash_safe() const { return powerwash_safe_; }
   const ArtifactsMeta& artifacts_meta() const { return artifacts_meta_; }
+  bool force_ota() const { return force_ota_; }
 
  private:
   // Required manifest fields:
@@ -106,6 +107,7 @@ class BRILLO_EXPORT Manifest {
   ArtifactsMeta artifacts_meta_{
       .valid = false,
   };
+  bool force_ota_ = false;
 };
 
 }  // namespace imageloader

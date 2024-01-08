@@ -116,17 +116,20 @@ TEST_F(DlcServiceTest, InitializeTest) {
   auto mock_dlc_3 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_4 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_scaled = std::make_unique<StrictMock<MockDlc>>();
+  auto mock_dlc_force_ota = std::make_unique<StrictMock<MockDlc>>();
   EXPECT_CALL(*mock_dlc_1, Initialize()).WillOnce(Return(true));
   EXPECT_CALL(*mock_dlc_2, Initialize()).WillOnce(Return(true));
   EXPECT_CALL(*mock_dlc_3, Initialize()).WillOnce(Return(true));
   EXPECT_CALL(*mock_dlc_4, Initialize()).WillOnce(Return(true));
   EXPECT_CALL(*mock_dlc_scaled, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_force_ota, Initialize()).WillOnce(Return(true));
   EXPECT_CALL(*mock_dlc_creator_ptr_, Create(_))
       .WillOnce(Return(std::move(mock_dlc_1)))
       .WillOnce(Return(std::move(mock_dlc_2)))
       .WillOnce(Return(std::move(mock_dlc_3)))
       .WillOnce(Return(std::move(mock_dlc_4)))
-      .WillOnce(Return(std::move(mock_dlc_scaled)));
+      .WillOnce(Return(std::move(mock_dlc_scaled)))
+      .WillOnce(Return(std::move(mock_dlc_force_ota)));
 
   EXPECT_CALL(*mock_utils_, GetSupportedDlcIds)
       .WillOnce(Return(DlcIdList(

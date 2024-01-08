@@ -107,7 +107,7 @@ bool UpdateEngineService::Install(
     const update_engine::InstallParams& install_params) {
   if (!SystemState::Get()->update_attempter()->CheckForInstall(
           {install_params.id()}, install_params.omaha_url(),
-          install_params.scaled())) {
+          install_params.scaled(), install_params.force_ota())) {
     LogAndSetError(error, FROM_HERE, "Could not schedule scaled install.");
     return false;
   }

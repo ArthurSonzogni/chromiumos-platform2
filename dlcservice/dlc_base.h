@@ -53,6 +53,7 @@ class DlcBase : public DlcInterface {
   bool IsInstalled() const override;
   bool IsVerified() const override;
   bool IsScaled() const override;
+  bool IsForceOTA() const override;
   bool HasContent() const override;
   uint64_t GetUsedBytesOnDisk() const override;
   bool IsPreloadAllowed() const override;

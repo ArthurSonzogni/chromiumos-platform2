@@ -1029,6 +1029,18 @@ TEST_F(DlcBaseTest, ScaledOn) {
   EXPECT_TRUE(dlc.IsScaled());
 }
 
+TEST_F(DlcBaseTest, ForceOTAOff) {
+  DlcBase dlc(kScaledDlc);
+  dlc.Initialize();
+  EXPECT_FALSE(dlc.IsForceOTA());
+}
+
+TEST_F(DlcBaseTest, ForceOTAOn) {
+  DlcBase dlc(kForceOTADlc);
+  dlc.Initialize();
+  EXPECT_TRUE(dlc.IsForceOTA());
+}
+
 TEST_F(DlcBaseTest, IsInstalledButUnmounted) {
   DlcBase dlc(kThirdDlc);
   dlc.Initialize();

@@ -1759,6 +1759,12 @@ TEST_F(UpdateAttempterTest, UpdateAfterScaledInstall) {
   EXPECT_TRUE(attempter_.IsUpdating());
 }
 
+TEST_F(UpdateAttempterTest, UpdateAfterForceOTAInstall) {
+  attempter_.pm_ = ProcessMode::FORCE_OTA_INSTALL;
+  attempter_.CheckForUpdate({});
+  EXPECT_TRUE(attempter_.IsUpdating());
+}
+
 TEST_F(UpdateAttempterTest, TargetVersionPrefixSetAndReset) {
   UpdateCheckParams params;
   attempter_.CalculateUpdateParams({.target_version_prefix = "1234"});

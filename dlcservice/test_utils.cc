@@ -48,6 +48,8 @@ using testing::StrictMock;
 
 namespace dlcservice {
 
+const char kForceOTADlc[] = "forceota-dlc";
+
 const char kFirstDlc[] = "first-dlc";
 const char kSecondDlc[] = "second-dlc";
 const char kThirdDlc[] = "third-dlc";
@@ -143,7 +145,8 @@ void BaseTest::SetUpFilesAndDirectories() {
   CHECK(base::WriteFile(verification_file_path_, "verification-value"));
 
   // Create DLC manifest sub-directories.
-  for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc}) {
+  for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc,
+                    kForceOTADlc}) {
     base::CreateDirectory(JoinPaths(manifest_path_, id, kPackage));
     base::CopyFile(JoinPaths(testdata_path_, id, kPackage, kManifestName),
                    JoinPaths(manifest_path_, id, kPackage, kManifestName));

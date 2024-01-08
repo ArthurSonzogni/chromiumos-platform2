@@ -56,6 +56,9 @@ class DlcInterface {
   // Returns true if the DLC is scaled.
   virtual bool IsScaled() const = 0;
 
+  // Returns true if the DLC wants to force OTA.
+  virtual bool IsForceOTA() const = 0;
+
   // Returns true if the DLC has any content on disk that is taking space. This
   // means mainly if it has images on disk.
   virtual bool HasContent() const = 0;

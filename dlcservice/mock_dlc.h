@@ -33,6 +33,7 @@ class MockDlc : public DlcInterface {
   MOCK_METHOD(bool, IsInstalled, (), (const, override));
   MOCK_METHOD(bool, IsVerified, (), (const, override));
   MOCK_METHOD(bool, IsScaled, (), (const, override));
+  MOCK_METHOD(bool, IsForceOTA, (), (const, override));
   MOCK_METHOD(bool, HasContent, (), (const, override));
   MOCK_METHOD(uint64_t, GetUsedBytesOnDisk, (), (const, override));
   MOCK_METHOD(bool, IsPreloadAllowed, (), (const, override));

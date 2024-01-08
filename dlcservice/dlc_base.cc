@@ -153,6 +153,10 @@ bool DlcBase::IsScaled() const {
   return manifest_->scaled();
 }
 
+bool DlcBase::IsForceOTA() const {
+  return manifest_->force_ota();
+}
+
 bool DlcBase::HasContent() const {
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
