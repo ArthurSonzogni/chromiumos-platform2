@@ -1225,7 +1225,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
     if (to_forget.get() == it->get()) {
       LOG(INFO) << "Deregistering device: " << to_forget->link_name();
       UpdateDevice(to_forget);
-      to_forget->SetEnabled(false);
+      to_forget->SetEnabledUnchecked(false, base::DoNothing());
       device_geolocation_info_.erase(to_forget);
       devices_.erase(it);
       EmitDeviceProperties();

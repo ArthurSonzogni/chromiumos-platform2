@@ -624,12 +624,12 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   MockProfile* profile = new MockProfile(manager(), "");
   AdoptProfile(manager(), profile);  // Passes ownership.
 
-  EXPECT_CALL(*mock_devices_[0], SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[0], SetEnabledUnchecked(false, _));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0])));
   manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
-  EXPECT_CALL(*mock_devices_[1], SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[1], SetEnabledUnchecked(false, _));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[1])));
   manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWiFi));
@@ -2572,7 +2572,7 @@ TEST_F(ManagerTest, Stop) {
   EXPECT_TRUE(manager()->power_manager());
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[0], SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[0], SetEnabledUnchecked(false, _));
   EXPECT_CALL(*profile, Save()).WillOnce(Return(true));
 
   for (const auto& service : GetServices()) {

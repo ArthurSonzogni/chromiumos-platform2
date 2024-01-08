@@ -88,7 +88,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // without saving the new value of |enable| to the profile. If you
   // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
-  void SetEnabledUnchecked(bool enable, ResultCallback callback);
+  mockable void SetEnabledUnchecked(bool enable, ResultCallback callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
