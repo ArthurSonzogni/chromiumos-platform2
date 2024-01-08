@@ -2675,12 +2675,16 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kInternetConnectivity:
+      service_->SetState(Service::kStateOnline);
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
+      service_->SetState(Service::kStateRedirectFound);
       break;
     case PortalDetector::ValidationState::kNoConnectivity:
+      service_->SetState(Service::kStateNoConnectivity);
       break;
     case PortalDetector::ValidationState::kPortalSuspected:
+      service_->SetState(Service::kStatePortalSuspected);
       break;
   }
 }

@@ -2867,6 +2867,7 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   ASSERT_NE(service_->network_event_handler(), nullptr);
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2883,6 +2884,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateOnline, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2899,6 +2901,7 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateOnline, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2915,6 +2918,7 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2931,6 +2935,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2947,6 +2952,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -2967,6 +2973,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateRedirectFound, service_->state());
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
 }
 
@@ -2983,6 +2990,7 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -3000,6 +3008,7 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -3015,6 +3024,7 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
 
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
+  EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 

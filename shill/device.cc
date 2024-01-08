@@ -62,22 +62,7 @@ static std::string ObjectID(const Device* d) {
 }  // namespace Logging
 
 namespace {
-
 constexpr size_t kHardwareAddressLength = 6;
-
-Service::ConnectState PortalValidationStateToConnectionState(
-    PortalDetector::ValidationState validation_state) {
-  switch (validation_state) {
-    case PortalDetector::ValidationState::kInternetConnectivity:
-      return Service::kStateOnline;
-    case PortalDetector::ValidationState::kNoConnectivity:
-      return Service::kStateNoConnectivity;
-    case PortalDetector::ValidationState::kPortalSuspected:
-      return Service::kStatePortalSuspected;
-    case PortalDetector::ValidationState::kPortalRedirect:
-      return Service::kStateRedirectFound;
-  }
-}
 }  // namespace
 
 const char Device::kStoragePowered[] = "Powered";
@@ -615,31 +600,10 @@ void Device::OnNetworkValidationResult(int interface_index,
   if (!IsEventOnPrimaryNetwork(interface_index)) {
     return;
   }
-
-  if (!selected_service_) {
-    // A race can happen if the Service has disconnected in the meantime.
-    LOG(WARNING)
-        << LoggingTag() << ": "
-        << "Portal detection completed but no selected service exists.";
+  if (!GetPrimaryNetwork()->IsConnected()) {
     return;
   }
-
-  if (!selected_service_->IsConnected()) {
-    // A race can happen if the Service is currently disconnecting.
-    LOG(WARNING) << LoggingTag() << ": "
-                 << "Portal detection completed but selected service is in "
-                    "non-connected state.";
-    return;
-  }
-
-  // When already connected, a Network must exist.
-  DCHECK(GetPrimaryNetwork());
-
-  auto validation_state = result.GetValidationState();
-  Service::ConnectState connection_state =
-      PortalValidationStateToConnectionState(validation_state);
-  SetServiceState(connection_state);
-  if (validation_state !=
+  if (result.GetValidationState() !=
       PortalDetector::ValidationState::kInternetConnectivity) {
     GetPrimaryNetwork()->StartPortalDetection(
         NetworkMonitor::ValidationReason::kRetryValidation);
