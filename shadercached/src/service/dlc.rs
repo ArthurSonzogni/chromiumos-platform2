@@ -112,10 +112,12 @@ pub async fn periodic_dlc_handler<D: DbusConnectionTrait>(
     if dlc_queue.count_installing_dlcs() < MAX_CONCURRENT_DLC_INSTALLS {
         // Handle install queue
         while let Some(steam_app_id) = dlc_queue.next_to_install() {
-            debug!("{}", dlc_queue);
+            debug!("DLC queue status: {}", dlc_queue);
+            info!("Attempting shader cache DLC install");
             let result = install_shader_cache_dlc(steam_app_id, dbus_conn.clone()).await;
             if result.is_ok() {
-                debug!("Started installing shader cache for {}", steam_app_id);
+                info!("Started shader cache DLC install");
+                debug!("Started shader cache DLC install: {}", steam_app_id);
                 // Successfully queued install, stop trying
                 break;
             }

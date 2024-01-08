@@ -20,7 +20,7 @@ use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
 
 use anyhow::{anyhow, Result};
 use dbus::MethodErr;
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use protobuf::Message;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -105,10 +105,12 @@ pub async fn handle_install<D: DbusConnectionTrait>(
             error!("Proceeding with DLC installation");
         }
         // Queue install and upon installation completion, mount if queued.
+        info!("Acquiring dlc write mutex to queue install");
         let mut dlc_queue = dlc_queue.write().await;
         if let Some(dequeued_game) = dlc_queue.queue_install(&request.steam_app_id) {
             shader_cache_mount.dequeue_mount(&dequeued_game);
         }
+        info!("Successfully queued installation");
         return Ok(response.write_to_bytes()?);
     }
 

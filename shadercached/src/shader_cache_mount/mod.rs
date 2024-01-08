@@ -21,7 +21,7 @@ use crate::service;
 use mesa_path_constants::*;
 
 use anyhow::{anyhow, Result};
-use log::{debug, error};
+use log::{debug, error, info};
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
@@ -79,6 +79,7 @@ impl ShaderCacheMount {
         dbus_conn: Arc<D>,
     ) -> Result<()> {
         if self.mount_base_path.is_none() || self.relative_mesa_cache_path.is_none() {
+            info!("Initializing VM's shader cache");
             // Mesa shader cache is created with insufficient permissions as of 23.1.4
             service::add_shader_cache_group_permission(vm_id, dbus_conn).await?;
 
