@@ -404,6 +404,7 @@ void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
   wifi_dump->set_dmpfile(firmware_path.value());
   wifi_dump->set_state(fbpreprocessor::WiFiDump::RAW);
   wifi_dump->set_vendor(fbpreprocessor::WiFiDump::IWLWIFI);
+  wifi_dump->set_compression(fbpreprocessor::WiFiDump::GZIP);
 
   LOG(INFO) << "Going to emit connectivity DebugDumpCreated signal.";
   crash_interface.get()->SendDebugDumpCreatedSignal(fw_dumps);

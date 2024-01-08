@@ -236,10 +236,14 @@ class UdevCollectorTest : public ::testing::Test {
       EXPECT_TRUE(dump.has_wifi_dump());
       base::FilePath path(dump.wifi_dump().dmpfile());
 
+      // Expect the WiFi firmware dump to be iwlwifi, for now.
       EXPECT_TRUE(
           RE2::FullMatch(path.BaseName().value(), kWiFiCoredumpFilePattern));
       EXPECT_EQ(path.DirName(), temp_dir_generator_.GetPath().Append(
                                     kWiFiCoredumpDirectoryPattern));
+      EXPECT_EQ(dump.wifi_dump().state(), fbpreprocessor::WiFiDump::RAW);
+      EXPECT_EQ(dump.wifi_dump().vendor(), fbpreprocessor::WiFiDump::IWLWIFI);
+      EXPECT_EQ(dump.wifi_dump().compression(), fbpreprocessor::WiFiDump::GZIP);
     }
   }
 
