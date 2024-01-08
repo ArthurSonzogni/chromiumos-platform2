@@ -34,6 +34,7 @@
 #include "debugd/src/drm_trace_tool.h"
 #include "debugd/src/ec_typec_tool.h"
 #include "debugd/src/example_tool.h"
+#include "debugd/src/firmware_dump_utils.h"
 #include "debugd/src/icmp_tool.h"
 #include "debugd/src/ipaddrs_tool.h"
 #include "debugd/src/kernel_feature_tool.h"
@@ -62,6 +63,11 @@
 #include "debugd/src/wifi_power_tool.h"
 
 namespace debugd {
+
+// Convert firmware dump type from raw D-Bus method input |uint32_t| to the
+// enum type |FirmwareDumpType|. Please find more information at the API doc
+// org.chromium.debugd.xml.
+std::optional<FirmwareDumpType> ConvertFirmwareDumpType(uint32_t type);
 
 class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                           public org::chromium::debugdInterface {
@@ -198,6 +204,9 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string GetU2fFlags() override;
   void ContainerStarted() override;
   void ContainerStopped() override;
+  void GenerateFirmwareDump(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      uint32_t type) override;
   std::string SetWifiPowerSave(bool enable) override;
   std::string GetWifiPowerSave() override;
   bool RunShillScriptStart(brillo::ErrorPtr* error,

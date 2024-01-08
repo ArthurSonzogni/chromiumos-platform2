@@ -1261,6 +1261,48 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="GenerateFirmwareDump">
+      <tp:docstring>
+        Generate firmware dump for a specific firmware dump type.
+      </tp:docstring>
+      <arg name="type" type="u" direction="in" />
+        <tp:docstring>
+          The type of firmware dumps to be generated, such as the firmware dump
+          for iwlwifi (Intel WiFi driver). Please refer to the enum type
+          "FirmwareDumpType" for a complete list of supported types.
+        </tp:docstring>
+      <arg name="output" type="b" direction="out">
+        <tp:docstring>
+          Indicates success/failure of the command.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+    <tp:enum name="FirmwareDumpType">
+      <tp:docstring>
+        Enum values for different firmware dump types. Used as an input in
+        methods related to firmware dump operations to specify the targeted
+        type.
+        For example, if "WIFI" is specified as an input for the
+        method "TriggerFirmwareDump", we are triggering firmware dumps for the
+        WiFi driver device.
+        Currently dbusxx-xml2cpp does not extract flags values, so any changes
+        here should be manually flushed to
+        platform2/system_api/dbus/debugd/dbus-constants.h.
+      </tp:docstring>
+      <tp:enumvalue suffix="ALL" value='0'>
+        <tp:docstring>
+          Invoke firmware dump operations on all supported types.
+          Currently we only support WiFi and this value is reserved. Please use
+          "WIFI" instead of "ALL".
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="WIFI" value='1'>
+        <tp:docstring>
+          Invoke firmware dump operations on the WiFi device driver.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
     <method name="EcGetInventory">
       <tp:docstring>
         Runs the 'ectool inventory' command with pre-defined

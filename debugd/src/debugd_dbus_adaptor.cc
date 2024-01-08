@@ -44,6 +44,17 @@ const char kLanguageAllowedChars[] =
 
 }  // namespace
 
+std::optional<FirmwareDumpType> ConvertFirmwareDumpType(uint32_t type) {
+  switch (type) {
+    case static_cast<uint32_t>(FirmwareDumpType::ALL):
+      return FirmwareDumpType::ALL;
+    case static_cast<uint32_t>(FirmwareDumpType::WIFI):
+      return FirmwareDumpType::WIFI;
+    default:
+      return std::nullopt;
+  }
+}
+
 DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                                      const bool perf_logging)
     : org::chromium::debugdAdaptor(this),
@@ -513,6 +524,19 @@ void DebugdDBusAdaptor::ContainerStarted() {
 
 void DebugdDBusAdaptor::ContainerStopped() {
   container_tool_->ContainerStopped();
+}
+
+void DebugdDBusAdaptor::GenerateFirmwareDump(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    uint32_t type) {
+  const auto fwdump_type = ConvertFirmwareDumpType(type);
+  if (!fwdump_type.has_value()) {
+    response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+        "Invalid firmware dump type: " + std::to_string(type));
+    return;
+  }
+  return GenerateFirmwareDumpHelper(std::move(response), fwdump_type.value());
 }
 
 std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {
