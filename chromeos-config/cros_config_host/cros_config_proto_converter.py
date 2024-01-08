@@ -1979,7 +1979,7 @@ def _build_hardware_properties(hw_features):
         result["has-camera-light-sensor"] = True
 
     if hw_features.HasField("fan"):
-        result["fan-count"] = hw_features.fan.fan_count
+        result["fan-count"] = hw_features.fan.fan_count.value
 
     return result
 
