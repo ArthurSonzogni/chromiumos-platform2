@@ -5,7 +5,6 @@
 #ifndef MEMS_SETUP_DELEGATE_IMPL_H_
 #define MEMS_SETUP_DELEGATE_IMPL_H_
 
-#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -15,11 +14,6 @@
 #include "mems_setup/delegate.h"
 
 namespace mems_setup {
-
-// This is an implementation detail of the DelegateImpl, but it is made
-// visible for testing purposes
-bool LoadVpdFromString(const std::string& vpd_data,
-                       std::map<std::string, std::string>* cache);
 
 class DelegateImpl : public Delegate {
  public:
@@ -48,11 +42,6 @@ class DelegateImpl : public Delegate {
   brillo::CrosConfigInterface* GetCrosConfig() override;
 
  private:
-  void LoadVpdIfNeeded();
-
-  std::map<std::string, std::string> vpd_cache_;
-  bool vpd_loaded_ = false;
-
   brillo::CrosConfig cros_config_;
 };
 

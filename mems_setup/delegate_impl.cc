@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
 #include <optional>
 
@@ -22,14 +23,13 @@
 #include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
 #include <libsar/sar_config_reader_delegate_impl.h>
+#include <vpd/vpd.h>
 
 #include "mems_setup/delegate_impl.h"
 
 namespace mems_setup {
 
 namespace {
-const char kVpdDataPath[] =
-    "/mnt/stateful_partition/unencrypted/cache/vpd/full-v2.txt";
 const char kSysModulePath[] = "/sys/module";
 }  // namespace
 
@@ -64,28 +64,9 @@ bool LoadVpdFromString(const std::string& vpd_data,
 DelegateImpl::DelegateImpl()
     : Delegate(std::make_unique<libsar::SarConfigReaderDelegateImpl>()) {}
 
-void DelegateImpl::LoadVpdIfNeeded() {
-  if (vpd_loaded_)
-    return;
-
-  std::string vpd_data;
-  base::FilePath vpd_path(kVpdDataPath);
-  if (!base::ReadFileToString(vpd_path, &vpd_data)) {
-    LOG(ERROR) << "failed to read VPD data";
-    return;
-  }
-
-  vpd_loaded_ = LoadVpdFromString(vpd_data, &vpd_cache_);
-}
-
 std::optional<std::string> DelegateImpl::ReadVpdValue(const std::string& key) {
-  LoadVpdIfNeeded();
-
-  auto k = vpd_cache_.find(key);
-  if (k != vpd_cache_.end())
-    return k->second;
-  else
-    return std::nullopt;
+  // All VPD keys we're looking for should be in Read-Only region.
+  return vpd::Vpd().GetValue(vpd::VpdRo, key);
 }
 
 bool DelegateImpl::ProbeKernelModule(const std::string& module) {

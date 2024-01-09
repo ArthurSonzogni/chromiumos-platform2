@@ -12,9 +12,6 @@ group("all") {
   if (use.test) {
     deps += [ ":mems_setup_testrunner" ]
   }
-  if (use.fuzzer) {
-    deps += [ ":mems_setup_vpd_loader_fuzzer" ]
-  }
 }
 
 pkg_config("target_defaults_pkg_deps") {
@@ -39,6 +36,7 @@ static_library("libmems_setup") {
     "delegate_impl.cc",
     "sensor_kind.cc",
   ]
+  libs = [ "vpd" ]
   public_pkg_deps = [ "libmems" ]
   configs += [ ":target_defaults" ]
 }
@@ -75,7 +73,6 @@ if (use.test) {
       "proximity_test.cc",
       "test_fakes.cc",
       "test_helper.cc",
-      "vpd_loader_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -91,15 +88,5 @@ if (use.test) {
       "libmems_test_support",
       "libsar_test_support",
     ]
-  }
-}
-if (use.fuzzer) {
-  executable("mems_setup_vpd_loader_fuzzer") {
-    sources = [ "vpd_loader_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-    ]
-    deps = [ ":libmems_setup" ]
   }
 }
