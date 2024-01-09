@@ -122,9 +122,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void SetDebugMode(const std::string& subsystem) override;
   std::string GetLog(const std::string& name) override;
   std::map<std::string, std::string> GetAllLogs() override;
-  void GetFeedbackLogsV2(const base::ScopedFD& fd,
-                         const std::string& username,
-                         const std::vector<int32_t>& requested_logs) override;
+  void GetFeedbackLogs(const base::ScopedFD& fd,
+                       const std::string& username,
+                       const std::vector<int32_t>& requested_logs) override;
+  // TODO(http://b/238782324): Remove GetFeedbackLogsV3 once all its clients
+  // have been updated to use GetFeedbackLogs.
   void GetFeedbackLogsV3(const base::ScopedFD& fd,
                          const std::string& username,
                          const std::vector<int32_t>& requested_logs) override;

@@ -235,18 +235,18 @@ std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {
   return log_tool_->GetAllLogs();
 }
 
-void DebugdDBusAdaptor::GetFeedbackLogsV2(
+void DebugdDBusAdaptor::GetFeedbackLogs(
     const base::ScopedFD& fd,
     const std::string& username,
     const std::vector<int32_t>& requested_logs) {
-  log_tool_->GetFeedbackLogsV2(fd, username, perf_tool_.get(), requested_logs);
+  log_tool_->GetFeedbackLogs(fd, username, perf_tool_.get(), requested_logs);
 }
 
 void DebugdDBusAdaptor::GetFeedbackLogsV3(
     const base::ScopedFD& fd,
     const std::string& username,
     const std::vector<int32_t>& requested_logs) {
-  log_tool_->GetFeedbackLogsV3(fd, username, perf_tool_.get(), requested_logs);
+  log_tool_->GetFeedbackLogs(fd, username, perf_tool_.get(), requested_logs);
 }
 
 void DebugdDBusAdaptor::BackupArcBugReport(const std::string& username) {

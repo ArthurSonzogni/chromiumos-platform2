@@ -725,13 +725,6 @@ void GetOsReleaseInfo(LogTool::LogMap* map) {
   }
 }
 
-void PopulateDictionaryValue(const LogTool::LogMap& map,
-                             base::Value::Dict* dictionary) {
-  for (const auto& kv : map) {
-    dictionary->Set(kv.first, kv.second);
-  }
-}
-
 bool CompressXzBuffer(const std::vector<uint8_t>& in_buffer,
                       std::vector<uint8_t>* out_buffer) {
   size_t out_size = lzma_stream_buffer_bound(in_buffer.size());
@@ -1318,90 +1311,10 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
   return result;
 }
 
-// If subtasks are added, please also update the corresponding metrics that
-// track the duration of each subtasks. Location:
-// tools/metrics/histograms/metadata/chromeos/histograms.xml.
-// name="ChromeOS.Debugd.Perf.GetBigFeedbackLogs.{SubTaskName}".
-void LogTool::GetFeedbackLogsV2(const base::ScopedFD& fd,
-                                const std::string& username,
-                                PerfTool* perf_tool,
-                                const std::vector<int32_t>& requested_logs) {
-  LogMap results;
-  base::Value::Dict dictionary;
-  // Maps each subtask to a callable, which performs that task when invoked.
-  // Should not contain ordered tasks, as the invocation order is not preserved.
-  FuncMap subtasks;
-
-  // TODO(vapier): Once we adopt C++20, we can switch to std::to_array.
-  std::array log_sources = {
-      LogSource{FeedbackLogType::ARC_BUG_REPORT, "GetArcBugReport",
-                base::BindOnce(&LogTool::GetArcBugReportInDictionary,
-                               base::Unretained(this), username, &dictionary)},
-      LogSource{FeedbackLogType::CONNECTIVITY_REPORT,
-                "CreateConnectivityReport",
-                base::BindOnce(&LogTool::CreateConnectivityReport,
-                               base::Unretained(this), true)},
-      LogSource{FeedbackLogType::VERBOSE_COMMAND_LOGS, "kCommandLogsVerbose",
-                base::BindOnce(
-                    [](base::Value::Dict* dictionary) {
-                      GetLogsInDictionary(kCommandLogsVerbose, dictionary);
-                    },
-                    &dictionary)},
-      LogSource{FeedbackLogType::COMMAND_LOGS, "kCommandLogs",
-                base::BindOnce(
-                    [](base::Value::Dict* dictionary) {
-                      GetLogsInDictionary(kCommandLogs, dictionary);
-                    },
-                    &dictionary)},
-      LogSource{FeedbackLogType::FEEDBACK_LOGS, "kFeedbackLogs",
-                base::BindOnce(
-                    [](base::Value::Dict* dictionary) {
-                      GetLogsInDictionary(kFeedbackLogs, dictionary);
-                    },
-                    &dictionary)},
-      LogSource{FeedbackLogType::BLUETOOTH_BQR, "GetBluetoothBqr",
-                base::BindOnce(&GetBluetoothBqr)},
-      LogSource{FeedbackLogType::LSB_RELEASE_INFO, "GetLsbReleaseInfo",
-                base::BindOnce(&GetLsbReleaseInfo, &results)},
-      LogSource{FeedbackLogType::PERF_DATA, "GetPerfData",
-                base::BindOnce(&GetPerfData, &results, perf_tool)},
-      LogSource{FeedbackLogType::OS_RELEASE_INFO, "GetOsReleaseInfo",
-                base::BindOnce(&GetOsReleaseInfo, &results)},
-      LogSource{FeedbackLogType::VAR_LOG_FILES, "kVarLogFileLogs",
-                base::BindOnce(
-                    [](base::Value::Dict* dictionary) {
-                      GetLogsInDictionary(kVarLogFileLogs, dictionary);
-                    },
-                    &dictionary)},
-  };
-
-  for (auto& [log_type, func_name, func_callback] : log_sources) {
-    if (requested_logs.empty() || base::Contains(requested_logs, log_type))
-      subtasks.emplace(std::make_pair(func_name, std::move(func_callback)));
-  }
-
-  // Create and start the stopwatch used for measuring performance.
-  Stopwatch sw("Perf.GetBigFeedbackLogs", perf_logging_,
-               /*report_lap_to_uma=*/true);
-
-  // Execute each subtask in the |subtasks| map and lap the time.
-  for (auto& kv : subtasks) {
-    std::move(kv.second).Run();
-    sw.Lap(kv.first);
-  }
-
-  // Polulate the results. This is done outside the |subtasks| because it has to
-  // be done at the end.
-  PopulateDictionaryValue(results, &dictionary);
-  sw.Lap("PopulateDictionaryValue");
-  SerializeLogsAsJSON(dictionary, fd);
-  sw.Lap("SerializeLogsAsJSON");
-}
-
-void LogTool::GetFeedbackLogsV3(const base::ScopedFD& fd,
-                                const std::string& username,
-                                PerfTool* perf_tool,
-                                const std::vector<int32_t>& requested_logs) {
+void LogTool::GetFeedbackLogs(const base::ScopedFD& fd,
+                              const std::string& username,
+                              PerfTool* perf_tool,
+                              const std::vector<int32_t>& requested_logs) {
   // Create and start the stopwatch used for measuring performance. The same
   // metric is used so we can compare the performance in A/B testing easily.
   // We do not record metrics for subtasks (i.e laps) since most of them are

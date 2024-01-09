@@ -365,8 +365,7 @@
       <arg name="logs" type="a{ss}" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <!-- GetBigFeedbackLogs has been replaced by GetFeedbackLogsV2 -->
-    <method name="GetFeedbackLogsV2">
+    <method name="GetFeedbackLogs">
       <tp:docstring>
         Fills the system logs for feedback reports in the file whose file
         descriptor is given. This is used for logs that are so big that they
@@ -392,11 +391,8 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <!-- GetFeedbackLogsV3 is the same as GetFeedbackLogsV2 except that it
-    collects logs in parallel whenever possible. The indention is to reduce the
-    client wait time. A feature flag will be used in client side to control
-    which method to call. When this new method proves to be better and stable,
-    the v2 method will be removed. -->
+    <!-- GetFeedbackLogsV3 is the same as GetFeedbackLogs. It will be removed.
+     Once references to GetFeedbackLogsV3 have been updated to GetFeedbackLogs. -->
     <method name="GetFeedbackLogsV3">
       <tp:docstring>
         Fills the system logs for feedback reports in the file whose file

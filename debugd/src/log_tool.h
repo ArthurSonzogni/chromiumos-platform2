@@ -159,14 +159,10 @@ class LogTool : public debugd::LogProvider {
   virtual std::optional<std::string> GetLog(const std::string& name);
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
-  void GetFeedbackLogsV2(const base::ScopedFD& fd,
-                         const std::string& username,
-                         PerfTool* perf_tool,
-                         const std::vector<int32_t>& requested_logs);
-  void GetFeedbackLogsV3(const base::ScopedFD& fd,
-                         const std::string& username,
-                         PerfTool* perf_tool,
-                         const std::vector<int32_t>& requested_logs);
+  void GetFeedbackLogs(const base::ScopedFD& fd,
+                       const std::string& username,
+                       PerfTool* perf_tool,
+                       const std::vector<int32_t>& requested_logs);
   void BackupArcBugReport(const std::string& username);
   void DeleteArcBugReportBackup(const std::string& username);
 
