@@ -66,6 +66,11 @@ int Socket::Get() const {
   return fd_.get();
 }
 
+void Socket::SetReadableCallback(base::RepeatingClosure callback) {
+  watcher_ =
+      base::FileDescriptorWatcher::WatchReadable(Get(), std::move(callback));
+}
+
 // static
 int Socket::Release(std::unique_ptr<Socket> socket) {
   if (socket == nullptr) {

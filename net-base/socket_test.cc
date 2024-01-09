@@ -13,8 +13,10 @@
 
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
+#include "net-base/byte_utils.h"
 #include "net-base/mock_socket.h"
 
 namespace net_base {
@@ -47,6 +49,37 @@ TEST(Socket, Release) {
   auto socket = Socket::CreateFromFd(std::move(fd));
   EXPECT_EQ(Socket::Release(std::move(socket)), raw_fd);
   EXPECT_EQ(close(raw_fd), 0);
+}
+
+class MockCallback {
+ public:
+  MOCK_METHOD(void, OnSocketReadable, (), ());
+};
+
+TEST(Socket, SetReadableCallback) {
+  constexpr std::string_view msg = "hello, world";
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
+  int sv[2];
+  ASSERT_EQ(socketpair(AF_UNIX, SOCK_RAW, 0, sv), 0);
+  std::unique_ptr<Socket> write_socket =
+      Socket::CreateFromFd(base::ScopedFD(sv[0]));
+  std::unique_ptr<Socket> read_socket =
+      Socket::CreateFromFd(base::ScopedFD(sv[1]));
+
+  MockCallback callback;
+  EXPECT_CALL(callback, OnSocketReadable()).WillOnce([&read_socket, msg]() {
+    std::vector<uint8_t> buf;
+    read_socket->RecvMessage(&buf);
+    EXPECT_EQ(byte_utils::ByteStringFromBytes(buf), msg);
+  });
+
+  read_socket->SetReadableCallback(base::BindRepeating(
+      &MockCallback::OnSocketReadable, base::Unretained(&callback)));
+  write_socket->Send(msg);
+
+  task_environment.RunUntilIdle();
 }
 
 class SocketUnderTest : public Socket {

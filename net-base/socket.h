@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <brillo/brillo_export.h>
@@ -37,6 +38,9 @@ class BRILLO_EXPORT Socket {
 
   // Returns the raw socket file descriptor.
   int Get() const;
+
+  // Sets the callback which will be called when the socket is ready to be read.
+  void SetReadableCallback(base::RepeatingClosure callback);
 
   // Releases and returns the socket file descriptor, allowing the socket to
   // remain open as the Socket is destroyed. After the call, |socket| will be
@@ -124,6 +128,10 @@ class BRILLO_EXPORT Socket {
   // The socket file descriptor. It's always valid during the lifetime of the
   // Socket instance.
   base::ScopedFD fd_;
+
+  // The read watcher of the |fd_|. It should be destroyed before |fd_| is
+  // closed, so it's declared after |fd_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 };
 
 // Creates the Socket instance. It's used for injecting MockSocketFactory at
