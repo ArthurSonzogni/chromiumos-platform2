@@ -33,7 +33,8 @@ using base::FilePath;
 constexpr char kDaemonStorePath[] = "/run/daemon-store";
 
 constexpr char kRootHomePrefix[] = "/home/root/";
-constexpr char kDefaultSystemSaltPath[] = "/home/.shadow/salt";
+constexpr char kDefaultLegacySystemSaltPath[] = "/home/.shadow/salt";
+constexpr char kDefaultSystemSaltPath[] = "/var/lib/system_salt";
 
 char g_user_home_prefix[PATH_MAX] = "/home/user/";
 
@@ -141,7 +142,8 @@ SystemSaltLoader* SystemSaltLoader::GetInstance() {
 }
 
 SystemSaltLoader::SystemSaltLoader()
-    : SystemSaltLoader(base::FilePath(kDefaultSystemSaltPath)) {}
+    : SystemSaltLoader({base::FilePath(kDefaultLegacySystemSaltPath),
+                        base::FilePath(kDefaultSystemSaltPath)}) {}
 
 SystemSaltLoader::~SystemSaltLoader() {
   DCHECK_EQ(g_system_salt_loader, this);
@@ -152,12 +154,18 @@ bool SystemSaltLoader::EnsureLoaded() {
   if (!value_.empty() || value_override_for_testing_) {
     return true;
   }
-  if (!base::ReadFileToString(file_path_, &value_)) {
-    PLOG(ERROR) << "Could not load system salt from " << file_path_;
-    value_.clear();
-    return false;
+  for (const auto& f : file_paths_) {
+    if (!base::PathExists(f)) {
+      continue;
+    }
+    if (base::ReadFileToString(f, &value_)) {
+      return true;
+    }
+    PLOG(ERROR) << "Error reading system salt from " << f;
   }
-  return true;
+  LOG(WARNING) << "No valid system salt file found";
+  value_.clear();
+  return false;
 }
 
 const std::string& SystemSaltLoader::value() const {
@@ -179,8 +187,13 @@ void SystemSaltLoader::override_value_for_testing(std::string* new_value) {
 }
 
 SystemSaltLoader::SystemSaltLoader(base::FilePath file_path)
-    : file_path_(std::move(file_path)) {
-  DCHECK(!file_path_.empty());
+    : SystemSaltLoader(std::vector<base::FilePath>{std::move(file_path)}) {}
+
+SystemSaltLoader::SystemSaltLoader(std::vector<base::FilePath> file_paths)
+    : file_paths_(std::move(file_paths)) {
+  for (const auto& f : file_paths_) {
+    DCHECK(!f.empty());
+  }
   DCHECK_EQ(g_system_salt_loader, nullptr);
   g_system_salt_loader = this;
 }

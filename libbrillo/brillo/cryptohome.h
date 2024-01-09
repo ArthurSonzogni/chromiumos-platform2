@@ -129,8 +129,9 @@ class BRILLO_EXPORT SystemSaltLoader {
 
  protected:
   explicit SystemSaltLoader(base::FilePath file_path);
+  explicit SystemSaltLoader(std::vector<base::FilePath> file_paths);
 
-  const base::FilePath file_path_;
+  const std::vector<base::FilePath> file_paths_;
   std::string value_;
 
  private:
