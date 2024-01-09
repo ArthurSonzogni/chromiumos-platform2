@@ -80,13 +80,9 @@ namespace startup {
 // AccumulatePolicyFiles takes in all the files contained in the policy_dir
 // reads their contents, copies and appends them to a file determined by
 // output_file.
-//
-// The parameter gid_policies indicates whether the policies are for GIDs, used
-// for selecting the correct file
 bool AccumulatePolicyFiles(const base::FilePath& root,
                            const base::FilePath& output_file,
-                           const base::FilePath& policy_dir,
-                           bool gid) {
+                           const base::FilePath& policy_dir) {
   if (!base::PathExists(output_file)) {
     // securityfs files are located elsewhere, return.
     return true;
@@ -153,9 +149,9 @@ bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
       root.Append(kSafeSetIDProcessMgmtPolicies).Append("gid_allowlist_policy");
   const base::FilePath pmp_gid = root.Append(kProcessMgmtPoliciesDirGID);
 
-  return AccumulatePolicyFiles(root, uid_mgmt_policies, pmpd, false) &&
-         AccumulatePolicyFiles(root, mgmt_policies, pmpd, false) &&
-         AccumulatePolicyFiles(root, gid_mgmt_policies, pmp_gid, true);
+  return AccumulatePolicyFiles(root, uid_mgmt_policies, pmpd) &&
+         AccumulatePolicyFiles(root, mgmt_policies, pmpd) &&
+         AccumulatePolicyFiles(root, gid_mgmt_policies, pmp_gid);
 }
 
 bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {

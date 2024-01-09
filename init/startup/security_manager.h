@@ -20,8 +20,7 @@ namespace startup {
 // and append them to to output_file.
 bool AccumulatePolicyFiles(const base::FilePath& root,
                            const base::FilePath& output_file,
-                           const base::FilePath& policy_dir,
-                           bool gid_policies);
+                           const base::FilePath& policy_dir);
 // Determine where securityfs files are placed and accumulate policy files.
 bool ConfigureProcessMgmtSecurity(const base::FilePath& root);
 
