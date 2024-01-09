@@ -5,6 +5,7 @@
 #include <libarc-attestation/lib/version_attester.h>
 
 #include <string>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <libarc_attestation/proto_bindings/arc_attestation_blob.pb.h>
@@ -12,6 +13,7 @@
 #include <libhwsec/frontend/attestation/frontend.h>
 
 using brillo::BlobFromString;
+using brillo::BlobToString;
 
 namespace arc_attestation {
 
@@ -62,6 +64,15 @@ AndroidStatus VersionAttester::QuoteCrOSBlob(const brillo::Blob& challenge,
 
   CrOSSpecificBlob result_blob;
   *result_blob.mutable_version_attestation() = result.value();
+
+  std::vector<std::vector<uint8_t>> dk_certs;
+  AndroidStatus ret = provisioner_->GetDkCertChain(dk_certs);
+  if (!ret.is_ok()) {
+    return ret;
+  }
+  for (const std::vector<uint8_t>& cert : dk_certs) {
+    result_blob.add_device_key_certs(BlobToString(cert));
+  }
 
   std::string output_str;
   if (!result_blob.SerializeToString(&output_str)) {
