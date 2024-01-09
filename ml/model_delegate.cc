@@ -90,7 +90,7 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
     const bool use_nnapi,
     const bool use_gpu,
     GpuDelegateApi gpu_delegate_api,
-    GraphExecutorDelegate** graph_executor_delegate) {
+    std::unique_ptr<GraphExecutorDelegate>* graph_executor_delegate) {
   DCHECK(!metrics_model_name_.empty());
 
   RequestMetrics request_metrics(metrics_model_name_, kMetricsRequestName);
@@ -189,9 +189,9 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
     return CreateGraphExecutorResult::MEMORY_ALLOCATION_ERROR;
   }
 
-  *graph_executor_delegate =
-      new GraphExecutorDelegate(required_inputs_, required_outputs_,
-                                std::move(interpreter), metrics_model_name_);
+  *graph_executor_delegate = std::make_unique<GraphExecutorDelegate>(
+      required_inputs_, required_outputs_, std::move(interpreter),
+      metrics_model_name_);
 
   request_metrics.FinishRecordingPerformanceMetrics();
   request_metrics.RecordRequestEvent(CreateGraphExecutorResult::OK);

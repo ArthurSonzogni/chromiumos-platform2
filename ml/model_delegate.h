@@ -75,7 +75,7 @@ class ModelDelegate {
       bool use_nnapi,
       bool use_gpu,
       GpuDelegateApi gpu_delegate_api,
-      GraphExecutorDelegate** graph_executor_delegate);
+      std::unique_ptr<GraphExecutorDelegate>* graph_executor_delegate);
 
  private:
   const std::map<std::string, int> required_inputs_;

@@ -86,7 +86,7 @@ TfModelGraphExecutor::TfModelGraphExecutor(
     output_names_.push_back(kv.first);
   }
 
-  GraphExecutorDelegate* graph_executor_delegate;
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate;
   if (model_delegate_->CreateGraphExecutorDelegate(
           false /*use_nnapi*/, false /*use_gpu*/,
           GpuDelegateApi::OPENGL /*gpu_delegate_api*/,
@@ -95,7 +95,7 @@ TfModelGraphExecutor::TfModelGraphExecutor(
         TfModelGraphExecutorEvent::kCreateGraphExecutorError);
     return;
   }
-  graph_executor_delegate_.reset(graph_executor_delegate);
+  graph_executor_delegate_ = std::move(graph_executor_delegate);
 
   // Attempts to read the preprocessor config.
   config_ = std::make_unique<assist_ranker::ExamplePreprocessorConfig>();

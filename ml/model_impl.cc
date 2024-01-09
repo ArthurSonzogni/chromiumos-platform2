@@ -5,6 +5,7 @@
 #include "ml/model_impl.h"
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -67,7 +68,7 @@ void ModelImpl::CreateGraphExecutor(
     GraphExecutorOptionsPtr options,
     mojo::PendingReceiver<GraphExecutor> receiver,
     CreateGraphExecutorCallback callback) {
-  GraphExecutorDelegate* graph_executor_delegate;
+  std::unique_ptr<GraphExecutorDelegate> graph_executor_delegate;
   auto result = model_delegate_->CreateGraphExecutorDelegate(
       options->use_nnapi, options->use_gpu, options->gpu_delegate_api,
       &graph_executor_delegate);
@@ -77,9 +78,8 @@ void ModelImpl::CreateGraphExecutor(
   }
 
   // Add graph executor and schedule its deletion on pipe closure.
-  graph_executors_.emplace_front(
-      std::unique_ptr<GraphExecutorDelegate>(graph_executor_delegate),
-      std::move(receiver));
+  graph_executors_.emplace_front(std::move(graph_executor_delegate),
+                                 std::move(receiver));
   graph_executors_.front().set_disconnect_handler(
       base::BindOnce(&ModelImpl::EraseGraphExecutor, base::Unretained(this),
                      graph_executors_.begin()));
