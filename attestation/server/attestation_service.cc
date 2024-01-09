@@ -415,7 +415,8 @@ constexpr KeyUsage GetKeyUsageByProfile(CertificateProfile profile) {
 
 constexpr KeyRestriction GetKeyRestrictionByProfile(
     CertificateProfile profile) {
-  return profile == ENTERPRISE_VTPM_EK_CERTIFICATE
+  return (profile == ENTERPRISE_VTPM_EK_CERTIFICATE ||
+          profile == ARC_TPM_CERTIFYING_KEY_CERTIFICATE)
              ? KeyRestriction::kRestricted
              : KeyRestriction::kUnrestricted;
 }
