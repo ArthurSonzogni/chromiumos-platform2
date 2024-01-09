@@ -2913,7 +2913,7 @@ static void sl_set_supported(struct sl_context* ctx) {
 // cursor. If we do not do this, the cursor will be invisible, see b/204724669
 // for details.
 static void sl_initialize_cursor(struct sl_context* ctx) {
-  xcb_generic_error_t* err;
+  [[maybe_unused]] xcb_generic_error_t* err;
   xcb_void_cookie_t cookie;
 
   // Load the "cursor" font, which is a built-in set of fonts, documented at
