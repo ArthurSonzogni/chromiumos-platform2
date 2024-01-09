@@ -69,14 +69,6 @@ TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusForNonTerminalStatus) {
   wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kWaiting);
 }
 
-TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusWorkaroundForCancelling) {
-  base::MockCallback<OnTerminalStatusCallback> callback;
-  EXPECT_CALL(callback, Run(mojom::DiagnosticRoutineStatusEnum::kCancelled))
-      .Times(1);
-  auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
-  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kCancelling);
-}
-
 // Passing in two terminal status should invoke the callback only once.
 TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusOnlyOnce) {
   base::MockCallback<OnTerminalStatusCallback> callback;

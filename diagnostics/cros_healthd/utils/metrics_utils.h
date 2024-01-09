@@ -76,9 +76,6 @@ enum class CrosHealthdEventCategory {
 // Wrap |on_terminal_status_cb| in a repeating callback that invokes
 // |on_terminal_status_cb| with the first terminal routine status it receives.
 //
-// An exception is the kCancelling status. We'll treat it as kCancelled since
-// |SubprocRoutine| might never turning into kCancelled status.
-//
 // Terminal status mean these enums
 // - kPassed
 // - kFailed

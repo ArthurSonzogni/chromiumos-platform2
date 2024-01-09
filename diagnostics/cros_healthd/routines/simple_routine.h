@@ -18,7 +18,7 @@ namespace diagnostics {
 // Provides a convenient way to construct a simple routine. If your routine has
 // any of the following features, this class should NOT be used:
 // * User interaction - simple routines are all non-interactive.
-// * Running subprocesses - use SubprocRoutine instead.
+// * Running subprocesses - use executor instead.
 // * Long runtime - simple routines cannot be cancelled, so only short-lived
 //                  routines should use this class.
 //
