@@ -1267,12 +1267,40 @@ TPM_RC TpmUtilityImpl::CreateKeyPairInner(
     public_area.object_attributes &= (~kUserWithAuth);
   }
 
-  // Match the symmetric scheme of the SRK, which is the only possible parent
-  // key for now.
   if (public_area.object_attributes & kRestricted) {
-    public_area.parameters.asym_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.asym_detail.symmetric.key_bits.aes = 128;
-    public_area.parameters.asym_detail.symmetric.mode.aes = TPM_ALG_CFB;
+    if ((public_area.object_attributes & kDecrypt) &&
+        (public_area.object_attributes & kSign)) {
+      // There's no restricted key that allows both decryption (storage) and
+      // signing.
+      LOG(ERROR)
+          << __func__
+          << ": Unsupported combination of kRestricted | kDecrypt | kSign";
+      // TPM will return TPM_RC_SCHEME anyway, so let's return that here to
+      // avoid an extra call to TPM.
+      return TPM_RC_SCHEME;
+    }
+
+    // For a restricted decryption key (storage key), match the symmetric scheme
+    // of the SRK, which is the only possible parent  key for now.
+    if (public_area.object_attributes & kDecrypt) {
+      public_area.parameters.asym_detail.symmetric.algorithm = TPM_ALG_AES;
+      public_area.parameters.asym_detail.symmetric.key_bits.aes = 128;
+      public_area.parameters.asym_detail.symmetric.mode.aes = TPM_ALG_CFB;
+    }
+
+    // If a restricted key is allows signing, then the scheme must be specified.
+    if (public_area.object_attributes & kSign) {
+      if (public_area.type == TPM_ALG_ECC) {
+        public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_ECDSA;
+        public_area.parameters.ecc_detail.scheme.details.ecdsa.hash_alg =
+            TPM_ALG_SHA256;
+      }
+      if (public_area.type == TPM_ALG_RSA) {
+        public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_RSASSA;
+        public_area.parameters.rsa_detail.scheme.details.rsassa.hash_alg =
+            TPM_ALG_SHA256;
+      }
+    }
   }
 
   TPML_PCR_SELECTION creation_pcrs = {};
