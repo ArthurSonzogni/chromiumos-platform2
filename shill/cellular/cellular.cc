@@ -3843,6 +3843,86 @@ bool Cellular::IsModemL850GL() {
   return modem_type_ == ModemType::kL850GL;
 }
 
+Cellular::ModemMR Cellular::GetModemFWRevision() {
+  const struct {
+    ModemType modem_type;
+    ModemMR mr;
+    std::string_view version;
+  } kModemMRTable[] = {
+      {ModemType::kL850GL, ModemMR::kModemMR1, "^18500.5001.[0-9]{2}.00.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR2, "^18500.5001.[0-9]{2}.01.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR3, "^18500.5001.[0-9]{2}.02.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR4, "^18500.5001.[0-9]{2}.03.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR5, "^18500.5001.[0-9]{2}.04.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR6, "^18500.5001.[0-9]{2}.05.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR7, "^18500.5001.[0-9]{2}.06.*"},
+      {ModemType::kL850GL, ModemMR::kModemMR8, "^18500.5001.[0-9]{2}.07.*"},
+      {ModemType::kFM101, ModemMR::kModemMR1, "^1950[0-1].0000.00.01.01.52"},
+      {ModemType::kFM101, ModemMR::kModemMR2, "^1950[0-1].0000.00.01.02.80"}};
+
+  for (const auto& info : kModemMRTable) {
+    if (modem_type_ != info.modem_type) {
+      continue;
+    }
+    if (RE2::PartialMatch(firmware_revision_, re2::RE2(info.version))) {
+      return info.mr;
+    }
+  }
+  return ModemMR::kModemMRUnknown;
+}
+
+std::string Cellular::ModemTypeEnumToString(ModemType type) {
+  switch (type) {
+    case ModemType::kL850GL:
+      return "L850GL";
+    case ModemType::kFM101:
+      return "FM101";
+    case ModemType::kFM350:
+      return "FM350";
+    case ModemType::kOther:
+      return "OTHER";
+    case ModemType::kUnknown:
+    default:
+      return "UNKNOWN";
+  }
+}
+
+std::string Cellular::ModemMREnumToString(ModemMR mr) {
+  switch (mr) {
+    case ModemMR::kModemMR1:
+      return "MR1";
+    case ModemMR::kModemMR2:
+      return "MR2";
+    case ModemMR::kModemMR3:
+      return "MR3";
+    case ModemMR::kModemMR4:
+      return "MR4";
+    case ModemMR::kModemMR5:
+      return "MR5";
+    case ModemMR::kModemMR6:
+      return "MR6";
+    case ModemMR::kModemMR7:
+      return "MR7";
+    case ModemMR::kModemMR8:
+      return "MR8";
+    case ModemMR::kModemMRUnknown:
+    default:
+      return "UNKNOWN";
+  }
+}
+
+bool Cellular::ShouldForceInitEpsBearerSettings() {
+  if (IsModemFM101() && (GetModemFWRevision() > ModemMR::kModemMR1)) {
+    return true;
+  }
+
+  if (IsModemL850GL() && (GetModemFWRevision() > ModemMR::kModemMR7)) {
+    return true;
+  }
+
+  return false;
+}
+
 void Cellular::StartLocationPolling() {
   CHECK(capability_);
   if (!capability_->IsLocationUpdateSupported()) {

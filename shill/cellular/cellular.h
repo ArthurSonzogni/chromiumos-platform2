@@ -406,11 +406,29 @@ class Cellular : public Device,
     kFM350,
     kOther,
   };
+
+  // Enum for modem firmware maintenance revision.
+  enum class ModemMR {
+    kModemMRUnknown = 0,
+    kModemMR1 = 1,
+    kModemMR2 = 2,
+    kModemMR3 = 3,
+    kModemMR4 = 4,
+    kModemMR5 = 5,
+    kModemMR6 = 6,
+    kModemMR7 = 7,
+    kModemMR8 = 8,
+  };
+
   bool IsModemFM101();
   bool IsModemFM350();
   bool IsModemL850GL();
+  ModemMR GetModemFWRevision();
+  std::string ModemTypeEnumToString(ModemType type);
+  std::string ModemMREnumToString(ModemMR mr);
   ModemType modem_type() { return modem_type_; }
 
+  bool ShouldForceInitEpsBearerSettings();
   // DBus property getters
   const std::string& dbus_service() const { return dbus_service_; }
   const RpcIdentifier& dbus_path() const { return dbus_path_; }

@@ -25,6 +25,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
+#include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_helpers.h"
@@ -883,23 +884,40 @@ bool CellularCapability3gpp::IsDualStackSupported() {
     return true;
 
   SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString()
-                << " MCCMNC: " << cellular()->mobile_operator_info()->mccmnc();
+                << " MCCMNC: " << cellular()->mobile_operator_info()->mccmnc()
+                << " ModemType: "
+                << cellular()->ModemTypeEnumToString(cellular()->modem_type())
+                << " FW MR: "
+                << cellular()->ModemMREnumToString(
+                       cellular()->GetModemFWRevision());
   // Disable dual-stack on L850 + Verizon
   const struct {
     Cellular::ModemType modem_type;
     std::vector<std::string> operator_code;
+    std::vector<Cellular::ModemMR> mr;
   } kAffectedDevices[] = {
-      {Cellular::ModemType::kL850GL, {"310995", "311270", "311480"}},
+      {Cellular::ModemType::kL850GL,
+       {"310995", "311270", "311480"},
+       {Cellular::ModemMR::kModemMR1, Cellular::ModemMR::kModemMR2,
+        Cellular::ModemMR::kModemMR3, Cellular::ModemMR::kModemMR4,
+        Cellular::ModemMR::kModemMR5, Cellular::ModemMR::kModemMR6}},
   };
 
   for (const auto& affected_device : kAffectedDevices) {
-    if (cellular()->modem_type() == affected_device.modem_type) {
-      if (affected_device.operator_code.size() == 0 ||
-          std::find(affected_device.operator_code.begin(),
-                    affected_device.operator_code.end(),
-                    cellular()->mobile_operator_info()->mccmnc()) !=
-              affected_device.operator_code.end())
+    if (cellular()->modem_type() != affected_device.modem_type) {
+      continue;
+    }
+    if (affected_device.operator_code.size() == 0 ||
+        std::find(affected_device.operator_code.begin(),
+                  affected_device.operator_code.end(),
+                  cellular()->mobile_operator_info()->mccmnc()) !=
+            affected_device.operator_code.end()) {
+      if (affected_device.mr.size() == 0 ||
+          std::find(affected_device.mr.begin(), affected_device.mr.end(),
+                    cellular()->GetModemFWRevision()) !=
+              affected_device.mr.end()) {
         return false;
+      }
     }
   }
 
@@ -1129,7 +1147,7 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   /* Force initial EPS bearer settings is currently only required for FM101
    * MR2 firmware. Hence setting it only for FM101 to limit the impact */
   if (cellular()->GetForceInitEpsBearerSettings() &&
-      cellular()->IsModemFM101()) {
+      cellular()->ShouldForceInitEpsBearerSettings()) {
     properties->Set<bool>(CellularBearer::kMMForceProperty, true);
   }
 }
