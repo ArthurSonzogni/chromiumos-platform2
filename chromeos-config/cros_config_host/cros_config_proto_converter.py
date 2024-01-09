@@ -31,7 +31,6 @@ from chromiumos.config.api import topology_pb2
 from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import ui_config_pb2
 from chromiumos.config.payload import config_bundle_pb2
-from chromiumos.config.test import fake_config as fake_config_mod
 from google.protobuf import json_format
 from google.protobuf import wrappers_pb2
 from lxml import etree
@@ -122,11 +121,6 @@ def parse_args(argv):
         default=pathlib.Path(__file__).parent / DTD_FILE,
         type=pathlib.Path,
         help="Path to media_profiles.dtd. Defaults to the script's cwd.",
-    )
-    parser.add_argument(
-        "--regen",
-        action="store_true",
-        help="Shortcut to regenerate all generated files in test_data.",
     )
     return parser.parse_args(argv)
 
@@ -4187,13 +4181,6 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     opts = parse_args(argv)
-    if opts.regen:
-        opts.project_configs = [fake_config_mod.FAKE_PROJECT_CONFIG]
-        opts.program_config = fake_config_mod.FAKE_PROGRAM_CONFIG
-        opts.output = pathlib.Path(
-            "test_data/proto_converter/sw_build_config/fake_project.json"
-        )
-        opts.dtd_path = pathlib.Path(__file__).parent / "media_profiles.dtd"
     Main(opts.project_configs, opts.program_config, opts.output, opts.dtd_path)
 
 

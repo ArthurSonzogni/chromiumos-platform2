@@ -2713,10 +2713,10 @@ Then update generated files and the `README.md` automatically via (unit tests
 will check this):
 
 ```bash
-src/platform2/chromeos-config/regen.sh
+src/platform2/chromeos-config/regen.py
 ```
 
-You'll want to run `./regen.sh` when adding or changing the schema, power
+You'll want to run `./regen.py` when adding or changing the schema, power
 management preferences, or anything which modifies the outputs of
 `cros_config_schema`.
 

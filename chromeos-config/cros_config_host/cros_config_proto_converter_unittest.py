@@ -8,14 +8,11 @@
 # pylint: disable=missing-docstring,protected-access
 
 import pathlib
-import subprocess
 import unittest
 
 # pylint: disable=import-error
 from chromiumos.config.test import fake_config as fake_config_mod
 import cros_config_proto_converter
-
-from chromite.lib import cros_test_lib
 
 
 # pylint: enable=import-error
@@ -60,56 +57,6 @@ class ParseArgsTests(unittest.TestCase):
         )
         self.assertEqual(args.program_config, "program_config")
         self.assertEqual(args.output, "output")
-
-
-class MainTest(cros_test_lib.TempDirTestCase):
-    """Test the main function and full transform diff."""
-
-    def test_full_transform(self):
-        output_dir = self.tempdir / "proto_converter"
-        output_file = output_dir / "sw_build_config/fake_project.json"
-        dtd_path = THIS_DIR / "media_profiles.dtd"
-        cros_config_proto_converter.Main(
-            project_configs=[PROJECT_CONFIG_FILE],
-            program_config=PROGRAM_CONFIG_FILE,
-            output=output_file,
-            dtd_path=dtd_path,
-        )
-
-        # Replace the "build-path" fields which reference output_dir with the
-        # source directory.  The project name needs to be prepended to
-        # TEST_DATA_DIR because of the logic in cros_config_proto_converter.py
-        # to avoid portage file installation collisions.
-        contents = output_file.read_text()
-        project_name = TEST_DATA_DIR.name
-        contents = contents.replace(
-            str(output_dir), f"{project_name}/{TEST_DATA_DIR}"
-        )
-        output_file.write_text(contents)
-
-        # Check all the files in output_dir
-        # pylint: disable=subprocess-run-check
-        result = subprocess.run(
-            [
-                "diff",
-                "-ru",
-                TEST_DATA_DIR,
-                output_dir,
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf-8",
-        )
-        # pylint: enable=subprocess-run-check
-        if result.returncode:
-            msg = [""]  # to start with a newline
-            msg.append(result.stderr)
-            msg.append(result.stdout)
-            msg.append(
-                "Fake project transform does not match.\n"
-                "Please run ./regen.sh and amend your changes if necessary.\n"
-            )
-            self.fail("\n".join(msg))
 
 
 class TransformBuildConfigsTest(unittest.TestCase):

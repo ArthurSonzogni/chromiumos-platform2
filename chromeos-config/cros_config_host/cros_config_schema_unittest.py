@@ -7,7 +7,6 @@
 
 import contextlib
 import io
-import itertools
 import json
 import os
 import re
@@ -893,121 +892,7 @@ class SchemaContentsTests(cros_test_lib.TestCase):
             )
 
 
-class MainTests(cros_test_lib.TempDirTestCase):
-    def assertFileEqual(self, file_expected, file_actual):
-        self.assertTrue(
-            os.path.isfile(file_expected),
-            f"Expected file does not exist at path: {file_expected}",
-        )
-
-        self.assertTrue(
-            os.path.isfile(file_actual),
-            f"Actual file does not exist at path: {file_actual}",
-        )
-
-        regen_message = (
-            "Please run ./regen.sh in the chromeos-config directory."
-        )
-
-        with open(file_expected, "r", encoding="utf-8") as expected, open(
-            file_actual, "r", encoding="utf-8"
-        ) as actual:
-            for line_num, (line_expected, line_actual) in enumerate(
-                itertools.zip_longest(expected, actual)
-            ):
-                self.assertEqual(
-                    line_expected,
-                    line_actual,
-                    (
-                        f"Files differ at line {line_num}\n"
-                        f"Expected: {line_expected}\n"
-                        f"Actual  : {line_actual}\n"
-                        f"Path of expected output file: {file_expected}\n"
-                        f"Path of actual output file: {file_actual}\n"
-                        f"{regen_message}"
-                    ),
-                )
-
-    def assertMultilineStringEqual(self, str_expected, str_actual):
-        expected = str_expected.strip().split("\n")
-        actual = str_actual.strip().split("\n")
-        for line_num, (line_expected, line_actual) in enumerate(
-            itertools.zip_longest(expected, actual)
-        ):
-            self.assertEqual(
-                line_expected,
-                line_actual,
-                (
-                    f"Strings differ at line {line_num}\n"
-                    f"Expected: {line_expected!r}\n"
-                    f"Actual  : {line_actual!r}\n"
-                ),
-            )
-
-    def testMainWithExampleWithBuild(self):
-        json_output = os.path.join(self.tempdir, "output.json")
-        cros_config_schema.Main(
-            None,
-            os.path.join(this_dir, "../test_data/test.yaml"),
-            json_output,
-        )
-
-        expected_json_file = os.path.join(
-            this_dir, "../test_data/test_build.json"
-        )
-        self.assertFileEqual(expected_json_file, json_output)
-
-    def testMainWithExampleWithoutBuild(self):
-        output = os.path.join(self.tempdir, "output")
-        cros_config_schema.Main(
-            None,
-            os.path.join(this_dir, "../test_data/test.yaml"),
-            output,
-            filter_build_details=True,
-        )
-
-        expected_file = os.path.join(this_dir, "../test_data/test.json")
-        self.assertFileEqual(expected_file, output)
-
-    def testMainArmExample(self):
-        json_output = os.path.join(self.tempdir, "output.json")
-        cros_config_schema.Main(
-            None,
-            os.path.join(this_dir, "../test_data/test_arm.yaml"),
-            json_output,
-            filter_build_details=True,
-        )
-
-        expected_json_file = os.path.join(
-            this_dir, "../test_data/test_arm.json"
-        )
-        self.assertFileEqual(expected_json_file, json_output)
-
-    def testMainImportExample(self):
-        output = os.path.join(self.tempdir, "output")
-        cros_config_schema.Main(
-            None,
-            os.path.join(this_dir, "../test_data/test_import.yaml"),
-            output,
-        )
-        expected_file = os.path.join(this_dir, "../test_data/test_import.json")
-        self.assertFileEqual(expected_file, output)
-
-    def testMainMergeExample(self):
-        output = os.path.join(self.tempdir, "output")
-        base_path = os.path.join(this_dir, "../test_data")
-        cros_config_schema.Main(
-            None,
-            None,
-            output,
-            configs=[
-                os.path.join(base_path, "test_merge_base.yaml"),
-                os.path.join(base_path, "test_merge_overlay.yaml"),
-            ],
-        )
-        expected_file = os.path.join(this_dir, "../test_data/test_merge.json")
-        self.assertFileEqual(expected_file, output)
-
+class MainTests(cros_test_lib.TestCase):
     def testIdentityTableOut(self):
         base_path = os.path.join(this_dir, "../test_data")
         output = io.BytesIO()
