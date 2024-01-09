@@ -18,6 +18,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
+#include <vpd/vpd.h>
 
 #include "debugd/src/constants.h"
 #include "debugd/src/error_utils.h"
@@ -574,47 +575,30 @@ void DebugdDBusAdaptor::StopVmPluginDispatcher() {
 }
 
 bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
-  std::string stderr;
-  int result = ProcessWithOutput::RunProcess(
-      "/usr/sbin/vpd",
-      {"-i", "RW_VPD", "-s", std::string(kShouldSendRlzPingKey) + "=0"},
-      true,     // requires root
-      false,    // disable_sandbox
-      nullptr,  // stdin
-      nullptr,  // stdout
-      &stderr, error);
-  if (result != EXIT_SUCCESS) {
-    std::string error_string =
-        "Failed to set vpd key: " + std::string(kShouldSendRlzPingKey) +
-        " with exit code: " + std::to_string(result) + " with error: " + stderr;
+  std::map<std::string, std::optional<std::string>> dict = {
+      {std::string(kShouldSendRlzPingKey), "0"},
+      // Remove |kRlzEmbargoEndDateKey|, which is no longer useful after
+      // |kShouldSendRlzPingKey| is updated.
+      {std::string(kRlzEmbargoEndDateKey), std::nullopt},
+  };
+
+  if (!vpd::Vpd().WriteValues(vpd::VpdRw, dict)) {
+    std::string error_string = "Failed to write vpd keys";
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
     PLOG(ERROR) << error_string;
     return false;
   }
-  // Remove |kRlzEmbargoEndDateKey|, which is no longer useful after
-  // |kShouldSendRlzPingKey| is updated.
-  result = ProcessWithOutput::RunProcess(
-      "/usr/sbin/vpd",
-      {"-i", "RW_VPD", "-d", std::string(kRlzEmbargoEndDateKey)},
-      true,     // requires root
-      false,    // disable_sandbox
-      nullptr,  // stdin
-      nullptr,  // stdout
-      &stderr, error);
-  if (result != EXIT_SUCCESS) {
-    std::string error_string =
-        "Failed to delete vpd key: " + std::string(kRlzEmbargoEndDateKey) +
-        " with exit code: " + std::to_string(result) + " with error: " + stderr;
-    DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
-    PLOG(ERROR) << error_string;
-  }
+
   // Regenerate the vpd cache log.
-  result = ProcessWithOutput::RunProcess("/usr/sbin/dump_vpd_log", {"--force"},
-                                         true,     // requires root
-                                         false,    // disable_sandbox
-                                         nullptr,  // stdin
-                                         nullptr,  // stdout
-                                         &stderr, error);
+  // TODO(b/77594752): remove when dump_vpd_log consumers are gone.
+  std::string stderr;
+  int result =
+      ProcessWithOutput::RunProcess("/usr/sbin/dump_vpd_log", {"--force"},
+                                    true,     // requires root
+                                    false,    // disable_sandbox
+                                    nullptr,  // stdin
+                                    nullptr,  // stdout
+                                    &stderr, error);
   if (result != EXIT_SUCCESS) {
     std::string error_string =
         "Failed to dump vpd log with exit code: " + std::to_string(result) +
@@ -622,9 +606,8 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
     PLOG(ERROR) << error_string;
   }
-  // The client only cares if updating |kShouldSendRlzPingKey| is successful, so
-  // returns true regardless of the result of removing |kRlzEmbargoEndDateKey|
-  // or the cache log update.
+  // The client only cares if updating |kShouldSendRlzPingKey| is successful,
+  // so returns true regardless of the result of the cache log update.
   return true;
 }
 

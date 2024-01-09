@@ -162,6 +162,7 @@ static_library("libdebugd") {
   libs = [
     "policy",
     "rootdev",
+    "vpd",
   ]
   deps = [
     ":cryptohome-proto",
