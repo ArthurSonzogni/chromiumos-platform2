@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -13,6 +14,7 @@ group("all") {
     ":install_policy",
     ":install_systemd",
     ":install_tmpfiles_config",
+    ":vtpm_client",
     ":vtpmd",
   ]
   if (use.test) {
@@ -47,6 +49,11 @@ generate_dbus_adaptors("vtpm-adaptors") {
   sources = [ "dbus_bindings/org.chromium.Vtpm.xml" ]
   dbus_adaptors_out_dir = "include/vtpm/dbus_adaptors"
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
+}
+
+generate_dbus_proxies("vtpm_proxies") {
+  sources = [ "dbus_bindings/org.chromium.Vtpm.xml" ]
+  proxy_output_file = "include/vtpm/dbus_proxies.h"
 }
 
 source_set("vtpm_server_library") {
@@ -87,6 +94,20 @@ config("vtpmd_config") {
     "tpm_manager",
     "trunks",
     "hwsec-foundation",
+  ]
+}
+
+executable("vtpm_client") {
+  sources = [
+    "client/vtpm_client.cc",
+    "client/vtpm_dbus_proxy.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  libs = [ "trunks" ]
+  deps = [
+    ":interface_proto",
+    ":vtpm_proxies",
   ]
 }
 
@@ -154,6 +175,8 @@ if (use.test) {
       "backends/vek_cert_test.cc",
       "backends/vek_test.cc",
       "backends/vsrk_test.cc",
+      "client/vtpm_dbus_proxy.cc",
+      "client/vtpm_dbus_proxy_test.cc",
       "commands/direct_forward_command_test.cc",
       "commands/forward_command_test.cc",
       "commands/get_capability_command_test.cc",
