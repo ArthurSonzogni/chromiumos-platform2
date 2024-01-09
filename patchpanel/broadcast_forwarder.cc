@@ -26,7 +26,6 @@
 #include <net-base/byte_utils.h>
 
 #include "patchpanel/net_util.h"
-#include "patchpanel/socket.h"
 
 namespace {
 

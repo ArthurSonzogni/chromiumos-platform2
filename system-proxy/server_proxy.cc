@@ -24,7 +24,6 @@
 #include <base/threading/thread.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 #include <net-base/socket.h>
 

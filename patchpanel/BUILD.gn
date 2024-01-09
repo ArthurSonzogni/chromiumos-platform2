@@ -103,7 +103,6 @@ source_set("util_sources") {
     "mac_address_generator.cc",
     "message_dispatcher.cc",
     "net_util.cc",
-    "socket.cc",
     "socket_forwarder.cc",
     "subnet.cc",
     "subnet_pool.cc",

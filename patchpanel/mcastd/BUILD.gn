@@ -23,7 +23,6 @@ executable("mcastd") {
     "../dns/io_buffer.cc",
     "../multicast_forwarder.cc",
     "../net_util.cc",
-    "../socket.cc",
     "../system.cc",
     "main.cc",
   ]
