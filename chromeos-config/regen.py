@@ -79,9 +79,7 @@ def regen_schema_json(output_path: Path) -> None:
     schema = dict(_load_schema())
     schema["_comment"] = "This file is auto-generated; to update, run regen.py"
     schema.pop("typeDefs")
-    output_path.write_text(
-        libcros_schema.FormatJson(schema) + "\n", encoding="utf-8"
-    )
+    output_path.write_text(libcros_schema.FormatJson(schema), encoding="utf-8")
 
 
 def regen_proto_converter(output_path: Path) -> None:

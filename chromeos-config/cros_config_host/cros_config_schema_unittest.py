@@ -7,15 +7,12 @@
 
 import contextlib
 import io
-import json
 import os
 import re
 
 # pylint: disable=import-error
 import cros_config_schema
 import jsonschema
-import libcros_schema
-from packaging import version
 
 from chromite.lib import cros_test_lib
 
@@ -98,8 +95,7 @@ class ParseArgsTests(cros_test_lib.TestCase):
 
 class TransformConfigTests(cros_test_lib.TestCase):
     def testBasicTransform(self):
-        result = cros_config_schema.TransformConfig(BASIC_CONFIG)
-        json_dict = json.loads(result)
+        json_dict = cros_config_schema.TransformConfig(BASIC_CONFIG)
         self.assertEqual(len(json_dict), 1)
         configs = json_dict["chromeos"]["configs"]
         self.assertEqual(1, len(configs))
@@ -113,10 +109,9 @@ class TransformConfigTests(cros_test_lib.TestCase):
         )
 
     def testTransformConfig_NoMatch(self):
-        result = cros_config_schema.TransformConfig(
+        json_dict = cros_config_schema.TransformConfig(
             BASIC_CONFIG, model_filter_regex="abc123"
         )
-        json_dict = json.loads(result)
         self.assertEqual(0, len(json_dict["chromeos"]["configs"]))
 
     def testTransformConfig_FilterMatch(self):
@@ -164,10 +159,9 @@ chromeos:
               signature-id: '{{$name}}'
 """
 
-        result = cros_config_schema.TransformConfig(
+        json_dict = cros_config_schema.TransformConfig(
             scoped_config, model_filter_regex="bar"
         )
-        json_dict = json.loads(result)
         configs = json_dict["chromeos"]["configs"]
         self.assertEqual(1, len(configs))
         model = configs[0]
@@ -201,8 +195,7 @@ chromeos:
             firmware:
               no-firmware: True
 """
-        result = cros_config_schema.TransformConfig(scoped_config)
-        json_dict = json.loads(result)
+        json_dict = cros_config_schema.TransformConfig(scoped_config)
         config = json_dict["chromeos"]["configs"][0]
         audio_main = config["audio"]["main"]
         self.assertEqual(
@@ -216,16 +209,16 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
         self._schema = cros_config_schema.ReadSchema()
 
     def testBasicSchemaValidation(self):
-        libcros_schema.ValidateConfigSchema(
-            self._schema, cros_config_schema.TransformConfig(BASIC_CONFIG)
+        jsonschema.validate(
+            cros_config_schema.TransformConfig(BASIC_CONFIG), self._schema
         )
 
     def testMissingRequiredElement(self):
         config = re.sub(r" *cras-config-dir: .*", "", BASIC_CONFIG)
         config = re.sub(r" *volume: .*", "", BASIC_CONFIG)
         try:
-            libcros_schema.ValidateConfigSchema(
-                self._schema, cros_config_schema.TransformConfig(config)
+            jsonschema.validate(
+                cros_config_schema.TransformConfig(config), self._schema
             )
         except jsonschema.ValidationError as err:
             self.assertIn("required", err.__str__())
@@ -234,8 +227,8 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
     def testReferencedNonExistentTemplateVariable(self):
         config = re.sub(r" *$card: .*", "", BASIC_CONFIG)
         try:
-            libcros_schema.ValidateConfigSchema(
-                self._schema, cros_config_schema.TransformConfig(config)
+            jsonschema.validate(
+                cros_config_schema.TransformConfig(config), self._schema
             )
         except cros_config_schema.ValidationError as err:
             self.assertIn("Referenced template variable", err.__str__())
@@ -244,18 +237,14 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
     def testSkuIdOutOfBound(self):
         config = BASIC_CONFIG.replace("$sku-id: 0", "$sku-id: 0x80000000")
         with self.assertRaises(jsonschema.ValidationError) as ctx:
-            libcros_schema.ValidateConfigSchema(
-                self._schema, cros_config_schema.TransformConfig(config)
+            jsonschema.validate(
+                cros_config_schema.TransformConfig(config), self._schema
             )
-        if version.parse(jsonschema.__version__) >= version.Version("3.0.0"):
-            self.assertIn(
-                "%i is greater than the maximum" % 0x80000000,
-                str(ctx.exception),
-            )
-            self.assertIn("sku-id", str(ctx.exception))
-        else:
-            self.assertIn("'sku-id': %i" % 0x80000000, str(ctx.exception))
-            self.assertIn("is not valid", str(ctx.exception))
+        self.assertIn(
+            "%i is greater than the maximum" % 0x80000000,
+            str(ctx.exception),
+        )
+        self.assertIn("sku-id", str(ctx.exception))
 
 
 class ValidateFingerprintSchema(cros_test_lib.TestCase):
@@ -277,9 +266,7 @@ class ValidateFingerprintSchema(cros_test_lib.TestCase):
                 ],
             },
         }
-        libcros_schema.ValidateConfigSchema(
-            self._schema, libcros_schema.FormatJson(config)
-        )
+        jsonschema.validate(config, self._schema)
 
     def testROVersionMissingBoardName(self):
         config = {
@@ -298,9 +285,7 @@ class ValidateFingerprintSchema(cros_test_lib.TestCase):
             },
         }
         with self.assertRaises(jsonschema.exceptions.ValidationError) as ctx:
-            libcros_schema.ValidateConfigSchema(
-                self._schema, libcros_schema.FormatJson(config)
-            )
+            jsonschema.validate(config, self._schema)
 
         self.assertEqual(
             ctx.exception.message, "'board' is a dependency of 'ro-version'"
@@ -346,14 +331,9 @@ class ValidateCameraSchema(cros_test_lib.TestCase):
                 ],
             },
         }
-        libcros_schema.ValidateConfigSchema(
-            self._schema, libcros_schema.FormatJson(config)
-        )
+        jsonschema.validate(config, self._schema)
 
     def testInvalidUsbId(self):
-        if version.parse(jsonschema.__version__) < version.Version("3.0.0"):
-            self.skipTest("jsonschema needs upgrade to support conditionals")
-
         for invalid_usb_id in ("0123-abcd", "0123:Abcd", "123:abcd"):
             config = {
                 "chromeos": {
@@ -381,9 +361,7 @@ class ValidateCameraSchema(cros_test_lib.TestCase):
                 },
             }
             with self.assertRaises(jsonschema.ValidationError) as ctx:
-                libcros_schema.ValidateConfigSchema(
-                    self._schema, libcros_schema.FormatJson(config)
-                )
+                jsonschema.validate(config, self._schema)
             self.assertIn(
                 "%r does not match" % invalid_usb_id, str(ctx.exception)
             )
@@ -551,7 +529,7 @@ chromeos:
             },
         }
         with self.assertRaises(cros_config_schema.ValidationError) as ctx:
-            cros_config_schema.ValidateConfig(json.dumps(config))
+            cros_config_schema.ValidateConfig(config)
         self.assertIn("File collision detected", str(ctx.exception))
 
     def testCustomLabelWithExternalStylusAndCloudGamingFeature(self):
@@ -606,7 +584,7 @@ chromeos:
             },
         }
         with self.assertRaises(cros_config_schema.ValidationError) as ctx:
-            cros_config_schema.ValidateConfig(json.dumps(config))
+            cros_config_schema.ValidateConfig(config)
 
         self.assertRegex(
             str(ctx.exception),
@@ -637,7 +615,7 @@ chromeos:
                 ],
             },
         }
-        cros_config_schema.ValidateConfig(json.dumps(config))
+        cros_config_schema.ValidateConfig(config)
 
     def testFingerprintFirmwareROVersionsValid(self):
         config = {
@@ -654,7 +632,7 @@ chromeos:
                 ],
             },
         }
-        cros_config_schema.ValidateConfig(json.dumps(config))
+        cros_config_schema.ValidateConfig(config)
 
     def testSideVolumeButtonConsistent(self):
         config = {
@@ -680,7 +658,7 @@ chromeos:
                 ],
             },
         }
-        cros_config_schema.ValidateConfig(json.dumps(config))
+        cros_config_schema.ValidateConfig(config)
 
     def testSideVolumeButtonInconsistent(self):
         config = {
@@ -699,7 +677,7 @@ chromeos:
             },
         }
         try:
-            cros_config_schema.ValidateConfig(json.dumps(config))
+            cros_config_schema.ValidateConfig(config)
         except cros_config_schema.ValidationError as err:
             self.assertIn("has-side-volume-button is not", err.__str__())
         else:
@@ -738,7 +716,7 @@ chromeos:
                 ],
             },
         }
-        cros_config_schema.ValidateConfig(json.dumps(config))
+        cros_config_schema.ValidateConfig(config)
 
     def testFeatureDeviceTypeInvalid(self):
         configs = [
@@ -780,21 +758,19 @@ chromeos:
         for config in configs:
             with self.assertRaises(cros_config_schema.ValidationError) as ctx:
                 cros_config_schema.ValidateConfig(
-                    json.dumps(
-                        {
-                            "chromeos": {
-                                "configs": config
-                                + [
-                                    {
-                                        "identity": {
-                                            "platform-name": "foo",
-                                            "sku-id": 2,
-                                        },
-                                    }
-                                ],
-                            }
+                    {
+                        "chromeos": {
+                            "configs": config
+                            + [
+                                {
+                                    "identity": {
+                                        "platform-name": "foo",
+                                        "sku-id": 2,
+                                    },
+                                }
+                            ],
                         }
-                    )
+                    }
                 )
 
             self.assertRegex(
@@ -817,7 +793,7 @@ chromeos:
                 ],
             },
         }
-        cros_config_schema.ValidateConfig(json.dumps(config))
+        cros_config_schema.ValidateConfig(config)
 
     def testHdmiCecInvalid(self):
         config = {
@@ -835,7 +811,7 @@ chromeos:
             },
         }
         try:
-            cros_config_schema.ValidateConfig(json.dumps(config))
+            cros_config_schema.ValidateConfig(config)
         except cros_config_schema.ValidationError as err:
             self.assertIn("hdmi-cec is present but", err.__str__())
         else:
@@ -844,10 +820,8 @@ chromeos:
 
 class FilterBuildElements(cros_test_lib.TestCase):
     def testBasicFilterBuildElements(self):
-        json_dict = json.loads(
-            cros_config_schema.FilterBuildElements(
-                cros_config_schema.TransformConfig(BASIC_CONFIG), ["/firmware"]
-            )
+        json_dict = cros_config_schema.FilterBuildElements(
+            cros_config_schema.TransformConfig(BASIC_CONFIG), ["/firmware"]
         )
         self.assertNotIn("firmware", json_dict["chromeos"]["configs"][0])
 

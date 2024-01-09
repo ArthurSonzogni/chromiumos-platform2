@@ -14,7 +14,6 @@ import json
 import os
 import re
 
-from jsonschema import validate  # pylint: disable=import-error
 import yaml  # pylint: disable=import-error
 
 
@@ -24,7 +23,10 @@ def FormatJson(config):
     Args:
         config: Dictionary to be output
     """
-    return json.dumps(config, sort_keys=True, indent=2, separators=(",", ": "))
+    return (
+        json.dumps(config, sort_keys=True, indent=2, separators=(",", ": "))
+        + "\n"
+    )
 
 
 def LoadYaml(stream):
@@ -48,19 +50,6 @@ def LoadYaml(stream):
         loader = yaml.SafeLoader
 
     return yaml.load(stream, Loader=loader)
-
-
-def ValidateConfigSchema(schema, config):
-    """Validates a transformed config against the schema specified.
-
-    Verifies that the config complies with the schema supplied.
-
-    Args:
-        schema: Loaded schema used to verify the config.
-        config: Config (transformed) that will be verified.
-    """
-    json_config = json.loads(config)
-    validate(json_config, schema)
 
 
 def FindImports(config_file, includes):

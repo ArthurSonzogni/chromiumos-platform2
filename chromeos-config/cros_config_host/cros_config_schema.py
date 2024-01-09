@@ -18,6 +18,7 @@ import sys
 from cros_config_host import configfs
 from cros_config_host import identity_table
 from cros_config_host import libcros_schema
+import jsonschema  # pylint: disable=import-error
 
 
 HERE = Path(__file__).resolve().parent
@@ -357,7 +358,7 @@ def TransformConfig(config, model_filter_regex=None):
         },
     }
 
-    return libcros_schema.FormatJson(json_config)
+    return json_config
 
 
 def _GenerateInferredAshSwitches(device_config):
@@ -396,7 +397,8 @@ def _GenerateInferredAshSwitches(device_config):
     display_properties = device_config.get("displays")
     if display_properties:
         ash_switches.add(
-            "--display-properties=%s" % json.dumps(display_properties)
+            "--display-properties=%s"
+            % json.dumps(display_properties, sort_keys=True)
         )
 
     defer_external_display_timeout = device_config.get("power", {}).get(
@@ -452,7 +454,8 @@ def _GenerateInferredElements(json_config):
     """
     configs = []
     for config in json_config[CHROMEOS][CONFIGS]:
-        ui_elements = config.get("ui", {})
+        config = dict(config)
+        ui_elements = dict(config.get("ui", {}))
 
         identity = config.get("identity", {})
         custom_label_tag = identity.get("custom-label-tag")
@@ -484,12 +487,11 @@ def FilterBuildElements(config, build_only_elements):
         config: Config (transformed) that will be filtered
         build_only_elements: List of strings of paths of fields to be filtered
     """
-    json_config = json.loads(config)
-    json_config = _GenerateInferredElements(json_config)
-    for device_config in json_config[CHROMEOS][CONFIGS]:
+    config = _GenerateInferredElements(config)
+    for device_config in config[CHROMEOS][CONFIGS]:
         _FilterBuildElements(device_config, "", build_only_elements)
 
-    return libcros_schema.FormatJson(json_config)
+    return config
 
 
 def _FilterBuildElements(config, path, build_only_elements):
@@ -918,14 +920,13 @@ def ValidateConfig(config):
     Args:
         config: Config (transformed) that will be verified.
     """
-    json_config = json.loads(config)
-    _ValidateUniqueIdentities(json_config)
-    _ValidateCustomLabelBrandChangesOnly(json_config)
-    _ValidateConsistentFingerprintFirmwareROVersion(json_config)
-    _ValidateConsistentSideVolumeButton(json_config)
-    _ValidateFeatureDeviceTypeIdentities(json_config)
-    _ValidateHdmiCec(json_config)
-    _ValidateFileCollision(json_config)
+    _ValidateUniqueIdentities(config)
+    _ValidateCustomLabelBrandChangesOnly(config)
+    _ValidateConsistentFingerprintFirmwareROVersion(config)
+    _ValidateConsistentSideVolumeButton(config)
+    _ValidateFeatureDeviceTypeIdentities(config)
+    _ValidateHdmiCec(config)
+    _ValidateFileCollision(config)
 
 
 def MergeConfigs(configs):
@@ -941,7 +942,7 @@ def MergeConfigs(configs):
     for yaml_file in configs:
         yaml_with_imports = libcros_schema.ApplyImports(yaml_file)
         json_transformed_file = TransformConfig(yaml_with_imports)
-        json_files.append(json.loads(json_transformed_file))
+        json_files.append(json_transformed_file)
 
     result_json = json_files[0]
     for overlay_json in json_files[1:]:
@@ -981,7 +982,7 @@ def MergeConfigs(configs):
             if not matched:
                 result_json["chromeos"]["configs"].append(to_merge_config)
 
-    return libcros_schema.FormatJson(GenerateFridMatches(result_json))
+    return GenerateFridMatches(result_json)
 
 
 def ReadSchema():
@@ -1027,7 +1028,7 @@ def Main(
     full_json_transform = MergeConfigs(configs)
     json_transform = full_json_transform
 
-    libcros_schema.ValidateConfigSchema(schema, json_transform)
+    jsonschema.validate(schema, json_transform)
     ValidateConfig(json_transform)
     schema_attrs = libcros_schema.GetSchemaPropertyAttrs(schema)
 
@@ -1040,19 +1041,16 @@ def Main(
             json_transform, build_only_elements
         )
     if output:
-        with open(output, "w", encoding="utf-8") as output_stream:
-            # Using print function adds proper trailing newline.
-            print(json_transform, file=output_stream)
+        Path(output).write_text(
+            libcros_schema.FormatJson(json_transform),
+            encoding="utf-8",
+        )
     else:
-        print(json_transform)
+        sys.stdout.write(libcros_schema.FormatJson(json_transform))
     if configfs_output:
-        configfs.GenerateConfigFSData(
-            json.loads(json_transform), configfs_output
-        )
+        configfs.GenerateConfigFSData(json_transform, configfs_output)
     if identity_table_out:
-        identity_table.WriteIdentityStruct(
-            json.loads(json_transform), identity_table_out
-        )
+        identity_table.WriteIdentityStruct(json_transform, identity_table_out)
 
 
 # The distutils generated command line wrappers will not pass us argv.
