@@ -274,13 +274,13 @@ void VshClient::HandleHostMessage(const HostMessage& msg) {
     case HostMessage::kDataMessage: {
       // Data messages from the guest should go to stdout/stderr.
       DataMessage data_message = msg.data_message();
-      int target_fd = -1;
+      base::ScopedFD* target_fd;
       switch (data_message.stream()) {
         case STDOUT_STREAM:
-          target_fd = stdout_fd_.get();
+          target_fd = &stdout_fd_;
           break;
         case STDERR_STREAM:
-          target_fd = stderr_fd_.get();
+          target_fd = &stderr_fd_;
           break;
         default:
           LOG(ERROR) << "Invalid stream type from guest: "
@@ -290,14 +290,17 @@ void VshClient::HandleHostMessage(const HostMessage& msg) {
 
       if (data_message.data().size() == 0) {
         // On EOF from guest, close the host-side fd.
-        if (data_message.stream() == STDOUT_STREAM) {
-          stdout_fd_.reset();
-        } else {
-          stderr_fd_.reset();
-        }
+        target_fd->reset();
+        return;
       }
 
-      if (!base::WriteFileDescriptor(target_fd, data_message.data())) {
+      if (!target_fd->is_valid()) {
+        LOG(ERROR) << "Invalid data message for closed stream: "
+                   << data_message.stream();
+        return;
+      }
+
+      if (!base::WriteFileDescriptor(target_fd->get(), data_message.data())) {
         PLOG(ERROR) << "Failed to write data to fd " << target_fd;
         return;
       }
