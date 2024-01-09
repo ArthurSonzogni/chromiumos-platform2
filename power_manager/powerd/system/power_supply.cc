@@ -69,7 +69,7 @@ constexpr base::TimeDelta
 constexpr base::TimeDelta kDefaultBatteryStabilizedAfterResumeDelay =
     base::Seconds(5);
 constexpr base::TimeDelta kDefaultBatteryStabilizedAfterBatterySaverDelay =
-    base::Seconds(5);
+    base::Seconds(30);
 
 // Number of retry attempts for reading the PowerStatus.
 constexpr int kPowerRefreshRetries = 5;

@@ -1358,7 +1358,7 @@
                     "type": "string"
                   },
                   "battery-stabilized-after-battery-saver-ms": {
-                    "default": "5000",
+                    "default": "30000",
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },
