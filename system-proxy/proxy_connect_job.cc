@@ -21,8 +21,8 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/socket_forwarder.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "system-proxy/curl_socket.h"
 #include "system-proxy/http_util.h"
@@ -370,7 +370,7 @@ void ProxyConnectJob::DoCurlServerConnection() {
     connect_data_.clear();
   }
 
-  auto fwd = std::make_unique<patchpanel::SocketForwarder>(
+  auto fwd = std::make_unique<net_base::SocketForwarder>(
       base::StringPrintf("%d-%d", client_socket_->Get(), server_conn->Get()),
       std::move(client_socket_), std::move(server_conn));
   // Start forwarding data between sockets.

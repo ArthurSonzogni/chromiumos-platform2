@@ -103,7 +103,6 @@ source_set("util_sources") {
     "mac_address_generator.cc",
     "message_dispatcher.cc",
     "net_util.cc",
-    "socket_forwarder.cc",
     "subnet.cc",
     "subnet_pool.cc",
   ]
@@ -314,7 +313,6 @@ if (use.test) {
       "qos_service_test.cc",
       "routing_service_test.cc",
       "shill_client_test.cc",
-      "socket_forwarder_test.cc",
       "subnet_pool_test.cc",
       "subnet_test.cc",
       "subprocess_controller_test.cc",

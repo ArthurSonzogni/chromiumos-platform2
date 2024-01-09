@@ -20,11 +20,11 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/socket_forwarder.h>
 #include <curl/curl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "system-proxy/test_http_server.h"
 
@@ -84,7 +84,7 @@ class ProxyConnectJobTest : public ::testing::Test {
 
  protected:
   virtual void OnConnectionSetupFinished(
-      std::unique_ptr<patchpanel::SocketForwarder> fwd,
+      std::unique_ptr<net_base::SocketForwarder> fwd,
       ProxyConnectJob* connect_job) {}
   virtual void ResolveProxy(
       const std::string& target_url,
@@ -272,9 +272,8 @@ class HttpServerProxyConnectJobTest : public ProxyConnectJobTest {
       std::move(callback).Run(/* credentials = */ "");
     }
   }
-  void OnConnectionSetupFinished(
-      std::unique_ptr<patchpanel::SocketForwarder> fwd,
-      ProxyConnectJob* connect_job) override {
+  void OnConnectionSetupFinished(std::unique_ptr<net_base::SocketForwarder> fwd,
+                                 ProxyConnectJob* connect_job) override {
     ASSERT_EQ(connect_job, connect_job_.get());
     if (fwd) {
       forwarder_created_ = true;

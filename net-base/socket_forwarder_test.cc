@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/socket_forwarder.h"
+#include "net-base/socket_forwarder.h"
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -18,11 +18,12 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/socket.h>
+
+#include "net-base/socket.h"
 
 using testing::Each;
 
-namespace patchpanel {
+namespace net_base {
 namespace {
 // SocketForwarder reads blocks of 4096 bytes.
 constexpr size_t kDataSize = 5000;
@@ -103,4 +104,4 @@ TEST_F(SocketForwarderTest, PeerSignalEPOLLHUP) {
   EXPECT_FALSE(forwarder_->IsRunning());
 }
 
-}  // namespace patchpanel
+}  // namespace net_base

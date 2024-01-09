@@ -64,6 +64,7 @@ shared_library("libnet-base") {
     "rtnl_listener.cc",
     "rtnl_message.cc",
     "socket.cc",
+    "socket_forwarder.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
@@ -143,6 +144,7 @@ if (use.test) {
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
       "rtnl_message_test.cc",
+      "socket_forwarder_test.cc",
       "socket_test.cc",
     ]
     configs += [

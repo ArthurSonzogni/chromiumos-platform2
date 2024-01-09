@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/socket_forwarder.h"
+#include "net-base/socket_forwarder.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -21,9 +21,10 @@
 #include <base/logging.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
-#include <net-base/socket.h>
 
-namespace patchpanel {
+#include "net-base/socket.h"
+
+namespace net_base {
 namespace {
 constexpr int kWaitTimeoutMs = 1000;
 // Maximum number of epoll events to process per wait.
@@ -276,4 +277,4 @@ bool SocketForwarder::HandleConnectionClosed(const net_base::Socket& src,
   eof_ = src.Get();
   return true;
 }
-}  // namespace patchpanel
+}  // namespace net_base

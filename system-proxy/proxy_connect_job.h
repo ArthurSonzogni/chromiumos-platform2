@@ -17,10 +17,7 @@
 #include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
-
-namespace patchpanel {
-class SocketForwarder;
-}  // namespace patchpanel
+#include <net-base/socket_forwarder.h>
 
 namespace system_proxy {
 // ProxyConnectJob asynchronously sets up a connection to a remote target on
@@ -49,7 +46,7 @@ namespace system_proxy {
 class ProxyConnectJob {
  public:
   using OnConnectionSetupFinishedCallback = base::OnceCallback<void(
-      std::unique_ptr<patchpanel::SocketForwarder>, ProxyConnectJob*)>;
+      std::unique_ptr<net_base::SocketForwarder>, ProxyConnectJob*)>;
 
   // Will be invoked by ProxyConnectJob to resolve the proxy for |target_url_|.
   // The passed |callback| is expected to be called with the list of proxy

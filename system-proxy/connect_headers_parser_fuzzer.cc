@@ -16,9 +16,9 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos/patchpanel/socket_forwarder.h>
 #include <curl/curl.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "system-proxy/proxy_connect_job.h"
 
@@ -41,7 +41,7 @@ void NullAuthenticationRequiredCallback(
         on_auth_acquired_callback) {}
 
 void OnConnectionSetupFinished(base::OnceClosure quit_task,
-                               std::unique_ptr<patchpanel::SocketForwarder>,
+                               std::unique_ptr<net_base::SocketForwarder>,
                                system_proxy::ProxyConnectJob*) {
   std::move(quit_task).Run();
 }

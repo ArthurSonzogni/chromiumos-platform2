@@ -15,10 +15,10 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/bus.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
-#include "patchpanel/socket_forwarder.h"
 
 namespace patchpanel {
 
@@ -65,7 +65,7 @@ class AdbProxy : public brillo::DBusDaemon {
 
   MessageDispatcher<SubprocessMessage> msg_dispatcher_;
   std::unique_ptr<net_base::Socket> src_;
-  std::deque<std::unique_ptr<SocketForwarder>> fwd_;
+  std::deque<std::unique_ptr<net_base::SocketForwarder>> fwd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> src_watcher_;
 
   GuestMessage::GuestType arc_type_;

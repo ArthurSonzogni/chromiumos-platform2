@@ -24,8 +24,8 @@
 #include <base/threading/thread.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport.h>
-#include <chromeos/patchpanel/socket_forwarder.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system-proxy/protobuf_util.h"
@@ -329,7 +329,7 @@ void ServerProxy::OnProxyResolved(const std::string& target_url,
 }
 
 void ServerProxy::OnConnectionSetupFinished(
-    std::unique_ptr<patchpanel::SocketForwarder> fwd,
+    std::unique_ptr<net_base::SocketForwarder> fwd,
     ProxyConnectJob* connect_job) {
   if (fwd) {
     // The connection was set up successfully.

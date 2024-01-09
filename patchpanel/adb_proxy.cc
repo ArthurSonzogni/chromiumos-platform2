@@ -29,6 +29,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/byte_utils.h>
 #include <net-base/socket.h>
+#include <net-base/socket_forwarder.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
@@ -108,7 +109,7 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
           src_->Accept((struct sockaddr*)&client_src, &sockaddr_len)) {
     LOG(INFO) << "new adb connection from " << client_src;
     if (std::unique_ptr<net_base::Socket> adbd_conn = Connect()) {
-      auto fwd = std::make_unique<SocketForwarder>(
+      auto fwd = std::make_unique<net_base::SocketForwarder>(
           base::StringPrintf("adbp%d-%d", client_conn->Get(), adbd_conn->Get()),
           std::move(client_conn), std::move(adbd_conn));
       fwd->Start();

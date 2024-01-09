@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PATCHPANEL_SOCKET_FORWARDER_H_
-#define PATCHPANEL_SOCKET_FORWARDER_H_
+#ifndef NET_BASE_SOCKET_FORWARDER_H_
+#define NET_BASE_SOCKET_FORWARDER_H_
 
 #include <netinet/ip.h>
 #include <sys/socket.h>
@@ -16,16 +16,17 @@
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
 #include <brillo/brillo_export.h>
-#include <net-base/socket.h>
 
-namespace patchpanel {
+#include "net-base/socket.h"
+
+namespace net_base {
 // Forwards data between a pair of sockets.
 // This is a simple implementation as a thread main function.
 class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
  public:
   SocketForwarder(const std::string& name,
-                  std::unique_ptr<net_base::Socket> sock0,
-                  std::unique_ptr<net_base::Socket> sock1);
+                  std::unique_ptr<Socket> sock0,
+                  std::unique_ptr<Socket> sock1);
   SocketForwarder(const SocketForwarder&) = delete;
   SocketForwarder& operator=(const SocketForwarder&) = delete;
 
@@ -46,8 +47,8 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   void Poll();
   bool ProcessEvents(uint32_t events, int efd, int cfd);
 
-  std::unique_ptr<net_base::Socket> sock0_;
-  std::unique_ptr<net_base::Socket> sock1_;
+  std::unique_ptr<Socket> sock0_;
+  std::unique_ptr<Socket> sock1_;
   char buf0_[kBufSize] = {0};
   char buf1_[kBufSize] = {0};
   size_t len0_;
@@ -63,9 +64,7 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   // other peer. If the |dst| socket is also closed for writing, it will return
   // false, which will stop the SocketForwarder instance. In case of error, it
   // returns false.
-  bool HandleConnectionClosed(const net_base::Socket& src,
-                              const net_base::Socket& dst,
-                              int cfd);
+  bool HandleConnectionClosed(const Socket& src, const Socket& dst, int cfd);
 
   std::atomic<bool> poll_;
   std::atomic<bool> done_;
@@ -73,6 +72,6 @@ class BRILLO_EXPORT SocketForwarder : public base::SimpleThread {
   base::OnceClosure stop_quit_closure_for_testing_;
 };
 
-}  // namespace patchpanel
+}  // namespace net_base
 
-#endif  // PATCHPANEL_SOCKET_FORWARDER_H_
+#endif  // NET_BASE_SOCKET_FORWARDER_H_
