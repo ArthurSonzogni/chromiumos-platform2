@@ -25,7 +25,6 @@ typedef std::unique_ptr<CURL, FreeCurlEasyhandle> ScopedCurlEasyhandle;
 // with an owned CURL handle.
 class CurlSocket : public patchpanel::Socket {
  public:
-  static std::unique_ptr<CurlSocket> CreateFromCURLHandle(CURL* easyhandle);
   CurlSocket(base::ScopedFD fd, ScopedCurlEasyhandle curl_easyhandle);
   CurlSocket(const CurlSocket&) = delete;
   CurlSocket& operator=(const CurlSocket&) = delete;

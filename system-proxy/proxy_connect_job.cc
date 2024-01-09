@@ -292,6 +292,7 @@ void ProxyConnectJob::DoCurlServerConnection() {
   DCHECK(!proxy_servers_.empty());
   CURL* easyhandle = curl_easy_init();
   CURLcode res;
+  curl_socket_t newSocket = -1;
 
   if (!easyhandle) {
     // Unfortunately it's not possible to get the failure reason.
@@ -348,15 +349,19 @@ void ProxyConnectJob::DoCurlServerConnection() {
     return;
   }
   credentials_request_timeout_callback_.Cancel();
-
-  std::unique_ptr<CurlSocket> server_conn =
-      CurlSocket::CreateFromCURLHandle(easyhandle);
-  if (!server_conn) {
-    LOG(ERROR) << *this << " Failed to create the curl socket";
+  // Extract the socket from the curl handle.
+  res = curl_easy_getinfo(easyhandle, CURLINFO_ACTIVESOCKET, &newSocket);
+  if (res != CURLE_OK) {
+    LOG(ERROR) << *this << " Failed to get socket from curl with error: "
+               << curl_easy_strerror(res);
     curl_easy_cleanup(easyhandle);
     OnError(kHttpBadGateway);
     return;
   }
+
+  ScopedCurlEasyhandle scoped_handle(easyhandle, FreeCurlEasyhandle());
+  auto server_conn = std::make_unique<CurlSocket>(base::ScopedFD(newSocket),
+                                                  std::move(scoped_handle));
 
   // Send the server reply to the client. If the connection is successful, the
   // reply headers should be "HTTP/1.1 200 Connection Established".
