@@ -862,11 +862,6 @@ class GetValidSchemaProperties(cros_test_lib.TestCase):
         self.assertIn("count", schema_props["/camera"])
 
 
-def _GetSchemaYaml():
-    schema_contents = cros_config_schema.ReadSchema()
-    return libcros_schema.LoadYaml(schema_contents)
-
-
 class SchemaContentsTests(cros_test_lib.TestCase):
     def testSchemaPropertyNames(self):
         """Validate that all property names use hyphen-case"""
@@ -882,7 +877,7 @@ class SchemaContentsTests(cros_test_lib.TestCase):
                 for item in obj:
                     yield from _GetPropertyNames(item, None)
 
-        schema = _GetSchemaYaml()
+        schema = cros_config_schema.ReadSchema()
         property_name_pattern = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
         for property_name in _GetPropertyNames(schema, None):
             self.assertRegex(

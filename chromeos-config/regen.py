@@ -12,7 +12,7 @@ from pathlib import Path
 import site
 import sys
 import tempfile
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 HERE = Path(__file__).resolve().parent
@@ -25,6 +25,7 @@ from chromiumos.config.test import fake_config  # pylint: disable=import-error
 from cros_config_host import cros_config_proto_converter
 from cros_config_host import cros_config_schema
 from cros_config_host import generate_schema_doc
+from cros_config_host import libcros_schema
 from cros_config_host import power_manager_prefs_gen_schema
 
 
@@ -32,6 +33,20 @@ from cros_config_host import power_manager_prefs_gen_schema
 
 
 SCHEMA_YAML = HERE / "cros_config_host" / "cros_config_schema.yaml"
+
+
+@functools.lru_cache(maxsize=None)
+def _load_schema() -> Dict[str, Any]:
+    """Load the config schema."""
+    yaml_doc = power_manager_prefs_gen_schema.generate_yaml()
+    yaml_doc += SCHEMA_YAML.read_text(encoding="utf-8")
+    schema = libcros_schema.LoadYaml(yaml_doc)
+
+    # Remove useless nodes used for YAML anchors.
+    schema.pop("powerd_prefs")
+    schema.pop("powerd_prefs_default")
+
+    return schema
 
 
 def regen_readme(output_path: Path) -> None:
@@ -43,7 +58,7 @@ def regen_readme(output_path: Path) -> None:
             current_readme.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-    generate_schema_doc.Main(schema=SCHEMA_YAML, output=output_path)
+    generate_schema_doc.generate(schema=_load_schema(), output=output_path)
 
 
 def regen_test_data(
@@ -51,11 +66,21 @@ def regen_test_data(
 ) -> None:
     """Regenerate cros_config_schema test data."""
     cros_config_schema.Main(
-        schema=SCHEMA_YAML,
+        schema=_load_schema(),
         config=None,
         output=output_path,
         configs=configs,
         filter_build_details=filter_build_details,
+    )
+
+
+def regen_schema_json(output_path: Path) -> None:
+    """Regenerate schema.json."""
+    schema = dict(_load_schema())
+    schema["_comment"] = "This file is auto-generated; to update, run regen.py"
+    schema.pop("typeDefs")
+    output_path.write_text(
+        libcros_schema.FormatJson(schema) + "\n", encoding="utf-8"
     )
 
 
@@ -75,9 +100,7 @@ def regen_proto_converter(output_path: Path) -> None:
 
 
 GENERATORS: Dict[str, Callable[[Path], None]] = {
-    "cros_config_host/power_manager_prefs_schema.yaml": (
-        power_manager_prefs_gen_schema.Main
-    ),
+    "cros_config_host/schema.json": regen_schema_json,
     "test_data/test_import.json": functools.partial(
         regen_test_data, configs=[HERE / "test_data" / "test_import.yaml"]
     ),

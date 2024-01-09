@@ -56,12 +56,11 @@ def ValidateConfigSchema(schema, config):
     Verifies that the config complies with the schema supplied.
 
     Args:
-        schema: Source schema used to verify the config.
+        schema: Loaded schema used to verify the config.
         config: Config (transformed) that will be verified.
     """
     json_config = json.loads(config)
-    schema_json = LoadYaml(schema)
-    validate(json_config, schema_json)
+    validate(json_config, schema)
 
 
 def FindImports(config_file, includes):

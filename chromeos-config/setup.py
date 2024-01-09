@@ -19,8 +19,7 @@ setuptools.setup(
     packages=["cros_config_host"],
     package_data={
         "cros_config_host": [
-            "cros_config_schema.yaml",
-            "power_manager_prefs_schema.yaml",
+            "schema.json",
         ]
     },
     entry_points={

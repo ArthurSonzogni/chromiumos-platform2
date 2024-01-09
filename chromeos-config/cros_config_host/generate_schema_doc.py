@@ -1,49 +1,14 @@
-#!/usr/bin/env python3
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """Generates markdown from the JSON schema."""
 
-from __future__ import print_function
-
-import argparse
 import collections
 import itertools
-import os.path
+import os
 import re
-import sys
-
-import libcros_schema  # pylint: disable=import-error
-
-
-def ParseArgs(argv):
-    """Parse the available arguments.
-
-    Invalid arguments or -h cause this function to print a message and exit.
-
-    Args:
-        argv: List of string arguments (excluding program name / argv[0])
-
-    Returns:
-        argparse.Namespace object containing the attributes.
-    """
-    parser = argparse.ArgumentParser(
-        description=(
-            "Generates Markdown documentation based on the config schema"
-        ),
-    )
-    parser.add_argument(
-        "-s",
-        "--schema",
-        default="cros_config_host/cros_config_schema.yaml",
-        type=str,
-        help="Schema file that is processed",
-    )
-    parser.add_argument(
-        "-o", "--output", type=str, help="Output file that will be generated"
-    )
-    return parser.parse_args(argv)
+from typing import Any, Dict
 
 
 def QuoteRegex(text):
@@ -199,26 +164,23 @@ def PopulateTypeDef(
         )
 
 
-def Main(schema, output):
+def generate(schema: Dict[str, Any], output: "os.PathLike[str]") -> None:
     """Generates markdown documentation based on the JSON schema.
 
     Args:
-        schema: Schema file.
+        schema: Loaded schema.
         output: Output file.
     """
-    schema_yaml = libcros_schema.LoadYaml(libcros_schema.ApplyImports(schema))
     ref_types = {}
-    for type_def in schema_yaml.get("typeDefs", []):
-        ref_types["#/typeDefs/%s" % type_def] = schema_yaml["typeDefs"][
-            type_def
-        ]
+    for type_def in schema.get("typeDefs", []):
+        ref_types["#/typeDefs/%s" % type_def] = schema["typeDefs"][type_def]
 
     type_def_outputs = []
     type_def_outputs.append("[](begin_definitions)")
     type_def_outputs.append("")
     PopulateTypeDef(
         "model",
-        schema_yaml["properties"]["chromeos"]["properties"]["configs"]["items"],
+        schema["properties"]["chromeos"]["properties"]["configs"]["items"],
         ref_types,
         type_def_outputs,
     )
@@ -258,8 +220,3 @@ def Main(schema, output):
                 output_stream.writelines(post_lines)
     else:
         print("\n".join(type_def_outputs))
-
-
-if __name__ == "__main__":
-    args = ParseArgs(sys.argv[1:])
-    Main(args.schema, args.output)
