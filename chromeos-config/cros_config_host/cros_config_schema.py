@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import re
 import sys
+from typing import Optional
 
 from cros_config_host import configfs
 from cros_config_host import identity_table
@@ -303,7 +304,9 @@ def _TransformDeprecatedConfigs(config):
         identity["custom-label-tag"] = identity.pop("whitelabel-tag")
 
 
-def TransformConfig(config, model_filter_regex=None):
+def TransformConfig(
+    config, config_path: Optional[Path] = None, model_filter_regex=None
+):
     """Transforms the source config (YAML) to the target system format (JSON)
 
     Applies consistent transforms to covert a source YAML configuration into
@@ -311,12 +314,23 @@ def TransformConfig(config, model_filter_regex=None):
 
     Args:
         config: Config that will be transformed.
+        config_path: The path to the config.  If provided, YAML imports will
+            be enabled, and the path of the file will be used to search for
+            imports.
         model_filter_regex: Only returns configs that match the filter
 
     Returns:
         Resulting JSON output from the transform.
     """
-    config_yaml = libcros_schema.LoadYaml(config)
+    # Often times we're provided JSON instead of YAML.  JSON is a subset of
+    # YAML, and while we could just load it as YAML, attempting to parse as JSON
+    # initially provides performance benefits.
+    try:
+        config_yaml = json.loads(config)
+    except json.decoder.JSONDecodeError:
+        if config_path:
+            config = libcros_schema.ApplyImports(config_path)
+        config_yaml = libcros_schema.LoadYaml(config)
     configs = []
     if DEVICES in config_yaml[CHROMEOS]:
         for device in config_yaml[CHROMEOS][DEVICES]:
@@ -939,9 +953,12 @@ def MergeConfigs(configs):
         Final merged JSON result.
     """
     json_files = []
-    for yaml_file in configs:
-        yaml_with_imports = libcros_schema.ApplyImports(yaml_file)
-        json_transformed_file = TransformConfig(yaml_with_imports)
+    for config_path in configs:
+        config_path = Path(config_path)
+        json_transformed_file = TransformConfig(
+            config_path.read_text(encoding="utf-8"),
+            config_path=config_path,
+        )
         json_files.append(json_transformed_file)
 
     result_json = json_files[0]
