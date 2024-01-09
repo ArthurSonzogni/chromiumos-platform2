@@ -122,7 +122,7 @@ shared_library("libenterprise_rollback_metrics-test") {
     ":libenterprise_rollback_metrics-test_pc",
     "//oobe_config/filesystem:filesystem_for_testing",
   ]
-  if (use.cros_host) {
+  if (use.cros_host || use.fuzzer) {
     install_path = "lib"
   } else {
     install_path = "/build/lib"
