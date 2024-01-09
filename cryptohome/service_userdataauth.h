@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
@@ -467,6 +468,10 @@ class UserDataAuthAdaptor
   // This object is owned by the parent dbus service daemon, and whose lifetime
   // will cover the entire lifetime of this class.
   UserDataAuth* service_;
+
+  // Factory used to construct weak pointers when posting tasks to the mount
+  // thread. The pointers must not be used for tasks on other threads.
+  base::WeakPtrFactory<UserDataAuthAdaptor> weak_factory_{this};
 };
 
 class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
@@ -532,6 +537,10 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
   // This object is owned by the parent dbus service daemon, and whose lifetime
   // will cover the entire lifetime of this class.
   UserDataAuth* service_;
+
+  // Factory used to construct weak pointers when posting tasks to the mount
+  // thread. The pointers must not be used for tasks on other threads.
+  base::WeakPtrFactory<Pkcs11Adaptor> weak_factory_{this};
 };
 
 class InstallAttributesAdaptor
@@ -625,6 +634,10 @@ class InstallAttributesAdaptor
   // This object is owned by the parent dbus service daemon, and whose lifetime
   // will cover the entire lifetime of this class.
   UserDataAuth* service_;
+
+  // Factory used to construct weak pointers when posting tasks to the mount
+  // thread. The pointers must not be used for tasks on other threads.
+  base::WeakPtrFactory<InstallAttributesAdaptor> weak_factory_{this};
 };
 
 class CryptohomeMiscAdaptor
@@ -690,6 +703,10 @@ class CryptohomeMiscAdaptor
   // This object is owned by the parent dbus service daemon, and whose lifetime
   // will cover the entire lifetime of this class.
   UserDataAuth* service_;
+
+  // Factory used to construct weak pointers when posting tasks to the mount
+  // thread. The pointers must not be used for tasks on other threads.
+  base::WeakPtrFactory<CryptohomeMiscAdaptor> weak_factory_{this};
 };
 
 }  // namespace cryptohome

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/service_userdataauth.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -9,12 +11,12 @@
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
 
-#include "cryptohome/service_userdataauth.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -28,7 +30,7 @@ void UserDataAuthAdaptor::IsMounted(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoIsMounted, base::Unretained(this),
+          &UserDataAuthAdaptor::DoIsMounted, weak_factory_.GetWeakPtr(),
           Username(in_request.username()),
           ThreadSafeDBusMethodResponse<user_data_auth::IsMountedReply>::
               MakeThreadSafe(std::move(response))));
@@ -56,7 +58,7 @@ void UserDataAuthAdaptor::Unmount(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoUnmount, base::Unretained(this),
+          &UserDataAuthAdaptor::DoUnmount, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::UnmountReply>::
               MakeThreadSafe(std::move(response))));
 }
@@ -76,7 +78,7 @@ void UserDataAuthAdaptor::StartAuthSession(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoStartAuthSession, base::Unretained(this),
+          &UserDataAuthAdaptor::DoStartAuthSession, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::StartAuthSessionReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -104,7 +106,7 @@ void UserDataAuthAdaptor::InvalidateAuthSession(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoInvalidateAuthSession,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::InvalidateAuthSessionReply>::
                          MakeThreadSafe(std::move(response)),
@@ -133,7 +135,7 @@ void UserDataAuthAdaptor::ExtendAuthSession(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoExtendAuthSession, base::Unretained(this),
+          &UserDataAuthAdaptor::DoExtendAuthSession, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::ExtendAuthSessionReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -160,7 +162,7 @@ void UserDataAuthAdaptor::CreatePersistentUser(
     const user_data_auth::CreatePersistentUserRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoCreatePersistentUser,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::CreatePersistentUserReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -189,7 +191,7 @@ void UserDataAuthAdaptor::PrepareGuestVault(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoPrepareGuestVault, base::Unretained(this),
+          &UserDataAuthAdaptor::DoPrepareGuestVault, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::PrepareGuestVaultReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -217,7 +219,7 @@ void UserDataAuthAdaptor::PrepareEphemeralVault(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoPrepareEphemeralVault,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::PrepareEphemeralVaultReply>::
                          MakeThreadSafe(std::move(response)),
@@ -246,7 +248,7 @@ void UserDataAuthAdaptor::PreparePersistentVault(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoPreparePersistentVault,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::PreparePersistentVaultReply>::
                          MakeThreadSafe(std::move(response)),
@@ -275,7 +277,7 @@ void UserDataAuthAdaptor::EvictDeviceKey(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoEvictDeviceKey, base::Unretained(this),
+          &UserDataAuthAdaptor::DoEvictDeviceKey, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::EvictDeviceKeyReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -303,7 +305,7 @@ void UserDataAuthAdaptor::PrepareVaultForMigration(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoPrepareVaultForMigration,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::PrepareVaultForMigrationReply>::
                          MakeThreadSafe(std::move(response)),
@@ -332,7 +334,7 @@ void UserDataAuthAdaptor::AddAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoAddAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoAddAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::AddAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -360,7 +362,7 @@ void UserDataAuthAdaptor::AuthenticateAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoAuthenticateAuthFactor,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::AuthenticateAuthFactorReply>::
                          MakeThreadSafe(std::move(response)),
@@ -389,7 +391,7 @@ void UserDataAuthAdaptor::UpdateAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoUpdateAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoUpdateAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::UpdateAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -417,7 +419,7 @@ void UserDataAuthAdaptor::UpdateAuthFactorMetadata(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoUpdateAuthFactorMetadata,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::UpdateAuthFactorMetadataReply>::
                          MakeThreadSafe(std::move(response)),
@@ -446,7 +448,7 @@ void UserDataAuthAdaptor::RelabelAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoRelabelAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoRelabelAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::RelabelAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -474,7 +476,7 @@ void UserDataAuthAdaptor::ReplaceAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoReplaceAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoReplaceAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::ReplaceAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -502,7 +504,7 @@ void UserDataAuthAdaptor::RemoveAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoRemoveAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoRemoveAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::RemoveAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -530,7 +532,7 @@ void UserDataAuthAdaptor::ListAuthFactors(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoListAuthFactors, base::Unretained(this),
+          &UserDataAuthAdaptor::DoListAuthFactors, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::ListAuthFactorsReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -558,7 +560,7 @@ void UserDataAuthAdaptor::GetAuthFactorExtendedInfo(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoGetAuthFactorExtendedInfo,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::GetAuthFactorExtendedInfoReply>::
                          MakeThreadSafe(std::move(response)),
@@ -588,7 +590,7 @@ void UserDataAuthAdaptor::PrepareAuthFactor(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoPrepareAuthFactor, base::Unretained(this),
+          &UserDataAuthAdaptor::DoPrepareAuthFactor, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::PrepareAuthFactorReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -615,7 +617,7 @@ void UserDataAuthAdaptor::TerminateAuthFactor(
     const user_data_auth::TerminateAuthFactorRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoTerminateAuthFactor,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::TerminateAuthFactorReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -643,7 +645,7 @@ void UserDataAuthAdaptor::GetRecoveryRequest(
     const user_data_auth::GetRecoveryRequestRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetRecoveryRequest,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::GetRecoveryRequestReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -672,7 +674,7 @@ void UserDataAuthAdaptor::CreateVaultKeyset(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoCreateVaultKeyset, base::Unretained(this),
+          &UserDataAuthAdaptor::DoCreateVaultKeyset, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::CreateVaultKeysetReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -700,7 +702,7 @@ void UserDataAuthAdaptor::Remove(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoRemove, base::Unretained(this),
+          &UserDataAuthAdaptor::DoRemove, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<
               user_data_auth::RemoveReply>::MakeThreadSafe(std::move(response)),
           in_request));
@@ -727,7 +729,7 @@ void UserDataAuthAdaptor::GetWebAuthnSecret(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoGetWebAuthnSecret, base::Unretained(this),
+          &UserDataAuthAdaptor::DoGetWebAuthnSecret, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::GetWebAuthnSecretReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -747,7 +749,7 @@ void UserDataAuthAdaptor::GetWebAuthnSecretHash(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoGetWebAuthnSecretHash,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::GetWebAuthnSecretHashReply>::
                          MakeThreadSafe(std::move(response)),
@@ -768,7 +770,7 @@ void UserDataAuthAdaptor::GetRecoverableKeyStores(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoGetRecoverableKeyStores,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::GetRecoverableKeyStoresReply>::
                          MakeThreadSafe(std::move(response)),
@@ -796,7 +798,7 @@ void UserDataAuthAdaptor::GetHibernateSecret(
     const user_data_auth::GetHibernateSecretRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetHibernateSecret,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::GetHibernateSecretReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -825,7 +827,7 @@ void UserDataAuthAdaptor::GetEncryptionInfo(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoGetEncryptionInfo, base::Unretained(this),
+          &UserDataAuthAdaptor::DoGetEncryptionInfo, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::GetEncryptionInfoReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -845,7 +847,7 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoStartMigrateToDircrypto,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::StartMigrateToDircryptoReply>::
                          MakeThreadSafe(std::move(response)),
@@ -858,11 +860,13 @@ void UserDataAuthAdaptor::DoStartMigrateToDircrypto(
     const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
   // This will be called whenever there's a status update from the migration.
   auto status_callback = base::BindRepeating(
-      [](UserDataAuthAdaptor* adaptor,
+      [](base::WeakPtr<UserDataAuthAdaptor> adaptor,
          const user_data_auth::DircryptoMigrationProgress& progress) {
-        adaptor->SendDircryptoMigrationProgressSignal(progress);
+        if (adaptor) {
+          adaptor->SendDircryptoMigrationProgressSignal(progress);
+        }
       },
-      base::Unretained(this));
+      weak_factory_.GetWeakPtr());
 
   // Kick start the migration process.
   service_->StartMigrateToDircrypto(
@@ -884,7 +888,7 @@ void UserDataAuthAdaptor::NeedsDircryptoMigration(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoNeedsDircryptoMigration,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::NeedsDircryptoMigrationReply>::
                          MakeThreadSafe(std::move(response)),
@@ -923,7 +927,7 @@ void UserDataAuthAdaptor::GetAccountDiskUsage(
   // Note that this is a long running call, so we're posting it to mount thread.
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetAccountDiskUsage,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::GetAccountDiskUsageReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -947,7 +951,7 @@ void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&Pkcs11Adaptor::DoPkcs11IsTpmTokenReady,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::Pkcs11IsTpmTokenReadyReply>::
                          MakeThreadSafe(std::move(response)),
@@ -980,7 +984,7 @@ void Pkcs11Adaptor::Pkcs11Terminate(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &Pkcs11Adaptor::DoPkcs11Terminate, base::Unretained(this),
+          &Pkcs11Adaptor::DoPkcs11Terminate, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::Pkcs11TerminateReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
@@ -1002,7 +1006,7 @@ void Pkcs11Adaptor::Pkcs11RestoreTpmTokens(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&Pkcs11Adaptor::DoPkcs11RestoreTpmTokens,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::Pkcs11RestoreTpmTokensReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1025,7 +1029,7 @@ void InstallAttributesAdaptor::InstallAttributesGet(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&InstallAttributesAdaptor::DoInstallAttributesGet,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::InstallAttributesGetReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1055,7 +1059,7 @@ void InstallAttributesAdaptor::InstallAttributesSet(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&InstallAttributesAdaptor::DoInstallAttributesSet,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::InstallAttributesSetReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1084,7 +1088,7 @@ void InstallAttributesAdaptor::InstallAttributesFinalize(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&InstallAttributesAdaptor::DoInstallAttributesFinalize,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::InstallAttributesFinalizeReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1110,7 +1114,7 @@ void InstallAttributesAdaptor::InstallAttributesGetStatus(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&InstallAttributesAdaptor::DoInstallAttributesGetStatus,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::InstallAttributesGetStatusReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1137,7 +1141,7 @@ void InstallAttributesAdaptor::GetFirmwareManagementParameters(
       FROM_HERE,
       base::BindOnce(
           &InstallAttributesAdaptor::DoGetFirmwareManagementParameters,
-          base::Unretained(this),
+          weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<
               user_data_auth::GetFirmwareManagementParametersReply>::
               MakeThreadSafe(std::move(response)),
@@ -1170,7 +1174,7 @@ void InstallAttributesAdaptor::RemoveFirmwareManagementParameters(
       FROM_HERE,
       base::BindOnce(
           &InstallAttributesAdaptor::DoRemoveFirmwareManagementParameters,
-          base::Unretained(this),
+          weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<
               user_data_auth::RemoveFirmwareManagementParametersReply>::
               MakeThreadSafe(std::move(response)),
@@ -1199,7 +1203,7 @@ void InstallAttributesAdaptor::SetFirmwareManagementParameters(
       FROM_HERE,
       base::BindOnce(
           &InstallAttributesAdaptor::DoSetFirmwareManagementParameters,
-          base::Unretained(this),
+          weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<
               user_data_auth::SetFirmwareManagementParametersReply>::
               MakeThreadSafe(std::move(response)),
@@ -1237,7 +1241,7 @@ void CryptohomeMiscAdaptor::UpdateCurrentUserActivityTimestamp(
       FROM_HERE,
       base::BindOnce(
           &CryptohomeMiscAdaptor::DoUpdateCurrentUserActivityTimestamp,
-          base::Unretained(this),
+          weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<
               user_data_auth::UpdateCurrentUserActivityTimestampReply>::
               MakeThreadSafe(std::move(response)),
@@ -1313,7 +1317,7 @@ void UserDataAuthAdaptor::GetAuthSessionStatus(
     const user_data_auth::GetAuthSessionStatusRequest& in_request) {
   service_->PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetAuthSessionStatus,
-                                base::Unretained(this),
+                                weak_factory_.GetWeakPtr(),
                                 ThreadSafeDBusMethodResponse<
                                     user_data_auth::GetAuthSessionStatusReply>::
                                     MakeThreadSafe(std::move(response)),
@@ -1342,7 +1346,7 @@ void UserDataAuthAdaptor::ResetApplicationContainer(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuthAdaptor::DoResetApplicationContainer,
-                     base::Unretained(this),
+                     weak_factory_.GetWeakPtr(),
                      ThreadSafeDBusMethodResponse<
                          user_data_auth::ResetApplicationContainerReply>::
                          MakeThreadSafe(std::move(response)),
@@ -1365,7 +1369,7 @@ void UserDataAuthAdaptor::RestoreDeviceKey(
   service_->PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(
-          &UserDataAuthAdaptor::DoRestoreDeviceKey, base::Unretained(this),
+          &UserDataAuthAdaptor::DoRestoreDeviceKey, weak_factory_.GetWeakPtr(),
           ThreadSafeDBusMethodResponse<user_data_auth::RestoreDeviceKeyReply>::
               MakeThreadSafe(std::move(response)),
           in_request));
