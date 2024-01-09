@@ -101,6 +101,8 @@
 #include "shill/device.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
@@ -715,8 +717,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnGetDHCPFailure(int interface_index) override;
   void OnGetSLAACAddress(int interface_index) override;
   void OnNetworkValidationStart(int interface_index) override;
-  void OnNetworkValidationSuccess() override;
-  void OnNetworkValidationFailure() override;
+  void OnNetworkValidationResult(int interface_index,
+                                 const NetworkMonitor::Result& result) override;
 
   void RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event);
 

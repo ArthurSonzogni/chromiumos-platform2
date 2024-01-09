@@ -365,15 +365,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // implicit network.
   virtual void BringNetworkInterfaceDown();
 
-  // Called when a PortalDetector trial completes.
-  // Called every time PortalDetector finishes and Internet connectivity is
-  // validated.
-  virtual void OnNetworkValidationSuccess();
-  // Called every time PortalDetector finishes and Internet connectivity is not
-  // validated. In that case a new validation attempt is scheduled to run at a
-  // later time.
-  virtual void OnNetworkValidationFailure();
-
   // This is currently only used in the WiFi child class for triggering
   // WakeOnWiFi::OnConnectedAndReachable().
   void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;

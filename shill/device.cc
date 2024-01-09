@@ -453,8 +453,6 @@ void Device::OnGetDHCPFailure(int interface_index) {}
 void Device::OnGetSLAACAddress(int interface_index) {}
 void Device::OnNetworkValidationStart(int interface_index) {}
 void Device::OnNetworkValidationStop(int interface_index) {}
-void Device::OnNetworkValidationSuccess() {}
-void Device::OnNetworkValidationFailure() {}
 void Device::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
 void Device::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
 void Device::OnNetworkDestroyed(int interface_index) {}
@@ -641,11 +639,8 @@ void Device::OnNetworkValidationResult(int interface_index,
   auto validation_state = result.GetValidationState();
   Service::ConnectState connection_state =
       PortalValidationStateToConnectionState(validation_state);
-  if (validation_state ==
+  if (validation_state !=
       PortalDetector::ValidationState::kInternetConnectivity) {
-    OnNetworkValidationSuccess();
-  } else {
-    OnNetworkValidationFailure();
     if (!GetPrimaryNetwork()->StartPortalDetection(
             NetworkMonitor::ValidationReason::kRetryValidation)) {
       connection_state = Service::kStateNoConnectivity;

@@ -4064,14 +4064,18 @@ void WiFi::OnNetworkValidationStart(int net_interface_index) {
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kNetworkValidationStart);
 }
 
-void WiFi::OnNetworkValidationSuccess() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::Trigger::kNetworkValidationSuccess);
-}
+void WiFi::OnNetworkValidationResult(int interface_index,
+                                     const NetworkMonitor::Result& result) {
+  Device::OnNetworkValidationResult(interface_index, result);
 
-void WiFi::OnNetworkValidationFailure() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::Trigger::kNetworkValidationFailure);
+  if (result.GetValidationState() ==
+      PortalDetector::ValidationState::kInternetConnectivity) {
+    RetrieveLinkStatistics(
+        WiFiLinkStatistics::Trigger::kNetworkValidationSuccess);
+  } else {
+    RetrieveLinkStatistics(
+        WiFiLinkStatistics::Trigger::kNetworkValidationFailure);
+  }
 }
 
 void WiFi::OnIPv4ConfiguredWithDHCPLease(int net_interface_index) {
