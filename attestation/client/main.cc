@@ -229,6 +229,12 @@ std::optional<CertificateProfile> ToCertificateProfile(
   if (profile == "vtpm_ek" || profile == "vtpm") {
     return ENTERPRISE_VTPM_EK_CERTIFICATE;
   }
+  if (profile == "arc_dk") {
+    return ARC_ATTESTATION_DEVICE_KEY_CERTIFICATE;
+  }
+  if (profile == "arc_tpm") {
+    return ARC_TPM_CERTIFYING_KEY_CERTIFICATE;
+  }
   if (profile == "device_setup") {
     return DEVICE_SETUP_CERTIFICATE;
   }
