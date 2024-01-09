@@ -10,6 +10,7 @@ group("all") {
     ":clobber-state",
     ":cros_sysrq_init",
     ":file_attrs_cleaner_tool",
+    ":install_setuid_restriction",
     ":net_poll_tool",
     ":periodic_scheduler",
     ":process_killer",
@@ -188,6 +189,11 @@ install_config("usr_share_cros_init_scripts") {
   sources = [ "send-boot-metrics.sh" ]
   install_path = "/usr/share/cros/init"
   type = "executable"
+}
+
+install_config("install_setuid_restriction") {
+  sources = [ "setuid_restrictions/init_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
 }
 
 if (use.test) {
