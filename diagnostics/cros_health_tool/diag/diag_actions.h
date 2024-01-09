@@ -131,7 +131,6 @@ class DiagActions final {
       ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
       bool include_output);
   // Returns which routines are available on the platform.
-  // TODO(b/237508808): Determine whether this function should be changed.
   std::optional<std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines();
 
