@@ -20,6 +20,10 @@ The -c option clears the APN to be used, so that the default APN will be used
 instead.
 "
 
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+echo "WARNING:This script will be obsoleted in R124. If still needed, please"
+echo "create a bug and assign it to the cellular team(cros-cellular-core@)."
+
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=${FLIMFLAM}.Manager
 ISERVICE=${FLIMFLAM}.Service
