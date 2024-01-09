@@ -8,16 +8,15 @@
 #include <ares.h>
 
 #include <base/no_destructor.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // This class is only for separating the real ares calls for the ease of unit
-// tests. See the document of c-ares for each function. NET_BASE_EXPORT is
+// tests. See the document of c-ares for each function. BRILLO_EXPORT is
 // necessary since the unit test binary also load libnet-base as a shared
 // library.
-class NET_BASE_EXPORT AresInterface {
+class BRILLO_EXPORT AresInterface {
  public:
   static AresInterface* GetInstance();
   virtual ~AresInterface();

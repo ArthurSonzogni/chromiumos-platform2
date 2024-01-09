@@ -15,6 +15,7 @@
 #include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
+#include <brillo/brillo_export.h>
 
 #include "net-base/ip_address.h"
 
@@ -24,7 +25,7 @@ class AresInterface;
 
 // An async DNS resolver. The object can be destroyed at anytime to cancel the
 // ongoing query.
-class NET_BASE_EXPORT DNSClient {
+class BRILLO_EXPORT DNSClient {
  public:
   // The values should be matched with the constants defined in ares.h, except
   // for kInternal, where 0 is ARES_SUCCESS, but we don't need that status in
@@ -128,7 +129,7 @@ class NET_BASE_EXPORT DNSClient {
   DNSClient& operator=(const DNSClient&) = delete;
 };
 
-class NET_BASE_EXPORT DNSClientFactory {
+class BRILLO_EXPORT DNSClientFactory {
  public:
   // Resolves |hostname| to IP address in |family|. Results (either the
   // IPAddresses or failure) are returned to the caller by |callback|.
@@ -160,8 +161,8 @@ class NET_BASE_EXPORT DNSClientFactory {
   DNSClientFactory& operator=(const DNSClientFactory&) = delete;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                         DNSClient::Error error);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       DNSClient::Error error);
 
 }  // namespace net_base
 

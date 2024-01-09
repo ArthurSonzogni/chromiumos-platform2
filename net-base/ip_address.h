@@ -14,15 +14,15 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <brillo/brillo_export.h>
 
-#include "net-base/export.h"
 #include "net-base/ipv4_address.h"
 #include "net-base/ipv6_address.h"
 
 namespace net_base {
 
 // Represents the family of the IP protocol.
-enum class NET_BASE_EXPORT IPFamily {
+enum class BRILLO_EXPORT IPFamily {
   kIPv4,
   kIPv6,
 };
@@ -32,17 +32,17 @@ constexpr std::initializer_list<IPFamily> kIPFamilies = {IPFamily::kIPv4,
                                                          IPFamily::kIPv6};
 
 // Converts from IPFamily enum to sa_family_t.
-NET_BASE_EXPORT sa_family_t ToSAFamily(IPFamily family);
+BRILLO_EXPORT sa_family_t ToSAFamily(IPFamily family);
 
 // Converts from sa_family_t to IPFamily enum.
 // Returns std::nullopt if the value cannot be converted.
-NET_BASE_EXPORT std::optional<IPFamily> FromSAFamily(sa_family_t family);
+BRILLO_EXPORT std::optional<IPFamily> FromSAFamily(sa_family_t family);
 
 // Converts from IPFamily enum to std::String.
-NET_BASE_EXPORT std::string ToString(IPFamily family);
+BRILLO_EXPORT std::string ToString(IPFamily family);
 
 // Represents an family-agnostic IP address, either a IPv4 or a IPv6 address.
-class NET_BASE_EXPORT IPAddress {
+class BRILLO_EXPORT IPAddress {
  public:
   // Creates the IPAddress from IPv4 dotted-decimal notation or IPv6 network
   // address format.
@@ -113,7 +113,7 @@ class NET_BASE_EXPORT IPAddress {
 };
 
 // Represents an family-agnostic IP CIDR, either a IPv4 or a IPv6 CIDR.
-class NET_BASE_EXPORT IPCIDR {
+class BRILLO_EXPORT IPCIDR {
  public:
   // Returns the maximum prefix length for address family |family|, i.e.,
   // the length of this address type in bits.
@@ -207,12 +207,12 @@ class NET_BASE_EXPORT IPCIDR {
   std::variant<IPv4CIDR, IPv6CIDR> cidr_;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os, IPFamily family);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os, IPFamily family);
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
-                                         const IPAddress& address);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
+                                       const IPAddress& address);
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os, const IPCIDR& cidr);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os, const IPCIDR& cidr);
 
 }  // namespace net_base
 #endif  // NET_BASE_IP_ADDRESS_H_

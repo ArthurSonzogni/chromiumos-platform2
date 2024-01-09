@@ -15,8 +15,8 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <brillo/brillo_export.h>
 
-#include "net-base/export.h"
 #include "net-base/netlink_packet.h"
 
 namespace net_base {
@@ -27,7 +27,7 @@ using AttributeListRefPtr = scoped_refptr<AttributeList>;
 
 class NetlinkAttribute;
 
-class NET_BASE_EXPORT AttributeList : public base::RefCounted<AttributeList> {
+class BRILLO_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
   using NewFromIdMethod =
       base::RepeatingCallback<std::unique_ptr<NetlinkAttribute>(int id)>;
@@ -144,7 +144,7 @@ class NET_BASE_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 // Provides a mechanism to iterate through the ids of all of the attributes
 // in an |AttributeList|.  This class is really only useful if the caller
 // knows the type of each attribute in advance (such as with a nested array).
-class NET_BASE_EXPORT AttributeIdIterator {
+class BRILLO_EXPORT AttributeIdIterator {
  public:
   explicit AttributeIdIterator(const AttributeList& list)
       : iter_(list.attributes_.begin()), end_(list.attributes_.end()) {}

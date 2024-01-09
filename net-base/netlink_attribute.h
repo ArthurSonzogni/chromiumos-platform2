@@ -13,9 +13,9 @@
 
 #include <base/containers/span.h>
 #include <base/functional/callback.h>
+#include <brillo/brillo_export.h>
 
 #include "net-base/attribute_list.h"
-#include "net-base/export.h"
 
 namespace net_base {
 
@@ -28,7 +28,7 @@ namespace net_base {
 // and a value.  In an nlattr (the underlying format for an attribute in a
 // message), the data is stored as a blob without type information; the writer
 // and reader of the attribute must agree on the data type.
-class NET_BASE_EXPORT NetlinkAttribute {
+class BRILLO_EXPORT NetlinkAttribute {
  public:
   enum Type {
     kTypeU8,
@@ -132,7 +132,7 @@ class NET_BASE_EXPORT NetlinkAttribute {
   const char* datatype_string_;
 };
 
-class NET_BASE_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -151,7 +151,7 @@ class NET_BASE_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
   uint8_t value_;
 };
 
-class NET_BASE_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -170,7 +170,7 @@ class NET_BASE_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
   uint16_t value_;
 };
 
-class NET_BASE_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -189,7 +189,7 @@ class NET_BASE_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   uint32_t value_;
 };
 
-class NET_BASE_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -208,7 +208,7 @@ class NET_BASE_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
   uint64_t value_;
 };
 
-class NET_BASE_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -227,7 +227,7 @@ class NET_BASE_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
   bool value_;
 };
 
-class NET_BASE_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -249,7 +249,7 @@ class NET_BASE_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
 };
 
 // SSID attributes are just string attributes with different output semantics.
-class NET_BASE_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
+class BRILLO_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
  public:
   NetlinkSsidAttribute(int id, const char* id_string)
       : NetlinkStringAttribute(id, id_string) {}
@@ -260,7 +260,7 @@ class NET_BASE_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
   bool ToString(std::string* output) const override;
 };
 
-class NET_BASE_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -362,7 +362,7 @@ class NET_BASE_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
       base::span<const uint8_t> value);
 };
 
-class NET_BASE_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
+class BRILLO_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -380,7 +380,7 @@ class NET_BASE_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
   std::vector<uint8_t> Encode() const override;
 };
 
-class NET_BASE_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
+class BRILLO_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
   explicit NetlinkAttributeGeneric(int id);
   NetlinkAttributeGeneric(const NetlinkAttributeGeneric&) = delete;

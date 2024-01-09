@@ -9,12 +9,12 @@
 #include <string>
 #include <string_view>
 
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // Simple URL parsing class.
-class NET_BASE_EXPORT HttpUrl {
+class BRILLO_EXPORT HttpUrl {
  public:
   enum class Protocol { kUnknown, kHttp, kHttps };
 

@@ -12,12 +12,11 @@
 #include <vector>
 
 #include <base/containers/span.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
-class NET_BASE_EXPORT NetlinkPacket {
+class BRILLO_EXPORT NetlinkPacket {
  public:
   explicit NetlinkPacket(base::span<const uint8_t> buf);
   NetlinkPacket(const NetlinkPacket&) = delete;
@@ -87,7 +86,7 @@ class NET_BASE_EXPORT NetlinkPacket {
 // Mutable Netlink packets are used in unit tests where it is convenient
 // to modify the header and payload of a packet before passing it to the
 // NetlinkMessage subclasses or NetlinkManager.
-class NET_BASE_EXPORT MutableNetlinkPacket : public NetlinkPacket {
+class BRILLO_EXPORT MutableNetlinkPacket : public NetlinkPacket {
  public:
   explicit MutableNetlinkPacket(base::span<const uint8_t> buf);
   MutableNetlinkPacket(const MutableNetlinkPacket&) = delete;

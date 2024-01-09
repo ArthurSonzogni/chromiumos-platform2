@@ -15,9 +15,9 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
+#include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
-#include "net-base/export.h"
 #include "net-base/netlink_packet.h"
 
 struct nlmsghdr;
@@ -65,7 +65,7 @@ namespace net_base {
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
 
-class NET_BASE_EXPORT NetlinkMessage {
+class BRILLO_EXPORT NetlinkMessage {
  public:
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
@@ -135,7 +135,7 @@ class NET_BASE_EXPORT NetlinkMessage {
 // a malformed message or a busy kernel module).  Ack messages are received
 // from the kernel when a sent message has the NLM_F_ACK flag set, indicating
 // that an Ack is requested.
-class NET_BASE_EXPORT ErrorAckMessage : public NetlinkMessage {
+class BRILLO_EXPORT ErrorAckMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -155,7 +155,7 @@ class NET_BASE_EXPORT ErrorAckMessage : public NetlinkMessage {
   int32_t error_;
 };
 
-class NET_BASE_EXPORT NoopMessage : public NetlinkMessage {
+class BRILLO_EXPORT NoopMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -168,7 +168,7 @@ class NET_BASE_EXPORT NoopMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class NET_BASE_EXPORT DoneMessage : public NetlinkMessage {
+class BRILLO_EXPORT DoneMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -181,7 +181,7 @@ class NET_BASE_EXPORT DoneMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class NET_BASE_EXPORT OverrunMessage : public NetlinkMessage {
+class BRILLO_EXPORT OverrunMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -194,7 +194,7 @@ class NET_BASE_EXPORT OverrunMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class NET_BASE_EXPORT UnknownMessage : public NetlinkMessage {
+class BRILLO_EXPORT UnknownMessage : public NetlinkMessage {
  public:
   UnknownMessage(uint16_t message_type, base::span<const uint8_t> message_body)
       : NetlinkMessage(message_type),
@@ -214,7 +214,7 @@ class NET_BASE_EXPORT UnknownMessage : public NetlinkMessage {
 // Factory class.
 //
 
-class NET_BASE_EXPORT NetlinkMessageFactory {
+class BRILLO_EXPORT NetlinkMessageFactory {
  public:
   using FactoryMethod = base::RepeatingCallback<std::unique_ptr<NetlinkMessage>(
       const NetlinkPacket& packet)>;

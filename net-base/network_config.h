@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <brillo/brillo_export.h>
+
 #include "net-base/http_url.h"
 #include "net-base/ip_address.h"
 #include "net-base/ipv4_address.h"
@@ -19,7 +21,7 @@
 namespace net_base {
 
 // Properties related to the IP layer used to represent a configuration.
-struct NET_BASE_EXPORT NetworkConfig {
+struct BRILLO_EXPORT NetworkConfig {
   // Define a default and the minimum viable MTU values.
   static constexpr int kDefaultMTU = 1500;
   static constexpr int kMinIPv4MTU = 576;
@@ -65,8 +67,8 @@ struct NET_BASE_EXPORT NetworkConfig {
   std::optional<HttpUrl> captive_portal_uri;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                         const NetworkConfig& config);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       const NetworkConfig& config);
 
 }  // namespace net_base
 

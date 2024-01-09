@@ -15,13 +15,12 @@
 #include <vector>
 
 #include <base/containers/span.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // Represents an EUI-48 address.
-class NET_BASE_EXPORT MacAddress {
+class BRILLO_EXPORT MacAddress {
  public:
   // The length in bytes of addresses.
   static constexpr size_t kAddressLength = ETHER_ADDR_LEN;
@@ -72,8 +71,8 @@ class NET_BASE_EXPORT MacAddress {
   DataType data_;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
-                                         const MacAddress& address);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
+                                       const MacAddress& address);
 
 }  // namespace net_base
 #endif  // NET_BASE_MAC_ADDRESS_H_

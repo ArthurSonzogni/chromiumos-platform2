@@ -11,13 +11,12 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <brillo/brillo_export.h>
 #include <gmock/gmock.h>
-
-#include "net-base/export.h"
 
 namespace net_base {
 
-class NET_BASE_EXPORT MockSocket : public Socket {
+class BRILLO_EXPORT MockSocket : public Socket {
  public:
   MockSocket();
   explicit MockSocket(base::ScopedFD fd);
@@ -62,7 +61,7 @@ class NET_BASE_EXPORT MockSocket : public Socket {
               (const, override));
 };
 
-class NET_BASE_EXPORT MockSocketFactory : public SocketFactory {
+class BRILLO_EXPORT MockSocketFactory : public SocketFactory {
  public:
   MockSocketFactory();
   ~MockSocketFactory() override;

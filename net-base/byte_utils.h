@@ -11,8 +11,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base::byte_utils {
 
@@ -63,7 +62,7 @@ base::span<uint8_t> AsMutBytes(T& val) {
 // std::string("ab")       => {'a', 'b', '\0'}
 // std::string("ab\0", 3)  => {'a', 'b', '\0'}
 // std::string("ab\0c", 4) => {'a', 'b', '\0'}
-NET_BASE_EXPORT std::vector<uint8_t> StringToCStringBytes(std::string_view str);
+BRILLO_EXPORT std::vector<uint8_t> StringToCStringBytes(std::string_view str);
 
 // Converts a byte buffer to a std::string copying all bytes until a null
 // character is found or until the end of the buffer. The returned string
@@ -71,7 +70,7 @@ NET_BASE_EXPORT std::vector<uint8_t> StringToCStringBytes(std::string_view str);
 // {'a', 'b'}            => std::string("ab")
 // {'a', 'b', '\0'}      => std::string("ab")
 // {'a', 'b', '\0', 'c'} => std::string("ab")
-NET_BASE_EXPORT std::string StringFromCStringBytes(
+BRILLO_EXPORT std::string StringFromCStringBytes(
     base::span<const uint8_t> bytes);
 
 // Converts a string to a byte buffer. The size of the returned byte buffer is
@@ -80,11 +79,11 @@ NET_BASE_EXPORT std::string StringFromCStringBytes(
 // std::string("abc", 3)    => {'a', 'b', 'c'}
 // std::string("abc\0", 4)  => {'a', 'b', 'c', '\0'}
 // std::string("abc\0d", 5) => {'a', 'b', 'c', '\0', 'd'}
-NET_BASE_EXPORT std::vector<uint8_t> ByteStringToBytes(std::string_view bytes);
+BRILLO_EXPORT std::vector<uint8_t> ByteStringToBytes(std::string_view bytes);
 
 // Converts a string to the view of immutable byte buffer. Similar to
 // ByteStringToBytes() but it does not copy the content.
-NET_BASE_EXPORT base::span<const uint8_t> ByteStringAsBytes(
+BRILLO_EXPORT base::span<const uint8_t> ByteStringAsBytes(
     std::string_view bytes);
 
 // Converts a byte buffer to a std:string. The size of the returned string is
@@ -93,8 +92,7 @@ NET_BASE_EXPORT base::span<const uint8_t> ByteStringAsBytes(
 // {'a', 'b', 'c'}            => std::string("abc", 3)
 // {'a', 'b', 'c', '\0'}      => std::string("abc\0", 4)
 // {'a', 'b', 'c', '\0', 'd'} => std::string("abc\0d", 5)
-NET_BASE_EXPORT std::string ByteStringFromBytes(
-    base::span<const uint8_t> bytes);
+BRILLO_EXPORT std::string ByteStringFromBytes(base::span<const uint8_t> bytes);
 
 }  // namespace net_base::byte_utils
 #endif  // NET_BASE_BYTE_UTILS_H_

@@ -68,9 +68,9 @@
 #include <base/functional/bind.h>
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
+#include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "net-base/export.h"
 #include "net-base/generic_netlink_message.h"
 #include "net-base/netlink_message.h"
 #include "net-base/netlink_packet.h"
@@ -92,7 +92,7 @@ namespace net_base {
 //      netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
 //                              Bind(&Nl80211Message::CreateMessage)));
 //  netlink_manager_->Start();
-class NET_BASE_EXPORT NetlinkManager {
+class BRILLO_EXPORT NetlinkManager {
  public:
   enum AuxiliaryMessageType {
     kDone,

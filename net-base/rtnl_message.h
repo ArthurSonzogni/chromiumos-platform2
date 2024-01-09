@@ -13,8 +13,8 @@
 
 #include <base/containers/contains.h>
 #include <base/containers/span.h>
+#include <brillo/brillo_export.h>
 
-#include "net-base/export.h"
 #include "net-base/http_url.h"
 #include "net-base/ip_address.h"
 #include "net-base/ipv6_address.h"
@@ -30,7 +30,7 @@ using RTNLAttrMap = std::unordered_map<uint16_t, std::vector<uint8_t>>;
 // Helper class for processing rtnetlink messages. See uapi/linux/rtnetlink.h
 // and rtnetlink manual page for details about the message binary encoding and
 // meaning of struct fields populated by the kernel.
-class NET_BASE_EXPORT RTNLMessage {
+class BRILLO_EXPORT RTNLMessage {
  public:
   enum Type {
     kTypeUnknown,

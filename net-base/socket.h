@@ -14,14 +14,13 @@
 #include <base/containers/span.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // Represents a socket file descriptor, and provides the encapsulation for
 // the standard POSIX and Linux socket operations.
-class NET_BASE_EXPORT Socket {
+class BRILLO_EXPORT Socket {
  public:
   // Creates the socket instance by socket(...) method. On failure, returns
   // nullptr and the errno is set. The caller should use PLOG() to print errno.
@@ -129,7 +128,7 @@ class NET_BASE_EXPORT Socket {
 
 // Creates the Socket instance. It's used for injecting MockSocketFactory at
 // testing to create the mock Socket instance.
-class NET_BASE_EXPORT SocketFactory {
+class BRILLO_EXPORT SocketFactory {
  public:
   // Keep this large enough to avoid overflows on IPv6 SNM routing update
   // spikes.
@@ -157,8 +156,8 @@ class NET_BASE_EXPORT SocketFactory {
       std::optional<int> receive_buffer_size = kNetlinkReceiveBufferSize);
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                         const Socket& socket);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       const Socket& socket);
 
 }  // namespace net_base
 #endif  // NET_BASE_SOCKET_H_

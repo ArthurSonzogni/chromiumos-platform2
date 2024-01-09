@@ -17,14 +17,14 @@
 
 #include <base/containers/span.h>
 #include <base/hash/hash.h>
+#include <brillo/brillo_export.h>
 
-#include "net-base/export.h"
 #include "net-base/ip_address_utils.h"
 
 namespace net_base {
 
 // Represents an IPv6 address.
-class NET_BASE_EXPORT IPv6Address {
+class BRILLO_EXPORT IPv6Address {
  public:
   // The length in bytes of addresses.
   static constexpr size_t kAddressLength = sizeof(struct in6_addr);
@@ -96,8 +96,8 @@ class NET_BASE_EXPORT IPv6Address {
   DataType data_;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& os,
-                                         const IPv6Address& address);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
+                                       const IPv6Address& address);
 
 // Represents the IPv6 CIDR, that contains a IPv6 address and a prefix length.
 using IPv6CIDR = CIDR<IPv6Address>;

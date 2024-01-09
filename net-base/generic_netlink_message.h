@@ -9,8 +9,9 @@
 #include <string>
 #include <vector>
 
+#include <brillo/brillo_export.h>
+
 #include "net-base/attribute_list.h"
-#include "net-base/export.h"
 #include "net-base/netlink_message.h"
 #include "net-base/netlink_packet.h"
 
@@ -55,7 +56,7 @@ namespace net_base {
 //                       |<-----hdr.nla_len----->| |
 //                       |<NLA_ALIGN(hdr.nla_len)->|
 
-class NET_BASE_EXPORT GenericNetlinkMessage : public NetlinkMessage {
+class BRILLO_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:
   GenericNetlinkMessage(uint16_t my_message_type,
                         uint8_t command,
@@ -93,7 +94,7 @@ class NET_BASE_EXPORT GenericNetlinkMessage : public NetlinkMessage {
 
 // Control Messages
 
-class NET_BASE_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
+class BRILLO_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
  public:
   static const uint16_t kMessageType;
   ControlNetlinkMessage(uint8_t command, const char* command_string)
@@ -110,7 +111,7 @@ class NET_BASE_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
       const NetlinkPacket& packet);
 };
 
-class NET_BASE_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
+class BRILLO_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -120,7 +121,7 @@ class NET_BASE_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
   NewFamilyMessage& operator=(const NewFamilyMessage&) = delete;
 };
 
-class NET_BASE_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
+class BRILLO_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -130,7 +131,7 @@ class NET_BASE_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
   GetFamilyMessage& operator=(const GetFamilyMessage&) = delete;
 };
 
-class NET_BASE_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
+class BRILLO_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
  public:
   explicit UnknownControlMessage(uint8_t command)
       : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>") {}

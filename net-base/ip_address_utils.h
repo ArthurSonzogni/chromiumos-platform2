@@ -15,14 +15,13 @@
 
 #include <base/check.h>
 #include <base/containers/span.h>
-
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // Splits the CIDR-notation string into the pair of the address and the prefix
 // length. Returns std::nullopt if the format is invalid.
-NET_BASE_EXPORT std::optional<std::pair<std::string_view, int>> SplitCIDRString(
+BRILLO_EXPORT std::optional<std::pair<std::string_view, int>> SplitCIDRString(
     std::string_view address_string);
 
 // Same as `inet_pton()` from the standard C library, but takes a `string_view`
@@ -42,7 +41,7 @@ std::optional<Address> CreateAddressFromBytes(base::span<const uint8_t> bytes) {
 
 // Represents the CIDR, that contains a IP address and a prefix length.
 template <typename Address>
-class NET_BASE_EXPORT CIDR {
+class BRILLO_EXPORT CIDR {
  public:
   static constexpr int kBitsPerByte = 8;
   static constexpr int kMaxPrefixLength =

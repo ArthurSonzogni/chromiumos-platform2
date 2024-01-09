@@ -8,14 +8,14 @@
 #include <cstdint>
 #include <ostream>
 
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
 
 namespace net_base {
 
 // A representation of Manager SortServices() result that Network uses to apply
 // its configuration accordingly.
 // TODO(b/289971126): Migrate to patchpanel-client.
-struct NET_BASE_EXPORT NetworkPriority {
+struct BRILLO_EXPORT NetworkPriority {
   static constexpr uint32_t kMaxRankingOrder = 31;
   // Whether current Network is the primary one. Is true for either VPN or the
   // primary physical network if a VPN network is not present.
@@ -34,8 +34,8 @@ struct NET_BASE_EXPORT NetworkPriority {
   bool operator==(const NetworkPriority& rhs) const = default;
 };
 
-NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                         const NetworkPriority& priority);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       const NetworkPriority& priority);
 
 }  // namespace net_base
 

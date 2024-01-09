@@ -7,15 +7,15 @@
 
 #include <base/functional/callback.h>
 #include <base/observer_list_types.h>
+#include <brillo/brillo_export.h>
 
-#include "net-base/export.h"
 #include "net-base/rtnl_message.h"
 
 namespace net_base {
 
 class RTNLHandler;
 
-class NET_BASE_EXPORT RTNLListener : public base::CheckedObserver {
+class BRILLO_EXPORT RTNLListener : public base::CheckedObserver {
  public:
   RTNLListener(
       uint32_t listen_flags,

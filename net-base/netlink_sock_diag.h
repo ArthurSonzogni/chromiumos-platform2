@@ -11,7 +11,8 @@
 #include <memory>
 #include <vector>
 
-#include "net-base/export.h"
+#include <brillo/brillo_export.h>
+
 #include "net-base/ip_address.h"
 #include "net-base/socket.h"
 
@@ -24,7 +25,7 @@ namespace net_base {
 //
 // Also note that the proper functioning of this class is contingent on kernel
 // support for SOCK_DESTROY.
-class NET_BASE_EXPORT NetlinkSockDiag {
+class BRILLO_EXPORT NetlinkSockDiag {
  public:
   static std::unique_ptr<NetlinkSockDiag> Create();
   virtual ~NetlinkSockDiag();

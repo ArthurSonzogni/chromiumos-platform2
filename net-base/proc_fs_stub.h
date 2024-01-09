@@ -7,13 +7,15 @@
 
 #include <string>
 
+#include <brillo/brillo_export.h>
+
 #include "net-base/ip_address.h"
 
 namespace net_base {
 
 // Helper class to handle all /proc/sys/ interactions for a certain network
 // interface.
-class NET_BASE_EXPORT ProcFsStub {
+class BRILLO_EXPORT ProcFsStub {
  public:
   static constexpr char kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
   static constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";

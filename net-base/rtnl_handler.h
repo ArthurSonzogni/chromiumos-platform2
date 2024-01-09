@@ -19,9 +19,9 @@
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 #include <base/observer_list.h>
+#include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "net-base/export.h"
 #include "net-base/ip_address.h"
 #include "net-base/mac_address.h"
 #include "net-base/rtnl_listener.h"
@@ -39,7 +39,7 @@ namespace net_base {
 // RTNLHandler provides access to these events through a callback system and
 // provides utility functions to make changes to interface, address and routing
 // state.
-class NET_BASE_EXPORT RTNLHandler {
+class BRILLO_EXPORT RTNLHandler {
  public:
   // TODO(crbug.com/1005487): use this for all user-triggered messages.
   // |error| is a positive errno or 0 for acknowledgements.

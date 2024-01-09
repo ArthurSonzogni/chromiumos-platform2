@@ -32,9 +32,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "net-base/export.h"
 #include "net-base/socket.h"
 
 namespace net_base {
@@ -43,7 +43,7 @@ namespace net_base {
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
 // for documentation on how netlink sockets work (note that most of the rest of
 // this document discusses libnl -- something not used by this code).
-class NET_BASE_EXPORT NetlinkSocket {
+class BRILLO_EXPORT NetlinkSocket {
  public:
   // Creates a NetlinkSocket instance, using the SocketFactory.
   static std::unique_ptr<NetlinkSocket> Create();

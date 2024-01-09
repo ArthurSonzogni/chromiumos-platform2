@@ -7,13 +7,14 @@
 
 #include <string>
 
+#include <brillo/brillo_export.h>
 #include <gmock/gmock.h>
 
 #include "net-base/proc_fs_stub.h"
 
 namespace net_base {
 
-class NET_BASE_EXPORT MockProcFsStub : public ProcFsStub {
+class BRILLO_EXPORT MockProcFsStub : public ProcFsStub {
  public:
   explicit MockProcFsStub(const std::string& interface_name);
   MockProcFsStub(const MockProcFsStub&) = delete;

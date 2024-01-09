@@ -23,17 +23,15 @@
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-
+#include <brillo/brillo_export.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
 #include <libminijail.h>
 
-#include "net-base/export.h"
-
 namespace net_base {
 
-struct NET_BASE_EXPORT std_file_descriptors {
+struct BRILLO_EXPORT std_file_descriptors {
   int* stdin_fd;
   int* stdout_fd;
   int* stderr_fd;
@@ -42,13 +40,13 @@ struct NET_BASE_EXPORT std_file_descriptors {
 // The ProcessManager is a singleton providing process creation and
 // asynchronous process termination. Need to initialize it once with
 // Init method call.
-class NET_BASE_EXPORT ProcessManager {
+class BRILLO_EXPORT ProcessManager {
  public:
   using ExitCallback = base::OnceCallback<void(int exit_status)>;
   using ExitWithStdoutCallback =
       base::OnceCallback<void(int exit_status, const std::string& stdout_str)>;
 
-  struct NET_BASE_EXPORT MinijailOptions {
+  struct BRILLO_EXPORT MinijailOptions {
     // Program will run as |user| and |group|.
     std::string user;
     std::string group;
