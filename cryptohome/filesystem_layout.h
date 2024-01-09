@@ -50,6 +50,8 @@ inline constexpr char kUserPolicyDir[] = "policy";
 inline constexpr char kPolicyFile[] = "user_policy";
 
 base::FilePath ShadowRoot();
+base::FilePath SystemDataRoot();
+base::FilePath LegacySystemSaltFile();
 base::FilePath SystemSaltFile();
 base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();

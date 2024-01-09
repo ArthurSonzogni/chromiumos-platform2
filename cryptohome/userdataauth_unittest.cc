@@ -1973,6 +1973,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
   EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists(base::FilePath("/var/lib/system_salt")))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))
@@ -2098,6 +2100,8 @@ TEST_F(UserDataAuthTest,
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
   EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists(base::FilePath("/var/lib/system_salt")))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))

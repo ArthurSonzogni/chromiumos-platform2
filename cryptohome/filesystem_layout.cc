@@ -28,7 +28,10 @@ namespace {
 
 constexpr char kShadowRoot[] = "/home/.shadow";
 
-constexpr char kSystemSaltFile[] = "salt";
+constexpr char kLegacySystemSaltFile[] = "/home/.shadow/salt";
+constexpr char kSystemSaltFile[] = "/var/lib/system_salt";
+constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
+
 constexpr int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
 constexpr mode_t kSaltFilePermissions = 0644;
 
@@ -44,7 +47,8 @@ constexpr char kRecoveryIdFile[] = "recovery_id";
 
 bool GetOrCreateSalt(Platform* platform,
                      const base::FilePath& salt_file,
-                     brillo::SecureBlob* salt) {
+                     brillo::SecureBlob* salt,
+                     bool can_create) {
   int64_t file_len = 0;
   if (platform->FileExists(salt_file)) {
     if (!platform->GetFileSize(salt_file, &file_len)) {
@@ -53,7 +57,7 @@ bool GetOrCreateSalt(Platform* platform,
     }
   }
   brillo::SecureBlob local_salt;
-  if (file_len == 0 || file_len > kSystemSaltMaxSize) {
+  if (can_create && (file_len == 0 || file_len > kSystemSaltMaxSize)) {
     LOG(ERROR) << "Creating new salt at " << salt_file.value() << " ("
                << file_len << ")";
     // If this salt doesn't exist, automatically create it.
@@ -90,8 +94,12 @@ base::FilePath ShadowRoot() {
   return base::FilePath(kShadowRoot);
 }
 
+base::FilePath LegacySystemSaltFile() {
+  return base::FilePath(kLegacySystemSaltFile);
+}
+
 base::FilePath SystemSaltFile() {
-  return ShadowRoot().Append(kSystemSaltFile);
+  return base::FilePath(kSystemSaltFile);
 }
 
 base::FilePath PublicMountSaltFile() {
@@ -211,11 +219,18 @@ base::FilePath LogicalVolumeSnapshotPath(
 }
 
 bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt) {
-  return GetOrCreateSalt(platform, SystemSaltFile(), salt);
+  // Only new installations get the system salt file in the new location.
+  // If the legacy salt file exists, the system should keep using it.
+  if (platform->FileExists(LegacySystemSaltFile())) {
+    return GetOrCreateSalt(platform, LegacySystemSaltFile(), salt,
+                           /*can_create=*/false);
+  }
+  return GetOrCreateSalt(platform, SystemSaltFile(), salt, /*can_create=*/true);
 }
 
 bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
-  return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
+  return GetOrCreateSalt(platform, PublicMountSaltFile(), salt,
+                         /*can_create=*/true);
 }
 
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {

@@ -9,9 +9,6 @@
 
 namespace cryptohome {
 
-// Constants used in both service.cc and userdataauth.cc
-inline constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
-
 // The default symmetric key size for cryptohome is the ecryptfs default
 inline constexpr size_t kCryptohomeDefaultKeySize = 64;
 inline constexpr size_t kCryptohomeDefaultKeySignatureSize = 8;

@@ -5,9 +5,17 @@
 #include "cryptohome/filesystem_layout.h"
 
 #include <base/files/file_path.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
+
+using hwsec_foundation::CreateSecureRandomBlob;
+using testing::NiceMock;
 
 TEST(FileSystemLayoutTest, UserSecretStashPath) {
   const ObfuscatedUsername kObfuscatedUsername("fake-user");
@@ -18,6 +26,83 @@ TEST(FileSystemLayoutTest, UserSecretStashPath) {
       UserSecretStashPath(kObfuscatedUsername,
                           /*slot=*/123),
       base::FilePath("/home/.shadow/fake-user/user_secret_stash/uss.123"));
+}
+
+TEST(FileSystemLayout, CreateNewSalt) {
+  NiceMock<MockPlatform> platform;
+  brillo::SecureBlob salt;
+  brillo::SecureBlob salt2;
+
+  // Fake platform initializer call into layout initialization.
+  // Clean the relevant state up.
+  std::ignore = platform.DeleteFile(LegacySystemSaltFile());
+  std::ignore = platform.DeleteFile(SystemSaltFile());
+
+  ASSERT_FALSE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_FALSE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt));
+  ASSERT_FALSE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt2));
+  ASSERT_FALSE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt.to_string(), salt2.to_string());
+}
+
+TEST(FileSystemLayout, LegacySaltExists) {
+  NiceMock<MockPlatform> platform;
+
+  brillo::SecureBlob salt;
+  brillo::SecureBlob local_salt =
+      CreateSecureRandomBlob(kCryptohomeDefaultSaltLength);
+
+  // Fake platform initializer call into layout initialization.
+  // Clean the relevant state up.
+  std::ignore = platform.DeleteFile(LegacySystemSaltFile());
+  std::ignore = platform.DeleteFile(SystemSaltFile());
+
+  ASSERT_TRUE(platform.WriteSecureBlobToFileAtomicDurable(
+      LegacySystemSaltFile(), local_salt, 0644));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_FALSE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_FALSE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt.to_string(), local_salt.to_string());
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_FALSE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt.to_string(), local_salt.to_string());
+}
+
+TEST(FileSystemLayout, LegacySaltPreferred) {
+  NiceMock<MockPlatform> platform;
+
+  brillo::SecureBlob salt;
+  brillo::SecureBlob legacy_salt =
+      CreateSecureRandomBlob(kCryptohomeDefaultSaltLength);
+  brillo::SecureBlob new_salt =
+      CreateSecureRandomBlob(kCryptohomeDefaultSaltLength);
+
+  // Fake platform initializer call into layout initialization.
+  // Clean the relevant state up.
+  std::ignore = platform.DeleteFile(LegacySystemSaltFile());
+  std::ignore = platform.DeleteFile(SystemSaltFile());
+
+  ASSERT_TRUE(platform.WriteSecureBlobToFileAtomicDurable(
+      LegacySystemSaltFile(), legacy_salt, 0644));
+  ASSERT_TRUE(platform.WriteSecureBlobToFileAtomicDurable(SystemSaltFile(),
+                                                          new_salt, 0644));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt.to_string(), legacy_salt.to_string());
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt.to_string(), legacy_salt.to_string());
 }
 
 }  // namespace cryptohome
