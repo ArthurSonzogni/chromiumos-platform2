@@ -98,10 +98,6 @@ base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id);
 
 bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt);
 
-// Checks if a given named flag file exists. The name must be a filename and
-// cannot be an arbitrary path.
-bool DoesFlagFileExist(const std::string& name, Platform* platform);
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_FILESYSTEM_LAYOUT_H_
