@@ -5,6 +5,7 @@
 #ifndef SHILL_LOGGING_H_
 #define SHILL_LOGGING_H_
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "shill/scope_logger.h"
@@ -96,6 +97,17 @@ extern const char kLogLevel[];
 extern const char kLogScopes[];
 
 }  // namespace switches
+
+// Name of the file used for storing logging configuration.
+constexpr std::string_view kLogOverrideFile = "shill-log-override.json";
+
+// Stores the current logging configuration to a file in |path|. This will
+// override default log level and log scopes upon restart/reboot.
+bool PersistOverrideLogConfig(const base::FilePath& path, bool enabled);
+
+// Looks for log configuration file (pointed to by |path|) overriding default
+// log level and log scopes and sets the values accordingly.
+bool ApplyOverrideLogConfig(const base::FilePath& path);
 
 // Looks for the command line switches |kLogLevelSwitch| and |kLogScopesSwitch|
 // in |cl| and accordingly sets log scopes and levels.

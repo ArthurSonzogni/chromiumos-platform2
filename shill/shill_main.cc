@@ -147,7 +147,11 @@ int main(int argc, char** argv) {
   // Configure logging before we start anything else, so early log messages go
   // to a consistent place.
   SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
-  shill::SetLogLevelFromCommandLine(cl);
+  auto log_config_path = base::FilePath(config.GetStorageDirectory())
+                             .Append(shill::kLogOverrideFile);
+  if (!shill::ApplyOverrideLogConfig(log_config_path)) {
+    shill::SetLogLevelFromCommandLine(cl);
+  }
 
   // Go for it!
   daemon.Run();

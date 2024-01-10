@@ -746,6 +746,7 @@ if (use.test) {
       "hook_table_test.cc",
       "http_request_test.cc",
       "ipconfig_test.cc",
+      "logging_test.cc",
       "mac_address_test.cc",
       "manager_test.cc",
       "metrics_test.cc",

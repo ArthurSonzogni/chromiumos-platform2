@@ -5,7 +5,6 @@
 #ifndef SHILL_DBUS_MANAGER_DBUS_ADAPTOR_H_
 #define SHILL_DBUS_MANAGER_DBUS_ADAPTOR_H_
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -110,6 +109,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool GetDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
   bool SetDebugTags(brillo::ErrorPtr* error, const std::string& tags) override;
   bool ListDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
+  bool PersistDebugConfig(brillo::ErrorPtr* error, bool enabled) override;
   bool GetNetworksForGeolocation(brillo::ErrorPtr* error,
                                  brillo::VariantDictionary* networks) override;
   bool GetWiFiNetworksForGeolocation(

@@ -367,6 +367,18 @@ bool ManagerDBusAdaptor::ListDebugTags(brillo::ErrorPtr* /*error*/,
   return true;
 }
 
+bool ManagerDBusAdaptor::PersistDebugConfig(brillo::ErrorPtr* error,
+                                            bool enabled) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  base::FilePath log_override_path =
+      manager_->storage_path().Append(kLogOverrideFile);
+  if (!PersistOverrideLogConfig(log_override_path, enabled)) {
+    e.Populate(Error::kOperationFailed);
+  }
+  return !e.ToChromeosError(error);
+}
+
 bool ManagerDBusAdaptor::GetNetworksForGeolocation(
     brillo::ErrorPtr* /*error*/, brillo::VariantDictionary* networks) {
   SLOG(this, 2) << __func__;

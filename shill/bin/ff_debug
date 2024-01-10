@@ -15,12 +15,12 @@ send_ff_cmd() {
     "$@" 2>/dev/null
 }
 
-FF_TAGLIST="$(send_ff_cmd ListDebugTags | sed -e \
-  '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2 | tr "+" " ")"
-
 usage(){
   cat <<EOF
-Usage: ff_debug [<tag_expression>]|[--reset]|[--help]|[--list_valid_tags]|[--level <level>]
+Usage: ff_debug [<tag_expression>] [--level <level>] [--persist]
+       ff_debug --help
+       ff_debug --reset
+       ff_debug --list_valid_tags
 
   ff_debug adds and removes debug tags for flimflam.
   Current debug settings are displayed if no parameters are provided
@@ -40,7 +40,7 @@ Usage: ff_debug [<tag_expression>]|[--reset]|[--help]|[--list_valid_tags]|[--lev
 
   --list_valid_tags : Displays all valid tags
 
-  --level: Displays or sets current debug level for logging
+  --level : Displays or sets current debug level for logging
     All messages at, or above, the current log level are logged. Normal log
     levels range from 4 (LOG_FATAL) to 0 (LOG_INFO). In addition VERBOSE log
     levels are available starting at -1.
@@ -55,7 +55,11 @@ Usage: ff_debug [<tag_expression>]|[--reset]|[--help]|[--list_valid_tags]|[--lev
       negate SLOG levels for use with ff_debug. In this example, SLOG(<tag>, 4)
       maps to "--level -4".)
 
-  --reset : Removes all tagging
+  --reset : Removes all tagging and persistent debug configuration (if any) and
+    restores default log level
+
+  --persist : Stores the current debug configuration so that it is
+    reused after restart.
 
   --help : Displays this output
 EOF
@@ -98,20 +102,32 @@ get_or_set_debug_level() {
 }
 
 if [ $# -gt 0 ]; then
+  persist=
   while [ $# -gt 0 ]; do
     case "$1" in
     --reset)
+      set_ff_debug_level 0
       set_ff_debug_tags ''
+      persist="boolean:false"
       break
       ;;
     --level)
       shift  # move forward to the <level> argument if specified
-      get_or_set_debug_level "$@"
-      exit 0
+      if [ $# -eq 0 ]; then
+        get_or_set_debug_level
+        exit 0
+      else
+        get_or_set_debug_level "$@"
+      fi
       ;;
     --list*)
+      FF_TAGLIST="$(send_ff_cmd ListDebugTags | sed -e \
+        '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2 | tr "+" " ")"
       echo "Valid Tags: [$(echo "${FF_TAGLIST}" | sed 's/ /, /g')]"
       exit 0
+      ;;
+    --persist)
+      persist="boolean:true"
       ;;
     --help|--*)
       usage
@@ -123,6 +139,11 @@ if [ $# -gt 0 ]; then
     esac
     shift
   done
+  if [ -n "${persist}" ]; then
+    send_ff_cmd PersistDebugConfig "${persist}" > /dev/null
+  else
+    send_ff_cmd PersistDebugConfig "boolean:false" > /dev/null
+  fi
 
   echo "Old flimflam tags: [${starting_ff_tags}]"
 fi

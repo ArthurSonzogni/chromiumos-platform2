@@ -446,6 +446,9 @@ class FlimFlam(object):
     def SetDebugLevel(self, level):
         self.manager.SetDebugLevel(level)
 
+    def PersistDebugConfig(self, enabled):
+        self.manager.PersistDebugConfig(enabled)
+
     def GetServiceOrder(self):
         return self.manager.GetServiceOrder()
 
