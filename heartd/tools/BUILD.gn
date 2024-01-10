@@ -15,5 +15,7 @@ executable("heartd-tool") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "mojo_service_manager",
   ]
+  deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
 }
