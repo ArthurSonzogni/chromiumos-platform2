@@ -25,11 +25,20 @@
 namespace net_base {
 namespace {
 
-std::optional<size_t> ToOptionalSizeT(ssize_t size) {
-  if (size < 0) {
-    return std::nullopt;
+// Converts ssize_t to std::optional<size_t>. If |ignore_err| is true, then
+// returns 0 even |size| is less than 0.
+std::optional<size_t> ToOptionalSizeT(ssize_t size, bool ignore_err) {
+  if (size >= 0) {
+    return static_cast<size_t>(size);
   }
-  return static_cast<size_t>(size);
+  if (ignore_err) {
+    return 0;
+  }
+  return std::nullopt;
+}
+
+bool WouldBlock() {
+  return errno == EAGAIN || errno == EWOULDBLOCK;
 }
 
 }  // namespace
@@ -116,7 +125,7 @@ std::optional<size_t> Socket::RecvFrom(base::span<uint8_t> buf,
                                        socklen_t* addrlen) const {
   ssize_t res = HANDLE_EINTR(
       recvfrom(fd_.get(), buf.data(), buf.size(), flags, src_addr, addrlen));
-  return ToOptionalSizeT(res);
+  return ToOptionalSizeT(res, WouldBlock());
 }
 
 bool Socket::RecvMessage(std::vector<uint8_t>* message) const {
@@ -144,7 +153,7 @@ std::optional<size_t> Socket::Send(base::span<const char> buf,
 std::optional<size_t> Socket::Send(base::span<const uint8_t> buf,
                                    int flags) const {
   ssize_t res = HANDLE_EINTR(send(fd_.get(), buf.data(), buf.size(), flags));
-  return ToOptionalSizeT(res);
+  return ToOptionalSizeT(res, WouldBlock());
 }
 
 std::optional<size_t> Socket::SendTo(base::span<const char> buf,
@@ -160,7 +169,7 @@ std::optional<size_t> Socket::SendTo(base::span<const uint8_t> buf,
                                      socklen_t addrlen) const {
   ssize_t res = HANDLE_EINTR(
       sendto(fd_.get(), buf.data(), buf.size(), flags, dest_addr, addrlen));
-  return ToOptionalSizeT(res);
+  return ToOptionalSizeT(res, WouldBlock());
 }
 
 bool Socket::SetReceiveBuffer(int size) const {
