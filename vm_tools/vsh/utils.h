@@ -38,7 +38,9 @@ constexpr int kMaxMessageSize = 4096;
 constexpr char kVmShell[] = "/vm_shell";
 
 // Sends a protobuf MessageLite to the given socket fd.
-bool SendMessage(int sockfd, const google::protobuf::MessageLite& message);
+bool SendMessage(int sockfd,
+                 const google::protobuf::MessageLite& message,
+                 bool ignore_epipe = false);
 
 // Receives a protobuf MessageLite from the given socket fd.
 bool RecvMessage(int sockfd, google::protobuf::MessageLite* message);

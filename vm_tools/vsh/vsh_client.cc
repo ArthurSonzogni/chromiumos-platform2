@@ -346,13 +346,19 @@ void VshClient::HandleStdinReadable() {
   data_message->set_stream(STDIN_STREAM);
   data_message->set_data(buf, count);
 
-  if (!SendMessage(sock_fd_.get(), guest_message)) {
+  errno = 0;
+  if (!SendMessage(sock_fd_.get(), guest_message, /* ignore_epipe = */ true)) {
     LOG(ERROR) << "Failed to send guest data message";
     // Sending a partial message will break framing. Shut down the socket
     // write end, but don't quit entirely yet since there may be unprocessed
     // messages to read.
     CancelStdinTask();
     return;
+  }
+
+  // We don't consider EPIPE as error but need to stop watching stdin.
+  if (errno == EPIPE) {
+    CancelStdinTask();
   }
 }
 

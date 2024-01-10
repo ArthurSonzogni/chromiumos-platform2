@@ -23,11 +23,18 @@ using google::protobuf::MessageLite;
 namespace vm_tools::vsh {
 namespace {
 
-bool SendAllBytes(int sockfd, const uint8_t* buf, uint32_t buf_size) {
+bool SendAllBytes(int sockfd,
+                  const uint8_t* buf,
+                  uint32_t buf_size,
+                  bool ignore_epipe) {
   if (!base::WriteFileDescriptor(
           sockfd, base::as_bytes(base::make_span(buf, buf_size)))) {
-    PLOG(ERROR) << "Failed to write message to socket";
-    return false;
+    if (errno == EPIPE && ignore_epipe) {
+      return true;
+    } else {
+      PLOG(ERROR) << "Failed to write message to socket";
+      return false;
+    }
   }
 
   return true;
@@ -46,7 +53,7 @@ struct MessagePacket {
 static_assert(sizeof(MessagePacket) == sizeof(uint32_t) + kMaxMessageSize,
               "MessagePacket must not have implicit paddings");
 
-bool SendMessage(int sockfd, const MessageLite& message) {
+bool SendMessage(int sockfd, const MessageLite& message, bool ignore_epipe) {
   size_t msg_size = message.ByteSizeLong();
   if (msg_size > kMaxMessageSize) {
     LOG(ERROR) << "Serialized message too large: " << msg_size;
@@ -62,7 +69,7 @@ bool SendMessage(int sockfd, const MessageLite& message) {
   }
 
   if (!SendAllBytes(sockfd, reinterpret_cast<uint8_t*>(&msg),
-                    sizeof(uint32_t) + msg_size)) {
+                    sizeof(uint32_t) + msg_size, ignore_epipe)) {
     return false;
   }
 
