@@ -16,7 +16,7 @@ use dbus::{
 #[cfg(test)]
 use mockall::{automock, predicate::*};
 
-const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
+const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[cfg_attr(test, automock)]
 pub trait DbusConnectionTrait {

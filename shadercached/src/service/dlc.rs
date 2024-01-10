@@ -106,50 +106,61 @@ pub async fn periodic_dlc_handler<D: DbusConnectionTrait>(
     dlc_queue: DlcQueuePtr,
     dbus_conn: Arc<D>,
 ) {
-    let mut dlc_queue = dlc_queue.write().await;
-    debug!("{}", dlc_queue);
+    debug!("Dlc queue status {}", dlc_queue.read().await);
 
-    if dlc_queue.count_installing_dlcs() < MAX_CONCURRENT_DLC_INSTALLS {
+    loop {
         // Handle install queue
-        while let Some(steam_app_id) = dlc_queue.next_to_install() {
-            debug!("DLC queue status: {}", dlc_queue);
-            info!("Attempting shader cache DLC install");
-            let result = install_shader_cache_dlc(steam_app_id, dbus_conn.clone()).await;
-            if result.is_ok() {
-                info!("Started shader cache DLC install");
-                debug!("Started shader cache DLC install: {}", steam_app_id);
-                // Successfully queued install, stop trying
-                break;
-            }
-            // Don't retry to install dlc again, there are retries from
-            // the VM side in various points of UX.
-            // Simply just remove from installing set and try next.
-            dlc_queue.remove_installing(&steam_app_id);
-            // If mounting was queued, remove it.
-            if let Err(e) = dequeue_mount_for_failed_dlc(
-                steam_app_id,
-                "dlc is missing",
-                mount_map.clone(),
-                dbus_conn.clone(),
-            )
-            .await
-            {
-                error!("Failed to dequeue failed install: {}", e);
-            }
-            if let Err(_) = result.map_err(|e| warn!("Failed to install shader cache DLC: {}", e)) {
-                warn!("Failed to install shader cache DLC");
-            }
+        if !dlc_queue.read().await.available_to_install_more_dlc() {
+            break;
         }
-    } else {
-        debug!(
-            "{} shader cache dlcs are being installed, not triggering more installs",
-            dlc_queue.count_installing_dlcs()
-        );
+
+        let maybe_steam_app_id = dlc_queue.write().await.next_to_install();
+        if maybe_steam_app_id.is_none() {
+            break;
+        }
+        let steam_app_id = maybe_steam_app_id.unwrap();
+
+        info!("Attempting shader cache DLC install");
+        let result = install_shader_cache_dlc(steam_app_id, dbus_conn.clone()).await;
+        if result.is_ok() {
+            info!("Started shader cache DLC install");
+            debug!("Started shader cache DLC install: {}", steam_app_id);
+            // Successfully queued install
+            continue;
+        }
+
+        if let Err(e) = result {
+            warn!("Failed to install shader cache DLC: {}", e);
+        }
+
+        // Don't retry to install dlc again, there are retries from
+        // the VM side in various points of UX.
+        // Simply just remove from installing set and try next.
+        dlc_queue.write().await.remove_installing(&steam_app_id);
+
+        // If mounting was queued, remove it.
+        if let Err(e) = dequeue_mount_for_failed_dlc(
+            steam_app_id,
+            "dlc could not be installed",
+            mount_map.clone(),
+            dbus_conn.clone(),
+        )
+        .await
+        {
+            error!("Failed to dequeue failed install: {}", e);
+        }
+        // Attempt to install next by continuing the loop
     }
 
     let mut failed_uninstalls: HashSet<SteamAppId> = HashSet::new();
-    // Handle uninstall queue
-    while let Some(steam_app_id) = dlc_queue.next_to_uninstall() {
+    loop {
+        // Handle uninstall queue, attempt to uninstall everything
+        let maybe_steam_app_id = dlc_queue.write().await.next_to_uninstall();
+        if maybe_steam_app_id.is_none() {
+            break;
+        }
+        let steam_app_id = maybe_steam_app_id.unwrap();
+
         debug!("Uninstalling shader cache for {}", steam_app_id);
         if let Err(e) = unmount_dlc(steam_app_id, mount_map.clone()).await {
             warn!("Failed to unmount: {}", e);
@@ -177,7 +188,17 @@ pub async fn periodic_dlc_handler<D: DbusConnectionTrait>(
             continue;
         }
     }
-    dlc_queue.queue_uninstall_multi(&failed_uninstalls);
+
+    if !failed_uninstalls.is_empty() {
+        debug!(
+            "Queueing {:?} to uninstall (failed this round)",
+            failed_uninstalls
+        );
+        dlc_queue
+            .write()
+            .await
+            .queue_uninstall_multi(&failed_uninstalls);
+    }
 }
 
 pub async fn mount_dlc<D: DbusConnectionTrait>(

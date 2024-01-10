@@ -9,7 +9,7 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::common::{SteamAppId, MAX_INSTALL_QUEUE_SIZE};
+use crate::common::{SteamAppId, MAX_CONCURRENT_DLC_INSTALLS, MAX_INSTALL_QUEUE_SIZE};
 
 #[derive(Debug)]
 pub struct DlcQueue {
@@ -64,8 +64,8 @@ impl DlcQueue {
         None
     }
 
-    pub fn count_installing_dlcs(self: &DlcQueue) -> usize {
-        self.installing.len()
+    pub fn available_to_install_more_dlc(self: &DlcQueue) -> bool {
+        (MAX_CONCURRENT_DLC_INSTALLS - self.installing.len()) > 0
     }
 
     pub fn remove_installing(self: &mut DlcQueue, steam_app_id: &SteamAppId) -> bool {
