@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "ec_version": "12345.67.0",
+  "ec_version": "model-0.0.0-abcdefa",
   "component_list": [
     {
       "component_type": "base_sensor",

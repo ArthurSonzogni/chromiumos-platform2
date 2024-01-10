@@ -138,9 +138,9 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  ExpectI2cReadSuccess(probe_function.get(), 2, 0xbe);
   // bc12_2
-  ExpectI2cReadSuccess(probe_function.get(), 3, 0x5f);
+  ExpectI2cReadSuccess(probe_function.get(), 3, 0xbe);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson(R"JSON(
     [
@@ -166,7 +166,7 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithNameSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  ExpectI2cReadSuccess(probe_function.get(), 2, 0xbe);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson(R"JSON(
     [
@@ -189,7 +189,7 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeAndNameSucceed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadSuccess(probe_function.get(), 2, 0x5f);
+  ExpectI2cReadSuccess(probe_function.get(), 2, 0xbe);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson(R"JSON(
     [
@@ -212,7 +212,7 @@ TEST_F(EcComponentFunctionTestNoExpect, ProbeI2cFailed) {
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
   // bc12_1
-  ExpectI2cReadFailed(probe_function.get(), 2, 0x5f);
+  ExpectI2cReadFailed(probe_function.get(), 2, 0xbe);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
 }
@@ -229,10 +229,10 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x00, 1,
                                  kMismatchValue);
   // base_sensor_1
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x01, 1,
                                  kMatchValue);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson(R"JSON(
@@ -256,9 +256,9 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
   auto probe_function =
       CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
 
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x00, 1,
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x00, 1,
                                  kMismatchValue);
-  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x01, 0x01, 1,
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x01, 1,
                                  kMismatchValue);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));

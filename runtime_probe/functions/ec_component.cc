@@ -51,16 +51,20 @@ std::unique_ptr<ec::I2cReadCommand> EcComponentFunction::GetI2cReadCommand(
 
 bool EcComponentFunction::IsValidComponent(
     const EcComponentManifest::Component& comp, int ec_dev_fd) const {
+  // |addr| in component manifest is a 7-bit address, where
+  // ec::I2cReadCommand::Create() takes 8-bit address, so we convert addresses
+  // accordingly.
+  const int addr8 = comp.i2c.addr << 1;
   if (comp.i2c.expect.size() == 0) {
     // No expect value. Just verify the accessibility of the component.
-    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, 0u, 1u);
+    auto cmd = GetI2cReadCommand(comp.i2c.port, addr8, 0u, 1u);
     if (cmd && cmd->RunWithMultipleAttempts(ec_dev_fd, kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
       return true;
     }
   }
   for (const auto& expect : comp.i2c.expect) {
-    auto cmd = GetI2cReadCommand(comp.i2c.port, comp.i2c.addr, expect.reg, 1u);
+    auto cmd = GetI2cReadCommand(comp.i2c.port, addr8, expect.reg, 1u);
     if (cmd && cmd->RunWithMultipleAttempts(ec_dev_fd, kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
       if (expect.value == cmd->Data()) {
