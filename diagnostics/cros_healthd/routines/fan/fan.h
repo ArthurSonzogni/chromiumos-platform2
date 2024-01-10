@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_FAN_FAN_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_FAN_FAN_H_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <set>
@@ -48,7 +49,8 @@ class FanRoutine final : public BaseRoutineControl {
       base::Seconds(1);
 
  protected:
-  explicit FanRoutine(Context* context, uint8_t expected_fan_count);
+  explicit FanRoutine(Context* context,
+                      std::optional<uint8_t> expected_fan_count);
 
  private:
   // An enum to describe what stage the fan routine is currently in.
@@ -103,7 +105,7 @@ class FanRoutine final : public BaseRoutineControl {
   // Context object used to communicate with the executor.
   Context* context_;
   // Expected fan count from cros_config.
-  uint8_t expected_fan_count_;
+  std::optional<uint8_t> expected_fan_count_;
   // Records the current stage of the fan routine execution.
   Stage stage_ = Stage::kInitialize;
   // Records how many times the fan speed has been verified at each stage.

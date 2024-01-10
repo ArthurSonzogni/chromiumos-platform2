@@ -702,5 +702,58 @@ TEST_F(FanRoutineTest, RoutineFailureByTooManyFan) {
             mojom::HardwarePresenceStatus::kNotMatched);
 }
 
+// Test that the routine can be run if no fan-count cros config is present
+TEST_F(FanRoutineTest, RunRoutineWithoutCrosConfig) {
+  constexpr int kFanSpeed = 1000;
+  SetFanCrosConfig("");
+  EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed}, std::nullopt);
+      })
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmChange},
+                                std::nullopt);
+      });
+
+  EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
+      .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
+                    Executor::SetFanSpeedCallback callback) {
+        // Set fan to be increasing
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
+                                  0, kFanSpeed + FanRoutine::kFanRpmChange)));
+        std::move(callback).Run(std::nullopt);
+      });
+
+  auto routine_create =
+      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
+  ASSERT_TRUE(routine_create.has_value());
+  routine_ = std::move(routine_create.value());
+
+  base::test::TestFuture<void> future;
+  SetupAndStartRoutine(true, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+  mojom::RoutineStatePtr result = std::move(observer_->state_);
+
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_TRUE(result->state_union->get_finished()->has_passed);
+  const auto& fan_detail =
+      result->state_union->get_finished()->detail->get_fan();
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
+  EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
+  EXPECT_EQ(fan_detail->fan_count_status,
+            mojom::HardwarePresenceStatus::kNotConfigured);
+}
+
+// Test that the routine can be run if no fan-count cros config is present
+TEST_F(FanRoutineTest, RoutineUnsupportedWithNoFanCrosConfig) {
+  SetFanCrosConfig("0");
+
+  auto routine_create =
+      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
+  ASSERT_FALSE(routine_create.has_value());
+  ASSERT_TRUE(routine_create.error()->is_unsupported());
+}
+
 }  // namespace
 }  // namespace diagnostics

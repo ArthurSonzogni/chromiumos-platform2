@@ -411,9 +411,7 @@ TEST_F(RoutineServiceTest, Fan) {
 TEST_F(RoutineServiceTest, FanNoCrosConfig) {
   SetFakeCrosConfig(paths::cros_config::kFanCount, std::nullopt);
 
-  auto status = MakeUnsupported(
-      "Expected cros_config property [hardware-properties/fan-count] to be "
-      "[uint8], but got []");
+  auto status = MakeSupported();
   CheckIsRoutineArgumentSupported(
       status, mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
   CheckCreateRoutine(

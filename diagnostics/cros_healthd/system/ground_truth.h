@@ -60,7 +60,7 @@ class GroundTruth final {
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineUfsLifetime() const;
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineFan(
-      uint8_t& fan_count) const;
+      std::optional<uint8_t>& fan_count) const;
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineVolumeButton() const;
 
