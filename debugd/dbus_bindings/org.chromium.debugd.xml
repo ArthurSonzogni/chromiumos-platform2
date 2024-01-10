@@ -385,8 +385,8 @@
       <arg name="requested_logs" type="ai" direction="in">
         <tp:docstring>
           The list of log types that will be returned to the caller. The array
-          will contain debugd::FeedbackLogTypes enums. An empty array means
-          all available log types will be included.
+          will contain debugd::FeedbackLogType enums. An empty array means all
+          available log types will be included.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
@@ -413,8 +413,8 @@
       <arg name="requested_logs" type="ai" direction="in">
         <tp:docstring>
           The list of log types that will be returned to the caller. The array
-          will contain debugd::FeedbackLogTypes enums. An empty array means
-          all available log types will be included.
+          will contain debugd::FeedbackLogType enums. An empty array means all
+          available log types will be included.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
