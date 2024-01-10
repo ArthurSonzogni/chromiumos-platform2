@@ -34,15 +34,13 @@
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
+#include "trunks/trunks_dbus_proxy.h"
 #include "trunks/trunks_factory_impl.h"
-#include "trunks/vtpm_client_support/create_dbus_proxy.h"
 
 namespace {
 
 using trunks::AuthorizationDelegate;
 using trunks::CommandTransceiver;
-using trunks::CreateTrunksDBusProxyToTrunks;
-using trunks::CreateTrunksDBusProxyToVtpm;
 using trunks::MultipleAuthorizations;
 using trunks::TrunksDBusProxy;
 using trunks::TrunksFactory;
@@ -138,9 +136,6 @@ void PrintUsage() {
   puts("  --test_sign_verify - Perform a closed-loop sign and verify test");
   puts("  --test_certify_simple");
   puts("     - Perform certifying key and partially verify the output-");
-  puts("D-Bus options:");
-  puts("  --vtpm");
-  puts("      - Send the TPM command to vtpm instead of trunks.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -981,8 +976,7 @@ int main(int argc, char** argv) {
   }
 
   std::unique_ptr<TrunksDBusProxy> dbus_proxy =
-      cl->HasSwitch("vtpm") ? CreateTrunksDBusProxyToVtpm()
-                            : CreateTrunksDBusProxyToTrunks();
+      std::make_unique<TrunksDBusProxy>();
 
   CHECK(dbus_proxy->Init()) << "Failed to initialize D-Bus proxy.";
 
