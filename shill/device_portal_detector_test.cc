@@ -178,7 +178,7 @@ class TestNetwork : public Network {
     // The callback might delete |this| so copy |portal_detection_result_|.
     PortalDetector::Result result = portal_detection_result_;
     result.num_attempts = portal_detection_num_attempts_;
-    OnPortalDetectorResult(result);
+    OnNetworkMonitorResult(result);
   }
 
   const PortalDetector::Result& portal_detection_result() const {

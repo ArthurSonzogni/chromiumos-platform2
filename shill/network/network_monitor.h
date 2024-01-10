@@ -62,15 +62,23 @@ class NetworkMonitor {
 
   // TODO(b/305129516): Define a dedicated struct when supporting CAPPORT.
   using Result = PortalDetector::Result;
-  using ResultCallback = base::RepeatingCallback<void(const Result&)>;
+
+  // This interface defines the interactions between the NetworkMonitor and its
+  // caller.
+  class Client {
+   public:
+    // Called whenever a new network validation result or captive portal
+    // detection result becomes available.
+    virtual void OnNetworkMonitorResult(const Result& result) = 0;
+  };
 
   NetworkMonitor(
       EventDispatcher* dispatcher,
       Metrics* metrics,
+      Client* client,
       Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
-      ResultCallback result_callback,
       std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "",
       std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
@@ -129,14 +137,15 @@ class NetworkMonitor {
   // Stops the |validation_log_| and records metrics.
   void StopNetworkValidationLog();
 
+  // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
+  Client* client_;
 
   Technology technology_;
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
-  ResultCallback result_callback_;
 
   std::unique_ptr<PortalDetectorFactory> portal_detector_factory_;
   std::unique_ptr<PortalDetector> portal_detector_;
@@ -154,10 +163,10 @@ class NetworkMonitorFactory {
   mockable std::unique_ptr<NetworkMonitor> Create(
       EventDispatcher* dispatcher,
       Metrics* metrics,
+      NetworkMonitor::Client* client,
       Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
-      NetworkMonitor::ResultCallback result_callback,
       std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "");
 };

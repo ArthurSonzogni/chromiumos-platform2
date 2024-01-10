@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -46,20 +47,20 @@ bool ShouldScheduleNetworkValidationImmediately(
 NetworkMonitor::NetworkMonitor(
     EventDispatcher* dispatcher,
     Metrics* metrics,
+    Client* client,
     Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
-    ResultCallback result_callback,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
     std::unique_ptr<PortalDetectorFactory> portal_detector_factory)
     : dispatcher_(dispatcher),
       metrics_(metrics),
+      client_(client),
       technology_(technology),
       interface_(std::string(interface)),
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
-      result_callback_(std::move(result_callback)),
       portal_detector_factory_(std::move(portal_detector_factory)),
       validation_log_(std::move(network_validation_log)) {}
 
@@ -177,7 +178,7 @@ void NetworkMonitor::OnPortalDetectorResult(
                         technology_, *result.http_content_length);
   }
 
-  result_callback_.Run(result);
+  client_->OnNetworkMonitorResult(result);
 }
 
 void NetworkMonitor::StopNetworkValidationLog() {
@@ -195,16 +196,15 @@ void NetworkMonitor::set_portal_detector_for_testing(
 std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     EventDispatcher* dispatcher,
     Metrics* metrics,
+    NetworkMonitor::Client* client,
     Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
-    NetworkMonitor::ResultCallback result_callback,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
-      dispatcher, metrics, technology, interface, probing_configuration,
-      std::move(result_callback), std::move(network_validation_log),
-      logging_tag);
+      dispatcher, metrics, client, technology, interface, probing_configuration,
+      std::move(network_validation_log), logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,

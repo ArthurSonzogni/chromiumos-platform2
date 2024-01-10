@@ -108,9 +108,8 @@ void Network::Start(const Network::StartOptions& opts) {
 
   probing_configuration_ = opts.probing_configuration;
   network_monitor_ = network_monitor_factory_->Create(
-      dispatcher_, metrics_, technology_, interface_name_,
+      dispatcher_, metrics_, this, technology_, interface_name_,
       probing_configuration_,
-      base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()),
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
 
   // TODO(b/232177767): Log the StartOptions and other parameters.
@@ -824,14 +823,13 @@ std::vector<net_base::IPAddress> Network::GetNetworkValidationDNSServers(
   return dns_list;
 }
 
-void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
+void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
   std::string previous_validation_state = "unevaluated";
   if (network_validation_result_) {
     previous_validation_state = PortalDetector::ValidationStateToString(
         network_validation_result_->GetValidationState());
   }
-  LOG(INFO) << *this
-            << ": OnPortalDetectorResult: " << previous_validation_state
+  LOG(INFO) << *this << ": " << __func__ << ": " << previous_validation_state
             << " -> " << result.GetValidationState();
 
   if (!IsConnected()) {

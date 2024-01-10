@@ -41,10 +41,10 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
               Create,
               (EventDispatcher*,
                Metrics*,
+               NetworkMonitor::Client*,
                Technology,
                std::string_view,
                PortalDetector::ProbingConfiguration,
-               NetworkMonitor::ResultCallback,
                std::unique_ptr<ValidationLog>,
                std::string_view),
               (override));

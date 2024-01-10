@@ -51,9 +51,7 @@ using NetworkConfigArea = NetworkApplier::Area;
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
-// TODO(b/232177767): Currently this class is mainly a wrapper of the Connection
-// class.
-class Network {
+class Network : public NetworkMonitor::Client {
  public:
   // Handler of the events of the Network class, can be added to (or removed
   // from) a Network object by `RegisterEventHandler()` (or
@@ -329,12 +327,6 @@ class Network {
   // hotspot or a USB ethernet connection ("ANDROID_METERED" vendor option 43).
   mockable bool IsConnectedViaTether() const;
 
-  // Called by the Portal Detector whenever a trial completes.  Device
-  // subclasses that choose unique mappings from portal results to connected
-  // states can override this method in order to do so.
-  // Visibility is public for usage in unit tests.
-  void OnPortalDetectorResult(const NetworkMonitor::Result& result);
-
   // Helper functions to prepare data and call corresponding NetworkApplier
   // function. Protected for manual-triggering in test. Calls |callback| when
   // finished.
@@ -377,6 +369,9 @@ class Network {
       const NetworkMonitor::Result& result) {
     network_validation_result_ = result;
   }
+
+  // Implements the NetworkMonitor::Client class.
+  void OnNetworkMonitorResult(const NetworkMonitor::Result& result) override;
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.

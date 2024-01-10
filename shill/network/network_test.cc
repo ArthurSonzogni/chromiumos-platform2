@@ -916,7 +916,7 @@ TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
             result.GetValidationState());
   EXPECT_CALL(event_handler_, OnNetworkValidationResult).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult).Times(0);
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
@@ -947,7 +947,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
 }
@@ -978,7 +978,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1007,7 +1007,7 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
               OnNetworkValidationStop(network_->interface_index()));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationStop(network_->interface_index()));
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1036,7 +1036,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1062,7 +1062,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1086,7 +1086,7 @@ TEST_F(NetworkTest, PortalDetectionResult_Empty200) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1111,7 +1111,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalSuspected200) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             network_->network_validation_result()->GetValidationState());
 }
@@ -1139,7 +1139,7 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationStop(network_->interface_index()))
       .Times(1);
-  network_->OnPortalDetectorResult(result);
+  network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
 

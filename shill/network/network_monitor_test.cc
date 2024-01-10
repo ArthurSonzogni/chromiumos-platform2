@@ -40,12 +40,12 @@ using ::testing::Eq;
 using ::testing::Return;
 using ::testing::WithArg;
 
-class MockClient {
+class MockClient : public NetworkMonitor::Client {
  public:
   MOCK_METHOD(void,
               OnNetworkMonitorResult,
               (const NetworkMonitor::Result&),
-              ());
+              (override));
 };
 
 class NetworkMonitorTest : public ::testing::Test {
@@ -60,11 +60,8 @@ class NetworkMonitorTest : public ::testing::Test {
     EXPECT_CALL(*mock_validation_log_, RecordMetrics).Times(1);
 
     network_monitor_ = std::make_unique<NetworkMonitor>(
-        &dispatcher_, &metrics_, kTechnology, kInterface,
-        probing_configuration_,
-        base::BindRepeating(&MockClient::OnNetworkMonitorResult,
-                            base::Unretained(&client_)),
-        std::move(mock_validation_log), kLoggingTag,
+        &dispatcher_, &metrics_, &client_, kTechnology, kInterface,
+        probing_configuration_, std::move(mock_validation_log), kLoggingTag,
         std::move(mock_portal_detector_factory));
   }
 
