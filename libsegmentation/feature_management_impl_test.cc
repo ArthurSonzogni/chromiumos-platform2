@@ -313,6 +313,26 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
 }
+
+TEST_F(FeatureManagementImplTest, GetFeatureLevelInsideVM) {
+  // Set a VPD entry without the version hash.
+  // It forces the library to go further to check if we are in a VM first.
+  // When inside a VM, even if code is compile for CBX, return feature level 0,
+  // !CBX.
+  libsegmentation::DeviceInfo device_info;
+  device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
+                                    DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
+
+  EXPECT_TRUE(cros_system_->SetSystemPropertyBool("inside_vm", true));
+
+  EXPECT_EQ(
+      feature_management_->GetFeatureLevel(),
+      FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0 -
+          FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_VALID_OFFSET);
+}
 #endif
 
 }  // namespace segmentation

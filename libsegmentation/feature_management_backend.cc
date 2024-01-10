@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/base64.h>
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -85,10 +86,7 @@ std::optional<GscToolOutput> ParseGscToolOutput(
 // Returns the device information parsed from the output of the GSC tool binary
 // on the device.
 std::optional<GscToolOutput> GetDeviceInfoFromGSC() {
-  if (!base::PathExists(base::FilePath(kGscToolBinaryPath))) {
-    LOG(ERROR) << "Can't find gsctool binary";
-    return std::nullopt;
-  }
+  CHECK(base::PathExists(base::FilePath(kGscToolBinaryPath)));
 
   base::FilePath output_path;
   if (!base::CreateTemporaryFile(&output_path)) {
@@ -183,7 +181,15 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
   // to the VPD for subsequent boots.
   if (!device_info_result ||
       device_info_result->cached_version_hash() != current_version_hash_) {
-    auto gsc_tool_output = GetDeviceInfoFromGSC();
+    // If we are running in a VM, do not check HWID/GSC.
+    std::optional<int> inside_vm =
+        crossystem_->VbGetSystemPropertyInt("inside_vm");
+    if (!inside_vm || *inside_vm) {
+      LOG(WARNING) << "Skip HIWD/GSC checking inside VM.";
+      return false;
+    }
+
+    std::optional<GscToolOutput> gsc_tool_output = GetDeviceInfoFromGSC();
     if (!gsc_tool_output) {
       LOG(ERROR) << "Failed to get device info from the hardware id";
       return false;
