@@ -16,6 +16,7 @@ class TrainingCondition {
   [[nodiscard]] virtual bool IsTrainingConditionSatisfiedToStart() const = 0;
 
   // Called during the training to see if the existing jobs should be aborted.
+  // The implementations should be thread-safe.
   [[nodiscard]] virtual bool IsTrainingConditionSatisfiedToContinue() const = 0;
 };
 

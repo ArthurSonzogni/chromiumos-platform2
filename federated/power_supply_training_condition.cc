@@ -91,7 +91,7 @@ PowerSupplyTrainingCondition::PowerSupplyTrainingCondition(dbus::Bus* bus)
 bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DVLOG(1)
-      << "PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart: "
+      << "PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart:"
       << enough_battery_to_start_;
 
   if (!enough_battery_to_start_) {
@@ -109,7 +109,6 @@ bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart() const {
 
 bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToContinue()
     const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DVLOG(1) << "PowerSupplyTrainingCondition::"
               "IsTrainingConditionSatisfiedToContinue: "
            << enough_battery_to_continue_;

@@ -78,34 +78,22 @@ bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToStart()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  const auto iter =
-      memory_levels_.find(resource_manager::kMemoryPressureChrome);
-  // Non existing signal in `memory_levels_` means it's None.
-  bool satisfied = iter == memory_levels_.end() ||
-                   iter->second <= kMaxAcceptableChromeLevelToStart;
-
-  if (!satisfied) {
+  if (!satisfactory_to_start_) {
     Metrics::GetInstance()->LogTrainingConditionToStartResult(
         TrainingConditionResult::kMemoryPressureHigh);
   }
 
-  return satisfied;
+  return satisfactory_to_start_;
 }
 
 bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToContinue()
     const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  const auto iter = memory_levels_.find(resource_manager::kMemoryPressureArcvm);
-  // Non existing signal in `memory_levels_` means it's None.
-  bool satisfied = iter == memory_levels_.end() ||
-                   iter->second <= kMaxAcceptableArcvmLevelToContinue;
-  if (!satisfied) {
+  if (!satisfactory_to_continue_) {
     Metrics::GetInstance()->LogTrainingConditionToContinueResult(
         TrainingConditionResult::kMemoryPressureHigh);
   }
 
-  return satisfied;
+  return satisfactory_to_continue_;
 }
 
 void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
@@ -133,13 +121,31 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
   if (signal_name == resource_manager::kMemoryPressureChrome &&
       pressure_level == 0) {
     memory_levels_.clear();
+    satisfactory_to_start_ = true;
+    satisfactory_to_continue_ = true;
     return;
   }
 
   memory_levels_[signal_name] = static_cast<uint32_t>(pressure_level);
-
   DVLOG(1) << "Set memory_levels_[" << signal_name
            << "] = " << static_cast<uint32_t>(pressure_level);
+
+  // Updates the two conclusions. We treat non existing signal in
+  // `memory_levels_` as non-pressure.
+  {
+    const auto iter =
+        memory_levels_.find(resource_manager::kMemoryPressureChrome);
+    satisfactory_to_start_ = iter == memory_levels_.end() ||
+                             iter->second <= kMaxAcceptableChromeLevelToStart;
+  }
+
+  {
+    const auto iter =
+        memory_levels_.find(resource_manager::kMemoryPressureArcvm);
+    satisfactory_to_continue_ =
+        iter == memory_levels_.end() ||
+        iter->second <= kMaxAcceptableArcvmLevelToContinue;
+  }
 }
 
 }  // namespace federated

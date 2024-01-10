@@ -5,6 +5,7 @@
 #ifndef FEDERATED_MEMORY_PRESSURE_TRAINING_CONDITION_H_
 #define FEDERATED_MEMORY_PRESSURE_TRAINING_CONDITION_H_
 
+#include <atomic>
 #include <map>
 #include <string>
 
@@ -46,6 +47,10 @@ class MemoryPressureTrainingCondition : public TrainingCondition {
 
   // Stores the received memory levels.
   std::map<std::string, uint32_t> memory_levels_;
+
+  bool satisfactory_to_start_ = true;
+  // This is thread-safe.
+  std::atomic_bool satisfactory_to_continue_ = true;
 
   base::WeakPtrFactory<MemoryPressureTrainingCondition> weak_ptr_factory_{this};
 

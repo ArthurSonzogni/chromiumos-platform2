@@ -83,6 +83,7 @@ static_library("federated_common") {
     "power_supply_training_condition.cc",
     "scheduler.cc",
     "session_manager_proxy.cc",
+    "shill_proxy_impl.cc",
     "storage_manager.cc",
     "utils.cc",
   ]
@@ -137,6 +138,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "libsession_manager-client-test",
+      "libshill-client-test",
     ]
   }
 
@@ -164,6 +166,7 @@ if (use.test) {
     sources = [
       "device_status_monitor_test.cc",
       "example_database_test.cc",
+      "fake_shill_proxy.cc",
       "memory_pressure_training_condition_test.cc",
       "mock_example_database.cc",
       "network_status_training_condition_test.cc",

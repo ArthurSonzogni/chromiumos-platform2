@@ -14,6 +14,7 @@
 #include "federated/metrics.h"
 #include "federated/network_status_training_condition.h"
 #include "federated/power_supply_training_condition.h"
+#include "federated/shill_proxy_impl.h"
 
 namespace federated {
 
@@ -31,7 +32,7 @@ std::unique_ptr<DeviceStatusMonitor> DeviceStatusMonitor::CreateFromDBus(
 
   training_conditions.push_back(
       std::make_unique<NetworkStatusTrainingCondition>(
-          std::make_unique<shill::Client>(bus)));
+          new ShillProxyImpl(bus)));
 
   training_conditions.push_back(
       std::make_unique<MemoryPressureTrainingCondition>(bus));

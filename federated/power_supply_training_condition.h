@@ -5,6 +5,8 @@
 #ifndef FEDERATED_POWER_SUPPLY_TRAINING_CONDITION_H_
 #define FEDERATED_POWER_SUPPLY_TRAINING_CONDITION_H_
 
+#include <atomic>
+
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 
@@ -43,15 +45,16 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
   dbus::ObjectProxy* const powerd_dbus_proxy_;
 
   // Whether the device has enough battery to start / continue jobs.
-  // Updated in `OnPowerSupplyReceived` and used in
-  // `TrainingConditionsSatisfied`.
+  // Updated in `OnPowerSupplyReceived`.
   bool enough_battery_to_start_;
-  bool enough_battery_to_continue_;
+  // This is thread-safe.
+  std::atomic_bool enough_battery_to_continue_;
 
   // If `battery_saver_enabled_`, do not run the tasks.
-  // Updated in `OnBatterySaverModeReceived` and `OnGetBatterySaverModeState`,
-  // used in `TrainingConditionsSatisfied`.
-  bool battery_saver_enabled_;
+  // Initialized in `OnPowerManagerServiceAvailable` and updated in
+  // `OnBatterySaverModeReceived`.
+  // This is thread-safe.
+  std::atomic_bool battery_saver_enabled_;
 
   const base::WeakPtrFactory<PowerSupplyTrainingCondition> weak_ptr_factory_;
 

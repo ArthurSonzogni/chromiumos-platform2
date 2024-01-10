@@ -6,11 +6,12 @@
 #define FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
 
 #include <memory>
+#include <string>
 
-#include <base/memory/ref_counted.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <shill/dbus/client/client.h>
+#include <brillo/any.h>
+#include <dbus/object_path.h>
 
+#include "federated/shill_proxy_interface.h"
 #include "federated/training_condition.h"
 
 namespace dbus {
@@ -23,8 +24,8 @@ namespace federated {
 // are satisfied. Currently, we check that the network is not metered
 class NetworkStatusTrainingCondition : public TrainingCondition {
  public:
-  explicit NetworkStatusTrainingCondition(
-      std::unique_ptr<shill::Client> network_client);
+  explicit NetworkStatusTrainingCondition(ShillProxyInterface* shill_proxy);
+
   NetworkStatusTrainingCondition(const NetworkStatusTrainingCondition&) =
       delete;
   NetworkStatusTrainingCondition& operator=(
@@ -36,11 +37,16 @@ class NetworkStatusTrainingCondition : public TrainingCondition {
   [[nodiscard]] bool IsTrainingConditionSatisfiedToContinue() const override;
 
  private:
-  // friend class NetworkStatusTrainingConditionTest;
-  FRIEND_TEST(NetworkStatusTrainingConditionTest, IsNetworkMetered);
+  void OnShillManagerPropertyChanged(const std::string& name,
+                                     const brillo::Any& value);
 
-  bool IsNetworkMetered() const;
-  const std::unique_ptr<shill::Client> dbus_network_client_;
+  void ProcessShillDefaultService(const dbus::ObjectPath& service_path);
+
+  // Handles dbus proxies to shill daemon.
+  std::unique_ptr<ShillProxyInterface> shill_proxy_;
+  dbus::ObjectPath shill_default_service_path_;
+  // This is thread-safe.
+  std::atomic_bool is_metered_;
 };
 
 }  // namespace federated
