@@ -15,6 +15,9 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
@@ -241,8 +244,8 @@ class IPsecConnection : public VPNConnection {
   base::FilePath StrongSwanResolvConfPath() const;
 
   void ClearVirtualIPs() {
-    local_virtual_ipv4_ = "";
-    local_virtual_ipv6_ = "";
+    local_virtual_ipv4_ = std::nullopt;
+    local_virtual_ipv6_ = std::nullopt;
   }
 
   std::unique_ptr<Config> config_;
@@ -262,9 +265,9 @@ class IPsecConnection : public VPNConnection {
   // Set when the XFRM interface is created.
   std::optional<int> xfrm_interface_index_;
   // Set when the IPsec layer is connected.
-  std::string local_virtual_ipv4_;
-  std::string local_virtual_ipv6_;
-  std::vector<std::string> dns_servers_;
+  std::optional<net_base::IPv4Address> local_virtual_ipv4_;
+  std::optional<net_base::IPv6Address> local_virtual_ipv6_;
+  std::vector<net_base::IPAddress> dns_servers_;
 
   // Cipher algorithms used by this connection. Set when IPsec is connected.
   Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo_;

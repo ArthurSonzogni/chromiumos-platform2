@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -29,11 +30,11 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 #include <re2/re2.h>
 
-#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -908,7 +909,7 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
 
   if (!l2tp_connection_) {
     ParseLocalVirtualIPs(lines);
-    if (local_virtual_ipv4_.empty() && local_virtual_ipv6_.empty()) {
+    if (!local_virtual_ipv4_.has_value() && !local_virtual_ipv6_.has_value()) {
       NotifyFailure(Service::kFailureInternal,
                     "Failed to get local virtual IP");
       return;
@@ -1005,7 +1006,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
 
     switch (addr->GetFamily()) {
       case net_base::IPFamily::kIPv4:
-        if (local_virtual_ipv4_ != "") {
+        if (local_virtual_ipv4_.has_value()) {
           ClearVirtualIPs();
           LOG(ERROR)
               << "At most one IPv4 address should be configured as the virtual "
@@ -1013,10 +1014,10 @@ void IPsecConnection::ParseLocalVirtualIPs(
               << line;
           return;
         }
-        local_virtual_ipv4_ = part;
+        local_virtual_ipv4_ = addr->ToIPv4Address();
         break;
       case net_base::IPFamily::kIPv6:
-        if (local_virtual_ipv6_ != "") {
+        if (local_virtual_ipv6_.has_value()) {
           ClearVirtualIPs();
           LOG(ERROR)
               << "At most one IPv6 address should be configured as the virtual "
@@ -1024,7 +1025,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
               << line;
           return;
         }
-        local_virtual_ipv6_ = part;
+        local_virtual_ipv6_ = addr->ToIPv6Address();
         break;
     }
   }
@@ -1133,7 +1134,13 @@ void IPsecConnection::ParseDNSServers() {
   for (std::string_view line : lines) {
     std::string matched_part;
     if (RE2::FullMatch(line, *kNameServerLine, &matched_part)) {
-      dns_servers_.push_back(matched_part);
+      std::optional<net_base::IPAddress> dns =
+          net_base::IPAddress::CreateFromString(matched_part);
+      if (!dns.has_value()) {
+        LOG(WARNING) << "Ignoring invalid DNS server " << matched_part;
+        continue;
+      }
+      dns_servers_.push_back(*dns);
     }
   }
 
@@ -1213,43 +1220,22 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
                                            int ifindex) {
   xfrm_interface_index_ = ifindex;
 
-  std::unique_ptr<IPConfig::Properties> ipv4_props = nullptr;
-  std::unique_ptr<IPConfig::Properties> ipv6_props = nullptr;
-  if (local_virtual_ipv4_ != "") {
-    ipv4_props = std::make_unique<IPConfig::Properties>();
-    ipv4_props->address = local_virtual_ipv4_;
-    ipv4_props->address_family = net_base::IPFamily::kIPv4;
-    ipv4_props->subnet_prefix = 32;
-    ipv4_props->dns_servers = dns_servers_;
-    ipv4_props->blackhole_ipv6 = true;
-    // This is a point-to-point link, gateway does not make sense here. Set it
-    // default to skip RTA_GATEWAY when installing routes.
-    ipv4_props->gateway = "0.0.0.0";
-    ipv4_props->mtu = net_base::NetworkConfig::kMinIPv6MTU;
-    ipv4_props->method = kTypeVPN;
+  auto network_config = std::make_unique<net_base::NetworkConfig>();
+  if (local_virtual_ipv4_.has_value()) {
+    network_config->ipv4_address =
+        net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+            *local_virtual_ipv4_, net_base::IPv4CIDR::kMaxPrefixLength);
+    network_config->ipv6_blackhole_route = true;
   }
-  if (local_virtual_ipv6_ != "") {
-    ipv6_props = std::make_unique<IPConfig::Properties>();
-    ipv6_props->address = local_virtual_ipv6_;
-    ipv6_props->address_family = net_base::IPFamily::kIPv6;
-    ipv6_props->subnet_prefix = 128;
-    ipv6_props->dns_servers = dns_servers_;
-    ipv6_props->blackhole_ipv6 = false;
-    // This is a point-to-point link, gateway does not make sense here. Set it
-    // default to skip RTA_GATEWAY when installing routes.
-    ipv6_props->gateway = "::";
-    ipv6_props->mtu = net_base::NetworkConfig::kMinIPv6MTU;
-    ipv6_props->method = kTypeVPN;
+  if (local_virtual_ipv6_.has_value()) {
+    network_config->ipv6_addresses.push_back(
+        *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+            *local_virtual_ipv6_, net_base::IPv6CIDR::kMaxPrefixLength));
+    network_config->ipv6_blackhole_route = false;
   }
-  // In dual stack case, IPv6 traffic is allowed.
-  if (ipv4_props != nullptr && ipv6_props != nullptr) {
-    ipv4_props->blackhole_ipv6 = false;
-  }
+  network_config->dns_servers = dns_servers_;
+  network_config->mtu = net_base::NetworkConfig::kMinIPv6MTU;
 
-  // TODO(b/307855773): Migrate ipv4_props and ipv6_props in this method.
-  auto network_config = std::make_unique<net_base::NetworkConfig>(
-      IPConfig::Properties::ToNetworkConfig(ipv4_props.get(),
-                                            ipv6_props.get()));
   NotifyConnected(ifname, ifindex, std::move(network_config));
 }
 

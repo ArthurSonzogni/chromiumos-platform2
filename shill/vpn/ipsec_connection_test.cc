@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +21,9 @@
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <net-base/mock_process_manager.h>
 #include <net-base/network_config.h>
 
@@ -93,11 +97,17 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     l2tp_connection_ = std::move(l2tp_in);
   }
 
-  const std::string& local_virtual_ipv4() const { return local_virtual_ipv4_; }
+  const std::optional<net_base::IPv4Address>& local_virtual_ipv4() const {
+    return local_virtual_ipv4_;
+  }
 
-  const std::string& local_virtual_ipv6() const { return local_virtual_ipv6_; }
+  const std::optional<net_base::IPv6Address>& local_virtual_ipv6() const {
+    return local_virtual_ipv6_;
+  }
 
-  std::vector<std::string> dns_servers() { return dns_servers_; }
+  const std::vector<net_base::IPAddress>& dns_servers() const {
+    return dns_servers_;
+  }
 
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
 };
@@ -670,8 +680,10 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2) {
   std::move(exit_cb).Run(0, kSwanctlListSAsIKEv2Output);
 
   // Checks the parsed virtual ip.
-  EXPECT_EQ(ipsec_connection_->local_virtual_ipv4(), "10.10.10.2");
-  EXPECT_EQ(ipsec_connection_->local_virtual_ipv6(), "fec0::2");
+  EXPECT_EQ(ipsec_connection_->local_virtual_ipv4(),
+            net_base::IPv4Address::CreateFromString("10.10.10.2"));
+  EXPECT_EQ(ipsec_connection_->local_virtual_ipv6(),
+            net_base::IPv6Address::CreateFromString("fec0::2"));
 
   // Checks the parsed cipher suites.
   EXPECT_EQ(ipsec_connection_->ike_encryption_algo(),
@@ -724,15 +736,17 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes an IPv4 address for the overlay IP.
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kTestLineSuffix});
-  ASSERT_EQ(kIPv4Address1, ipsec_connection_->local_virtual_ipv4());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_EQ(net_base::IPv4Address::CreateFromString(kIPv4Address1),
+            ipsec_connection_->local_virtual_ipv4());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes an IPv6 address for the overlay IP.
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv6Address1 + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_EQ(kIPv6Address1, ipsec_connection_->local_virtual_ipv6());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_EQ(net_base::IPv6Address::CreateFromString(kIPv6Address1),
+            ipsec_connection_->local_virtual_ipv6());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes a wrong IP
@@ -740,8 +754,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // for the wrong IP addresses in advance).
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kWrongIP + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes an IPv4 address and an IPv6 address
@@ -749,8 +763,10 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv6Address1 +
                       kTestLineSuffix});
-  ASSERT_EQ(kIPv4Address1, ipsec_connection_->local_virtual_ipv4());
-  ASSERT_EQ(kIPv6Address1, ipsec_connection_->local_virtual_ipv6());
+  ASSERT_EQ(net_base::IPv4Address::CreateFromString(kIPv4Address1),
+            ipsec_connection_->local_virtual_ipv4());
+  ASSERT_EQ(net_base::IPv6Address::CreateFromString(kIPv6Address1),
+            ipsec_connection_->local_virtual_ipv6());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes two IPv4 addresses
@@ -759,8 +775,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv4Address2 +
                       kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes two IPv6 addresses
@@ -769,8 +785,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv6Address1 + kBlank + kIPv6Address2 +
                       kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes a wrong IP address and an IPv4 address
@@ -779,8 +795,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kWrongIP + kBlank + kIPv4Address1 + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes an IPv4 address and a wrong IP address
@@ -789,8 +805,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kIPv4Address1 + kBlank + kWrongIP + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes an IPv4 address and IPv6 address
@@ -799,8 +815,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kIPv4Address1 + kIPv6Address1 + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes three IP addresses
@@ -809,8 +825,8 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv6Address1 +
                       kBlank + kIPv4Address2 + kTestLineSuffix});
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
-  ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv4().has_value());
+  ASSERT_FALSE(ipsec_connection_->local_virtual_ipv6().has_value());
   ipsec_connection_->InvokeClearVirtualIPs();
 }
 
@@ -871,8 +887,10 @@ TEST_F(IPsecConnectionTest, ParseDNSServers) {
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
   const auto acutal_dns_servers = ipsec_connection_->dns_servers();
   EXPECT_EQ(acutal_dns_servers.size(), 2);
-  EXPECT_EQ(acutal_dns_servers[0], "1.2.3.4");
-  EXPECT_EQ(acutal_dns_servers[1], "1.2.3.5");
+  EXPECT_EQ(acutal_dns_servers[0],
+            *net_base::IPAddress::CreateFromString("1.2.3.4"));
+  EXPECT_EQ(acutal_dns_servers[1],
+            *net_base::IPAddress::CreateFromString("1.2.3.5"));
 }
 
 TEST_F(IPsecConnectionTest, ParseDNSServersEmptyFile) {

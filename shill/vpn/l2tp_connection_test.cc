@@ -344,7 +344,6 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnected) {
   dispatcher_.task_environment().RunUntilIdle();
 
   // Expects OnConnected() when kPPPReasonConnect event comes.
-  auto actual_ip_properties = std::make_unique<IPConfig::Properties>();
   EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
   EXPECT_CALL(*device_info(), GetIndex(kIfName)).WillOnce(Return(kIfIndex));
   l2tp_connection_->InvokeNotify(kPPPReasonConnect, config);
