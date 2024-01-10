@@ -80,16 +80,14 @@ TEST(IPAddressTest, CreateFromString) {
 
 TEST(IPAddressTest, CreateFromStringWithFamily) {
   // Correct family.
-  EXPECT_NE(std::nullopt, IPAddress::CreateFromString(
-                              "192.168.10.1", net_base::IPFamily::kIPv4));
   EXPECT_NE(std::nullopt,
-            IPAddress::CreateFromString("::1", net_base::IPFamily::kIPv6));
+            IPAddress::CreateFromString("192.168.10.1", IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt, IPAddress::CreateFromString("::1", IPFamily::kIPv6));
 
   // Wrong family.
-  EXPECT_EQ(std::nullopt, IPAddress::CreateFromString(
-                              "192.168.10.1", net_base::IPFamily::kIPv6));
   EXPECT_EQ(std::nullopt,
-            IPAddress::CreateFromString("::1", net_base::IPFamily::kIPv4));
+            IPAddress::CreateFromString("192.168.10.1", IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt, IPAddress::CreateFromString("::1", IPFamily::kIPv4));
 }
 
 TEST(IPAddressTest, CreateFromBytes) {
@@ -120,16 +118,16 @@ TEST(IPAddressTest, CreateFromBytesWithFamily) {
                                       0x7e, 0xbf, 0x14, 0xc5};
 
   // Correct family.
-  EXPECT_NE(std::nullopt, net_base::IPAddress::CreateFromBytes(
-                              ipv4_bytes, net_base::IPFamily::kIPv4));
-  EXPECT_NE(std::nullopt, net_base::IPAddress::CreateFromBytes(
-                              ipv6_bytes, net_base::IPFamily::kIPv6));
+  EXPECT_NE(std::nullopt,
+            IPAddress::CreateFromBytes(ipv4_bytes, IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt,
+            IPAddress::CreateFromBytes(ipv6_bytes, IPFamily::kIPv6));
 
   // Wrong family.
-  EXPECT_EQ(std::nullopt, net_base::IPAddress::CreateFromBytes(
-                              ipv4_bytes, net_base::IPFamily::kIPv6));
-  EXPECT_EQ(std::nullopt, net_base::IPAddress::CreateFromBytes(
-                              ipv6_bytes, net_base::IPFamily::kIPv4));
+  EXPECT_EQ(std::nullopt,
+            IPAddress::CreateFromBytes(ipv4_bytes, IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt,
+            IPAddress::CreateFromBytes(ipv6_bytes, IPFamily::kIPv4));
 }
 
 TEST(IPAddressTest, IsZero) {
@@ -203,18 +201,16 @@ TEST(IPCIDRTest, CreateFromCIDRString_Fail) {
 
 TEST(IPCIDRTest, CreateFromCIDRStringWithFamily) {
   // Correct family.
-  EXPECT_NE(std::nullopt, IPCIDR::CreateFromCIDRString(
-                              "192.168.10.1/25", net_base::IPFamily::kIPv4));
   EXPECT_NE(std::nullopt,
-            IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/25",
-                                         net_base::IPFamily::kIPv6));
+            IPCIDR::CreateFromCIDRString("192.168.10.1/25", IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromCIDRString(
+                              "2401:fa00:480:c6::30/25", IPFamily::kIPv6));
 
   // Wrong family.
-  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromCIDRString(
-                              "192.168.10.1/25", net_base::IPFamily::kIPv6));
   EXPECT_EQ(std::nullopt,
-            IPCIDR::CreateFromCIDRString("2401:fa00:480:c6::30/25",
-                                         net_base::IPFamily::kIPv4));
+            IPCIDR::CreateFromCIDRString("192.168.10.1/25", IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromCIDRString(
+                              "2401:fa00:480:c6::30/25", IPFamily::kIPv4));
 }
 
 TEST(IPCIDRTest, CreateFromStringAndPrefix) {
@@ -234,16 +230,16 @@ TEST(IPCIDRTest, CreateFromStringAndPrefix) {
 
 TEST(IPCIDRTest, CreateFromStringAndPrefixWithFamily) {
   // Correct family.
-  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
-                              "192.168.10.1", 25, net_base::IPFamily::kIPv4));
-  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
-                              "fe80:1000::", 64, net_base::IPFamily::kIPv6));
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix("192.168.10.1", 25,
+                                                            IPFamily::kIPv4));
+  EXPECT_NE(std::nullopt, IPCIDR::CreateFromStringAndPrefix("fe80:1000::", 64,
+                                                            IPFamily::kIPv6));
 
   // Wrong family.
-  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
-                              "192.168.10.1", 25, net_base::IPFamily::kIPv6));
-  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix(
-                              "fe80:1000::", 64, net_base::IPFamily::kIPv4));
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix("192.168.10.1", 25,
+                                                            IPFamily::kIPv6));
+  EXPECT_EQ(std::nullopt, IPCIDR::CreateFromStringAndPrefix("fe80:1000::", 64,
+                                                            IPFamily::kIPv4));
 }
 
 TEST(IPCIDRTest, CreateFromBytesAndPrefix) {
@@ -274,16 +270,16 @@ TEST(IPCIDRTest, CreateFromBytesAndPrefixWithFamily) {
                                       0x7e, 0xbf, 0x14, 0xc5};
 
   // Correct family.
-  EXPECT_TRUE(IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25,
-                                               net_base::IPFamily::kIPv4));
-  EXPECT_TRUE(IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64,
-                                               net_base::IPFamily::kIPv6));
+  EXPECT_TRUE(
+      IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25, IPFamily::kIPv4));
+  EXPECT_TRUE(
+      IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64, IPFamily::kIPv6));
 
   // Wrong family.
-  EXPECT_FALSE(IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25,
-                                                net_base::IPFamily::kIPv6));
-  EXPECT_FALSE(IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64,
-                                                net_base::IPFamily::kIPv4));
+  EXPECT_FALSE(
+      IPCIDR::CreateFromBytesAndPrefix(ipv4_bytes, 25, IPFamily::kIPv6));
+  EXPECT_FALSE(
+      IPCIDR::CreateFromBytesAndPrefix(ipv6_bytes, 64, IPFamily::kIPv4));
 }
 
 TEST(IPCIDRTest, CreateFromAddressAndPrefix) {

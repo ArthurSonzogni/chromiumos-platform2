@@ -46,7 +46,7 @@ class NET_BASE_EXPORT ProcFsStub {
   // Set an IP configuration flag on the device. |flag| should be the name of
   // the flag to be set and |value| is what this flag should be set to.
   // Overridden by unit tests to pretend writing to procfs.
-  virtual bool SetIPFlag(net_base::IPFamily family,
+  virtual bool SetIPFlag(IPFamily family,
                          const std::string& flag,
                          const std::string& value);
 

@@ -23,12 +23,12 @@
 namespace net_base {
 
 std::unique_ptr<NetlinkSocket> NetlinkSocket::Create() {
-  return CreateWithSocketFactory(std::make_unique<net_base::SocketFactory>());
+  return CreateWithSocketFactory(std::make_unique<SocketFactory>());
 }
 
 std::unique_ptr<NetlinkSocket> NetlinkSocket::CreateWithSocketFactory(
-    std::unique_ptr<net_base::SocketFactory> socket_factory) {
-  std::unique_ptr<net_base::Socket> socket =
+    std::unique_ptr<SocketFactory> socket_factory) {
+  std::unique_ptr<Socket> socket =
       socket_factory->CreateNetlink(NETLINK_GENERIC, 0);
   if (socket == nullptr) {
     PLOG(ERROR) << "Failed to create AF_NETLINK socket";
@@ -38,7 +38,7 @@ std::unique_ptr<NetlinkSocket> NetlinkSocket::CreateWithSocketFactory(
   return std::unique_ptr<NetlinkSocket>(new NetlinkSocket(std::move(socket)));
 }
 
-NetlinkSocket::NetlinkSocket(std::unique_ptr<net_base::Socket> socket)
+NetlinkSocket::NetlinkSocket(std::unique_ptr<Socket> socket)
     : socket_(std::move(socket)) {}
 NetlinkSocket::~NetlinkSocket() = default;
 

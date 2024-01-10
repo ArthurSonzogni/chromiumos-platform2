@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   std::vector<std::string> ipv6_address_str;
   std::transform(config.ipv6_addresses.begin(), config.ipv6_addresses.end(),
                  std::back_inserter(ipv6_address_str),
-                 [](net_base::IPv6CIDR cidr) { return cidr.ToString(); });
+                 [](IPv6CIDR cidr) { return cidr.ToString(); });
   stream << base::JoinString(ipv6_address_str, ",");
   stream << "]";
   if (config.ipv6_gateway) {
@@ -51,12 +51,12 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   }
   if (!config.rfc3442_routes.empty()) {
     std::vector<std::string> rfc3442_routes_str;
-    std::transform(
-        config.rfc3442_routes.begin(), config.rfc3442_routes.end(),
-        std::back_inserter(rfc3442_routes_str),
-        [](std::pair<net_base::IPv4CIDR, net_base::IPv4Address> route) {
-          return route.first.ToString() + " via " + route.second.ToString();
-        });
+    std::transform(config.rfc3442_routes.begin(), config.rfc3442_routes.end(),
+                   std::back_inserter(rfc3442_routes_str),
+                   [](std::pair<IPv4CIDR, IPv4Address> route) {
+                     return route.first.ToString() + " via " +
+                            route.second.ToString();
+                   });
     stream << ", RFC 3442 classless static routes: ["
            << base::JoinString(rfc3442_routes_str, ",") << "]";
   }
@@ -65,7 +65,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
     std::transform(config.excluded_route_prefixes.begin(),
                    config.excluded_route_prefixes.end(),
                    std::back_inserter(excluded_route_str),
-                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+                   [](IPCIDR cidr) { return cidr.ToString(); });
     stream << ", excluded routes: ["
            << base::JoinString(excluded_route_str, ",") << "]";
   }
@@ -74,7 +74,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
     std::transform(config.included_route_prefixes.begin(),
                    config.included_route_prefixes.end(),
                    std::back_inserter(included_route_str),
-                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+                   [](IPCIDR cidr) { return cidr.ToString(); });
     stream << ", included routes: ["
            << base::JoinString(included_route_str, ",") << "]";
   }
@@ -82,7 +82,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   std::vector<std::string> dns_str;
   std::transform(config.dns_servers.begin(), config.dns_servers.end(),
                  std::back_inserter(dns_str),
-                 [](net_base::IPAddress dns) { return dns.ToString(); });
+                 [](IPAddress dns) { return dns.ToString(); });
   stream << base::JoinString(dns_str, ",");
   stream << "]";
   if (!config.dns_search_domains.empty()) {

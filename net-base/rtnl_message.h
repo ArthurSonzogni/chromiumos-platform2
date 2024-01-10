@@ -141,12 +141,11 @@ class NET_BASE_EXPORT RTNLMessage {
 
   struct RdnssOption {
     RdnssOption() : lifetime(0) {}
-    RdnssOption(uint32_t lifetime_in,
-                std::vector<net_base::IPv6Address> addresses_in)
+    RdnssOption(uint32_t lifetime_in, std::vector<IPv6Address> addresses_in)
         : lifetime(lifetime_in), addresses(addresses_in) {}
     std::string ToString() const;
     uint32_t lifetime;
-    std::vector<net_base::IPv6Address> addresses;
+    std::vector<IPv6Address> addresses;
   };
 
   struct DnsslOption {
@@ -252,15 +251,15 @@ class NET_BASE_EXPORT RTNLMessage {
   std::string GetIflaIfname() const;
   // Returns the IFA_ADDRESS attribute. This should only be used for
   // RTNLMessages of type kTypeAddress.
-  std::optional<net_base::IPCIDR> GetIfaAddress() const;
+  std::optional<IPCIDR> GetIfaAddress() const;
   // Returns the routing table id of RTNLMessages with type kTypeRoute.
   uint32_t GetRtaTable() const;
   // Returns the RTA_DST attribute for RTNLMessages of type kTypeRoute.
-  std::optional<net_base::IPCIDR> GetRtaDst() const;
+  std::optional<IPCIDR> GetRtaDst() const;
   // Returns the RTA_SRC attribute for RTNLMessages of type kTypeRoute.
-  std::optional<net_base::IPCIDR> GetRtaSrc() const;
+  std::optional<IPCIDR> GetRtaSrc() const;
   // Returns the RTA_GATEWAY attribute for RTNLMessages of type kTypeRoute.
-  std::optional<net_base::IPAddress> GetRtaGateway() const;
+  std::optional<IPAddress> GetRtaGateway() const;
   // Returns the RTA_OIF output interface attribute as an interface index
   // name for RTNLMessages of type kTypeRoute.
   uint32_t GetRtaOif() const;
@@ -282,9 +281,9 @@ class NET_BASE_EXPORT RTNLMessage {
   // Returns the FRA_PRIORITY attribute for RTNLMessages of type kTypeRule.
   uint32_t GetFraPriority() const;
   // Returns the FRA_SRC attribute for RTNLMessages of type kTypeRule.
-  std::optional<net_base::IPCIDR> GetFraSrc() const;
+  std::optional<IPCIDR> GetFraSrc() const;
   // Returns the FRA_DST attribute for RTNLMessages of type kTypeRule.
-  std::optional<net_base::IPCIDR> GetFraDst() const;
+  std::optional<IPCIDR> GetFraDst() const;
 
   // Sets the IFLA_INFO_KIND attribute which is nested in IFLA_LINKINFO (and
   // thus it is hard to be set via SetAttribute() directly). This attribute will

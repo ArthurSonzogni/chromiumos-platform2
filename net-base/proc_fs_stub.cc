@@ -26,11 +26,11 @@ constexpr std::array<std::string_view, 2> kRouteFlushPaths = {
 ProcFsStub::ProcFsStub(const std::string& interface_name)
     : interface_name_(interface_name) {}
 
-bool ProcFsStub::SetIPFlag(net_base::IPFamily family,
+bool ProcFsStub::SetIPFlag(IPFamily family,
                            const std::string& flag,
                            const std::string& value) {
   const std::string ip_version =
-      (family == net_base::IPFamily::kIPv4) ? kIPFlagVersion4 : kIPFlagVersion6;
+      (family == IPFamily::kIPv4) ? kIPFlagVersion4 : kIPFlagVersion6;
   base::FilePath flag_file(
       base::StringPrintf(kIPFlagTemplate, ip_version.c_str(),
                          interface_name_.c_str(), flag.c_str()));

@@ -30,10 +30,10 @@ namespace net_base {
 class NetlinkSocketTest : public Test {
  public:
   void SetUp() override {
-    auto mock_socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    auto mock_socket_factory = std::make_unique<MockSocketFactory>();
     EXPECT_CALL(*mock_socket_factory, CreateNetlink(NETLINK_GENERIC, 0, _))
         .WillOnce([&]() {
-          auto socket = std::make_unique<net_base::MockSocket>();
+          auto socket = std::make_unique<MockSocket>();
           mock_socket_ = socket.get();
           return socket;
         });
@@ -45,7 +45,7 @@ class NetlinkSocketTest : public Test {
 
  protected:
   std::unique_ptr<NetlinkSocket> netlink_socket_;
-  net_base::MockSocket* mock_socket_;
+  MockSocket* mock_socket_;
 };
 
 class FakeSocketRead {
@@ -77,7 +77,7 @@ MATCHER_P(SpanEq, value, "") {
 }
 
 TEST_F(NetlinkSocketTest, InitBrokenSocketTest) {
-  auto mock_socket_factory = std::make_unique<net_base::MockSocketFactory>();
+  auto mock_socket_factory = std::make_unique<MockSocketFactory>();
   EXPECT_CALL(*mock_socket_factory, CreateNetlink(NETLINK_GENERIC, 0, _))
       .WillOnce(Return(nullptr));
 

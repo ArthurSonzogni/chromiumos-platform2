@@ -69,7 +69,7 @@ class NET_BASE_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 
   // Decode an attribute list starting from the remaining payload of |packet|.
   // Use |factory| to create each attribute object.
-  bool Decode(net_base::NetlinkPacket* packet, const NewFromIdMethod& factory);
+  bool Decode(NetlinkPacket* packet, const NewFromIdMethod& factory);
 
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no

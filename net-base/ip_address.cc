@@ -40,14 +40,14 @@ std::string ToString(IPFamily family) {
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
     std::string_view address_string, std::optional<IPFamily> family) {
-  if (family != net_base::IPFamily::kIPv6) {
+  if (family != IPFamily::kIPv6) {
     const auto ipv4 = IPv4Address::CreateFromString(address_string);
     if (ipv4) {
       return IPAddress(*ipv4);
     }
   }
 
-  if (family != net_base::IPFamily::kIPv4) {
+  if (family != IPFamily::kIPv4) {
     const auto ipv6 = IPv6Address::CreateFromString(address_string);
     if (ipv6) {
       return IPAddress(*ipv6);
@@ -69,14 +69,14 @@ std::optional<IPAddress> IPAddress::CreateFromBytes(
 // static
 std::optional<IPAddress> IPAddress::CreateFromBytes(
     base::span<const uint8_t> bytes, std::optional<IPFamily> family) {
-  if (family != net_base::IPFamily::kIPv6) {
+  if (family != IPFamily::kIPv6) {
     const auto ipv4 = IPv4Address::CreateFromBytes(bytes);
     if (ipv4) {
       return IPAddress(*ipv4);
     }
   }
 
-  if (family != net_base::IPFamily::kIPv4) {
+  if (family != IPFamily::kIPv4) {
     const auto ipv6 = IPv6Address::CreateFromBytes(bytes);
     if (ipv6) {
       return IPAddress(*ipv6);
@@ -169,14 +169,14 @@ int IPCIDR::GetMaxPrefixLength(IPFamily family) {
 // static
 std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
     std::string_view cidr_string, std::optional<IPFamily> family) {
-  if (family != net_base::IPFamily::kIPv6) {
+  if (family != IPFamily::kIPv6) {
     const auto ipv4 = IPv4CIDR::CreateFromCIDRString(cidr_string);
     if (ipv4) {
       return IPCIDR(*ipv4);
     }
   }
 
-  if (family != net_base::IPFamily::kIPv4) {
+  if (family != IPFamily::kIPv4) {
     const auto ipv6 = IPv6CIDR::CreateFromCIDRString(cidr_string);
     if (ipv6) {
       return IPCIDR(*ipv6);
@@ -191,7 +191,7 @@ std::optional<IPCIDR> IPCIDR::CreateFromStringAndPrefix(
     std::string_view address_string,
     int prefix_length,
     std::optional<IPFamily> family) {
-  if (family != net_base::IPFamily::kIPv6) {
+  if (family != IPFamily::kIPv6) {
     const auto ipv4 =
         IPv4CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
     if (ipv4) {
@@ -199,7 +199,7 @@ std::optional<IPCIDR> IPCIDR::CreateFromStringAndPrefix(
     }
   }
 
-  if (family != net_base::IPFamily::kIPv4) {
+  if (family != IPFamily::kIPv4) {
     const auto ipv6 =
         IPv6CIDR::CreateFromStringAndPrefix(address_string, prefix_length);
     if (ipv6) {
@@ -226,14 +226,14 @@ std::optional<IPCIDR> IPCIDR::CreateFromBytesAndPrefix(
     base::span<const uint8_t> bytes,
     int prefix_length,
     std::optional<IPFamily> family) {
-  if (family != net_base::IPFamily::kIPv6) {
+  if (family != IPFamily::kIPv6) {
     const auto ipv4 = IPv4CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
     if (ipv4) {
       return IPCIDR(*ipv4);
     }
   }
 
-  if (family != net_base::IPFamily::kIPv4) {
+  if (family != IPFamily::kIPv4) {
     const auto ipv6 = IPv6CIDR::CreateFromBytesAndPrefix(bytes, prefix_length);
     if (ipv6) {
       return IPCIDR(*ipv6);

@@ -11,7 +11,7 @@
 namespace net_base {
 
 MockNetlinkSocket::MockNetlinkSocket()
-    : NetlinkSocket(std::make_unique<net_base::MockSocket>()) {}
+    : NetlinkSocket(std::make_unique<MockSocket>()) {}
 MockNetlinkSocket::~MockNetlinkSocket() = default;
 
 }  // namespace net_base

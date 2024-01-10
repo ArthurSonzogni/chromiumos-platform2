@@ -86,8 +86,7 @@ class NET_BASE_EXPORT NetlinkMessage {
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
-  virtual bool InitFromPacket(net_base::NetlinkPacket* packet,
-                              bool is_broadcast);
+  virtual bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast);
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
@@ -106,7 +105,7 @@ class NET_BASE_EXPORT NetlinkMessage {
                          size_t num_bytes);
 
   // Logs a netlink message (with minimal interpretation).
-  static void PrintPacket(int log_level, const net_base::NetlinkPacket& packet);
+  static void PrintPacket(int log_level, const NetlinkPacket& packet);
 
  protected:
   friend class NetlinkManagerTest;
@@ -116,7 +115,7 @@ class NET_BASE_EXPORT NetlinkMessage {
   virtual std::vector<uint8_t> EncodeHeader(uint32_t sequence_number);
   // Reads the |nlmsghdr|.  Subclasses may read additional data from the
   // payload.
-  virtual bool InitAndStripHeader(net_base::NetlinkPacket* packet);
+  virtual bool InitAndStripHeader(NetlinkPacket* packet);
 
   uint16_t flags_;
   uint16_t message_type_;
@@ -147,8 +146,7 @@ class NET_BASE_EXPORT ErrorAckMessage : public NetlinkMessage {
   ErrorAckMessage& operator=(const ErrorAckMessage&) = delete;
 
   static uint16_t GetMessageType() { return kMessageType; }
-  bool InitFromPacket(net_base::NetlinkPacket* packet,
-                      bool is_broadcast) override;
+  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
   std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
   int32_t error() const { return -error_; }
@@ -219,7 +217,7 @@ class NET_BASE_EXPORT UnknownMessage : public NetlinkMessage {
 class NET_BASE_EXPORT NetlinkMessageFactory {
  public:
   using FactoryMethod = base::RepeatingCallback<std::unique_ptr<NetlinkMessage>(
-      const net_base::NetlinkPacket& packet)>;
+      const NetlinkPacket& packet)>;
 
   NetlinkMessageFactory() = default;
   NetlinkMessageFactory(const NetlinkMessageFactory&) = delete;
@@ -229,7 +227,7 @@ class NET_BASE_EXPORT NetlinkMessageFactory {
   // at initialization.
   bool AddFactoryMethod(uint16_t message_type, FactoryMethod factory);
 
-  std::unique_ptr<NetlinkMessage> CreateMessage(net_base::NetlinkPacket* packet,
+  std::unique_ptr<NetlinkMessage> CreateMessage(NetlinkPacket* packet,
                                                 bool is_broadcast) const;
 
  private:

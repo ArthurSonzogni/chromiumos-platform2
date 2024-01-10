@@ -535,7 +535,7 @@ class RTNLMessageTest : public Test {
   void TestParseAddress(base::span<const uint8_t> packet,
                         RTNLMessage::Mode mode,
                         int interface_index,
-                        const net_base::IPCIDR& address,
+                        const IPCIDR& address,
                         unsigned char scope) {
     const auto msg = RTNLMessage::Decode(packet);
 
@@ -543,7 +543,7 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(RTNLMessage::kTypeAddress, msg->type());
     EXPECT_EQ(mode, msg->mode());
     EXPECT_EQ(interface_index, msg->interface_index());
-    EXPECT_EQ(net_base::ToSAFamily(address.GetFamily()), msg->family());
+    EXPECT_EQ(ToSAFamily(address.GetFamily()), msg->family());
 
     RTNLMessage::AddressStatus status = msg->address_status();
     EXPECT_EQ(scope, status.scope);
@@ -557,9 +557,9 @@ class RTNLMessageTest : public Test {
                       RTNLMessage::Mode /*mode*/,
                       sa_family_t family,
                       int interface_index,
-                      std::optional<net_base::IPCIDR> dst,
-                      std::optional<net_base::IPCIDR> src,
-                      std::optional<net_base::IPAddress> gateway,
+                      std::optional<IPCIDR> dst,
+                      std::optional<IPCIDR> src,
+                      std::optional<IPAddress> gateway,
                       unsigned char table,
                       int protocol,
                       unsigned char scope,
@@ -625,8 +625,8 @@ class RTNLMessageTest : public Test {
                      int protocol,
                      unsigned char scope,
                      unsigned char type,
-                     const std::optional<net_base::IPCIDR>& dst,
-                     const std::optional<net_base::IPCIDR>& src,
+                     const std::optional<IPCIDR>& dst,
+                     const std::optional<IPCIDR>& src,
                      uint32_t priority,
                      uint32_t fwmark,
                      uint32_t fwmask,
@@ -791,24 +791,23 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
 }
 
 TEST_F(RTNLMessageTest, NewAddrIPv4) {
-  const auto addr = *net_base::IPCIDR::CreateFromStringAndPrefix(
+  const auto addr = *IPCIDR::CreateFromStringAndPrefix(
       kNewAddrIPV4Address, kNewAddrIPV4AddressPrefix);
   TestParseAddress(kNewAddrIPV4, RTNLMessage::kModeAdd,
                    kNewAddrIPV4InterfaceIndex, addr, kNewAddrIPV4Scope);
 }
 
 TEST_F(RTNLMessageTest, DelAddrIPv6) {
-  const auto addr = *net_base::IPCIDR::CreateFromStringAndPrefix(
+  const auto addr = *IPCIDR::CreateFromStringAndPrefix(
       kDelAddrIPV6Address, kDelAddrIPV6AddressPrefix);
   TestParseAddress(kDelAddrIPV6, RTNLMessage::kModeDelete,
                    kDelAddrIPV6InterfaceIndex, addr, kDelAddrIPV6Scope);
 }
 
 TEST_F(RTNLMessageTest, DelRouteIPv6) {
-  const auto dst = *net_base::IPCIDR::CreateFromStringAndPrefix(
-      kDelRouteIPV6Address, kDelRouteIPV6Prefix);
-  const auto gateway =
-      *net_base::IPAddress::CreateFromString(kDelRouteIPV6Address);
+  const auto dst = *IPCIDR::CreateFromStringAndPrefix(kDelRouteIPV6Address,
+                                                      kDelRouteIPV6Prefix);
+  const auto gateway = *IPAddress::CreateFromString(kDelRouteIPV6Address);
 
   TestParseRoute(kDelRouteIPV6, RTNLMessage::kModeDelete, AF_INET6,
                  kDelRouteIPV6InterfaceIndex, dst, /*src=*/std::nullopt,
@@ -817,8 +816,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
 }
 
 TEST_F(RTNLMessageTest, AddRouteIPv4) {
-  const auto gateway =
-      *net_base::IPAddress::CreateFromString(kAddRouteIPV4Address);
+  const auto gateway = *IPAddress::CreateFromString(kAddRouteIPV4Address);
 
   TestParseRoute(kAddRouteIPV4, RTNLMessage::kModeAdd, AF_INET,
                  kAddRouteIPV4InterfaceIndex,
@@ -871,16 +869,16 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
     size_t length;
     std::string iif;
     std::string oif;
-    std::optional<net_base::IPCIDR> src;
-    std::optional<net_base::IPCIDR> dst;
+    std::optional<IPCIDR> src;
+    std::optional<IPCIDR> dst;
     uint32_t fwmark;
     uint32_t fwmask;
     uint32_t table;
     uint32_t priority;
   } test_cases[] = {
       {kRuleMessage1, sizeof(kRuleMessage1), "", "",
-       net_base::IPCIDR::CreateFromStringAndPrefix("100.87.84.110", 24),
-       std::nullopt, 0, 0, 1002, 10},
+       IPCIDR::CreateFromStringAndPrefix("100.87.84.110", 24), std::nullopt, 0,
+       0, 1002, 10},
       {kRuleMessage2, sizeof(kRuleMessage2), "eth0", "", std::nullopt,
        std::nullopt, 0, 0, 1002, 10},
       {kRuleMessage3, sizeof(kRuleMessage3), "", "", std::nullopt, std::nullopt,
@@ -926,9 +924,9 @@ TEST_F(RTNLMessageTest, EncodeDelNeighbor) {
 TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRoute, RTNLMessage::kModeAdd, 0, 1, 2, 0,
                   AF_INET);
-  const auto dst = net_base::IPCIDR(net_base::IPv4CIDR());
-  const auto src = net_base::IPCIDR(net_base::IPv4CIDR());
-  const auto gateway = *net_base::IPAddress::CreateFromString("192.168.0.1");
+  const auto dst = IPCIDR(IPv4CIDR());
+  const auto src = IPCIDR(IPv4CIDR());
+  const auto gateway = *IPAddress::CreateFromString("192.168.0.1");
 
   msg.set_route_status(RTNLMessage::RouteStatus(
       0, 0, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
@@ -947,8 +945,8 @@ TEST_F(RTNLMessageTest, EncodeRuleAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRule, RTNLMessage::kModeAdd, 0, 1, 2, 0,
                   AF_INET);
 
-  const auto dst = *net_base::IPCIDR::CreateFromCIDRString("192.168.1.0/32");
-  const auto src = *net_base::IPCIDR::CreateFromCIDRString("192.168.2.0/32");
+  const auto dst = *IPCIDR::CreateFromCIDRString("192.168.1.0/32");
+  const auto src = *IPCIDR::CreateFromCIDRString("192.168.2.0/32");
 
   msg.set_route_status(RTNLMessage::RouteStatus(
       static_cast<unsigned char>(dst.prefix_length()),

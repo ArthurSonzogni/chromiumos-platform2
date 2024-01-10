@@ -27,7 +27,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const int indent = provider.ConsumeIntegralInRange<int>(0, 1024);
   const std::vector<uint8_t> payload =
       provider.ConsumeRemainingBytes<uint8_t>();
-  net_base::NetlinkPacket packet(payload);
+  NetlinkPacket packet(payload);
   if (!packet.IsValid()) {
     return 0;
   }

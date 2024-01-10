@@ -59,8 +59,8 @@ namespace net_base {
 
 // static
 std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create() {
-  std::unique_ptr<net_base::Socket> socket =
-      net_base::SocketFactory().CreateNetlink(NETLINK_SOCK_DIAG, 0);
+  std::unique_ptr<Socket> socket =
+      SocketFactory().CreateNetlink(NETLINK_SOCK_DIAG, 0);
   if (socket == nullptr) {
     return nullptr;
   }
@@ -69,15 +69,13 @@ std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create() {
   return base::WrapUnique(new NetlinkSockDiag(std::move(socket)));
 }
 
-NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<net_base::Socket> socket)
+NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<Socket> socket)
     : socket_(std::move(socket)), sequence_number_(0) {}
 
 NetlinkSockDiag::~NetlinkSockDiag() = default;
 
-bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
-                                     const net_base::IPAddress& saddr) {
-  const uint8_t family =
-      static_cast<uint8_t>(net_base::ToSAFamily(saddr.GetFamily()));
+bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
+  const uint8_t family = static_cast<uint8_t>(ToSAFamily(saddr.GetFamily()));
 
   std::vector<struct inet_diag_sockid> socks;
   if (!GetSockets(family, protocol, &socks))
@@ -86,7 +84,7 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
   const auto addr_bytes = saddr.ToByteString();
   SockDiagRequest request = CreateDestroyRequest(family, protocol);
   for (const auto& sockid : socks) {
-    const auto sock_src = net_base::IPAddress::CreateFromBytes(
+    const auto sock_src = IPAddress::CreateFromBytes(
         {reinterpret_cast<const uint8_t*>(sockid.idiag_src),
          saddr.GetAddressLength()});
     if (sock_src != saddr) {

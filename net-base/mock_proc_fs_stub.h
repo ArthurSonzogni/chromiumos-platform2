@@ -22,7 +22,7 @@ class NET_BASE_EXPORT MockProcFsStub : public ProcFsStub {
 
   MOCK_METHOD(bool,
               SetIPFlag,
-              (net_base::IPFamily, const std::string&, const std::string&),
+              (IPFamily, const std::string&, const std::string&),
               (override));
 
   MOCK_METHOD(bool, FlushRoutingCache, (), (override));

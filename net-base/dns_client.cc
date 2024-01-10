@@ -222,8 +222,7 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
   // The raw pointer here is safe since the callback can only be invoked inside
   // some c-ares functions, while they can only be called from this object.
   ares_->gethostbyname(channel_, std::string(hostname).c_str(),
-                       net_base::ToSAFamily(family_), AresGethostbynameCallback,
-                       this);
+                       ToSAFamily(family_), AresGethostbynameCallback, this);
 
   RefreshHandlers();
   RefreshTimeout();
