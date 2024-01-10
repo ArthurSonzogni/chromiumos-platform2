@@ -3971,8 +3971,8 @@ void Service::GetVmMemoryManagementKillsConnection(
     LOG(ERROR) << error;
     response.set_failure_reason(error);
 
-    std::move(get_vmmms_kills_connection_response_sender_)
-        ->Return(response, fds);
+    auto local = std::move(get_vmmms_kills_connection_response_sender_);
+    local->Return(response, fds);
   }
 
   get_vmmms_kills_connection_response_sender_ = std::move(response_cb);
@@ -4006,7 +4006,8 @@ void Service::SendGetVmmmsKillConnectionResponse() {
   response.set_host_kill_request_timeout_ms(
       host_kill_decision_timeout_.InMilliseconds());
 
-  std::move(get_vmmms_kills_connection_response_sender_)->Return(response, fds);
+  auto local = std::move(get_vmmms_kills_connection_response_sender_);
+  local->Return(response, fds);
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
