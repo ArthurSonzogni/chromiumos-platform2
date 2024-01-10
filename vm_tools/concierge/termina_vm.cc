@@ -228,6 +228,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       .AppendSerialDevice(GetCrosVmSerial("serial", "earlycon"))
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
       .AppendSerialDevice(GetCrosVmSerial("debugcon", ""))
+      .EnableBattery(true)
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));
 
   if (features_.gpu) {
