@@ -16,19 +16,16 @@
 
 #include "update_engine/cros/requisition_util.h"
 
-#include <memory>
-#include <vector>
-
 #include <base/files/file_util.h>
 #include <base/json/json_file_value_serializer.h>
-#include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
+#include <vpd/vpd.h>
 
 #include "update_engine/common/subprocess.h"
 #include "update_engine/common/utils.h"
 
 using std::string;
-using std::vector;
 
 namespace {
 
@@ -40,24 +37,27 @@ constexpr char kNoRequisition[] = "none";
 namespace chromeos_update_engine {
 
 string ReadDeviceRequisition(const base::Value* local_state) {
-  string requisition;
-  bool vpd_retval = utils::GetVpdValue(kOemRequisitionKey, &requisition);
+  auto requisition = vpd::Vpd().GetValue(vpd::VpdRw, kOemRequisitionKey);
+
+  if (requisition && !requisition->empty() && requisition != kNoRequisition) {
+    return *requisition;
+  }
 
   // Check the Local State JSON for the value of the device_requisition key iff:
   // 1. The VPD value is missing as a result of users manually converting
   // non-CfM hardware at enrollment time.
   // OR
   // 2. Requisition value mistakenly set to "none".
-  if ((requisition.empty() || requisition == kNoRequisition || !vpd_retval) &&
-      (local_state && local_state->is_dict())) {
+  if (local_state && local_state->is_dict()) {
     auto* path = local_state->GetDict().FindByDottedPath(
         "enrollment.device_requisition");
     if (!path || !path->is_string()) {
       return "";
     }
-    requisition = path->GetString();
+    return path->GetString();
   }
-  return requisition;
+
+  return "";
 }
 
 }  // namespace chromeos_update_engine

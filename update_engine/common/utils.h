@@ -294,10 +294,6 @@ bool ReadExtents(const std::string& path,
 // reboot. Returns whether it succeeded getting the boot_id.
 bool GetBootId(std::string* boot_id);
 
-// Gets a string value from the vpd for a given key using the `vpd_get_value`
-// shell command. Returns true on success.
-bool GetVpdValue(std::string key, std::string* result);
-
 // This function gets the file path of the file pointed to by FileDiscriptor.
 std::string GetFilePath(int fd);
 

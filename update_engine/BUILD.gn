@@ -254,6 +254,7 @@ static_library("libupdate_engine") {
     "policy",
     "rootdev",
     "rt",
+    "vpd",
   ]
   all_dependent_pkg_deps = [
     "dbus-1",

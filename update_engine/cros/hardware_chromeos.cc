@@ -30,6 +30,7 @@
 #include <debugd/dbus-constants.h>
 #include <libcrossystem/crossystem.h>
 #include <vboot/crossystem.h>
+#include <vpd/vpd.h>
 
 extern "C" {
 #include "vboot/vboot_host.h"
@@ -465,35 +466,29 @@ void HardwareChromeOS::LoadConfig(const string& root_prefix, bool normal_mode) {
 }
 
 bool HardwareChromeOS::GetFirstActiveOmahaPingSent() const {
-  string active_ping_str;
-  if (!utils::GetVpdValue(kActivePingKey, &active_ping_str)) {
+  auto active_ping_str = vpd::Vpd().GetValue(vpd::VpdRw, kActivePingKey);
+  if (!active_ping_str) {
     return false;
   }
 
   int active_ping;
-  if (active_ping_str.empty() ||
-      !base::StringToInt(active_ping_str, &active_ping)) {
-    LOG(INFO) << "Failed to parse active_ping value: " << active_ping_str;
+  if (active_ping_str->empty() ||
+      !base::StringToInt(*active_ping_str, &active_ping)) {
+    LOG(INFO) << "Failed to parse active_ping value: " << *active_ping_str;
     return false;
   }
   return static_cast<bool>(active_ping);
 }
 
 bool HardwareChromeOS::SetFirstActiveOmahaPingSent() {
-  int exit_code = 0;
-  string output, error;
-  vector<string> vpd_set_cmd = {"vpd", "-i", "RW_VPD", "-s",
-                                string(kActivePingKey) + "=1"};
-  if (!Subprocess::SynchronousExec(vpd_set_cmd, &exit_code, &output, &error) ||
-      exit_code) {
-    LOG(ERROR) << "Failed to set vpd key for " << kActivePingKey
-               << " with exit code: " << exit_code << " with output: " << output
-               << " and error: " << error;
+  if (!vpd::Vpd().WriteValue(vpd::VpdRw, kActivePingKey, "1")) {
+    LOG(ERROR) << "Failed to set vpd key for " << kActivePingKey;
     return false;
-  } else if (!error.empty()) {
-    LOG(INFO) << "vpd succeeded but with error logs: " << error;
   }
 
+  // TODO(b/77594752): remove when dump_vpd_log consumers are gone.
+  int exit_code = 0;
+  string output, error;
   vector<string> vpd_dump_cmd = {"dump_vpd_log", "--force"};
   if (!Subprocess::SynchronousExec(vpd_dump_cmd, &exit_code, &output, &error) ||
       exit_code) {
@@ -508,27 +503,27 @@ bool HardwareChromeOS::SetFirstActiveOmahaPingSent() {
 }
 
 std::string HardwareChromeOS::GetActivateDate() const {
-  std::string activate_date;
-  if (!utils::GetVpdValue(kActivateDateVpdKey, &activate_date)) {
+  auto activate_date = vpd::Vpd().GetValue(vpd::VpdRw, kActivateDateVpdKey);
+  if (!activate_date) {
     return "";
   }
-  return activate_date;
+  return *activate_date;
 }
 
 std::string HardwareChromeOS::GetFsiVersion() const {
-  std::string fsi_version;
-  if (!utils::GetVpdValue(kFsiVersionVpdKey, &fsi_version)) {
+  auto fsi_version = vpd::Vpd().GetValue(vpd::VpdRo, kFsiVersionVpdKey);
+  if (!fsi_version) {
     return "";
   }
-  return fsi_version;
+  return *fsi_version;
 }
 
 bool HardwareChromeOS::GetCheckEnrollment() const {
-  std::string check_enrollment;
-  if (!utils::GetVpdValue(kCheckEnrollmentKey, &check_enrollment)) {
+  auto check_enrollment = vpd::Vpd().GetValue(vpd::VpdRw, kCheckEnrollmentKey);
+  if (!check_enrollment) {
     return false;
   }
-  return check_enrollment == "1";
+  return *check_enrollment == "1";
 }
 
 std::unique_ptr<base::Value> HardwareChromeOS::ReadLocalState() const {
@@ -705,8 +700,7 @@ base::FilePath HardwareChromeOS::GetPowerwashMarkerFullPath() const {
 }
 
 bool HardwareChromeOS::IsManagedDeviceInOobe() const {
-  return IsOOBEEnabled() && !IsOOBEComplete(nullptr) &&
-         GetCheckEnrollment();
+  return IsOOBEEnabled() && !IsOOBEComplete(nullptr) && GetCheckEnrollment();
 }
 
 }  // namespace chromeos_update_engine
