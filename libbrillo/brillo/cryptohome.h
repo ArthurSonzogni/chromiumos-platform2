@@ -89,6 +89,8 @@ SanitizeUserNameWithSalt(const Username& username, const SecureBlob& salt);
 // created. This is used for testing only.
 BRILLO_EXPORT void SetUserHomePrefix(const std::string& prefix);
 
+BRILLO_EXPORT bool IsLegacySystemSalt(base::FilePath root);
+
 // Deprecated. Prefer `FakeSystemSaltLoader`.
 BRILLO_EXPORT void SetSystemSalt(std::string* salt);
 

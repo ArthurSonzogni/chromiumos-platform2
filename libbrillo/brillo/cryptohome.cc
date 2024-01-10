@@ -42,6 +42,11 @@ SystemSaltLoader* g_system_salt_loader = nullptr;
 
 }  // namespace
 
+bool IsLegacySystemSalt(base::FilePath root) {
+  // Append wants a relative path, so "+1" to skip leading "/".
+  return base::PathExists(root.Append(kDefaultLegacySystemSaltPath + 1));
+}
+
 const Username& GetGuestUsername() {
   static const base::NoDestructor<Username> kGuest("$guest");
   return *kGuest;
