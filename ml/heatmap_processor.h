@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/no_destructor.h>
 #include <base/sequence_checker.h>
@@ -35,6 +36,12 @@ class HeatmapProcessor {
           chromeos::machine_learning::mojom::HeatmapPalmRejectionClient> client,
       chromeos::machine_learning::mojom::HeatmapPalmRejectionConfigPtr config);
 
+  // Processes `heatmap_data` to decide whether there is a palm.
+  void Process(const std::vector<double>& heatmap_data,
+               int height,
+               int width,
+               base::Time timestamp);
+
  private:
   friend class base::NoDestructor<HeatmapProcessor>;
 
@@ -43,7 +50,10 @@ class HeatmapProcessor {
   HeatmapProcessor& operator=(const HeatmapProcessor&) = delete;
 
   // Reports the palm rejection result to the remote HeatmapPalmRejectionClient.
-  void ReportResult(bool is_palm);
+  void ReportResult(bool is_palm, base::Time timestamp);
+
+  bool ready_ = false;
+  double palm_threshold_ = 0.0;
 
   mojo::Remote<chromeos::machine_learning::mojom::HeatmapPalmRejectionClient>
       client_;
