@@ -29,7 +29,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
-/sbin/debugd                    u:object_r:cros_debugd_exec:s0
 /sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
 /sbin/featured                  u:object_r:cros_featured_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
@@ -198,6 +197,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/cupsd                 u:object_r:cros_cupsd_exec:s0
 /usr/sbin/daisydog              u:object_r:cros_daisydog_exec:s0
 /usr/sbin/dcad                  u:object_r:cros_dcad_exec:s0
+/usr/sbin/debugd                u:object_r:cros_debugd_exec:s0
 /usr/sbin/discod                u:object_r:cros_discod_exec:s0
 /usr/sbin/dlcservice            u:object_r:cros_dlcservice_exec:s0
 /usr/sbin/dnsproxyd             u:object_r:cros_dnsproxyd_exec:s0

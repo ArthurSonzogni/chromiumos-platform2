@@ -200,7 +200,7 @@ install_config("debugd_share_config") {
 
 executable("debugd") {
   sources = [ "src/main.cc" ]
-  install_path = "/sbin"
+  install_path = "sbin"
   configs += [
     ":debugd_config",
     ":target_defaults",
