@@ -316,14 +316,24 @@ bool DevicePolicyImpl::GetHwDataUsageEnabled(
 
 bool DevicePolicyImpl::GetManagedHwDataUsageEnabled(
     bool* managed_hw_data_usage_enabled) const {
+  // This policy only applies to enrolled devices.
+  if (!IsEnterpriseEnrolled())
+    return false;
+
+  // The default for this policy is supposed to be 'true', but the `default`
+  // key in the policy definition doesn't make that happen for CrOS device
+  // policies. Instead we need to enforce it ourselves, here.
+  // Only set result to false if we can read the policy and it's disabled, and
+  // ignore it if the proto is missing.
+  *managed_hw_data_usage_enabled = true;
   if (!device_policy_
            ->has_device_flex_hw_data_for_product_improvement_enabled())
-    return false;
+    return true;
 
   const em::DeviceFlexHwDataForProductImprovementEnabledProto& proto =
       device_policy_->device_flex_hw_data_for_product_improvement_enabled();
   if (!proto.has_enabled())
-    return false;
+    return true;
 
   *managed_hw_data_usage_enabled = proto.enabled();
   return true;

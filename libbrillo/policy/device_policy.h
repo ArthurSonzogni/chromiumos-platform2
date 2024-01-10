@@ -129,7 +129,7 @@ class DevicePolicy {
   virtual bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const = 0;
 
   // Write the value of DeviceFlexHwDataForProductImprovementEnabled policy in
-  // |hw_data_usage_enabled|. Returns true on success.
+  // |hw_data_usage_enabled|. Returns false if not enrolled, true otherwise.
   virtual bool GetManagedHwDataUsageEnabled(
       bool* hw_data_usage_enabled) const = 0;
 

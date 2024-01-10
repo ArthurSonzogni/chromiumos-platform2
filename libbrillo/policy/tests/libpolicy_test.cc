@@ -301,7 +301,10 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetMetricsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(policy.GetHwDataUsageEnabled(&bool_value));
-  EXPECT_FALSE(policy.GetManagedHwDataUsageEnabled(&bool_value));
+  // DeviceFlexHwDataForProductImprovementEnabled defaults to true,
+  // so failure to read is success.
+  EXPECT_TRUE(policy.GetManagedHwDataUsageEnabled(&bool_value));
+  EXPECT_TRUE(bool_value);
   EXPECT_FALSE(policy.GetReportSystemInfo(&bool_value));
   EXPECT_FALSE(policy.GetReportCpuInfo(&bool_value));
   EXPECT_FALSE(policy.GetReportGraphicsStatus(&bool_value));
