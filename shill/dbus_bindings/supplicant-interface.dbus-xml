@@ -37,7 +37,14 @@
       <arg name="data" type="ay" direction="out"/>
     </method>
     <method name="SignalPoll">
-      <arg name="properties" type="a{sv}" direction="out"/>
+      <!--
+           TODO(b/318430162): the expected type of SignalPoll is a{sv}, but
+           wpa_supplicant upstream seems to have a bug so an entire dictionary
+           is unexpectedly wrapped by a variant.
+           We mark this as a variant here to deal with it as a short term
+           workaround.
+      -->
+      <arg name="properties" type="v" direction="out"/>
     </method>
     <method name="FlushBSS">
       <arg name="age" type="u" direction="in"/>
