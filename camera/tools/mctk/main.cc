@@ -185,7 +185,7 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
 
-        YamlNode* root = YamlNode::FromFile(*f);
+        std::unique_ptr<YamlNode> root = YamlNode::FromFile(*f);
         fclose(f);
         if (!root) {
           MCTK_ERR("YamlNode::FromFile() for MC device failed. Aborting.");
@@ -196,7 +196,6 @@ int main(int argc, char** argv) {
         // root->ToFile(*stdout);
 
         mcdev = V4lMcDev::CreateFromYamlNode((*root)["media_ctl"]);
-        delete root;
         if (!mcdev) {
           MCTK_ERR("CreateFromYamlNode() for MC device failed. Aborting.");
           return EXIT_FAILURE;
@@ -235,7 +234,7 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
 
-        YamlNode* root = YamlNode::FromFile(*f);
+        std::unique_ptr<YamlNode> root = YamlNode::FromFile(*f);
         fclose(f);
         if (!root) {
           MCTK_ERR("YamlNode::FromFile() for merge source failed. Aborting.");
@@ -251,7 +250,6 @@ int main(int argc, char** argv) {
         }
 
         auto merge_source = V4lMcDev::CreateFromYamlNode((*root)["media_ctl"]);
-        delete root;
         if (!merge_source) {
           MCTK_ERR("CreateFromYamlNode() for merge source failed. Aborting.");
           return EXIT_FAILURE;

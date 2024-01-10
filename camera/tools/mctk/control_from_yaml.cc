@@ -125,7 +125,8 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromYamlNode(
     YamlNode& node_ctl) {
   auto control = std::make_unique<V4lMcControl>();
 
-  std::vector<YamlNode*>& nodes_values = node_ctl["values"].ReadSequence();
+  std::vector<std::unique_ptr<YamlNode>>& nodes_values =
+      node_ctl["values"].ReadSequence();
 
   /* Parse desc */
   bool ok = true;
@@ -166,7 +167,7 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromYamlNode(
     return nullptr;
   }
 
-  for (auto* val : nodes_values) {
+  for (std::unique_ptr<YamlNode>& val : nodes_values) {
     if (!ParsePayloadValue(*control, *val)) {
       MCTK_ERR("Failed to parse control value/payload, aborting.");
       return nullptr;

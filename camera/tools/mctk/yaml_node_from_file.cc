@@ -16,10 +16,12 @@
 #include <stdio.h>
 #include <yaml.h>
 
+#include <memory> /* std::unique_ptr */
+
 #include "tools/mctk/debug.h"
 
-YamlNode* YamlNode::FromFile(FILE& file) {
-  YamlNode* root = nullptr;
+std::unique_ptr<YamlNode> YamlNode::FromFile(FILE& file) {
+  std::unique_ptr<YamlNode> root = nullptr;
   yaml_parser_t parser;
   yaml_event_t event;
 

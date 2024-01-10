@@ -380,7 +380,8 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromYamlNode(
   /* Ignored: tuner */
 
   /* Parse controls */
-  for (YamlNode* node_control : node_ent["controls"].ReadSequence()) {
+  for (std::unique_ptr<YamlNode>& node_control :
+       node_ent["controls"].ReadSequence()) {
     std::unique_ptr<V4lMcControl> new_control =
         V4lMcControl::CreateFromYamlNode(*node_control);
 
@@ -393,7 +394,7 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromYamlNode(
   }
 
   /* Parse pads */
-  for (YamlNode* node_pad : node_ent["pads"].ReadSequence()) {
+  for (std::unique_ptr<YamlNode>& node_pad : node_ent["pads"].ReadSequence()) {
     std::unique_ptr<V4lMcPad> new_pad =
         V4lMcPad::CreateFromYamlNode(*node_pad, *entity);
 

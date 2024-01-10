@@ -51,7 +51,8 @@ std::unique_ptr<V4lMcDev> V4lMcDev::CreateFromYamlNode(YamlNode& node_mc) {
   }
 
   /* Parse entities */
-  for (YamlNode* node_ent : node_mc["entities"].ReadSequence()) {
+  for (std::unique_ptr<YamlNode>& node_ent :
+       node_mc["entities"].ReadSequence()) {
     std::unique_ptr<V4lMcEntity> new_e =
         V4lMcEntity::CreateFromYamlNode(*node_ent);
 

@@ -17,14 +17,16 @@
 
 #include <yaml.h>
 
+#include <memory> /* std::unique_ptr */
+
 #include "tools/mctk/debug.h"
 
 extern YamlEmpty empty_node;
 
 /* Caller is responsible for deleting the event passed in */
-YamlNode* YamlNode::FromParserEvent(yaml_parser_t& parser,
-                                    yaml_event_t& event) {
-  YamlNode* new_node = NULL;
+std::unique_ptr<YamlNode> YamlNode::FromParserEvent(yaml_parser_t& parser,
+                                                    yaml_event_t& event) {
+  std::unique_ptr<YamlNode> new_node = NULL;
 
   switch (event.type) {
     case YAML_SCALAR_EVENT:
@@ -68,8 +70,8 @@ YamlNode* YamlNode::FromParserEvent(yaml_parser_t& parser,
 }
 
 /* Fetch a new event, parse it, and then delete it */
-YamlNode* YamlNode::FromParser(yaml_parser_t& parser) {
-  YamlNode* new_node = NULL;
+std::unique_ptr<YamlNode> YamlNode::FromParser(yaml_parser_t& parser) {
+  std::unique_ptr<YamlNode> new_node = NULL;
   yaml_event_t event;
 
   if (!yaml_parser_parse(&parser, &event))

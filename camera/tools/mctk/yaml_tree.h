@@ -24,9 +24,10 @@
 #include <stdio.h>
 #include <yaml.h>
 
+#include <memory> /* std::unique_ptr */
 #include <optional>
 #include <string>
-#include <utility> /* std::pair */
+#include <utility> /* std::move, std::pair */
 #include <vector>
 
 #include "tools/mctk/selection.h"
@@ -47,9 +48,10 @@ class YamlNode {
    *  - a libyaml parser, or
    *  - a libyaml parser and the last read event (used internally).
    */
-  static YamlNode* FromFile(FILE& file);
-  static YamlNode* FromParser(yaml_parser_t& parser);
-  static YamlNode* FromParserEvent(yaml_parser_t& parser, yaml_event_t& event);
+  static std::unique_ptr<YamlNode> FromFile(FILE& file);
+  static std::unique_ptr<YamlNode> FromParser(yaml_parser_t& parser);
+  static std::unique_ptr<YamlNode> FromParserEvent(yaml_parser_t& parser,
+                                                   yaml_event_t& event);
 
   /* Recursively convert a YAML tree to a FILE. */
   bool ToFile(FILE& file);
@@ -102,7 +104,7 @@ class YamlNode {
   /* Return a vector of nodes contained in a sequence node.
    * If it is not a sequence, an empty vector is returned.
    */
-  std::vector<YamlNode*>& ReadSequence();
+  std::vector<std::unique_ptr<YamlNode>>& ReadSequence();
 
   /* Getters for common composite V4L data types */
   std::optional<struct v4l2_rect> ReadRect();
@@ -126,7 +128,9 @@ class YamlEmpty : public YamlNode {
  */
 class YamlScalar : public YamlNode {
  public:
-  static YamlScalar* FromEvent(yaml_event_t& event);
+  explicit YamlScalar(std::string value) : value_(std::move(value)) {}
+
+  static std::unique_ptr<YamlScalar> FromEvent(yaml_event_t& event);
 
   bool Emit(yaml_emitter_t& emitter);
 
@@ -135,9 +139,6 @@ class YamlScalar : public YamlNode {
 
   /* The actual value stored in this node */
   const std::string value_;
-
- private:
-  explicit YamlScalar(std::string value) : value_(value) {}
 };
 
 /*
@@ -145,9 +146,8 @@ class YamlScalar : public YamlNode {
  */
 class YamlSequence : public YamlNode {
  public:
-  ~YamlSequence();
-  static YamlSequence* FromParserEvent(yaml_parser_t& parser,
-                                       yaml_event_t& start_event);
+  static std::unique_ptr<YamlSequence> FromParserEvent(
+      yaml_parser_t& parser, yaml_event_t& start_event);
 
   bool Emit(yaml_emitter_t& emitter);
 
@@ -155,7 +155,7 @@ class YamlSequence : public YamlNode {
   std::optional<std::vector<T>> ReadArray(size_t expected_count);
 
   /* The actual list of nodes */
-  std::vector<YamlNode*> list_;
+  std::vector<std::unique_ptr<YamlNode>> list_;
 
  private:
   bool ParseOneListElement(yaml_parser_t& parser);
@@ -167,13 +167,12 @@ class YamlSequence : public YamlNode {
 /*
  * YAML mappings act like maps/dictionaries
  */
-typedef std::pair<std::string, YamlNode&> YamlMapPair;
+typedef std::pair<std::string, std::unique_ptr<YamlNode>> YamlMapPair;
 
 class YamlMap : public YamlNode {
  public:
-  ~YamlMap();
-  static YamlMap* FromParserEvent(yaml_parser_t& parser,
-                                  yaml_event_t& start_event);
+  static std::unique_ptr<YamlMap> FromParserEvent(yaml_parser_t& parser,
+                                                  yaml_event_t& start_event);
 
   bool Emit(yaml_emitter_t& emitter);
 

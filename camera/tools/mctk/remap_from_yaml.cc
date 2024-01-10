@@ -29,7 +29,7 @@ std::unique_ptr<V4lMcRemap> V4lMcRemap::CreateFromYamlNode(
   auto remap = std::make_unique<V4lMcRemap>();
 
   /* Parse links */
-  for (YamlNode* node_one : node_remap.ReadSequence()) {
+  for (std::unique_ptr<YamlNode>& node_one : node_remap.ReadSequence()) {
     std::optional<__u32> id = (*node_one)["id"].Read<__u32>();
     std::optional<std::string> name = (*node_one)["name"].Read<std::string>();
 

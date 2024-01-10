@@ -16,23 +16,19 @@
 #include <linux/types.h>
 #include <yaml.h>
 
+#include <memory> /* std::unique_ptr */
 #include <string>
-#include <utility> /* std::pair */
+#include <utility> /* std::move, std::pair */
 #include <vector>
 
 #include "tools/mctk/debug.h"
 
-YamlMap::~YamlMap() {
-  for (YamlMapPair pair : this->map_)
-    delete &pair.second;
-}
-
 /* Caller is responsible for deleting the event passed in */
-YamlMap* YamlMap::FromParserEvent(yaml_parser_t& parser,
-                                  yaml_event_t& start_event) {
+std::unique_ptr<YamlMap> YamlMap::FromParserEvent(yaml_parser_t& parser,
+                                                  yaml_event_t& start_event) {
   MCTK_ASSERT(start_event.type == YAML_MAPPING_START_EVENT);
 
-  YamlMap* new_map = new YamlMap();
+  auto new_map = std::make_unique<YamlMap>();
   if (!new_map)
     return NULL;
 
@@ -63,15 +59,14 @@ YamlMap* YamlMap::FromParserEvent(yaml_parser_t& parser,
     yaml_event_delete(&event);
 
     /* Part 2: Parse any node type as a value */
-    YamlNode* value = YamlNode::FromParser(parser);
+    auto value = YamlNode::FromParser(parser);
     if (!value)
       goto error;
 
-    new_map->map_.push_back(YamlMapPair(key, *value));
+    new_map->map_.push_back(YamlMapPair(key, std::move(value)));
   }
 
 error:
-  delete new_map;
   return NULL;
 }
 
@@ -85,7 +80,7 @@ bool YamlMap::Emit(yaml_emitter_t& emitter) {
   if (!yaml_emitter_emit(&emitter, &event))
     return false;
 
-  for (YamlMapPair pair : this->map_) {
+  for (YamlMapPair& pair : this->map_) {
     if (!yaml_scalar_event_initialize(
             &event, NULL, NULL,
             reinterpret_cast<const yaml_char_t*>(pair.first.c_str()), -1, 1, 1,
@@ -94,7 +89,7 @@ bool YamlMap::Emit(yaml_emitter_t& emitter) {
     if (!yaml_emitter_emit(&emitter, &event))
       return false;
 
-    pair.second.Emit(emitter);
+    pair.second->Emit(emitter);
   }
 
   if (!yaml_mapping_end_event_initialize(&event))

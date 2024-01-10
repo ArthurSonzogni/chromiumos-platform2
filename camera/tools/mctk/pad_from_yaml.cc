@@ -87,7 +87,8 @@ std::unique_ptr<V4lMcPad> V4lMcPad::CreateFromYamlNode(YamlNode& node_pad,
       pad->subdev_.selection);
 
   /* Parse links */
-  for (YamlNode* node_link : node_pad["links"].ReadSequence()) {
+  for (std::unique_ptr<YamlNode>& node_link :
+       node_pad["links"].ReadSequence()) {
     std::unique_ptr<V4lMcLink> new_link =
         V4lMcLink::CreateFromYamlNode(*node_link, *pad);
 

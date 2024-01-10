@@ -8,6 +8,7 @@
 #include <linux/types.h>
 #include <stddef.h> /* size_t */
 
+#include <memory> /* std::unique_ptr */
 #include <string>
 #include <vector>
 
@@ -15,7 +16,7 @@
 
 extern YamlEmpty empty_node;
 
-static std::vector<YamlNode*> empty_sequence_vector;
+static std::vector<std::unique_ptr<YamlNode>> empty_sequence_vector;
 
 /* Getters for basic types in std::optional form.
  * Returns std:nullopt if trying to read from an empty node.
@@ -108,7 +109,7 @@ void YamlNode::ReadCString(char* dest, size_t destlen, bool& ok) {
 /* Return a vector of nodes contained in a sequence node.
  * If it is not a sequence, an empty vector is returned.
  */
-std::vector<YamlNode*>& YamlNode::ReadSequence() {
+std::vector<std::unique_ptr<YamlNode>>& YamlNode::ReadSequence() {
   YamlSequence* sequence = dynamic_cast<YamlSequence*>(this);
   if (!sequence)
     return empty_sequence_vector;

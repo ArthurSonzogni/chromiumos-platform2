@@ -39,9 +39,9 @@ YamlNode& YamlNode::operator[](std::string key) {
   if (!map)
     return empty_node;
 
-  for (YamlMapPair pair : map->map_)
+  for (YamlMapPair& pair : map->map_)
     if (pair.first == key)
-      return pair.second;
+      return *(pair.second);
 
   return empty_node;
 }

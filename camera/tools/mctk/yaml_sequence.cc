@@ -13,14 +13,11 @@
 #include <stddef.h> /* size_t */
 #include <yaml.h>
 
+#include <memory>  /* std::unique_ptr */
+#include <utility> /* std::move */
 #include <vector>
 
 #include "tools/mctk/debug.h"
-
-YamlSequence::~YamlSequence() {
-  for (YamlNode* node : this->list_)
-    delete node;
-}
 
 bool YamlSequence::ParseOneListElement(yaml_parser_t& parser) {
   yaml_event_t event;
@@ -33,21 +30,21 @@ bool YamlSequence::ParseOneListElement(yaml_parser_t& parser) {
     return true;
   }
 
-  YamlNode* new_node = YamlNode::FromParserEvent(parser, event);
+  auto new_node = YamlNode::FromParserEvent(parser, event);
   yaml_event_delete(&event);
   if (!new_node)
     return false;
 
-  this->list_.push_back(new_node);
+  this->list_.push_back(std::move(new_node));
   return this->ParseOneListElement(parser);
 }
 
 /* Caller is responsible for deleting the event passed in */
-YamlSequence* YamlSequence::FromParserEvent(yaml_parser_t& parser,
-                                            yaml_event_t& start_event) {
+std::unique_ptr<YamlSequence> YamlSequence::FromParserEvent(
+    yaml_parser_t& parser, yaml_event_t& start_event) {
   MCTK_ASSERT(start_event.type == YAML_SEQUENCE_START_EVENT);
 
-  YamlSequence* new_seq = new YamlSequence();
+  auto new_seq = std::make_unique<YamlSequence>();
   if (!new_seq)
     return NULL;
 
@@ -58,7 +55,6 @@ YamlSequence* YamlSequence::FromParserEvent(yaml_parser_t& parser,
   if (new_seq->ParseOneListElement(parser))
     return new_seq;
 
-  delete new_seq;
   return NULL;
 }
 
@@ -72,7 +68,7 @@ bool YamlSequence::Emit(yaml_emitter_t& emitter) {
   if (!yaml_emitter_emit(&emitter, &event))
     return false;
 
-  for (YamlNode* node : this->list_) {
+  for (auto& node : this->list_) {
     node->Emit(emitter);
   }
 
@@ -94,7 +90,7 @@ std::optional<std::vector<T>> YamlSequence::ReadArray(size_t expected_count) {
 
   std::vector<T> out_vec;
 
-  for (YamlNode* node : list_) {
+  for (auto& node : list_) {
     std::optional<T> temp = node->Read<T>();
     if (!temp)
       return std::nullopt;
