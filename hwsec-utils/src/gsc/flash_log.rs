@@ -105,9 +105,9 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
 pub fn gsc_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (HwsecError, u64)> {
     let Ok(gsctool_result) = run_gsctool_cmd(
         ctx,
-        vec!["--any", "--machine", "--flog", &prev_stamp.to_string()]
+        vec!["--any", "--machine", "--flog", &prev_stamp.to_string()],
     ) else {
-        return Err((HwsecError::GsctoolError(1), 0))
+        return Err((HwsecError::GsctoolError(1), 0));
     };
 
     if !gsctool_result.status.success() {
@@ -119,13 +119,13 @@ pub fn gsc_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (Hw
     }
 
     let Ok(content) = std::str::from_utf8(&gsctool_result.stdout) else {
-        return Err((HwsecError::GsctoolResponseBadFormatError, 0))
+        return Err((HwsecError::GsctoolResponseBadFormatError, 0));
     };
 
     let mut new_stamp: u64 = 0;
     for entry in content.lines() {
         let Ok((stamp, event_id)) = parse_timestamp_and_event_id_from_log_entry(entry) else {
-            return Err((HwsecError::InternalError, new_stamp))
+            return Err((HwsecError::InternalError, new_stamp));
         };
 
         let Ok(metrics_client_result) = run_metrics_client(
@@ -136,7 +136,7 @@ pub fn gsc_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (Hw
                 &format!("0x{:02x}", event_id),
             ],
         ) else {
-            return Err((HwsecError::MetricsClientFailureError, new_stamp))
+            return Err((HwsecError::MetricsClientFailureError, new_stamp));
         };
 
         if metrics_client_result.status.code().unwrap() == 0 {

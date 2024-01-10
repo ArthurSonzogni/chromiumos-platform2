@@ -42,8 +42,10 @@ fn main() {
     let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
 
     let Some((new_image, ro_descriptions)) = parse_args(args) else {
-        eprintln!("Two parameters are required: name of the Cr50 image file \
-        and name of the RO verification descriptors database file");
+        eprintln!(
+            "Two parameters are required: name of the Cr50 image file \
+        and name of the RO verification descriptors database file"
+        );
         exit(1);
     };
 

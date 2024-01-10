@@ -44,12 +44,12 @@ fn main() {
     }
     let Some(x_branded) = parse_bool(args[1]) else {
         print_usage(args[0]);
-            exit(Cr50SetFactoryConfigVerdict::GeneralError as i32)
-        };
+        exit(Cr50SetFactoryConfigVerdict::GeneralError as i32)
+    };
     let Ok(ver) = u8::from_str(args[2]) else {
         print_usage(args[0]);
-            exit(Cr50SetFactoryConfigVerdict::GeneralError as i32)
-        };
+        exit(Cr50SetFactoryConfigVerdict::GeneralError as i32)
+    };
     gsc_set_factory_config(&mut real_ctx, x_branded, ver)
         .map_err(|e| exit(e as i32))
         .unwrap();

@@ -46,8 +46,9 @@ pub fn get_value_from_gsctool_output<'a>(
 ) -> Result<&'a str, HwsecError> {
     let prefix = index.to_owned() + "=";
     let Some(line) = gsctool_output
-    .lines()
-    .find(|line| line.starts_with(&prefix)) else {
+        .lines()
+        .find(|line| line.starts_with(&prefix))
+    else {
         eprintln!("Cannot find a line starts with {}", index);
         return Err(HwsecError::InternalError);
     };
