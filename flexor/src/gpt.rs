@@ -62,19 +62,18 @@ impl<T: BlockIo> Gpt<T> {
         &mut self,
         label: GptPartitionName,
     ) -> Result<GptPartitionEntry> {
-        self
-            .get_entry_and_part_num_for_partition_with(|entry| entry.name == label)
+        self.get_entry_and_part_num_for_partition_with(|entry| entry.name == label)
             .map(|(entry, _)| entry)
     }
 
     /// Reads the GPT partition table and returns information about the first
-    /// partition with `guid` that is found.
-    pub fn get_entry_and_part_num_for_partition_with_guid(
+    /// partition with partition type `type_guid` that is found.
+    pub fn get_entry_and_index_for_partition_with_type_guid(
         &mut self,
-        guid: Guid,
+        type_guid: Guid,
     ) -> Result<(GptPartitionEntry, u32)> {
         self.get_entry_and_part_num_for_partition_with(|entry| {
-            entry.unique_partition_guid.to_bytes() == guid.to_bytes()
+            entry.partition_type_guid.0.to_bytes() == type_guid.to_bytes()
         })
     }
 
@@ -123,14 +122,13 @@ mod tests {
     use anyhow::Result;
     use gpt_disk_io::{BlockIoAdapter, Disk};
     use gpt_disk_types::{
-        guid, BlockSize, GptHeader, GptPartitionEntry, GptPartitionEntryArray, GptPartitionType,
-        Guid, LbaLe, U32Le,
+        BlockSize, GptHeader, GptPartitionEntry, GptPartitionEntryArray, GptPartitionType, LbaLe,
+        U32Le,
     };
 
     use crate::gpt::Gpt;
 
     const ENTRY_LABEL: &str = "STATE";
-    const ENTRY_GUID: Guid = guid!("5410f1b7-2c18-4e79-a2ca-4ab109640ed2");
 
     fn setup_disk_with_valid_header(disk_storage: &mut [u8], block_size: BlockSize) -> Result<()> {
         let block_io = BlockIoAdapter::new(disk_storage, block_size);
@@ -143,7 +141,6 @@ mod tests {
         };
         let partition_entry = GptPartitionEntry {
             name: ENTRY_LABEL.parse().unwrap(),
-            unique_partition_guid: ENTRY_GUID,
             partition_type_guid: GptPartitionType::EFI_SYSTEM,
             ..Default::default()
         };
@@ -191,13 +188,14 @@ mod tests {
     }
 
     #[test]
-    fn test_get_entry_and_index_for_partition_with_guid() -> Result<()> {
+    fn test_get_entry_and_index_for_partition_with_type_guid() -> Result<()> {
         let mut disk = vec![0; 4 * 1024 * 1024];
         let block_size = BlockSize::BS_512;
         setup_disk_with_valid_header(&mut disk, block_size)?;
 
         let mut gpt = Gpt::from_slice(disk, block_size)?;
-        let state_entry = gpt.get_entry_and_part_num_for_partition_with_guid(ENTRY_GUID)?;
+        let state_entry =
+            gpt.get_entry_and_index_for_partition_with_type_guid(GptPartitionType::EFI_SYSTEM.0)?;
         assert_eq!(state_entry.1, 1);
 
         Ok(())

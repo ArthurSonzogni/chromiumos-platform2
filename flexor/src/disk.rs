@@ -43,7 +43,7 @@ pub fn get_data_partition(disk_path: &Path) -> Result<PathBuf> {
     })?;
 
     let (_, index) = gpt
-        .get_entry_and_part_num_for_partition_with_guid(crate::DATA_PART_GUID)
+        .get_entry_and_index_for_partition_with_type_guid(crate::DATA_PART_TYPE)
         .with_context(|| {
             format!(
                 "Unable to find a partition with the data guid on {}",

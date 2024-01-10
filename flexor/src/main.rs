@@ -29,7 +29,7 @@ const FLEX_DEPLOY_PART_NUM: u32 = 13;
 const STATEFUL_PARTITION_LABEL: &str = "STATE";
 const STATEFUL_PARTITION_NUM: u32 = 1;
 
-const DATA_PART_GUID: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
+const DATA_PART_TYPE: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
