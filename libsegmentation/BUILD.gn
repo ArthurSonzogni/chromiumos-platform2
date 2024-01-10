@@ -31,7 +31,10 @@ default_pkg_deps = [
 ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
-  libs = [ "rootdev" ]
+  libs = [
+    "rootdev",
+    "vpd",
+  ]
 }
 
 config("target_defaults") {

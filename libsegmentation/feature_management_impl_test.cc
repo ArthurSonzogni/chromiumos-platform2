@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include <libcrossystem/crossystem_fake.h>
+#include <vpd/fake_vpd.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"
@@ -163,27 +164,24 @@ class FeatureManagementImplTest : public ::testing::Test {
   ~FeatureManagementImplTest() override = default;
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    device_info_path_ = temp_dir_.GetPath().Append("device_info");
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     cros_system_ =
         std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+    auto vpd_fake = std::make_unique<vpd::FakeVpd>();
+    vpd_ = std::make_unique<vpd::Vpd>(std::move(vpd_fake));
 
     auto fake = std::make_unique<FeatureManagementImpl>(
-        cros_system_.get(), base::FilePath(), device_info_path_,
-        test_feature_proto, test_device_proto, kOsVersion);
+        cros_system_.get(), vpd_.get(), test_feature_proto, test_device_proto,
+        kOsVersion);
     feature_management_ = std::make_unique<FeatureManagement>(std::move(fake));
   }
 
  protected:
-  // Directory and file path used for simulating device info data.
-  base::ScopedTempDir temp_dir_;
-
-  // File path where device info data will be simulated.
-  base::FilePath device_info_path_;
-
   // Crossytem to inject hwid.
   std::unique_ptr<crossystem::Crossystem> cros_system_;
+
+  // VPD to store values.
+  std::unique_ptr<vpd::Vpd> vpd_;
 
   // Object to test.
   std::unique_ptr<FeatureManagement> feature_management_;
@@ -224,8 +222,9 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
   device_info.set_cached_version_hash(kCurrentVersionHash);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
   EXPECT_EQ(
       feature_management_->GetFeatureLevel(),
       FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1 -
@@ -235,8 +234,9 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
   // from the previous attempt.
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
   EXPECT_EQ(
       feature_management_->GetFeatureLevel(),
       FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1 -
@@ -249,8 +249,9 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulScopeLevelTest) {
   device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
                                   DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
   device_info.set_cached_version_hash(kCurrentVersionHash);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
   EXPECT_EQ(
       feature_management_->GetScopeLevel(),
       FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_1 -
@@ -260,8 +261,9 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulScopeLevelTest) {
   // from the previous attempt.
   device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
                                   DeviceInfo_ScopeLevel_SCOPE_LEVEL_0);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
   EXPECT_EQ(
       feature_management_->GetScopeLevel(),
       FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_1 -
@@ -273,8 +275,9 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel0) {
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
   device_info.set_cached_version_hash(kCurrentVersionHash);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
 
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
@@ -286,8 +289,9 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope0) {
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
   device_info.set_cached_version_hash(kCurrentVersionHash);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
 
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
@@ -301,8 +305,9 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
   device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
                                   DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
   device_info.set_cached_version_hash(kCurrentVersionHash);
-  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
-                                                           device_info_path_));
+  EXPECT_TRUE(
+      vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo,
+                       FeatureManagementUtil::EncodeDeviceInfo(device_info)));
 
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), true);

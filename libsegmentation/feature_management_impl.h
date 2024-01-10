@@ -12,8 +12,8 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
-
 #include <libcrossystem/crossystem.h>
+#include <vpd/vpd.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
@@ -26,6 +26,14 @@ using chromiumos::feature_management::api::software::SelectionBundle;
 
 namespace segmentation {
 
+// Temporary file containing the device information and read first,
+// for development purposes.
+constexpr const char kTempDeviceInfoPath[] =
+    "/run/libsegmentation/feature_device_info";
+
+// VPD key name for persisting CBX status.
+constexpr char kVpdKeyDeviceInfo[] = "feature_device_info";
+
 // An implementation that invokes the corresponding functions provided
 // in feature_management_interface.h.
 class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
@@ -35,8 +43,7 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   FeatureManagementImpl();
 
   FeatureManagementImpl(crossystem::Crossystem* crossystem,
-                        const base::FilePath& vpd_directory_path,
-                        const base::FilePath& device_info_file_path,
+                        vpd::Vpd* vpd,
                         const std::string& feature_db,
                         const std::string& selection_db,
                         const std::string& os_version);
@@ -54,37 +61,11 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   std::optional<DeviceSelection> GetDeviceInfoFromHwid(bool check_prefix_only);
 
  private:
-  // Directory where the VPD information reside.
-  // By default it is set to kernel sysfs directory ("/sys/firmware/vpd/rw").
-  // It can be overwritten for test.
-  // If it is a parent of device_info_file_path_, we assume when need VPD tool
-  // to write to it.
-  // If the directory is not present on the machine, CBX determination is
-  // disabled, only temporary override is allowed.
-  base::FilePath vpd_directory_path_;
-
-  // Represents the file that houses the device info. This will be read to
-  // populate |cached_device_info|.
-  //
-  // In production we will write to this path via the "vpd" binary and read it
-  // as a regular file. For testing, we read and write from a test file stored
-  // in this variable.
-  base::FilePath device_info_file_path_;
-
-  // When VPD is updated the kernel cache is not updated until next reboot.
-  // To work around the issue, save the data temporary.
-  // This is a workaround until a library will have a coherent view of the
-  // the vpd information (see b:77594752).
-  base::FilePath temp_device_info_file_path_;
-
   // Internal feature database
   FeatureBundle feature_bundle_;
 
   // Internal selection database
   SelectionBundle selection_bundle_;
-
-  // Use the "vpd" binary to persist the state.
-  bool persist_via_vpd_ = false;
 
 #if USE_FEATURE_MANAGEMENT
   // Reads device info from the stateful partition, if not present reads it from
@@ -111,6 +92,10 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // To acccess internal data. Can be overriden, using backend if not.
   crossystem::Crossystem* crossystem_;
   std::unique_ptr<crossystem::Crossystem> crossystem_backend_;
+
+  // To access internal data. Can be overridden, using backend if not.
+  vpd::Vpd* vpd_;
+  std::unique_ptr<vpd::Vpd> vpd_backend_;
 
 #endif
 };

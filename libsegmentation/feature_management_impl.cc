@@ -17,6 +17,7 @@
 #include <base/system/sys_info.h>
 #include <brillo/data_encoding.h>
 #include <libcrossystem/crossystem.h>
+#include <vpd/vpd.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"
@@ -34,20 +35,7 @@ using chromiumos::feature_management::api::software::Feature;
 
 namespace segmentation {
 
-// kernel directory to access VPD entries.
-constexpr const char kVpdSysfsDirPath[] = "/sys/firmware/vpd/rw";
-
-// Temporary file containing the device information and read first.
-constexpr const char kTempDeviceInfoPath[] =
-    "/run/libsegmentation/feature_device_info";
-
-#if USE_FEATURE_MANAGEMENT
-// Sysfs file corresponding to VPD state. This will be used to persist device
-// info state and read cache device info state.
-const char* kDeviceInfoFilePath = "/sys/firmware/vpd/rw/feature_device_info";
-#else
-constexpr char kDeviceInfoFilePath[] = "";
-
+#if !USE_FEATURE_MANAGEMENT
 FeatureManagementInterface::FeatureLevel
 FeatureManagementImpl::GetFeatureLevel() {
   return FeatureLevel::FEATURE_LEVEL_0;
@@ -56,7 +44,6 @@ FeatureManagementImpl::GetFeatureLevel() {
 FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
   return ScopeLevel::SCOPE_LEVEL_0;
 }
-
 #endif
 
 FeatureManagementInterface::FeatureLevel
@@ -65,24 +52,14 @@ FeatureManagementImpl::GetMaxFeatureLevel() {
 }
 
 FeatureManagementImpl::FeatureManagementImpl()
-    : FeatureManagementImpl(nullptr,
-                            base::FilePath(kVpdSysfsDirPath),
-                            base::FilePath(kDeviceInfoFilePath),
-                            protobuf_features,
-                            protobuf_devices,
-                            "") {}
+    : FeatureManagementImpl(
+          nullptr, nullptr, protobuf_features, protobuf_devices, "") {}
 
-FeatureManagementImpl::FeatureManagementImpl(
-    crossystem::Crossystem* crossystem,
-    const base::FilePath& vpd_directory_path,
-    const base::FilePath& device_info_file_path,
-    const std::string& feature_db,
-    const std::string& selection_db,
-    const std::string& os_version)
-    : vpd_directory_path_(vpd_directory_path),
-      device_info_file_path_(device_info_file_path),
-      temp_device_info_file_path_(kTempDeviceInfoPath) {
-  persist_via_vpd_ = vpd_directory_path.IsParent(device_info_file_path_);
+FeatureManagementImpl::FeatureManagementImpl(crossystem::Crossystem* crossystem,
+                                             vpd::Vpd* vpd,
+                                             const std::string& feature_db,
+                                             const std::string& selection_db,
+                                             const std::string& os_version) {
   std::string decoded_pb;
   brillo::data_encoding::Base64Decode(feature_db, &decoded_pb);
   feature_bundle_.ParseFromString(decoded_pb);
@@ -107,6 +84,13 @@ FeatureManagementImpl::FeatureManagementImpl(
   } else {
     crossystem_backend_ = std::make_unique<crossystem::Crossystem>();
     crossystem_ = crossystem_backend_.get();
+  }
+
+  if (vpd) {
+    vpd_ = vpd;
+  } else {
+    vpd_backend_ = std::make_unique<vpd::Vpd>();
+    vpd_ = vpd_backend_.get();
   }
 #endif
 }

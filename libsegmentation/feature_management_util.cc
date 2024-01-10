@@ -35,15 +35,9 @@ constexpr size_t kHWIDChecksumBits = 8;
 // Writes |device_info| as base64 to |file_path|. Returns false if the write
 // isn't successful.
 std::optional<libsegmentation::DeviceInfo>
-FeatureManagementUtil::ReadDeviceInfoFromFile(const base::FilePath& file_path) {
-  std::string encoded;
-  if (!base::ReadFileToString(file_path, &encoded)) {
-    LOG(ERROR) << "Failed to read protobuf string from file: " << file_path;
-    return std::nullopt;
-  }
-
-  // The value is expected to be in the base64 format.
+FeatureManagementUtil::ReadDeviceInfo(const std::string& encoded) {
   std::string decoded;
+  // The value is expected to be in the base64 format.
   base::Base64Decode(encoded, &decoded);
   libsegmentation::DeviceInfo device_info;
   if (!device_info.ParseFromString(decoded)) {
@@ -53,13 +47,22 @@ FeatureManagementUtil::ReadDeviceInfoFromFile(const base::FilePath& file_path) {
   return device_info;
 }
 
-bool FeatureManagementUtil::WriteDeviceInfoToFile(
-    const libsegmentation::DeviceInfo& device_info,
-    const base::FilePath& file_path) {
+std::optional<libsegmentation::DeviceInfo>
+FeatureManagementUtil::ReadDeviceInfo(const base::FilePath& file_path) {
+  std::string encoded;
+  if (!base::ReadFileToString(file_path, &encoded)) {
+    LOG(ERROR) << "Failed to read protobuf string from file: " << file_path;
+    return std::nullopt;
+  }
+  return ReadDeviceInfo(encoded);
+}
+
+std::string FeatureManagementUtil::EncodeDeviceInfo(
+    const libsegmentation::DeviceInfo& device_info) {
   std::string serialized = device_info.SerializeAsString();
   std::string base64_encoded;
   base::Base64Encode(serialized, &base64_encoded);
-  return base::WriteFile(file_path, base64_encoded);
+  return base64_encoded;
 }
 
 FeatureManagementInterface::FeatureLevel

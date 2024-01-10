@@ -21,16 +21,19 @@ namespace segmentation {
 // in feature_management_interface.h.
 class BRILLO_EXPORT FeatureManagementUtil {
  public:
+  // Reads device info from string. Returns std::nullopt if the read wasn't
+  // successful.
+  static std::optional<libsegmentation::DeviceInfo> ReadDeviceInfo(
+      const std::string& encoded);
+
   // Reads device info from |file_path|. Returns std::nullopt if the read wasn't
   // successful.
-  static std::optional<libsegmentation::DeviceInfo> ReadDeviceInfoFromFile(
+  static std::optional<libsegmentation::DeviceInfo> ReadDeviceInfo(
       const base::FilePath& file_path);
 
-  // Writes |device_info| as base64 to |file_path|. Returns false if the write
-  // isn't successful.
-  static bool WriteDeviceInfoToFile(
-      const libsegmentation::DeviceInfo& device_info,
-      const base::FilePath& file_path);
+  // Returns |device_info| as base64.
+  static std::string EncodeDeviceInfo(
+      const libsegmentation::DeviceInfo& device_info);
 
   // Converts feature level from the internal proto to the external API.
   static FeatureManagementInterface::FeatureLevel ConvertProtoFeatureLevel(

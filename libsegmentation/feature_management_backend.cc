@@ -15,6 +15,7 @@
 #include <base/values.h>
 #include <brillo/process/process.h>
 #include <rootdev/rootdev.h>
+#include <vpd/vpd.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_hwid.h"
@@ -127,33 +128,6 @@ std::optional<GscToolOutput> GetDeviceInfoFromGSC() {
 
   return gsc_tool_output;
 }
-
-// Write |device_info| as base64 to the "vpd" binary by spawning a new process.
-bool WriteToVpd(const libsegmentation::DeviceInfo& device_info) {
-  std::string serialized = device_info.SerializeAsString();
-  std::string base64_encoded;
-  base::Base64Encode(serialized, &base64_encoded);
-
-  brillo::ProcessImpl process;
-  process.AddArg("/usr/sbin/vpd");
-  process.AddArg("-i");
-  process.AddArg("RW_VPD");
-  process.AddArg("-s");
-  process.AddArg("feature_device_info=" + base64_encoded);
-
-  if (!process.Start()) {
-    LOG(ERROR) << "Failed to start VPD process";
-    return false;
-  }
-
-  int return_code = process.Wait();
-  if (return_code != 0) {
-    LOG(ERROR) << "VPD process exited with return code: " << return_code;
-    return false;
-  }
-  return true;
-}
-
 }  // namespace
 
 FeatureManagementInterface::FeatureLevel
@@ -186,25 +160,23 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 }
 
 bool FeatureManagementImpl::CacheDeviceInfo() {
-  // Read from the tmpfs file in case the VPD has been writen but the device has
-  // not been rebooted.
   std::optional<libsegmentation::DeviceInfo> device_info_result;
-  if (persist_via_vpd_ && base::PathExists(temp_device_info_file_path_)) {
-    device_info_result = FeatureManagementUtil::ReadDeviceInfoFromFile(
-        temp_device_info_file_path_);
-    // To ease testing, overwrite hash check.
+
+  // Read from the tmpfs file for development purposes, if it exists.
+  if (base::PathExists(base::FilePath(kTempDeviceInfoPath))) {
+    device_info_result = FeatureManagementUtil::ReadDeviceInfo(
+        base::FilePath(kTempDeviceInfoPath));
+    // To overwrite hash check: it eases testing and prevent entering the real
+    // logic.
     if (device_info_result)
       device_info_result->set_cached_version_hash(current_version_hash_);
-  } else {
-    if (persist_via_vpd_ &&
-        !base::DirectoryExists(device_info_file_path_.DirName())) {
-      // We want to use the VPD, but it does not exist.
-      // It can happen if we are using a very old kernel or a virtual machine.
-      // Only setting with a temporary file is supported.
-      return false;
-    }
-    device_info_result =
-        FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file_path_);
+  }
+  // No luck from dev file, read from the cached location in vpd.
+  if (!device_info_result) {
+    std::optional<std::string> encoded =
+        vpd_->GetValue(vpd::VpdRw, kVpdKeyDeviceInfo);
+    if (encoded)
+      device_info_result = FeatureManagementUtil::ReadDeviceInfo(*encoded);
   }
 
   // If the device info isn't cached, read it form the hardware id and write it
@@ -222,26 +194,13 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
     device_info_result = FeatureManagementHwid::GetDeviceInfo(
         get_device_callback, gsc_tool_output->chassis_x_branded,
         gsc_tool_output->hw_compliance_version);
-
-    // Persist the device info read from "gsctool" via "vpd" or to a regular
-    // file for testing. If we fail to write it then don't cache it.
     device_info_result->set_cached_version_hash(current_version_hash_);
-    if (persist_via_vpd_) {
-      if (!WriteToVpd(device_info_result.value())) {
-        LOG(ERROR) << "Failed to persist device info via vpd";
-        return false;
-      }
 
-      // Best effort.
-      FeatureManagementUtil::WriteDeviceInfoToFile(device_info_result.value(),
-                                                   temp_device_info_file_path_);
-    } else {
-      if (!FeatureManagementUtil::WriteDeviceInfoToFile(
-              device_info_result.value(), device_info_file_path_)) {
-        LOG(ERROR) << "Failed to persist device info to "
-                   << device_info_file_path_;
-        return false;
-      }
+    if (!vpd_->WriteValue(
+            vpd::VpdRw, kVpdKeyDeviceInfo,
+            FeatureManagementUtil::EncodeDeviceInfo(*device_info_result))) {
+      LOG(ERROR) << "Failed to persist device info via vpd";
+      return false;
     }
   }
 
