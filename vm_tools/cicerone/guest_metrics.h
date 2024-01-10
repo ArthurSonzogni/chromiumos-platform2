@@ -109,6 +109,10 @@ class GuestMetrics {
                                      int inode_count,
                                      dbus::Response* dbus_response);
 
+  // Helper function to determine if we should emit performance metric and
+  // then emits them when appropriate.
+  void MaybeEmitPerformanceMetric(std::string suffix, int game_id, int value);
+
   scoped_refptr<dbus::Bus> bus_;
   // Accumulator for metrics that are to be reported daily.
   chromeos_metrics::CumulativeMetrics daily_metrics_;

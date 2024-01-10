@@ -566,7 +566,7 @@ grpc::Status ContainerListenerImpl::ReportMetrics(
   }
   for (const auto& metric : request->metric()) {
     // Check that metric name is valid
-    const RE2 re("[A-Za-z.-]{1,64}");
+    const RE2 re("[A-Za-z0-9.-]{1,64}");
     if (!RE2::FullMatch(metric.name(), re)) {
       return grpc::Status(grpc::FAILED_PRECONDITION, "Invalid metric name");
     }

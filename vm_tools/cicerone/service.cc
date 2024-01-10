@@ -86,7 +86,7 @@ constexpr char kHostDomainSocket[] = "/run/vm_cicerone/client/host.sock";
 
 // These rate limits ensure metrics can't be reported too frequently.
 constexpr base::TimeDelta kMetricRateWindow = base::Seconds(60);
-constexpr uint32_t kMetricRateLimit = 6;
+constexpr uint32_t kMetricRateLimit = 40;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created

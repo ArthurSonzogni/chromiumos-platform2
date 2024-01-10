@@ -1092,15 +1092,15 @@ TEST(ContainerListenerImplTest, ReportMetricsCallsShouldBeRateLimited) {
   m->set_value(123456);
 
   grpc::ServerContext ctx;
-  // The first 6 calls should succeed.
-  for (int i = 0; i < 6; i++) {
+  // The first 40 calls should succeed.
+  for (int i = 0; i < 40; i++) {
     grpc::Status status =
         test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
             &ctx, &request, &response);
     EXPECT_TRUE(status.ok()) << status.error_message();
     EXPECT_EQ(response.error(), 0);
   }
-  // Seventh call should hit the rate limit and fail.
+  // 41st call should hit the rate limit and fail.
   grpc::Status status =
       test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
           &ctx, &request, &response);

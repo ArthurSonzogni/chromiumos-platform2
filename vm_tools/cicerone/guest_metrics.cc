@@ -4,11 +4,14 @@
 
 #include "vm_tools/cicerone/guest_metrics.h"
 
+#include <unordered_map>
+
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/ranges/algorithm.h>
+#include "base/strings/string_util.h"
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 
@@ -80,6 +83,25 @@ constexpr char kBorealisDiskVMUsageToTotalSpacePercentageAtStartup[] =
     "Borealis.Disk.VMUsageToTotalSpacePercentageAtStartup";
 constexpr char kBorealisDiskVMUsageToTotalUsagePercentageAtStartup[] =
     "Borealis.Disk.VMUsageToTotalUsagePercentageAtStartup";
+
+// Borealis frame related metric IDs
+constexpr char kBorealisPerformancePrefix[] = "Borealis.VMPerformance.";
+constexpr char kBorealisPerformanceFPSMeanSuffix[] = "FPSMean";
+constexpr char kBorealisPerformanceFPSLowSuffix[] = "FPSLow";
+constexpr char kBorealisPerformanceFPSVarianceSuffix[] = "FPSVariance";
+constexpr char kBorealisPerformanceRatioSlowSuffix[] = "SlowFrameRatio";
+
+constexpr char kBorealisPerformancePrefixGuest[] = "borealis-frames";
+constexpr char kBorealisPerformanceGamePrefixGuest[] = "borealis-frames-game";
+constexpr char kBorealisPerformanceFPSMeanSuffixGuest[] = "fps-mean";
+constexpr char kBorealisPerformanceFPSLowSuffixGuest[] = "fps-low";
+constexpr char kBorealisPerformanceFPSVarianceSuffixGuest[] = "fps-variance";
+constexpr char kBorealisPerformanceRatioSlowSuffixGuest[] = "ratio-slow";
+
+const std::unordered_map<int, std::string> GameToName = {
+    // 0 isn't a real appid and we use it to represent the platform.
+    {0, "Generic"},
+};
 
 // Crostini metric IDs
 constexpr char kCrostiniSwapBytesRead[] = "Crostini.Disk.SwapReadsDaily";
@@ -253,6 +275,38 @@ void GuestMetrics::HandleListVmDisksDbusResponse(
                        static_cast<float>(total_used_space) * 100));
 }
 
+// Checks that |game_id| is valid and emits a metric based on |suffix|.
+void GuestMetrics::MaybeEmitPerformanceMetric(std::string suffix,
+                                              int game_id,
+                                              int value) {
+  auto it = GameToName.find(game_id);
+  if (it == GameToName.end()) {
+    return;
+  }
+  std::string variant = it->second;
+  if (suffix == kBorealisPerformanceFPSMeanSuffixGuest) {
+    metrics_lib_->SendToUMA(
+        base::StrCat({kBorealisPerformancePrefix, variant, ".",
+                      kBorealisPerformanceFPSMeanSuffix}),
+        value, 0, 250, 50);
+  } else if (suffix == kBorealisPerformanceFPSLowSuffixGuest) {
+    metrics_lib_->SendToUMA(
+        base::StrCat({kBorealisPerformancePrefix, variant, ".",
+                      kBorealisPerformanceFPSLowSuffix}),
+        value, 0, 250, 50);
+  } else if (suffix == kBorealisPerformanceFPSVarianceSuffixGuest) {
+    metrics_lib_->SendToUMA(
+        base::StrCat({kBorealisPerformancePrefix, variant, ".",
+                      kBorealisPerformanceFPSVarianceSuffix}),
+        value, 0, 2000, 50);
+  } else if (suffix == kBorealisPerformanceRatioSlowSuffixGuest) {
+    metrics_lib_->SendPercentageToUMA(
+        base::StrCat({kBorealisPerformancePrefix, variant, ".",
+                      kBorealisPerformanceRatioSlowSuffix}),
+        value);
+  }
+}
+
 bool GuestMetrics::HandleMetric(const std::string& owner_id,
                                 const std::string& vm_name,
                                 const std::string& container_name,
@@ -290,6 +344,16 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
     } else if (name == kBorealisAudioPathUsageInputGuest) {
       metrics_lib_->SendEnumToUMA(kBorealisAudioPathUsageInput,
                                   static_cast<BorealisAudioPath>(value));
+    } else if (base::StartsWith(name, kBorealisPerformancePrefixGuest)) {
+      int prefix_end = strlen(kBorealisPerformancePrefixGuest);
+      int game_id = 0;
+      if (base::StartsWith(name, kBorealisPerformanceGamePrefixGuest)) {
+        int prefix_length = strlen(kBorealisPerformanceGamePrefixGuest);
+        prefix_end = name.find('-', prefix_length);
+        game_id = stoi(name.substr(prefix_length, prefix_end - prefix_length));
+      }
+      std::string suffix = name.substr(prefix_end + 1);
+      MaybeEmitPerformanceMetric(suffix, game_id, value);
     } else {
       LOG(ERROR) << "Unknown Borealis metric " << name;
       return false;
