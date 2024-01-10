@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <libec/i2c_read_command.h>
@@ -31,9 +32,9 @@ base::ScopedFD EcI2cFunction::GetEcDevice() const {
 }
 
 bool EcI2cFunction::PostParseArguments() {
-  if (size_ != 8 && size_ != 16) {
+  if (size_ != 8 && size_ != 16 && size_ != 32) {
     LOG(ERROR) << "function " << GetFunctionName()
-               << " argument \"size\" should be 8 or 16.";
+               << " argument \"size\" should be 8, 16 or 32.";
     return false;
   }
   return true;
@@ -59,7 +60,12 @@ EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
   DataType result{};
   base::Value::Dict dv{};
   if (size_ == 8 || size_ == 16 || size_ == 32) {
-    dv.Set("data", static_cast<int>(cmd->Data()));
+    uint32_t data = cmd->Data();
+    if (data > INT_MAX) {
+      dv.Set("data", base::NumberToString(data));
+    } else {
+      dv.Set("data", static_cast<int>(data));
+    }
   }
   result.Append(std::move(dv));
   return result;
