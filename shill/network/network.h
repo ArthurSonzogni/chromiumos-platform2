@@ -26,7 +26,6 @@
 #include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_handler.h>
 
-#include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
@@ -316,9 +315,6 @@ class Network : public NetworkMonitor::ClientNetwork {
     return network_validation_result_;
   }
 
-  // Initiates connection diagnostics on this Network.
-  mockable void StartConnectionDiagnostics();
-
   // Start a separate PortalDetector instance for the purpose of connectivity
   // test.
   mockable void StartConnectivityTest(
@@ -428,20 +424,10 @@ class Network : public NetworkMonitor::ClientNetwork {
   std::vector<net_base::IPAddress> GetNetworkValidationDNSServers(
       net_base::IPFamily family) const;
 
-  // Constructs and returns a ConnectionDiagnostics instance. Isolate
-  // this function only for unit tests, so that we can inject a mock
-  // ConnectionDiagnostics object easily.
-  mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics(
-      const net_base::IPAddress& ip_address,
-      const net_base::IPAddress& gateway,
-      const std::vector<net_base::IPAddress>& dns_list);
-
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
   // will be invoked with |is_failure|.
   void StopInternal(bool is_failure, bool trigger_callback);
-  // Stop connection diagnostics if it is running.
-  void StopConnectionDiagnostics();
 
   void ConnectivityTestCallback(const std::string& device_logging_tag,
                                 const PortalDetector::Result& result);
@@ -553,7 +539,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
   std::optional<NetworkMonitor::Result> network_validation_result_;
-  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
   // Another instance of PortalDetector used for CreateConnectivityReport.
   std::unique_ptr<PortalDetector> connectivity_test_portal_detector_;
 

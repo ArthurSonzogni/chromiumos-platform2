@@ -135,26 +135,6 @@ IPConfig::Properties NetworkConfigToIPProperties(
   return props;
 }
 
-class MockConnectionDiagnostics : public ConnectionDiagnostics {
- public:
-  MockConnectionDiagnostics()
-      : ConnectionDiagnostics(
-            kTestIfname,
-            kTestIfindex,
-            *net_base::IPAddress::CreateFromString(kIPv4DHCPAddress),
-            *net_base::IPAddress::CreateFromString(kIPv4DHCPGateway),
-            {*net_base::IPAddress::CreateFromString(kIPv4DHCPNameServer)},
-            nullptr,
-            nullptr,
-            base::DoNothing()) {}
-  MockConnectionDiagnostics(const MockConnectionDiagnostics&) = delete;
-  MockConnectionDiagnostics& operator=(const MockConnectionDiagnostics&) =
-      delete;
-  ~MockConnectionDiagnostics() override = default;
-
-  MOCK_METHOD(bool, Start, (const net_base::HttpUrl& url), (override));
-};
-
 // Allows us to fake/mock some functions in this test.
 class NetworkInTest : public Network {
  public:
@@ -186,12 +166,6 @@ class NetworkInTest : public Network {
   MOCK_METHOD(std::unique_ptr<SLAACController>,
               CreateSLAACController,
               (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
-              CreateConnectionDiagnostics,
-              (const net_base::IPAddress& ip_address,
-               const net_base::IPAddress& gateway,
-               const std::vector<net_base::IPAddress>& dns_list),
               (override));
   MOCK_METHOD(void,
               ApplyNetworkConfig,
@@ -908,14 +882,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   };
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
-  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
-
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics)
-      .WillOnce([conn_diag](const net_base::IPAddress&,
-                            const net_base::IPAddress&,
-                            const std::vector<net_base::IPAddress>&) {
-        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-      });
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -939,14 +905,6 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   };
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
-  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
-
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics)
-      .WillOnce([conn_diag](const net_base::IPAddress&,
-                            const net_base::IPAddress&,
-                            const std::vector<net_base::IPAddress>&) {
-        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-      });
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -972,7 +930,6 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -1004,7 +961,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -1032,7 +988,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -1081,7 +1036,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalSuspected200) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,

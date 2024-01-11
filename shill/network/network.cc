@@ -138,8 +138,8 @@ void Network::Start(const Network::StartOptions& opts) {
 
   probing_configuration_ = opts.probing_configuration;
   network_monitor_ = network_monitor_factory_->Create(
-      dispatcher_, metrics_, this, technology_, interface_name_,
-      probing_configuration_,
+      dispatcher_, metrics_, this, technology_, interface_index_,
+      interface_name_, probing_configuration_,
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
 
   EnableARPFiltering();
@@ -287,7 +287,6 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   network_validation_result_.reset();
   StopPortalDetection();
   network_monitor_.reset();
-  StopConnectionDiagnostics();
 
   const bool should_trigger_callback =
       state_ != State::kIdle && trigger_callback;
@@ -851,9 +850,6 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
-      // If network validation failed, also start additional connection
-      // diagnostics for the current network connection.
-      StartConnectionDiagnostics();
       break;
     case PortalDetector::ValidationState::kInternetConnectivity:
       // Conclusive result that allows the Service to transition to the
@@ -870,67 +866,6 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
       // connection diagnostics.
       break;
   }
-}
-
-void Network::StartConnectionDiagnostics() {
-  if (!IsConnected()) {
-    LOG(INFO) << *this
-              << ": Not connected, cannot start connection diagnostics";
-    return;
-  }
-  DCHECK(primary_family_);
-
-  std::optional<net_base::IPAddress> local_address = std::nullopt;
-  std::optional<net_base::IPAddress> gateway_address = std::nullopt;
-  const net_base::NetworkConfig& config = GetNetworkConfig();
-  if (config.ipv4_address) {
-    local_address = net_base::IPAddress(config.ipv4_address->address());
-    gateway_address =
-        config.ipv4_gateway
-            ? std::make_optional(net_base::IPAddress(*config.ipv4_gateway))
-            : std::nullopt;
-  } else if (!config.ipv6_addresses.empty()) {
-    local_address = net_base::IPAddress(config.ipv6_addresses[0].address());
-    gateway_address =
-        config.ipv6_gateway
-            ? std::make_optional(net_base::IPAddress(*config.ipv6_gateway))
-            : std::nullopt;
-  }
-
-  if (!local_address) {
-    LOG(ERROR)
-        << *this
-        << ": Local address unavailable, aborting connection diagnostics";
-    return;
-  }
-  if (!gateway_address) {
-    LOG(ERROR) << *this
-               << ": Gateway unavailable, aborting connection diagnostics";
-    return;
-  }
-
-  connection_diagnostics_ = CreateConnectionDiagnostics(
-      *local_address, *gateway_address, GetDNSServers());
-  if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
-    connection_diagnostics_.reset();
-    LOG(WARNING) << *this << ": Failed to start connection diagnostics";
-    return;
-  }
-  LOG(INFO) << *this << ": Connection diagnostics started";
-}
-
-void Network::StopConnectionDiagnostics() {
-  LOG(INFO) << *this << ": Connection diagnostics stopping";
-  connection_diagnostics_.reset();
-}
-
-std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
-    const net_base::IPAddress& ip_address,
-    const net_base::IPAddress& gateway,
-    const std::vector<net_base::IPAddress>& dns_list) {
-  return std::make_unique<ConnectionDiagnostics>(
-      interface_name(), interface_index(), ip_address, gateway, dns_list,
-      dispatcher_, metrics_, base::DoNothing());
 }
 
 void Network::StartConnectivityTest(

@@ -756,6 +756,7 @@ if (use.test) {
       "mock_adaptors.cc",
       "mock_ares.cc",
       "mock_certificate_file.cc",
+      "mock_connection_diagnostics.cc",
       "mock_control.cc",
       "mock_device.cc",
       "mock_device_info.cc",

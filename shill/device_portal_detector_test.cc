@@ -73,7 +73,6 @@ class TestNetwork : public Network {
 
   // Network overrides
   bool IsConnected() const override { return true; }
-  void StartConnectionDiagnostics() override {}
 
   bool StartPortalDetection(NetworkMonitor::ValidationReason reason) override {
     if (reason == NetworkMonitor::ValidationReason::kRetryValidation) {

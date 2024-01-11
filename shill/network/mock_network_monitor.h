@@ -37,6 +37,7 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
                Metrics*,
                NetworkMonitor::ClientNetwork*,
                Technology,
+               int,
                std::string_view,
                PortalDetector::ProbingConfiguration,
                std::unique_ptr<ValidationLog>,

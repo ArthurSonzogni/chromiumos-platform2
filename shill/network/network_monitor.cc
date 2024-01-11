@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <net-base/network_config.h>
 
+#include "shill/connection_diagnostics.h"
 #include "shill/network/validation_log.h"
 
 namespace shill {
@@ -72,20 +73,26 @@ NetworkMonitor::NetworkMonitor(
     Metrics* metrics,
     ClientNetwork* client,
     Technology technology,
+    int interface_index,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
-    std::unique_ptr<PortalDetectorFactory> portal_detector_factory)
+    std::unique_ptr<PortalDetectorFactory> portal_detector_factory,
+    std::unique_ptr<ConnectionDiagnosticsFactory>
+        connection_diagnostics_factory)
     : dispatcher_(dispatcher),
       metrics_(metrics),
       client_(client),
       technology_(technology),
+      interface_index_(interface_index),
       interface_(std::string(interface)),
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
       portal_detector_factory_(std::move(portal_detector_factory)),
-      validation_log_(std::move(network_validation_log)) {}
+      validation_log_(std::move(network_validation_log)),
+      connection_diagnostics_factory_(
+          std::move(connection_diagnostics_factory)) {}
 
 NetworkMonitor::~NetworkMonitor() {
   StopNetworkValidationLog();
@@ -174,6 +181,9 @@ void NetworkMonitor::OnPortalDetectorResult(
                result.https_duration.InMilliseconds());
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
+      // If network validation cannot verify Internet access, then start
+      // additional connection diagnostics for the current network connection.
+      StartConnectionDiagnostics();
       break;
     case PortalDetector::ValidationState::kInternetConnectivity:
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
@@ -218,6 +228,50 @@ void NetworkMonitor::StopNetworkValidationLog() {
   }
 }
 
+void NetworkMonitor::StartConnectionDiagnostics() {
+  const net_base::NetworkConfig& config = client_->GetCurrentConfig();
+
+  std::optional<net_base::IPAddress> local_address = std::nullopt;
+  std::optional<net_base::IPAddress> gateway_address = std::nullopt;
+  if (config.ipv4_address) {
+    local_address = net_base::IPAddress(config.ipv4_address->address());
+    gateway_address =
+        config.ipv4_gateway
+            ? std::make_optional(net_base::IPAddress(*config.ipv4_gateway))
+            : std::nullopt;
+  } else if (!config.ipv6_addresses.empty()) {
+    local_address = net_base::IPAddress(config.ipv6_addresses[0].address());
+    gateway_address =
+        config.ipv6_gateway
+            ? std::make_optional(net_base::IPAddress(*config.ipv6_gateway))
+            : std::nullopt;
+  }
+
+  if (!local_address) {
+    LOG(ERROR)
+        << logging_tag_ << " " << __func__
+        << ": Local address unavailable, aborting connection diagnostics";
+    return;
+  }
+  if (!gateway_address) {
+    LOG(ERROR) << logging_tag_ << " " << __func__
+               << ": Gateway unavailable, aborting connection diagnostics";
+    return;
+  }
+
+  connection_diagnostics_ = connection_diagnostics_factory_->Create(
+      interface_, interface_index_, *local_address, *gateway_address,
+      config.dns_servers, dispatcher_, metrics_, base::DoNothing());
+  if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
+    connection_diagnostics_.reset();
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Failed to start connection diagnostics";
+    return;
+  }
+  LOG(INFO) << logging_tag_ << " " << __func__
+            << ": Connection diagnostics started";
+}
+
 void NetworkMonitor::set_portal_detector_for_testing(
     std::unique_ptr<PortalDetector> portal_detector) {
   portal_detector_ = std::move(portal_detector);
@@ -228,13 +282,14 @@ std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     Metrics* metrics,
     NetworkMonitor::ClientNetwork* client,
     Technology technology,
+    int interface_index,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
-      dispatcher, metrics, client, technology, interface, probing_configuration,
-      std::move(network_validation_log), logging_tag);
+      dispatcher, metrics, client, technology, interface_index, interface,
+      probing_configuration, std::move(network_validation_log), logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,

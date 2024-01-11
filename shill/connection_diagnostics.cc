@@ -4,6 +4,9 @@
 
 #include "shill/connection_diagnostics.h"
 
+#include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -97,7 +100,7 @@ const char ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected[] =
 const int ConnectionDiagnostics::kMaxDNSRetries = 2;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
-    std::string iface_name,
+    std::string_view iface_name,
     int iface_index,
     const net_base::IPAddress& ip_address,
     const net_base::IPAddress& gateway,
@@ -117,10 +120,10 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       running_(false),
       result_callback_(std::move(result_callback)),
       weak_ptr_factory_(this) {
-  dns_client_.reset(new DnsClient(
+  dns_client_ = std::make_unique<DnsClient>(
       ip_address_.GetFamily(), iface_name, DnsClient::kDnsTimeout, dispatcher_,
       base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                          weak_ptr_factory_.GetWeakPtr())));
+                          weak_ptr_factory_.GetWeakPtr()));
   for (size_t i = 0; i < dns_list_.size(); i++) {
     id_to_pending_dns_server_icmp_session_[i] =
         std::make_unique<IcmpSession>(dispatcher_);
@@ -427,6 +430,20 @@ bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type,
   return (diagnostic_events_[event_index].type == type &&
           diagnostic_events_[event_index].phase == phase &&
           diagnostic_events_[event_index].result == result);
+}
+
+std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
+    std::string_view iface_name,
+    int iface_index,
+    const net_base::IPAddress& ip_address,
+    const net_base::IPAddress& gateway,
+    const std::vector<net_base::IPAddress>& dns_list,
+    EventDispatcher* dispatcher,
+    Metrics* metrics,
+    ConnectionDiagnostics::ResultCallback result_callback) {
+  return std::make_unique<ConnectionDiagnostics>(
+      iface_name, iface_index, ip_address, gateway, dns_list, dispatcher,
+      metrics, std::move(result_callback));
 }
 
 }  // namespace shill

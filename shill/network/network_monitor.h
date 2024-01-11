@@ -14,6 +14,7 @@
 #include <net-base/http_url.h>
 #include <net-base/network_config.h>
 
+#include "shill/connection_diagnostics.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/portal_detector.h"
@@ -79,12 +80,16 @@ class NetworkMonitor {
       Metrics* metrics,
       ClientNetwork* client,
       Technology technology,
+      int interface_index,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "",
       std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
-          std::make_unique<PortalDetectorFactory>());
+          std::make_unique<PortalDetectorFactory>(),
+      std::unique_ptr<ConnectionDiagnosticsFactory>
+          connection_diagnostics_factory =
+              std::make_unique<ConnectionDiagnosticsFactory>());
   virtual ~NetworkMonitor();
 
   // It's neither copyable nor movable.
@@ -137,12 +142,16 @@ class NetworkMonitor {
   // Stops the |validation_log_| and records metrics.
   void StopNetworkValidationLog();
 
+  // Initiates connection diagnostics on this Network.
+  void StartConnectionDiagnostics();
+
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   ClientNetwork* client_;
 
   Technology technology_;
+  int interface_index_;
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
@@ -151,6 +160,9 @@ class NetworkMonitor {
   std::unique_ptr<PortalDetector> portal_detector_;
 
   std::unique_ptr<ValidationLog> validation_log_;
+
+  std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
+  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 
   base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_{this};
 };
@@ -165,6 +177,7 @@ class NetworkMonitorFactory {
       Metrics* metrics,
       NetworkMonitor::ClientNetwork* client,
       Technology technology,
+      int interface_index,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
       std::unique_ptr<ValidationLog> network_validation_log,

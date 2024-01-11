@@ -86,7 +86,6 @@ class MockNetwork : public Network {
               (NetworkMonitor::ValidationReason),
               (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));
-  MOCK_METHOD(void, StartConnectionDiagnostics, (), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(void,
               StartConnectivityTest,

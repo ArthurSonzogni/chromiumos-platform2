@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -71,7 +72,7 @@ struct DnsClientState {
 };
 
 DnsClient::DnsClient(net_base::IPFamily family,
-                     const std::string& interface_name,
+                     std::string_view interface_name,
                      base::TimeDelta timeout,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)

@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -124,7 +125,7 @@ class ConnectionDiagnostics {
   static const char kIssueGatewayNeighborEntryNotConnected[];
   static const char kIssueServerNeighborEntryNotConnected[];
 
-  ConnectionDiagnostics(std::string iface_name,
+  ConnectionDiagnostics(std::string_view iface_name,
                         int iface_index,
                         const net_base::IPAddress& ip_address,
                         const net_base::IPAddress& gateway,
@@ -246,6 +247,25 @@ class ConnectionDiagnostics {
   std::vector<Event> diagnostic_events_;
 
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
+};
+
+// The factory class of the ConnectionDiagnostics, used to derive a mock factory
+// to create mock ConnectionDiagnostics instance at testing.
+class ConnectionDiagnosticsFactory {
+ public:
+  ConnectionDiagnosticsFactory() = default;
+  virtual ~ConnectionDiagnosticsFactory() = default;
+
+  // The default factory method, calling ConnectionDiagnostics's constructor.
+  mockable std::unique_ptr<ConnectionDiagnostics> Create(
+      std::string_view iface_name,
+      int iface_index,
+      const net_base::IPAddress& ip_address,
+      const net_base::IPAddress& gateway,
+      const std::vector<net_base::IPAddress>& dns_list,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      ConnectionDiagnostics::ResultCallback result_callback);
 };
 
 }  // namespace shill
