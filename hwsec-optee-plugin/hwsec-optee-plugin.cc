@@ -76,6 +76,7 @@ static TEEC_Result SendRawCommand(unsigned int sub_cmd,
 
   if (output.size() > data_len) {
     LOG(ERROR) << "The input buffer is not enough for output!";
+    *out_len = output.size();
     return TEEC_ERROR_SHORT_BUFFER;
   }
 
@@ -94,6 +95,7 @@ static TEEC_Result GetRotCert(unsigned int sub_cmd,
 
   if (output.size() > data_len) {
     LOG(ERROR) << "The output buffer is not enough for output!";
+    *out_len = output.size();
     return TEEC_ERROR_SHORT_BUFFER;
   }
 
@@ -113,6 +115,7 @@ static TEEC_Result GetCikCert(unsigned int sub_cmd,
 
   if (output.size() > data_len) {
     LOG(ERROR) << "The output buffer is not enough for output!";
+    *out_len = output.size();
     return TEEC_ERROR_SHORT_BUFFER;
   }
 
