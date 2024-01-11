@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <unistd.h>
+#include "installer/chromeos_install.h"
 
 int main(int argc, char* argv[]) {
-  int ret = execvp("chromeos-install.sh", argv);
-  return ret;
+  return installer::ChromeOsInstall().Run(argv);
 }
