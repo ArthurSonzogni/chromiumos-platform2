@@ -383,6 +383,14 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;
 
+  // Force a reload of the AuthFactorMap for this session's user. This preserves
+  // the original "caching" behavior of in-memory AuthFactor objects from when
+  // each session loaded its own copy.
+  //
+  // TODO(b/306423754): Remove this once we're sure nothing is relying on
+  // modifying the auth factor files externally.
+  backing_apis.auth_factor_manager->DiscardAuthFactorMap(obfuscated_username);
+
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   AuthSession::Params params = {
       .username = std::move(account_id),
