@@ -23,7 +23,7 @@ $ cd ~/chromiumos/
 $ repo sync
 
 # Build packages again after performing repo sync to avoid build issues
-$ ./build_packages --board=${BOARD}
+$ cros build-packages --board=${BOARD}
 ```
 
 Start a new branch, called `codelab` in the `platform2` git repository.
@@ -44,7 +44,7 @@ build system to build from source instead of using a prebuilt result. Without
 making this change, emerge may use a prebuilt version of the package, and
 you'll never see your change applied.
 ```
-(inside)$ cros_workon --board=${BOARD} start chromeos-base/codelab
+$ cros workon --board=${BOARD} start chromeos-base/codelab
 ```
 
 Now, you are able to make builds that use your local changes. Feel free to edit
@@ -54,7 +54,7 @@ your package one of two ways:
 # Faster, skips emerge build system
 (inside)$ cros_workon_make --board=${BOARD} chromeos-base/codelab
 
-# Same flow as build_packages
+# Same flow as build-packages.
 (inside)$ emerge-${BOARD} chromeos-base/codelab
 ```
 
@@ -71,7 +71,7 @@ Again, two options:
 (inside)$ cros_workon_make --board=${BOARD} chromeos-base/codelab --test
 
 # Using emerge to build files
-(inside)$ FEATURES=test emerge-${BOARD} chromeos-base/codelab
+(inside)$ cros_run_unit_tests --board=${BOARD} --packages chromeos-base/codelab
 ```
 
 Currently all tests pass, but one is disabled. If you edit
