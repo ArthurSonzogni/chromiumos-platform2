@@ -20,6 +20,7 @@
 #include <net-base/ipv4_address.h>
 
 #include "patchpanel/conntrack_monitor.h"
+#include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_process_runner.h"
@@ -448,9 +449,10 @@ TEST(QoSServiceTest, AddListener) {
   Mock::VerifyAndClearExpectations(&conntrack_monitor);
 }
 
-// When failing to update connmark for UDP socket event, QoSService should
-// try updating again when getting conntrack event from ConntrackMonitor.
-TEST(QoSServiceTest, HandleConntrackEvent) {
+// QoSService can handle socket connection events correctly.
+// Note that only handling for TCP socket connection events is tested here.
+// Handling for UDP socket connection events is tested in ConnmarkUpdaterTest.
+TEST(QoSServiceTest, HandleSocketConnectionEvent) {
   MockDatapath mock_datapath;
   auto runner = std::make_unique<MockProcessRunner>();
   auto runner_ptr = runner.get();
@@ -487,36 +489,25 @@ TEST(QoSServiceTest, HandleConntrackEvent) {
   monitor.DispatchEventForTesting(kTCPEvent);
   Mock::VerifyAndClearExpectations(runner_ptr);
 
-  // When updating connmark for UDP sockets fails, it will be updated again
-  // when getting event notifications from ConntrackMonitor.
-  argv = {"-p",      "UDP",
-          "-s",      kIPAddress1,
-          "-d",      kIPAddress2,
-          "--sport", std::to_string(kPort1),
-          "--dport", std::to_string(kPort2),
-          "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
-      .WillOnce(Return(-1));
+  // When notified of UDP socket event, call connmark updater for connmark
+  // update for this connection.
+  auto updater = std::make_unique<MockConnmarkUpdater>(&monitor);
+  auto updater_ptr = updater.get();
+  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
 
+  auto conn = ConnmarkUpdater::UDPConnection{
+      .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
+      .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = static_cast<uint16_t>(kPort1),
+      .dport = static_cast<uint16_t>(kPort2)};
+  EXPECT_CALL(
+      *updater_ptr,
+      UpdateUDPConnectionConnmark(
+          Eq(conn), Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
+          kFwmarkQoSCategoryMask));
   open_msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
                           SocketConnectionEvent_IpProtocol_UDP);
   qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _));
-  const ConntrackMonitor::Event kUDPEvent = ConntrackMonitor::Event{
-      .src = *net_base::IPAddress::CreateFromString(kIPAddress1),
-      .dst = (*net_base::IPAddress::CreateFromString(kIPAddress2)),
-      .sport = kPort1,
-      .dport = kPort2,
-      .proto = IPPROTO_UDP,
-      .type = ConntrackMonitor::EventType::kNew};
-  monitor.DispatchEventForTesting(kUDPEvent);
-  Mock::VerifyAndClearExpectations(runner_ptr);
-
-  // Update will not be triggered when getting another identical event
-  // notification from ConntrackMonitor.
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
-  monitor.DispatchEventForTesting(kUDPEvent);
   Mock::VerifyAndClearExpectations(runner_ptr);
 }
 }  // namespace

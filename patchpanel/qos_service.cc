@@ -196,14 +196,6 @@ constexpr char kProtocolTCP[] = "TCP";
 
 // UDP protocol used to set protocol field in conntrack command.
 constexpr char kProtocolUDP[] = "UDP";
-
-// Limit of how many pending UDP connections can be added to
-// |pending_connections_|.
-constexpr int kPendingConnectionListLimit = 128;
-
-// Types of conntrack events QoSService gets notified.
-constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
-    ConntrackMonitor::EventType::kNew};
 }  // namespace
 
 void QoSService::Enable() {
@@ -216,9 +208,7 @@ void QoSService::Enable() {
   for (const auto& ifname : interfaces_) {
     datapath_->EnableQoSApplyingDSCP(ifname);
   }
-  listener_ = conntrack_monitor_->AddListener(
-      kConntrackEvents, base::BindRepeating(&QoSService::HandleConntrackEvent,
-                                            weak_factory_.GetWeakPtr()));
+  connmark_updater_ = std::make_unique<ConnmarkUpdater>(conntrack_monitor_);
 }
 
 void QoSService::Disable() {
@@ -231,39 +221,7 @@ void QoSService::Disable() {
     datapath_->DisableQoSApplyingDSCP(ifname);
   }
   datapath_->DisableQoSDetection();
-  listener_.reset();
-  pending_connections_.clear();
-}
-
-void QoSService::HandleConntrackEvent(const ConntrackMonitor::Event& event) {
-  // Currently we only cares about UDP connections, see more explanation in the
-  // comment of |pending_connections_|.
-  if (event.proto != IPPROTO_UDP) {
-    return;
-  }
-  UDPConnection conn = {.src_addr = event.src,
-                        .dst_addr = event.dst,
-                        .sport = event.sport,
-                        .dport = event.dport};
-  // Find the connection in |pending_connections_|, if it is in the list, try
-  // updating connmark and delete the connection from the list.
-  auto it = pending_connections_.find(conn);
-  if (it == pending_connections_.end()) {
-    return;
-  }
-  std::vector<std::string> args = {"-p",      kProtocolUDP,
-                                   "-s",      event.src.ToString(),
-                                   "-d",      event.dst.ToString(),
-                                   "--sport", std::to_string(event.sport),
-                                   "--dport", std::to_string(event.dport),
-                                   "-m",      QoSFwmarkWithMask(it->second)};
-  if (process_runner_->conntrack("-U", args) != 0) {
-    LOG(ERROR) << "Updating connmark failed, deleting connection from pending "
-                  "connection list.";
-  }
-  // Whether the update succeeded or not, there would not be another conntrack
-  // event to trigger update, delete the connection from pending list.
-  pending_connections_.erase(it);
+  connmark_updater_.reset();
 }
 
 void QoSService::OnPhysicalDeviceAdded(const ShillClient::Device& device) {
@@ -299,12 +257,12 @@ void QoSService::OnPhysicalDeviceDisconnected(
   if (device.type != ShillClient::Device::Type::kWifi) {
     return;
   }
-  // Clean up pending connections list to avoid excessive unused entries in the
-  // list.
-  // Currently |pending_connections_| only tracks connections on the WiFi
-  // interface and we assume that there will be only one active WiFi interface
-  // on the CrOS device, so we can clear this map directly here.
-  pending_connections_.clear();
+  // Initiates a new ConnmarkUpdater to clean up pending connections list in
+  // the updater to avoid excessive unused entries.
+  // Currently QoS service only tracks connections on the WiFi interface and we
+  // assume that there will be only one active WiFi interface on the CrOS
+  // device, so we can initiates a new updater directly here.
+  connmark_updater_ = std::make_unique<ConnmarkUpdater>(conntrack_monitor_);
 }
 
 void QoSService::ProcessSocketConnectionEvent(
@@ -358,31 +316,30 @@ void QoSService::ProcessSocketConnectionEvent(
   }
 
   // Update connmark based on QoS category or set to default connmark if socket
-  // connection event is CLOSE.
+  // connection event is CLOSE. Use ConnmarkUpdater to handle connmark update
+  // for UDP connections since the updater will handle the delay between
+  // receiving UDP socket connection event and the connection entry appears in
+  // the conntrack table.
+  if (proto == kProtocolUDP) {
+    connmark_updater_->UpdateUDPConnectionConnmark(
+        ConnmarkUpdater::UDPConnection{
+            .src_addr = *src_addr,
+            .dst_addr = *dst_addr,
+            .sport = static_cast<uint16_t>(msg.sport()),
+            .dport = static_cast<uint16_t>(msg.dport())},
+        Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
+    return;
+  }
+  // Update TCP connections directly because they are guaranteed to be
+  // established on ARC side.
   std::vector<std::string> args = {"-p",      proto,
                                    "-s",      src_addr.value().ToString(),
                                    "-d",      dst_addr.value().ToString(),
                                    "--sport", std::to_string(msg.sport()),
                                    "--dport", std::to_string(msg.dport()),
                                    "-m",      QoSFwmarkWithMask(qos_category)};
-  // Only add UDP connections that failed to update connmark to pending list
-  // because TCP connections are guaranteed to be established on ARC side.
   if (process_runner_->conntrack("-U", args) != 0) {
-    if (proto == kProtocolTCP) {
-      LOG(ERROR) << "Failed to update connmark for TCP connection.";
-      return;
-    }
-    if (pending_connections_.size() >= kPendingConnectionListLimit) {
-      LOG(WARNING) << "Failed to add UDP connection to pending connection "
-                      "list, reaching limit size.";
-      return;
-    }
-    pending_connections_.insert(
-        {UDPConnection{.src_addr = *src_addr,
-                       .dst_addr = *dst_addr,
-                       .sport = static_cast<uint16_t>(msg.sport()),
-                       .dport = static_cast<uint16_t>(msg.dport())},
-         qos_category});
+    LOG(ERROR) << "Failed to update connmark for TCP connection.";
   }
 }
 
@@ -407,7 +364,9 @@ void QoSService::OnBorealisVMStopped(const std::string_view ifname) {
   datapath_->RemoveBorealisQoSRule(ifname);
 }
 
-std::strong_ordering operator<=>(const QoSService::UDPConnection&,
-                                 const QoSService::UDPConnection&) = default;
+void QoSService::SetConnmarkUpdaterForTesting(
+    std::unique_ptr<ConnmarkUpdater> updater) {
+  connmark_updater_ = std::move(updater);
+}
 
 }  // namespace patchpanel

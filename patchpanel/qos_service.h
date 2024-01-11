@@ -15,6 +15,7 @@
 #include <base/containers/flat_set.h>
 #include <net-base/dns_client.h>
 
+#include "patchpanel/connmark_updater.h"
 #include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -50,17 +51,6 @@ class SocketConnectionEvent;
 //
 class QoSService {
  public:
-  struct UDPConnection {
-    net_base::IPAddress src_addr;
-    net_base::IPAddress dst_addr;
-    uint16_t sport;
-    uint16_t dport;
-
-    // 3-way comparison operator for able to be keyed in a map.
-    friend std::strong_ordering operator<=>(const UDPConnection&,
-                                            const UDPConnection&);
-  };
-
   explicit QoSService(Datapath* datapath, ConntrackMonitor* monitor);
   // Provided for testing.
   QoSService(Datapath* datapath,
@@ -99,6 +89,9 @@ class QoSService {
   void OnBorealisVMStarted(const std::string_view ifname);
   void OnBorealisVMStopped(const std::string_view ifname);
 
+  // Set ConnmarkUpdater, only used for testing.
+  void SetConnmarkUpdaterForTesting(std::unique_ptr<ConnmarkUpdater> updater);
+
  private:
   // Handles conntrack events from ConntrackMonitor and updates connmark
   // for UDP connections in |pending_connections_| if applies.
@@ -127,16 +120,9 @@ class QoSService {
   class DoHUpdater;
   std::unique_ptr<DoHUpdater> doh_updater_;
 
-  // Pending list of QoS UDP connections whose connmark need to be updated.
-  // Currently only UDP connections are added to this list since TCP connections
-  // are guaranteed to be established on ARC side before SocketConnectionEvent
-  // is sent. A UDP connection will be deleted from this list after getting
-  // conntrack event from ConntrackMonitor and trying to update connmark again
-  // regardless of the result of update.
-  std::map<UDPConnection, QoSCategory> pending_connections_;
-
-  // Listener that listen to conntrack events.
-  std::unique_ptr<ConntrackMonitor::Listener> listener_;
+  // Manages connmark update requests for UDP connections. If the update fails,
+  // retries updating again when the connection appears in conntrack table.
+  std::unique_ptr<ConnmarkUpdater> connmark_updater_;
 
   base::WeakPtrFactory<QoSService> weak_factory_{this};
 };
