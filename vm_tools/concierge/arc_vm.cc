@@ -1437,8 +1437,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "root=/dev/vda",
       "init=/init",
       // Note: Do not change the value "bertha". This string is checked in
-      // platform2/metrics/process_meter.cc to detect ARCVM's crosvm processes,
-      // for example.
+      // platform2/resourced/src/process_stats.rs to detect ARCVM's crosvm
+      // processes, for example.
       "androidboot.hardware=bertha",
       "androidboot.container=1",
       base::StringPrintf("androidboot.host_is_in_vm=%d", is_host_on_vm),

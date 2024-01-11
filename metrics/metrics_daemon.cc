@@ -34,7 +34,6 @@
 #include <rootdev/rootdev.h>
 
 #include "metrics/debugd_reader.h"
-#include "metrics/process_meter.h"
 #include "uploader/upload_service.h"
 
 // Returns a pointer for use in PostDelayedTask.  The daemon never exits on its
@@ -139,11 +138,6 @@ constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
 constexpr char kMmcStatsName[] = "Platform.Storage.Mmc.Internal.";
 
-// Max process allocation size in megabytes, used as an upper bound for UMA
-// histograms (these are all consumer devices, and 64 GB should be good for a
-// few more years).
-constexpr int kMaxMemSizeMiB = 64 * (1 << 10);
-
 }  // namespace
 
 // disk stats metrics
@@ -164,8 +158,6 @@ const int MetricsDaemon::kMetricStatsShortInterval = 1;       // seconds
 const int MetricsDaemon::kMetricStatsLongInterval = 30;       // seconds
 const int MetricsDaemon::kMetricMeminfoInterval = 30;         // seconds
 const int MetricsDaemon::kMetricDetachableBaseInterval = 30;  // seconds
-constexpr base::TimeDelta MetricsDaemon::kMetricReportProcessMemoryInterval =
-    base::Minutes(10);
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -475,9 +467,6 @@ int MetricsDaemon::OnInit() {
   ScheduleMeminfoCallback(kMetricMeminfoInterval);
   memuse_final_time_ = GetActiveTime() + kMemuseIntervals[0];
   ScheduleMemuseCallback(kMemuseIntervals[0]);
-
-  // Start collecting process memory stats.
-  ScheduleReportProcessMemory(kMetricReportProcessMemoryInterval);
 
   // Start collecting detachable base stats.
   ScheduleDetachableBaseCallback(kMetricDetachableBaseInterval);
@@ -937,57 +926,6 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
         base::BindOnce(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
                        wait),
         wait);
-  }
-}
-
-void MetricsDaemon::ScheduleReportProcessMemory(base::TimeDelta interval) {
-  if (testing_)
-    return;
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&MetricsDaemon::ReportProcessMemoryCallback,
-                     GET_THIS_FOR_POSTTASK(), interval),
-      interval);
-}
-
-void MetricsDaemon::ReportProcessMemoryCallback(base::TimeDelta wait) {
-  ReportProcessMemory();
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&MetricsDaemon::ReportProcessMemoryCallback,
-                     GET_THIS_FOR_POSTTASK(), wait),
-      wait);
-}
-
-void MetricsDaemon::ReportProcessMemory() {
-  base::FilePath procfs_path("/proc");
-  base::FilePath run_path("/run");
-  ProcessInfo info(procfs_path, run_path);
-  info.Collect();
-  info.Classify();
-  for (int i = 0; i < PG_KINDS_COUNT; i++) {
-    ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
-    ProcessMemoryStats stats;
-    // base::size is not compile time value, thus not usable by static_assert.
-    // use sizeof instead, sizeof(kProcessMemoryUMANames[i]) should return
-    // (number of elements * size of pointers), so is sizeof(stats.rss_sizes)
-    // since both kProcessMemoryUMANames[i] and rss_sizes are arrays with fixed
-    // size defined.
-    static_assert(sizeof(kProcessMemoryUMANames[i]) /
-                          sizeof(*kProcessMemoryUMANames[i]) ==
-                      sizeof(stats.rss_sizes) / sizeof(*stats.rss_sizes),
-                  "RSS array size mismatch");
-    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
-    ReportProcessGroupStats(kProcessMemoryUMANames[i], stats);
-  }
-}
-
-void MetricsDaemon::ReportProcessGroupStats(
-    const char* const uma_names[MEM_KINDS_COUNT],
-    const ProcessMemoryStats& stats) {
-  const uint64_t MiB = 1 << 20;
-  for (int i = 0; i < std::size(stats.rss_sizes); i++) {
-    SendSample(uma_names[i], stats.rss_sizes[i] / MiB, 1, kMaxMemSizeMiB, 50);
   }
 }
 

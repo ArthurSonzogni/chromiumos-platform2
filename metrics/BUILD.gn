@@ -10,7 +10,6 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":chromeos-pgmem",
     ":install_minijail_conf",
     ":libmetrics",
     ":libmetrics_daemon",
@@ -31,7 +30,6 @@ group("all") {
       ":metrics_library_test",
       ":mmc_error_parser_test",
       ":persistent_integer_test",
-      ":process_meter_test",
       ":timer_test",
       ":upload_service_test",
     ]
@@ -108,7 +106,6 @@ static_library("libmetrics_daemon") {
     "metrics_daemon.cc",
     "metrics_daemon_main.cc",
     "mmc_error_parser.cc",
-    "process_meter.cc",
     "vmlog_writer.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -128,15 +125,6 @@ executable("metrics_client") {
   sources = [ "metrics_client.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libmetrics" ]
-}
-
-executable("chromeos-pgmem") {
-  sources = [
-    "pgmem.cc",
-    "process_meter.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = []
 }
 
 static_library("libupload_service") {
@@ -247,17 +235,6 @@ if (use.test) {
       "mmc_error_parser.cc",
       "mmc_error_parser_test.cc",
       "persistent_integer.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [ "//common-mk/testrunner:testrunner" ]
-  }
-  executable("process_meter_test") {
-    sources = [
-      "process_meter.cc",
-      "process_meter_test.cc",
     ]
     configs += [
       "//common-mk:test",
