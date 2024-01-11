@@ -1,2 +1,4 @@
 dcjansen@google.com
 zwisler@chromium.org
+
+include chromiumos/owners:v1:/infra/OWNERS.build
