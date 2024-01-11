@@ -124,19 +124,9 @@ std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
 // TetheringManager must pass to patchpanel the IPv6 configuration of the uplink
 // Network explicitly.
 std::optional<patchpanel::Client::UplinkIPv6Configuration>
-GetUplinkIPv6Configuration(const Network& network, const Service& service) {
+GetUplinkIPv6Configuration(const Network& network) {
   // Only consider uplink Cellular Networks.
   if (network.technology() != Technology::kCellular) {
-    return std::nullopt;
-  }
-  if (!service.attached_network()) {
-    return std::nullopt;
-  }
-  // If the Network attached to the Service is the same as the uplink network,
-  // this means the uplink Network is not a secondary multiplexed PDN and
-  // patchpanel is already tracking it.
-  if (service.attached_network()->interface_index() ==
-      network.interface_index()) {
     return std::nullopt;
   }
   std::optional<net_base::IPv6CIDR> uplink_ipv6_cidr;
@@ -146,7 +136,7 @@ GetUplinkIPv6Configuration(const Network& network, const Service& service) {
       break;
     }
   }
-  // Check if the secondary multiplexed PDN has an IPv6 configuration.
+  // Check if the Network has an IPv6 configuration.
   if (!uplink_ipv6_cidr) {
     return std::nullopt;
   }
@@ -595,8 +585,7 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   }
 
   auto dhcp_options = GetDHCPOptions(*upstream_network_, *upstream_service_);
-  auto uplink_ipv6_config =
-      GetUplinkIPv6Configuration(*upstream_network_, *upstream_service_);
+  auto uplink_ipv6_config = GetUplinkIPv6Configuration(*upstream_network_);
   downstream_network_started_ =
       manager_->patchpanel_client()->CreateTetheredNetwork(
           downstream_ifname, upstream_ifname, dhcp_options, uplink_ipv6_config,
