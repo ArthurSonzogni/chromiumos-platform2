@@ -16,7 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "federated/memory_pressure_training_condition.h"
+#include "federated/device_status/memory_pressure_training_condition.h"
 
 namespace federated {
 namespace {

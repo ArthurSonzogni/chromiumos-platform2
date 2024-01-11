@@ -71,19 +71,19 @@ proto_library("cros_fcp_proto") {
 static_library("federated_common") {
   sources = [
     "daemon.cc",
-    "device_status_monitor.cc",
+    "device_status/device_status_monitor.cc",
+    "device_status/memory_pressure_training_condition.cc",
+    "device_status/network_status_training_condition.cc",
+    "device_status/power_supply_training_condition.cc",
+    "device_status/shill_proxy_impl.cc",
     "example_database.cc",
     "federated_client.cc",
     "federated_library.cc",
     "federated_metadata.cc",
     "federated_service_impl.cc",
-    "memory_pressure_training_condition.cc",
     "metrics.cc",
-    "network_status_training_condition.cc",
-    "power_supply_training_condition.cc",
     "scheduler.cc",
     "session_manager_proxy.cc",
-    "shill_proxy_impl.cc",
     "storage_manager.cc",
     "utils.cc",
   ]
@@ -164,13 +164,13 @@ if (use.test) {
 
   executable("components_test") {
     sources = [
-      "device_status_monitor_test.cc",
+      "device_status/device_status_monitor_test.cc",
+      "device_status/fake_shill_proxy.cc",
+      "device_status/memory_pressure_training_condition_test.cc",
+      "device_status/network_status_training_condition_test.cc",
+      "device_status/power_supply_training_condition_test.cc",
       "example_database_test.cc",
-      "fake_shill_proxy.cc",
-      "memory_pressure_training_condition_test.cc",
       "mock_example_database.cc",
-      "network_status_training_condition_test.cc",
-      "power_supply_training_condition_test.cc",
       "session_manager_proxy_test.cc",
       "storage_manager_test.cc",
       "utils_test.cc",

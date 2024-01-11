@@ -12,7 +12,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/device_status/device_status_monitor.h"
 #include "federated/example_database.h"
 #include "federated/federated_metadata.h"
 #include "federated/metrics.h"

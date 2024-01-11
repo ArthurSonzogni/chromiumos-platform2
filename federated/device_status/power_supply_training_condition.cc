@@ -12,8 +12,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "federated/device_status/power_supply_training_condition.h"
 #include "federated/metrics.h"
-#include "federated/power_supply_training_condition.h"
 #include "power_manager/proto_bindings/battery_saver.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 

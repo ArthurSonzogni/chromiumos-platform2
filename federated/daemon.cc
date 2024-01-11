@@ -20,7 +20,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/invitation.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/device_status/device_status_monitor.h"
 #include "federated/federated_service_impl.h"
 #include "federated/storage_manager.h"
 

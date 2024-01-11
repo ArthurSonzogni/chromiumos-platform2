@@ -12,8 +12,8 @@
 #include <shill/dbus-constants.h>
 #include <shill/dbus/client/client.h>
 
+#include "federated/device_status/network_status_training_condition.h"
 #include "federated/metrics.h"
-#include "federated/network_status_training_condition.h"
 
 namespace federated {
 namespace {

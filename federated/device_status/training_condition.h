@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEDERATED_TRAINING_CONDITION_H_
-#define FEDERATED_TRAINING_CONDITION_H_
+#ifndef FEDERATED_DEVICE_STATUS_TRAINING_CONDITION_H_
+#define FEDERATED_DEVICE_STATUS_TRAINING_CONDITION_H_
 
 namespace federated {
 
@@ -22,4 +22,4 @@ class TrainingCondition {
 
 }  // namespace federated
 
-#endif  // FEDERATED_TRAINING_CONDITION_H_
+#endif  // FEDERATED_DEVICE_STATUS_TRAINING_CONDITION_H_

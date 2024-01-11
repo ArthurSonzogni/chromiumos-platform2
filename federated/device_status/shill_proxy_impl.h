@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEDERATED_SHILL_PROXY_IMPL_H_
-#define FEDERATED_SHILL_PROXY_IMPL_H_
+#ifndef FEDERATED_DEVICE_STATUS_SHILL_PROXY_IMPL_H_
+#define FEDERATED_DEVICE_STATUS_SHILL_PROXY_IMPL_H_
 
-#include "federated/shill_proxy_interface.h"
+#include "federated/device_status/shill_proxy_interface.h"
 
 #include <memory>
 
@@ -37,4 +37,4 @@ class ShillProxyImpl : public ShillProxyInterface {
 };
 
 }  // namespace federated
-#endif  // FEDERATED_SHILL_PROXY_IMPL_H_
+#endif  // FEDERATED_DEVICE_STATUS_SHILL_PROXY_IMPL_H_

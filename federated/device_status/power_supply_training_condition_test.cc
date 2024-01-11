@@ -17,7 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "federated/power_supply_training_condition.h"
+#include "federated/device_status/power_supply_training_condition.h"
 #include "power_manager/proto_bindings/battery_saver.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 

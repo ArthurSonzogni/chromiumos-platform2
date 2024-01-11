@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEDERATED_POWER_SUPPLY_TRAINING_CONDITION_H_
-#define FEDERATED_POWER_SUPPLY_TRAINING_CONDITION_H_
+#ifndef FEDERATED_DEVICE_STATUS_POWER_SUPPLY_TRAINING_CONDITION_H_
+#define FEDERATED_DEVICE_STATUS_POWER_SUPPLY_TRAINING_CONDITION_H_
 
 #include <atomic>
 
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 
-#include "federated/training_condition.h"
+#include "federated/device_status/training_condition.h"
 
 namespace dbus {
 class ObjectProxy;
@@ -63,4 +63,4 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
 
 }  // namespace federated
 
-#endif  // FEDERATED_POWER_SUPPLY_TRAINING_CONDITION_H_
+#endif  // FEDERATED_DEVICE_STATUS_POWER_SUPPLY_TRAINING_CONDITION_H_

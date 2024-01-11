@@ -9,7 +9,7 @@
 
 #include <fcp/fcp.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/device_status/device_status_monitor.h"
 #include "federated/example_database.h"
 #include "federated/federated_metadata.h"
 #include "federated/storage_manager.h"

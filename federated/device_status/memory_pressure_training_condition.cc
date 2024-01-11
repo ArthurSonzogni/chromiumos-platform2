@@ -13,7 +13,7 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "federated/memory_pressure_training_condition.h"
+#include "federated/device_status/memory_pressure_training_condition.h"
 #include "federated/metrics.h"
 
 namespace federated {

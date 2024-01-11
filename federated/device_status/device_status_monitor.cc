@@ -9,12 +9,12 @@
 #include <memory>
 #include <utility>
 
-#include "federated/device_status_monitor.h"
-#include "federated/memory_pressure_training_condition.h"
+#include "federated/device_status/device_status_monitor.h"
+#include "federated/device_status/memory_pressure_training_condition.h"
+#include "federated/device_status/network_status_training_condition.h"
+#include "federated/device_status/power_supply_training_condition.h"
+#include "federated/device_status/shill_proxy_impl.h"
 #include "federated/metrics.h"
-#include "federated/network_status_training_condition.h"
-#include "federated/power_supply_training_condition.h"
-#include "federated/shill_proxy_impl.h"
 
 namespace federated {
 

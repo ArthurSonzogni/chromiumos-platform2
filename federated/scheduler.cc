@@ -18,7 +18,7 @@
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs dlcservice.pb.h
 #include <dlcservice/dbus-proxies.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/device_status/device_status_monitor.h"
 #include "federated/federated_library.h"
 #include "federated/federated_metadata.h"
 #include "federated/metrics.h"

@@ -13,8 +13,8 @@
 #include <shill/dbus-proxies.h>
 #include <shill/dbus-proxy-mocks.h>
 
-#include "federated/fake_shill_proxy.h"
-#include "federated/network_status_training_condition.h"
+#include "federated/device_status/fake_shill_proxy.h"
+#include "federated/device_status/network_status_training_condition.h"
 
 namespace federated {
 namespace {

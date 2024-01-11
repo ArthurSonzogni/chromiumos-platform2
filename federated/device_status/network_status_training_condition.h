@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
-#define FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
+#ifndef FEDERATED_DEVICE_STATUS_NETWORK_STATUS_TRAINING_CONDITION_H_
+#define FEDERATED_DEVICE_STATUS_NETWORK_STATUS_TRAINING_CONDITION_H_
 
 #include <memory>
 #include <string>
@@ -11,8 +11,8 @@
 #include <brillo/any.h>
 #include <dbus/object_path.h>
 
-#include "federated/shill_proxy_interface.h"
-#include "federated/training_condition.h"
+#include "federated/device_status/shill_proxy_interface.h"
+#include "federated/device_status/training_condition.h"
 
 namespace dbus {
 class Bus;
@@ -51,4 +51,4 @@ class NetworkStatusTrainingCondition : public TrainingCondition {
 
 }  // namespace federated
 
-#endif  // FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
+#endif  // FEDERATED_DEVICE_STATUS_NETWORK_STATUS_TRAINING_CONDITION_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "federated/shill_proxy_impl.h"
+#include "federated/device_status/shill_proxy_impl.h"
 
 #include <dbus/bus.h>
 #include <shill/dbus-proxies.h>

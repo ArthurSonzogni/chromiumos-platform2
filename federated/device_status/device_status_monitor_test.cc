@@ -8,7 +8,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "federated/device_status_monitor.h"
+#include "federated/device_status/device_status_monitor.h"
 
 namespace federated {
 namespace {
