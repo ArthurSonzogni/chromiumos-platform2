@@ -13,6 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/network_config.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -57,12 +58,8 @@ class VPNDriverUnderTest : public VPNDriver {
   MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(void, OnConnectTimeout, (), (override));
-  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
-              GetIPv4Properties,
-              (),
-              (const, override));
-  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
-              GetIPv6Properties,
+  MOCK_METHOD(std::unique_ptr<net_base::NetworkConfig>,
+              GetNetworkConfig,
               (),
               (const, override));
 

@@ -6,12 +6,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
 
 #include "shill/error.h"
@@ -393,41 +395,36 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
 }
 
 TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
-  const auto return_ipv4_props = []() {
-    IPConfig::Properties props;
-    props.address_family = net_base::IPFamily::kIPv4;
-    props.address = "0.0.0.0";
-    props.subnet_prefix = 16;
-    return std::make_unique<IPConfig::Properties>(props);
-  };
-  const auto return_ipv6_props = []() {
-    IPConfig::Properties props;
-    props.address_family = net_base::IPFamily::kIPv6;
-    props.address = "::";
-    props.subnet_prefix = 64;
-    return std::make_unique<IPConfig::Properties>(props);
-  };
-
-  const auto return_nullptr = []() { return nullptr; };
-
   scoped_refptr<MockVirtualDevice> device = new MockVirtualDevice(
       &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
   service_->device_ = device;
 
-  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ipv4_props);
-  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_nullptr);
+  const net_base::IPv4CIDR ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("0.0.0.0/16");
+  const net_base::IPv6CIDR ipv6_address =
+      *net_base::IPv6CIDR::CreateFromCIDRString("::/64");
+
+  auto config_ipv4_only = std::make_unique<net_base::NetworkConfig>();
+  config_ipv4_only->ipv4_address = ipv4_address;
+  EXPECT_CALL(*driver_, GetNetworkConfig)
+      .WillOnce(Return(std::move(config_ipv4_only)));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeIPv4Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
-  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_nullptr);
-  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ipv6_props);
+  auto config_ipv6_only = std::make_unique<net_base::NetworkConfig>();
+  config_ipv6_only->ipv6_addresses.push_back(ipv6_address);
+  EXPECT_CALL(*driver_, GetNetworkConfig)
+      .WillOnce(Return(std::move(config_ipv6_only)));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeIPv6Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
-  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ipv4_props);
-  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ipv6_props);
+  auto config_dual_stack = std::make_unique<net_base::NetworkConfig>();
+  config_dual_stack->ipv4_address = ipv4_address;
+  config_dual_stack->ipv6_addresses.push_back(ipv6_address);
+  EXPECT_CALL(*driver_, GetNetworkConfig)
+      .WillOnce(Return(std::move(config_dual_stack)));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeDualStack));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
@@ -445,8 +442,8 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
 
-  EXPECT_CALL(*driver_, GetIPv4Properties())
-      .WillOnce(Return(ByMove(std::make_unique<IPConfig::Properties>())));
+  EXPECT_CALL(*driver_, GetNetworkConfig)
+      .WillOnce(Return(std::make_unique<net_base::NetworkConfig>()));
   driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(service_->device_);
   EXPECT_EQ(Service::kStateConfiguring, service_->state());
@@ -515,8 +512,9 @@ TEST_F(VPNServiceTest, ConnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
   constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
-  ON_CALL(*driver_, GetIPv4Properties())
-      .WillByDefault(Return(ByMove(std::make_unique<IPConfig::Properties>())));
+  ON_CALL(*driver_, GetNetworkConfig).WillByDefault([]() {
+    return std::make_unique<net_base::NetworkConfig>();
+  });
 
   // Timeout triggered.
   EXPECT_CALL(*driver_, ConnectAsync(_))
@@ -555,8 +553,9 @@ TEST_F(VPNServiceTest, ReconnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
   constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
-  ON_CALL(*driver_, GetIPv4Properties())
-      .WillByDefault(Return(ByMove(std::make_unique<IPConfig::Properties>())));
+  ON_CALL(*driver_, GetNetworkConfig).WillByDefault([]() {
+    return std::make_unique<net_base::NetworkConfig>();
+  });
   EXPECT_CALL(*driver_, ConnectAsync(_))
       .WillRepeatedly(DoAll(SaveArg<0>(&driver_event_handler),
                             Return(VPNDriver::kTimeoutNone)));

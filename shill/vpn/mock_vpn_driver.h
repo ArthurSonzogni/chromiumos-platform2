@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/vpn/vpn_driver.h"
-#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -28,12 +27,8 @@ class MockVPNDriver : public VPNDriver {
   MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(void, OnConnectTimeout, (), (override));
-  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
-              GetIPv4Properties,
-              (),
-              (const, override));
-  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
-              GetIPv6Properties,
+  MOCK_METHOD(std::unique_ptr<net_base::NetworkConfig>,
+              GetNetworkConfig,
               (),
               (const, override));
   MOCK_METHOD(bool,
