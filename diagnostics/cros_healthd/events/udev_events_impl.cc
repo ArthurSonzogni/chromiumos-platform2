@@ -171,11 +171,22 @@ void UdevEventsImpl::OnUdevEvent() {
     } else if (action == "remove") {
       OnUsbRemove(device);
     }
+    // SD Card can appear in either the SCSI or the MMC subsystem.
   } else if (subsystem == "mmc") {
     if (action == "add") {
       OnSdCardAdd();
     } else if (action == "remove") {
       OnSdCardRemove();
+    }
+  } else if (subsystem == "block" && device_type == "partition") {
+    // Sd card event in the scsi subsystem is distinguishable via its model id.
+    auto model_id = GetString(device->GetPropertyValue("ID_MODEL"));
+    if (model_id == "SD_MMC_CRW") {
+      if (action == "add") {
+        OnSdCardAdd();
+      } else if (action == "remove") {
+        OnSdCardRemove();
+      }
     }
   } else if (subsystem == "drm" && device_type == "drm_minor") {
     if (action == "change" && !drm_is_locked_) {
