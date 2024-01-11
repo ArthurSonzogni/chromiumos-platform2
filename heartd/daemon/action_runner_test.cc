@@ -4,6 +4,11 @@
 
 #include "heartd/daemon/action_runner.h"
 
+#include <fcntl.h>
+#include <string>
+
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -42,9 +47,33 @@ class ActionRunnerTest : public testing::Test {
   ActionRunnerTest() {}
   ~ActionRunnerTest() override = default;
 
+  void VerifyForceReboot(bool is_reboot) {
+    std::string content;
+    EXPECT_TRUE(ReadFileToString(fake_sysrq_path_, &content));
+    if (is_reboot) {
+      EXPECT_EQ(content, "c");
+    } else {
+      EXPECT_EQ(content, "");
+    }
+  }
+
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    fake_sysrq_path_ = temp_dir_.GetPath().Append("sysrq-trigger");
+    fake_sysrq_fd_ =
+        open(fake_sysrq_path_.MaybeAsASCII().c_str(), O_CREAT | O_WRONLY, 0644);
+    EXPECT_NE(fake_sysrq_fd_, -1);
+    action_runner_.SetupSysrq(fake_sysrq_fd_);
+  }
+  void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
+
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::ScopedTempDir temp_dir_;
+  base::FilePath fake_sysrq_path_;
+  int fake_sysrq_fd_;
   MockDbusConnector mock_dbus_connector_;
   ActionRunner action_runner_{&mock_dbus_connector_};
 };
@@ -56,6 +85,9 @@ TEST_F(ActionRunnerTest, DefaultSetting) {
 
   action_runner_.Run(mojom::ServiceName::kKiosk,
                      mojom::ActionType::kNormalReboot);
+  action_runner_.Run(mojom::ServiceName::kKiosk,
+                     mojom::ActionType::kForceReboot);
+  VerifyForceReboot(/* is_reboot= */ false);
 }
 
 TEST_F(ActionRunnerTest, EnableNormalRebootActionForNormalReboot) {
@@ -66,6 +98,13 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForNormalReboot) {
   action_runner_.EnableNormalRebootAction();
   action_runner_.Run(mojom::ServiceName::kKiosk,
                      mojom::ActionType::kNormalReboot);
+}
+
+TEST_F(ActionRunnerTest, EnableForceRebootActionForForceReboot) {
+  action_runner_.EnableForceRebootAction();
+  action_runner_.Run(mojom::ServiceName::kKiosk,
+                     mojom::ActionType::kForceReboot);
+  VerifyForceReboot(/* is_reboot= */ true);
 }
 
 TEST_F(ActionRunnerTest, EnableNormalRebootActionForOtherAction) {
@@ -95,6 +134,31 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForOtherAction) {
   }
 }
 
+TEST_F(ActionRunnerTest, EnableForceRebootActionForOtherAction) {
+  action_runner_.EnableForceRebootAction();
+  auto start_action = mojom::ActionType::kNoOperation;
+  switch (start_action) {
+    case mojom::ActionType::kNoOperation:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kNoOperation);
+      [[fallthrough]];
+    case mojom::ActionType::kNormalReboot:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kNormalReboot);
+      [[fallthrough]];
+    case mojom::ActionType::kForceReboot:
+      // It should reboot, it's tested in
+      // EnableForceRebootActionForForceReboot.
+      [[fallthrough]];
+    case mojom::ActionType::kUnmappedEnumField:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kUnmappedEnumField);
+      break;
+  }
+
+  VerifyForceReboot(/* is_reboot= */ false);
+}
+
 TEST_F(ActionRunnerTest, DisableNormalRebootAction) {
   EXPECT_CALL(*mock_dbus_connector_.power_manager_proxy(),
               RequestRestartAsync(_, _, _, _, _))
@@ -121,6 +185,32 @@ TEST_F(ActionRunnerTest, DisableNormalRebootAction) {
                          mojom::ActionType::kUnmappedEnumField);
       break;
   }
+}
+
+TEST_F(ActionRunnerTest, DisableForceRebootAction) {
+  action_runner_.EnableForceRebootAction();
+  action_runner_.DisableForceRebootAction();
+  auto start_action = mojom::ActionType::kNoOperation;
+  switch (start_action) {
+    case mojom::ActionType::kNoOperation:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kNoOperation);
+      [[fallthrough]];
+    case mojom::ActionType::kNormalReboot:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kNormalReboot);
+      [[fallthrough]];
+    case mojom::ActionType::kForceReboot:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kForceReboot);
+      [[fallthrough]];
+    case mojom::ActionType::kUnmappedEnumField:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kUnmappedEnumField);
+      break;
+  }
+
+  VerifyForceReboot(/* is_reboot= */ false);
 }
 
 TEST_F(ActionRunnerTest, NormalReboot12HoursThreshold) {
