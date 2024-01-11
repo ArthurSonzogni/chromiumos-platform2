@@ -37,7 +37,6 @@
 #include "shill/network/network_applier.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
-#include "shill/network/validation_log.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/technology.h"
@@ -51,7 +50,7 @@ using NetworkConfigArea = NetworkApplier::Area;
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
-class Network : public NetworkMonitor::Client {
+class Network : public NetworkMonitor::ClientNetwork {
  public:
   // Handler of the events of the Network class, can be added to (or removed
   // from) a Network object by `RegisterEventHandler()` (or
@@ -370,7 +369,10 @@ class Network : public NetworkMonitor::Client {
     network_validation_result_ = result;
   }
 
-  // Implements the NetworkMonitor::Client class.
+  // Implements the NetworkMonitor::ClientNetwork class.
+  const net_base::NetworkConfig& GetCurrentConfig() const override {
+    return GetNetworkConfig();
+  }
   void OnNetworkMonitorResult(const NetworkMonitor::Result& result) override;
 
  private:

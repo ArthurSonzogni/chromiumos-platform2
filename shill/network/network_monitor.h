@@ -8,11 +8,11 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <net-base/http_url.h>
+#include <net-base/network_config.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
@@ -65,8 +65,10 @@ class NetworkMonitor {
 
   // This interface defines the interactions between the NetworkMonitor and its
   // caller.
-  class Client {
+  class ClientNetwork {
    public:
+    // Gets the current network configuration.
+    virtual const net_base::NetworkConfig& GetCurrentConfig() const = 0;
     // Called whenever a new network validation result or captive portal
     // detection result becomes available.
     virtual void OnNetworkMonitorResult(const Result& result) = 0;
@@ -75,7 +77,7 @@ class NetworkMonitor {
   NetworkMonitor(
       EventDispatcher* dispatcher,
       Metrics* metrics,
-      Client* client,
+      ClientNetwork* client,
       Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
@@ -114,9 +116,7 @@ class NetworkMonitor {
   //      kInternetConnectivity or kPortalRedirect).
   //   e) do nothing, wait for the network validation attempt scheduled next to
   //      run.
-  mockable bool Start(ValidationReason reason,
-                      net_base::IPFamily ip_family,
-                      const std::vector<net_base::IPAddress>& dns_list);
+  mockable bool Start(ValidationReason reason);
 
   // Stops the current attempt. No-op and returns false if no attempt is
   // running.
@@ -140,7 +140,7 @@ class NetworkMonitor {
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
-  Client* client_;
+  ClientNetwork* client_;
 
   Technology technology_;
   std::string interface_;
@@ -163,7 +163,7 @@ class NetworkMonitorFactory {
   mockable std::unique_ptr<NetworkMonitor> Create(
       EventDispatcher* dispatcher,
       Metrics* metrics,
-      NetworkMonitor::Client* client,
+      NetworkMonitor::ClientNetwork* client,
       Technology technology,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,

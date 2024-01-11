@@ -6,7 +6,6 @@
 #define SHILL_NETWORK_MOCK_NETWORK_MONITOR_H_
 
 #include <memory>
-#include <vector>
 
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
@@ -23,12 +22,7 @@ class MockNetworkMonitor : public NetworkMonitor {
   MockNetworkMonitor();
   ~MockNetworkMonitor() override;
 
-  MOCK_METHOD(bool,
-              Start,
-              (ValidationReason,
-               net_base::IPFamily,
-               const std::vector<net_base::IPAddress>&),
-              (override));
+  MOCK_METHOD(bool, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
 };
 
@@ -41,7 +35,7 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
               Create,
               (EventDispatcher*,
                Metrics*,
-               NetworkMonitor::Client*,
+               NetworkMonitor::ClientNetwork*,
                Technology,
                std::string_view,
                PortalDetector::ProbingConfiguration,

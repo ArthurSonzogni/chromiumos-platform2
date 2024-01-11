@@ -11,6 +11,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <net-base/network_config.h>
 
 #include "shill/network/validation_log.h"
 
@@ -42,12 +43,34 @@ bool ShouldScheduleNetworkValidationImmediately(
   }
 }
 
+std::optional<net_base::IPFamily> GetNetworkValidationIPFamily(
+    const net_base::NetworkConfig& network_config) {
+  if (network_config.ipv4_address) {
+    return net_base::IPFamily::kIPv4;
+  }
+  if (!network_config.ipv6_addresses.empty()) {
+    return net_base::IPFamily::kIPv6;
+  }
+  return std::nullopt;
+}
+
+std::vector<net_base::IPAddress> GetNetworkValidationDNSServers(
+    const net_base::NetworkConfig& network_config, net_base::IPFamily family) {
+  std::vector<net_base::IPAddress> dns_list;
+  for (const auto& addr : network_config.dns_servers) {
+    if (addr.GetFamily() == family) {
+      dns_list.push_back(addr);
+    }
+  }
+  return dns_list;
+}
+
 }  // namespace
 
 NetworkMonitor::NetworkMonitor(
     EventDispatcher* dispatcher,
     Metrics* metrics,
-    Client* client,
+    ClientNetwork* client,
     Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
@@ -68,13 +91,20 @@ NetworkMonitor::~NetworkMonitor() {
   StopNetworkValidationLog();
 }
 
-bool NetworkMonitor::Start(ValidationReason reason,
-                           net_base::IPFamily ip_family,
-                           const std::vector<net_base::IPAddress>& dns_list) {
+bool NetworkMonitor::Start(ValidationReason reason) {
+  const net_base::NetworkConfig& config = client_->GetCurrentConfig();
+  const std::optional<net_base::IPFamily> ip_family =
+      GetNetworkValidationIPFamily(config);
+  if (!ip_family) {
+    LOG(ERROR) << logging_tag_ << " " << __func__ << "(" << reason
+               << "): Cannot start portal detection: No valid IP address";
+    return false;
+  }
+  const std::vector<net_base::IPAddress> dns_list =
+      GetNetworkValidationDNSServers(config, *ip_family);
   if (dns_list.empty()) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << "(" << reason
                << "): Cannot start portal detection: No DNS servers";
-    portal_detector_.reset();
     return false;
   }
 
@@ -103,7 +133,7 @@ bool NetworkMonitor::Start(ValidationReason reason,
     return true;
   }
 
-  portal_detector_->Start(interface_, ip_family, dns_list, logging_tag_);
+  portal_detector_->Start(interface_, *ip_family, dns_list, logging_tag_);
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
   return true;
@@ -196,7 +226,7 @@ void NetworkMonitor::set_portal_detector_for_testing(
 std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     EventDispatcher* dispatcher,
     Metrics* metrics,
-    NetworkMonitor::Client* client,
+    NetworkMonitor::ClientNetwork* client,
     Technology technology,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,

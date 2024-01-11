@@ -850,27 +850,6 @@ TEST_F(NetworkTest, PortalDetectionNotConnected) {
       NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
-TEST_F(NetworkTest, PortalDetectionNoDNS) {
-  SetNetworkStateToConnected();
-  net_base::NetworkConfig config;
-  config.ipv4_address =
-      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
-  config.dns_servers = {};
-  network_->set_dhcp_network_config_for_testing(config);
-
-  EXPECT_CALL(*network_monitor_factory_, Create).Times(0);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(network_->interface_index()))
-      .Times(0);
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(network_->interface_index()))
-      .Times(0);
-  EXPECT_FALSE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_FALSE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kDBusRequest));
-}
-
 TEST_F(NetworkTest, PortalDetectionStartSuccess) {
   const int ifindex = network_->interface_index();
   SetNetworkStateForPortalDetection();

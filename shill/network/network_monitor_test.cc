@@ -13,7 +13,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_metrics.h"
@@ -40,8 +42,12 @@ using ::testing::Eq;
 using ::testing::Return;
 using ::testing::WithArg;
 
-class MockClient : public NetworkMonitor::Client {
+class MockClient : public NetworkMonitor::ClientNetwork {
  public:
+  MOCK_METHOD(const net_base::NetworkConfig&,
+              GetCurrentConfig,
+              (),
+              (const, override));
   MOCK_METHOD(void,
               OnNetworkMonitorResult,
               (const NetworkMonitor::Result&),
@@ -63,6 +69,26 @@ class NetworkMonitorTest : public ::testing::Test {
         &dispatcher_, &metrics_, &client_, kTechnology, kInterface,
         probing_configuration_, std::move(mock_validation_log), kLoggingTag,
         std::move(mock_portal_detector_factory));
+
+    SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
+  }
+
+  void SetCurrentNetworkConfig(net_base::IPFamily ip_family,
+                               std::vector<net_base::IPAddress> dns_servers) {
+    switch (ip_family) {
+      case net_base::IPFamily::kIPv4:
+        config_.ipv4_address =
+            net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+        break;
+      case net_base::IPFamily::kIPv6:
+        config_.ipv6_addresses.push_back(
+            *net_base::IPv6CIDR::CreateFromCIDRString("::1/127"));
+        break;
+    }
+    config_.dns_servers = std::move(dns_servers);
+
+    ON_CALL(client_, GetCurrentConfig)
+        .WillByDefault(testing::ReturnRef(config_));
   }
 
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
@@ -89,9 +115,8 @@ class NetworkMonitorTest : public ::testing::Test {
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
     EXPECT_CALL(client_, OnNetworkMonitorResult(result)).Times(1);
 
-    EXPECT_TRUE(
-        network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest,
-                                net_base::IPFamily::kIPv4, kDnsList));
+    EXPECT_TRUE(network_monitor_->Start(
+        NetworkMonitor::ValidationReason::kDBusRequest));
     task_environment_.RunUntilIdle();
   }
 
@@ -102,6 +127,7 @@ class NetworkMonitorTest : public ::testing::Test {
   MockMetrics metrics_;
   PortalDetector::ProbingConfiguration probing_configuration_;
 
+  net_base::NetworkConfig config_;
   MockClient client_;
   std::unique_ptr<NetworkMonitor> network_monitor_;
   MockPortalDetectorFactory*
@@ -132,16 +158,16 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
       });
 
   for (const auto reason : reasons) {
-    EXPECT_TRUE(
-        network_monitor_->Start(reason, net_base::IPFamily::kIPv4, kDnsList));
+    EXPECT_TRUE(network_monitor_->Start(reason));
     network_monitor_->Stop();
   }
 }
 
 TEST_F(NetworkMonitorTest, StartWithoutDNS) {
+  SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, {});
+
   EXPECT_FALSE(
-      network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest,
-                              net_base::IPFamily::kIPv4, {}));
+      network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
 TEST_F(NetworkMonitorTest, StartWithoutResetPortalDetector) {
@@ -159,8 +185,7 @@ TEST_F(NetworkMonitorTest, StartWithoutResetPortalDetector) {
   network_monitor_->set_portal_detector_for_testing(std::move(portal_detector));
 
   for (const auto reason : reasons) {
-    EXPECT_TRUE(
-        network_monitor_->Start(reason, net_base::IPFamily::kIPv4, kDnsList));
+    EXPECT_TRUE(network_monitor_->Start(reason));
   }
 }
 
@@ -186,8 +211,7 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
       });
 
   for (const auto reason : reasons) {
-    EXPECT_TRUE(
-        network_monitor_->Start(reason, net_base::IPFamily::kIPv4, kDnsList));
+    EXPECT_TRUE(network_monitor_->Start(reason));
   }
 }
 

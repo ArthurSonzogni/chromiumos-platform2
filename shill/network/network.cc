@@ -766,21 +766,7 @@ bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
     return false;
   }
 
-  const std::optional<net_base::IPFamily> family =
-      GetNetworkValidationIPFamily();
-  if (!family) {
-    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
-               << "): Cannot start portal detection: No valid IP address";
-    return false;
-  }
-  const std::vector<net_base::IPAddress> dns_list =
-      GetNetworkValidationDNSServers(*family);
-  if (dns_list.empty()) {
-    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
-               << "): Cannot start portal detection: No DNS servers";
-    return false;
-  }
-  if (!network_monitor_->Start(reason, *family, dns_list)) {
+  if (!network_monitor_->Start(reason)) {
     LOG(ERROR) << *this << ": " << __func__ << "(" << reason
                << "): Failed to start portal detection";
     return false;
