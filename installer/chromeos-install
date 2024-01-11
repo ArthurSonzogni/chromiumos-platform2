@@ -742,7 +742,8 @@ install_stateful() {
   #
   local dirlist="unencrypted/cros-components/offline-demo-mode-resources
     unencrypted/import_extensions
-    unencrypted/dlc-factory-images"
+    unencrypted/dlc-factory-images
+    unencrypted/flex_config"
 
   if crossystem 'cros_debug?1'; then
     dirlist="${dirlist}
