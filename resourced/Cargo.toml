@@ -70,3 +70,6 @@ required-features = ["vm_grpc"]
 protoc-grpcio = "2.0.0"
 protoc-rust = "2.27.1"
 anyhow = "1.0"
+
+[[bin]]
+name = "chromeos-pgmem"

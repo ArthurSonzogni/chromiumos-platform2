@@ -2,42 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod common;
-mod config;
-mod cpu_utils;
-mod dbus;
-mod dbus_ownership_listener;
-mod feature;
-mod memory;
-mod power;
-mod proc;
-mod process_stats;
-mod psi;
-mod qos;
-mod vm_concierge_client;
-mod vm_memory_management_client;
-
-#[cfg(test)]
-mod test_utils;
-
-#[cfg(target_arch = "x86_64")]
-mod cgroup_x86_64;
-
-#[cfg(target_arch = "x86_64")]
-mod gpu_freq_scaling;
-
-#[cfg(target_arch = "x86_64")]
-mod cpu_scaling;
-
-#[cfg(feature = "vm_grpc")]
-mod vm_grpc;
-
 use anyhow::bail;
 use anyhow::Result;
 use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use log::error;
 use log::info;
+#[cfg(target_arch = "x86_64")]
+use resourced::cgroup_x86_64;
+use resourced::dbus;
+use resourced::feature;
+use resourced::memory;
 use tokio::runtime::Builder;
 
 const IDENT: &str = "resourced";
