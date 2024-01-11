@@ -142,14 +142,14 @@ void OpenVPNManagementServer::OnAcceptReady() {
 }
 
 void OpenVPNManagementServer::OnInputReady() {
-  uint8_t buf[4096];
-  ssize_t len = read(connected_socket_->Get(), buf, sizeof(buf));
-  if (len > 0) {
-    OnInput({buf, static_cast<size_t>(len)});
-  } else {
+  std::vector<uint8_t> buf;
+  if (!connected_socket_->RecvMessage(&buf) || buf.size() == 0) {
     PLOG(ERROR) << "Failed to read from connected socket";
     driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    return;
   }
+
+  OnInput(buf);
 }
 
 void OpenVPNManagementServer::OnInput(base::span<const uint8_t> data) {
