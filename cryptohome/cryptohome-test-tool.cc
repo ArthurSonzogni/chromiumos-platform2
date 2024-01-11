@@ -175,6 +175,17 @@ bool ReadHexFileToBlobLogged(const FilePath& file_path,
   return true;
 }
 
+bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
+                                   brillo::SecureBlob* contents) {
+  brillo::Blob blob;
+  if (!ReadHexFileToBlobLogged(file_path, &blob))
+    return false;
+  // This conversion is to be avoided in production code, but is OK for a
+  // test-only file reader.
+  *contents = brillo::SecureBlob(std::move(blob));
+  return true;
+}
+
 template <typename Alloc>
 bool WriteHexFileLogged(const FilePath& file_path,
                         const std::vector<uint8_t, Alloc>& contents) {
@@ -363,6 +374,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
 
 bool DoRecoveryCryptoMediateAction(
     const FilePath& recovery_request_in_file_path,
+    const FilePath& mediator_priv_key_in_file_path,
     const FilePath& recovery_response_out_file_path) {
   brillo::Blob serialized_recovery_request;
   if (!ReadHexFileToBlobLogged(recovery_request_in_file_path,
@@ -385,8 +397,14 @@ bool DoRecoveryCryptoMediateAction(
 
   brillo::Blob epoch_pub_key;
   SecureBlob mediator_priv_key, epoch_priv_key;
-  CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
+  if (mediator_priv_key_in_file_path.empty()) {
+    CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
+        &mediator_priv_key));
+  } else if (!ReadHexFileToSecureBlobLogged(mediator_priv_key_in_file_path,
+                                            &mediator_priv_key)) {
+    return false;
+  }
+
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
@@ -649,7 +667,11 @@ int main(int argc, char* argv[]) {
   DEFINE_string(
       mediator_pub_key_in_file, "",
       "Path to the file containing the hex-encoded Cryptohome Recovery "
-      "mediator key.");
+      "mediator public key.");
+  DEFINE_string(
+      mediator_priv_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "mediator private key.");
   DEFINE_string(
       rsa_priv_key_in_file, "",
       "Path to the file containing the hex-encoded Cryptohome Recovery "
@@ -843,6 +865,7 @@ int main(int argc, char* argv[]) {
                            FLAGS_recovery_response_out_file)) {
       success = cryptohome::DoRecoveryCryptoMediateAction(
           FilePath(FLAGS_recovery_request_in_file),
+          FilePath(FLAGS_mediator_priv_key_in_file),
           FilePath(FLAGS_recovery_response_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_decrypt") {
