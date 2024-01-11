@@ -56,6 +56,8 @@ const double kDefaultMaxDelayPercentile = 0.3;
 
 const int64_t kBatterySustainDisabled = -1;
 
+const double kAdaptiveChargingMaxPercent = 96.0;
+
 // Value passed to `SetSlowCharging` to disable the EC's charge current
 // limit logic.
 const uint32_t kSlowChargingDisabled = std::numeric_limits<uint32_t>::max();
@@ -1386,11 +1388,6 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     return false;
 
   const system::PowerStatus status = power_supply_->GetPowerStatus();
-  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
-    started_ = false;
-    return false;
-  }
-
   report_charge_time_ =
       status.display_battery_percentage <= static_cast<double>(hold_percent_);
   base::TimeDelta hold_time_on_ac = charge_history_.GetHoldTimeOnAC();
@@ -1418,6 +1415,17 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     power_supply_->SetAdaptiveChargingHeuristicEnabled(true);
   } else {
     state_ = AdaptiveChargingState::USER_DISABLED;
+  }
+
+  // Don't start Adaptive Charging if the battery is full or above 95% display
+  // percentage.
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
+      status.display_battery_percentage >= kAdaptiveChargingMaxPercent) {
+    if (state_ == AdaptiveChargingState::ACTIVE)
+      state_ = AdaptiveChargingState::INACTIVE;
+
+    started_ = false;
+    return false;
   }
 
   if (adaptive_charging_enabled_) {

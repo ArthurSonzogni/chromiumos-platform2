@@ -1567,6 +1567,37 @@ TEST_F(AdaptiveChargingControllerTest,
   EXPECT_EQ(time_spent_slow_charging, base::TimeDelta(base::Hours(1)));
 }
 
+// Test that Adaptive Charging does not start if the charge is too high (but not
+// full).
+TEST_F(AdaptiveChargingControllerTest, AdaptiveChargingDisabledForHighCharge) {
+  Init();
+
+  // Disable Adaptive Charging, then change the battery percentage to be just
+  // over the limit for Adaptive Charging (96% is just over the limit for the
+  // display percentage).
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_enabled(false);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+
+  power_status_.battery_percentage = 95.0;
+  power_status_.display_battery_percentage = 96.0;
+  power_status_.adaptive_delaying_charge = false;
+  power_status_.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+
+  policy.set_adaptive_charging_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::INACTIVE);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
 // Test that Charge Limit can be enabled via policy.
 TEST_F(AdaptiveChargingControllerTest, ChargeLimitEnabledViaPolicy) {
   Init();
