@@ -673,19 +673,6 @@ void Service::SetState(ConnectState state) {
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
-void Service::SetPortalDetectionFailure(const PortalDetector::Result& result) {
-  // TODO(b/305129516): Eliminate the kPortalDetectionFailedStatusCodeProperty
-  // Service property and make sure that Chrome does not assume that detection
-  // was achieved with HTTP probes and does not inspect the response code of the
-  // HTTP probe. For CAPPORT and Passpoint R3 based detection, there is no HTTP
-  // response code and kPortalDetectionFailedStatusCodeProperty has no meaning.
-  if (portal_detection_failure_status_code_ != result.http_status_code) {
-    portal_detection_failure_status_code_ = result.http_status_code;
-    adaptor_->EmitIntChanged(kPortalDetectionFailedStatusCodeProperty,
-                             portal_detection_failure_status_code_);
-  }
-}
-
 void Service::SetProbeUrl(const std::string& probe_url_string) {
   if (probe_url_string_ == probe_url_string) {
     return;
@@ -2721,11 +2708,6 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
       break;
     case PortalDetector::ValidationState::kPortalSuspected:
       break;
-  }
-
-  if (result.GetValidationState() !=
-      PortalDetector::ValidationState::kInternetConnectivity) {
-    service_->SetPortalDetectionFailure(result);
   }
 }
 }  // namespace shill

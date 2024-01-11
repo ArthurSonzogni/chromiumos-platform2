@@ -318,10 +318,6 @@ class Service : public base::RefCounted<Service> {
   // during portal detection.
   mockable void SetProbeUrl(const std::string& probe_url_string);
 
-  // Set portal detection failure phase, status (reason), and http status code.
-  // This function is called when portal detection failed for the Service.
-  mockable void SetPortalDetectionFailure(const PortalDetector::Result& result);
-
   // Whether or not the most recent failure should be ignored. This will return
   // true if the failure was the result of a user-initiated disconnect, a
   // disconnect on shutdown, or a disconnect due to a suspend.
@@ -1126,6 +1122,9 @@ class Service : public base::RefCounted<Service> {
   bool key_rotation_;
   bool endpoint_auth_;
   std::string probe_url_string_;
+
+  // TODO(b/319547018): Remove this field after the
+  // kPortalDetectionFailedStatusCodeProperty is removed from system_api.
   int portal_detection_failure_status_code_;
 
   uint8_t strength_;

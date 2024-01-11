@@ -870,21 +870,6 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(nullptr);  // Break reference cycle.
 }
 
-TEST_F(ServiceTest, ServicePortalDetectionFailureProperties) {
-  const int kStatusCode = 204;
-  PortalDetector::Result result;
-  result.http_result = PortalDetector::ProbeResult::kDNSTimeout;
-  result.http_status_code = 204;
-
-  EXPECT_CALL(
-      *GetAdaptor(),
-      EmitIntChanged(kPortalDetectionFailedStatusCodeProperty, kStatusCode))
-      .Times(1);
-
-  service_->SetPortalDetectionFailure(result);
-  EXPECT_EQ(kStatusCode, service_->portal_detection_failure_status_code());
-}
-
 TEST_F(ServiceTest, StateResetAfterFailure) {
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_EQ(Service::kStateFailure, service_->state());
@@ -2860,7 +2845,6 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
 
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_Online) {
@@ -2881,7 +2865,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
 
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
@@ -2905,7 +2888,6 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   // kInternetConnectivity validation state.
   EXPECT_EQ(0, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
@@ -2927,7 +2909,6 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
@@ -2949,7 +2930,6 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
@@ -2971,7 +2951,6 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
@@ -2997,7 +2976,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, service_->probe_url_string());
-  EXPECT_EQ(302, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
@@ -3019,7 +2997,6 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(302, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
@@ -3042,7 +3019,6 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(200, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
@@ -3062,7 +3038,6 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
 
   EXPECT_EQ(1, service_->portal_detection_count_for_testing());
   EXPECT_EQ("", service_->probe_url_string());
-  EXPECT_EQ(0, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, UpdateNetworkValidationWhenServiceNotConnected) {
