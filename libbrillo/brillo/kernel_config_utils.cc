@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -23,31 +24,79 @@ constexpr char kTerminator[] = "--";
 
 constexpr size_t kMaxKernelConfigSize = 4096;
 
-// Value find logic that is common for extracting and setting values in the
-// kernel config.
-bool GetValueOffset(const std::string& kernel_config,
-                    const std::string& key,
-                    std::string::const_iterator& value_begin,
-                    std::string::const_iterator& value_end) {
+enum class FindType { kValue, kFlag };
+
+struct ValueBound {
+  std::string::const_iterator begin;
+  std::string::const_iterator end;
+};
+
+// Tokenization logic to search config for desired flags or values.
+bool Find(const std::string& kernel_config,
+          const std::string& target,
+          FindType type,
+          ValueBound* value_bound) {
   // Setup tokenizer to split up on any white space while also not breaking
   // quoted values.
   base::StringTokenizer tokenizer(kernel_config, base::kWhitespaceASCII);
   tokenizer.set_quote_chars(std::string{kDoubleQuote});
+  std::vector<std::string> target_variants;
+
+  switch (type) {
+    case FindType::kValue:
+      // Token should start with `target=` or `"target"=`.
+      target_variants = {
+          kDoubleQuote + target + kDoubleQuote + kEquals,
+          target.ends_with(kEquals) ? target : (target + kEquals)};
+      break;
+    case FindType::kFlag:
+      // Match `target`, `"target"`, `target=...`, or `"target"=...`
+      target_variants = {target, kDoubleQuote + target + kDoubleQuote,
+                         target + kEquals,
+                         kDoubleQuote + target + kDoubleQuote + kEquals};
+      break;
+  }
+
   while (tokenizer.GetNext()) {
     const auto token = tokenizer.token();
     if (token == kTerminator)
       break;
 
-    // Token should start with `key=`.
-    if (!token.starts_with(key + kEquals) || token.size() < key.size() + 1)
-      continue;
-    // Since key + `=` matched, value starts at key size + 1.
-    value_begin = tokenizer.token_begin() + key.size() + 1;
-    value_end = tokenizer.token_end();
-    return true;
+    switch (type) {
+      case FindType::kValue:
+        for (const auto& target_variant : target_variants) {
+          if (!token.starts_with(target_variant))
+            continue;
+
+          if (value_bound) {
+            *value_bound = {tokenizer.token_begin() + target_variant.size(),
+                            tokenizer.token_end()};
+          }
+          return true;
+        }
+        break;
+
+      case FindType::kFlag:
+        for (const auto& target_variant : target_variants) {
+          if (token == target_variant || (target_variant.ends_with(kEquals) &&
+                                          token.starts_with(target_variant)))
+            return true;
+        }
+        break;
+    }
   }
+
   return false;
 }
+
+// Value find logic that is common for extracting and setting values in the
+// kernel config.
+bool GetValueOffset(const std::string& kernel_config,
+                    const std::string& key,
+                    ValueBound* value_bound) {
+  return Find(kernel_config, key, FindType::kValue, value_bound);
+}
+
 }  // namespace
 
 std::optional<std::string> GetCurrentKernelConfig() {
@@ -64,11 +113,11 @@ std::optional<std::string> ExtractKernelArgValue(
     const std::string& kernel_config,
     const std::string& key,
     const bool strip_quotes) {
-  std::string::const_iterator value_begin, value_end;
-  if (!GetValueOffset(kernel_config, key, value_begin, value_end)) {
+  ValueBound value_bound;
+  if (!GetValueOffset(kernel_config, key, &value_bound)) {
     return std::nullopt;
   }
-  auto value = std::string{value_begin, value_end};
+  auto value = std::string{value_bound.begin, value_bound.end};
   if (value.starts_with(kDoubleQuote)) {
     if (value.length() == 1 || !value.ends_with(kDoubleQuote)) {
       // Value is corrupt if there's no end quote.
@@ -84,8 +133,8 @@ std::optional<std::string> ExtractKernelArgValue(
 bool SetKernelArg(const std::string& key,
                   const std::string& value,
                   std::string& kernel_config) {
-  std::string::const_iterator value_begin, value_end;
-  if (!GetValueOffset(kernel_config, key, value_begin, value_end)) {
+  ValueBound value_bound;
+  if (!GetValueOffset(kernel_config, key, &value_bound)) {
     return false;
   }
   std::string adjusted_value = value;
@@ -103,8 +152,12 @@ bool SetKernelArg(const std::string& key,
   if (value_has_white_space && !quoted_value) {
     adjusted_value = kDoubleQuote + value + kDoubleQuote;
   }
-  kernel_config.replace(value_begin, value_end, adjusted_value);
+  kernel_config.replace(value_bound.begin, value_bound.end, adjusted_value);
   return true;
+}
+
+bool FlagExists(const std::string& kernel_config, const std::string& flag) {
+  return Find(kernel_config, flag, FindType::kFlag, nullptr);
 }
 
 }  // namespace brillo

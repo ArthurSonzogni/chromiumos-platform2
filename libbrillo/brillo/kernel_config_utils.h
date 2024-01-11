@@ -40,6 +40,12 @@ BRILLO_EXPORT bool SetKernelArg(const std::string& key,
                                 const std::string& value,
                                 std::string& kernel_config);
 
+// Check if a specified flag exists in kernel config. When key value pairs are
+// encountered, the presence of a key matching flag is considered valid. Return
+// true if flag is found in `kernel_config`, false otherwise.
+BRILLO_EXPORT bool FlagExists(const std::string& kernel_config,
+                              const std::string& flag);
+
 }  // namespace brillo
 
 #endif  // LIBBRILLO_BRILLO_KERNEL_CONFIG_UTILS_H_

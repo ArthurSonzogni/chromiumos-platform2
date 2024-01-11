@@ -17,7 +17,7 @@ class UtilTest : public ::testing::Test {};
 TEST(UtilTest, ExtractKernelArgValueTest) {
   std::string kernel_config =
       "root=/dev/dm-1 dm=\"foo bar, ver=2 root2=1 stuff=v\""
-      " fuzzy=wuzzy root2=/dev/dm-2 ver=";
+      " fuzzy=wuzzy root2=/dev/dm-2 \"spaced key\"=\"spaced value\" ver=";
   std::string dm_config = "foo bar, ver=2 root2=1 stuff=v";
 
   // kernel config.
@@ -25,11 +25,13 @@ TEST(UtilTest, ExtractKernelArgValueTest) {
               Optional(std::string{"/dev/dm-1"}));
   EXPECT_THAT(ExtractKernelArgValue(kernel_config, "fuzzy"),
               Optional(std::string{"wuzzy"}));
-  EXPECT_THAT(ExtractKernelArgValue(kernel_config, "root2"),
+  EXPECT_THAT(ExtractKernelArgValue(kernel_config, "root2="),
               Optional(std::string{"/dev/dm-2"}));
   EXPECT_THAT(ExtractKernelArgValue(kernel_config, "dm"), Optional(dm_config));
   EXPECT_THAT(ExtractKernelArgValue(kernel_config, "ver"),
               Optional(std::string{""}));
+  EXPECT_THAT(ExtractKernelArgValue(kernel_config, "spaced key"),
+              Optional(std::string{"spaced value"}));
 }
 
 TEST(UtilTest, ExtractFullyQuotedKey) {
@@ -209,4 +211,20 @@ TEST(UtilTest, SetUnknownValuesTest) {
   EXPECT_EQ(working_config, kernel_config);
 }
 
+TEST(UtilTest, FlagExistsTest) {
+  const std::string kernel_config =
+      "root=/dev/dm-1  \"quoted_flag_begin "
+      "quoted_key=q_value\" foo foos=bars \"fuzzy\"=\"wuzzy\" \"last_flag\"";
+
+  EXPECT_TRUE(FlagExists(kernel_config, "foo"));
+  EXPECT_TRUE(FlagExists(kernel_config, "last_flag"));
+  EXPECT_TRUE(FlagExists(kernel_config, "fuzzy"));
+  EXPECT_TRUE(FlagExists(kernel_config, "root"));
+
+  EXPECT_FALSE(FlagExists(kernel_config, "quoted_flag_begin"));
+  EXPECT_FALSE(FlagExists(kernel_config, "/dev/dm-1"));
+  EXPECT_FALSE(FlagExists(kernel_config, "quoted"));
+  EXPECT_FALSE(FlagExists(kernel_config, "quoted_key"));
+  EXPECT_FALSE(FlagExists(kernel_config, "wuzzy"));
+}
 }  // namespace brillo
