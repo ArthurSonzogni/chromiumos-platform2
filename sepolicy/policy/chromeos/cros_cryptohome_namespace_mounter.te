@@ -34,6 +34,7 @@ create_dir_file(cros_cryptohome_namespace_mounter, {
   cros_run
   cros_run_daemon_store
   cros_run_dbus
+  cros_var_lib
 })
 
 allow cros_cryptohome_namespace_mounter {
