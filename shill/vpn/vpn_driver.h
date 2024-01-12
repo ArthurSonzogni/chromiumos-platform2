@@ -18,7 +18,6 @@
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
-#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/service.h"
@@ -57,7 +56,7 @@ class VPNDriver {
   class EventHandler {
    public:
     // Invoked on connection or reconnection done. The interface name and index
-    // of the VPN interface are passed via parameters. GetIPv4Properties() is
+    // of the VPN interface are passed via parameters. GetNetworkConfig() is
     // ready now.
     virtual void OnDriverConnected(const std::string& if_name,
                                    int if_index) = 0;
@@ -94,12 +93,7 @@ class VPNDriver {
   // attempt might take at maximum.
   virtual base::TimeDelta ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
-  // TODO(b/307855773): Deprecate these methods
-  virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const;
-  virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const;
-
-  // TODO(b/307855773): Implement it in subclasses to make it pure virtual.
-  virtual std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const;
+  virtual std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const = 0;
 
   // Makes the VPN driver fail because of the connection timeout. The driver
   // will clean up its internal state, and invokes OnDriverFailure to notify the

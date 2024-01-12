@@ -14,9 +14,11 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
+#include "shill/network/network.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_util.h"
@@ -47,8 +49,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // the |Notify| RPC service method.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
-  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
-  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
+  std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const override;
   void OnConnectTimeout() override;
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
@@ -252,8 +253,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // needed routing information, so we need a merged result to generate IP
   // configs.
   std::map<std::string, std::string> params_;
-  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
-  std::unique_ptr<IPConfig::Properties> ipv6_properties_;
+  std::optional<net_base::NetworkConfig> network_config_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.

@@ -6,6 +6,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -18,8 +19,11 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mock_process_manager.h>
+#include <net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -279,6 +283,10 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
 TEST_F(OpenVPNDriverTest, Notify) {
   constexpr auto kIPv4Addr = "1.2.3.4";
   constexpr auto kIPv6Addr = "fd01::1";
+  const net_base::IPv4Address ipv4_address =
+      *net_base::IPv4Address::CreateFromString(kIPv4Addr);
+  const net_base::IPv6Address ipv6_address =
+      *net_base::IPv6Address::CreateFromString(kIPv6Addr);
   SetEventHandler(&event_handler_);
   driver_->interface_name_ = kInterfaceName;
   driver_->interface_index_ = kInterfaceIndex;
@@ -288,8 +296,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
               OnDriverConnected(kInterfaceName, kInterfaceIndex))
       .Times(0);
   driver_->Notify("up", {});
-  ASSERT_EQ(driver_->GetIPv4Properties(), nullptr);
-  ASSERT_EQ(driver_->GetIPv6Properties(), nullptr);
+  ASSERT_EQ(driver_->GetNetworkConfig(), nullptr);
 
   // Sets up the environment again.
   SetEventHandler(&event_handler_);
@@ -300,9 +307,12 @@ TEST_F(OpenVPNDriverTest, Notify) {
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", {{"ifconfig_local", kIPv4Addr}});
-  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
-  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
-  ASSERT_EQ(driver_->GetIPv6Properties(), nullptr);
+  std::unique_ptr<net_base::NetworkConfig> network_config =
+      driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  ASSERT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_EQ(network_config->ipv4_address->address(), ipv4_address);
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
 
   // Gets IPv6 configurations. This also tests that existing properties are
   // reused if no new ones provided. (Note that normally v4 and v6 configuration
@@ -310,18 +320,22 @@ TEST_F(OpenVPNDriverTest, Notify) {
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", {{"ifconfig_ipv6_local", kIPv6Addr}});
-  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
-  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
-  ASSERT_NE(driver_->GetIPv6Properties(), nullptr);
-  EXPECT_EQ(driver_->GetIPv6Properties()->address, kIPv6Addr);
+  network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  ASSERT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_EQ(network_config->ipv4_address->address(), ipv4_address);
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  EXPECT_EQ(network_config->ipv6_addresses[0].address(), ipv6_address);
 
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", {});
-  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
-  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
-  ASSERT_NE(driver_->GetIPv6Properties(), nullptr);
-  EXPECT_EQ(driver_->GetIPv6Properties()->address, kIPv6Addr);
+  network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  ASSERT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_EQ(network_config->ipv4_address->address(), ipv4_address);
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  EXPECT_EQ(network_config->ipv6_addresses[0].address(), ipv6_address);
 }
 
 TEST_P(OpenVPNDriverTest, NotifyUMA) {
@@ -1117,12 +1131,13 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   // Ensure no crash.
   driver_->Cleanup();
 
-  driver_->ipv4_properties_ = std::make_unique<IPConfig::Properties>();
   const int kPID = 123456;
   driver_->pid_ = kPID;
   driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->interface_name_ = kInterfaceName;
-  driver_->ipv4_properties_->address = "1.2.3.4";
+  driver_->network_config_ = std::make_optional<net_base::NetworkConfig>();
+  driver_->network_config_->ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
   base::FilePath tls_auth_file;
   EXPECT_TRUE(base::CreateTemporaryFile(&tls_auth_file));
   EXPECT_FALSE(tls_auth_file.empty());
@@ -1138,7 +1153,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->interface_name_.empty());
   EXPECT_FALSE(base::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
-  EXPECT_EQ(nullptr, driver_->ipv4_properties_);
+  EXPECT_EQ(std::nullopt, driver_->network_config_);
 }
 
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {

@@ -8,6 +8,7 @@
 
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -198,8 +199,7 @@ void OpenVPNDriver::Cleanup() {
   }
   rpc_task_.reset();
   params_.clear();
-  ipv4_properties_ = nullptr;
-  ipv6_properties_ = nullptr;
+  network_config_ = std::nullopt;
   if (pid_) {
     process_manager()->StopProcessAndBlock(pid_);
     pid_ = 0;
@@ -333,15 +333,16 @@ void OpenVPNDriver::Notify(const std::string& reason,
   for (const auto& [k, v] : dict) {
     params_[k] = v;
   }
-  auto props = ParseIPConfiguration(
+  // TODO(b/307855773): Make |ParseIPConfiguration| return NetworkConfig.
+  IPProperties props = ParseIPConfiguration(
       params_,
       const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty));
-  ipv4_properties_ = std::move(props.ipv4_props);
-  ipv6_properties_ = std::move(props.ipv6_props);
-  if (!ipv4_properties_ && !ipv6_properties_) {
+  if (!props.ipv4_props && !props.ipv6_props) {
     FailService(Service::kFailureConnect, "No valid IP config");
     return;
   }
+  network_config_ = IPConfig::Properties::ToNetworkConfig(
+      props.ipv4_props.get(), props.ipv6_props.get());
   ReportConnectionMetrics();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
@@ -350,18 +351,12 @@ void OpenVPNDriver::Notify(const std::string& reason,
   }
 }
 
-std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv4Properties() const {
-  if (ipv4_properties_ == nullptr) {
+std::unique_ptr<net_base::NetworkConfig> OpenVPNDriver::GetNetworkConfig()
+    const {
+  if (!network_config_.has_value()) {
     return nullptr;
   }
-  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
-}
-
-std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
-  if (ipv6_properties_ == nullptr) {
-    return nullptr;
-  }
-  return std::make_unique<IPConfig::Properties>(*ipv6_properties_);
+  return std::make_unique<net_base::NetworkConfig>(*network_config_);
 }
 
 // static

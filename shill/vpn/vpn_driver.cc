@@ -18,7 +18,6 @@
 #include <net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -150,44 +149,6 @@ void VPNDriver::UnloadCredentials() {
   if (eap_credentials_) {
     eap_credentials_->Reset();
   }
-}
-
-std::unique_ptr<IPConfig::Properties> VPNDriver::GetIPv4Properties() const {
-  // This function should be a pure virtual function. It is made not pure
-  // virtual because we are currently migrating the overriding functions of its
-  // sub-classes (b/307855773). This function will be deprecated as the
-  // migration is done.
-  NOTREACHED_NORETURN();
-}
-
-std::unique_ptr<IPConfig::Properties> VPNDriver::GetIPv6Properties() const {
-  // This function should be a pure virtual function. It is made not pure
-  // virtual because we are currently migrating the overriding functions of its
-  // sub-classes (b/307855773). This function will be deprecated as the
-  // migration is done.
-  NOTREACHED_NORETURN();
-}
-
-std::unique_ptr<net_base::NetworkConfig> VPNDriver::GetNetworkConfig() const {
-  // As we go with the migration, this method in the base class should not be
-  // reached for more VPN drivers.
-  switch (vpn_type_) {
-    case VPNType::kARC:
-    case VPNType::kThirdParty:
-    case VPNType::kWireGuard:
-    case VPNType::kIKEv2:
-    case VPNType::kL2TPIPsec:
-      NOTREACHED_NORETURN();
-      break;
-    default:
-      break;
-  }
-
-  auto ipv4_properties = GetIPv4Properties();
-  auto ipv6_properties = GetIPv6Properties();
-  auto network_config = IPConfig::Properties::ToNetworkConfig(
-      ipv4_properties.get(), ipv6_properties.get());
-  return std::make_unique<net_base::NetworkConfig>(network_config);
 }
 
 void VPNDriver::InitPropertyStore(PropertyStore* store) {
