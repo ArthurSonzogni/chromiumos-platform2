@@ -79,6 +79,13 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) const {
   for (auto dump : dumps.dump()) {
     if (dump.has_wifi_dump()) {
       base::FilePath path(dump.wifi_dump().dmpfile());
+      if (!base::PathExists(path)) {
+        LOG(ERROR) << "Can't find firmware dump on disk from "
+                   << kCrashReporterFirmwareDumpCreated << " signal.";
+        VLOG(kLocalOnlyDebugVerbosity)
+            << "Firmware dump doesn't exist: " << path.value();
+        continue;
+      }
       FirmwareDump fw_dump(path);
       LOG(INFO) << __func__ << ": New WiFi dump file detected.";
       VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
