@@ -21,6 +21,7 @@ group("all") {
     ":dev_features_rootfs_verification",
     ":dev_features_ssh",
     ":dev_features_usb_boot",
+    ":filter_vpd",
     ":folder_size_dump",
     ":generate_logs",
     ":icmp",
@@ -307,6 +308,13 @@ executable("audit_log_filter") {
     ":audit_log_utils_config",
   ]
   deps = [ ":libdebugd" ]
+}
+
+executable("filter_vpd") {
+  sources = [ "src/helpers/filter_vpd.cc" ]
+  install_path = debugd_helpers_install_path
+  configs += [ ":target_defaults" ]
+  libs = [ "vpd" ]
 }
 
 pkg_config("folder_size_dump_config") {
