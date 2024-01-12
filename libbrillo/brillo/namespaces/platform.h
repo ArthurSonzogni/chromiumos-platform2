@@ -41,7 +41,7 @@ class BRILLO_EXPORT Platform {
   //   source - The path to mount from
   //   target - The path to mount to
   //   fs_type - File system type of the mount
-  //   mount_flags - Flags spesifying the type of the mount operation
+  //   mount_flags - Flags specifying the type of the mount operation
   //   data - Mount options
   virtual int Mount(const std::string& source,
                     const std::string& target,
