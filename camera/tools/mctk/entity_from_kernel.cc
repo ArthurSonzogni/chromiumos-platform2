@@ -333,12 +333,13 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
 
   /* Allocate temporary arrays for the ioctl ABI */
   struct media_links_enum links_enum;
-  struct media_pad_desc kernel_pads[entity->desc_.pads];
-  struct media_link_desc kernel_links[entity->desc_.links];
+
+  auto kernel_pads = std::vector<struct media_pad_desc>(entity->desc_.pads);
+  auto kernel_links = std::vector<struct media_link_desc>(entity->desc_.links);
 
   links_enum.entity = entity->desc_.id;
-  links_enum.pads = kernel_pads;
-  links_enum.links = kernel_links;
+  links_enum.pads = kernel_pads.data();
+  links_enum.links = kernel_links.data();
 
   if (ioctl(fd_mc, MEDIA_IOC_ENUM_LINKS, &links_enum) < 0) {
     MCTK_PERROR("ioctl(MEDIA_IOC_ENUM_LINKS)");
