@@ -32,6 +32,7 @@ use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 
 use crate::common;
+use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
 use crate::memory;
@@ -123,7 +124,7 @@ fn set_game_mode_and_tune_swappiness(
         common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"))?
     {
         const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
-        if swappiness != common::read_file_to_u64(SWAPPINESS_PATH)? as u32 {
+        if swappiness != read_from_file(&SWAPPINESS_PATH)? {
             tokio::spawn(async move {
                 let swap_management_proxy = Proxy::new(
                     "org.chromium.SwapManagement",

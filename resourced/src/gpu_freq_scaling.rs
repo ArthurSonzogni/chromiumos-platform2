@@ -19,8 +19,9 @@ pub mod intel_device {
     use log::warn;
     use regex::Regex;
 
+    use crate::common;
+    use crate::common::read_from_file;
     use crate::common::GameMode;
-    use crate::common::{self};
     use crate::cpu_scaling::DeviceCpuStatus;
 
     // Device path for cpuinfo.
@@ -244,9 +245,9 @@ pub mod intel_device {
 
         fn get_gpu_stats(&self) -> Result<GpuStats> {
             Ok(GpuStats {
-                min_freq: common::read_file_to_u64(&self.min_freq_path)?,
-                max_freq: common::read_file_to_u64(&self.max_freq_path)?,
-                _turbo_freq: common::read_file_to_u64(&self.turbo_freq_path)?,
+                min_freq: read_from_file(&self.min_freq_path)?,
+                max_freq: read_from_file(&self.max_freq_path)?,
+                _turbo_freq: read_from_file(&self.turbo_freq_path)?,
             })
         }
 

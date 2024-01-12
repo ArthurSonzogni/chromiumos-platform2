@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use anyhow::bail;
 use anyhow::Result;
 
-use crate::common;
+use crate::common::read_from_file;
 
 const DEVICE_BATTERY_PATH: &str = "sys/class/power_supply/BAT0";
 
@@ -22,7 +22,7 @@ pub struct DeviceBatteryStatus {
 #[allow(dead_code)]
 impl DeviceBatteryStatus {
     fn get_sysfs_val(&self, path_buf: &Path) -> Result<u64> {
-        common::read_file_to_u64(path_buf)
+        read_from_file(path_buf)
     }
 
     fn get_sysfs_string(&self, path_buf: &PathBuf) -> Result<String> {

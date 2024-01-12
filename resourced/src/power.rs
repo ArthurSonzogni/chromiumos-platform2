@@ -16,6 +16,7 @@ use log::error;
 use log::info;
 
 use crate::common;
+use crate::common::read_from_file;
 use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
 use crate::common::GameMode;
@@ -109,9 +110,8 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
                 continue;
             }
 
-            let online = common::read_file_to_u64(&online_path)
-                .with_context(|| format!("Error reading online from {}", online_path.display()))?
-                as u32;
+            let online: u32 = read_from_file(&online_path)
+                .with_context(|| format!("Error reading online from {}", online_path.display()))?;
 
             if online != 1 {
                 continue;

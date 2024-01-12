@@ -12,7 +12,7 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 
-use crate::common::read_file_to_u64;
+use crate::common::read_from_file;
 
 const CHROMEOS_CONFIG_PATH: &str = "run/chromeos-config/v1";
 const RESOURCE_CONFIG_DIR: &str = "resource";
@@ -140,13 +140,13 @@ impl FromDir for CpuOfflinePreference {
 
         // The min-active-threads config is optional and it will be set to
         // DEFUALT_MIN_ACTIVE_THREADS if not specified
-        let min_active_threads = if min_active_threads_path.exists() {
-            read_file_to_u64(&min_active_threads_path).with_context(|| {
+        let min_active_threads: u32 = if min_active_threads_path.exists() {
+            read_from_file(&min_active_threads_path).with_context(|| {
                 format!(
                     "Error reading min-active-threads from {}",
                     min_active_threads_path.display()
                 )
-            })? as u32
+            })?
         } else {
             DEFUALT_MIN_ACTIVE_THREADS
         };
@@ -210,23 +210,23 @@ impl PowerSourceType {
 fn parse_ondemand_governor(path: &Path) -> Result<Governor> {
     let powersave_bias_path = path.join("powersave-bias");
 
-    let powersave_bias = read_file_to_u64(&powersave_bias_path).with_context(|| {
+    let powersave_bias: u32 = read_from_file(&powersave_bias_path).with_context(|| {
         format!(
             "Error reading powersave-bias from {}",
             powersave_bias_path.display()
         )
-    })? as u32;
+    })?;
 
     let sampling_rate_path = path.join("sampling-rate-ms");
 
     // The sampling-rate config is optional in the config
     let sampling_rate = if sampling_rate_path.exists() {
-        let sampling_rate_ms = read_file_to_u64(&sampling_rate_path).with_context(|| {
+        let sampling_rate_ms: u32 = read_from_file(&sampling_rate_path).with_context(|| {
             format!(
                 "Error reading sampling-rate-ms from {}",
                 sampling_rate_path.display()
             )
-        })? as u32;
+        })?;
 
         // We treat the default value of 0 as unset. We do this because the kernel treats
         // a sampling rate of 0 as invalid.

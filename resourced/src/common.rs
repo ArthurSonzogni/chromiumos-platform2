@@ -8,6 +8,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Mutex;
 
 use anyhow::bail;
@@ -51,18 +52,15 @@ const GAMEMODE_RPS_DOWN: u64 = 85;
 const TUNED_SWAPPINESS_VALUE: u32 = 30;
 const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
 
-// Extract the parsing function for unittest.
-fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
-    let first_line = reader.lines().next().context("No content in buffer")??;
-    first_line
-        .parse()
-        .with_context(|| format!("Couldn't parse \"{}\" as u64", first_line))
-}
-
-/// Get the first line in a file and parse as u64.
-pub fn read_file_to_u64<P: AsRef<Path>>(filename: P) -> Result<u64> {
-    let reader = File::open(filename).map(BufReader::new)?;
-    parse_file_to_u64(reader)
+/// Parse the first line of a file as a type implementing std::str::FromStr.
+pub fn read_from_file<T: FromStr, P: AsRef<Path>>(path: &P) -> Result<T>
+where
+    T::Err: std::error::Error + Sync + Send + 'static,
+{
+    let reader = File::open(path).map(BufReader::new)?;
+    let line = reader.lines().next().context("No content in file")??;
+    line.parse()
+        .with_context(|| format!("failed to parse \"{line}\""))
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -425,13 +423,13 @@ pub fn set_vm_boot_mode(
 
 fn reset_rps_thresholds(root: &Path) -> Result<()> {
     let mut default_up_rps = 95;
-    if let Ok(val) = read_file_to_u64(root.join(DEVICE_RPS_DEFAULT_PATH_UP)) {
+    if let Ok(val) = read_from_file(&root.join(DEVICE_RPS_DEFAULT_PATH_UP)) {
         default_up_rps = val;
     } else {
         warn!("Could not read rps up value.");
     };
     let mut default_down_rps = 85;
-    if let Ok(val) = read_file_to_u64(root.join(DEVICE_RPS_DEFAULT_PATH_DOWN)) {
+    if let Ok(val) = read_from_file(&root.join(DEVICE_RPS_DEFAULT_PATH_DOWN)) {
         default_down_rps = val;
     } else {
         warn!("Could not read rps down value.");
@@ -494,25 +492,56 @@ fn set_thp(mode: THPMode) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::io::Write;
 
     use tempfile::tempdir;
+    use tempfile::NamedTempFile;
 
     use super::*;
     use crate::feature;
     use crate::test_utils::*;
 
     #[test]
-    fn test_parse_file_to_u64() {
-        assert_eq!(
-            parse_file_to_u64("123".to_string().as_bytes()).unwrap(),
-            123
-        );
-        assert_eq!(
-            parse_file_to_u64("456\n789".to_string().as_bytes()).unwrap(),
-            456
-        );
-        assert!(parse_file_to_u64("".to_string().as_bytes()).is_err());
-        assert!(parse_file_to_u64("abc".to_string().as_bytes()).is_err());
+    fn test_read_from_file() {
+        for (content, expected) in [("123", 123), ("456\n789", 456)] {
+            let mut file = NamedTempFile::new().unwrap();
+            file.write_all(content.as_bytes()).unwrap();
+
+            assert_eq!(
+                read_from_file::<u64, _>(&file.path()).unwrap(),
+                expected as u64
+            );
+            assert_eq!(
+                read_from_file::<u32, _>(&file.path()).unwrap(),
+                expected as u32
+            );
+            assert_eq!(
+                read_from_file::<i64, _>(&file.path()).unwrap(),
+                expected as i64
+            );
+            assert_eq!(read_from_file::<i32, _>(&file.path()).unwrap(), expected);
+        }
+
+        for (negative_content, expected) in [("-123", -123), ("-456\n789", -456)] {
+            let mut file = NamedTempFile::new().unwrap();
+            file.write_all(negative_content.as_bytes()).unwrap();
+
+            assert_eq!(
+                read_from_file::<i64, _>(&file.path()).unwrap(),
+                expected as i64
+            );
+            assert_eq!(read_from_file::<i32, _>(&file.path()).unwrap(), expected);
+
+            assert!(read_from_file::<u64, _>(&file.path()).is_err());
+            assert!(read_from_file::<u32, _>(&file.path()).is_err());
+        }
+
+        for wrong_content in ["", "abc"] {
+            let mut file = NamedTempFile::new().unwrap();
+            file.write_all(wrong_content.as_bytes()).unwrap();
+
+            assert!(read_from_file::<u64, _>(&file.path()).is_err());
+        }
     }
 
     fn write_i32_to_file(path: &Path, value: i32) {
@@ -624,13 +653,12 @@ mod tests {
         write_i32_to_file(&rps_down_path, 50);
         write_i32_to_file(&rps_up_path, 75);
 
-        assert_eq!(read_file_to_u64(&rps_down_path).unwrap(), 50);
-        assert_eq!(read_file_to_u64(&rps_up_path).unwrap(), 75);
+        assert_eq!(read_from_file::<u64, _>(&rps_down_path).unwrap(), 50);
+        assert_eq!(read_from_file::<u64, _>(&rps_up_path).unwrap(), 75);
     }
 
     #[test]
     fn test_initialize_feature_in_default_state() {
-
         feature::init_for_test();
         assert!(feature::initialize_feature("FakeFeatureDisabled", false).is_ok());
         assert!(!feature::is_feature_enabled("FakeFeatureDisabled").unwrap());

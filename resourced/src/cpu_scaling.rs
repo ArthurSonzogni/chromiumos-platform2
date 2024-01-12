@@ -14,7 +14,7 @@ use glob::glob;
 use log::info;
 use regex::Regex;
 
-use crate::common;
+use crate::common::read_from_file;
 
 /// Base path for power_limit relative to rootdir.
 const DEVICE_POWER_LIMIT_PATH: &str = "sys/class/powercap/intel-rapl:0";
@@ -80,7 +80,7 @@ pub fn intel_i7_or_above(root: &Path) -> Result<bool> {
 impl DeviceCpuStatus {
     #[inline(always)]
     fn get_sysfs_val(&self, path_buf: &Path) -> Result<u64> {
-        common::read_file_to_u64(path_buf)
+        read_from_file(&path_buf)
     }
 
     /// Getter for `power_limit_0` (long-term power limit).
@@ -183,7 +183,7 @@ impl DeviceCpuStatus {
         for curr_cpu in cpus {
             let cpu_min_path =
                 PathBuf::from(str::replace(&curr_cpu.display().to_string(), "max", "min"));
-            let val_min = common::read_file_to_u64(cpu_min_path)?;
+            let val_min: u64 = read_from_file(&cpu_min_path)?;
             if (val_max - val_min) > threshold {
                 std::fs::write(curr_cpu, val_max.to_string().as_bytes())?;
             } else {
@@ -217,7 +217,7 @@ impl DeviceCpuStatus {
         for curr_cpu in cpus {
             let cpu_max_path =
                 PathBuf::from(str::replace(&curr_cpu.display().to_string(), "min", "max"));
-            let val_max = common::read_file_to_u64(cpu_max_path)?;
+            let val_max: u64 = read_from_file(&cpu_max_path)?;
             if (val_max - val_min) > threshold {
                 std::fs::write(curr_cpu, val_min.to_string().as_bytes())?;
             } else {
@@ -299,12 +299,9 @@ impl DeviceCpuStatus {
 
                 res.push(CpuStaticInfo {
                     core_num,
-                    base_freq_khz: common::read_file_to_u64(core_path.join("base_frequency"))?
-                        .try_into()?,
-                    max_freq_khz: common::read_file_to_u64(core_path.join("cpuinfo_max_freq"))?
-                        .try_into()?,
-                    min_freq_khz: common::read_file_to_u64(core_path.join("cpuinfo_min_freq"))?
-                        .try_into()?,
+                    base_freq_khz: read_from_file(&core_path.join("base_frequency"))?,
+                    max_freq_khz: read_from_file(&core_path.join("cpuinfo_max_freq"))?,
+                    min_freq_khz: read_from_file(&core_path.join("cpuinfo_min_freq"))?,
                 });
             }
         } else {
@@ -380,17 +377,17 @@ impl DeviceCpuStatus {
             info!("All sysfs file paths found");
             Ok(DeviceCpuStatus {
                 power_limit_0_current_path,
-                power_limit_0_max: common::read_file_to_u64(power_limit_0_max_path)?,
+                power_limit_0_max: read_from_file(&power_limit_0_max_path)?,
                 power_limit_1_current_path,
-                power_limit_1_max: common::read_file_to_u64(power_limit_1_max_path)?,
+                power_limit_1_max: read_from_file(&power_limit_1_max_path)?,
                 energy_curr_path,
-                energy_max: common::read_file_to_u64(energy_max_path)?,
+                energy_max: read_from_file(&energy_max_path)?,
                 cpu_max_freq_path_pattern: cpu_max_freq_path_pattern.to_owned(),
                 cpu_min_freq_path_pattern: cpu_min_freq_path_pattern.to_owned(),
                 // Todo: Change to vector for ADL heterogeneous cores.
-                cpu_max_freq_default: common::read_file_to_u64(cpu_0_max_path)?,
-                cpu_min_freq_default: common::read_file_to_u64(cpu_0_min_path)?,
-                cpuinfo_min_freq_default: common::read_file_to_u64(cpuinfo_0_min_path)?,
+                cpu_max_freq_default: read_from_file(&cpu_0_max_path)?,
+                cpu_min_freq_default: read_from_file(&cpu_0_min_path)?,
+                cpuinfo_min_freq_default: read_from_file(&cpuinfo_0_min_path)?,
             })
         } else {
             info!(

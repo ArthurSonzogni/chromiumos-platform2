@@ -14,7 +14,7 @@ use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
 
-use crate::common;
+use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 
@@ -63,7 +63,7 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<String> {
                 .context("Failed to strip prefix")?
                 .parse()?;
             let property_path = Path::new(&cpu_dir).join(property);
-            Ok((cpu_number, common::read_file_to_u64(property_path)?))
+            Ok((cpu_number, read_from_file(&property_path)?))
         })
         .collect::<Result<Vec<(u64, u64)>, anyhow::Error>>()?;
     let min_property = cpu_properties

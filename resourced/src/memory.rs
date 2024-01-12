@@ -22,6 +22,7 @@ use once_cell::sync::Lazy;
 use system_api::vm_memory_management::ResizePriority;
 
 use crate::common;
+use crate::common::read_from_file;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
@@ -106,7 +107,7 @@ fn get_reserved_memory_kb() -> Result<u64> {
         .map(BufReader::new)
         .context("Couldn't read /proc/zoneinfo")?;
     Ok(calculate_reserved_free_kb(reader)?
-        - common::read_file_to_u64("/proc/sys/vm/extra_free_kbytes").unwrap_or(0))
+        - read_from_file(&"/proc/sys/vm/extra_free_kbytes").unwrap_or(0))
 }
 
 /// Returns the percentage of the recent 10 seconds that some process is blocked
@@ -248,11 +249,10 @@ fn get_memory_parameters() -> MemoryParameters {
             0
         }
     });
-    let min_filelist: u64 =
-        common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0);
+    let min_filelist: u64 = read_from_file(&"/proc/sys/vm/min_filelist_kbytes").unwrap_or(0);
     static RAM_SWAP_WEIGHT: Lazy<u64> = Lazy::new(|| {
-        common::read_file_to_u64(
-            Path::new("/")
+        read_from_file(
+            &Path::new("/")
                 .join(RESOURCED_CONFIG_DIR)
                 .join(RAM_SWAP_WEIGHT_FILENAME),
         )

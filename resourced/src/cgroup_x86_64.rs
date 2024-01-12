@@ -17,7 +17,7 @@ use glob::glob;
 use log::info;
 use once_cell::sync::Lazy;
 
-use crate::common;
+use crate::common::read_from_file;
 use crate::cpu_utils;
 use crate::feature;
 
@@ -170,12 +170,11 @@ fn get_intel_hybrid_core_num(root: &Path) -> Result<(u32, u32)> {
 
     // Frequency of P-core.
     // Intel platform policy0(cpu0) would be always P-core.
-    let pcore_freq = common::read_file_to_u64(
-        root.join("sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq"),
-    )? as u32;
+    let pcore_freq: u32 =
+        read_from_file(&root.join("sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq"))?;
 
     let core_freq_vec = glob(&sysfs_path)?
-        .map(|core_freq_path| Ok(common::read_file_to_u64(core_freq_path?)? as u32))
+        .map(|core_freq_path| read_from_file(&core_freq_path?))
         .collect::<Result<Vec<u32>>>()?;
 
     // Total number of available cpus
