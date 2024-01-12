@@ -198,6 +198,11 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   return counters;
 }
 
+void CountersService::HandleVPNSocketConnectionEvent(
+    const SocketConnectionEvent& msg) {
+  // TODO(b/177389948): Add implementation.
+}
+
 void CountersService::OnPhysicalDeviceAdded(const std::string& ifname) {
   std::string rx_chain = kRxTag + ifname;
   std::string tx_chain = kTxTag + ifname;

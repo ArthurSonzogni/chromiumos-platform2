@@ -108,6 +108,9 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   NotifySocketConnectionEventResponse NotifySocketConnectionEvent(
       const NotifySocketConnectionEventRequest& request) override;
 
+  NotifyVPNSocketConnectionEventResponse NotifyVPNSocketConnectionEvent(
+      const NotifyVPNSocketConnectionEventRequest& request) override;
+
   SetFeatureFlagResponse SetFeatureFlag(
       const SetFeatureFlagRequest& request) override;
 

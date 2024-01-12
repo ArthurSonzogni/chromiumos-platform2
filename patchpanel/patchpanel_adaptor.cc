@@ -462,6 +462,13 @@ PatchpanelAdaptor::NotifySocketConnectionEvent(
   return {};
 }
 
+NotifyVPNSocketConnectionEventResponse
+PatchpanelAdaptor::NotifyVPNSocketConnectionEvent(
+    const NotifyVPNSocketConnectionEventRequest& request) {
+  manager_->NotifyVPNSocketConnectionEvent(request);
+  return {};
+}
+
 SetFeatureFlagResponse PatchpanelAdaptor::SetFeatureFlag(
     const SetFeatureFlagRequest& request) {
   bool old_value = manager_->SetFeatureFlag(request.flag(), request.enabled());

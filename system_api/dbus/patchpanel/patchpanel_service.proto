@@ -1086,3 +1086,12 @@ message SetFeatureFlagResponse {
   // Value of the enabled flag before the call to SetFeatureFlag.
   bool enabled = 1;
 }
+
+// Notification for a socket connection event of an ARC VPN app.
+// Currently used for ARC VPN traffic counting.
+message NotifyVPNSocketConnectionEventRequest {
+  SocketConnectionEvent msg = 1;
+}
+
+// Response to a NotifyVPNSocketConnectionEvent call.
+message NotifyVPNSocketConnectionEventResponse {}

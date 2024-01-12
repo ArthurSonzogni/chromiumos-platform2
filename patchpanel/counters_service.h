@@ -89,6 +89,10 @@ class CountersService {
   // any failure.
   std::map<CounterKey, Counter> GetCounters(
       const std::set<std::string>& devices);
+  // Mark socket connections opened by ARC VPN app with correct source mark.
+  // Note that the sockets opened by ARC VPN app can be used for either
+  // tunneling or non-tunneling.
+  void HandleVPNSocketConnectionEvent(const SocketConnectionEvent& msg);
 
  private:
   bool AddAccountingRule(const std::string& chain_name, TrafficSource source);

@@ -163,6 +163,11 @@ class Manager : public ForwardingService {
   void NotifySocketConnectionEvent(
       const NotifySocketConnectionEventRequest& request);
 
+  // Apply changes based on the socket connection event from ARC VPN.
+  // Currently this is only used for ARC VPN traffic counting.
+  void NotifyVPNSocketConnectionEvent(
+      const NotifyVPNSocketConnectionEventRequest& request);
+
   // Set feature enabled flag.
   bool SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
                       bool enabled);

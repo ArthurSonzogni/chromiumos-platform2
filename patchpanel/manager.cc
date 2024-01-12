@@ -1303,11 +1303,19 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
 void Manager::NotifySocketConnectionEvent(
     const NotifySocketConnectionEventRequest& request) {
   if (!request.has_msg()) {
-    LOG(ERROR)
-        << ": no message attached in socket connection event notification.";
+    LOG(ERROR) << __func__ << ": no message attached.";
     return;
   }
   qos_svc_->ProcessSocketConnectionEvent(request.msg());
+}
+
+void Manager::NotifyVPNSocketConnectionEvent(
+    const NotifyVPNSocketConnectionEventRequest& request) {
+  if (!request.has_msg()) {
+    LOG(ERROR) << __func__ << ": no message attached.";
+    return;
+  }
+  counters_svc_->HandleVPNSocketConnectionEvent(request.msg());
 }
 
 bool Manager::SetFeatureFlag(

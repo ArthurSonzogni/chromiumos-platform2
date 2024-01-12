@@ -341,6 +341,18 @@
       </arg>
     </method>
 
+    <method name="NotifyVPNSocketConnectionEvent">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyVPNSocketConnectionEventRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyVPNSocketConnectionEventResponse" />
+      </arg>
+    </method>
+
     <method name="SetFeatureFlag">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
