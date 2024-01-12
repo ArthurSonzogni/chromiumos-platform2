@@ -24,7 +24,8 @@ class CroshShellTool : public SubprocessTool {
 
   ~CroshShellTool() override = default;
 
-  bool Run(const base::ScopedFD& infd,
+  bool Run(const base::ScopedFD& shell_lifeline_fd,
+           const base::ScopedFD& infd,
            const base::ScopedFD& outfd,
            std::string* out_id,
            brillo::ErrorPtr* error);

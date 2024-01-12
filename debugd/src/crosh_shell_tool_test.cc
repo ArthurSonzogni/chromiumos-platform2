@@ -9,9 +9,10 @@
 TEST(CroshShellTool, Run) {
   debugd::CroshShellTool crosh_tool;
 
+  const base::ScopedFD shell_lifeline_fd;
   const base::ScopedFD infd;
   const base::ScopedFD outfd;
   std::string id;
   brillo::ErrorPtr error;
-  EXPECT_TRUE(crosh_tool.Run(infd, outfd, &id, &error));
+  EXPECT_TRUE(crosh_tool.Run(shell_lifeline_fd, infd, outfd, &id, &error));
 }

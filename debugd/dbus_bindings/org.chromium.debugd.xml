@@ -7,9 +7,15 @@
       <tp:docstring>
         Starts a crosh shell instance.
       </tp:docstring>
-      <arg name="lifeline_fd" type="h" direction="in">
+      <arg name="shell_lifeline_fd" type="h" direction="in">
         <tp:docstring>
-          Lifeline file descriptor for managing process lifetime.
+          Lifeline file descriptor that is open until the shell closes.
+        </tp:docstring>
+      </arg>
+      <arg name="caller_lifeline_fd" type="h" direction="in">
+        <tp:docstring>
+          Lifeline file descriptor that is open while the caller is using
+          the shell.
         </tp:docstring>
       </arg>
       <arg name="infd" type="h" direction="in">

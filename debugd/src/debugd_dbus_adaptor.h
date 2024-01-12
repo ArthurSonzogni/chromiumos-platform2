@@ -78,7 +78,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
   bool CroshShellStart(brillo::ErrorPtr* error,
-                       const base::ScopedFD& lifeline_fd,
+                       const base::ScopedFD& shell_lifeline_fd,
+                       const base::ScopedFD& caller_lifeline_fd,
                        const base::ScopedFD& infd,
                        const base::ScopedFD& outfd,
                        std::string* handle) override;
