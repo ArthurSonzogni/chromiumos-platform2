@@ -21,7 +21,6 @@ use std::time::Instant;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
-use log::debug;
 use log::warn;
 use log::Level;
 use log::LevelFilter;
@@ -426,46 +425,48 @@ fn replay_line(syslogger: &BasicLogger, prefix: &str, s: &[u8]) {
         return;
     }
 
+    match parse_rfc3164_record(line) {
+        Ok((contents, level)) => {
+            syslogger.log(
+                &Record::builder()
+                    .args(format_args!("{} {}", prefix, contents))
+                    .level(level)
+                    .build(),
+            );
+        },
+        Err(e) => {
+            warn!("{}", e);
+        }
+    }
+}
+
+fn parse_rfc3164_record(line: &str) -> Result<(&str, Level)> {
     let mut elements = line.splitn(2, ": ");
     let header = elements.next().unwrap();
-    let contents = match elements.next() {
-        Some(c) => c,
-        None => {
-            warn!(
+    let contents = elements.next().ok_or_else(|| {
+            anyhow!(
                 "Failed to split on colon: header: {}, line {:x?}, len {}",
                 header,
                 line.as_bytes(),
                 line.len()
-            );
-            return;
-        }
-    };
+            )
+    })?;
 
     // Now trim <11>hiberman into <11, and parse 11 out of the combined
     // priority + facility.
     let facprio_string = header.split_once('>').map_or(header, |x| x.0);
     if facprio_string.len() < 2 {
-        warn!("Failed to extract facprio string for next line, using debug");
-        debug!("{}", contents);
-        return;
+        return Err(anyhow!("Failed to extract facprio string for next line, '{}'", contents));
     }
 
-    let facprio: u8 = match facprio_string[1..].parse() {
-        Ok(i) => i,
+    let level = match facprio_string[1..].parse::<u8>() {
+        Ok(v) => level_from_u8(v & 7),
         Err(_) => {
-            warn!("Failed to parse facprio for next line, using debug");
-            debug!("{}", contents);
-            return;
+            return Err(anyhow!("Failed to parse facprio for next line, '{}'", contents));
         }
     };
 
-    let level = level_from_u8(facprio & 7);
-    syslogger.log(
-        &Record::builder()
-            .args(format_args!("{} {}", prefix, contents))
-            .level(level)
-            .build(),
-    );
+    Ok((contents, level))
 }
 
 fn level_from_u8(value: u8) -> Level {
@@ -502,4 +503,30 @@ fn create_syslogger() -> BasicLogger {
 
     let logger = syslog::unix(formatter).expect("Could not connect to syslog");
     BasicLogger::new(logger)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_rfc3164_record_good() {
+        let l = "<11>hiberman: R [src/hiberman.rs:529] Hello 2004";
+        let rec = parse_rfc3164_record(l).unwrap();
+        assert_eq!(rec, ("R [src/hiberman.rs:529] Hello 2004", Level::Error));
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to split on colon: header: ")]
+    fn test_parse_rfc3164_record_bad_colon() {
+        let l = "<11>hiberman R [src/hiberman.rs:529] Hello 2004";
+        parse_rfc3164_record(l).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to parse facprio for next line, ")]
+    fn test_parse_rfc3164_record_bad_facprio() {
+        let l = "<XX>hiberman: R [src/hiberman.rs:529] Hello 2004";
+        parse_rfc3164_record(l).unwrap();
+    }
 }
