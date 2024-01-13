@@ -8,7 +8,6 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Cursor;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
@@ -16,6 +15,7 @@ use std::path::PathBuf;
 use std::str;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::time::Duration;
 use std::time::Instant;
 
 use anyhow::anyhow;
@@ -143,47 +143,26 @@ impl Hiberlog {
 
     /// Log a record.
     fn log_record(&mut self, record: &Record) {
-        let mut buf = [0u8; 1024];
+        let duration = self.start.elapsed();
+        let l = record_to_rfc3164_line(record, self.pid, duration);
 
-        // If sending to the syslog, just forward there and exit.
-        if matches!(self.out, HiberlogOut::Syslog) {
-            self.syslogger.log(record);
-            return;
-        }
+        match &mut self.out {
+            HiberlogOut::BufferInMemory => {
+                if self.to_kmsg {
+                    let _ = self.kmsg.write_all(&l);
+                }
 
-        let res = {
-            let mut buf_cursor = Cursor::new(&mut buf[..]);
-            let facprio = priority_from_level(record.level()) + (Facility::LOG_USER as usize);
-            if let Some(file) = record.file() {
-                let duration = self.start.elapsed();
-                write!(
-                    &mut buf_cursor,
-                    "<{}>{}: {}.{:03} {} [{}:{}] ",
-                    facprio,
-                    LOG_PREFIX,
-                    duration.as_secs(),
-                    duration.subsec_millis(),
-                    self.pid,
-                    file,
-                    record.line().unwrap_or(0)
-                )
-            } else {
-                write!(&mut buf_cursor, "<{}>{}: ", facprio, LOG_PREFIX)
+                self.pending.push(l)
             }
-            .and_then(|()| writeln!(&mut buf_cursor, "{}", record.args()))
-            .map(|()| buf_cursor.position() as usize)
-        };
+            HiberlogOut::File(f) => {
+                if self.to_kmsg {
+                    let _ = self.kmsg.write_all(&l);
+                }
 
-        if let Ok(len) = &res {
-            if self.to_kmsg {
-                let _ = self.kmsg.write_all(&buf[..*len]);
+                let _ = f.write_all(&l);
             }
-
-            if let HiberlogOut::File(f) = &mut self.out {
-                let _ = f.write_all(&buf[..*len]);
-            } else {
-                self.pending.push(buf[..*len].to_vec());
-            }
+            // If sending to the syslog, just forward there
+            HiberlogOut::Syslog => self.syslogger.log(record)
         }
     }
 
@@ -469,6 +448,29 @@ fn parse_rfc3164_record(line: &str) -> Result<(&str, Level)> {
     Ok((contents, level))
 }
 
+fn record_to_rfc3164_line(record: &Record, pid: u32, duration: Duration) -> Vec<u8> {
+    let mut buf = Vec::new();
+    let facprio = priority_from_level(record.level()) + (Facility::LOG_USER as usize);
+    if let Some(file) = record.file() {
+        let _ = writeln!(
+            &mut buf,
+            "<{}>{}: {}.{:03} {} [{}:{}] {}",
+            facprio,
+            LOG_PREFIX,
+            duration.as_secs(),
+            duration.subsec_millis(),
+            pid,
+            file,
+            record.line().unwrap_or(0),
+            record.args()
+        );
+    } else {
+        let _ = writeln!(&mut buf, "<{}>{}: {}", facprio, LOG_PREFIX, record.args());
+    }
+
+    buf
+}
+
 fn level_from_u8(value: u8) -> Level {
     match value {
         0 => Level::Error,
@@ -528,5 +530,26 @@ mod test {
     fn test_parse_rfc3164_record_bad_facprio() {
         let l = "<XX>hiberman: R [src/hiberman.rs:529] Hello 2004";
         parse_rfc3164_record(l).unwrap();
+    }
+
+    #[test]
+    fn test_record_to_rfc3164_line_no_file() {
+        let r = Record::builder()
+            .args(format_args!("XXX"))
+            .level(Level::Info)
+            .build();
+        let m = record_to_rfc3164_line(&r, 0, Duration::new(0, 0));
+        assert_eq!(str::from_utf8(&m).unwrap(), "<14>hiberman: XXX\n");
+    }
+
+    #[test]
+    fn test_record_to_rfc3164_line_file() {
+        let r = Record::builder()
+            .args(format_args!("XXX"))
+            .level(Level::Info)
+            .file(Some("/the/file"))
+            .build();
+        let m = record_to_rfc3164_line(&r, 0, Duration::new(0, 0));
+        assert_eq!(str::from_utf8(&m).unwrap(), "<14>hiberman: 0.000 0 [/the/file:0] XXX\n");
     }
 }
