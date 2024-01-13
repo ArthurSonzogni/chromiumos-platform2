@@ -184,7 +184,7 @@ if (use.test) {
       ":libsecagent",
       "proto:security_xdr_events_proto",
       "//common-mk/testrunner",
-      "//featured:libfake_platform_features",
     ]
+    pkg_deps = [ "libfake_platform_features" ]
   }
 }

@@ -78,7 +78,7 @@ static_library("libdlp_static") {
     "kernel_version_tools.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//featured:libfeatures" ]
+  pkg_deps = [ "libfeatures" ]
 }
 
 executable("dlp_init") {
@@ -144,9 +144,9 @@ if (use.test) {
     deps = [
       ":libdlp_static",
       "//common-mk/testrunner:testrunner",
-      "//featured:libfake_platform_features",
       "//metrics:metrics_test_support",
     ]
+    pkg_deps = [ "libfake_platform_features" ]
   }
 }
 
@@ -170,10 +170,12 @@ if (use.fuzzer) {
     deps = [
       ":dlp_adaptor_fuzzer_proto",
       ":libdlp_static",
-      "//featured:libfake_platform_features",
       "//metrics:metrics_test_support",
     ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libfake_platform_features",
+    ]
   }
   config("local_proto_include") {
     include_dirs = [ "${sysroot}/usr/include/dlp/proto_bindings/" ]

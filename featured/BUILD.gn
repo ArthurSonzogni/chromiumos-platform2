@@ -11,6 +11,7 @@ group("all") {
     ":featured",
     ":libc_fake_feature_library",
     ":libfake_platform_features",
+    ":libfake_platform_features_pkg_config",
     ":libfeatures",
     ":libfeatures_c",
     ":libstore_impl",
@@ -123,6 +124,14 @@ shared_library("libfake_platform_features") {
   sources = [ "fake_platform_features.cc" ]
   all_dependent_configs = [ ":early_boot_state_checks_config" ]
   configs += [ ":target_defaults" ]
+}
+
+generate_pkg_config("libfake_platform_features_pkg_config") {
+  name = "libfake_platform_features"
+  description = "Fake libfeatures for tests"
+  version = "0.0"
+  libs = [ "-lfake_platform_features" ]
+  install = true
 }
 
 shared_library("libc_fake_feature_library") {
