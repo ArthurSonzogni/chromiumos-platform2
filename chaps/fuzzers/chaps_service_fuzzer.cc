@@ -906,7 +906,7 @@ class ChapsServiceFuzzer {
 class Environment {
  public:
   Environment() {
-    logging::SetMinLogLevel(logging::LOG_FATAL);
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);
     base::CommandLine::Init(0, nullptr);
     TestTimeouts::Initialize();
   }
