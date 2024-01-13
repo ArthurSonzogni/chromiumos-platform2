@@ -319,7 +319,7 @@ bool IsProtoValidUtf8Only(const Message& message, int level = 0) {
 
 class Environment {
  public:
-  Environment() { logging::SetMinLogLevel(logging::LOG_FATAL); }
+  Environment() { logging::SetMinLogLevel(logging::LOGGING_FATAL); }
 };
 
 DEFINE_PROTO_FUZZER(const u2f::WebAuthnFuzzerData& input) {
