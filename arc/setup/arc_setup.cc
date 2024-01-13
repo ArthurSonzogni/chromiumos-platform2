@@ -681,6 +681,45 @@ bool SetRestoreconLastXattr(const base::FilePath& mutable_data_dir,
   return true;
 }
 
+void DeleteLegacyMediaProviderDatabases(
+    const base::FilePath& android_data_directory,
+    const base::FilePath& android_data_old_directory) {
+  const base::FilePath databases_directory = android_data_directory.Append(
+      "data/data/com.android.providers.media/databases");
+  if (!MoveDirIntoDataOldDir(databases_directory, android_data_old_directory)) {
+    PLOG(ERROR) << "Failed to remove legacy MediaProvider databases in "
+                << databases_directory;
+  }
+}
+
+void DeletePossiblyBrokenMediaProviderDatabases(
+    const base::FilePath& android_data_directory,
+    const base::FilePath& android_data_old_directory) {
+  // Remove the databases directory if |android_data_directory| does not contain
+  // a file named |.mediaprovider_databases_cleared|, which is created after the
+  // databases directory is removed, or when the databases directory does not
+  // exist (in which case MoveDirIntoDataOldDir() still succeeds).
+  const base::FilePath databases_cleared_file =
+      android_data_directory.Append(".mediaprovider_databases_cleared");
+  if (base::PathExists(databases_cleared_file)) {
+    return;
+  }
+
+  const base::FilePath databases_directory = android_data_directory.Append(
+      "data/data/com.android.providers.media.module/databases");
+  LOG(INFO) << "Removing possibly broken MediaProvider databases in "
+            << databases_directory;
+  if (!MoveDirIntoDataOldDir(databases_directory, android_data_old_directory)) {
+    PLOG(ERROR) << "Failed to remove MediaProvider databases in "
+                << databases_directory;
+    return;
+  }
+
+  if (!base::WriteFile(databases_cleared_file, "")) {
+    PLOG(ERROR) << "Failed to create " << databases_cleared_file;
+  }
+}
+
 }  // namespace
 
 // A struct that holds all the FilePaths ArcSetup uses.
@@ -2503,6 +2542,19 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData(arc_paths_->android_mutable_source);
 
+  const AndroidSdkVersion system_sdk_version = GetSdkVersion();
+  if (system_sdk_version == AndroidSdkVersion::ANDROID_R) {
+    // Legacy MediaProvider databases should not be used in ARC R+.
+    DeleteLegacyMediaProviderDatabases(arc_paths_->android_data_directory,
+                                       arc_paths_->android_data_old_directory);
+    // Clear possibly broken MediaProvider databases (b/319460942).
+    // Since the function creates a file inside |android_data_directory|, call
+    // it after SetUpAndroidData() to ensure the existence of the directory.
+    DeletePossiblyBrokenMediaProviderDatabases(
+        arc_paths_->android_data_directory,
+        arc_paths_->android_data_old_directory);
+  }
+
   InstallLinksToHostSideCode();
 
   // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
@@ -2525,7 +2577,7 @@ void ArcSetup::OnBootContinue() {
   EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait", "arc-sdcard",
                           env_chromeos_user, env_container_pid}));
 
-  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
+  if (system_sdk_version == AndroidSdkVersion::ANDROID_P) {
     EXIT_IF(!LaunchAndWait({"/sbin/initctl", "start", "--no-wait",
                             "arcpp-media-sharing-services",
                             "IS_ANDROID_CONTAINER_RVC=false"}));
