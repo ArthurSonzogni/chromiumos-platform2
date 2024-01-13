@@ -25,7 +25,7 @@ class Environment {
     target_path_ = output_dir_.Append("bt_firmware.txt");
 
     // Disable logging per instructions.
-    logging::SetMinLogLevel(logging::LOG_FATAL);
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
   bool CreateDumpFile(const void* data, size_t size) {
