@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
 
@@ -685,6 +686,13 @@ class BRILLO_EXPORT Platform {
 
   // Copies from to to.
   virtual bool Copy(const base::FilePath& from, const base::FilePath& to);
+
+  // Calls statfs() on path.
+  //
+  // Parameters
+  //   path - path to statvfs on
+  //   fs - buffer to store result in
+  virtual bool StatFS(const base::FilePath& path, struct statfs* fs);
 
   // Calls statvfs() on path.
   //

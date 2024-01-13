@@ -20,6 +20,7 @@
 #include <sys/mount.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -1059,6 +1060,12 @@ bool Platform::Copy(const FilePath& from, const FilePath& to) {
   DCHECK(to.IsAbsolute()) << "to=" << to;
 
   return base::CopyDirectory(from, to, true);
+}
+
+bool Platform::StatFS(const FilePath& path, struct statfs* fs) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
+  return statfs(path.value().c_str(), fs) == 0;
 }
 
 bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {

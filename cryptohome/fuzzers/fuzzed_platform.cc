@@ -1184,6 +1184,13 @@ bool FuzzedPlatform::Copy(const base::FilePath& from,
   }
 }
 
+bool FuzzedPlatform::StatFS(const base::FilePath& path, struct statfs* fs) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(fs);
+  // FS stats are not simulated, hence return random result.
+  return fuzzed_data_provider_.ConsumeBool();
+}
+
 bool FuzzedPlatform::StatVFS(const base::FilePath& path, struct statvfs* vfs) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(vfs);

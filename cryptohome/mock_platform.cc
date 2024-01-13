@@ -190,6 +190,8 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::AmountOfFreeDiskSpace));
+  ON_CALL(*this, StatFS(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::StatFS));
   ON_CALL(*this, StatVFS(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::StatVFS));
 

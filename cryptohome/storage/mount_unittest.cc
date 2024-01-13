@@ -27,7 +27,9 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <linux/magic.h>
 #include <policy/libpolicy.h>
+#include <sys/statfs.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -60,8 +62,8 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 
 namespace {
-constexpr int kEphemeralVFSFragmentSize = 1 << 10;
-constexpr int kEphemeralVFSSize = 1 << 12;
+constexpr int kEphemeralFSFragmentSize = 1 << 10;
+constexpr int kEphemeralFSSize = 1 << 12;
 
 struct Attributes {
   mode_t mode;
@@ -617,7 +619,7 @@ class EphemeralSystemTest : public ::testing::Test {
     mock_mount_interface_ = mock_mount_helper_interface.get();
     mount_ = new Mount(&platform_, homedirs_.get(),
                        std::move(mock_mount_helper_interface));
-    SetupVFSMock();
+    SetupFSMock();
     EXPECT_CALL(*mock_mount_interface_, CanPerformEphemeralMount)
         .WillOnce(Return(true));
   }
@@ -629,7 +631,7 @@ class EphemeralSystemTest : public ::testing::Test {
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
   MockMounterHelperInterface* mock_mount_interface_;
-  struct statvfs ephemeral_statvfs_;
+  struct statfs ephemeral_statfs_;
 
   base::FilePath EphemeralBackingFile(const Username& username) {
     const ObfuscatedUsername obfuscated_username =
@@ -648,22 +650,23 @@ class EphemeralSystemTest : public ::testing::Test {
   }
 
  private:
-  void SetupVFSMock() {
-    ephemeral_statvfs_ = {0};
-    ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
-    ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
+  void SetupFSMock() {
+    ephemeral_statfs_ = {0};
+    ephemeral_statfs_.f_type = TMPFS_MAGIC;
+    ephemeral_statfs_.f_frsize = kEphemeralFSFragmentSize;
+    ephemeral_statfs_.f_blocks = kEphemeralFSSize / kEphemeralFSFragmentSize;
 
-    ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+    ON_CALL(platform_, StatFS(base::FilePath(kEphemeralCryptohomeDir), _))
         .WillByDefault(
-            DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
+            DoAll(SetArgPointee<1>(ephemeral_statfs_), Return(true)));
   }
 };
 
 namespace {
 
-TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
-  // Checks the case when ephemeral statvfs call fails.
-  ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+TEST_F(EphemeralSystemTest, EpmeneralMount_FSFailure) {
+  // Checks the case when ephemeral statfs call fails.
+  ON_CALL(platform_, StatFS(base::FilePath(kEphemeralCryptohomeDir), _))
       .WillByDefault(Return(false));
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),

@@ -319,6 +319,10 @@ class MockPlatform : public Platform {
               (override));
   MOCK_METHOD(base::Time, GetCurrentTime, (), (const, override));
   MOCK_METHOD(bool,
+              StatFS,
+              (const base::FilePath&, struct statfs*),
+              (override));
+  MOCK_METHOD(bool,
               StatVFS,
               (const base::FilePath&, struct statvfs*),
               (override));

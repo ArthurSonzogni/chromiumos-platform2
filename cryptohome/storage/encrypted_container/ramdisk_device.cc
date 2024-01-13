@@ -4,7 +4,8 @@
 
 #include "cryptohome/storage/encrypted_container/ramdisk_device.h"
 
-#include <sys/stat.h>
+#include <linux/magic.h>
+#include <sys/statfs.h>
 
 #include <memory>
 #include <string>
@@ -25,8 +26,6 @@ bool RamdiskDevice::Create() {
     LOG(ERROR) << "Can't create directory for ephemeral backing file";
     return false;
   }
-  // TODO(dlunev): do stat VFS on the created backing file to make sure it is
-  // on tmpfs.
   return LoopbackDevice::Create();
 }
 
@@ -51,14 +50,19 @@ bool RamdiskDevice::Purge() {
 std::unique_ptr<RamdiskDevice> RamdiskDevice::Generate(
     const base::FilePath& backing_file_path, Platform* platform) {
   // Determine ephemeral cryptohome size.
-  struct statvfs vfs;
-  if (!platform->StatVFS(base::FilePath(backing_file_path.DirName().DirName()),
-                         &vfs)) {
+  struct statfs fs;
+  if (!platform->StatFS(base::FilePath(backing_file_path.DirName().DirName()),
+                        &fs)) {
     PLOG(ERROR) << "Can't determine size for ephemeral device";
     return nullptr;
   }
 
-  const int64_t sparse_size = static_cast<int64_t>(vfs.f_blocks * vfs.f_frsize);
+  if (fs.f_type != TMPFS_MAGIC) {
+    LOG(ERROR) << "The backing file is not over tmpfs";
+    return nullptr;
+  }
+
+  const int64_t sparse_size = static_cast<int64_t>(fs.f_blocks * fs.f_frsize);
 
   BackingDeviceConfig config{
       .type = BackingDeviceType::kLoopbackDevice,

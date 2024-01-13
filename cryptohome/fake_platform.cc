@@ -460,6 +460,10 @@ bool FakePlatform::Stat(const base::FilePath& path, base::stat_wrapper_t* buf) {
   return true;
 }
 
+bool FakePlatform::StatFS(const base::FilePath& path, struct statfs* fs) {
+  return real_platform_.StatFS(TestFilePath(path), fs);
+}
+
 bool FakePlatform::StatVFS(const base::FilePath& path, struct statvfs* vfs) {
   return real_platform_.StatVFS(TestFilePath(path), vfs);
 }

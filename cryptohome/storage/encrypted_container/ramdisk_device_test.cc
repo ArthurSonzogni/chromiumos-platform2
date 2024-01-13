@@ -9,6 +9,7 @@
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <linux/magic.h>
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
@@ -25,27 +26,28 @@ namespace {
 constexpr char kBackingBase[] = "/mytmpfs";
 constexpr char kBackingDir[] = "dir";
 constexpr char kBackingFile[] = "file";
-constexpr int kEphemeralVFSFragmentSize = 1 << 10;
-constexpr int kEphemeralVFSSize = 1 << 12;
+constexpr int kEphemeralfsFragmentSize = 1 << 10;
+constexpr int kEphemeralfsSize = 1 << 12;
 }  // namespace
 
 class RamdiskDeviceTest : public ::testing::Test {
  public:
-  RamdiskDeviceTest() { SetupVFSMock(); }
+  RamdiskDeviceTest() { SetupFSMock(); }
 
  protected:
-  void SetupVFSMock() {
-    ephemeral_statvfs_ = {0};
-    ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
-    ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
+  void SetupFSMock() {
+    ephemeral_statfs_ = {0};
+    ephemeral_statfs_.f_type = TMPFS_MAGIC;
+    ephemeral_statfs_.f_frsize = kEphemeralfsFragmentSize;
+    ephemeral_statfs_.f_blocks = kEphemeralfsSize / kEphemeralfsFragmentSize;
 
-    ON_CALL(platform_, StatVFS(base::FilePath(kBackingBase), _))
+    ON_CALL(platform_, StatFS(base::FilePath(kBackingBase), _))
         .WillByDefault(
-            DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
+            DoAll(SetArgPointee<1>(ephemeral_statfs_), Return(true)));
   }
 
   NiceMock<MockPlatform> platform_;
-  struct statvfs ephemeral_statvfs_;
+  struct statfs ephemeral_statfs_;
 };
 
 namespace {
@@ -67,11 +69,26 @@ TEST_F(RamdiskDeviceTest, Create_Success) {
   ASSERT_FALSE(platform_.FileExists(ephemeral_sparse_file));
 }
 
-TEST_F(RamdiskDeviceTest, Create_FailVFS) {
+TEST_F(RamdiskDeviceTest, Create_WrongFS) {
+  const base::FilePath ephemeral_root(kBackingBase);
+  const base::FilePath ephemeral_sparse_file =
+      ephemeral_root.Append(kBackingDir).Append(kBackingFile);
+
+  struct statfs ephemeral_statfs = {
+      .f_type = EXT4_SUPER_MAGIC,
+      .f_blocks = kEphemeralfsSize / kEphemeralfsFragmentSize,
+      .f_frsize = kEphemeralfsFragmentSize,
+  };
+  EXPECT_CALL(platform_, StatFS(base::FilePath(kBackingBase), _))
+      .WillOnce(DoAll(SetArgPointee<1>(ephemeral_statfs), Return(true)));
+  EXPECT_FALSE(RamdiskDevice::Generate(ephemeral_sparse_file, &platform_));
+}
+
+TEST_F(RamdiskDeviceTest, Create_FailFS) {
   const base::FilePath ephemeral_sparse_file =
       base::FilePath(kBackingBase).Append(kBackingDir).Append(kBackingFile);
 
-  EXPECT_CALL(platform_, StatVFS(base::FilePath(kBackingBase), _))
+  EXPECT_CALL(platform_, StatFS(base::FilePath(kBackingBase), _))
       .WillOnce(Return(false));
   EXPECT_FALSE(RamdiskDevice::Generate(ephemeral_sparse_file, &platform_));
 }

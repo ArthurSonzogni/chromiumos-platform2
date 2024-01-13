@@ -181,6 +181,7 @@ class FuzzedPlatform : public Platform {
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   base::Time GetCurrentTime() const override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
+  bool StatFS(const base::FilePath& path, struct statfs* fs) override;
   bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool SameVFS(const base::FilePath& mnt_a,
                const base::FilePath& mnt_b) override;

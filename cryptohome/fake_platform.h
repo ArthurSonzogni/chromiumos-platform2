@@ -11,6 +11,7 @@
 #include <random>
 #include <string>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/types.h>
 #include <unordered_map>
 #include <utility>
@@ -54,6 +55,7 @@ class FakePlatform final : public Platform {
   base::FilePath FindFilesystemDevice(
       const base::FilePath& filesystem) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
+  bool StatFS(const base::FilePath& path, struct statfs* fs) override;
   bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool TouchFileDurable(const base::FilePath& path) override;
   bool DeleteFile(const base::FilePath& path) override;
