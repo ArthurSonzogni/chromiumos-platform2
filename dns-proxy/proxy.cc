@@ -994,9 +994,9 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
 
   switch (msg.mode()) {
     case net_base::RTNLMessage::kModeAdd: {
-      const auto ifa_addr = msg.GetIfaAddress();
+      const auto ifa_addr = msg.GetAddress();
       if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
-        LOG(ERROR) << *this << " IFA_ADDRESS in RTNL message is invalid";
+        LOG(ERROR) << *this << " RTNL message does not have valid IPv6 address";
         return;
       }
 

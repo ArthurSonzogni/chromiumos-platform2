@@ -166,16 +166,12 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
   }
 
   // Interface address is added.
-  if (msg.HasAttribute(IFA_ADDRESS)) {
-    const auto bytes = msg.GetAttribute(IFA_ADDRESS);
-    const auto addr = net_base::IPv4Address::CreateFromBytes(bytes);
-    if (!addr) {
-      LOG(WARNING) << "Expected IFA_ADDRESS length "
-                   << net_base::IPv4Address::kAddressLength << " but got "
-                   << bytes.size();
-      return;
-    }
-    dev_socket_->addr = *addr;
+  if (const auto addr = msg.GetAddress();
+      addr && addr->GetFamily() == net_base::IPFamily::kIPv4) {
+    dev_socket_->addr = addr->ToIPv4CIDR()->address();
+  } else {
+    LOG(ERROR) << "RTNLMessage does not have a valid IPv4 address";
+    return;
   }
 
   // Broadcast address is added.

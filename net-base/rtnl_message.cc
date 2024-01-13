@@ -1059,10 +1059,17 @@ std::string RTNLMessage::GetIflaIfname() const {
   return GetStringAttribute(IFLA_IFNAME);
 }
 
-std::optional<IPCIDR> RTNLMessage::GetIfaAddress() const {
-  return IPCIDR::CreateFromBytesAndPrefix(GetAttribute(IFA_ADDRESS),
-                                          address_status_.prefix_len,
-                                          FromSAFamily(family_));
+std::optional<IPCIDR> RTNLMessage::GetAddress() const {
+  // Use IFA_LOCAL if it's not empty and fallback to IFA_ADDRESS. According the
+  // kernel comment (/usr/include/linux/if_addr.h), for a point-to-point link,
+  // IFA_LOCAL is the local address on the interface while IFA_ADDRESS is the
+  // peer one. Since IFA_LOCAL won't always be set (e.g., for some IPv6
+  // addresses), we also need to query IFA_ADDRESS.
+  std::vector<uint8_t> addr_bytes = HasAttribute(IFA_LOCAL)
+                                        ? GetAttribute(IFA_LOCAL)
+                                        : GetAttribute(IFA_ADDRESS);
+  return IPCIDR::CreateFromBytesAndPrefix(
+      addr_bytes, address_status_.prefix_len, FromSAFamily(family_));
 }
 
 uint32_t RTNLMessage::GetRtaTable() const {
@@ -1212,7 +1219,7 @@ std::string RTNLMessage::ToString() const {
         details += " kind " + link_status_.kind.value();
       break;
     case RTNLMessage::kTypeAddress:
-      if (const auto addr = GetIfaAddress(); addr.has_value()) {
+      if (const auto addr = GetAddress(); addr.has_value()) {
         details = base::StringPrintf(
             "%s if %s[%d] flags %s scope %d", addr->ToString().c_str(),
             IndexToName(static_cast<unsigned int>(interface_index_)).c_str(),
@@ -1222,7 +1229,8 @@ std::string RTNLMessage::ToString() const {
                 : "0",
             address_status_.scope);
       } else {
-        LOG(ERROR) << "RTNL address message does not have a valid IFA_ADDRESS";
+        LOG(ERROR)
+            << "RTNL address message does not have a valid local address";
       }
       break;
     case RTNLMessage::kTypeRoute:

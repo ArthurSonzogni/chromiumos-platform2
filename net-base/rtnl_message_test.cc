@@ -550,7 +550,7 @@ class RTNLMessageTest : public Test {
 
     EXPECT_TRUE(msg->HasAttribute(IFA_ADDRESS));
     EXPECT_EQ(msg->GetAttribute(IFA_ADDRESS), address.address().ToBytes());
-    EXPECT_EQ(msg->GetIfaAddress(), address);
+    EXPECT_EQ(msg->GetAddress(), address);
   }
 
   void TestParseRoute(base::span<const uint8_t> packet,

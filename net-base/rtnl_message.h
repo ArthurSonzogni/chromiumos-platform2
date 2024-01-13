@@ -249,9 +249,10 @@ class BRILLO_EXPORT RTNLMessage {
   // returns the IFLA_IFNAME attribute as standard string. This should only be
   // used for RTNLMessages of type kTypeLink.
   std::string GetIflaIfname() const;
-  // Returns the IFA_ADDRESS attribute. This should only be used for
-  // RTNLMessages of type kTypeAddress.
-  std::optional<IPCIDR> GetIfaAddress() const;
+  // Returns the local address. IFA_LOCAL will be looked up at first, and if it
+  // does not exist, value of IFA_ADDRESS will be used. This should only be used
+  // for RTNLMessages of type kTypeAddress.
+  std::optional<IPCIDR> GetAddress() const;
   // Returns the routing table id of RTNLMessages with type kTypeRoute.
   uint32_t GetRtaTable() const;
   // Returns the RTA_DST attribute for RTNLMessages of type kTypeRoute.
