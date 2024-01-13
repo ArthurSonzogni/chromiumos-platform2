@@ -17,6 +17,12 @@
 
 namespace cryptohome {
 
+// RamdiskDevice is a variation of a loopback device, created on top
+// of a tmpfs.
+// The assumption is the |backing_file_path| given to the loopback device is
+// the follwing format:
+// /<tmpfs device>/directory/name.
+
 class RamdiskDevice final : public LoopbackDevice {
  public:
   ~RamdiskDevice() override = default;
@@ -27,7 +33,7 @@ class RamdiskDevice final : public LoopbackDevice {
   BackingDeviceType GetType() override { return LoopbackDevice::GetType(); }
 
   static std::unique_ptr<RamdiskDevice> Generate(
-      const std::string& backing_file_name, Platform* platform);
+      const base::FilePath& backing_file_path, Platform* platform);
 
  private:
   RamdiskDevice(const BackingDeviceConfig& config, Platform* platform);

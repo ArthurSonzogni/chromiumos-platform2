@@ -19,6 +19,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/mount_constants.h"
 
 namespace {
 // Size of logical volumes to use for the dm-crypt cryptohomes.
@@ -180,7 +181,9 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
           // No need to specify recovery, the device is purge at destruction.
       };
       type = EncryptedContainerType::kExt4;
-      config.backing_file_name = *obfuscated_username;
+      config.backing_file_path = base::FilePath(kEphemeralCryptohomeDir)
+                                     .Append(kSparseFileDir)
+                                     .Append(*obfuscated_username);
       break;
     case EncryptedContainerType::kExt4:
       // Not given directly, passed with the raw block device.

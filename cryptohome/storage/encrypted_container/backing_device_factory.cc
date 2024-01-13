@@ -22,7 +22,7 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
     case BackingDeviceType::kLoopbackDevice:
       return std::make_unique<LoopbackDevice>(config, platform_);
     case BackingDeviceType::kRamdiskDevice:
-      return RamdiskDevice::Generate(config.ramdisk.backing_file_name,
+      return RamdiskDevice::Generate(config.ramdisk.backing_file_path,
                                      platform_);
     case BackingDeviceType::kLogicalVolumeBackingDevice:
       return std::make_unique<LogicalVolumeBackingDevice>(

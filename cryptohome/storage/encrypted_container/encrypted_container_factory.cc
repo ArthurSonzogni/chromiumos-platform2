@@ -79,7 +79,7 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
     }
     case EncryptedContainerType::kEphemeral: {
       auto backing_device =
-          RamdiskDevice::Generate(config.backing_file_name, platform_);
+          RamdiskDevice::Generate(config.backing_file_path, platform_);
       if (!backing_device) {
         LOG(ERROR) << "Could not create backing device for ephemeral container";
         return nullptr;

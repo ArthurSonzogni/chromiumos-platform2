@@ -36,7 +36,7 @@ struct BackingDeviceConfig {
     bool fixed_backing;
   } loopback;
   struct {
-    std::string backing_file_name;
+    base::FilePath backing_file_path;
   } ramdisk;
   struct {
     std::shared_ptr<brillo::VolumeGroup> vg;

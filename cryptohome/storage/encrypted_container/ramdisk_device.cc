@@ -13,25 +13,15 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/loopback_device.h"
-#include "cryptohome/storage/mount_constants.h"
 
 namespace cryptohome {
-
-namespace {
-
-// TODO(dlunev): consider moving it to filesystem_layout/mount_constants level.
-base::FilePath SparseFileDir() {
-  return base::FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir);
-}
-
-}  // namespace
-
 RamdiskDevice::RamdiskDevice(const BackingDeviceConfig& config,
+
                              Platform* platform)
     : LoopbackDevice(config, platform), platform_(platform) {}
 
 bool RamdiskDevice::Create() {
-  if (!platform_->CreateDirectory(SparseFileDir())) {
+  if (!platform_->CreateDirectory(backing_file_path_.DirName())) {
     LOG(ERROR) << "Can't create directory for ephemeral backing file";
     return false;
   }
@@ -59,10 +49,11 @@ bool RamdiskDevice::Purge() {
 }
 
 std::unique_ptr<RamdiskDevice> RamdiskDevice::Generate(
-    const std::string& backing_file_name, Platform* platform) {
+    const base::FilePath& backing_file_path, Platform* platform) {
   // Determine ephemeral cryptohome size.
   struct statvfs vfs;
-  if (!platform->StatVFS(base::FilePath(kEphemeralCryptohomeDir), &vfs)) {
+  if (!platform->StatVFS(base::FilePath(backing_file_path.DirName().DirName()),
+                         &vfs)) {
     PLOG(ERROR) << "Can't determine size for ephemeral device";
     return nullptr;
   }
@@ -75,7 +66,7 @@ std::unique_ptr<RamdiskDevice> RamdiskDevice::Generate(
       .size = sparse_size,
       .loopback =
           {
-              .backing_file_path = SparseFileDir().Append(backing_file_name),
+              .backing_file_path = backing_file_path,
           },
   };
 

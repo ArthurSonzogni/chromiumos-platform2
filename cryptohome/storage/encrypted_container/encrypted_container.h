@@ -56,7 +56,7 @@ struct EncryptedContainerConfig {
   base::FilePath backing_dir;
   Ext4FileSystemConfig filesystem_config;
   DmcryptConfig dmcrypt_config;
-  std::string backing_file_name;
+  base::FilePath backing_file_path;
 };
 
 // An encrypted container is an abstract class that represents an encrypted

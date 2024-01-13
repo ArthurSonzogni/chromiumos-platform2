@@ -12,7 +12,6 @@
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
-#include "cryptohome/storage/mount_constants.h"
 
 namespace cryptohome {
 
@@ -23,6 +22,8 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 
 namespace {
+constexpr char kBackingBase[] = "/mytmpfs";
+constexpr char kBackingDir[] = "dir";
 constexpr char kBackingFile[] = "file";
 constexpr int kEphemeralVFSFragmentSize = 1 << 10;
 constexpr int kEphemeralVFSSize = 1 << 12;
@@ -38,7 +39,7 @@ class RamdiskDeviceTest : public ::testing::Test {
     ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
     ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
 
-    ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+    ON_CALL(platform_, StatVFS(base::FilePath(kBackingBase), _))
         .WillByDefault(
             DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
   }
@@ -50,12 +51,12 @@ class RamdiskDeviceTest : public ::testing::Test {
 namespace {
 
 TEST_F(RamdiskDeviceTest, Create_Success) {
-  const base::FilePath ephemeral_root(kEphemeralCryptohomeDir);
+  const base::FilePath ephemeral_root(kBackingBase);
   const base::FilePath ephemeral_sparse_file =
-      ephemeral_root.Append(kSparseFileDir).Append(kBackingFile);
+      ephemeral_root.Append(kBackingDir).Append(kBackingFile);
 
   ASSERT_TRUE(platform_.CreateDirectory(ephemeral_root));
-  auto ramdisk = RamdiskDevice::Generate(kBackingFile, &platform_);
+  auto ramdisk = RamdiskDevice::Generate(ephemeral_sparse_file, &platform_);
 
   ASSERT_TRUE(ramdisk->Create());
   ASSERT_TRUE(platform_.FileExists(ephemeral_sparse_file));
@@ -67,18 +68,21 @@ TEST_F(RamdiskDeviceTest, Create_Success) {
 }
 
 TEST_F(RamdiskDeviceTest, Create_FailVFS) {
-  EXPECT_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+  const base::FilePath ephemeral_sparse_file =
+      base::FilePath(kBackingBase).Append(kBackingDir).Append(kBackingFile);
+
+  EXPECT_CALL(platform_, StatVFS(base::FilePath(kBackingBase), _))
       .WillOnce(Return(false));
-  EXPECT_FALSE(RamdiskDevice::Generate(kBackingFile, &platform_));
+  EXPECT_FALSE(RamdiskDevice::Generate(ephemeral_sparse_file, &platform_));
 }
 
 TEST_F(RamdiskDeviceTest, Create_FailDirCreation) {
-  const base::FilePath ephemeral_root(kEphemeralCryptohomeDir);
+  const base::FilePath ephemeral_root(kBackingBase);
   const base::FilePath ephemeral_sparse_file =
-      ephemeral_root.Append(kSparseFileDir).Append(kBackingFile);
+      ephemeral_root.Append(kBackingDir).Append(kBackingFile);
 
   ASSERT_TRUE(platform_.CreateDirectory(ephemeral_root));
-  auto ramdisk = RamdiskDevice::Generate(kBackingFile, &platform_);
+  auto ramdisk = RamdiskDevice::Generate(ephemeral_sparse_file, &platform_);
 
   EXPECT_CALL(platform_, CreateDirectory(_)).WillOnce(Return(false));
   ASSERT_FALSE(ramdisk->Create());
