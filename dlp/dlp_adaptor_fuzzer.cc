@@ -27,7 +27,7 @@ std::vector<uint8_t> SerializeMessageToVector(
 class Environment {
  public:
   Environment() {
-    logging::SetMinLogLevel(logging::LOG_FATAL);  // <- DISABLE LOGGING.
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);  // <- DISABLE LOGGING.
   }
 };
 
