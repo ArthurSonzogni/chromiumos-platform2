@@ -55,7 +55,7 @@ mojo::ScopedHandle GetOutputFileHandle(const std::string& output_filename) {
 class OcrServiceFuzzer {
  public:
   OcrServiceFuzzer() {
-    logging::SetMinLogLevel(logging::LOG_FATAL);
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);
     mojo::core::Init();
     ocr_service_impl_.AddReceiver(remote.BindNewPipeAndPassReceiver(),
                                   false /* should_quit */);
