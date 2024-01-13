@@ -270,16 +270,18 @@ class FuzzedPlatform : public Platform {
       std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
   FuzzedDataProvider& fuzzed_data_provider_;
-  // A fast in-memory simulation of a file system, supporting basic operations.
-  // The only reason it's used instead of delegating to `FakePlatform` is
+  // A fast in-memory simulation of a file system,
+  // supporting basic operations. The only reason it's
+  // used instead of delegating to `FakePlatform` is
   // performance.
   VirtualFs virtual_fs_;
-  // TODO(b/254864841): Use fuzzed object instead of the fake, as the latter
-  // always succeeds.
+  // TODO(b/254864841): Use fuzzed object instead of
+  // the fake, as the latter always succeeds.
   brillo::fake::FakeLoopDeviceManager loop_device_manager_;
   testing::NiceMock<brillo::MockLogicalVolumeManager> logical_volume_manager_;
-  // Pseudo-random engine for generating stable and predictable values. Note
-  // that the default constructor uses hardcoded seed.
+  // Pseudo-random engine for generating stable and
+  // predictable values. Note that the default
+  // constructor uses hardcoded seed.
   std::mt19937_64 random_engine_64_;
 
   SEQUENCE_CHECKER(sequence_checker_);
