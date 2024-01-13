@@ -439,9 +439,7 @@ impl ResumeConductor {
             .context("Failed to set up buffer device for hiberimage")?;
 
         // briefly mount hibermeta to read the size of the hiberimage.
-        let hibermeta_mount = volume_manager.setup_hibermeta_lv(true)?;
-        let image_size = hibermeta_mount.read_hiberimage_size()?;
-        drop(hibermeta_mount);
+        let image_size = volume_manager.setup_hibermeta_lv(true)?.read_hiberimage_size()?;
 
         let ram_size = get_ram_size();
         // Don't fill up more than 33% of the RAM.
