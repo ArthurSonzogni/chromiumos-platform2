@@ -719,12 +719,10 @@ impl VolumeManager {
         if lv_exists(&self.vg_name, &lv_props.name)? {
             debug!("Activating '{}' volume", &lv_props.name);
 
-            activate_lv(&self.vg_name, &lv_props.name)?;
+            activate_lv(&self.vg_name, &lv_props.name)
         } else {
-            self.create_lv(volume_type)?;
+            self.create_lv(volume_type)
         }
-
-        Ok(())
     }
 
     /// Create a logical volume.
