@@ -62,7 +62,7 @@ impl MemKind {
             Self::Anon => "Pss_Anon:",
             Self::File => "Pss_File:",
             Self::Shmem => "Pss_Shmem:",
-            Self::Swap => "Swap:",
+            Self::Swap => "SwapPss:",
             _ => panic!("Instantiated MemKind::Count"),
         }
     }
@@ -204,16 +204,11 @@ fn classify_daemon(
         return Some((TreeKind::Arc, ProcessGroupKind::ARC));
     }
 
-    let cmdline = read_cmdline(procfs_path, pid)?;
-    let Some(exe) = parse_exe_from_cmdline(&cmdline) else {
-        warn!(
-            "Error parsing {} cmdline {}",
-            pid,
-            String::from_utf8_lossy(&cmdline)
-        );
+    let Some(exe) = get_exe(procfs_path, pid) else {
         return None;
     };
 
+    let exe = exe.as_os_str();
     if exe == "/opt/google/chrome/chrome" {
         return Some((TreeKind::Chrome, ProcessGroupKind::Browser));
     } else if exe == "/usr/bin/vm_concierge" {
@@ -265,18 +260,11 @@ fn strip_chrome_directory(exe: &Path) -> Option<PathBuf> {
 //
 // The browser process does not have a --type==xyz flag.
 fn classify_chrome(procfs_path: &str, pid: u32) -> Option<ProcessGroupKind> {
-    let cmdline = read_cmdline(procfs_path, pid)?;
-    let Some(exe) = parse_exe_from_cmdline(&cmdline) else {
-        warn!(
-            "Unknown chrome process {} with cmdline {}",
-            pid,
-            String::from_utf8_lossy(&cmdline)
-        );
+    let Some(exe) = get_exe(procfs_path, pid) else {
         return Some(ProcessGroupKind::Browser);
     };
 
-    let exe = Path::new(&exe);
-    let Some(exe) = strip_chrome_directory(exe) else {
+    let Some(exe) = strip_chrome_directory(&exe) else {
         warn!("Unknown chrome process {} running {:?}", pid, exe);
         return Some(ProcessGroupKind::Browser);
     };
@@ -288,6 +276,7 @@ fn classify_chrome(procfs_path: &str, pid: u32) -> Option<ProcessGroupKind> {
         return Some(ProcessGroupKind::Browser);
     }
 
+    let cmdline = read_cmdline(procfs_path, pid)?;
     let Some(type_switch) = find_cmdline_arg_by_prefix(&cmdline, b"--type") else {
         return Some(ProcessGroupKind::Browser);
     };
@@ -346,17 +335,19 @@ fn find_cmdline_arg_by_prefix(cmdline: &[u8], prefix: &[u8]) -> Option<String> {
     None
 }
 
-// Parse the program form the cmdline bytes. Will return None of the cmdline
-// is not valid UTF8.
-//
-// NOTE: This does not handle executables with spaces in their name, but none of
-//       the ones we're trying to match against have spaces.
-fn parse_exe_from_cmdline(cmdline: &[u8]) -> Option<String> {
-    let first_space = cmdline
-        .iter()
-        .position(|b| is_seperator_byte(*b))
-        .unwrap_or(cmdline.len());
-    String::from_utf8(cmdline[..first_space].to_vec()).ok()
+// Read the exe path from /proc/pid/exe.
+fn get_exe(procfs_path: &str, pid: u32) -> Option<PathBuf> {
+    match std::fs::read_link(Path::new(&format!("{}/{}/exe", procfs_path, pid))) {
+        Ok(path) => Some(path.to_path_buf()),
+        Err(err) => {
+            let os_err = err.raw_os_error();
+            // ENOENT just means we raced with the process dying. Otherwise log the error.
+            if os_err != Some(libc::ENOENT) {
+                warn!("Failed to read {}'s cmdline: {:?}", pid, err);
+            }
+            None
+        }
+    }
 }
 
 // The type of the process tree that we're walking, which tells us the
@@ -458,16 +449,17 @@ fn classify_processes(
     kind_map
 }
 
-// Parses totmaps for the given pid.
+// Parses smaps_rollup for the given pid.
 fn get_memory_stats(procfs_path: &str, pid: u32) -> Option<[u64; MemKind::Count as usize]> {
     // If this fails, the process is probably dead, so just return.
-    let totmaps_bytes = std::fs::read(&format!("{}/{}/totmaps", procfs_path, pid)).ok()?;
-    let totmaps = String::from_utf8(totmaps_bytes).ok()?;
+    let smaps_rollup_bytes =
+        std::fs::read(&format!("{}/{}/smaps_rollup", procfs_path, pid)).ok()?;
+    let smaps_rollup = String::from_utf8(smaps_rollup_bytes).ok()?;
 
     let mut res: [u64; MemKind::Count as usize] = Default::default();
 
     let mut mem_kind_idx = 0;
-    for line in totmaps.split('\n') {
+    for line in smaps_rollup.split('\n') {
         let kind = MemKind::from(mem_kind_idx);
         if !line.starts_with(kind.smaps_prefix()) {
             continue;
@@ -541,6 +533,7 @@ mod tests {
         let pid_path = procfs_path.join(format!("{}", pid));
         std::fs::create_dir(&pid_path).unwrap();
         if let Some(cmdline) = cmdline {
+            std::os::unix::fs::symlink(Path::new(cmdline.0), pid_path.join("exe")).unwrap();
             std::fs::write(
                 pid_path.join("cmdline"),
                 format!("{} {}", cmdline.0, cmdline.1),
@@ -557,7 +550,7 @@ mod tests {
         .concat();
         std::fs::write(pid_path.join("stat"), stats_bytes).unwrap();
         if total_mib != 0 {
-            let totmaps_content = format!(
+            let smaps_rollup_content = format!(
                 "blah\n\
                  Rss:                123 kB\n\
                  Pss:                 {} kB\n\
@@ -565,8 +558,8 @@ mod tests {
                  Pss_File:            {} kB\n\
                  Pss_Shmem:           {} kB\n\
                  Shared_Clean:       456 kB\n\
-                 Swap:                {} kB\n\
-                 SwapPss:            789 kB\n\
+                 Swap:               789 kB\n\
+                 SwapPss:             {} kB\n\
                  Locked:             987 kB",
                 total_mib * 1024,
                 anon_mib * 1024,
@@ -574,9 +567,9 @@ mod tests {
                 shmem_mib * 1024,
                 swap_mib * 1024
             );
-            std::fs::write(pid_path.join("totmaps"), totmaps_content).unwrap();
+            std::fs::write(pid_path.join("smaps_rollup"), smaps_rollup_content).unwrap();
         } else {
-            std::fs::File::create(pid_path.join("totmaps")).unwrap();
+            std::fs::File::create(pid_path.join("smaps_rollup")).unwrap();
         }
     }
 

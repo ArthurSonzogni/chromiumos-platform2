@@ -55,6 +55,8 @@ poll: 1
 # tokio use prctl on creating threads
 prctl: arg0 == PR_SET_NAME
 read: 1
+readlink: 1
+readlinkat: 1
 recv: 1
 recvfrom: 1
 recvmsg: 1
@@ -78,3 +80,11 @@ timerfd_create: 1
 timerfd_settime64: 1
 timerfd_settime: 1
 write: 1
+
+# Resourced has CAP_SYS_PTRACE, so these are explicitly disallowed to avoid
+# adding unintended dangerous capabilities.
+get_robust_list: arg1 == 0
+kcmp: kill
+process_vm_readv: kill
+process_vm_writev: kill
+ptrace: kill
