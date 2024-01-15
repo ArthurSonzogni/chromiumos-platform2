@@ -63,6 +63,10 @@ constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
 constexpr char kPstoreExtension[] = ".pstore";
 constexpr char kVmmSwapUsageHistoryExtension[] = ".vmm_swap_history";
 
+// Number of PCI slots available for hotplug. 5 for network interfaces except
+// the arc0 device.
+constexpr uint32_t kHotplugSlotCount = 5;
+
 // A feature name for enabling jemalloc multi-arena settings
 // in low memory devices.
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
@@ -565,6 +569,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendKernelParam("8250.nr_uarts=4");
   } else {
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
+  }
+
+  if (PCI_HOTPLUG_SLOTS) {
+    vm_builder.AppendCustomParam("--pci-hotplug-slots",
+                                 std::to_string(kHotplugSlotCount));
   }
 
   if (request.enable_rt_vcpu()) {

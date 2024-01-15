@@ -18,6 +18,13 @@ proto_library("protos") {
 }
 
 static_library("libconcierge") {
+  # TODO(b/293801301): Add PCI hotplug support for aarch64.
+  # PCI hotplug is only enabled on x86_64 architecture.
+  if (current_cpu == "x64") {
+    pci_hotplug_slots = true
+  } else {
+    pci_hotplug_slots = false
+  }
   sources = [
     "arc_vm.cc",
     "balloon_policy.cc",
@@ -104,7 +111,10 @@ static_library("libconcierge") {
     "vboot_host",
     "vm_protos",
   ]
-  defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
+  defines = [
+    "USE_ARCVM_GKI=${use.arcvm_gki}",
+    "PCI_HOTPLUG_SLOTS=${pci_hotplug_slots}",
+  ]
 
   cflags_cc = [
     "-Werror=deprecated-declarations",
