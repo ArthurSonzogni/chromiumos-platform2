@@ -1521,8 +1521,8 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
       // Nope, this loop device have nothing to do with our active mounts.
       LOG(WARNING) << "Detaching stale loop device: " << device.device.value();
       if (!platform_->DetachLoop(device.device)) {
-        ReportCryptohomeError(kEphemeralCleanUpFailed);
         PLOG(ERROR) << "Can't detach stale loop: " << device.device.value();
+        ReportCryptohomeError(kEphemeralCleanUpFailed);
       }
     } else {
       // This loop device backs one of our active_mounts, so we can't count it
@@ -1539,9 +1539,9 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
     LOG(WARNING) << "Deleting stale ephemeral backing sparse file: "
                  << file.value();
     if (!platform_->DeleteFile(file)) {
-      ReportCryptohomeError(kEphemeralCleanUpFailed);
       PLOG(ERROR) << "Failed to clean up ephemeral sparse file: "
                   << file.value();
+      ReportCryptohomeError(kEphemeralCleanUpFailed);
     }
   }
 
