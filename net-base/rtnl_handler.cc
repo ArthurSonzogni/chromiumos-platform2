@@ -407,7 +407,10 @@ bool RTNLHandler::AddressRequest(int interface_index,
   msg->set_address_status(RTNLMessage::AddressStatus(
       static_cast<unsigned char>(local.prefix_length()), 0, 0));
 
+  // By definition, IFA_LOCAL and IFA_ADDRESS are the same for an interface not
+  // point-to-point, which should always be true in our case.
   msg->SetAttribute(IFA_LOCAL, local.address().ToBytes());
+  msg->SetAttribute(IFA_ADDRESS, local.address().ToBytes());
   if (broadcast) {
     CHECK_EQ(local.GetFamily(), IPFamily::kIPv4);
     msg->SetAttribute(IFA_BROADCAST, broadcast->ToBytes());
