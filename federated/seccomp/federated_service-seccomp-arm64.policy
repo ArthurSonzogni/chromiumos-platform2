@@ -42,6 +42,7 @@ ioctl: arg1 == TCGETS
 lseek: 1
 madvise: 1
 memfd_create: 1
+mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
