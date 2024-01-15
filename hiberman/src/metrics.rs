@@ -300,18 +300,16 @@ pub fn read_and_send_metrics(am: &ActiveMount) {
         return;
     }
 
-    let res = File::open(metrics_file_path);
-    if let Err(e) = res {
-        warn!(
-            "Failed to open metrics file {}: {}",
-            METRICS_FILE_PATH.display(),
-            e
-        );
-        return;
-    }
+    let mut f = match File::open(metrics_file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            warn!("Failed to open metrics file {}: {}",
+                METRICS_FILE_PATH.display(), e);
+            return;
+        }
+    };
 
-    let mut metrics_file = res.unwrap();
-    let reader = BufReader::new(&mut metrics_file);
+    let reader = BufReader::new(&mut f);
 
     for line in reader.lines() {
         let line = match line {
