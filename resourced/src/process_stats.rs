@@ -4,10 +4,16 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::io::Error as IoError;
+use std::os::fd::AsRawFd;
+use std::os::fd::FromRawFd;
+use std::os::fd::OwnedFd;
 use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
+use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
@@ -297,14 +303,33 @@ fn classify_chrome(procfs_path: &str, pid: u32) -> Option<ProcessGroupKind> {
     })
 }
 
-// Classifies a pid in a concierge tree. Returns the pid's type as well
-// as the type of the tree if its descendants.
-fn classify_concierge(procfs_path: &str, pid: u32) -> Option<(TreeKind, ProcessGroupKind)> {
+// Shmem that has been swapped is not included in the SwapPss of any process's
+// smaps_rollup. In the kernel, PSS and shmem are abstractions in different
+// layers (address space and file systems), which makes resolving this issue
+// in the kernel very difficult.
+//
+// On ChromeOS, the lack of shmem in SwapPss is primarily a problem because
+// crosvm uses shmem for guest memory. Rather than trying to solve the general
+// case in the kernel, we can deal with this specific problem by parsing the
+// smaps of any root crosvm processes and summing up the Swap field of any
+// memfd regions.
+struct ProcessInfo {
+    pid: u32,
+    is_root_crosvm: bool,
+}
+
+// Classifies a pid in a concierge tree. Returns the pid's type, the type
+// of the tree of its descendants, and whether or not the process is a root
+// crosvm process (see ProcessInfo).
+fn classify_concierge(procfs_path: &str, pid: u32) -> Option<(TreeKind, ProcessGroupKind, bool)> {
     let cmdline = read_cmdline(procfs_path, pid)?;
     if find_cmdline_arg_by_prefix(&cmdline, b"androidboot.hardware=bertha").is_some() {
-        Some((TreeKind::Arc, ProcessGroupKind::ARC))
+        Some((TreeKind::Arc, ProcessGroupKind::ARC, true))
     } else {
-        Some((TreeKind::Vm, ProcessGroupKind::VMs))
+        let is_root_crosvm = get_exe(procfs_path, pid)
+            .and_then(|exe| exe.file_name().map(|name| name == "crosvm"))
+            .unwrap_or(false);
+        Some((TreeKind::Vm, ProcessGroupKind::VMs, is_root_crosvm))
     }
 }
 
@@ -362,18 +387,21 @@ enum TreeKind {
 }
 
 impl TreeKind {
+    // Returns the pid's type, the type of the tree of its descendants, and whether
+    // the process is a root crosvm process (see ProcessInfo).
     fn classify_process(
         &self,
         procfs_path: &str,
         pid: u32,
         arc_container_pid: Option<u32>,
-    ) -> Option<(TreeKind, ProcessGroupKind)> {
+    ) -> Option<(TreeKind, ProcessGroupKind, bool)> {
         match self {
-            Self::Daemon => classify_daemon(procfs_path, pid, arc_container_pid),
-            Self::Chrome => classify_chrome(procfs_path, pid).map(|k| (Self::Chrome, k)),
+            Self::Daemon => classify_daemon(procfs_path, pid, arc_container_pid)
+                .map(|(tree, process)| (tree, process, false)),
+            Self::Chrome => classify_chrome(procfs_path, pid).map(|k| (Self::Chrome, k, false)),
             Self::Concierge => classify_concierge(procfs_path, pid),
-            Self::Arc => Some((Self::Arc, ProcessGroupKind::ARC)),
-            Self::Vm => Some((Self::Vm, ProcessGroupKind::VMs)),
+            Self::Arc => Some((Self::Arc, ProcessGroupKind::ARC, false)),
+            Self::Vm => Some((Self::Vm, ProcessGroupKind::VMs, false)),
         }
     }
 }
@@ -385,11 +413,14 @@ fn classify_processes_walker(
     tree_kind: TreeKind,
     arc_container_pid: Option<u32>,
     pid_map: &HashMap<u32, Vec<u32>>,
-    kind_map: &mut [Vec<u32>; ProcessGroupKind::Count as usize],
+    kind_map: &mut [Vec<ProcessInfo>; ProcessGroupKind::Count as usize],
 ) {
     let tree_kind = match tree_kind.classify_process(procfs_path, pid, arc_container_pid) {
-        Some((tree_kind, process_kind)) => {
-            kind_map[process_kind as usize].push(pid);
+        Some((tree_kind, process_kind, is_root_crosvm)) => {
+            kind_map[process_kind as usize].push(ProcessInfo {
+                pid,
+                is_root_crosvm,
+            });
             tree_kind
         }
         None => tree_kind,
@@ -428,7 +459,7 @@ fn classify_processes(
     procfs_path: &str,
     run_path: &str,
     pid_map: HashMap<u32, Vec<u32>>,
-) -> [Vec<u32>; ProcessGroupKind::Count as usize] {
+) -> [Vec<ProcessInfo>; ProcessGroupKind::Count as usize] {
     let arc_container_pid = match get_arc_container_init_pid(run_path) {
         Ok(pid) => pid,
         Err(e) => {
@@ -436,7 +467,7 @@ fn classify_processes(
             None
         }
     };
-    let mut kind_map: [Vec<u32>; ProcessGroupKind::Count as usize] = Default::default();
+    let mut kind_map: [Vec<ProcessInfo>; ProcessGroupKind::Count as usize] = Default::default();
     // Walking from init is an easy way to skip kthreadd and its descendants.
     classify_processes_walker(
         procfs_path,
@@ -449,11 +480,142 @@ fn classify_processes(
     kind_map
 }
 
-// Parses smaps_rollup for the given pid.
-fn get_memory_stats(procfs_path: &str, pid: u32) -> Option<[u64; MemKind::Count as usize]> {
+fn parse_dev_id_from_vma_header(line: &str) -> Option<&str> {
+    // Extract the 4th column from lines of this form:
+    // 7e44556a8000-7e44556a9000 rw-s 00000000 00:01 4716441 /memfd:name (deleted)
+    line.split(' ').filter(|s| !s.is_empty()).nth(3)
+}
+
+fn parse_memfd_dev_id(addr: *const libc::c_void) -> Result<String> {
+    let smaps_bytes = std::fs::read("/proc/self/smaps")?;
+    let smaps = String::from_utf8_lossy(&smaps_bytes);
+
+    for line in smaps.split('\n') {
+        if let Some(idx) = line.find('-') {
+            if let Ok(vma_start) = usize::from_str_radix(&line[..idx], 16) {
+                if vma_start == addr as usize {
+                    if let Some(id) = parse_dev_id_from_vma_header(line) {
+                        return Ok(id.to_string());
+                    } else {
+                        bail!("Failed to parse smaps header {}", line);
+                    }
+                }
+            }
+        }
+    }
+    Err(anyhow!("Failed to find target VMA region"))
+}
+
+fn get_memfd_dev_id_from_smaps() -> Result<String> {
+    // SAFETY: Safe because memfd_create doesn't affect memory and we check the return.
+    let memfd = unsafe {
+        libc::syscall(
+            libc::SYS_memfd_create,
+            b"memfd\0".as_ptr() as *const libc::c_char,
+            0,
+        )
+    };
+    if memfd < 0 {
+        bail!("memfd_create failed {:?}", IoError::last_os_error());
+    }
+    // SAFETY: Safe because we checked that memfd is a valid fd.
+    let memfd = unsafe { OwnedFd::from_raw_fd(memfd as i32) };
+
+    const MAP_SIZE: usize = 4096;
+    // SAFETY: Safe because mmap64 doesn't affect any rust-controlled memory
+    // and we check the return value.
+    let addr = unsafe {
+        libc::mmap64(
+            std::ptr::null_mut(),
+            MAP_SIZE,
+            libc::PROT_NONE,
+            libc::MAP_SHARED,
+            memfd.as_raw_fd(),
+            0,
+        )
+    };
+    if addr == libc::MAP_FAILED {
+        bail!("failed to mmap memfd {:?}", IoError::last_os_error());
+    }
+
+    let dev_id = parse_memfd_dev_id(addr);
+
+    // SAFETY: Safe because this only affects the non-rust controlled
+    // memory we allocated above with mmap64.
+    let res = unsafe { libc::munmap(addr, MAP_SIZE) };
+    if res != 0 {
+        warn!("failed to munmap memfd {:?}", IoError::last_os_error());
+    }
+
+    dev_id
+}
+
+static MEMFD_DEV_ID: OnceLock<Option<String>> = OnceLock::new();
+
+fn get_memfd_dev_id() -> Option<String> {
+    MEMFD_DEV_ID
+        .get_or_init(|| match get_memfd_dev_id_from_smaps() {
+            Ok(dev_id) => Some(dev_id),
+            Err(err) => {
+                error!("Failed to parse memfd dev_id: {:?}", err);
+                None
+            }
+        })
+        .clone()
+}
+
+fn parse_smaps_line(line: &str) -> Option<u64> {
+    let parts: Vec<&str> = line.split(' ').filter(|s| !s.is_empty()).collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    parts[1].parse::<u64>().ok().map(|kb| kb * 1024)
+}
+
+// Parse shmem swap from full smaps for the given pid.
+fn parse_shmem_swap_from_smaps(procfs_path: &str, pid: u32) -> Option<u64> {
+    let smaps_bytes = std::fs::read(&format!("{}/{}/smaps", procfs_path, pid)).ok()?;
+    // smaps contains file names, so we may not necessarily be able to convert it
+    // to a utf8 string. However, we only care about the ASCII parts of the string
+    // returned by the kernel, so a lossy conversion is fine.
+    let smaps = String::from_utf8_lossy(&smaps_bytes);
+
+    let mut res = 0;
+
+    let dev_id = get_memfd_dev_id()?;
+
+    let mut prev_line: Option<&str> = None;
+    let mut processing_shmem = false;
+    for line in smaps.split('\n') {
+        let local_prev_line = prev_line;
+        prev_line = Some(line);
+
+        // Rather than trying to match the address in the VMA headers, it's easier
+        // to match the 'Size:' prefix on the second line.
+        if line.starts_with("Size:") {
+            processing_shmem = local_prev_line.map_or(false, |header| {
+                parse_dev_id_from_vma_header(header) == Some(&dev_id)
+            });
+        }
+
+        if processing_shmem && line.starts_with("Swap:") {
+            if let Some(bytes) = parse_smaps_line(line) {
+                res += bytes;
+            }
+        }
+    }
+
+    Some(res)
+}
+
+// Gets memory stats for the given process.
+fn get_memory_stats(
+    procfs_path: &str,
+    info: &ProcessInfo,
+) -> Option<[u64; MemKind::Count as usize]> {
     // If this fails, the process is probably dead, so just return.
     let smaps_rollup_bytes =
-        std::fs::read(&format!("{}/{}/smaps_rollup", procfs_path, pid)).ok()?;
+        std::fs::read(&format!("{}/{}/smaps_rollup", procfs_path, info.pid)).ok()?;
     let smaps_rollup = String::from_utf8(smaps_rollup_bytes).ok()?;
 
     let mut res: [u64; MemKind::Count as usize] = Default::default();
@@ -464,17 +626,17 @@ fn get_memory_stats(procfs_path: &str, pid: u32) -> Option<[u64; MemKind::Count 
         if !line.starts_with(kind.smaps_prefix()) {
             continue;
         }
-        let parts: Vec<&str> = line.split(' ').filter(|s| !s.is_empty()).collect();
-        if parts.len() != 3 {
-            panic!("bad rollup line {}", line);
-        }
-        res[mem_kind_idx] += 1024
-            * parts[1]
-                .parse::<u64>()
-                .unwrap_or_else(|_| panic!("bad integer in rollup {}", line));
+        let bytes = parse_smaps_line(line).unwrap_or_else(|| panic!("bad line in rollup {}", line));
+        res[mem_kind_idx] += bytes;
         mem_kind_idx += 1;
         if mem_kind_idx == MemKind::Count as usize {
             break;
+        }
+    }
+
+    if info.is_root_crosvm {
+        if let Some(bytes) = parse_shmem_swap_from_smaps(procfs_path, info.pid) {
+            res[MemKind::Swap as usize] += bytes;
         }
     }
 
@@ -484,12 +646,12 @@ fn get_memory_stats(procfs_path: &str, pid: u32) -> Option<[u64; MemKind::Count 
 // Accumulates memory statistics for all classified processes.
 fn accumulate_memory_stats(
     procfs_path: &str,
-    processes: [Vec<u32>; ProcessGroupKind::Count as usize],
+    processes: [Vec<ProcessInfo>; ProcessGroupKind::Count as usize],
 ) -> MemStats {
     let mut res: MemStats = Default::default();
-    for (process_kind, pids) in processes.into_iter().enumerate() {
-        for pid in pids.iter() {
-            if let Some(stats) = get_memory_stats(procfs_path, *pid) {
+    for (process_kind, processes) in processes.into_iter().enumerate() {
+        for process in processes.iter() {
+            if let Some(stats) = get_memory_stats(procfs_path, process) {
                 for (i, stat) in stats.iter().enumerate() {
                     res[process_kind][i] += stat;
                 }
@@ -529,7 +691,13 @@ mod tests {
         file_mib: u64,
         shmem_mib: u64,
         swap_mib: u64,
+        shmem_swap_mib: u64,
     ) {
+        let memfd_dev_id = MEMFD_DEV_ID
+            .get_or_init(|| Some("00:01".to_string()))
+            .as_ref()
+            .unwrap();
+
         let pid_path = procfs_path.join(format!("{}", pid));
         std::fs::create_dir(&pid_path).unwrap();
         if let Some(cmdline) = cmdline {
@@ -568,6 +736,24 @@ mod tests {
                 swap_mib * 1024
             );
             std::fs::write(pid_path.join("smaps_rollup"), smaps_rollup_content).unwrap();
+
+            let smaps_content = format!(
+                "7ffcd41f5000-7ffcd41f8000 r-xp 00000000 00:00 0 [vdso]\n\
+                 Size:                  123 kB\n\
+                 Pss:                   456 kB\n\
+                 Swap:                  789 kb\n\
+                 7ffcd41f8000-7ffcd41f9000 rw-s 00000000 {} 4988838 /memfd:name (deleted)\n\
+                 Size:                  321 kB\n\
+                 Pss:                   654 kB\n\
+                 Swap:                  {} kb\n\
+                 7bf540e00000-7bf541e00000 r--p 001db000 103:05 12012 /lib64/libc.so.6\n\
+                 Size:                  987 kB\n\
+                 Pss:                   654 kB\n\
+                 Swap:                  321 kB\n",
+                memfd_dev_id,
+                shmem_swap_mib * 1024
+            );
+            std::fs::write(pid_path.join("smaps"), smaps_content).unwrap();
         } else {
             std::fs::File::create(pid_path.join("smaps_rollup")).unwrap();
         }
@@ -596,38 +782,38 @@ mod tests {
             create_proc_entry(
                 &proc_dir_path, 1, 0,
                 b"init", Some(("/sbin/init", "")),
-                10, 5, 5, 0, 7,
+                10, 5, 5, 0, 7, 3,
             );
             // kthreadd (kernel daemon)
-            create_proc_entry(&proc_dir_path, 2, 0, b"kthreadd", None, 0, 0, 0, 0, 0);
+            create_proc_entry(&proc_dir_path, 2, 0, b"kthreadd", None, 0, 0, 0, 0, 0, 0);
             // kworker with a space in its name
             create_proc_entry(
                 &proc_dir_path, 3, 2,
                 b"kworker/0:0-My worker", None,
-                0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
             );
             // ARC init.
             create_proc_entry(
                 &proc_dir_path, arc_init_pid, 1,
                 b"arc-init", Some(("/blah/arc/init", "")),
-                10, 5, 5, 0, 1,
+                10, 5, 5, 0, 1, 0,
             );
             // ARC child process
             create_proc_entry(
                 &proc_dir_path, 300, arc_init_pid,
                 b"system_server", Some(("/blah/arc/system_server", "")),
-                100, 7, 6, 13, 10,
+                100, 7, 6, 13, 10, 0,
             );
             // Browser processes.
             create_proc_entry(
                 &proc_dir_path, 100, 1,
                 b"chrome", Some(("/opt/google/chrome/chrome", "blah")),
-                300, 200, 90, 10, 2,
+                300, 200, 90, 10, 2, 0,
             );
             create_proc_entry(
                 &proc_dir_path, 101, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=broker")),
-                5, 4, 3, 2, 1,
+                5, 4, 3, 2, 1, 0,
             );
             // Other spawned-from-chrome processes with a ) in the name.
             // Anything spawned from the Chrome browser process will count under browser
@@ -635,47 +821,47 @@ mod tests {
             create_proc_entry(
                 &proc_dir_path, 102, 100,
                 b"bash (stuff)", Some(("/bin/bash /usr/bin/somescript", "")),
-                400, 50, 245, 100, 5,
+                400, 50, 245, 100, 5, 0,
             );
             create_proc_entry(
                 &proc_dir_path, 103, 100,
                 b"corrupt )))) R Q", Some(("/bin/bash /usr/bin/somescript", "")),
-                100, 33, 33, 33, 1,
+                100, 33, 33, 33, 1, 0,
             );
             // GPU.
             create_proc_entry(
                 &proc_dir_path, 110, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=gpu-process")),
-                400, 70, 30, 300, 3,
+                400, 70, 30, 300, 3, 0,
             );
             // Renderers.
             create_proc_entry(
                 &proc_dir_path, 120, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=renderer")),
-                500, 450, 30, 20, 13,
+                500, 450, 30, 20, 13, 0,
             );
             create_proc_entry(
                 &proc_dir_path, 121, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=renderer")),
-                500, 450, 30, 20, 13,
+                500, 450, 30, 20, 13, 0,
             );
             // Name not UTF-8, but still a child of the browser
             create_proc_entry(
                 &proc_dir_path, 122, 100,
                 b"p\xb9Q\xc8", Some(("/opt/google/chrome/chrome", "--type=renderer")),
-                113, 33, 80, 0, 0,
+                113, 33, 80, 0, 0, 0,
             );
             // Daemons.
             create_proc_entry(
                 &proc_dir_path, 200, 1,
                 b"shill", Some(("/usr/bin/shill", "")),
-                100, 30, 70, 0, 0,
+                100, 30, 70, 0, 0, 0,
             );
             // Parent has died, will get reparented as a daemon
             create_proc_entry(
                 &proc_dir_path, 45, 151,
                 b"frecon", Some(("/usr/bin/frecon", "")),
-                213, 133, 80, 32, 48,
+                213, 133, 80, 32, 48, 0,
             );
         };
 
@@ -716,54 +902,54 @@ mod tests {
             create_proc_entry(
                 &proc_dir_path, 1, 0,
                 b"init", Some(("/sbin/init", "")),
-                10, 5, 5, 0, 7);
+                10, 5, 5, 0, 7, 0);
 
             // vm_concierge
             create_proc_entry(
                 &proc_dir_path, 100, 1,
                 b"vm_concierge", Some(("/usr/bin/vm_concierge", "")),
-                10, 5, 5, 0, 1,
+                10, 5, 5, 0, 1, 0,
             );
 
             // ARCVM
             create_proc_entry(
                 &proc_dir_path, 200, 100,
                 b"crosvm", Some(("/usr/bin/crosvm", "androidboot.hardware=bertha vmlinux")),
-                100, 50, 50, 10, 10,
+                100, 50, 50, 10, 10, 645,
             );
             create_proc_entry(
-                &proc_dir_path, 201, 100,
+                &proc_dir_path, 201, 200,
                 b"crosvm", Some(("/usr/bin/crosvm", "androidboot.hardware=bertha vmlinux")),
-                100, 50, 50, 10, 10,
+                100, 50, 50, 10, 10, 321,
             );
             create_proc_entry(
                 &proc_dir_path, 202, 201,
                 b"crosvm", Some(("/usr/libexec/virgl_render_server", "")),
-                12, 31, 56, 78, 90,
+                12, 31, 56, 78, 90, 321,
             );
             create_proc_entry(
                 &proc_dir_path, 203, 201,
                 b"crosvm", Some(("/usr/bin/crosvm", "androidboot.hardware=bertha vmlinux")),
-                98, 76, 54, 32, 10,
+                98, 76, 54, 32, 10, 321,
             );
 
             // Other VMs
             create_proc_entry(
                 &proc_dir_path, 300, 100,
                 b"crosvm", Some(("/usr/bin/crosvm", "vmlinux")),
-                10, 5, 5, 0, 1,
+                10, 5, 5, 0, 1, 478,
             );
             create_proc_entry(
-                &proc_dir_path, 301, 100,
+                &proc_dir_path, 301, 300,
                 b"crosvm", Some(("/usr/bin/crosvm", "vmlinux")),
-                10, 5, 5, 0, 1,
+                10, 5, 5, 0, 1, 213,
             );
 
             // seneschal
             create_proc_entry(
                 &proc_dir_path, 101, 1,
                 b"seneschal", Some(("/usr/bin/seneschal", "")),
-                35, 2, 91, 11, 13,
+                35, 2, 91, 11, 13, 0,
             );
         };
 
@@ -781,9 +967,9 @@ mod tests {
             // renderers
             [0, 0, 0, 0, 0],
             // arc
-            [310 * MIB, 207 * MIB, 210 * MIB, 130 * MIB, 120 * MIB],
+            [310 * MIB, 207 * MIB, 210 * MIB, 130 * MIB, 765 * MIB],
             // vms
-            [65 * MIB, 17 * MIB, 106 * MIB, 11 * MIB, 16 * MIB],
+            [65 * MIB, 17 * MIB, 106 * MIB, 11 * MIB, 494 * MIB],
             // daemons
             [10 * MIB, 5 * MIB, 5 * MIB, 0, 7 * MIB],
         ];
@@ -804,47 +990,47 @@ mod tests {
             create_proc_entry(
                 &proc_dir_path, 1, 0,
                 b"init", Some(("/sbin/init", "")),
-                10, 5, 5, 0, 7);
+                10, 5, 5, 0, 7, 0);
             // Browser processes.
             create_proc_entry(
                 &proc_dir_path, 100, 1,
                 b"chrome", Some(("/opt/google/chrome/chrome", "blah")),
-                300, 200, 90, 10, 2,
+                300, 200, 90, 10, 2, 0,
             );
             // GPU.
             create_proc_entry(
                 &proc_dir_path, 110, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=gpu-process")),
-                400, 70, 30, 300, 3,
+                400, 70, 30, 300, 3, 0,
             );
             // Renderers.
             create_proc_entry(
                 &proc_dir_path, 120, 100,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=renderer")),
-                500, 450, 30, 20, 13,
+                500, 450, 30, 20, 13, 0,
             );
             // Lacros browser processes.
             create_proc_entry(
                 &proc_dir_path, 200, 100,
                 b"chrome", Some(("/run/lacros/chrome", "blah")),
-                30, 20, 9, 1, 3,
+                30, 20, 9, 1, 3, 0,
             );
             create_proc_entry(
                 &proc_dir_path, 201, 200,
                 b"chrome", Some(("/run/lacros/nacl_helper", "blah")),
-                10, 30, 87, 42, 2,
+                10, 30, 87, 42, 2, 0,
             );
             // Lacros GPU.
             create_proc_entry(
                 &proc_dir_path, 210, 200,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=gpu-process")),
-                40, 7, 3, 30, 5,
+                40, 7, 3, 30, 5, 0,
             );
             // Lacros Renderers.
             create_proc_entry(
                 &proc_dir_path, 220, 200,
                 b"chrome", Some(("/opt/google/chrome/chrome", "--type=renderer")),
-                50, 45, 3, 2, 7,
+                50, 45, 3, 2, 7, 0,
             );
         };
 
