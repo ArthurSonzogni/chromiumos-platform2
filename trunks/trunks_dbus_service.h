@@ -42,12 +42,22 @@ class TrunksDBusAdaptor : public org::chromium::TrunksInterface,
 
   // org::chromium::TrunksInterface overrides.
   void SendCommand(
-      std::unique_ptr<DBusMethodResponse<trunks::SendCommandResponse>> response,
-      const trunks::SendCommandRequest& in_request) override;
+      std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
+      const SendCommandRequest& in_request) override;
+
+  // org::chromium::TrunksInterface overrides.
+  void StartEvent(
+      std::unique_ptr<DBusMethodResponse<StartEventResponse>> response,
+      const StartEventRequest& in_request) override;
+
+  // org::chromium::TrunksInterface overrides.
+  void StopEvent(
+      std::unique_ptr<DBusMethodResponse<StopEventResponse>> response,
+      const StopEventRequest& in_request) override;
 
  private:
   void SendCommandCallback(
-      std::unique_ptr<DBusMethodResponse<trunks::SendCommandResponse>> response,
+      std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
       const std::string& response_from_tpm);
 
   brillo::dbus_utils::DBusObject dbus_object_;

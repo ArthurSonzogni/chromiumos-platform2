@@ -37,7 +37,7 @@ void TrunksDBusAdaptor::RegisterAsync(
 }
 
 void TrunksDBusAdaptor::SendCommandCallback(
-    std::unique_ptr<DBusMethodResponse<trunks::SendCommandResponse>> response,
+    std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
     const std::string& response_from_tpm) {
   SendCommandResponse tpm_response_proto;
   tpm_response_proto.set_response(response_from_tpm);
@@ -51,8 +51,8 @@ void TrunksDBusAdaptor::SendCommandCallback(
 }
 
 void TrunksDBusAdaptor::SendCommand(
-    std::unique_ptr<DBusMethodResponse<trunks::SendCommandResponse>> response,
-    const trunks::SendCommandRequest& in_request) {
+    std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
+    const SendCommandRequest& in_request) {
   if (!in_request.has_command() || in_request.command().empty()) {
     LOG(ERROR) << "TrunksDBusService: Invalid request.";
     SendCommandCallback(std::unique_ptr(std::move(response)),
@@ -66,9 +66,23 @@ void TrunksDBusAdaptor::SendCommand(
                      std::unique_ptr(std::move(response))));
 }
 
+void TrunksDBusAdaptor::StartEvent(
+    std::unique_ptr<DBusMethodResponse<StartEventResponse>> response,
+    const StartEventRequest& in_request) {
+  // TODO(yich): Finish the code.
+  response->Return(StartEventResponse{});
+}
+
+void TrunksDBusAdaptor::StopEvent(
+    std::unique_ptr<DBusMethodResponse<StopEventResponse>> response,
+    const StopEventRequest& in_request) {
+  // TODO(yich): Finish the code.
+  response->Return(StopEventResponse{});
+}
+
 TrunksDBusService::TrunksDBusService(CommandTransceiver& command_transceiver,
                                      WriteErrorTracker& write_error_tracker)
-    : brillo::DBusServiceDaemon(trunks::kTrunksServiceName),
+    : brillo::DBusServiceDaemon(kTrunksServiceName),
       command_transceiver_(command_transceiver),
       write_error_tracker_(write_error_tracker) {}
 

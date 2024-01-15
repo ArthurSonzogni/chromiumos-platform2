@@ -26,5 +26,29 @@
                     value="trunks::SendCommandResponse" />
       </arg>
     </method>
+    <method name="StartEvent">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="trunks::StartEventRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="trunks::StartEventResponse" />
+      </arg>
+    </method>
+    <method name="StopEvent">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="trunks::StopEventRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="trunks::StopEventResponse" />
+      </arg>
+    </method>
   </interface>
 </node>

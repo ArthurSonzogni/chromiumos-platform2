@@ -23,3 +23,23 @@ message SendCommandResponse {
   // The raw bytes of a TPM response.
   optional bytes response = 1;
 }
+
+// Inputs for the StartEvent method.
+message StartEventRequest {
+  optional string event = 1;
+  // The sender ID. We reuse the value of hwsec_foundation::TpmMetricsClientID.
+  optional uint64 sender_id = 2;
+}
+
+// Outputs for the StartEvent method.
+message StartEventResponse {}
+
+// Inputs for the StopEvent method.
+message StopEventRequest {
+  optional string event = 1;
+  // The sender ID. We reuse the value of hwsec_foundation::TpmMetricsClientID.
+  optional uint64 sender_id = 2;
+}
+
+// Outputs for the StopEvent method.
+message StopEventResponse {}
