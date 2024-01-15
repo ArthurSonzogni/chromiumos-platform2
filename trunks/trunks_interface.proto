@@ -14,6 +14,8 @@ package trunks;
 message SendCommandRequest {
   // The raw bytes of a TPM command.
   optional bytes command = 1;
+  // The sender ID. We reuse the value of hwsec_foundation::TpmMetricsClientID.
+  optional uint64 sender_id = 2;
 }
 
 // Outputs for the SendCommand method.

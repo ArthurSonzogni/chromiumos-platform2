@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_data.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h>
 
 #include "trunks/command_codes.h"
@@ -127,6 +128,8 @@ void TrunksDBusProxy::SendCommandInternal(const std::string& command,
       base::SplitOnceCallback(std::move(callback));
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
+  tpm_command_proto.set_sender_id(
+      static_cast<uint64_t>(hwsec_foundation::GetTpmMetricsClientID()));
   auto on_success = base::BindOnce(
       [](ResponseCallback callback, const SendCommandResponse& response) {
         std::move(callback).Run(response.response());
@@ -164,6 +167,8 @@ std::string TrunksDBusProxy::SendCommandAndWaitInternal(
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
+  tpm_command_proto.set_sender_id(
+      static_cast<uint64_t>(hwsec_foundation::GetTpmMetricsClientID()));
   brillo::ErrorPtr error;
   SendCommandResponse tpm_response_proto;
 
