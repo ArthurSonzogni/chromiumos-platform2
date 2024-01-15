@@ -138,9 +138,7 @@ impl MetricsLogger {
             ))?;
 
         for entry in self.buf.drain(..) {
-            f.write_all(entry.as_bytes())
-                .context("Failed to write metrics file")?;
-            f.write_all("\n".as_bytes())
+            f.write_all(&[entry.as_bytes(), &[b'\n']].concat())
                 .context("Failed to write metrics file")?;
         }
 
