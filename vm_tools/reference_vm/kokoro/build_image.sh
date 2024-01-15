@@ -42,12 +42,6 @@ install_deps() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
     brotli eatmydata fai-setup-storage libguestfs-tools lvm2 python3-jinja2 \
     python3-requests python3-yaml qemu-utils
-
-  # TODO(b/280695675): Remove this once the VM image has a newer OS.
-  # shellcheck disable=SC2154
-  sudo dpkg -i "${KOKORO_GFILE_DIR}/fai-setup-storage_5.10.3ubuntu1_all.deb" \
-    "${KOKORO_GFILE_DIR}/debian-archive-keyring_2023.3ubuntu1_all.deb" \
-    "${KOKORO_GFILE_DIR}/debootstrap_1.0.126+nmu1ubuntu0.5_all.deb"
 }
 
 main "$@"
