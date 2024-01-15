@@ -813,14 +813,14 @@ std::string SharedDataParam::to_string() const {
     std::string_view negative_timeout;
   };
 
-  static constexpr auto params_map =
-      base::MakeFixedFlatMap<SharedDataParam::Cache, CacheParameters>(
-          base::sorted_unique, {{SharedDataParam::Cache::kAuto,
-                                 {.cache = "auto", "1", "false", "1"}},
-                                {SharedDataParam::Cache::kAlways,
-                                 {.cache = "always", "3600", "true", "3600"}},
-                                {SharedDataParam::Cache::kNever,
-                                 {.cache = "never", "1", "false", "1"}}});
+  // TODO(b:319229572): Migrate to base::MakeFixedFlatMap in future libchrome.
+  static constexpr auto params_map = base::MakeFixedFlatMapSortedUnique<
+      SharedDataParam::Cache, CacheParameters>(
+      {{SharedDataParam::Cache::kAuto, {.cache = "auto", "1", "false", "1"}},
+       {SharedDataParam::Cache::kAlways,
+        {.cache = "always", "3600", "true", "3600"}},
+       {SharedDataParam::Cache::kNever,
+        {.cache = "never", "1", "false", "1"}}});
 
   CacheParameters params = params_map.at(enable_caches);
 
