@@ -119,6 +119,19 @@ void Network::UnregisterEventHandler(EventHandler* handler) {
 }
 
 void Network::Start(const Network::StartOptions& opts) {
+  // TODO(b/232177767): Log the StartOptions and other parameters.
+  if (state_ != State::kIdle) {
+    LOG(WARNING)
+        << *this
+        << ": Network has been started, stop it before starting with the "
+           "new options";
+    StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
+  }
+
+  // If the execution of this function fails, StopInternal() will be called and
+  // turn the state to kIdle.
+  state_ = State::kConfiguring;
+
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
   ipv4_gateway_found_ = false;
   ipv6_gateway_found_ = false;
@@ -129,19 +142,7 @@ void Network::Start(const Network::StartOptions& opts) {
       probing_configuration_,
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
 
-  // TODO(b/232177767): Log the StartOptions and other parameters.
-  if (state_ != State::kIdle) {
-    LOG(INFO) << *this
-              << ": Network has been started, stop it before starting with the "
-                 "new options";
-    StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
-  }
-
   EnableARPFiltering();
-
-  // If the execution of this function fails, StopInternal() will be called and
-  // turn the state to kIdle.
-  state_ = State::kConfiguring;
 
   bool ipv6_started = false;
   if (opts.accept_ra) {
@@ -253,6 +254,7 @@ void Network::OnSetupConnectionFinished(bool success) {
   if (!success) {
     StopInternal(/*is_failure=*/true,
                  /*trigger_callback=*/state_ == State::kConnected);
+    return;
   }
 
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {

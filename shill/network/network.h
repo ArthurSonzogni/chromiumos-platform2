@@ -515,8 +515,11 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   std::unique_ptr<net_base::ProcFsStub> proc_fs_;
 
+  // The instance exists when the state is not at kIdle.
   std::unique_ptr<DHCPController> dhcp_controller_;
+  // The instance exists when the state is not at kIdle.
   std::unique_ptr<SLAACController> slaac_controller_;
+
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
   net_base::NetworkPriority priority_;
@@ -545,7 +548,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   std::unique_ptr<NetworkMonitorFactory> network_monitor_factory_;
   PortalDetector::ProbingConfiguration probing_configuration_;
   // Validates the network connectivity and detect the captive portal.
-  // The instance is created at Start() and destroyed at Stop().
+  // The instance exists when the state is not at kIdle.
   std::unique_ptr<NetworkMonitor> network_monitor_;
   // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
