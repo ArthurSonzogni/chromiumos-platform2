@@ -41,19 +41,9 @@ class PcaAgentServiceAdaptor : public org::chromium::PcaAgentAdaptor {
   explicit PcaAgentServiceAdaptor(
       org::chromium::PcaAgentInterface* pca_agent_interface,
       scoped_refptr<dbus::Bus> bus)
-      : org::chromium::PcaAgentAdaptor(pca_agent_interface),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kPcaAgentServicePath)) {}
+      : org::chromium::PcaAgentAdaptor(pca_agent_interface) {}
   PcaAgentServiceAdaptor(const PcaAgentServiceAdaptor&) = delete;
   PcaAgentServiceAdaptor& operator=(const PcaAgentServiceAdaptor&) = delete;
-
-  void RegisterAsync(
-      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
-    RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(std::move(cb));
-  }
-
- private:
-  brillo::dbus_utils::DBusObject dbus_object_;
 };
 
 }  // namespace pca_agent

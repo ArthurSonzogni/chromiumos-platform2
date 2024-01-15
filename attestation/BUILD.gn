@@ -254,6 +254,7 @@ source_set("pca_agent_server_library") {
     "pca_agent/server/default_transport_factory.cc",
     "pca_agent/server/pca_agent_service.cc",
     "pca_agent/server/pca_request.cc",
+    "pca_agent/server/rks_agent_service.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":pca-agent-adaptors" ]

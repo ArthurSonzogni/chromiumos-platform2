@@ -39,4 +39,24 @@
       </arg>
     </method>
   </interface>
+  <!--
+    This interface is used for recoverable key store related functionalities that
+    need network access.
+  -->
+  <interface name="org.chromium.RksAgent">
+    <method name="GetCertificate">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::pca_agent::RksCertificateAndSignature" />
+      </arg>
+    </method>
+    <signal name="CertificateFetched">
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::pca_agent::RksCertificateAndSignature" />
+      </arg>
+    </signal>
+  </interface>
 </node>
