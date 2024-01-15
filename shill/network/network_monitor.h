@@ -14,9 +14,9 @@
 #include <net-base/http_url.h>
 #include <net-base/network_config.h>
 
-#include "shill/connection_diagnostics.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/connection_diagnostics.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 

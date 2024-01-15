@@ -22,11 +22,11 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
-#include "shill/connection_diagnostics.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
+#include "shill/network/connection_diagnostics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"

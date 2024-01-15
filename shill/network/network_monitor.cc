@@ -13,7 +13,7 @@
 #include <base/logging.h>
 #include <net-base/network_config.h>
 
-#include "shill/connection_diagnostics.h"
+#include "shill/network/connection_diagnostics.h"
 #include "shill/network/validation_log.h"
 
 namespace shill {

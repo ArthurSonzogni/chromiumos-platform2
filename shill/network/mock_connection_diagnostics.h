@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_CONNECTION_DIAGNOSTICS_H_
-#define SHILL_MOCK_CONNECTION_DIAGNOSTICS_H_
+#ifndef SHILL_NETWORK_MOCK_CONNECTION_DIAGNOSTICS_H_
+#define SHILL_NETWORK_MOCK_CONNECTION_DIAGNOSTICS_H_
 
 #include <memory>
 #include <string_view>
@@ -13,9 +13,9 @@
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
-#include "shill/connection_diagnostics.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/network/connection_diagnostics.h"
 
 namespace shill {
 
@@ -46,4 +46,4 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
 };
 
 }  // namespace shill
-#endif  // SHILL_MOCK_CONNECTION_DIAGNOSTICS_H_
+#endif  // SHILL_NETWORK_MOCK_CONNECTION_DIAGNOSTICS_H_

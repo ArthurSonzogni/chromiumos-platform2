@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CONNECTION_DIAGNOSTICS_H_
-#define SHILL_CONNECTION_DIAGNOSTICS_H_
+#ifndef SHILL_NETWORK_CONNECTION_DIAGNOSTICS_H_
+#define SHILL_NETWORK_CONNECTION_DIAGNOSTICS_H_
 
 #include <map>
 #include <memory>
@@ -270,4 +270,4 @@ class ConnectionDiagnosticsFactory {
 
 }  // namespace shill
 
-#endif  // SHILL_CONNECTION_DIAGNOSTICS_H_
+#endif  // SHILL_NETWORK_CONNECTION_DIAGNOSTICS_H_

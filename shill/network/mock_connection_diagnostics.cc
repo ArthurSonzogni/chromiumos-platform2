@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_connection_diagnostics.h"
+#include "shill/network/mock_connection_diagnostics.h"
 
-#include "shill/connection_diagnostics.h"
+#include "shill/network/connection_diagnostics.h"
 
 namespace shill {
 
