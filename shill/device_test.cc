@@ -768,7 +768,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailureToStart) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*service_, SetState).Times(0);
+  EXPECT_CALL(*network_, StopPortalDetection).Times(0);
   EXPECT_CALL(*network_, StartPortalDetection(
                              NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(false));
@@ -838,11 +839,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 }
 
 // The first portal detection attempt is inconclusive and the next portal
-// detection attempt fails, causing the Service State to be set to 'online'
-// since portal detection did not run.
+// detection attempt fails.
 TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity)).Times(0);
+  EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound)).Times(1);
   // The second portal detection attempt fails immediately, forcing the Device
   // to assume the Service state is 'no-connectivity'.
   EXPECT_CALL(
@@ -850,13 +851,20 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
       StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
       .WillOnce(Return(false));
 
-  // First result indicating no connectivity and triggering a new portal
+  // First result indicating portal redirect and triggering a new portal
   // detection attempt.
   NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::ProbeResult::kDNSTimeout;
+  result.http_result = PortalDetector::ProbeResult::kPortalRedirect;
+  result.http_status_code = 302;
+  result.http_content_length = 0;
   result.https_result = PortalDetector::ProbeResult::kHTTPTimeout;
-  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+  result.redirect_url =
+      net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
+  result.probe_url = net_base::HttpUrl::CreateFromString(
+      "http://service.google.com/generate_204");
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
   OnNetworkValidationResult(result);

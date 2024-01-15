@@ -1845,7 +1845,7 @@ void WiFi::HandleNetlinkBroadcast(
     const net_base::NetlinkMessage& netlink_message) {
   // We only handle nl80211 commands.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
-    SLOG(this, 7) << __func__ << ": " << "Not a NL80211 Message";
+    SLOG(this, 7) << __func__ << ": Not a NL80211 Message";
     return;
   }
   const Nl80211Message& nl80211_msg =
@@ -4064,9 +4064,12 @@ void WiFi::OnGetSLAACAddress(int net_interface_index) {
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished);
 }
 
-void WiFi::OnNetworkValidationStart(int net_interface_index) {
+void WiFi::OnNetworkValidationStart(int net_interface_index, bool is_failure) {
   DCHECK(net_interface_index == interface_index());
-  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kNetworkValidationStart);
+  if (!is_failure) {
+    RetrieveLinkStatistics(
+        WiFiLinkStatistics::Trigger::kNetworkValidationStart);
+  }
 }
 
 void WiFi::OnNetworkValidationResult(int interface_index,

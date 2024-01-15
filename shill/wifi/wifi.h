@@ -720,7 +720,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnGetDHCPLease(int interface_index) override;
   void OnGetDHCPFailure(int interface_index) override;
   void OnGetSLAACAddress(int interface_index) override;
-  void OnNetworkValidationStart(int interface_index) override;
+  void OnNetworkValidationStart(int interface_index, bool is_failure) override;
   void OnNetworkValidationResult(int interface_index,
                                  const NetworkMonitor::Result& result) override;
 

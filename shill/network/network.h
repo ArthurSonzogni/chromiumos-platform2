@@ -136,13 +136,25 @@ class Network : public NetworkMonitor::ClientNetwork {
         patchpanel::Client::NeighborRole role,
         patchpanel::Client::NeighborStatus status) = 0;
 
-    // Called when the NetworkMonitor has been started a network validation
-    // attempt. If network validation is used for this Service,
+    // Called with |is_failure| set to false when the NetworkMonitor has been
+    // started a network validation attempt successfully. Called with
+    // |is_failure| set to true if NetworkMonitor failed to start network
+    // validation and there is currently no Internet connectivity information.
+    // NetworkMonitor can fail to start if the Network has an incorrect
+    // configuration state (no DNS, ...) and should be considered as having no
+    // Internet connectivity. If network validation is used for this Service,
     // NetworkMonitor starts the first attempt when OnConnected() is called.
     // NetworkMonitor may run multiple times for the same network.
-    virtual void OnNetworkValidationStart(int interface_index) = 0;
-    // Called when NetworkMonitor is stopped before completing a trial.
-    virtual void OnNetworkValidationStop(int interface_index) = 0;
+    virtual void OnNetworkValidationStart(int interface_index,
+                                          bool is_failure) = 0;
+    // Called when NetworkMonitor is stopped. If |is_failure| is false,
+    // NetworkMonitor was stopped normally either by an external trigger or
+    // because Internet connectivity was verified. If |is_failure| is true, the
+    // Network is not able to run network validation because of an incorrect
+    // configuration state (no DNS, ...) and should be considered as having no
+    // Internet connectivity.
+    virtual void OnNetworkValidationStop(int interface_index,
+                                         bool is_failure) = 0;
     // Called when a NetworkMonitor attempt finishes and Internet
     // connectivity has been evaluated.
     virtual void OnNetworkValidationResult(
@@ -306,7 +318,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Starts a network validation. See the detail of NetworkMonitor::Start().
   mockable bool StartPortalDetection(NetworkMonitor::ValidationReason reason);
   // Stops the current network validation cycle if it is still running.
-  mockable void StopPortalDetection();
+  mockable void StopPortalDetection(bool is_failure = false);
   // Returns the PortalDetector::Result from the last network validation
   // attempt that completed, or nothing if no network validation attempt
   // has completed for this network connection yet.

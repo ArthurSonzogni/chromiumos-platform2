@@ -2634,23 +2634,26 @@ bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
     return false;
   }
 
-  // b/211000413: If network validation could not start, the network is either
-  // misconfigured (no DNS) or not provisioned correctly. In either case, assume
-  // that the network has no Internet connectivity.
-  if (!attached_network_->StartPortalDetection(reason)) {
-    SetState(Service::kStateNoConnectivity);
-    return false;
-  }
-
-  return true;
+  return attached_network_->StartPortalDetection(reason);
 }
 
-void Service::NetworkEventHandler::OnNetworkValidationStop(
-    int interface_index) {
+void Service::NetworkEventHandler::OnNetworkValidationStart(int interface_index,
+                                                            bool is_failure) {
+  if (service_->IsConnected() && is_failure) {
+    service_->SetState(Service::kStateNoConnectivity);
+  }
+}
+
+void Service::NetworkEventHandler::OnNetworkValidationStop(int interface_index,
+                                                           bool is_failure) {
   if (!service_->IsConnected()) {
     return;
   }
-  service_->SetState(Service::kStateOnline);
+  if (is_failure) {
+    service_->SetState(Service::kStateNoConnectivity);
+  } else {
+    service_->SetState(Service::kStateOnline);
+  }
 }
 
 void Service::NetworkEventHandler::OnNetworkValidationResult(

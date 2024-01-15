@@ -285,7 +285,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   weak_factory_for_connection_.InvalidateWeakPtrs();
 
   network_validation_result_.reset();
-  StopPortalDetection();
+  StopPortalDetection(/*is_failure=*/false);
   network_monitor_.reset();
 
   const bool should_trigger_callback =
@@ -784,22 +784,28 @@ bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
     return false;
   }
 
-  if (!network_monitor_->Start(reason)) {
-    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
-               << "): Failed to start portal detection";
-    return false;
+  bool was_running = network_monitor_->IsRunning();
+  bool is_success = network_monitor_->Start(reason);
+  // b/211000413: If network validation could not start, the network is either
+  // misconfigured (no DNS) or not provisioned correctly. In either case,
+  // notify listeners to assume that the network has no Internet connectivity.
+  if (!was_running) {
+    for (auto& ev : event_handlers_) {
+      ev.OnNetworkValidationStart(interface_index_, /*is_failure=*/!is_success);
+    }
+  } else {
+    if (!is_success) {
+      StopPortalDetection(/*is_failure=*/true);
+    }
   }
 
-  for (auto& ev : event_handlers_) {
-    ev.OnNetworkValidationStart(interface_index_);
-  }
-  return true;
+  return is_success;
 }
 
-void Network::StopPortalDetection() {
+void Network::StopPortalDetection(bool is_failure) {
   if (network_monitor_ && network_monitor_->Stop()) {
     for (auto& ev : event_handlers_) {
-      ev.OnNetworkValidationStop(interface_index_);
+      ev.OnNetworkValidationStop(interface_index_, is_failure);
     }
   }
 }
@@ -854,7 +860,7 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
     case PortalDetector::ValidationState::kInternetConnectivity:
       // Conclusive result that allows the Service to transition to the
       // "online" state. Stop portal detection.
-      StopPortalDetection();
+      StopPortalDetection(/*is_failure=*/false);
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
       // Conclusive result that allows to start the portal detection sign-in

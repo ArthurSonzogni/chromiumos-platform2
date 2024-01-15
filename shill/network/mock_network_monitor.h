@@ -24,6 +24,7 @@ class MockNetworkMonitor : public NetworkMonitor {
 
   MOCK_METHOD(bool, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
+  MOCK_METHOD(bool, IsRunning, (), (const, override));
 };
 
 class MockNetworkMonitorFactory : public NetworkMonitorFactory {

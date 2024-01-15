@@ -87,7 +87,7 @@ class TestNetwork : public Network {
     return true;
   }
 
-  void StopPortalDetection() override {
+  void StopPortalDetection(bool is_failure) override {
     portal_detection_delayed_ = false;
     portal_detection_started_ = false;
     portal_detection_running_ = false;

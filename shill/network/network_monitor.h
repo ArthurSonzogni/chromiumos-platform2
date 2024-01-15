@@ -127,6 +127,9 @@ class NetworkMonitor {
   // running.
   mockable bool Stop();
 
+  // Returns true if network validation is currently running.
+  mockable bool IsRunning() const;
+
   // Sets the CAPPORT API and records the source of the API.
   mockable void SetCapportAPI(const net_base::HttpUrl& capport_api,
                               CapportSource source);

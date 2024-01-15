@@ -1457,13 +1457,31 @@ bool TetheringManager::IsUpstreamNetworkReady() {
   }
 }
 
+void TetheringManager::OnNetworkValidationStop(int interface_index,
+                                               bool is_failure) {
+  // If network validation fails on the upstream network, do no wait for
+  // the |upstream_network_validation_timer_callback_| to fire and terminate
+  // the session immediately.
+  if (is_failure) {
+    StopTetheringSession(StopReason::kUpstreamNoInternet);
+  }
+}
+
+void TetheringManager::OnNetworkValidationStart(int interface_index,
+                                                bool is_failure) {
+  // If network validation fails on the upstream network, do no wait for
+  // the |upstream_network_validation_timer_callback_| to fire and terminate
+  // the session immediately.
+  if (is_failure) {
+    StopTetheringSession(StopReason::kUpstreamNoInternet);
+  }
+}
+
 // Stub Network::EventHandler handlers for network events
 void TetheringManager::OnConnectionUpdated(int interface_index) {}
 void TetheringManager::OnGetDHCPLease(int interface_index) {}
 void TetheringManager::OnGetDHCPFailure(int interface_index) {}
 void TetheringManager::OnGetSLAACAddress(int interface_index) {}
-void TetheringManager::OnNetworkValidationStart(int interface_index) {}
-void TetheringManager::OnNetworkValidationStop(int interface_index) {}
 void TetheringManager::OnIPConfigsPropertyUpdated(int interface_index) {}
 void TetheringManager::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
 void TetheringManager::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}

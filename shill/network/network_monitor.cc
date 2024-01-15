@@ -154,6 +154,10 @@ bool NetworkMonitor::Stop() {
   return true;
 }
 
+bool NetworkMonitor::IsRunning() const {
+  return portal_detector_ != nullptr;
+}
+
 void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
                                    CapportSource source) {
   if (validation_log_) {

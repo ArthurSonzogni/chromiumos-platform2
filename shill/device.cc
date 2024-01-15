@@ -450,8 +450,8 @@ void Device::OnNetworkStopped(int interface_index, bool is_failure) {
 void Device::OnGetDHCPLease(int interface_index) {}
 void Device::OnGetDHCPFailure(int interface_index) {}
 void Device::OnGetSLAACAddress(int interface_index) {}
-void Device::OnNetworkValidationStart(int interface_index) {}
-void Device::OnNetworkValidationStop(int interface_index) {}
+void Device::OnNetworkValidationStart(int interface_index, bool is_failure) {}
+void Device::OnNetworkValidationStop(int interface_index, bool is_failure) {}
 void Device::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
 void Device::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
 void Device::OnNetworkDestroyed(int interface_index) {}
@@ -592,12 +592,7 @@ bool Device::UpdatePortalDetector(NetworkMonitor::ValidationReason reason) {
     return false;
   }
 
-  if (!GetPrimaryNetwork()->StartPortalDetection(reason)) {
-    SetServiceState(Service::kStateNoConnectivity);
-    return false;
-  }
-
-  return true;
+  return GetPrimaryNetwork()->StartPortalDetection(reason);
 }
 
 void Device::EmitMACAddress(const std::string& mac_address) {
@@ -643,15 +638,12 @@ void Device::OnNetworkValidationResult(int interface_index,
   auto validation_state = result.GetValidationState();
   Service::ConnectState connection_state =
       PortalValidationStateToConnectionState(validation_state);
+  SetServiceState(connection_state);
   if (validation_state !=
       PortalDetector::ValidationState::kInternetConnectivity) {
-    if (!GetPrimaryNetwork()->StartPortalDetection(
-            NetworkMonitor::ValidationReason::kRetryValidation)) {
-      connection_state = Service::kStateNoConnectivity;
-    }
+    GetPrimaryNetwork()->StartPortalDetection(
+        NetworkMonitor::ValidationReason::kRetryValidation);
   }
-
-  SetServiceState(connection_state);
 }
 
 RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {

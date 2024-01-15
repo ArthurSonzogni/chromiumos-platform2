@@ -85,7 +85,7 @@ class MockNetwork : public Network {
               StartPortalDetection,
               (NetworkMonitor::ValidationReason),
               (override));
-  MOCK_METHOD(void, StopPortalDetection, (), (override));
+  MOCK_METHOD(void, StopPortalDetection, (bool), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(void,
               StartConnectivityTest,
@@ -114,8 +114,8 @@ class MockNetworkEventHandler : public Network::EventHandler {
                const net_base::IPAddress&,
                patchpanel::Client::NeighborRole,
                patchpanel::Client::NeighborStatus));
-  MOCK_METHOD(void, OnNetworkValidationStart, (int), (override));
-  MOCK_METHOD(void, OnNetworkValidationStop, (int), (override));
+  MOCK_METHOD(void, OnNetworkValidationStart, (int, bool), (override));
+  MOCK_METHOD(void, OnNetworkValidationStop, (int, bool), (override));
   MOCK_METHOD(void,
               OnNetworkValidationResult,
               (int, const NetworkMonitor::Result& result),

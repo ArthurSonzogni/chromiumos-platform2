@@ -195,8 +195,8 @@ class TetheringManager : public Network::EventHandler {
   void OnGetDHCPLease(int interface_index) override;
   void OnGetDHCPFailure(int interface_index) override;
   void OnGetSLAACAddress(int interface_index) override;
-  void OnNetworkValidationStart(int interface_index) override;
-  void OnNetworkValidationStop(int interface_index) override;
+  void OnNetworkValidationStart(int interface_index, bool is_failure) override;
+  void OnNetworkValidationStop(int interface_index, bool is_failure) override;
   void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
   void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
   void OnNeighborReachabilityEvent(int interface_index,
