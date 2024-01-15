@@ -332,6 +332,40 @@ enum class BackupKeysetCleanupResult {
   kMaxValue = kRemoveFileFailedOtherType,
 };
 
+// List of possible results of recoverable key store certificate list update
+// attempts. Recorded whenever a certificate list is fetched and given to the
+// provider. Entries should not be renumbered and numeric values should never be
+// reused.
+enum class BackendCertProviderUpdateCertResult {
+  kUpdateSuccess = 0,       // Certificate list is updated successfully.
+  kUpdateNotNeeded = 1,     // Certificate list doesn't need an update.
+  kParseVersionFailed = 2,  // Failed to parse the certificate list version.
+  kVerifyFailed = 3,   // Failed to verify the signature + certificate XMLs.
+  kPersistFailed = 4,  // Failed to persist the updated certificate list.
+  kMaxValue = kPersistFailed,
+};
+
+// List of possible results of recoverable key store certificate list parsing
+// and verification. Recorded on each
+// |VerifyAndParseRecoverableKeyStoreBackendCertXmls| call. Entries should not
+// be renumbered and numeric values should never be reused.
+enum class VerifyAndParseBackendCertResult {
+  kSuccess = 0,
+  // Failed to parse the signature XML file.
+  kParseSignatureFailed = 1,
+  // Failed to verify the certificate chain in the signature XML file.
+  kVerifySignatureFailed = 2,
+  // Failed to verify the certificate file's signature.
+  kVerifyCertFileSignatureFailed = 3,
+  // Failed to parse the certificate XML file.
+  kParseCertFailed = 4,
+  // Failed to verify the certificate chain in the certificate XML file.
+  kVerifyCertFailed = 5,
+  // Failed to encode the parsed certificate list.
+  kEncodeCertFailed = 6,
+  kMaxValue = kEncodeCertFailed,
+};
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -540,6 +574,14 @@ void ReportFingerprintEnrollSignal(
 // Reports the emitted fingerprint auth signal.
 void ReportFingerprintAuthSignal(
     user_data_auth::FingerprintScanResult scan_result);
+
+// Reports the BackendCertProviderUpdateCertResult; refer to the enum's comment.
+void ReportBackendCertProviderUpdateCertResult(
+    BackendCertProviderUpdateCertResult result);
+
+// Reports the VerifyAndParseBackendCertResult; refer to the enum's comment.
+void ReportVerifyAndParseBackendCertResult(
+    VerifyAndParseBackendCertResult result);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

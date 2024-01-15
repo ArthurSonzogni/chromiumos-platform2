@@ -99,6 +99,11 @@ constexpr char kFingerprintAuthSignal[] = "Cryptohome.Fingerprint.AuthSignal";
 constexpr char kNumUserHomeDirectories[] =
     "Platform.DiskUsage.NumUserHomeDirectories";
 
+constexpr char kBackendCertProviderUpdateCertResult[] =
+    "Cryptohome.RecoverableKeyStore.ProviderUpdateCertResult";
+constexpr char kVerifyAndParseBackendCertResult[] =
+    "Cryptohome.RecoverableKeyStore.VerifyAndParseCertResult";
+
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
 constexpr TimerHistogramParams kTimerHistogramParams[] = {
@@ -826,6 +831,22 @@ void ReportFingerprintAuthSignal(
   g_metrics->SendEnumToUMA(kFingerprintAuthSignal,
                            static_cast<int>(scan_result),
                            user_data_auth::FingerprintScanResult_ARRAYSIZE);
+}
+
+void ReportBackendCertProviderUpdateCertResult(
+    BackendCertProviderUpdateCertResult result) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kBackendCertProviderUpdateCertResult, result);
+}
+
+void ReportVerifyAndParseBackendCertResult(
+    VerifyAndParseBackendCertResult result) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kVerifyAndParseBackendCertResult, result);
 }
 
 }  // namespace cryptohome

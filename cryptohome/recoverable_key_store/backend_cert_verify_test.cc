@@ -12,7 +12,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/recoverable_key_store/backend_cert_test_constants.h"
 
 namespace cryptohome {
@@ -23,22 +25,52 @@ using ::testing::Each;
 using ::testing::Field;
 using ::testing::Optional;
 using ::testing::SizeIs;
+using ::testing::StrictMock;
 
-TEST(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersion) {
+constexpr char kVerifyAndParseBackendCertResult[] =
+    "Cryptohome.RecoverableKeyStore.VerifyAndParseCertResult";
+
+class RecoverableKeyStoreBackendCertVerifyTest : public ::testing::Test {
+ public:
+  RecoverableKeyStoreBackendCertVerifyTest() {
+    OverrideMetricsLibraryForTesting(&metrics_);
+  }
+  ~RecoverableKeyStoreBackendCertVerifyTest() override {
+    ClearMetricsLibraryForTesting();
+  }
+
+ protected:
+  void ExpectSendVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult result) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(
+            kVerifyAndParseBackendCertResult, static_cast<int>(result),
+            static_cast<int>(VerifyAndParseBackendCertResult::kMaxValue) + 1));
+  }
+
+ private:
+  StrictMock<MetricsLibraryMock> metrics_;
+};
+
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersion) {
   std::string cert_xml;
   ASSERT_TRUE(base::Base64Decode(kCertXml10014B64, &cert_xml));
   EXPECT_THAT(GetCertXmlVersion(cert_xml), Optional(10014));
 }
 
-TEST(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersionFailed) {
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersionFailed) {
   const std::string cert_xml = "not a xml";
   EXPECT_EQ(GetCertXmlVersion(cert_xml), std::nullopt);
 }
 
-TEST(RecoverableKeyStoreBackendCertVerifyTest, Success) {
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest, Success) {
   std::string cert_xml, sig_xml;
   ASSERT_TRUE(base::Base64Decode(kCertXml10014B64, &cert_xml));
   ASSERT_TRUE(base::Base64Decode(kSigXml10014B64, &sig_xml));
+
+  ExpectSendVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult::kSuccess);
   std::optional<RecoverableKeyStoreCertList> cert_list =
       VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml);
   ASSERT_TRUE(cert_list.has_value());
@@ -48,34 +80,38 @@ TEST(RecoverableKeyStoreBackendCertVerifyTest, Success) {
               Each(Field(&RecoverableKeyStoreCert::public_key, SizeIs(65))));
 }
 
-// TODO(b/309734008): For those failure tests to be more useful, use mock
-// metrics expectations after we added metrics reporting.
-
-TEST(RecoverableKeyStoreBackendCertVerifyTest, FailNotXml) {
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest, FailNotXml) {
   const std::string sig_xml = "not a xml";
   std::string cert_xml;
   ASSERT_TRUE(base::Base64Decode(kCertXml10014B64, &cert_xml));
-  EXPECT_FALSE(
-      VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml)
-          .has_value());
+
+  ExpectSendVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult::kParseSignatureFailed);
+  EXPECT_EQ(VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml),
+            std::nullopt);
 }
 
-TEST(RecoverableKeyStoreBackendCertVerifyTest, FailSignatureXmlVerification) {
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest, FailSignatureXmlVerification) {
   std::string cert_xml, sig_xml;
   ASSERT_TRUE(base::Base64Decode(kCertXml10014B64, &cert_xml));
   ASSERT_TRUE(base::Base64Decode(kInvalidSigXmlB64, &sig_xml));
-  EXPECT_FALSE(
-      VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml)
-          .has_value());
+
+  ExpectSendVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult::kVerifySignatureFailed);
+  EXPECT_EQ(VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml),
+            std::nullopt);
 }
 
-TEST(RecoverableKeyStoreBackendCertVerifyTest, FailCertXmlVerification) {
+TEST_F(RecoverableKeyStoreBackendCertVerifyTest,
+       FailCertSignatureVerification) {
   std::string cert_xml, sig_xml;
   ASSERT_TRUE(base::Base64Decode(kCertXml10014B64, &cert_xml));
   ASSERT_TRUE(base::Base64Decode(kSigXml10013B64, &sig_xml));
-  EXPECT_FALSE(
-      VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml)
-          .has_value());
+
+  ExpectSendVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult::kVerifyCertFileSignatureFailed);
+  EXPECT_EQ(VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml),
+            std::nullopt);
 }
 
 // Practically, if the signature verification of the xml file succeeds, the

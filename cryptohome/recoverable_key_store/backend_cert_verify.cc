@@ -27,6 +27,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 
+#include "cryptohome/cryptohome_metrics.h"
+
 namespace cryptohome {
 
 namespace {
@@ -603,6 +605,8 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
       ParseSignatureXml(signature_xml);
   if (!signature_result.has_value()) {
     LOG(ERROR) << "Failed to parse signature xml.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kParseSignatureFailed);
     return std::nullopt;
   }
   // 2. Verify the signature XML's certificates.
@@ -610,12 +614,16 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
       VerifySignatureXmlCertificateChain(*signature_result);
   if (!signing_cert) {
     LOG(ERROR) << "Failed to verify signature xml's certificate chain.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kVerifySignatureFailed);
     return std::nullopt;
   }
   // 3. Verify the certificate XML's integrity using the signature.
   if (!VerifyCertificateXmlSignature(cert_xml, signature_result->signature,
                                      signing_cert.get())) {
     LOG(ERROR) << "Failed to verify certificate xml's signature.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kVerifyCertFileSignatureFailed);
     return std::nullopt;
   }
   // 4. Parse the certificate XML.
@@ -623,6 +631,8 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
       ParseCertificateXml(cert_xml);
   if (!cert_result.has_value()) {
     LOG(ERROR) << "Failed to parse certificate xml.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kParseCertFailed);
     return std::nullopt;
   }
   // 5. Verify the certificate XML's certificates.
@@ -630,6 +640,8 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
       VerifyCertificateXmlCertificateChain(*cert_result);
   if (endpoint_certs.empty()) {
     LOG(ERROR) << "Failed to verify certificate xml's certificate chain.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kVerifyCertFailed);
     return std::nullopt;
   }
   // 6. Encode the endpoint certificates.
@@ -637,8 +649,12 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
       EncodeEndpointCertificates(endpoint_certs);
   if (key_store_certs.empty()) {
     LOG(ERROR) << "Failed to encode endpoint certificates.";
+    ReportVerifyAndParseBackendCertResult(
+        VerifyAndParseBackendCertResult::kEncodeCertFailed);
     return std::nullopt;
   }
+  ReportVerifyAndParseBackendCertResult(
+      VerifyAndParseBackendCertResult::kSuccess);
   return RecoverableKeyStoreCertList{
       .version = cert_result->version,
       .certs = std::move(key_store_certs),

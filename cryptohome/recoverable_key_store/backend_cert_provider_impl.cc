@@ -16,6 +16,7 @@
 #include <base/rand_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
@@ -1224,11 +1225,15 @@ void RecoverableKeyStoreBackendCertProviderImpl::OnCertificateFetched(
     std::optional<uint64_t> version = GetCertXmlVersion(cert_xml);
     if (!version.has_value()) {
       LOG(ERROR) << "Failed to parse version of the fetched certificate.";
+      ReportBackendCertProviderUpdateCertResult(
+          BackendCertProviderUpdateCertResult::kParseVersionFailed);
       return;
     }
     if (cert_list_.version >= *version) {
       LOG(INFO) << "Version of fetched certificate isn't newer, so update "
                    "isn't necessary.";
+      ReportBackendCertProviderUpdateCertResult(
+          BackendCertProviderUpdateCertResult::kUpdateNotNeeded);
       return;
     }
   }
@@ -1236,16 +1241,22 @@ void RecoverableKeyStoreBackendCertProviderImpl::OnCertificateFetched(
       VerifyAndParseRecoverableKeyStoreBackendCertXmls(cert_xml, sig_xml);
   if (!cert_list.has_value()) {
     LOG(ERROR) << "Failed to parse and verify the fetched certificate.";
+    ReportBackendCertProviderUpdateCertResult(
+        BackendCertProviderUpdateCertResult::kVerifyFailed);
     return;
   }
   if (!PersistCertXmls(cert_xml, sig_xml)) {
     LOG(ERROR) << "Failed to persist fetched certificates on disk.";
+    ReportBackendCertProviderUpdateCertResult(
+        BackendCertProviderUpdateCertResult::kPersistFailed);
     return;
   }
   LOG(INFO)
       << "Recoverable key store backend certificate list updated to version "
       << cert_list->version << ".";
   cert_list_ = std::move(*cert_list);
+  ReportBackendCertProviderUpdateCertResult(
+      BackendCertProviderUpdateCertResult::kUpdateSuccess);
 }
 
 bool RecoverableKeyStoreBackendCertProviderImpl::PersistCertXmls(
