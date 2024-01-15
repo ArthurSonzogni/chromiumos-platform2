@@ -26,7 +26,8 @@ namespace trunks {
 //   std::string response = handle.SendCommandAndWait(command);
 class TpmHandle : public CommandTransceiver {
  public:
-  explicit TpmHandle(WriteErrorTracker& write_error_tracker);
+  explicit TpmHandle(TrunksMetrics& metrics,
+                     WriteErrorTracker& write_error_tracker);
   TpmHandle(const TpmHandle&) = delete;
   TpmHandle& operator=(const TpmHandle&) = delete;
 
@@ -48,7 +49,7 @@ class TpmHandle : public CommandTransceiver {
 
   int fd_;  // A file descriptor for /dev/tpm0.
   // A TrunksMetrics instance for report UMA
-  TrunksMetrics metrics_;
+  TrunksMetrics& metrics_;
   WriteErrorTracker& write_error_tracker_;
 };
 

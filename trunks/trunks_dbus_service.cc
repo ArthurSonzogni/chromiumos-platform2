@@ -4,16 +4,19 @@
 
 #include "trunks/trunks_dbus_service.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
 #include "trunks/resilience/write_error_tracker.h"
 #include "trunks/trunks_interface.pb.h"
+#include "trunks/trunks_metrics.h"
 
 namespace trunks {
 
@@ -22,11 +25,13 @@ using brillo::dbus_utils::DBusMethodResponse;
 
 TrunksDBusAdaptor::TrunksDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                                      CommandTransceiver& command_transceiver,
+                                     TrunksMetrics& metrics,
                                      WriteErrorTracker& write_error_tracker,
                                      TrunksDBusService& dbus_service)
     : org::chromium::TrunksAdaptor(this),
       dbus_object_(nullptr, bus, org::chromium::TrunksAdaptor::GetObjectPath()),
       command_transceiver_(command_transceiver),
+      metrics_(metrics),
       write_error_tracker_(write_error_tracker),
       dbus_service_(dbus_service) {}
 
@@ -37,8 +42,11 @@ void TrunksDBusAdaptor::RegisterAsync(
 }
 
 void TrunksDBusAdaptor::SendCommandCallback(
+    uint64_t sender,
+    base::Time start_time,
     std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
     const std::string& response_from_tpm) {
+  metrics_.ReportCommandTime(sender, base::Time::Now() - start_time);
   SendCommandResponse tpm_response_proto;
   tpm_response_proto.set_response(response_from_tpm);
   response->Return(tpm_response_proto);
@@ -55,40 +63,43 @@ void TrunksDBusAdaptor::SendCommand(
     const SendCommandRequest& in_request) {
   if (!in_request.has_command() || in_request.command().empty()) {
     LOG(ERROR) << "TrunksDBusService: Invalid request.";
-    SendCommandCallback(std::unique_ptr(std::move(response)),
+    SendCommandCallback(in_request.sender_id(), base::Time::Now(),
+                        std::unique_ptr(std::move(response)),
                         CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;
   }
   command_transceiver_.SendCommand(
       in_request.command(),
       base::BindOnce(&TrunksDBusAdaptor::SendCommandCallback,
-                     weak_factory_.GetWeakPtr(),
-                     std::unique_ptr(std::move(response))));
+                     weak_factory_.GetWeakPtr(), in_request.sender_id(),
+                     base::Time::Now(), std::unique_ptr(std::move(response))));
 }
 
 void TrunksDBusAdaptor::StartEvent(
     std::unique_ptr<DBusMethodResponse<StartEventResponse>> response,
     const StartEventRequest& in_request) {
-  // TODO(yich): Finish the code.
+  metrics_.StartEvent(in_request.event(), in_request.sender_id());
   response->Return(StartEventResponse{});
 }
 
 void TrunksDBusAdaptor::StopEvent(
     std::unique_ptr<DBusMethodResponse<StopEventResponse>> response,
     const StopEventRequest& in_request) {
-  // TODO(yich): Finish the code.
+  metrics_.StopEvent(in_request.event(), in_request.sender_id());
   response->Return(StopEventResponse{});
 }
 
 TrunksDBusService::TrunksDBusService(CommandTransceiver& command_transceiver,
+                                     TrunksMetrics& metrics,
                                      WriteErrorTracker& write_error_tracker)
     : brillo::DBusServiceDaemon(kTrunksServiceName),
       command_transceiver_(command_transceiver),
+      metrics_(metrics),
       write_error_tracker_(write_error_tracker) {}
 
 void TrunksDBusService::RegisterDBusObjectsAsync(
     AsyncEventSequencer* sequencer) {
-  adaptor_.reset(new TrunksDBusAdaptor(bus_, command_transceiver_,
+  adaptor_.reset(new TrunksDBusAdaptor(bus_, command_transceiver_, metrics_,
                                        write_error_tracker_, *this));
 
   adaptor_->RegisterAsync(

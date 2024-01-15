@@ -4,6 +4,8 @@
 
 #include "trunks/trunks_metrics.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <string>
 
 #include <base/check_op.h>
@@ -20,6 +22,10 @@ namespace trunks {
 
 namespace {
 
+constexpr base::TimeDelta kMinMetricsTimeout = base::Minutes(0);
+constexpr base::TimeDelta kMaxMetricsTimeout = base::Minutes(5);
+constexpr int kNumBuckets = 100;
+
 constexpr char kFirstTimeoutWritingCommand[] =
     "Platform.Trunks.FirstTimeoutWritingCommand";
 constexpr char kFirstTimeoutWritingTime[] =
@@ -33,6 +39,15 @@ constexpr char kTransitionedWriteErrorNo[] =
     "Platform.Trunks.TransitionedWriteErrorNo";
 
 constexpr char kTpmErrorCode[] = "Platform.Trunks.TpmErrorCode";
+
+// The total event time.
+constexpr char kEventTime[] = "Platform.Trunks.EventTime.";
+
+// The time we spend on the TPM that is directly related to the event.
+constexpr char kEventRelatedTime[] = "Platform.Trunks.EventRelatedTime.";
+
+// The time we spend on the TPM that is not directly related to the event.
+constexpr char kEventIrrelatedTime[] = "Platform.Trunks.EventIrrelatedTime.";
 
 }  // namespace
 
@@ -97,6 +112,61 @@ void TrunksMetrics::ReportWriteErrorNo(int prev, int next) {
   } else {
     metrics_library_.SendSparseToUMA(kTransitionedWriteErrorNo, prev);
     has_error_transitioned = true;
+  }
+}
+
+void TrunksMetrics::StartEvent(const std::string& event, uint64_t sender) {
+  events[event] = EventDetail{
+      .sender = sender,
+      .start_time = base::Time::Now(),
+      .related_time = base::Seconds(0),
+      .irrelated_time = base::Seconds(0),
+  };
+}
+
+void TrunksMetrics::StopEvent(const std::string& event, uint64_t sender) {
+  auto it = events.find(event);
+  if (it == events.end()) {
+    LOG(WARNING) << "Stop event(" << event << ") without starting it.";
+    return;
+  }
+
+  // Total event time.
+  metrics_library_.SendTimeToUMA(
+      kEventTime + event, base::Time::Now() - it->second.start_time,
+      kMinMetricsTimeout, kMaxMetricsTimeout, kNumBuckets);
+
+  // Related event time.
+  metrics_library_.SendTimeToUMA(kEventRelatedTime + event,
+                                 it->second.related_time, kMinMetricsTimeout,
+                                 kMaxMetricsTimeout, kNumBuckets);
+
+  // Irrelated event time.
+  metrics_library_.SendTimeToUMA(kEventIrrelatedTime + event,
+                                 it->second.irrelated_time, kMinMetricsTimeout,
+                                 kMaxMetricsTimeout, kNumBuckets);
+
+  events.erase(it);
+}
+
+void TrunksMetrics::ReportCommandTime(uint64_t sender,
+                                      base::TimeDelta duration) {
+  for (auto& [event, detail] : events) {
+    base::TimeDelta event_time = duration;
+
+    // If the command starts before we starts the event, we should only record
+    // the time within the event range.
+    base::Time now = base::Time::Now();
+    base::TimeDelta delta = now - detail.start_time;
+    if (event_time > delta) {
+      event_time = delta;
+    }
+
+    if (detail.sender == sender) {
+      detail.related_time += event_time;
+    } else {
+      detail.irrelated_time += event_time;
+    }
   }
 }
 

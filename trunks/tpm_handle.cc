@@ -47,8 +47,11 @@ int MaskEINTR(int err) {
 
 }  // namespace
 
-TpmHandle::TpmHandle(WriteErrorTracker& write_error_tracker)
-    : fd_(kInvalidFileDescriptor), write_error_tracker_(write_error_tracker) {}
+TpmHandle::TpmHandle(TrunksMetrics& metrics,
+                     WriteErrorTracker& write_error_tracker)
+    : fd_(kInvalidFileDescriptor),
+      metrics_(metrics),
+      write_error_tracker_(write_error_tracker) {}
 
 TpmHandle::~TpmHandle() {
   int result = IGNORE_EINTR(close(fd_));

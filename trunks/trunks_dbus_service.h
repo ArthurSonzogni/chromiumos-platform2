@@ -5,10 +5,12 @@
 #ifndef TRUNKS_TRUNKS_DBUS_SERVICE_H_
 #define TRUNKS_TRUNKS_DBUS_SERVICE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
@@ -17,6 +19,7 @@
 #include "trunks/power_manager.h"
 #include "trunks/resilience/write_error_tracker.h"
 #include "trunks/trunks_interface.pb.h"
+#include "trunks/trunks_metrics.h"
 // Requires trunks/trunks_interface.pb.h
 #include "trunks/dbus_adaptors/org.chromium.Trunks.h"
 
@@ -32,6 +35,7 @@ class TrunksDBusAdaptor : public org::chromium::TrunksInterface,
  public:
   explicit TrunksDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                              CommandTransceiver& command_transceiver,
+                             TrunksMetrics& metrics,
                              WriteErrorTracker& write_error_tracker,
                              TrunksDBusService& dbus_service);
   TrunksDBusAdaptor(const TrunksDBusAdaptor&) = delete;
@@ -57,11 +61,14 @@ class TrunksDBusAdaptor : public org::chromium::TrunksInterface,
 
  private:
   void SendCommandCallback(
+      uint64_t sender,
+      base::Time start_time,
       std::unique_ptr<DBusMethodResponse<SendCommandResponse>> response,
       const std::string& response_from_tpm);
 
   brillo::dbus_utils::DBusObject dbus_object_;
   CommandTransceiver& command_transceiver_;
+  TrunksMetrics& metrics_;
   WriteErrorTracker& write_error_tracker_;
   TrunksDBusService& dbus_service_;
 
@@ -74,6 +81,7 @@ class TrunksDBusAdaptor : public org::chromium::TrunksInterface,
 class TrunksDBusService : public brillo::DBusServiceDaemon {
  public:
   explicit TrunksDBusService(CommandTransceiver& command_transceiver,
+                             TrunksMetrics& metrics,
                              WriteErrorTracker& write_error_tracker);
   TrunksDBusService(const TrunksDBusService&) = delete;
   TrunksDBusService& operator=(const TrunksDBusService&) = delete;
@@ -102,6 +110,7 @@ class TrunksDBusService : public brillo::DBusServiceDaemon {
   PowerManager* power_manager_ = nullptr;
   // Store the points that needs to pass to and used by adaptor_
   CommandTransceiver& command_transceiver_;
+  TrunksMetrics& metrics_;
   WriteErrorTracker& write_error_tracker_;
 
   // Declared last so weak pointers are invalidated first on destruction.

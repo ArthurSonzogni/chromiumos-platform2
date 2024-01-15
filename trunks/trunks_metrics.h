@@ -5,8 +5,11 @@
 #ifndef TRUNKS_TRUNKS_METRICS_H_
 #define TRUNKS_TRUNKS_METRICS_H_
 
+#include <cstdint>
+#include <map>
 #include <string>
 
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 #include "trunks/tpm_generated.h"
@@ -37,7 +40,20 @@ class TrunksMetrics {
 
   void ReportWriteErrorNo(int prev, int next);
 
+  // These event related functions can only be called on the same thread.
+  void StartEvent(const std::string& event, uint64_t sender);
+  void StopEvent(const std::string& event, uint64_t sender);
+  void ReportCommandTime(uint64_t sender, base::TimeDelta duration);
+
  private:
+  struct EventDetail {
+    uint64_t sender;
+    base::Time start_time;
+    base::TimeDelta related_time;
+    base::TimeDelta irrelated_time;
+  };
+
+  std::map<std::string, EventDetail> events;
   MetricsLibrary metrics_library_;
 };
 

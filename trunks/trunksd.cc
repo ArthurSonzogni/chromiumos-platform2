@@ -27,6 +27,7 @@
 #include "trunks/trunks_dbus_service.h"
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_ftdi_spi.h"
+#include "trunks/trunks_metrics.h"
 
 namespace {
 
@@ -94,6 +95,7 @@ int main(int argc, char** argv) {
   bool noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
 
+  trunks::TrunksMetrics metrics;
   trunks::WriteErrorTrackerImpl write_error_tracker(kWriteErrorTrackingPath);
 
   // Chain together command transceivers:
@@ -106,7 +108,7 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Sending commands to FTDI SPI.";
     low_level_transceiver = new trunks::TrunksFtdiSpi();
   } else {
-    low_level_transceiver = new trunks::TpmHandle(write_error_tracker);
+    low_level_transceiver = new trunks::TpmHandle(metrics, write_error_tracker);
   }
   CHECK(low_level_transceiver->Init())
       << "Error initializing TPM communication.";
@@ -135,7 +137,7 @@ int main(int argc, char** argv) {
       &resource_manager, background_thread.task_runner());
 
   // Create a service instance so objects like AtExitManager exist.
-  trunks::TrunksDBusService service(background_transceiver,
+  trunks::TrunksDBusService service(background_transceiver, metrics,
                                     write_error_tracker);
 
   trunks::PowerManager power_manager(&resource_manager,
