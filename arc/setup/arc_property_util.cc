@@ -431,11 +431,13 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   std::string manufacturer;
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
-  } else if (family == "jep106:0426\n") {
+  } else if (family == "MediaTek\n") {
     manufacturer = "Mediatek";
-    machine = soc_id;
-    constexpr std::string_view mtk_prefix("jep106:0426:");
-    machine.replace(0, mtk_prefix.length(), "MT");
+
+    // Remove brackets to align the SOC_MODEL requirement in Android CCD -
+    // "The value of this field MUST be encodable as 7-bit ASCII and match the
+    // regular expression “^([0-9A-Za-z ._/+-]+)$”"
+    base::RemoveChars(machine, "()", &machine);
   } else {
     return false;
   }
@@ -473,13 +475,9 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
     // Platform names:
     //   Trogdor: also matches Strongbad and Homestar.
-    //   Kukui: also matches Jacuzzi.
     // These devices do not have recent-enough firmware and/or kernels to have
     // a populated /sys/bus/soc/devices.
-    if (platform == "Kukui") {
-      *dest += "ro.soc.manufacturer=Mediatek\n";
-      *dest += "ro.soc.model=MT8183\n";
-    } else if (platform == "Trogdor") {
+    if (platform == "Trogdor") {
       *dest += "ro.soc.manufacturer=Qualcomm\n";
       *dest += "ro.soc.model=SC7180\n";
     } else {
