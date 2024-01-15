@@ -2823,6 +2823,24 @@ TEST_F(ServiceTest, ServiceMetricsServiceFailure) {
   service_->UpdateStateTransitionMetrics(Service::kStateFailure);
 }
 
+TEST_F(ServiceTest, PortalDetectionStops) {
+  SetStateField(Service::kStateConnected);
+  auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  service_->network_event_handler()->OnNetworkValidationStop(1);
+  EXPECT_EQ(Service::kStateOnline, service_->state());
+}
+
+TEST_F(ServiceTest, PortalDetectionStopsAfterDisconnection) {
+  SetStateField(Service::kStateIdle);
+  auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  service_->network_event_handler()->OnNetworkValidationStop(1);
+  EXPECT_EQ(Service::kStateIdle, service_->state());
+}
+
 TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   SetStateField(Service::kStateIdle);
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
@@ -3018,10 +3036,14 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByTechnology) {
       std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  EXPECT_CALL(*network, StopPortalDetection);
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+
+  service_->network_event_handler()->OnNetworkValidationStop(1);
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3035,10 +3057,14 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy) {
       std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  EXPECT_CALL(*network, StopPortalDetection);
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+
+  service_->network_event_handler()->OnNetworkValidationStop(1);
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3052,10 +3078,14 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal) {
       std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  EXPECT_CALL(*network, StopPortalDetection);
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+
+  service_->network_event_handler()->OnNetworkValidationStop(1);
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3086,6 +3116,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationFails) {
       std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
 
+  EXPECT_CALL(*network, StopPortalDetection).Times(0);
   EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(false));
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));

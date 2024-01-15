@@ -2631,7 +2631,6 @@ bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
     LOG(INFO) << log_name() << ": " << __func__
               << ": Network validation is disabled for this Service";
     attached_network_->StopPortalDetection();
-    SetState(Service::kStateOnline);
     return false;
   }
 
@@ -2644,6 +2643,14 @@ bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
   }
 
   return true;
+}
+
+void Service::NetworkEventHandler::OnNetworkValidationStop(
+    int interface_index) {
+  if (!service_->IsConnected()) {
+    return;
+  }
+  service_->SetState(Service::kStateOnline);
 }
 
 void Service::NetworkEventHandler::OnNetworkValidationResult(

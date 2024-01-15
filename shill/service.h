@@ -234,7 +234,9 @@ class Service : public base::RefCounted<Service> {
         patchpanel::Client::NeighborRole role,
         patchpanel::Client::NeighborStatus status) override {}
     void OnNetworkValidationStart(int interface_index) override {}
-    void OnNetworkValidationStop(int interface_index) override {}
+    // Ensures that the Service is considered as online if network validation
+    // stops normally.
+    void OnNetworkValidationStop(int interface_index) override;
     void OnNetworkValidationResult(
         int interface_index, const NetworkMonitor::Result& result) override;
     void OnNetworkDestroyed(int interface_index) override {}

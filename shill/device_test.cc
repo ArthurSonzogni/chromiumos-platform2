@@ -260,8 +260,7 @@ TEST_F(DeviceTest, SelectedService) {
   device_->SetServiceState(Service::kStateAssociating);
 
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_EQ(device_->selected_service_, service);
   Mock::VerifyAndClearExpectations(service.get());
@@ -276,8 +275,7 @@ TEST_F(DeviceTest, SelectedService) {
 
 TEST_F(DeviceTest, SelectedService_SetServiceFailure) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
 
   // A service in the "Failure" state should not be reset to "Idle"
@@ -291,8 +289,7 @@ TEST_F(DeviceTest, SelectedService_SetServiceFailure) {
 
 TEST_F(DeviceTest, NetworkFailure) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
@@ -301,8 +298,7 @@ TEST_F(DeviceTest, NetworkFailure) {
 
 TEST_F(DeviceTest, ConnectionUpdated) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
@@ -312,6 +308,7 @@ TEST_F(DeviceTest, ConnectionUpdated) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
+  EXPECT_CALL(*network_, StopPortalDetection);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -324,8 +321,7 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
   // The service is already Online and selected, so it should not transition
   // back to Connected.
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
@@ -335,6 +331,7 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
 
   // Successful portal (non-)detection forces the service Online.
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
+  EXPECT_CALL(*network_, StopPortalDetection);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -352,8 +349,7 @@ TEST_F(DeviceTest, ConnectionUpdatedSuccessNoSelectedService) {
 
 TEST_F(DeviceTest, NetworkFailureOtherInterface) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(_)).Times(0);
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
@@ -362,8 +358,7 @@ TEST_F(DeviceTest, NetworkFailureOtherInterface) {
 
 TEST_F(DeviceTest, ConnectionUpdatedOtherInterface) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
@@ -372,8 +367,7 @@ TEST_F(DeviceTest, ConnectionUpdatedOtherInterface) {
 
 TEST_F(DeviceTest, IPConfigsPropertyUpdatedOtherInterface) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(_)).Times(0);
   EXPECT_CALL(*GetDeviceMockAdaptor(), EmitRpcIdentifierArrayChanged(_, _))
@@ -384,8 +378,7 @@ TEST_F(DeviceTest, IPConfigsPropertyUpdatedOtherInterface) {
 // Successful cases are tested in the DevicePortalDetectionTest suite.
 TEST_F(DeviceTest, OnNetworkValidationResultOtherInterface) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
@@ -512,8 +505,7 @@ TEST_F(DeviceTest, Stop) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
 
   EXPECT_CALL(*service, state())
@@ -533,8 +525,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
 
   EXPECT_CALL(*service, state())
@@ -553,8 +544,7 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service);
 
   EXPECT_CALL(*device_, ShouldBringNetworkInterfaceDownAfterDisabled())
@@ -601,8 +591,7 @@ TEST_F(DeviceTest, Reset) {
 
 TEST_F(DeviceTest, ResumeConnected) {
   scoped_refptr<MockService> service0(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*service0,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service0, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service0);
   EXPECT_CALL(*service0, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*network_, RenewDHCPLease());
@@ -667,8 +656,7 @@ TEST_F(DeviceTest, FetchTrafficCounters) {
   scoped_refptr<MockService> service0(new NiceMock<MockService>(manager()));
   EXPECT_TRUE(service0->traffic_counter_snapshot().empty());
   EXPECT_TRUE(service0->current_traffic_counters().empty());
-  EXPECT_CALL(*service0,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service0, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service0);
   EXPECT_EQ(service0, device_->selected_service_);
   EXPECT_TRUE(service0->current_traffic_counters().empty());
@@ -687,8 +675,7 @@ TEST_F(DeviceTest, FetchTrafficCounters) {
 
   scoped_refptr<MockService> service1(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*service0, DetachNetwork());
-  EXPECT_CALL(*service1,
-              AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+  EXPECT_CALL(*service1, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service1);
   EXPECT_EQ(service1, device_->selected_service_);
   EXPECT_EQ(counter_diff0, service0->current_traffic_counters()[source0]);
@@ -708,8 +695,7 @@ class DevicePortalDetectionTest : public DeviceTest {
 
   void SetUp() override {
     DeviceTest::SetUp();
-    EXPECT_CALL(*service_,
-                AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
+    EXPECT_CALL(*service_, AttachNetwork(IsWeakPtrTo(network_)));
     device_->SelectService(service_);
   }
 
@@ -729,6 +715,7 @@ TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
+  EXPECT_CALL(*network_, StopPortalDetection).Times(0);
 
   EXPECT_FALSE(device_->UpdatePortalDetector(
       NetworkMonitor::ValidationReason::kDBusRequest));
@@ -741,6 +728,7 @@ TEST_F(DevicePortalDetectionTest, ServiceNotConnected) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
+  EXPECT_CALL(*network_, StopPortalDetection).Times(0);
 
   EXPECT_FALSE(device_->UpdatePortalDetector(
       NetworkMonitor::ValidationReason::kDBusRequest));
@@ -754,6 +742,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(2);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
+  EXPECT_CALL(*network_, StopPortalDetection).Times(2);
 
   EXPECT_FALSE(device_->UpdatePortalDetector(
       NetworkMonitor::ValidationReason::kDBusRequest));
