@@ -120,28 +120,8 @@ impl MetricsLogger {
     }
 
     /// Write the MetricsLogger buffer to the MetricsLogger file.
-    pub fn flush(&mut self, _: &ActiveMount) -> Result<()> {
-        if self.buf.is_empty() {
-            return Ok(());
-        }
-
-        let mut f = File::options()
-            .write(true)
-            .create(true)
-            .append(true)
-            .custom_flags(libc::O_SYNC)
-            .open(METRICS_FILE_PATH.as_path())
-            .context(format!(
-                "Failed to open metrics file {}",
-                METRICS_FILE_PATH.display()
-            ))?;
-
-        for entry in self.buf.drain(..) {
-            f.write_all(&[entry.as_bytes(), &[b'\n']].concat())
-                .context("Failed to write metrics file")?;
-        }
-
-        Ok(())
+    pub fn flush(&mut self, mv: &ActiveMount) -> Result<()> {
+        write_metrics_file(mv, &mut self.buf)
     }
 
     pub fn metrics_send_io_sample(&mut self, histogram: &str, io_bytes: u64, duration: Duration) {
@@ -338,4 +318,28 @@ pub fn read_and_send_metrics(am: &ActiveMount) {
     if let Err(e) = fs::remove_file(METRICS_FILE_PATH.as_path()) {
         warn!("Failed to remove {}: {}", METRICS_FILE_PATH.display(), e);
     }
+}
+
+fn write_metrics_file(_: &ActiveMount, buf: &mut VecDeque<String>) -> Result<()> {
+    if buf.is_empty() {
+        return Ok(());
+    }
+
+    let mut f = File::options()
+        .write(true)
+        .create(true)
+        .append(true)
+        .custom_flags(libc::O_SYNC)
+        .open(METRICS_FILE_PATH.as_path())
+        .context(format!(
+            "Failed to open metrics file {}",
+            METRICS_FILE_PATH.display()
+        ))?;
+
+    for entry in buf.drain(..) {
+        f.write_all(&[entry.as_bytes(), &[b'\n']].concat())
+            .context("Failed to write metrics file")?;
+    }
+
+    Ok(())
 }
