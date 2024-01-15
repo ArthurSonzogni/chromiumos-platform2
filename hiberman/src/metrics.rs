@@ -10,7 +10,6 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::mem;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::path::PathBuf;
@@ -338,7 +337,6 @@ pub fn read_and_send_metrics(am: &ActiveMount) {
     }
 
     // All metrics have been processed, delete the metrics file.
-    mem::drop(metrics_file);
     if let Err(e) = fs::remove_file(METRICS_FILE_PATH.as_path()) {
         warn!("Failed to remove {}: {}", METRICS_FILE_PATH.display(), e);
     }
