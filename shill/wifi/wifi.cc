@@ -4088,7 +4088,7 @@ void WiFi::OnNetworkValidationResult(int interface_index,
                                      const NetworkMonitor::Result& result) {
   Device::OnNetworkValidationResult(interface_index, result);
 
-  if (result.GetValidationState() ==
+  if (result.validation_state ==
       PortalDetector::ValidationState::kInternetConnectivity) {
     RetrieveLinkStatistics(
         WiFiLinkStatistics::Trigger::kNetworkValidationSuccess);

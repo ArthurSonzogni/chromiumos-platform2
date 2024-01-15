@@ -222,7 +222,7 @@ void NetworkMonitor::OnPortalDetectorResult(
                         technology_, *result.http_content_length);
   }
 
-  client_->OnNetworkMonitorResult(result);
+  client_->OnNetworkMonitorResult(Result::FromPortalDetectorResult(result));
 }
 
 void NetworkMonitor::StopNetworkValidationLog() {
@@ -316,6 +316,30 @@ std::ostream& operator<<(std::ostream& stream,
     case NetworkMonitor::ValidationReason::kRetryValidation:
       return stream << "RetryValidation";
   }
+}
+
+NetworkMonitor::Result NetworkMonitor::Result::FromPortalDetectorResult(
+    const PortalDetector::Result& result) {
+  return Result{
+      .num_attempts = result.num_attempts,
+      .validation_state = result.GetValidationState(),
+      .probe_result_metric = result.GetResultMetric(),
+      .probe_url = result.probe_url,
+  };
+}
+
+bool NetworkMonitor::Result::operator==(
+    const NetworkMonitor::Result& rhs) const = default;
+
+std::ostream& operator<<(std::ostream& stream,
+                         const NetworkMonitor::Result& result) {
+  stream << "{ num_attempts=" << result.num_attempts;
+  stream << ", validation_state=" << result.validation_state;
+  stream << ", result_metric=" << result.probe_result_metric;
+  if (result.probe_url) {
+    stream << ", probe_url=" << result.probe_url->ToString();
+  }
+  return stream << " }";
 }
 
 }  // namespace shill

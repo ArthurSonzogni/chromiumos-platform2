@@ -12,9 +12,9 @@
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
 
-#include "shill/http_request.h"
 #include "shill/metrics.h"
 #include "shill/mock_metrics.h"
+#include "shill/portal_detector.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -30,9 +30,9 @@ using ::testing::StrictMock;
 class ValidationLogTest : public testing::Test {
  public:
   ValidationLogTest() : log_(Technology::kWiFi, &metrics_) {}
-  ~ValidationLogTest() override {}
+  ~ValidationLogTest() override = default;
 
-  NetworkMonitor::Result GetInternetConnectivityResult() {
+  PortalDetector::Result GetInternetConnectivityResult() {
     PortalDetector::Result r;
     r.http_result = PortalDetector::ProbeResult::kSuccess;
     r.http_status_code = 204;
@@ -43,7 +43,7 @@ class ValidationLogTest : public testing::Test {
     return r;
   }
 
-  NetworkMonitor::Result GetPortalRedirectResult() {
+  PortalDetector::Result GetPortalRedirectResult() {
     PortalDetector::Result r;
     r.http_result = PortalDetector::ProbeResult::kPortalRedirect;
     r.http_status_code = 302;
@@ -58,7 +58,7 @@ class ValidationLogTest : public testing::Test {
     return r;
   }
 
-  NetworkMonitor::Result GetPortalSuspectedResult() {
+  PortalDetector::Result GetPortalSuspectedResult() {
     PortalDetector::Result r;
     r.http_result = PortalDetector::ProbeResult::kPortalSuspected;
     r.http_status_code = 200;
@@ -71,7 +71,7 @@ class ValidationLogTest : public testing::Test {
     return r;
   }
 
-  NetworkMonitor::Result GetNoConnectivityResult() {
+  PortalDetector::Result GetNoConnectivityResult() {
     PortalDetector::Result r;
     r.http_result = PortalDetector::ProbeResult::kConnectionFailure;
     r.https_result = PortalDetector::ProbeResult::kConnectionFailure;
@@ -80,7 +80,7 @@ class ValidationLogTest : public testing::Test {
     return r;
   }
 
-  void AddResult(const NetworkMonitor::Result& r) {
+  void AddResult(const PortalDetector::Result& r) {
     // Ensure that all durations between events are positive.
     dispatcher_.task_environment().FastForwardBy(base::Milliseconds(10));
     log_.AddResult(r);
@@ -470,7 +470,7 @@ TEST_F(ValidationLogTest, ValidationLogRecordMetricsWithoutRecord) {
 }
 
 TEST_F(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
-  NetworkMonitor::Result redirect_result;
+  PortalDetector::Result redirect_result;
   redirect_result.http_result = PortalDetector::ProbeResult::kPortalRedirect;
   redirect_result.http_status_code = 302;
   redirect_result.http_content_length = 0;

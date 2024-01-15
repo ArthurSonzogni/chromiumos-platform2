@@ -25,7 +25,7 @@ class ValidationLog {
   ValidationLog(Technology technology, Metrics* metrics);
   virtual ~ValidationLog();
 
-  mockable void AddResult(const NetworkMonitor::Result& result);
+  mockable void AddResult(const PortalDetector::Result& result);
   mockable void SetCapportDHCPSupported();
   mockable void SetCapportRASupported();
   mockable void RecordMetrics() const;

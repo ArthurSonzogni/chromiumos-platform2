@@ -948,4 +948,118 @@ TEST_F(PortalDetectorTest, PickProbeURLs) {
   EXPECT_EQ(all_urls, all_found_urls);
 }
 
+TEST(PortalDetectorResultTest, HTTPSTimeout) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kHTTPTimeout,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kNoConnectivity);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultHTTPSFailure);
+}
+
+TEST(PortalDetectorResultTest, PartialConnectivity) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kNoConnectivity);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultHTTPSFailure);
+}
+
+TEST(PortalDetectorResultTest, NoConnectivity) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_duration = base::Milliseconds(0),
+      .https_duration = base::Milliseconds(200),
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kNoConnectivity);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultConnectionFailure);
+}
+
+TEST(PortalDetectorResultTest, InternetConnectivity) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kSuccess,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(), Metrics::kPortalDetectorResultOnline);
+}
+
+TEST(PortalDetectorResultTest, PortalRedirect) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kPortalRedirect);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultRedirectFound);
+}
+
+TEST(PortalDetectorResultTest, PortalInvalidRedirect) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .redirect_url = std::nullopt,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kPortalSuspected);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultRedirectNoUrl);
+}
+
+TEST(PortalDetectorResultTest, Empty200) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 200,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kSuccess,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(), Metrics::kPortalDetectorResultOnline);
+}
+
+TEST(PortalDetectorResultTest, PortalSuspected200) {
+  const PortalDetector::Result result = {
+      .http_result = PortalDetector::ProbeResult::kPortalSuspected,
+      .http_status_code = 200,
+      .http_content_length = 1023,
+      .https_result = PortalDetector::ProbeResult::kTLSFailure,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kPortalSuspected);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultHTTPSFailure);
+}
+
 }  // namespace shill

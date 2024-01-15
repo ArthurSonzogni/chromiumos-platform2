@@ -1175,7 +1175,7 @@ void Cellular::OnNetworkValidationResult(int interface_index,
   if (multiplexed_tethering_pdn_ &&
       multiplexed_tethering_pdn_->network()->interface_index() ==
           interface_index) {
-    switch (result.GetValidationState()) {
+    switch (result.validation_state) {
       case PortalDetector::ValidationState::kInternetConnectivity:
         // Nothing to do: the Network already stops the network validation loop
         // when the Network reaches the kInternetConnectivity state.
@@ -1208,7 +1208,8 @@ void Cellular::OnNetworkValidationResult(int interface_index,
   }
   // Report cellular specific metrics with APN information.
   NotifyNetworkValidationResult(*service_->GetLastGoodApn(),
-                                result.GetResultMetric(), result.num_attempts);
+                                result.probe_result_metric,
+                                result.num_attempts);
 }
 
 void Cellular::OnModemDestroyed() {

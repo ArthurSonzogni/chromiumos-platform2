@@ -1438,7 +1438,7 @@ bool TetheringManager::IsUpstreamNetworkReady() {
     // Internet connectivity has not yet been evaluated.
     return false;
   }
-  switch (validation_result->GetValidationState()) {
+  switch (validation_result->validation_state) {
     case PortalDetector::ValidationState::kInternetConnectivity:
       return true;
     case PortalDetector::ValidationState::kPortalRedirect:

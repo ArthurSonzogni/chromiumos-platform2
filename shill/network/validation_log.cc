@@ -20,7 +20,7 @@ ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
 
 ValidationLog::~ValidationLog() = default;
 
-void ValidationLog::AddResult(const NetworkMonitor::Result& result) {
+void ValidationLog::AddResult(const PortalDetector::Result& result) {
   // Make sure that the total memory taken by ValidationLog is bounded.
   static constexpr size_t kValidationLogMaxSize = 128;
   if (results_.size() < kValidationLogMaxSize) {

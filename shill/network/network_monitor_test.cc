@@ -126,7 +126,10 @@ class NetworkMonitorTest : public ::testing::Test {
               return portal_detector;
             }));
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
-    EXPECT_CALL(client_, OnNetworkMonitorResult(result)).Times(1);
+    EXPECT_CALL(client_,
+                OnNetworkMonitorResult(
+                    NetworkMonitor::Result::FromPortalDetectorResult(result)))
+        .Times(1);
 
     EXPECT_TRUE(network_monitor_->Start(
         NetworkMonitor::ValidationReason::kDBusRequest));

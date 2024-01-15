@@ -4,7 +4,6 @@
 
 #include "shill/service.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -29,7 +28,6 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
-#include "shill/event_dispatcher.h"
 #include "shill/http_request.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
@@ -94,7 +92,7 @@ class ServiceTest : public PropertyStoreTest {
     service_->disconnects_.time_ = &time_;
     service_->misconnects_.time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
-    service_->eap_.reset(new NiceMock<MockEapCredentials>());
+    service_->eap_ = std::make_unique<NiceMock<MockEapCredentials>>();
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
@@ -1669,7 +1667,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnEapCredentialsChanged(Manager* manager)
-      : ServiceUnderTest(manager), is_8021x_(false) {}
+      : ServiceUnderTest(manager) {}
   MOCK_METHOD(void,
               OnEapCredentialsChanged,
               (Service::UpdateCredentialsReason),
@@ -1678,7 +1676,7 @@ class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
   void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
 
  private:
-  bool is_8021x_;
+  bool is_8021x_ = false;
 };
 
 TEST_F(ServiceTest, SetEAPCredentialsOverRpc) {
@@ -2858,11 +2856,12 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kSuccess;
-  result.http_status_code = 204;
-  result.https_result = PortalDetector::ProbeResult::kSuccess;
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
 
   ASSERT_NE(service_->network_event_handler(), nullptr);
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
@@ -2876,12 +2875,12 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kSuccess;
-  result.http_status_code = 204;
-  result.https_result = PortalDetector::ProbeResult::kSuccess;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateOnline, service_->state());
@@ -2893,12 +2892,12 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kSuccess;
-  result.http_status_code = 204;
-  result.https_result = PortalDetector::ProbeResult::kSuccess;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateOnline, service_->state());
@@ -2910,12 +2909,11 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kConnectionFailure;
-  result.http_status_code = 0;
-  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultConnectionFailure,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
@@ -2927,12 +2925,11 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kDNSFailure;
-  result.http_status_code = 0;
-  result.https_result = PortalDetector::ProbeResult::kDNSFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultDNSFailure,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
@@ -2944,12 +2941,11 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kDNSTimeout;
-  result.http_status_code = 0;
-  result.https_result = PortalDetector::ProbeResult::kDNSTimeout;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultDNSTimeout,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
@@ -2961,16 +2957,13 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kPortalRedirect;
-  result.http_status_code = 302;
-  result.redirect_url =
-      net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
-  result.probe_url =
-      net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
-  result.https_result = PortalDetector::ProbeResult::kTLSFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kPortalRedirect,
+      .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
+      .probe_url =
+          net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateRedirectFound, service_->state());
@@ -2982,12 +2975,11 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect;
-  result.http_status_code = 302;
-  result.https_result = PortalDetector::ProbeResult::kTLSFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kPortalSuspected,
+      .probe_result_metric = Metrics::kPortalDetectorResultRedirectNoUrl,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
@@ -2999,13 +2991,11 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kPortalSuspected;
-  result.http_status_code = 200;
-  result.http_content_length = 123;
-  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kPortalSuspected,
+      .probe_result_metric = Metrics::kPortalDetectorResultHTTPSFailure,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
@@ -3017,11 +3007,11 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  NetworkMonitor::Result result;
-  result.num_attempts = 1;
-  result.http_result = PortalDetector::ProbeResult::kNoResult;
-  result.https_result = PortalDetector::ProbeResult::kConnectionFailure;
-
+  const NetworkMonitor::Result result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultUnknown,
+  };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());

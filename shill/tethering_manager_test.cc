@@ -1044,11 +1044,12 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
                         hotspot_device_.get());
 
   // Upstream network fetched.
-  NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
-  network_monitor_result.http_status_code = 204;
-  network_monitor_result.http_content_length = 0;
-  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
+  const NetworkMonitor::Result network_monitor_result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
   network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
@@ -1099,11 +1100,12 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
                         hotspot_device_.get());
 
   // Tethering network created.
-  NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
-  network_monitor_result.http_status_code = 204;
-  network_monitor_result.http_content_length = 0;
-  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
+  const NetworkMonitor::Result network_monitor_result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
   eth_network.set_network_monitor_result_for_testing(network_monitor_result);
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
@@ -1235,7 +1237,11 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
                         hotspot_device_.get());
 
   // Upstream network fetched. Network has no Internet connectivity
-  NetworkMonitor::Result network_monitor_result;
+  const NetworkMonitor::Result network_monitor_result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultUnknown,
+  };
   network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
@@ -1276,15 +1282,11 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
                         hotspot_device_.get());
 
   // Upstream network fetched. Network is in a portal state.
-  NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result =
-      PortalDetector::ProbeResult::kPortalRedirect;
-  network_monitor_result.http_status_code = 302;
-  network_monitor_result.http_content_length = 0;
-  network_monitor_result.https_result =
-      PortalDetector::ProbeResult::kTLSFailure;
-  network_monitor_result.redirect_url =
-      net_base::HttpUrl::CreateFromString("https://portal.com/login");
+  const NetworkMonitor::Result network_monitor_result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kPortalRedirect,
+      .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
+  };
   network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
@@ -1451,13 +1453,14 @@ TEST_F(TetheringManagerTest, UpstreamNetworkValidationFails) {
 
   // Feed negative network validation result event. TetheringManager is still
   // leaving a chance for the upstream network validation to succeed.
-  NetworkMonitor::Result network_monitor_result;
-  network_monitor_result.http_result =
-      PortalDetector::ProbeResult::kConnectionFailure;
-  network_monitor_result.https_result =
-      PortalDetector::ProbeResult::kConnectionFailure;
+  const NetworkMonitor::Result network_monitor_result{
+      .num_attempts = 1,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultConnectionFailure,
+  };
   network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkValidationResult(tethering_manager_, network_monitor_result);
+
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
   EXPECT_FALSE(
@@ -1481,10 +1484,15 @@ TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillOnce(Return(true));
-  NetworkMonitor::Result network_monitor_result;  // becomes active.
-  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
-  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
-  network_->set_network_monitor_result_for_testing(network_monitor_result);
+
+  // becomes active.
+  const NetworkMonitor::Result connected_result{
+      .num_attempts = 1,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+  };
+  network_->set_network_monitor_result_for_testing(connected_result);
 
   SetEnabled(tethering_manager_, true);
   DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
@@ -1506,12 +1514,14 @@ TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
 
   // The upstream network loses Internet access. The upstream network validation
   // timer becomes active.
-  network_monitor_result.http_result =
-      PortalDetector::ProbeResult::kConnectionFailure;
-  network_monitor_result.https_result =
-      PortalDetector::ProbeResult::kConnectionFailure;
-  network_->set_network_monitor_result_for_testing(network_monitor_result);
-  OnUpstreamNetworkValidationResult(tethering_manager_, network_monitor_result);
+  const NetworkMonitor::Result not_connected_result{
+      .num_attempts = 2,
+      .validation_state = PortalDetector::ValidationState::kNoConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultConnectionFailure,
+  };
+  network_->set_network_monitor_result_for_testing(not_connected_result);
+  OnUpstreamNetworkValidationResult(tethering_manager_, not_connected_result);
+
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
   EXPECT_FALSE(

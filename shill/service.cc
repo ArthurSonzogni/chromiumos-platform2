@@ -2670,7 +2670,7 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
     service_->SetProbeUrl("");
   }
 
-  switch (result.GetValidationState()) {
+  switch (result.validation_state) {
     case PortalDetector::ValidationState::kInternetConnectivity:
       service_->SetState(Service::kStateOnline);
       break;

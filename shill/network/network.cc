@@ -837,10 +837,10 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
   std::string previous_validation_state = "unevaluated";
   if (network_validation_result_) {
     previous_validation_state = PortalDetector::ValidationStateToString(
-        network_validation_result_->GetValidationState());
+        network_validation_result_->validation_state);
   }
   LOG(INFO) << *this << ": " << __func__ << ": " << previous_validation_state
-            << " -> " << result.GetValidationState();
+            << " -> " << result.validation_state;
 
   if (!IsConnected()) {
     LOG(INFO) << *this
@@ -853,7 +853,7 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
     ev.OnNetworkValidationResult(interface_index_, result);
   }
 
-  if (result.GetValidationState() ==
+  if (result.validation_state ==
       PortalDetector::ValidationState::kInternetConnectivity) {
     // Conclusive result that allows the Service to transition to the
     // "online" state. Stop portal detection.
@@ -906,7 +906,7 @@ bool Network::IsConnectedViaTether() const {
 
 bool Network::HasInternetConnectivity() const {
   return network_validation_result_.has_value() &&
-         network_validation_result_->GetValidationState() ==
+         network_validation_result_->validation_state ==
              PortalDetector::ValidationState::kInternetConnectivity;
 }
 

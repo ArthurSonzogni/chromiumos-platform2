@@ -61,8 +61,28 @@ class NetworkMonitor {
     kRA,
   };
 
-  // TODO(b/305129516): Define a dedicated struct when supporting CAPPORT.
-  using Result = PortalDetector::Result;
+  // Represents the detailed result of a complete network validation attempt.
+  struct Result {
+    // The total number of trial attempts so far.
+    int num_attempts = 0;
+
+    // The outcome of the network validation.
+    PortalDetector::ValidationState validation_state =
+        PortalDetector::ValidationState::kNoConnectivity;
+
+    // The metrics enum of the probe result.
+    Metrics::PortalDetectorResult probe_result_metric =
+        Metrics::kPortalDetectorResultUnknown;
+
+    // URL of the HTTP probe when |validation_state| is either kPortalRedirect
+    // or kPortalSuspected.
+    std::optional<net_base::HttpUrl> probe_url = std::nullopt;
+
+    static Result FromPortalDetectorResult(
+        const PortalDetector::Result& result);
+
+    bool operator==(const Result& rhs) const;
+  };
 
   // This interface defines the interactions between the NetworkMonitor and its
   // caller.
@@ -189,6 +209,9 @@ class NetworkMonitorFactory {
 
 std::ostream& operator<<(std::ostream& stream,
                          NetworkMonitor::ValidationReason reason);
+
+std::ostream& operator<<(std::ostream& stream,
+                         const NetworkMonitor::Result& result);
 
 }  // namespace shill
 #endif  // SHILL_NETWORK_NETWORK_MONITOR_H_

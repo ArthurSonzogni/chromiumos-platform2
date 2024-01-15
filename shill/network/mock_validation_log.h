@@ -17,7 +17,7 @@ class MockValidationLog : public ValidationLog {
   MockValidationLog();
   ~MockValidationLog() override;
 
-  MOCK_METHOD(void, AddResult, (const NetworkMonitor::Result&), (override));
+  MOCK_METHOD(void, AddResult, (const PortalDetector::Result&), (override));
   MOCK_METHOD(void, SetCapportDHCPSupported, (), (override));
   MOCK_METHOD(void, SetCapportRASupported, (), (override));
   MOCK_METHOD(void, RecordMetrics, (), (const, override));
