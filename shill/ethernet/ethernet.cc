@@ -200,7 +200,7 @@ void Ethernet::Stop(EnabledStateChangedCallback callback) {
   // being deregistered is the only Service remaining (instead of releasing the
   // Service entirely) so that the ethernet_any service continues to live. When
   // this happens, disassociate the EthernetService here as well.
-  if (!service_->HasEthernet()) {
+  if (service_ && !service_->HasEthernet()) {
     service_ = nullptr;
   }
   StopSupplicant();
