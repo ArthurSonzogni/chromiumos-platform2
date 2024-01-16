@@ -1,22 +1,20 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "BluetoothPowerStateObserver"
+name: "WebHandwritingIntegrationTest"
 harness: "crosier"
 category: "integration"
 owners:
   - email: "jamescook@chromium.org"
   - email: "chromeos-sw-engprod@google.com"
-hw_agnostic: False
+hw_agnostic: True
 criteria: |
-  Crosier Bluetooth test.
+  Navigate to the appropriate test page, based on whether handwriting recognition is supported or not
 cases:
-  - id: "ToggleBluetoothFromQuickSettings"
-    tags: ["crosier:crosierdemosuite"]
-  - id: "ToggleBluetoothFromOsSettings"
+  - id: "Recognition"
     tags: ["crosier:crosierdemosuite"]
 ...

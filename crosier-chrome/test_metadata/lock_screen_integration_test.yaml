@@ -1,22 +1,26 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "BluetoothPowerStateObserver"
+name: "LockScreen"
 harness: "crosier"
 category: "integration"
 owners:
+  - email: "brettw@chromium.org"
   - email: "jamescook@chromium.org"
   - email: "chromeos-sw-engprod@google.com"
 hw_agnostic: False
 criteria: |
-  Crosier Bluetooth test.
+  Tests that dbus messages for lid close trigger screen lock. This only tests
+  the "lock on lid close" pref state because it's difficult to test the inverse
+  (that the screen didn't lock) without a long timeout. The pref behavior is
+  tested separately in the CloseLidPref test below.
 cases:
-  - id: "ToggleBluetoothFromQuickSettings"
+  - id: "CloseLidDbusIntegration"
     tags: ["crosier:crosierdemosuite"]
-  - id: "ToggleBluetoothFromOsSettings"
+  - id: "CloseLidPref"
     tags: ["crosier:crosierdemosuite"]
 ...

@@ -20,5 +20,5 @@ criteria: |
     3 Make sure the page can open successfully.
 cases:
   - id: "NewTab"
-    tags: []
+    tags: ["crosier:crosierdemosuite"]
 ...
