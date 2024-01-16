@@ -106,6 +106,7 @@ bool ProxyImpl::Init() {
   TPM1_SECTION({ Proxy::SetOveralls(inner_data_->overalls.get()); });
   TPM2_SECTION({
     Proxy::SetTrunksCommandTransceiver(inner_data_->trunks_dbus_proxy.get());
+    Proxy::SetTrunksDbusTransceiver(inner_data_->trunks_dbus_proxy.get());
     Proxy::SetTrunksFactory(inner_data_->trunks_factory.get());
   });
   OTHER_TPM_SECTION({});

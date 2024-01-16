@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <trunks/command_transceiver.h>
+#include <trunks/dbus_transceiver.h>
 #include <trunks/trunks_factory.h>
 
 #ifndef BUILD_LIBHWSEC
@@ -21,8 +22,10 @@ namespace hwsec {
 class TrunksContext {
  public:
   TrunksContext(trunks::CommandTransceiver& command_transceiver,
+                trunks::DbusTransceiver* dbus_transceiver,
                 trunks::TrunksFactory& factory)
       : command_transceiver_(command_transceiver),
+        dbus_transceiver_(dbus_transceiver),
         factory_(factory),
         tpm_state_(*factory_.GetTpmState()),
         tpm_utility_(factory_.GetTpmUtility()) {
@@ -32,12 +35,14 @@ class TrunksContext {
   trunks::CommandTransceiver& GetCommandTransceiver() {
     return command_transceiver_;
   }
+  trunks::DbusTransceiver* GetDbusTransceiver() { return dbus_transceiver_; }
   trunks::TrunksFactory& GetTrunksFactory() { return factory_; }
   trunks::TpmState& GetTpmState() { return tpm_state_; }
   trunks::TpmUtility& GetTpmUtility() { return *tpm_utility_; }
 
  private:
   trunks::CommandTransceiver& command_transceiver_;
+  trunks::DbusTransceiver* dbus_transceiver_;
   trunks::TrunksFactory& factory_;
   trunks::TpmState& tpm_state_;
   std::unique_ptr<trunks::TpmUtility> tpm_utility_;

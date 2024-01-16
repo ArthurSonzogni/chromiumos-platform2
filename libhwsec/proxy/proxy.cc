@@ -33,6 +33,11 @@ void Proxy::SetTrunksCommandTransceiver(
   trunks_command_transceiver_ = trunks_command_transceiver;
 }
 
+void Proxy::SetTrunksDbusTransceiver(
+    trunks::DbusTransceiver* trunks_dbus_transceiver) {
+  trunks_dbus_transceiver_ = trunks_dbus_transceiver;
+}
+
 void Proxy::SetTrunksFactory(trunks::TrunksFactory* trunks_factory) {
   trunks_factory_ptr_ = trunks_factory;
 }
@@ -69,6 +74,9 @@ hwsec::overalls::Overalls& Proxy::GetOveralls() const {
 trunks::CommandTransceiver& Proxy::GetTrunksCommandTransceiver() const {
   CHECK(trunks_command_transceiver_);
   return *trunks_command_transceiver_;
+}
+trunks::DbusTransceiver* Proxy::GetTrunksDbusTransceiver() const {
+  return trunks_dbus_transceiver_;
 }
 trunks::TrunksFactory& Proxy::GetTrunksFactory() const {
   CHECK(trunks_factory_ptr_);

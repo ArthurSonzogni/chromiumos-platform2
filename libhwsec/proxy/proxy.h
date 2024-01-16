@@ -15,6 +15,7 @@ class Overalls;
 }  // namespace hwsec::overalls
 namespace trunks {
 class CommandTransceiver;
+class DbusTransceiver;
 class TrunksFactory;
 }  // namespace trunks
 namespace org::chromium {
@@ -40,6 +41,7 @@ class Proxy {
   // These functions shouldn't be virtual function.
   hwsec::overalls::Overalls& GetOveralls() const;
   trunks::CommandTransceiver& GetTrunksCommandTransceiver() const;
+  trunks::DbusTransceiver* GetTrunksDbusTransceiver() const;
   trunks::TrunksFactory& GetTrunksFactory() const;
   org::chromium::TpmManagerProxyInterface& GetTpmManager() const;
   org::chromium::TpmNvramProxyInterface& GetTpmNvram() const;
@@ -52,6 +54,8 @@ class Proxy {
   void SetOveralls(hwsec::overalls::Overalls* overalls);
   void SetTrunksCommandTransceiver(
       trunks::CommandTransceiver* trunks_command_transceiver);
+  void SetTrunksDbusTransceiver(
+      trunks::DbusTransceiver* trunks_dbus_transceiver);
   void SetTrunksFactory(trunks::TrunksFactory* trunks_factory);
   void SetTpmManager(org::chromium::TpmManagerProxyInterface* tpm_manager);
   void SetTpmNvram(org::chromium::TpmNvramProxyInterface* tpm_nvram);
@@ -61,6 +65,7 @@ class Proxy {
  private:
   hwsec::overalls::Overalls* overalls_ptr_;
   trunks::CommandTransceiver* trunks_command_transceiver_;
+  trunks::DbusTransceiver* trunks_dbus_transceiver_ = nullptr;
   trunks::TrunksFactory* trunks_factory_ptr_;
   org::chromium::TpmManagerProxyInterface* tpm_manager_;
   org::chromium::TpmNvramProxyInterface* tpm_nvram_;
