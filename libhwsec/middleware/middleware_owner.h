@@ -31,6 +31,7 @@
 #include "libhwsec/fuzzed/config.h"
 #include "libhwsec/fuzzed/da_mitigation.h"
 #include "libhwsec/fuzzed/encryption.h"
+#include "libhwsec/fuzzed/event_management.h"
 #include "libhwsec/fuzzed/hwsec_objects.h"
 #include "libhwsec/fuzzed/key_management.h"
 #include "libhwsec/fuzzed/middleware.h"

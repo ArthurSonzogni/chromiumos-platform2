@@ -20,6 +20,7 @@
 #include "libhwsec/backend/mock_da_mitigation.h"
 #include "libhwsec/backend/mock_deriving.h"
 #include "libhwsec/backend/mock_encryption.h"
+#include "libhwsec/backend/mock_event_management.h"
 #include "libhwsec/backend/mock_key_management.h"
 #include "libhwsec/backend/mock_pinweaver.h"
 #include "libhwsec/backend/mock_pinweaver_manager.h"
@@ -61,6 +62,7 @@ class MockBackend : public Backend {
     testing::NiceMock<MockU2f> u2f;
     testing::NiceMock<MockAttestation> attestation;
     testing::NiceMock<MockVersionAttestation> version_attestation;
+    testing::NiceMock<MockEventManagement> event_management;
   };
 
   MockBackend() = default;
@@ -106,6 +108,8 @@ class MockBackend : public Backend {
                 default_backend_->Get<Attestation>()),
             .version_attestation = testing::NiceMock<MockVersionAttestation>(
                 default_backend_->Get<VersionAttestation>()),
+            .event_management = testing::NiceMock<MockEventManagement>(
+                default_backend_->Get<EventManagement>()),
         }) {}
 
   ~MockBackend() override = default;
@@ -144,6 +148,9 @@ class MockBackend : public Backend {
   Attestation* GetAttestation() override { return &mock_data_.attestation; }
   VersionAttestation* GetVersionAttestation() override {
     return &mock_data_.version_attestation;
+  }
+  EventManagement* GetEventManagement() override {
+    return &mock_data_.event_management;
   }
 
   std::unique_ptr<Backend> default_backend_;

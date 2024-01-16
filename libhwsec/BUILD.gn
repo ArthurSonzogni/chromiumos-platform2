@@ -256,6 +256,7 @@ source_set("hardware_abstraction_external_library") {
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
     "factory/instr_profiling.cc",
+    "structures/event.cc",
     "structures/key.cc",
   ]
 

@@ -69,6 +69,8 @@ using FuzzCommandList =
                 &Backend::Deriving::SecureDerive,
                 &Backend::Encryption::Encrypt,
                 &Backend::Encryption::Decrypt,
+                &Backend::EventManagement::Start,
+                &Backend::EventManagement::Stop,
                 &Backend::KeyManagement::GetSupportedAlgo,
                 &Backend::KeyManagement::IsSupported,
                 &Backend::KeyManagement::CreateKey,

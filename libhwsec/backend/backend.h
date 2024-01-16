@@ -7,13 +7,14 @@
 
 #include <type_traits>
 
-#include <base/notreached.h>
+#include <base/types/always_false.h>
 
 #include "libhwsec/backend/attestation.h"
 #include "libhwsec/backend/config.h"
 #include "libhwsec/backend/da_mitigation.h"
 #include "libhwsec/backend/deriving.h"
 #include "libhwsec/backend/encryption.h"
+#include "libhwsec/backend/event_management.h"
 #include "libhwsec/backend/key_management.h"
 #include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/backend/pinweaver_manager/pinweaver_manager.h"
@@ -65,6 +66,7 @@ class Backend {
   using U2f = ::hwsec::U2f;
   using Attestation = ::hwsec::Attestation;
   using VersionAttestation = ::hwsec::VersionAttestation;
+  using EventManagement = ::hwsec::EventManagement;
 
   virtual ~Backend() = default;
 
@@ -111,7 +113,10 @@ class Backend {
       return GetAttestation();
     else if constexpr (std::is_same_v<SubClass, VersionAttestation>)
       return GetVersionAttestation();
-    NOTREACHED() << "Should not reach here.";
+    else if constexpr (std::is_same_v<SubClass, EventManagement>)
+      return GetEventManagement();
+    else
+      static_assert(base::AlwaysFalse<SubClass>, "Unknown SubClass.");
   }
 
  private:
@@ -135,6 +140,7 @@ class Backend {
   virtual U2f* GetU2f() = 0;
   virtual Attestation* GetAttestation() = 0;
   virtual VersionAttestation* GetVersionAttestation() = 0;
+  virtual EventManagement* GetEventManagement() = 0;
 };
 
 }  // namespace hwsec

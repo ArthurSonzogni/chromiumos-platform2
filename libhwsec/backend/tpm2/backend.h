@@ -109,6 +109,7 @@ class BackendTpm2 : public Backend {
   VersionAttestation* GetVersionAttestation() override {
     return &version_attestation_;
   }
+  EventManagement* GetEventManagement() override { return nullptr; }
 
   Proxy& proxy_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
