@@ -422,6 +422,17 @@ void IPsecConnection::OnConnect() {
     return;
   }
 
+  // Create dirs required by `swanctl --load-all`. They don't have any
+  // functional role, but just for avoiding error logs when running `swanctl`.
+  for (const std::string_view dir :
+       {"x509", "x509ca", "x509ocsp", "x509aa", "x509ac", "x509crl", "pubkey",
+        "private", "rsa", "ecdsa", "bliss", "pkcs8", "pkcs12"}) {
+    base::FilePath full_path = temp_dir_.GetPath().Append(dir);
+    // Ignore the return value since 1) the function itself will log the
+    // failures and 2) the failure here won't affect the execution.
+    vpn_util_->PrepareConfigDirectory(full_path);
+  }
+
   ScheduleConnectTask(ConnectStep::kStart);
 }
 
