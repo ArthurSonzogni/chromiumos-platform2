@@ -129,6 +129,10 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
       base::BindRepeating(&SupplicantInterfaceProxy::PskMismatch,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  interface_proxy_->RegisterHS20TermsAndConditionsSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::HS20TermsAndConditions,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.
@@ -589,6 +593,11 @@ void SupplicantInterfaceProxy::OnSignalConnected(
     LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
                << interface_name;
   }
+}
+
+void SupplicantInterfaceProxy::HS20TermsAndConditions(const std::string& url) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << url;
+  delegate_->TermsAndConditions(url);
 }
 
 }  // namespace shill

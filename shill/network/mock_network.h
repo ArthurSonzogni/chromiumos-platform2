@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
+#include <net-base/http_url.h>
 #include <net-base/network_priority.h>
 
 #include "shill/ipconfig.h"
@@ -90,6 +91,10 @@ class MockNetwork : public Network {
   MOCK_METHOD(void,
               StartConnectivityTest,
               (PortalDetector::ProbingConfiguration probe_config),
+              (override));
+  MOCK_METHOD(void,
+              OnTermsAndConditions,
+              (const net_base::HttpUrl&),
               (override));
 };
 

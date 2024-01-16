@@ -132,6 +132,7 @@ class P2PDevice : public LocalDevice,
                     const KeyValueStore& properties) override{};
   void StationRemoved(const RpcIdentifier& Station) override{};
   void PskMismatch() override{};
+  void TermsAndConditions(const std::string& url) override{};
 
   // Implementation of SupplicantP2PDeviceEventDelegateInterface. These
   // methods are called by the P2PManager, in response to events from

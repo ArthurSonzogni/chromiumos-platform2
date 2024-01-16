@@ -137,6 +137,9 @@
     </signal>
     <signal name="PskMismatch">
     </signal>
+    <signal name="HS20TermsAndConditions">
+      <arg name="url" type="s"/>
+    </signal>
   </interface>
 </node>
 

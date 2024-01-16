@@ -34,6 +34,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/attribute_list.h>
+#include <net-base/http_url.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/rtnl_handler.h>
@@ -646,6 +647,17 @@ void WiFi::InterworkingSelectDone() {
   if (!matches.empty()) {
     provider_->OnPasspointCredentialsMatches(std::move(matches));
   }
+}
+
+void WiFi::TermsAndConditions(const std::string& url) {
+  SLOG(this, 2) << __func__;
+  std::optional<net_base::HttpUrl> http_url =
+      net_base::HttpUrl::CreateFromString(url);
+  if (!http_url) {
+    LOG(ERROR) << "failed to parse terms and condition URL";
+    return;
+  }
+  GetPrimaryNetwork()->OnTermsAndConditions(http_url.value());
 }
 
 void WiFi::ConnectTo(WiFiService* service, Error* error) {

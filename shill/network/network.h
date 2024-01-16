@@ -19,6 +19,7 @@
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
@@ -365,6 +366,10 @@ class Network : public NetworkMonitor::ClientNetwork {
   mockable void ApplyNetworkConfig(
       NetworkConfigArea area,
       base::OnceCallback<void(bool)> callback = base::DoNothing());
+
+  // Called by a Device to signal a terms and conditions page is available on
+  // the network.
+  mockable void OnTermsAndConditions(const net_base::HttpUrl& url);
 
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {

@@ -117,6 +117,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                     const brillo::VariantDictionary& properties);
   void StationRemoved(const dbus::ObjectPath& station);
   void PskMismatch();
+  void HS20TermsAndConditions(const std::string& url);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

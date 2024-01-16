@@ -80,6 +80,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
                     const KeyValueStore& properties) override{};
   void StationRemoved(const RpcIdentifier& Station) override{};
   void PskMismatch() override{};
+  void TermsAndConditions(const std::string& url) override{};
 
   // Inherited from Device and responds to a neighbor reachability event from
   // patchpanel. Restarts network validation if the event type contradicts the

@@ -85,6 +85,7 @@ class HotspotDevice : public LocalDevice,
                     const KeyValueStore& properties) override;
   void StationRemoved(const RpcIdentifier& Station) override;
   void PskMismatch() override{};
+  void TermsAndConditions(const std::string& url) override{};
 
  private:
   friend class HotspotDeviceTest;

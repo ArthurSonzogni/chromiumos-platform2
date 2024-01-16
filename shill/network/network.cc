@@ -1022,6 +1022,10 @@ void Network::ReportNeighborLinkMonitorFailure(
                           failure);
 }
 
+void Network::OnTermsAndConditions(const net_base::HttpUrl& url) {
+  // TODO(b/319632165)
+}
+
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.logging_tag();
 }

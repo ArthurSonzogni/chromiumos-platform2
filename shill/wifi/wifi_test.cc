@@ -28,6 +28,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crypto/random.h>
+#include <net-base/http_url.h>
 #include <net-base/mock_netlink_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/netlink_packet.h>
@@ -735,6 +736,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void Scan(Error* error, const std::string& reason, bool is_dbus_call) {
     wifi_->Scan(error, reason, is_dbus_call);
+  }
+
+  void TermsAndConditions(const std::string& url) {
+    wifi_->TermsAndConditions(url);
   }
 
  protected:
@@ -6203,6 +6208,20 @@ TEST_F(WiFiMainTest, UpdateSupplicantPropertiesNotFound) {
   KeyValueStore kv;
   EXPECT_FALSE(UpdateSupplicantProperties(service.get(), kv, &error));
   EXPECT_EQ(error.type(), Error::kNotFound);
+}
+
+TEST_F(WiFiMainTest, TermsAndConditions) {
+  const std::string url = "https://example.com/terms-and-conditions";
+  auto http_url = net_base::HttpUrl::CreateFromString(url);
+
+  StartWiFi();
+
+  EXPECT_CALL(*network(), OnTermsAndConditions(_)).Times(0);
+  TermsAndConditions("");
+  TermsAndConditions("that's not a valid URL");
+
+  EXPECT_CALL(*network(), OnTermsAndConditions(http_url.value())).Times(1);
+  TermsAndConditions(url);
 }
 
 }  // namespace shill

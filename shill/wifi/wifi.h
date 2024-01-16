@@ -185,6 +185,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                     const KeyValueStore& properties) override{};
   void StationRemoved(const RpcIdentifier& Station) override{};
   void PskMismatch() override;
+  void TermsAndConditions(const std::string& url) override;
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService* service, Error* error);

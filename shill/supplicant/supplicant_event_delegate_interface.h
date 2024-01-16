@@ -57,6 +57,9 @@ class SupplicantEventDelegateInterface {
 
   // Supplicant reports PSK mismatch.
   virtual void PskMismatch() = 0;
+
+  // Supplicant reports a terms and conditions page.
+  virtual void TermsAndConditions(const std::string& url) = 0;
 };
 
 }  // namespace shill
