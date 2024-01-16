@@ -435,14 +435,22 @@ bool DetachNetDevice(const std::string& socket_path, uint8_t bus) {
 }
 
 std::string GetStringUdevAttr(udev_device* device, std::string sysattr) {
-  std::string attr = udev_device_get_sysattr_value(device, sysattr.c_str());
+  const char* attr_char =
+      udev_device_get_sysattr_value(device, sysattr.c_str());
+  if (!attr_char) {
+    return {};
+  }
+
+  std::string attr(attr_char);
   base::TrimWhitespaceASCII(attr, base::TRIM_ALL, &attr);
   return attr;
 }
 
 int GetIntUdevAttr(udev_device* device, std::string sysattr) {
-  std::string attr = udev_device_get_sysattr_value(device, sysattr.c_str());
-  base::TrimWhitespaceASCII(attr, base::TRIM_ALL, &attr);
+  std::string attr = GetStringUdevAttr(device, sysattr);
+  if (attr.empty()) {
+    return -1;
+  }
   int attr_int = 0;
   base::HexStringToInt(attr, &attr_int);
   return attr_int;
