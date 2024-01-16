@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/lazy_instance.h>
 #include <base/observer_list.h>
@@ -155,9 +154,6 @@ class ConntrackMonitor {
   uint8_t buf_[kDefaultBufSize];
   // The netlink socket used to get conntrack events.
   std::unique_ptr<net_base::Socket> sock_;
-  // File descriptor watcher to watch for readability of file descriptor of
-  // |sock_|. Note that |watcher_| needs to be reset before |sock_| is reset.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   // List of callbacks that listen to conntrack table socket connection
   // changes.
   std::vector<ConntrackEventHandler> event_handlers_;

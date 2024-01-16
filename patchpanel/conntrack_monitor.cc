@@ -11,13 +11,9 @@
 #include <linux/types.h>
 #include <stdint.h>
 
-#include <compare>
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <string>
-#include <string_view>
-#include <utility>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/scoped_file.h>
@@ -96,15 +92,8 @@ void ConntrackMonitor::Start(
     return;
   }
 
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      sock_->Get(), base::BindRepeating(&ConntrackMonitor::OnSocketReadable,
-                                        weak_factory_.GetWeakPtr()));
-
-  if (!watcher_) {
-    LOG(ERROR) << "Failed on watching netlink socket.";
-    sock_.reset();
-    return;
-  }
+  sock_->SetReadableCallback(base::BindRepeating(
+      &ConntrackMonitor::OnSocketReadable, weak_factory_.GetWeakPtr()));
   LOG(INFO) << "ConntrackMonitor started";
 }
 
@@ -113,7 +102,6 @@ ConntrackMonitor::~ConntrackMonitor() {
 }
 
 void ConntrackMonitor::StopForTesting() {
-  watcher_.reset();
   sock_.reset();
 }
 
