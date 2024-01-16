@@ -103,7 +103,7 @@ impl SuspendConductor<'_> {
 
         log_metric_event(HibernateEvent::SuspendAttempt);
 
-        let success = self.hibernate_inner().is_ok();
+        let res = self.hibernate_inner();
 
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
@@ -114,21 +114,24 @@ impl SuspendConductor<'_> {
         // replay logs first because they happened earlier.
         replay_logs(
             &hibermeta_mount,
-            success && !self.options.dry_run, // push_resume_logs
+            res.is_ok() && !self.options.dry_run, // push_resume_logs
             !self.options.dry_run, // clear
         );
 
-        if success {
-            log_metric_event(HibernateEvent::ResumeSuccess);
-            self.record_total_resume_time(&hibermeta_mount);
-        } else {
-            log_metric_event(HibernateEvent::SuspendFailure);
-        }
+        match res {
+            Ok(()) => {
+                log_metric_event(HibernateEvent::ResumeSuccess);
+                self.record_total_resume_time(&hibermeta_mount);
+            },
+            Err(_) => {
+                log_metric_event(HibernateEvent::SuspendFailure);
+            }
+        };
 
         // Read the metrics files and send out the samples.
         read_and_send_metrics(&hibermeta_mount);
 
-        Ok(())
+        res
     }
 
     /// Hibernates the system, and returns either upon failure to hibernate or
