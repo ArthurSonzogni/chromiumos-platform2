@@ -23,6 +23,8 @@ enum class HWSEC_FOUNDATION_EXPORT TpmMetricsClientID {
   kVtpm = 5,
   kU2f = 6,
   kTrunksSend = 7,
+  kBootLockBox = 8,
+  kDeviceManagement = 9,
 };
 
 void HWSEC_FOUNDATION_EXPORT SetTpmMetricsClientID(TpmMetricsClientID id);

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 
 #include "device_management/device_management_daemon.h"
 
@@ -16,6 +17,10 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kBootLockBox);
 
   return device_management::DeviceManagementDaemon().Run();
 }

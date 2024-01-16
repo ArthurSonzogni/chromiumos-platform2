@@ -43,6 +43,10 @@ std::string ClientIDToClientName(TpmMetricsClientID id) {
       return "U2f";
     case TpmMetricsClientID::kTrunksSend:
       return "TrunksSend";
+    case TpmMetricsClientID::kBootLockBox:
+      return "BootLockBox";
+    case TpmMetricsClientID::kDeviceManagement:
+      return "DeviceManagement";
   }
 }
 
