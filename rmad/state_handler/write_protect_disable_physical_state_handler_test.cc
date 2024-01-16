@@ -45,6 +45,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
   struct StateHandlerArgs {
     std::vector<bool> wp_status_list = {};
+    std::vector<bool> chassis_open_list = {};
     bool factory_mode_enabled = false;
     bool enable_factory_mode_succeeded = true;
     bool is_cros_debug = false;
@@ -77,6 +78,13 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    {
+      InSequence seq;
+      for (bool opened : args.chassis_open_list) {
+        EXPECT_CALL(*mock_gsc_utils, GetChassisOpenStatus(_))
+            .WillOnce(DoAll(SetArgPointee<0, bool>(opened), Return(true)));
+      }
+    }
     ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())
         .WillByDefault(Return(args.factory_mode_enabled));
     if (args.factory_mode_toggled) {
@@ -211,8 +219,9 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // WP is still enabled.
-  auto handler = CreateStateHandler(
-      {.wp_status_list = {true}, .factory_mode_enabled = true});
+  auto handler = CreateStateHandler({.wp_status_list = {true},
+                                     .chassis_open_list = {false},
+                                     .factory_mode_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -231,6 +240,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        reboot_toggled = false;
   auto handler =
       CreateStateHandler({.wp_status_list = {true, true, false},
+                          .chassis_open_list = {false, false},
                           .factory_mode_enabled = false,
                           .factory_mode_toggled = &factory_mode_toggled,
                           .powerwash_requested = &powerwash_requested,
@@ -270,6 +280,71 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
   // Third call to |mock_crossystem_utils_| during polling, get 0.
+  // Try to enable factory mode and send the signal.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_TRUE(factory_mode_toggled);
+  EXPECT_TRUE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
+  EXPECT_FALSE(reboot_toggled);
+  // Request powerwash and reboot after a delay.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
+  EXPECT_TRUE(powerwash_requested);
+  EXPECT_TRUE(reboot_toggled);
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       GetNextStateCase_EnableFactoryModeSuccess_ChassisOpen) {
+  // After b/257255419 HWWP on Ti50 devices will by default not follow
+  // CHASSIS_OPEN, so we check CHASSIS_OPEN as one of the conditions to enter
+  // factory mode.
+
+  // Set up environment for wiping the device and the device has not rebooted
+  // yet.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  // Factory mode is disabled so we should enable it and do EC reboot.
+  bool factory_mode_toggled = false, powerwash_requested = false,
+       reboot_toggled = false;
+  auto handler =
+      CreateStateHandler({.wp_status_list = {true, true},
+                          .chassis_open_list = {false, true},
+                          .factory_mode_enabled = false,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
+  EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
+
+  RmadState state;
+  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
+  bool signal_sent = false;
+  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
+      .WillOnce(Assign(&signal_sent, true));
+
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
+  EXPECT_FALSE(reboot_toggled);
+
+  // First call to |mock_crossystem_utils_| during polling, get
+  // HWWP == enabled and CHASSIS_OPEN == false.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(signal_sent);
+  EXPECT_FALSE(powerwash_requested);
+  EXPECT_FALSE(reboot_toggled);
+  // Second call to |mock_crossystem_utils_| during polling, get
+  // HWWP == enabled and CHASSIS_OPEN == true.
   // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);

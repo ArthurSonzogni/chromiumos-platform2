@@ -65,6 +65,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  private:
   bool IsReadyForTransition() const;
   bool IsHwwpDisabled() const;
+  bool IsChassisOpened() const;
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
   void OnWriteProtectDisabled();
