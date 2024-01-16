@@ -56,7 +56,6 @@ source_set("libdiag_routine") {
     "bluetooth/floss/bluetooth_power.cc",
     "bluetooth/floss/bluetooth_scanning.cc",
     "camera/camera_availability.cc",
-    "diag_process_adapter_impl.cc",
     "diag_routine_with_status.cc",
     "fan/fan.cc",
     "fingerprint/fingerprint.cc",
