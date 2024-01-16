@@ -3453,10 +3453,17 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
     user_data_auth::AuthenticateAuthFactorRequest request,
     OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done,
     InUseAuthSession auth_session) {
+  // We will tie the life time of the authenticate event with the wrapped
+  // on_done callback.
+  hwsec::ScopedEvent event;
+  if (hwsec_) {
+    event = hwsec_->NotifyAuthenticateEvent().value_or(hwsec::ScopedEvent());
+  }
+
   // Wrap callback to signal AuthenticateAuthFactorCompleted.
   OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply>
       on_done_wrapped_with_signal_cb = base::BindOnce(
-          [](SignallingInterface* signalling_intf,
+          [](SignallingInterface* signalling_intf, hwsec::ScopedEvent event,
              OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> cb,
              user_data_auth::AuthFactorType auth_factor_type,
              const user_data_auth::AuthenticateAuthFactorReply& reply) {
@@ -3473,7 +3480,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
                 completed_proto);
             std::move(cb).Run(reply);
           },
-          signalling_intf_, std::move(on_done),
+          signalling_intf_, std::move(event), std::move(on_done),
           AuthFactorTypeToProto(
               DetermineFactorTypeFromAuthInput(request.auth_input())
                   .value_or(AuthFactorType::kUnspecified)));
