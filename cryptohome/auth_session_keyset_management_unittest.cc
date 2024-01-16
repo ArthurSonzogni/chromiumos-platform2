@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback_helpers.h>
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
@@ -34,7 +35,6 @@
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/storage_type.h"
@@ -45,7 +45,6 @@
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
-#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"

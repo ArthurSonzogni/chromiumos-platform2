@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/test/bind.h>
 #include <base/test/power_monitor_test.h>
 #include <base/test/task_environment.h>
@@ -17,6 +19,7 @@
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <brillo/cryptohome.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -29,6 +32,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
@@ -54,6 +58,7 @@ using ::testing::Le;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::UnorderedElementsAre;
 
 class AuthSessionManagerTest : public ::testing::Test {
@@ -115,16 +120,19 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FakeFeaturesForTesting features_;
-  AuthSession::BackingApis backing_apis_{&crypto_,
-                                         &platform_,
-                                         &user_session_map_,
-                                         &keyset_management_,
-                                         &auth_block_utility_,
-                                         &auth_factor_driver_manager_,
-                                         &auth_factor_manager_,
-                                         &uss_storage_,
-                                         &uss_manager_,
-                                         &features_.async};
+  NiceMock<MockSignalling> signalling_;
+  AuthSession::BackingApis backing_apis_{
+      &crypto_,
+      &platform_,
+      &user_session_map_,
+      &keyset_management_,
+      &auth_block_utility_,
+      &auth_factor_driver_manager_,
+      &auth_factor_manager_,
+      &uss_storage_,
+      &uss_manager_,
+      &features_.async,
+      AsyncInitPtr<SignallingInterface>(&signalling_)};
   AuthSessionManager auth_session_manager_{backing_apis_};
 };
 
@@ -182,6 +190,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
         AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
   }
 
+  EXPECT_CALL(signalling_, SendAuthSessionExpiring(_)).Times(2);
   // Advance the clock by timeout. This should expire all the sessions.
   task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout);
 
@@ -261,20 +270,54 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
   // Move the time forward by timeout by another four minutes. This should
   // timeout the second session (original timeout) but not the first (added two
   // minutes).
-  task_environment_.FastForwardBy(base::Minutes(4));
   {
+    user_data_auth::AuthSessionExpiring signal_proto;
+    EXPECT_CALL(signalling_, SendAuthSessionExpiring(_))
+        .WillOnce(SaveArg<0>(&signal_proto));
+
+    task_environment_.FastForwardBy(base::Minutes(3));
     InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
-                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(1))));
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(2))));
+    EXPECT_THAT(signal_proto.time_left(),
+                AllOf(testing::Ge(0),
+                      Le(AuthSessionManager::kAuthTimeoutWarning.InSeconds())));
   }
   {
     InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[1]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 
-  // Move time forward by another minute. This should expire the other session.
-  task_environment_.FastForwardBy(base::Minutes(1));
+  // Move time forward by another minute. This should move the session to
+  // expiring soon. AuthSession should still be good.
+  {
+    user_data_auth::AuthSessionExpiring signal_proto;
+    EXPECT_CALL(signalling_, SendAuthSessionExpiring(_))
+        .WillOnce(SaveArg<0>(&signal_proto));
+
+    task_environment_.FastForwardBy(base::Minutes(1));
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(1))));
+    EXPECT_THAT(signal_proto.time_left(),
+                AllOf(testing::Ge(0),
+                      Le(AuthSessionManager::kAuthTimeoutWarning.InSeconds())));
+  }
+
+  // Extend the first session to two minutes.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Seconds(150))));
+  }
+
+  // Move time forward by another minute. This should kill the last session.
+  EXPECT_CALL(signalling_, SendAuthSessionExpiring(_));
+  task_environment_.FastForwardBy(base::Minutes(3));
 
   // Now both sessions should be gone.
   for (const auto& token : tokens) {
