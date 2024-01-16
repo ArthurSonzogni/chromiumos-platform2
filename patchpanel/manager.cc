@@ -304,12 +304,9 @@ void Manager::OnShillDevicesChanged(
     multicast_counters_svc_->OnPhysicalDeviceRemoved(device);
     qos_svc_->OnPhysicalDeviceRemoved(device);
 
-    // We have no good way to tell whether the removed Device was cellular now,
-    // so we always call this. StopSourcePrefixEnforcement will find out by
-    // matching |ifname| with existing rules.
-    // TODO(hugobenichi): fix the above problem now that the full Device
-    // information is  available.
-    datapath_->StopSourceIPv6PrefixEnforcement(device);
+    if (device.type == ShillClient::Device::Type::kCellular) {
+      datapath_->StopSourceIPv6PrefixEnforcement(device);
+    }
   }
 
   for (const auto& device : added) {
