@@ -160,7 +160,7 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   std::string stateful_device_;
 
   // Set timezone according to different implementations.
-  grpc::Status SetTimezoneSymlink(const std::string& zoneinfo_file);
+  grpc::Status SetTimezoneSymlink(const base::FilePath& zoneinfo_file);
   grpc::Status SetTimezoneBindMount(const std::string& zoneinfo_file);
   // Path to system localtime file
   base::FilePath localtime_file_path_;

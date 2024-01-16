@@ -1025,20 +1025,23 @@ grpc::Status ServiceImpl::SetTime(grpc::ServerContext* ctx,
   return grpc::Status::OK;
 }
 
-grpc::Status ServiceImpl::SetTimezoneSymlink(const std::string& zoneinfo) {
-  std::error_code ec;
-  if (!brillo::DeleteFile(localtime_file_path_)) {
-    LOG(ERROR) << "Failed to delete " << localtime_file_path_
-               << " symlink: " << ec.message();
-    return grpc::Status(grpc::INTERNAL, "failed to delete existing symlink");
-  }
-
-  LOG(INFO) << "Creating symlink from " << localtime_file_path_ << " to "
-            << zoneinfo;
-  if (!base::CreateSymbolicLink(base::FilePath(zoneinfo),
-                                localtime_file_path_)) {
+grpc::Status ServiceImpl::SetTimezoneSymlink(const base::FilePath& zoneinfo) {
+  // Create a symlink pointing to the new zoneinfo at /etc/localtime.new.
+  base::FilePath temp_symlink_path = localtime_file_path_.AddExtension(".new");
+  if (!base::CreateSymbolicLink(zoneinfo, temp_symlink_path)) {
     return grpc::Status(grpc::INTERNAL, "failed to create symlink");
   }
+
+  // Atomically replace /etc/localtime with /etc/localtime.new.
+  base::File::Error replace_error;
+  if (!base::ReplaceFile(temp_symlink_path, localtime_file_path_,
+                         &replace_error)) {
+    LOG(ERROR) << "Failed to replace " << localtime_file_path_ << " with "
+               << temp_symlink_path << ": " << replace_error;
+    brillo::DeleteFile(temp_symlink_path);
+    return grpc::Status(grpc::INTERNAL, "failed to replace symlink");
+  }
+
   return grpc::Status::OK;
 }
 
@@ -1079,7 +1082,7 @@ grpc::Status ServiceImpl::SetTimezone(
   if (request->use_bind_mount()) {
     return SetTimezoneBindMount(zoneinfo_file.value());
   }
-  return SetTimezoneSymlink(zoneinfo_file.value());
+  return SetTimezoneSymlink(zoneinfo_file);
 }
 
 grpc::Status ServiceImpl::GetKernelVersion(
