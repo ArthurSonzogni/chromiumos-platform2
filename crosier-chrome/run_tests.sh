@@ -29,11 +29,10 @@ stop ui
 dbus-send --system --type=method_call --dest=org.chromium.PowerManager \
   /org/chromium/PowerManager org.chromium.PowerManager.HandleUserActivity \
   int32:0
-# shellcheck disable=SC2145
 sudo -E -u chronos -- /bin/bash -c "LD_LIBRARY_PATH=./ ./${TEST_BIN} \
   --test-launcher-shard-index=0 --test-launcher-total-shards=1 \
   --test-sudo-helper-socket-path=${TEST_SUDO_HELPER_PATH} \
-  --enable-pixel-output-in-tests $@"
+  --enable-pixel-output-in-tests $*"
 status=$?
 start ui
 
