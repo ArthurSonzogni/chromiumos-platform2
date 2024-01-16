@@ -188,6 +188,26 @@ std::string TrunksDBusProxy::SendCommandAndWaitInternal(
   }
 }
 
+void TrunksDBusProxy::StartEvent(const std::string& event) {
+  StartEventRequest request;
+  request.set_event(event);
+  request.set_sender_id(
+      static_cast<uint64_t>(hwsec_foundation::GetTpmMetricsClientID()));
+  StartEventResponse response;
+  brillo::ErrorPtr error;
+  trunks_proxy_->StartEvent(request, &response, &error, kDBusMaxTimeout);
+}
+
+void TrunksDBusProxy::StopEvent(const std::string& event) {
+  StopEventRequest request;
+  request.set_event(event);
+  request.set_sender_id(
+      static_cast<uint64_t>(hwsec_foundation::GetTpmMetricsClientID()));
+  StopEventResponse response;
+  brillo::ErrorPtr error;
+  trunks_proxy_->StopEvent(request, &response, &error, kDBusMaxTimeout);
+}
+
 void TrunksDBusProxy::ReportMetrics(const std::string& command,
                                     const std::string& response) {
   TPM_CC cc;

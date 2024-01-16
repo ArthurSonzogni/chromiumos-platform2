@@ -16,6 +16,7 @@
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 
 #include "trunks/command_transceiver.h"
+#include "trunks/dbus_transceiver.h"
 #include "trunks/trunks_export.h"
 #include "trunks/trunks_interface.pb.h"
 // Requires trunks/trunks_interface.pb.h
@@ -23,11 +24,11 @@
 
 namespace trunks {
 
-// TrunksDBusProxy is a CommandTransceiver implementation that forwards all
+// TrunksDBusProxy is a DbusTransceiver implementation that forwards all
 // commands to the trunksd D-Bus daemon. See TrunksDBusService for details on
 // how the commands are handled once they reach trunksd. A TrunksDBusProxy
 // instance must be used in only one thread.
-class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
+class TRUNKS_EXPORT TrunksDBusProxy : public DbusTransceiver {
  public:
   TrunksDBusProxy();
   explicit TrunksDBusProxy(scoped_refptr<dbus::Bus> bus);
@@ -47,6 +48,10 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
   void SendCommand(const std::string& command,
                    ResponseCallback callback) override;
   std::string SendCommandAndWait(const std::string& command) override;
+
+  // DbusTransceiver methods.
+  void StartEvent(const std::string& event) override;
+  void StopEvent(const std::string& event) override;
 
   // Returns the service readiness flag. Forces re-check for readiness if
   // the flag is not set or |force_check| is passed.
