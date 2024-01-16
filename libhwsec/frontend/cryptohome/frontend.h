@@ -17,6 +17,7 @@
 #include "libhwsec/backend/storage.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/event.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
 
@@ -172,6 +173,9 @@ class CryptohomeFrontend : public Frontend {
   // 0x312E3200 = TPM1.2
   // 0x322E3000 = TPM2.0
   virtual StatusOr<uint32_t> GetFamily() const = 0;
+
+  // Notifies the authenticate event is started.
+  virtual StatusOr<hwsec::ScopedEvent> NotifyAuthenticateEvent() const = 0;
 };
 
 }  // namespace hwsec

@@ -117,6 +117,10 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
               RegisterOnReadyCallback,
               (base::OnceCallback<void(Status)> callback),
               (const override));
+  MOCK_METHOD(StatusOr<hwsec::ScopedEvent>,
+              NotifyAuthenticateEvent,
+              (),
+              (const override));
 };
 
 }  // namespace hwsec

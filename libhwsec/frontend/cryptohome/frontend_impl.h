@@ -80,6 +80,7 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
       ChallengeID challenge,
       const brillo::Blob& challenge_response) const override;
   StatusOr<uint32_t> GetFamily() const override;
+  StatusOr<hwsec::ScopedEvent> NotifyAuthenticateEvent() const override;
 };
 
 }  // namespace hwsec

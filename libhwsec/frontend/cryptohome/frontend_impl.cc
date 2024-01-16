@@ -22,6 +22,8 @@ namespace hwsec {
 namespace {
 // The PinWeaver protocol version where the biometrics support was first added.
 constexpr uint8_t kBiometricsPinWeaverProtocolVersion = 2;
+// The authenticate event name.
+constexpr char kLoginEventName[] = "Authenticate";
 }  // namespace
 
 void CryptohomeFrontendImpl::RegisterOnReadyCallback(
@@ -271,6 +273,12 @@ StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithChallenge(
 
 StatusOr<uint32_t> CryptohomeFrontendImpl::GetFamily() const {
   return middleware_.CallSync<&Backend::Vendor::GetFamily>();
+}
+
+StatusOr<hwsec::ScopedEvent> CryptohomeFrontendImpl::NotifyAuthenticateEvent()
+    const {
+  return middleware_.CallSync<&Backend::EventManagement::Start>(
+      std::string(kLoginEventName));
 }
 
 }  // namespace hwsec
