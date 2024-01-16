@@ -514,8 +514,10 @@ bool GetDiskPathFromName(
   }
 }
 
-// Helper function to return the filesystem type of a given file/path. If no
-// file system exists, or if the function fails, it will return an empty string.
+// Given a VM's stateful disk, stored at |disk_location|, returns the filesystem
+// which that stateful disk is formatted with. Returns "" if:
+//  - The disk hasn't been formatted (yet)
+//  - Some error occurs while checking
 std::string GetFilesystem(const base::FilePath& disk_location) {
   std::string output;
   blkid_cache blkid_cache;
