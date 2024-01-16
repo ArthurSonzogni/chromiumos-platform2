@@ -4,6 +4,7 @@
 
 #include "heartd/daemon/action_runner.h"
 
+#include <unistd.h>
 #include <vector>
 
 #include <base/check.h>
@@ -77,6 +78,7 @@ void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
         break;
       }
 
+      sync();
       if (!write(sysrq_fd_, "c", 1)) {
         LOG(ERROR) << "Heartd failed to force reboot the device";
       }

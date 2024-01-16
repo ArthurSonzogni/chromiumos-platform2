@@ -72,3 +72,4 @@ poll: 1
 send: 1
 getdents64: 1
 _llseek: 1
+sync: 1

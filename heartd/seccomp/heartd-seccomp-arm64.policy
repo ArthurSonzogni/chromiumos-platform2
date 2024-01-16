@@ -67,3 +67,4 @@ clock_nanosleep: 1
 ppoll: 1
 getsockname: 1
 sendmsg: 1
+sync: 1

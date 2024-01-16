@@ -62,3 +62,4 @@ pwrite64: 1
 fdatasync: 1
 unlink: 1
 getdents64: 1
+sync: 1
