@@ -41,7 +41,10 @@ use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::has_user_logged_out;
+use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::zram_get_bd_stats;
+use crate::hiberutil::zram_is_writeback_enabled;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
@@ -53,13 +56,21 @@ use crate::metrics::METRICS_LOGGER;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
+use crate::swap_management::initiate_swap_zram_writeback;
 use crate::swap_management::reclaim_all_processes;
+use crate::swap_management::swap_zram_mark_idle;
+use crate::swap_management::swap_zram_set_writeback_limit;
+use crate::swap_management::WritebackMode;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
 use crate::volume::VOLUME_MANAGER;
 
 const DROP_CACHES_ATTR_PATH: &str = "/proc/sys/vm/drop_caches";
+
+
+/// Value to tell zram to write back all eligible memory.
+const ZRAM_WRITEBACK_LIMIT_MB_MAX: u32 = 32768;
 
 /// Reason why an attempt to suspend was aborted
 /// Values need to match CrosHibernateAbortReason in Chromium's enums.xml
@@ -181,6 +192,12 @@ impl SuspendConductor<'_> {
             libc::sync();
         }
 
+        // Make sure hiberman memory isn't swapped out by the memory
+        // tweaks or during the hibernation process.
+        let _locked_memory = lock_process_memory()?;
+
+        Self::tweak_memory_usage()?;
+
         self.suspend_system()
     }
 
@@ -192,10 +209,6 @@ impl SuspendConductor<'_> {
         // logging daemon's about to be frozen.
         let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
         let log_file = LogFile::new(HibernateStage::Suspend, true, &hibermeta_mount)?;
-
-        // Push all non-file backed reclaimable memory to zram.
-        reclaim_all_processes()
-            .context("Failed to perform memory reclaim")?;
 
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
@@ -267,6 +280,7 @@ impl SuspendConductor<'_> {
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+
             let log_file = LogFile::new(HibernateStage::Suspend, false, &hibermeta_mount)?;
 
             let start = Instant::now();
@@ -375,6 +389,49 @@ impl SuspendConductor<'_> {
         info!("Clearing hibernate cookie at {}", block_path);
         set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)
             .context("Failed to clear hibernate cookie")
+    }
+
+    /// Apply tweaks to reduce memory usage.
+    fn tweak_memory_usage() -> Result<()> {
+        // Push all non-file backed reclaimable memory to zram.
+        reclaim_all_processes()
+            .context("Failed to perform memory reclaim")?;
+
+        if zram_is_writeback_enabled()? {
+            Self::trigger_zram_writeback()?;
+        }
+
+        Ok(())
+    }
+
+    /// Trigger a zram writeback.
+    fn trigger_zram_writeback() -> Result<()> {
+        let on_disk_before = zram_get_bd_stats()?.bytes_on_disk;
+
+        swap_zram_set_writeback_limit(ZRAM_WRITEBACK_LIMIT_MB_MAX)
+            .context("Failed to set zram writeback limit")?;
+
+        swap_zram_mark_idle(0)
+            .context("Failed to configure zram writeback")?;
+
+        if let Err(e) = initiate_swap_zram_writeback(WritebackMode::Idle) {
+            if nix::Error::last() != nix::Error::EAGAIN {
+                return Err(e.context("Failed to initiate zram writeback"));
+            }
+
+            warn!("The zram backing device is full, some zram data will be \
+                   part of the hibernate image");
+        }
+
+        let on_disk_now = zram_get_bd_stats()?.bytes_on_disk;
+        let written = on_disk_now.saturating_sub(on_disk_before);
+
+        debug!("{}MB of zram written back before hibernate, total of {}MB on disk",
+               written / (1024 * 1024), on_disk_now / (1024 * 1024));
+
+        // TODO: report metric(s)
+
+        Ok(())
     }
 
     /// Record the total resume time.

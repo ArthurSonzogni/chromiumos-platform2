@@ -52,6 +52,10 @@ lazy_static! {
         let path = Path::new(TMPFS_DIR);
         path.join("user_logged_out")
     };
+
+    static ref ZRAM_SYSFS_PATH: PathBuf = {
+        Path::new("/sys/block/zram0").to_path_buf()
+    };
 }
 
 /// Define the hibernate stages.
@@ -433,6 +437,39 @@ pub fn get_ram_size() -> u64 {
     }
 
     panic!("Could not determine RAM size");
+}
+
+/// Struct with zram writeback stats.
+pub struct ZramWritebackStats {
+    pub bytes_on_disk: u64,
+    pub total_bytes_read: u64,
+    pub total_bytes_written: u64,
+}
+
+/// Get zram write back stats.
+pub fn zram_get_bd_stats() -> Result<ZramWritebackStats> {
+    let path = ZRAM_SYSFS_PATH.join("bd_stat");
+    let content = std::fs::read_to_string(&path)
+        .context(format!("Failed to read {:?}", path))?;
+
+    let values: Vec<_> = content.split_whitespace()
+        .map(|s| s.parse::<u64>().unwrap() * 4096).collect();
+
+    Ok(ZramWritebackStats {
+        bytes_on_disk: values[0],
+        total_bytes_read: values[1],
+        total_bytes_written: values[2],
+    })
+}
+
+/// Checks if zram writeback is enabled.
+pub fn zram_is_writeback_enabled() -> Result<bool> {
+    let path = ZRAM_SYSFS_PATH.join("backing_dev");
+
+    let content = std::fs::read_to_string(&path)
+        .context(format!("Failed to read {:?}", path))?;
+
+    Ok(content.trim_end() != "none")
 }
 
 /// Get the time needed by the hibernated kernel to restore the system.
