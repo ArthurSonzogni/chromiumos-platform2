@@ -17,6 +17,7 @@
 #include <dbus/attestation/dbus-constants.h>
 
 #include "attestation/pca-agent/dbus_adaptors/org.chromium.PcaAgent.h"
+#include "attestation/pca_agent/server/rks_cert_fetcher.h"
 
 namespace attestation {
 namespace pca_agent {
@@ -29,7 +30,7 @@ namespace pca_agent {
 class RksAgentService : public org::chromium::RksAgentInterface,
                         public org::chromium::RksAgentAdaptor {
  public:
-  RksAgentService();
+  explicit RksAgentService(scoped_refptr<dbus::Bus> bus);
   RksAgentService(const RksAgentService&) = delete;
   RksAgentService& operator=(const RksAgentService&) = delete;
 
@@ -39,6 +40,11 @@ class RksAgentService : public org::chromium::RksAgentInterface,
   // Gets the most recently fetched certificate and signature XML pair.
   void GetCertificate(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                           RksCertificateAndSignature>> response) override;
+
+ private:
+  std::unique_ptr<RksCertificateFetcher> fetcher_;
+
+  base::WeakPtrFactory<RksAgentService> weak_factory_{this};
 };
 
 }  // namespace pca_agent

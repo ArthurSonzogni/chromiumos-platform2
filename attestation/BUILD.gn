@@ -255,9 +255,11 @@ source_set("pca_agent_server_library") {
     "pca_agent/server/pca_agent_service.cc",
     "pca_agent/server/pca_request.cc",
     "pca_agent/server/rks_agent_service.cc",
+    "pca_agent/server/rks_cert_fetcher.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":pca-agent-adaptors" ]
+  pkg_deps = [ "libshill-client" ]
 }
 
 executable("pca_agentd") {
@@ -268,13 +270,10 @@ executable("pca_agentd") {
   ]
   install_path = "sbin"
 
-  # NOSORT
   pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
+    "libshill-client",
     "protobuf",
+    "system_api",
   ]
   libs = [ "hwsec-profiling" ]
 
@@ -357,6 +356,7 @@ if (use.test) {
       "common/mock_crypto_utility.cc",
       "common/mock_tpm_utility.cc",
       "pca_agent/server/pca_request_test.cc",
+      "pca_agent/server/rks_cert_fetcher_test.cc",
       "server/certificate_queue_test.cc",
       "server/database_impl_test.cc",
       "server/dbus_service_test.cc",
@@ -394,13 +394,11 @@ if (use.test) {
     ]
     run_test = true
 
-    # NOSORT
     pkg_deps = [
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
+      "libshill-client",
+      "libshill-client-test",
       "protobuf-lite",
+      "system_api",
     ]
     deps = [
       ":common_library",

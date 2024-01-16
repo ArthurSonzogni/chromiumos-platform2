@@ -33,7 +33,7 @@ class PcaAgentDaemon : public brillo::DBusServiceDaemon {
     adaptor_.reset(new PcaAgentServiceAdaptor(service_.get(), bus_));
     adaptor_->RegisterWithDBusObject(dbus_object_.get());
 
-    rks_agent_service_.reset(new RksAgentService());
+    rks_agent_service_.reset(new RksAgentService(bus_));
     rks_agent_service_->RegisterWithDBusObject(dbus_object_.get());
 
     dbus_object_->RegisterAsync(
