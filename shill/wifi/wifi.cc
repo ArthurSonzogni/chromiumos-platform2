@@ -198,7 +198,6 @@ WiFi::WiFi(Manager* manager,
       sched_scan_supported_(false),
       broadcast_probe_was_skipped_(false),
       interworking_select_enabled_(true),
-      hs20_bss_count_(0),
       need_interworking_select_(false),
       last_interworking_select_timestamp_(std::nullopt),
       receive_byte_count_at_connect_(0),
@@ -329,7 +328,6 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
     RemoveCred(creds);
   }
   pending_matches_.clear();
-  hs20_bss_count_ = 0;
   need_interworking_select_ = false;
   // Remove interface from supplicant.
   if (supplicant_present_ && supplicant_interface_proxy_) {
@@ -2047,11 +2045,8 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
   endpoint_by_rpcid_[path] = endpoint;
   endpoint->Start();
 
-  // Keep track of Passpoint compatible endpoints to trigger an interworking
-  // selection later if needed.
-  if (endpoint->hs20_information().supported) {
-    hs20_bss_count_++;
-  }
+  // A new Passpoint compatible endpoint was detected and it did not match with
+  // a service, we'll need an interworking selection later.
   need_interworking_select_ =
       need_interworking_select_ ||
       (!service_has_matched && endpoint->hs20_information().supported);
@@ -2068,11 +2063,6 @@ void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   WiFiEndpointRefPtr endpoint = i->second;
   CHECK(endpoint);
   endpoint_by_rpcid_.erase(i);
-
-  if (endpoint->hs20_information().supported) {
-    CHECK_NE(hs20_bss_count_, 0u);
-    hs20_bss_count_--;
-  }
 
   WiFiServiceRefPtr service = provider_->OnEndpointRemoved(endpoint);
   if (!service) {
@@ -2319,8 +2309,15 @@ void WiFi::ScanDoneTask() {
   }
   StartScanTimer();
 
+  bool has_hs20_endpoint = false;
+  for (const auto& endpoint_entry : endpoint_by_rpcid_) {
+    if (endpoint_entry.second->hs20_information().supported) {
+      has_hs20_endpoint = true;
+      break;
+    }
+  }
   if (interworking_select_enabled_ && need_interworking_select_ &&
-      hs20_bss_count_ != 0 && provider_->has_passpoint_credentials()) {
+      has_hs20_endpoint && provider_->has_passpoint_credentials()) {
     LOG(INFO) << __func__ << " start interworking selection";
     // Interworking match is started only if a compatible access point is
     // around and there's credentials to match because such selection

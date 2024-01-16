@@ -1056,6 +1056,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
     wifi_->RequestStationInfo(trigger);
   }
+  void SetInterworkingSelectEnabled(bool enabled, Error* error) {
+    wifi_->SetInterworkingSelectEnabled(enabled, error);
+  }
   void StopRequestingStationInfo() { wifi_->StopRequestingStationInfo(); }
   void EmitStationInfoRequest(WiFiLinkStatistics::Trigger trigger) {
     wifi_->EmitStationInfoRequestEvent(trigger);
@@ -5948,6 +5951,8 @@ TEST_F(WiFiMainTest, InterworkingSelectMultipleMatches) {
   std::vector<PasspointCredentialsRefPtr> credentials{cred0, cred1};
   EXPECT_CALL(*wifi_provider(), GetCredentials())
       .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*wifi_provider(), has_passpoint_credentials())
+      .WillRepeatedly(Return(credentials.size()));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(cred0_path), Return(true)))
       .WillOnce(DoAll(SetArgPointee<1>(cred1_path), Return(true)));
@@ -5984,8 +5989,13 @@ TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
   std::vector<PasspointCredentialsRefPtr> credentials{cred0};
   EXPECT_CALL(*wifi_provider(), GetCredentials())
       .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*wifi_provider(), has_passpoint_credentials())
+      .WillRepeatedly(Return(credentials.size()));
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect());
 
   StartWiFi();
+  SetInterworkingSelectEnabled(true, nullptr);
 
   // Prepare a scan result compatible with Passpoint.
   std::vector<uint8_t> ies;
@@ -5999,6 +6009,8 @@ TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
   // When a Passpoint compatible AP is found, an interworking selection is
   // scheduled.
   EXPECT_TRUE(NeedInterworkingSelect());
+
+  ReportScanDone();
 }
 
 TEST_F(WiFiMainTest, AddCredTriggersInterworkingSelect) {

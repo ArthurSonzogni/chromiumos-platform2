@@ -928,9 +928,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // met.
   bool interworking_select_enabled_;
 
-  // Count of Hotspot 2.0/Passpoint compatible endpoints currently known.
-  uint32_t hs20_bss_count_;
-
   // Indicates that we should start an interworking selection after the next
   // scan, either because a new  set of credentials was added or a Passpoint
   // compatible endpoint appeared.

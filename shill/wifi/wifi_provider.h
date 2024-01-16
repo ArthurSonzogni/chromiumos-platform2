@@ -242,7 +242,9 @@ class WiFiProvider : public ProviderInterface {
 
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
-  bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
+  mockable bool has_passpoint_credentials() const {
+    return !credentials_by_id_.empty();
+  }
 
   // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
   // called when interface event happens. The required WiFi band |band| and
