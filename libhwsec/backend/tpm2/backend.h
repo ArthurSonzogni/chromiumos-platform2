@@ -16,6 +16,7 @@
 #include "libhwsec/backend/tpm2/da_mitigation.h"
 #include "libhwsec/backend/tpm2/deriving.h"
 #include "libhwsec/backend/tpm2/encryption.h"
+#include "libhwsec/backend/tpm2/event_management.h"
 #include "libhwsec/backend/tpm2/key_management.h"
 #include "libhwsec/backend/tpm2/pinweaver.h"
 #include "libhwsec/backend/tpm2/random.h"
@@ -109,7 +110,7 @@ class BackendTpm2 : public Backend {
   VersionAttestation* GetVersionAttestation() override {
     return &version_attestation_;
   }
-  EventManagement* GetEventManagement() override { return nullptr; }
+  EventManagement* GetEventManagement() override { return &event_management_; }
 
   Proxy& proxy_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
@@ -141,6 +142,7 @@ class BackendTpm2 : public Backend {
   RoDataTpm2 ro_data_;
   VendorTpm2 vendor_;
   VersionAttestationTpm2 version_attestation_;
+  EventManagementTpm2 event_management_;
 };
 
 }  // namespace hwsec

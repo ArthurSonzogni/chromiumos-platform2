@@ -356,6 +356,7 @@ source_set("hardware_abstraction_internal_library") {
       "backend/tpm2/da_mitigation.cc",
       "backend/tpm2/deriving.cc",
       "backend/tpm2/encryption.cc",
+      "backend/tpm2/event_management.cc",
       "backend/tpm2/key_management.cc",
       "backend/tpm2/pinweaver.cc",
       "backend/tpm2/random.cc",

@@ -44,7 +44,8 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       attestation_(context_, config_, key_management_, random_, signing_),
       ro_data_(context_, key_management_, signing_, tpm_nvram_),
       vendor_(context_, tpm_manager_, ro_data_),
-      version_attestation_(context_, config_, key_management_, platform_) {}
+      version_attestation_(context_, config_, key_management_, platform_),
+      event_management_(context_, middleware_derivative_) {}
 
 BackendTpm2::~BackendTpm2() = default;
 
