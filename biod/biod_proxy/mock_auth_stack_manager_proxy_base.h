@@ -73,6 +73,17 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
               (const DeleteCredentialRequest&,
                base::OnceCallback<void(std::optional<DeleteCredentialReply>)>),
               (override));
+
+  MOCK_METHOD(void,
+              EnrollLegacyTemplate,
+              (const EnrollLegacyTemplateRequest&,
+               base::OnceCallback<void(bool success)>),
+              (override));
+
+  MOCK_METHOD(void,
+              ListLegacyRecords,
+              (base::OnceCallback<void(std::optional<ListLegacyRecordsReply>)>),
+              (override));
 };
 }  // namespace biod
 

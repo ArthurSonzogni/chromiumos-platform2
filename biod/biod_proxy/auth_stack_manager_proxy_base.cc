@@ -154,6 +154,36 @@ void AuthStackManagerProxyBase::DeleteCredential(
           base::Unretained(this), std::move(callback)));
 }
 
+void AuthStackManagerProxyBase::EnrollLegacyTemplate(
+    const EnrollLegacyTemplateRequest& request,
+    base::OnceCallback<void(bool success)> callback) {
+  dbus::MethodCall method_call(
+      biod::kAuthStackManagerInterface,
+      biod::kAuthStackManagerEnrollLegacyTemplateMethod);
+  dbus::MessageWriter method_writer(&method_call);
+  method_writer.AppendProtoAsArrayOfBytes(request);
+
+  // EnrollLegacyTemplate sharts an enroll session, which needs to
+  // be terminated later by EndEnrollSession.
+  proxy_->CallMethod(
+      &method_call, kDbusTimeoutMs,
+      base::BindOnce(&AuthStackManagerProxyBase::OnStartEnrollSessionResponse,
+                     base::Unretained(this), std::move(callback)));
+}
+
+void AuthStackManagerProxyBase::ListLegacyRecords(
+    base::OnceCallback<void(std::optional<ListLegacyRecordsReply>)> callback) {
+  dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
+                               biod::kAuthStackManagerListLegacyRecordsMethod);
+  dbus::MessageWriter method_writer(&method_call);
+
+  proxy_->CallMethod(
+      &method_call, kDbusTimeoutMs,
+      base::BindOnce(
+          &AuthStackManagerProxyBase::OnProtoResponse<ListLegacyRecordsReply>,
+          base::Unretained(this), std::move(callback)));
+}
+
 bool AuthStackManagerProxyBase::Initialize(const scoped_refptr<dbus::Bus>& bus,
                                            const dbus::ObjectPath& path) {
   bus_ = bus;

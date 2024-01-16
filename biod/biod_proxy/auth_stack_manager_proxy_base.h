@@ -91,6 +91,16 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       const DeleteCredentialRequest& request,
       base::OnceCallback<void(std::optional<DeleteCredentialReply>)> callback);
 
+  // Load a legacy fingerprint template and starts an enroll session.
+  // |callback| is called with the result of session start.
+  virtual void EnrollLegacyTemplate(
+      const EnrollLegacyTemplateRequest& request,
+      base::OnceCallback<void(bool success)> callback);
+
+  // List legacy fingerprint records.
+  virtual void ListLegacyRecords(
+      base::OnceCallback<void(std::optional<ListLegacyRecordsReply>)> callback);
+
  protected:
   AuthStackManagerProxyBase() = default;
 

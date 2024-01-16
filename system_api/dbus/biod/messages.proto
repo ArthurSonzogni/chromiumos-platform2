@@ -138,3 +138,20 @@ message DeleteCredentialReply {
   }
   optional DeleteCredentialStatus status = 1;
 }
+
+message EnrollLegacyTemplateRequest {
+  optional bytes legacy_record_id = 1;
+  optional bytes gsc_nonce = 2;
+  optional bytes encrypted_label_seed = 3;
+  optional bytes iv = 4;
+}
+
+message LegacyRecord {
+  optional string legacy_record_id = 1;
+  // user supplied description of the finger.
+  optional string label = 2;
+}
+
+message ListLegacyRecordsReply {
+  repeated LegacyRecord legacy_records = 1;
+}
