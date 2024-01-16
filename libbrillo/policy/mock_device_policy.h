@@ -57,7 +57,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, LoadPolicy, (bool), (override));
   MOCK_METHOD(bool, IsEnterpriseEnrolled, (), (const, override));
 
-  MOCK_METHOD(bool, GetPolicyRefreshRate, (int*), (const, override));
+  MOCK_METHOD(std::optional<int>, GetPolicyRefreshRate, (), (const, override));
   MOCK_METHOD(bool, GetGuestModeEnabled, (bool*), (const, override));
   MOCK_METHOD(bool, GetCameraEnabled, (bool*), (const, override));
   MOCK_METHOD(bool, GetShowUserNames, (bool*), (const, override));

@@ -62,9 +62,8 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   const DevicePolicy& policy = provider.GetDevicePolicy();
 
   // Check that we can read out all fields of the sample protobuf.
-  int int_value = -1;
-  ASSERT_TRUE(policy.GetPolicyRefreshRate(&int_value));
-  EXPECT_EQ(100, int_value);
+  auto refresh_rate = policy.GetPolicyRefreshRate();
+  EXPECT_EQ(100, refresh_rate);
 
   bool bool_value = true;
   ASSERT_TRUE(policy.GetGuestModeEnabled(&bool_value));
@@ -158,7 +157,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetTargetVersionPrefix(&string_value));
   EXPECT_EQ("42.0.", string_value);
 
-  int_value = -1;
+  int int_value = -1;
   if (USE_ENTERPRISE_ROLLBACK_REVEN) {
     ASSERT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
   } else {
@@ -297,7 +296,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   base::Version device_minimum_version;
   DevicePolicy::EphemeralSettings ephemeral_settings;
 
-  EXPECT_FALSE(policy.GetPolicyRefreshRate(&int_value));
+  EXPECT_FALSE(policy.GetPolicyRefreshRate().has_value());
   EXPECT_FALSE(policy.GetGuestModeEnabled(&bool_value));
   EXPECT_FALSE(policy.GetCameraEnabled(&bool_value));
   EXPECT_FALSE(policy.GetShowUserNames(&bool_value));

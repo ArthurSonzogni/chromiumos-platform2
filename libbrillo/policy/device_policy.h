@@ -96,9 +96,8 @@ class DevicePolicy {
   // as an enterprise or enterpriseAD device.
   virtual bool IsEnterpriseEnrolled() const = 0;
 
-  // Writes the value of the DevicePolicyRefreshRate policy in |rate|. Returns
-  // true on success.
-  virtual bool GetPolicyRefreshRate(int* rate) const = 0;
+  // Returns the value of the DevicePolicyRefreshRate policy on success.
+  virtual std::optional<int> GetPolicyRefreshRate() const = 0;
 
   // Writes the value of the GuestModeEnabled policy in |guest_mode_enabled|.
   // Returns true on success.

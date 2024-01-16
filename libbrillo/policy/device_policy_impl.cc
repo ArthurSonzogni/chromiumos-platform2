@@ -27,6 +27,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "policy/device_local_account_policy_util.h"
+#include "policy/device_policy.h"
 #include "policy/policy_util.h"
 #include "policy/resilient_policy_util.h"
 
@@ -248,12 +249,11 @@ bool DevicePolicyImpl::IsEnterpriseEnrolled() const {
   return device_mode == InstallAttributesReader::kDeviceModeEnterprise;
 }
 
-bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
+std::optional<int> DevicePolicyImpl::GetPolicyRefreshRate() const {
   if (!device_policy_->has_device_policy_refresh_rate())
-    return false;
-  *rate = static_cast<int>(device_policy_->device_policy_refresh_rate()
-                               .device_policy_refresh_rate());
-  return true;
+    return std::nullopt;
+  return static_cast<int>(device_policy_->device_policy_refresh_rate()
+                              .device_policy_refresh_rate());
 }
 
 bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
