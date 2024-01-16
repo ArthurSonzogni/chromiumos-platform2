@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_icmp.h"
+#include "shill/network/mock_icmp_session.h"
 
 namespace shill {
 
-MockIcmp::MockIcmp() = default;
+MockIcmpSession::MockIcmpSession(EventDispatcher* dispatcher)
+    : IcmpSession(dispatcher) {}
 
-MockIcmp::~MockIcmp() = default;
+MockIcmpSession::~MockIcmpSession() = default;
 
 }  // namespace shill

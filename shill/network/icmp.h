@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ICMP_H_
-#define SHILL_ICMP_H_
+#ifndef SHILL_NETWORK_ICMP_H_
+#define SHILL_NETWORK_ICMP_H_
 
 #include <netinet/ip_icmp.h>
 
@@ -68,4 +68,4 @@ class Icmp {
 
 }  // namespace shill
 
-#endif  // SHILL_ICMP_H_
+#endif  // SHILL_NETWORK_ICMP_H_

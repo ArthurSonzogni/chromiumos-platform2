@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_ICMP_H_
-#define SHILL_MOCK_ICMP_H_
+#ifndef SHILL_NETWORK_MOCK_ICMP_H_
+#define SHILL_NETWORK_MOCK_ICMP_H_
 
-#include "shill/icmp.h"
+#include "shill/network/icmp.h"
 
 #include <gmock/gmock.h>
 
@@ -27,4 +27,4 @@ class MockIcmp : public Icmp {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_ICMP_H_
+#endif  // SHILL_NETWORK_MOCK_ICMP_H_

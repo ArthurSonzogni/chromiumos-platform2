@@ -18,10 +18,10 @@
 #include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/icmp_session.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/icmp_session.h"
 
 namespace {
 // These strings are dependent on ConnectionDiagnostics::Type. Any changes to

@@ -5,7 +5,6 @@
 #include "shill/network/connection_diagnostics.h"
 
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,13 +14,12 @@
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
-#include "shill/icmp_session.h"
 #include "shill/manager.h"
-#include "shill/mock_control.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_icmp_session.h"
 #include "shill/mock_metrics.h"
+#include "shill/network/icmp_session.h"
+#include "shill/network/mock_icmp_session.h"
 
 using testing::_;
 using testing::ByMove;
@@ -162,7 +160,7 @@ class ConnectionDiagnosticsTest : public Test {
  protected:
   class CallbackTarget {
    public:
-    CallbackTarget() {}
+    CallbackTarget() = default;
 
     MOCK_METHOD(void,
                 ResultCallback,

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/icmp_session.h"
+#include "shill/network/icmp_session.h"
 
 #include <memory>
 
@@ -13,7 +13,7 @@
 #include <net-base/mock_socket.h>
 
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_icmp.h"
+#include "shill/network/mock_icmp.h"
 
 using testing::_;
 using testing::NiceMock;
