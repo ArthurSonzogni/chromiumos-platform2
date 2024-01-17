@@ -15,14 +15,9 @@ namespace {
 // client configs here. Each client has its own table in example database.
 constexpr std::array<const char* [3], 4> kClientMetadata = {{
     {
-        /*name=*/"analytics_test_population",
+        /*name=*/"timezone_code_phh",
         /*retry_token=*/"",
-        /*launch_stage=*/"",  // empty launch_stage means disabled.
-    },
-    {
-        "timezone_code_phh",
-        "",
-        "prod",
+        /*launch_stage=*/"prod",
     },
     {
         "launcher_query_analytics_v1",
@@ -33,6 +28,12 @@ constexpr std::array<const char* [3], 4> kClientMetadata = {{
         "launcher_query_analytics_v2",
         "",
         "dev",
+    },
+    {
+        "input_autocorrect_phh",
+        "",
+        // Launch staage is empty because we don't have any tasks for this yet.
+        "",
     },
 }};
 
