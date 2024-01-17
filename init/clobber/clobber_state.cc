@@ -85,7 +85,7 @@ constexpr char kPsmDeviceActivePreservePath[] =
     "unencrypted/preserve/last_active_dates";
 constexpr char kFlexLocalPath[] = "var/lib/flex_id/";
 constexpr char kFlexPreservePath[] = "unencrypted/preserve/flex/";
-constexpr char kFlexIdFile[] = "flex_id";
+const char* kFlexFiles[] = {"flex_id", "flex_state_key"};
 constexpr base::TimeDelta kMinClobberDuration = base::Minutes(5);
 
 // The presence of this file indicates that crash report collection across
@@ -503,9 +503,11 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     // crashes on every boot.
     stateful_paths.push_back("unencrypted/preserve/gsc_prev_crash_log_id");
 
-    // Preserve the Flex ID file on ChromeOS Flex devices.
-    stateful_paths.push_back(std::string(kFlexPreservePath) +
-                             std::string(kFlexIdFile));
+    // Preserve the files used to identify ChromeOS Flex devices.
+    for (const auto* flex_filename : kFlexFiles) {
+      stateful_paths.push_back(std::string(kFlexPreservePath) +
+                               std::string(flex_filename));
+    }
   }
 
   // Preserve RMA state file in RMA mode.
@@ -610,16 +612,17 @@ void ClobberState::PreserveEncryptedFiles() {
     LOG(ERROR) << "Error copying file. Source: " << psm_local_pref_file
                << " Target: " << psm_preserved_pref_file;
 
-  // Preserve the Flex ID file on ChromeOS Flex devices.
+  // Preserve the files used to identify ChromeOS Flex devices.
   base::FilePath flex_path(root_path_.Append(kFlexLocalPath));
   base::FilePath flex_preserve_path(stateful_.Append(kFlexPreservePath));
   if (base::CreateDirectory(flex_preserve_path)) {
-    base::FilePath flex_id_file(flex_path.Append(kFlexIdFile));
-    base::FilePath flex_preserved_id_file(
-        flex_preserve_path.Append(kFlexIdFile));
-    if (!base::CopyFile(flex_id_file, flex_preserved_id_file)) {
-      LOG(ERROR) << "Error copying file. Source: " << flex_id_file
-                 << " Target: " << flex_preserved_id_file;
+    for (const auto* flex_filename : kFlexFiles) {
+      base::FilePath flex_file(flex_path.Append(flex_filename));
+      base::FilePath flex_preserved_file(
+          flex_preserve_path.Append(flex_filename));
+      if (!base::CopyFile(flex_file, flex_preserved_file))
+        LOG(ERROR) << "Error copying file. Source: " << flex_file
+                   << " Target: " << flex_preserved_file;
     }
   } else {
     LOG(ERROR) << "Error creating directory: " << flex_preserve_path;
