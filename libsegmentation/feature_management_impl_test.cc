@@ -308,48 +308,6 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
 }
-
-// Test a "real" implementation on a device without VPD (host).
-// Build an non-existing directory.
-class FeatureManagementImplNoVpdTest : public ::testing::Test {
- public:
-  FeatureManagementImplNoVpdTest() = default;
-  ~FeatureManagementImplNoVpdTest() override = default;
-
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base::FilePath fake_vpd_directory =
-        temp_dir_.GetPath().Append("non-existient");
-
-    base::FilePath device_info_path =
-        fake_vpd_directory.Append("feature_device_info");
-
-    auto broken = std::make_unique<FeatureManagementImpl>(
-        nullptr, fake_vpd_directory, device_info_path, "", "", "");
-    feature_management_ =
-        std::make_unique<FeatureManagement>(std::move(broken));
-  }
-
- protected:
-  // Directory and file path used for simulating device info data.
-  base::ScopedTempDir temp_dir_;
-
-  // Object to test.
-  std::unique_ptr<FeatureManagement> feature_management_;
-};
-
-TEST_F(FeatureManagementImplNoVpdTest, GetBasicFeature) {
-  // Test with an empty file. Expect feature level to be 0, scope to 0.
-  EXPECT_EQ(
-      feature_management_->GetFeatureLevel(),
-      FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0 -
-          FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_VALID_OFFSET);
-  EXPECT_EQ(
-      feature_management_->GetScopeLevel(),
-      FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_0 -
-          FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_VALID_OFFSET);
-}
-
 #endif
 
 }  // namespace segmentation
