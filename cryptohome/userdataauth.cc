@@ -17,6 +17,7 @@
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/numbers.h>
+#include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -56,6 +57,7 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
 #include <metrics/timer.h>
+#include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/biometrics_command_processor_impl.h"
@@ -1175,7 +1177,9 @@ void UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider() {
   if (!key_store_cert_provider_) {
     if (!default_key_store_cert_provider_) {
       default_key_store_cert_provider_ =
-          RecoverableKeyStoreBackendCertProviderImpl::Create(platform_);
+          std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>(
+              platform_, std::make_unique<org::chromium::RksAgentProxy>(
+                             mount_thread_bus_));
     }
     key_store_cert_provider_ = default_key_store_cert_provider_.get();
   }

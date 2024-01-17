@@ -11,9 +11,11 @@
 #include <optional>
 #include <string>
 
+#include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
+#include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
@@ -25,9 +27,9 @@ namespace cryptohome {
 class RecoverableKeyStoreBackendCertProviderImpl
     : public RecoverableKeyStoreBackendCertProvider {
  public:
-  // Creates a RecoverableKeyStoreBackendCertProviderImpl and starts fetching.
-  static std::unique_ptr<RecoverableKeyStoreBackendCertProviderImpl> Create(
-      Platform* platform);
+  RecoverableKeyStoreBackendCertProviderImpl(
+      Platform* platform,
+      std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher);
 
   RecoverableKeyStoreBackendCertProviderImpl(
       const RecoverableKeyStoreBackendCertProviderImpl&) = delete;
@@ -42,8 +44,6 @@ class RecoverableKeyStoreBackendCertProviderImpl
   // For testing.
   friend class RecoverableKeyStoreBackendProviderPeer;
 
-  explicit RecoverableKeyStoreBackendCertProviderImpl(Platform* platform);
-
   // Initialize the backend cert provider with the certificates persisted on
   // disk.
   void InitializeWithPersistedCert();
@@ -51,6 +51,17 @@ class RecoverableKeyStoreBackendCertProviderImpl
   // Starts the fetch routine, and each fetched certs will be reported to
   // OnCertificateFetched.
   void StartFetching();
+
+  // Callback for WaitForServiceToBeAvailable. We can start connecting to the
+  // fetcher signals after the service is ready.
+  void OnFetcherServiceAvailable(bool is_available);
+
+  // Callbacks for |RegisterCertificateFetchedSignalHandler|.
+  void OnCertificateFetchedSignalRegistration(const std::string& interface,
+                                              const std::string& signal_name,
+                                              bool success);
+  void OnCertificateFetchedSignal(
+      const attestation::pca_agent::RksCertificateAndSignature& reply);
 
   // If the certificate list fetched is newer, verify and parse the certificate.
   // If successful, update |cert_list_| and the on-disk certificates.
@@ -61,6 +72,8 @@ class RecoverableKeyStoreBackendCertProviderImpl
   bool PersistCertXmls(const std::string& cert_xml, const std::string& sig_xml);
 
   Platform* const platform_;
+
+  std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher_;
 
   const base::FilePath cert_xml_file_;
   const base::FilePath sig_xml_file_;

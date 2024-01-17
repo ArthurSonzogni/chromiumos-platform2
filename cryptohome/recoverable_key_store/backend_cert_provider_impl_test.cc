@@ -7,14 +7,18 @@
 #include <string>
 #include <utility>
 
+#include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ptr_util.h>
 #include <base/test/task_environment.h>
 #include <brillo/secure_blob.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <pca_agent-client/pca_agent/dbus-proxies.h>
+#include <pca_agent-client-test/pca_agent/dbus-proxy-mocks.h>
 
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"
@@ -27,9 +31,12 @@ namespace cryptohome {
 // some private methods we want to test.
 class RecoverableKeyStoreBackendProviderPeer {
  public:
-  explicit RecoverableKeyStoreBackendProviderPeer(Platform* platform)
-      : provider_(base::WrapUnique(
-            new RecoverableKeyStoreBackendCertProviderImpl(platform))) {}
+  RecoverableKeyStoreBackendProviderPeer(
+      Platform* platform,
+      std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher)
+      : provider_(
+            base::WrapUnique(new RecoverableKeyStoreBackendCertProviderImpl(
+                platform, std::move(fetcher)))) {}
 
   // Methods to execute RecoverableKeyStoreBackendCertProviderImpl public
   // methods.
@@ -41,8 +48,6 @@ class RecoverableKeyStoreBackendProviderPeer {
   // Methods to execute RecoverableKeyStoreBackendCertProviderImpl private
   // methods.
 
-  void StartFetching() { provider_->StartFetching(); }
-
   void OnCertificateFetched(const std::string& cert_xml,
                             const std::string& sig_xml) {
     provider_->OnCertificateFetched(cert_xml, sig_xml);
@@ -53,14 +58,35 @@ class RecoverableKeyStoreBackendProviderPeer {
 };
 
 namespace {
+using ::attestation::pca_agent::RksCertificateAndSignature;
 using ::testing::Contains;
+using ::testing::DoAll;
 using ::testing::Field;
+using ::testing::NiceMock;
 using ::testing::SaveArg;
 
 class RecoverableKeyStoreBackendCertProviderTest : public ::testing::Test {
+ public:
   void SetUp() override {
-    provider_ =
-        std::make_unique<RecoverableKeyStoreBackendProviderPeer>(&platform_);
+    object_proxy_ =
+        new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/"));
+    ON_CALL(*object_proxy_, DoWaitForServiceToBeAvailable)
+        .WillByDefault([](auto* callback) { std::move(*callback).Run(true); });
+
+    auto fetcher =
+        std::make_unique<NiceMock<org::chromium::RksAgentProxyMock>>();
+    fetcher_ = fetcher.get();
+    ON_CALL(*fetcher_, GetObjectProxy())
+        .WillByDefault(Return(object_proxy_.get()));
+    ON_CALL(*fetcher_, DoRegisterCertificateFetchedSignalHandler)
+        .WillByDefault(
+            [&](const auto& on_fetcher_signal, auto* on_fetcher_connected) {
+              on_fetcher_signal_ = on_fetcher_signal;
+              on_fetcher_connected_ = std::move(*on_fetcher_connected);
+            });
+
+    provider_ = std::make_unique<RecoverableKeyStoreBackendProviderPeer>(
+        &platform_, std::move(fetcher));
   }
 
  protected:
@@ -94,12 +120,46 @@ class RecoverableKeyStoreBackendCertProviderTest : public ::testing::Test {
     GetCertificateListData(kCertXml10014B64, kSigXml10014B64, data);
   }
 
+  void InitFetcherEmpty() {
+    ON_CALL(*fetcher_, GetCertificate)
+        .WillByDefault(DoAll(SetArgPointee<0>(RksCertificateAndSignature()),
+                             Return(true)));
+    std::move(on_fetcher_connected_).Run("", "", true);
+  }
+
+  void InitFetcherWithCert(const std::string& cert_xml,
+                           const std::string& sig_xml) {
+    RksCertificateAndSignature reply;
+    reply.set_certificate_xml(cert_xml);
+    reply.set_signature_xml(sig_xml);
+    ON_CALL(*fetcher_, GetCertificate)
+        .WillByDefault(DoAll(SetArgPointee<0>(reply), Return(true)));
+    std::move(on_fetcher_connected_).Run("", "", true);
+  }
+
+  void SendCertificateFetched(const std::string& cert_xml,
+                              const std::string& sig_xml) {
+    RksCertificateAndSignature reply;
+    reply.set_certificate_xml(cert_xml);
+    reply.set_signature_xml(sig_xml);
+    on_fetcher_signal_.Run(reply);
+  }
+
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   FakePlatform platform_;
 
+  scoped_refptr<dbus::MockObjectProxy> object_proxy_;
+  NiceMock<org::chromium::RksAgentProxyMock>* fetcher_;
+
   std::unique_ptr<RecoverableKeyStoreBackendProviderPeer> provider_;
+
+ private:
+  base::RepeatingCallback<void(const RksCertificateAndSignature&)>
+      on_fetcher_signal_;
+  base::OnceCallback<void(const std::string&, const std::string&, bool)>
+      on_fetcher_connected_;
 };
 
 TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
@@ -142,24 +202,74 @@ TEST_F(RecoverableKeyStoreBackendCertProviderTest, UpdateCerts) {
   EXPECT_EQ(cert->version, data_10014.list.version);
 
   // Certs are persisted.
-  auto new_provider =
-      std::make_unique<RecoverableKeyStoreBackendProviderPeer>(&platform_);
-  cert = new_provider->GetBackendCert();
+  SetUp();
+  cert = provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
 }
 
-TEST_F(RecoverableKeyStoreBackendCertProviderTest, StartFetching) {
+TEST_F(RecoverableKeyStoreBackendCertProviderTest,
+       StartFetchingEmptyCertInitially) {
   // At the start, there are no loaded certs.
   EXPECT_FALSE(provider_->GetBackendCert().has_value());
 
-  // The provider should be updated with the hardcoded certificate list.
-  provider_->StartFetching();
+  InitFetcherEmpty();
+
+  // Still no certs.
+  EXPECT_FALSE(provider_->GetBackendCert().has_value());
+
+  // Updating with cert list 10013.
+  CertificateListData data_10013;
+  Get10013Data(&data_10013);
+  SendCertificateFetched(data_10013.cert_xml, data_10013.sig_xml);
+
   std::optional<RecoverableKeyStoreBackendCert> cert =
       provider_->GetBackendCert();
   ASSERT_TRUE(cert.has_value());
+  EXPECT_EQ(cert->version, data_10013.list.version);
+  EXPECT_THAT(
+      data_10013.list.certs,
+      Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
+
+  // Updating with cert list 10014.
   CertificateListData data_10014;
   Get10014Data(&data_10014);
+  SendCertificateFetched(data_10014.cert_xml, data_10014.sig_xml);
+
+  cert = provider_->GetBackendCert();
+  ASSERT_TRUE(cert.has_value());
+  EXPECT_EQ(cert->version, data_10014.list.version);
+  EXPECT_THAT(
+      data_10014.list.certs,
+      Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
+}
+
+TEST_F(RecoverableKeyStoreBackendCertProviderTest,
+       StartFetchingHasCertInitially) {
+  // At the start, there are no loaded certs.
+  EXPECT_FALSE(provider_->GetBackendCert().has_value());
+
+  // Fetcher has already fetched the version 10013 cert when the provider
+  // connects to the signal.
+  CertificateListData data_10013;
+  Get10013Data(&data_10013);
+  InitFetcherWithCert(data_10013.cert_xml, data_10013.sig_xml);
+
+  std::optional<RecoverableKeyStoreBackendCert> cert =
+      provider_->GetBackendCert();
+  ASSERT_TRUE(cert.has_value());
+  EXPECT_EQ(cert->version, data_10013.list.version);
+  EXPECT_THAT(
+      data_10013.list.certs,
+      Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
+
+  // Updating with cert list 10014.
+  CertificateListData data_10014;
+  Get10014Data(&data_10014);
+  SendCertificateFetched(data_10014.cert_xml, data_10014.sig_xml);
+
+  cert = provider_->GetBackendCert();
+  ASSERT_TRUE(cert.has_value());
   EXPECT_EQ(cert->version, data_10014.list.version);
   EXPECT_THAT(
       data_10014.list.certs,

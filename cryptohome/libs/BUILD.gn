@@ -704,6 +704,7 @@ static_library("libcryptohome") {
   ]
   pkg_deps = [
     "dbus-1",
+    "libattestation-client",
     "libfeatures",
     "libxml-2.0",
   ]
