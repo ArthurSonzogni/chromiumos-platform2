@@ -20,12 +20,7 @@ class MockRoutingTable : public RoutingTable {
   ~MockRoutingTable() override;
 
   MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, AddRoute, (int, const RoutingTableEntry&), (override));
-  MOCK_METHOD(bool,
-              GetDefaultRoute,
-              (int, net_base::IPFamily, RoutingTableEntry*),
-              (override));
   MOCK_METHOD(bool,
               SetDefaultRoute,
               (int, const net_base::IPAddress&, uint32_t),

@@ -58,18 +58,11 @@ class RoutingTable {
   virtual ~RoutingTable();
 
   virtual void Start();
-  virtual void Stop();
 
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
   // Remove an entry from the routing table.
   virtual bool RemoveRoute(int interface_index, const RoutingTableEntry& entry);
-
-  // Get the default route associated with an interface of a given addr family.
-  // The route is copied into |*entry|.
-  virtual bool GetDefaultRoute(int interface_index,
-                               net_base::IPFamily family,
-                               RoutingTableEntry* entry);
 
   // Set the default route for an interface with index |interface_index|,
   // given the IPAddress of the gateway |gateway_address| and priority
@@ -115,7 +108,6 @@ class RoutingTable {
   bool RemoveRouteFromKernelTable(int interface_index,
                                   const RoutingTableEntry& entry);
 
-  void RouteMsgHandler(const net_base::RTNLMessage& msg);
   bool ApplyRoute(int interface_index,
                   const RoutingTableEntry& entry,
                   net_base::RTNLMessage::Mode mode,
@@ -127,8 +119,6 @@ class RoutingTable {
                                        RoutingTableEntry** entry);
 
   RouteTables tables_;
-
-  std::unique_ptr<net_base::RTNLListener> route_listener_;
 
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;

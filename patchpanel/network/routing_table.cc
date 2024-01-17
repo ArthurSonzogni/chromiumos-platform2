@@ -49,76 +49,6 @@ static_assert(
     kInterfaceTableIdIncrement > RT_TABLE_LOCAL,
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
-
-bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
-                              int* interface_index,
-                              RoutingTableEntry* entry) {
-  if (message.type() != net_base::RTNLMessage::kTypeRoute ||
-      !message.HasAttribute(RTA_OIF)) {
-    return false;
-  }
-
-  const net_base::RTNLMessage::RouteStatus& route_status =
-      message.route_status();
-
-  if (route_status.type != RTN_UNICAST) {
-    return false;
-  }
-
-  if (route_status.table == RT_TABLE_LOCAL) {
-    // patchpanel does not modify local routes, which are managed by the kernel.
-    return false;
-  }
-
-  const auto interface_index_i32 =
-      net_base::byte_utils::FromBytes<int32_t>(message.GetAttribute(RTA_OIF));
-  if (!interface_index_i32) {
-    return false;
-  }
-  *interface_index = *interface_index_i32;
-
-  uint32_t metric = 0;
-  if (message.HasAttribute(RTA_PRIORITY)) {
-    metric = net_base::byte_utils::FromBytes<uint32_t>(
-                 message.GetAttribute(RTA_PRIORITY))
-                 .value_or(0);
-  }
-
-  // The rtmsg structure [0] has a table id field that is only a single
-  // byte. Prior to Linux v2.6, routing table IDs were of type u8. v2.6 changed
-  // this so that table IDs were u32s, but the uapi here couldn't
-  // change. Instead, a separate RTA_TABLE attribute is used to be able to send
-  // a full 32-bit table ID. When the table ID is greater than 255, the
-  // rtm_table field is set to RT_TABLE_COMPAT.
-  //
-  // 0) elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h#L206
-  uint32_t table;
-  if (message.HasAttribute(RTA_TABLE)) {
-    table = net_base::byte_utils::FromBytes<uint32_t>(
-                message.GetAttribute(RTA_TABLE))
-                .value_or(0);
-  } else {
-    table = route_status.table;
-    LOG_IF(WARNING, table == RT_TABLE_COMPAT)
-        << "Received RT_TABLE_COMPAT, but message has no RTA_TABLE attribute";
-  }
-
-  auto family = net_base::FromSAFamily(message.family());
-  if (!family) {
-    return false;
-  }
-  entry->dst = message.GetRtaDst().value_or(net_base::IPCIDR(*family));
-  entry->src = message.GetRtaSrc().value_or(net_base::IPCIDR(*family));
-  entry->gateway =
-      message.GetRtaGateway().value_or(net_base::IPAddress(*family));
-  entry->table = table;
-  entry->metric = metric;
-  entry->scope = route_status.scope;
-  entry->protocol = route_status.protocol;
-  entry->type = route_status.type;
-
-  return true;
-}
 }  // namespace
 
 // These don't have named constants in the system header files, but they
@@ -134,12 +64,6 @@ RoutingTable::~RoutingTable() = default;
 void RoutingTable::Start() {
   VLOG(2) << __func__;
 
-  route_listener_ = std::make_unique<net_base::RTNLListener>(
-      net_base::RTNLHandler::kRequestRoute,
-      base::BindRepeating(&RoutingTable::RouteMsgHandler,
-                          base::Unretained(this)));
-  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestRoute);
-
   // Initialize kUnreachableTableId as a table to block traffic.
   auto route = RoutingTableEntry(net_base::IPFamily::kIPv6)
                    .SetTable(kUnreachableTableId)
@@ -149,12 +73,6 @@ void RoutingTable::Start() {
               .SetTable(kUnreachableTableId)
               .SetType(RTN_UNREACHABLE);
   AddRouteToKernelTable(0, route);
-}
-
-void RoutingTable::Stop() {
-  VLOG(2) << __func__;
-
-  route_listener_.reset();
 }
 
 bool RoutingTable::AddRoute(int interface_index,
@@ -188,21 +106,10 @@ bool RoutingTable::RemoveRoute(int interface_index,
       return true;
     }
   }
-  VLOG(1) << "Successfully removed routing entry but could not find the "
-          << "corresponding entry in patchpanel's representation of the "
-          << "routing table.";
+  LOG(WARNING) << "Successfully removed routing entry but could not find the "
+               << "corresponding entry in patchpanel's representation of the "
+               << "routing table.";
   return true;
-}
-
-bool RoutingTable::GetDefaultRoute(int interface_index,
-                                   net_base::IPFamily family,
-                                   RoutingTableEntry* entry) {
-  RoutingTableEntry* found_entry;
-  bool ret = GetDefaultRouteInternal(interface_index, family, &found_entry);
-  if (ret) {
-    *entry = *found_entry;
-  }
-  return ret;
 }
 
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
@@ -216,10 +123,7 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
     return false;
   }
 
-  // For IPv6 the kernel will add a new default route with metric 1024
-  // every time it sees a router advertisement (which could happen every
-  // couple of seconds).  Ignore these when there is another default route
-  // with a lower metric.
+  // If there are multiple defaulte routes choose the one with lowest metric.
   uint32_t lowest_metric = UINT_MAX;
   for (auto& nent : table->second) {
     if (nent.dst.IsDefault() && nent.dst.GetFamily() == family &&
@@ -322,84 +226,6 @@ bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
 
   return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeDelete,
                     0);
-}
-
-void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
-  int interface_index;
-  // Initialize it to IPv4, will be set to the real value in
-  // ParseRoutingTableMessage().
-  RoutingTableEntry entry(net_base::IPFamily::kIPv4);
-  if (!ParseRoutingTableMessage(message, &interface_index, &entry)) {
-    return;
-  }
-
-  if (entry.protocol == RTPROT_RA) {
-    // The kernel sends one of these messages pretty much every time it
-    // connects to another IPv6 host.  The only interesting message is the
-    // one containing the default gateway.
-    if (!entry.dst.IsDefault()) {
-      return;
-    }
-  } else if (entry.protocol != RTPROT_BOOT) {
-    // Responses to route queries come back with a protocol of
-    // RTPROT_UNSPEC.  Otherwise, normal route updates that we are
-    // interested in come with a protocol of RTPROT_BOOT.
-    return;
-  }
-
-  VLOG(2) << __func__ << " "
-          << net_base::RTNLMessage::ModeToString(message.mode())
-          << " index: " << interface_index << " entry: " << entry;
-
-  bool entry_exists = false;
-  // Routes that make it here are either:
-  //   * Default routes of protocol RTPROT_RA (most notably, kernel-created IPv6
-  //      default routes in response to receiving IPv6 RAs).
-  //   * Routes of protocol RTPROT_BOOT, which includes default routes created
-  //      by the kernel when an interface comes up and routes created by `ip
-  //      route` that do not explicitly specify a different protocol.
-  //
-  // Thus a different service could create routes that are "hidden" from
-  // patchpanel by using a different protocol value (anything greater than
-  // RTPROT_STATIC would be appropriate), while routes created with protocol
-  // RTPROT_BOOT will be tracked by patchpanel. In the future, each service
-  // could use a unique protocol value, such that patchpanel would be able to
-  // determine which service created a particular route.
-  RouteTableEntryVector& table = tables_[interface_index];
-  for (auto nent = table.begin(); nent != table.end();) {
-    // clang-format off
-    if (nent->dst != entry.dst ||
-        nent->src != entry.src ||
-        nent->gateway != entry.gateway ||
-        nent->scope != entry.scope ||
-        nent->metric != entry.metric ||
-        nent->type != entry.type ||
-        entry.table != nent->table) {
-      ++nent;
-      continue;
-    }
-    // clang-format on
-
-    if (message.mode() == net_base::RTNLMessage::kModeAdd) {
-      // Set this to true to avoid adding the same route twice to
-      // tables_[interface_index].
-      entry_exists = true;
-      break;
-    }
-
-    if (message.mode() == net_base::RTNLMessage::kModeDelete) {
-      // Keep track of route deletions that come from outside of patchpanel.
-      // Continue the loop for resilience to any failure scenario in which
-      // tables_[interface_index] has duplicate entries.
-      nent = table.erase(nent);
-    } else {
-      ++nent;
-    }
-  }
-
-  if (message.mode() == net_base::RTNLMessage::kModeAdd && !entry_exists) {
-    table.push_back(entry);
-  }
 }
 
 bool RoutingTable::ApplyRoute(int interface_index,

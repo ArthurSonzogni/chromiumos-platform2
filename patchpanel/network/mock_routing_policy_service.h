@@ -22,8 +22,6 @@ class MockRoutingPolicyService : public RoutingPolicyService {
 
   ~MockRoutingPolicyService() override;
 
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, AddRule, (int, const RoutingPolicyEntry&), (override));
   MOCK_METHOD(void, FlushRules, (int), (override));
   MOCK_METHOD((const base::flat_map<std::string_view, fib_rule_uid_range>&),

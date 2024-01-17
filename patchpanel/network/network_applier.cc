@@ -114,7 +114,6 @@ std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
 
 void NetworkApplier::Start() {
   routing_table_->Start();
-  rule_table_->Start();
 }
 
 void NetworkApplier::Clear(int interface_index) {

@@ -32,8 +32,6 @@ class RoutingPolicyServiceTest : public Test {
     ON_CALL(rtnl_handler_, DoSendMessage).WillByDefault(Return(true));
   }
 
-  void Start();
-
   int CountRoutingPolicyEntries();
 
  protected:
@@ -51,18 +49,7 @@ int RoutingPolicyServiceTest::CountRoutingPolicyEntries() {
   return count;
 }
 
-void RoutingPolicyServiceTest::Start() {
-  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestRule));
-  rule_table_->Start();
-}
-
-TEST_F(RoutingPolicyServiceTest, Start) {
-  Start();
-}
-
 TEST_F(RoutingPolicyServiceTest, PolicyRuleAddFlush) {
-  Start();
-
   // Expect the tables to be empty by default.
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 

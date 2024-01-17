@@ -83,50 +83,6 @@ RoutingPolicyService::RoutingPolicyService()
 
 RoutingPolicyService::~RoutingPolicyService() = default;
 
-void RoutingPolicyService::Start() {
-  VLOG(2) << __func__;
-
-  rule_listener_ = std::make_unique<net_base::RTNLListener>(
-      net_base::RTNLHandler::kRequestRule,
-      base::BindRepeating(&RoutingPolicyService::RuleMsgHandler,
-                          base::Unretained(this)));
-  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestRule);
-}
-
-void RoutingPolicyService::Stop() {
-  VLOG(2) << __func__;
-
-  rule_listener_.reset();
-}
-
-void RoutingPolicyService::RuleMsgHandler(
-    const net_base::RTNLMessage& message) {
-  // Family will be set to the real value in ParseRoutingPolicyMessage().
-  auto entry = ParseRoutingPolicyMessage(message);
-
-  if (!entry) {
-    return;
-  }
-
-  if (!(entry->priority > kRulePriorityLocal &&
-        entry->priority < kRulePriorityMain)) {
-    // Don't touch the system-managed rules.
-    return;
-  }
-
-  // If this rule matches one of our known rules, ignore it.  Otherwise,
-  // assume it is left over from an old run and delete it.
-  for (const auto& table : policy_tables_) {
-    if (std::find(table.second.begin(), table.second.end(), *entry) !=
-        table.second.end()) {
-      return;
-    }
-  }
-
-  ApplyRule(-1, *entry, net_base::RTNLMessage::kModeDelete, 0);
-  return;
-}
-
 std::optional<RoutingPolicyEntry>
 RoutingPolicyService::ParseRoutingPolicyMessage(
     const net_base::RTNLMessage& message) {

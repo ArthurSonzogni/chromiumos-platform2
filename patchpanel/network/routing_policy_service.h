@@ -75,9 +75,6 @@ class RoutingPolicyService {
   RoutingPolicyService& operator=(const RoutingPolicyService&) = delete;
   virtual ~RoutingPolicyService();
 
-  virtual void Start();
-  virtual void Stop();
-
   // Add an entry to the routing rule table.
   virtual bool AddRule(int interface_index, const RoutingPolicyEntry& entry);
 
@@ -97,8 +94,6 @@ class RoutingPolicyService {
   using PolicyTableEntryVector = std::vector<RoutingPolicyEntry>;
   using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
 
-  void RuleMsgHandler(const net_base::RTNLMessage& message);
-
   bool ApplyRule(int interface_index,
                  const RoutingPolicyEntry& entry,
                  net_base::RTNLMessage::Mode mode,
@@ -109,8 +104,6 @@ class RoutingPolicyService {
   // Maps from interface ids to the routing policy entries associated with the
   // interface.
   PolicyTables policy_tables_;
-
-  std::unique_ptr<net_base::RTNLListener> rule_listener_;
 
   // "User traffic" refers to traffic from processes that run under one of the
   // unix users enumered in |kUserTrafficUsernames| constant in
