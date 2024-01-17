@@ -77,8 +77,10 @@ executable("featured") {
 action("early_boot_state_checks") {
   visibility = [ ":libfeatures" ]
   script = "scripts/generate_early_boot_checks.py"
+  json_path = rebase_path("//system_api/dbus/featured/default_states.json",
+                          root_build_dir)
   inputs = [
-    "config/default_states.json",
+    json_path,
     "scripts/early_boot_state_checks_cc.jinja",
     "scripts/early_boot_state_checks_h.jinja",
   ]
@@ -87,8 +89,7 @@ action("early_boot_state_checks") {
     "$target_gen_dir/early_boot_state_checks.h",
   ]
   args = [
-    "--default_states=" +
-        rebase_path("config/default_states.json", root_build_dir),
+    "--default_states=${json_path}",
     "--fileroot_output=" + rebase_path(target_gen_dir, root_build_dir) +
         "/early_boot_state_checks",
     "--template_folder=" + rebase_path("scripts/", root_build_dir),
