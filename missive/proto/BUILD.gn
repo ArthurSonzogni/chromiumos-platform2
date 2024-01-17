@@ -108,15 +108,15 @@ goproto_library("libmissive-interface-goprotos") {
   proto_out_dir = "go/src/"
   proto_lib_dirs = [ "//missive/proto/" ]
   import_mapping = [
-    "app_types.proto=chromiumos/reporting",
-    "health.proto=chromiumos/reporting",
-    "metric_data.proto=chromiumos/reporting",
-    "pipeline_interface_sym_for_tast.proto=chromiumos/reporting",
-    "record.proto=chromiumos/reporting",
-    "record_constants.proto=chromiumos/reporting",
-    "status.proto=chromiumos/reporting",
-    "session_affiliated_user.proto=chromiumos/reporting",
-    "upload_tracker.proto=chromiumos/reporting",
+    "app_types.proto=go.chromium.org/chromiumos/reporting",
+    "health.proto=go.chromium.org/chromiumos/reporting",
+    "metric_data.proto=go.chromium.org/chromiumos/reporting",
+    "pipeline_interface_sym_for_tast.proto=go.chromium.org/chromiumos/reporting",
+    "record.proto=go.chromium.org/chromiumos/reporting",
+    "record_constants.proto=go.chromium.org/chromiumos/reporting",
+    "status.proto=go.chromium.org/chromiumos/reporting",
+    "session_affiliated_user.proto=go.chromium.org/chromiumos/reporting",
+    "upload_tracker.proto=go.chromium.org/chromiumos/reporting",
   ]
   sources = [
     "pipeline_interface_sym_for_tast.proto",  # b/261096728
