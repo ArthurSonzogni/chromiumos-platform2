@@ -40,6 +40,7 @@ table SerializedKnowledgeFactorHashInfo {
   // This field should always be non-null in practice.
   algorithm:SerializedKnowledgeFactorHashAlgorithm = null (id:0);
   salt:[ubyte] (id:1);
+  should_generate_key_store:bool = null (id:2);
 }
 
 // Metadata common to all auth factors.

@@ -46,8 +46,22 @@ CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
     const RecoverableKeyStoreBackendCert& cert,
     const brillo::Blob& wrong_attempt_label) {
   const SerializedKnowledgeFactorHashInfo* hash_info = metadata.hash_info();
+  // Separate this to another error bucket as this is working as intended for
+  // old factors.
+  if (!hash_info) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateNoHashInfo),
+        ErrorActionSet(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
+  if (!hash_info->should_generate_key_store.value_or(false)) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateDontCreate),
+        ErrorActionSet(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
   if (!auth_input.user_input.has_value() ||
-      !auth_input.security_domain_keys.has_value() || !hash_info ||
+      !auth_input.security_domain_keys.has_value() ||
       !hash_info->algorithm.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateInvalidParams),

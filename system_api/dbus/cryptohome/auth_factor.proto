@@ -209,6 +209,10 @@ enum LockoutPolicy {
 message KnowledgeFactorHashInfo {
   cryptohome.KnowledgeFactorHashAlgorithm algorithm = 1;
   bytes salt = 2;
+  // Some auth factors explicitly don't want to generate recoverable key stores
+  // even if they are knowledge factors with hash info. Use this flag to
+  // determine whether key stores should be generated using this hash info.
+  bool should_generate_key_store = 3;
 }
 
 message CommonMetadata {

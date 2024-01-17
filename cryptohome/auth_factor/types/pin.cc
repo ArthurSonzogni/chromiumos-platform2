@@ -120,13 +120,12 @@ PinAuthFactorDriver::TypedConvertToProto(
   proto.mutable_common_metadata()->set_lockout_policy(
       LockoutPolicyToAuthFactor(common.lockout_policy));
   user_data_auth::PinMetadata& pin_metadata = *proto.mutable_pin_metadata();
-  if (typed_metadata.hash_info.has_value() &&
-      typed_metadata.hash_info->algorithm.has_value()) {
-    user_data_auth::KnowledgeFactorHashInfo& hash_info =
-        *pin_metadata.mutable_hash_info();
-    hash_info.set_algorithm(SerializedKnowledgeFactorAlgorithmToProto(
-        *typed_metadata.hash_info->algorithm));
-    hash_info.set_salt(brillo::BlobToString(typed_metadata.hash_info->salt));
+  if (typed_metadata.hash_info.has_value()) {
+    std::optional<user_data_auth::KnowledgeFactorHashInfo> hash_info_proto =
+        KnowledgeFactorHashInfoToProto(*typed_metadata.hash_info);
+    if (hash_info_proto.has_value()) {
+      *pin_metadata.mutable_hash_info() = std::move(*hash_info_proto);
+    }
   }
   return proto;
 }

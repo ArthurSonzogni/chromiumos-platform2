@@ -950,6 +950,7 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     hash_info.set_algorithm(
         KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
     hash_info.set_salt("fake_salt");
+    hash_info.set_should_generate_key_store(true);
     *request.mutable_auth_factor()
          ->mutable_password_metadata()
          ->mutable_hash_info() = hash_info;
@@ -1179,6 +1180,7 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     hash_info.set_algorithm(
         KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
     hash_info.set_salt("fake_salt");
+    hash_info.set_should_generate_key_store(true);
     *add_pin_request.mutable_auth_factor()
          ->mutable_pin_metadata()
          ->mutable_hash_info() = hash_info;
@@ -1693,6 +1695,7 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
   hash_info.set_algorithm(
       KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
   hash_info.set_salt(kHashSalt);
+  hash_info.set_should_generate_key_store(true);
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
   add_pin_request.mutable_auth_factor()->set_type(
@@ -4920,6 +4923,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
                           .algorithm = SerializedKnowledgeFactorHashAlgorithm::
                               PBKDF2_AES256_1234,
                           .salt = brillo::Blob(30, 0xAA),
+                          .should_generate_key_store = true,
                       },
               },
       },
@@ -5038,6 +5042,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
                           .algorithm = SerializedKnowledgeFactorHashAlgorithm::
                               PBKDF2_AES256_1234,
                           .salt = brillo::Blob(30, 0xAA),
+                          .should_generate_key_store = true,
                       },
               },
       },

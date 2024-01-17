@@ -44,6 +44,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
       {.hash_info = SerializedKnowledgeFactorHashInfo{
            .algorithm = SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF,
            .salt = brillo::BlobFromString(kSalt),
+           .should_generate_key_store = true,
        }});
 
   // Test
@@ -65,6 +66,8 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   EXPECT_EQ(proto->password_metadata().hash_info().algorithm(),
             KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
   EXPECT_EQ(proto->password_metadata().hash_info().salt(), kSalt);
+  EXPECT_TRUE(
+      proto->password_metadata().hash_info().should_generate_key_store());
 }
 
 TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {

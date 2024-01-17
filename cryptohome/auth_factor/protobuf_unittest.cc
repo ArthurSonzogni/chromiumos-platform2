@@ -199,6 +199,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   hash_info.set_algorithm(
       KnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
   hash_info.set_salt(kSalt);
+  hash_info.set_should_generate_key_store(true);
   *auth_factor_proto.mutable_password_metadata()->mutable_hash_info() =
       hash_info;
   auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
@@ -229,6 +230,8 @@ TEST(AuthFactorPropertiesFromProtoTest,
       password_metadata->hash_info->algorithm,
       Optional(SerializedKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF));
   EXPECT_EQ(password_metadata->hash_info->salt, brillo::BlobFromString(kSalt));
+  EXPECT_THAT(password_metadata->hash_info->should_generate_key_store,
+              Optional(true));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPassword));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }

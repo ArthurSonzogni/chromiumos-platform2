@@ -87,6 +87,7 @@ TEST(RecoverableKeyStoreTest, CreateSuccess) {
               .algorithm =
                   SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
+              .should_generate_key_store = true,
           }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
@@ -130,6 +131,7 @@ TEST(RecoverableKeyStoreTest, CreateGetCertFailed) {
               .algorithm =
                   SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
+              .should_generate_key_store = true,
           }}};
 
   MockRecoverableKeyStoreBackendCertProvider cert_provider;
@@ -161,6 +163,7 @@ TEST(RecoverableKeyStoreTest, UpdateSuccess) {
               .algorithm =
                   SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
+              .should_generate_key_store = true,
           }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
@@ -196,6 +199,7 @@ TEST(RecoverableKeyStoreTest, UpdateNotNeeded) {
               .algorithm =
                   SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
+              .should_generate_key_store = true,
           }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
@@ -230,6 +234,7 @@ TEST(RecoverableKeyStoreTest, UpdateFailed) {
               .algorithm =
                   SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
               .salt = brillo::Blob(kSaltSize, 0xBB),
+              .should_generate_key_store = true,
           }}};
 
   MockRecoverableKeyStoreBackendCertProvider cert_provider;

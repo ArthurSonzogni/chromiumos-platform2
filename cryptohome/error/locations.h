@@ -2057,6 +2057,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUpdateKeyStoreUpdateNotNeeded = 3447,
   /* ./auth_session.cc */
   kLocUpdateKeyStoreSaveFactorFailed = 3448,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateNoHashInfo = 3449,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateDontCreate = 3450,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

@@ -28,13 +28,16 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
 std::optional<AuthFactorType> AuthFactorTypeFromProto(
     user_data_auth::AuthFactorType type);
 
-// Functions to convert a SerializedKnowledgeFactorHashAlgorithm to
+// Functions to convert a SerializedKnowledgeFactorHash types to
 // and from the protobuf enum.
 KnowledgeFactorHashAlgorithm SerializedKnowledgeFactorAlgorithmToProto(
     const SerializedKnowledgeFactorHashAlgorithm& algorithm);
 std::optional<SerializedKnowledgeFactorHashAlgorithm>
 SerializedKnowledgeFactorAlgorithmFromProto(
     const KnowledgeFactorHashAlgorithm& algorithm);
+std::optional<user_data_auth::KnowledgeFactorHashInfo>
+KnowledgeFactorHashInfoToProto(
+    const SerializedKnowledgeFactorHashInfo& hash_info);
 
 // Function to convert an auth factor prepare purpose from the protobuf enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(

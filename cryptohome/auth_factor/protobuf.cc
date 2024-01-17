@@ -32,6 +32,7 @@ KnowledgeFactorHashInfoFromProto(
   return SerializedKnowledgeFactorHashInfo{
       .algorithm = *algorithm,
       .salt = brillo::BlobFromString(hash_info.salt()),
+      .should_generate_key_store = hash_info.should_generate_key_store(),
   };
 }
 
@@ -171,6 +172,21 @@ SerializedKnowledgeFactorAlgorithmFromProto(
     default:
       return std::nullopt;
   }
+}
+
+std::optional<user_data_auth::KnowledgeFactorHashInfo>
+KnowledgeFactorHashInfoToProto(
+    const SerializedKnowledgeFactorHashInfo& hash_info) {
+  user_data_auth::KnowledgeFactorHashInfo hash_info_proto;
+  if (!hash_info.algorithm.has_value()) {
+    return std::nullopt;
+  }
+  hash_info_proto.set_algorithm(
+      SerializedKnowledgeFactorAlgorithmToProto(*hash_info.algorithm));
+  hash_info_proto.set_salt(brillo::BlobToString(hash_info.salt));
+  hash_info_proto.set_should_generate_key_store(
+      hash_info.should_generate_key_store.value_or(false));
+  return hash_info_proto;
 }
 
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(

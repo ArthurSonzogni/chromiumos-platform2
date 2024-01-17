@@ -369,6 +369,7 @@ constexpr char kPreparePurposeAuthSwitch[] = "auth";
 constexpr char kUseTimeLockout[] = "timed_lockout";
 constexpr char kHashSalt[] = "hash_salt";
 constexpr char kHashAlgorithm[] = "hash_algorithm";
+constexpr char kGenerateKeyStore[] = "generate_key_store";
 }  // namespace
 }  // namespace switches
 
@@ -588,7 +589,8 @@ int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
 
 bool HasKnowledgeFactorHashInfo(base::CommandLine* cl) {
   return cl->HasSwitch(switches::kHashSalt) ||
-         cl->HasSwitch(switches::kHashAlgorithm);
+         cl->HasSwitch(switches::kHashAlgorithm) ||
+         cl->HasSwitch(switches::kGenerateKeyStore);
 }
 
 // Build up a knowledge factor hash info from switches.
@@ -620,6 +622,8 @@ bool BuildKnowledgeFactorHashInfo(
 
   info->set_algorithm(algorithm);
   info->set_salt(salt);
+  info->set_should_generate_key_store(
+      cl->HasSwitch(switches::kGenerateKeyStore));
   return true;
 }
 

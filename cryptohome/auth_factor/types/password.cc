@@ -59,13 +59,12 @@ PasswordAuthFactorDriver::TypedConvertToProto(
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   user_data_auth::PasswordMetadata& password_metadata =
       *proto.mutable_password_metadata();
-  if (typed_metadata.hash_info.has_value() &&
-      typed_metadata.hash_info->algorithm.has_value()) {
-    user_data_auth::KnowledgeFactorHashInfo& hash_info =
-        *password_metadata.mutable_hash_info();
-    hash_info.set_algorithm(SerializedKnowledgeFactorAlgorithmToProto(
-        *typed_metadata.hash_info->algorithm));
-    hash_info.set_salt(brillo::BlobToString(typed_metadata.hash_info->salt));
+  if (typed_metadata.hash_info.has_value()) {
+    std::optional<user_data_auth::KnowledgeFactorHashInfo> hash_info_proto =
+        KnowledgeFactorHashInfoToProto(*typed_metadata.hash_info);
+    if (hash_info_proto.has_value()) {
+      *password_metadata.mutable_hash_info() = std::move(*hash_info_proto);
+    }
   }
   return proto;
 }

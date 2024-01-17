@@ -52,6 +52,7 @@ TEST_F(PinDriverTest, PinConvertToProto) {
            .algorithm =
                SerializedKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234,
            .salt = brillo::BlobFromString(kSalt),
+           .should_generate_key_store = true,
        }});
   metadata.common.lockout_policy = SerializedLockoutPolicy::ATTEMPT_LIMITED;
 
@@ -73,6 +74,7 @@ TEST_F(PinDriverTest, PinConvertToProto) {
   EXPECT_EQ(proto->pin_metadata().hash_info().algorithm(),
             KnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
   EXPECT_EQ(proto->pin_metadata().hash_info().salt(), kSalt);
+  EXPECT_TRUE(proto->pin_metadata().hash_info().should_generate_key_store());
 }
 
 TEST_F(PinDriverTest, PinConvertToProtoNullOpt) {
