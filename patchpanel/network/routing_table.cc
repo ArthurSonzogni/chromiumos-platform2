@@ -154,24 +154,7 @@ void RoutingTable::Start() {
 void RoutingTable::Stop() {
   VLOG(2) << __func__;
 
-  managed_interfaces_.clear();
   route_listener_.reset();
-}
-
-void RoutingTable::RegisterDevice(int interface_index,
-                                  const std::string& link_name) {
-  if (managed_interfaces_.find(interface_index) != managed_interfaces_.end()) {
-    return;
-  }
-
-  LOG(INFO) << __func__ << ": " << link_name;
-  managed_interfaces_.insert(interface_index);
-}
-
-void RoutingTable::DeregisterDevice(int interface_index,
-                                    const std::string& link_name) {
-  LOG(INFO) << __func__ << ": " << link_name;
-  managed_interfaces_.erase(interface_index);
 }
 
 bool RoutingTable::AddRoute(int interface_index,
@@ -369,8 +352,6 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
           << " index: " << interface_index << " entry: " << entry;
 
   bool entry_exists = false;
-  bool is_managed = (managed_interfaces_.count(interface_index) != 0);
-  uint32_t target_table = GetInterfaceTableId(interface_index);
   // Routes that make it here are either:
   //   * Default routes of protocol RTPROT_RA (most notably, kernel-created IPv6
   //      default routes in response to receiving IPv6 RAs).
@@ -392,22 +373,21 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
         nent->gateway != entry.gateway ||
         nent->scope != entry.scope ||
         nent->metric != entry.metric ||
-        nent->type != entry.type) {
+        nent->type != entry.type ||
+        entry.table != nent->table) {
       ++nent;
       continue;
     }
     // clang-format on
 
-    if (message.mode() == net_base::RTNLMessage::kModeAdd &&
-        (is_managed || entry.table == nent->table)) {
+    if (message.mode() == net_base::RTNLMessage::kModeAdd) {
       // Set this to true to avoid adding the same route twice to
       // tables_[interface_index].
       entry_exists = true;
       break;
     }
 
-    if (message.mode() == net_base::RTNLMessage::kModeDelete &&
-        entry.table == nent->table) {
+    if (message.mode() == net_base::RTNLMessage::kModeDelete) {
       // Keep track of route deletions that come from outside of patchpanel.
       // Continue the loop for resilience to any failure scenario in which
       // tables_[interface_index] has duplicate entries.
@@ -417,22 +397,7 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
     }
   }
 
-  if (message.mode() != net_base::RTNLMessage::kModeAdd) {
-    return;
-  }
-
-  // We do not want normal entries for a managed interface to be added to any
-  // table but the per-Device routing table. Thus we remove the added route here
-  // and re-add it to the per-Device routing table.
-  if (is_managed && entry.table != target_table && entry.type == RTN_UNICAST) {
-    RoutingTableEntry oldEntry(entry);
-    entry.table = target_table;
-    ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeAdd,
-               NLM_F_CREATE | NLM_F_REPLACE);
-    RemoveRouteFromKernelTable(interface_index, oldEntry);
-  }
-
-  if (!entry_exists) {
+  if (message.mode() == net_base::RTNLMessage::kModeAdd && !entry_exists) {
     table.push_back(entry);
   }
 }

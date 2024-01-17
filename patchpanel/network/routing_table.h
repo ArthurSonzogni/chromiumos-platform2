@@ -60,21 +60,6 @@ class RoutingTable {
   virtual void Start();
   virtual void Stop();
 
-  // Informs RoutingTable that a new Device has come up. While RoutingTable
-  // could find out about a new Device by seeing a new interface index in a
-  // kernel-added route, having this allows for any required setup to occur
-  // prior to routes being created for the Device in question.
-  void RegisterDevice(int interface_index, const std::string& link_name);
-
-  // Causes RoutingTable to stop managing a particular interface index. This
-  // method does not perform clean up that would allow corresponding interface
-  // to be used as an unmanaged Device *unless* routes for that interface are
-  // re-added. For example, changing accept_ra_rt_table for an interface from -N
-  // to 0 will not cause the routes to move back to the main routing table, and
-  // in many cases (like a regular link down event for a managed interface), we
-  // would not want patchpanel to manually move those routes back.
-  void DeregisterDevice(int interface_index, const std::string& link_name);
-
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
   // Remove an entry from the routing table.
@@ -142,7 +127,6 @@ class RoutingTable {
                                        RoutingTableEntry** entry);
 
   RouteTables tables_;
-  std::set<int> managed_interfaces_;
 
   std::unique_ptr<net_base::RTNLListener> route_listener_;
 

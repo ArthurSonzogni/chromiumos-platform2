@@ -117,17 +117,6 @@ void NetworkApplier::Start() {
   rule_table_->Start();
 }
 
-void NetworkApplier::Register(int interface_index,
-                              const std::string& interface_name) {
-  routing_table_->RegisterDevice(interface_index, interface_name);
-}
-
-void NetworkApplier::Release(int interface_index,
-                             const std::string& interface_name) {
-  routing_table_->DeregisterDevice(interface_index, interface_name);
-  Clear(interface_index);
-}
-
 void NetworkApplier::Clear(int interface_index) {
   rule_table_->FlushRules(interface_index);
   routing_table_->FlushRoutes(interface_index);

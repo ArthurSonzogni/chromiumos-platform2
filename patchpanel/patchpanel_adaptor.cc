@@ -179,11 +179,6 @@ ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
             << "): " << network_config << ", priority " << priority
             << ", area 0x" << std::hex << request.area();
 
-  // TODO(b/273742756): CreateNetwork and DestroyNetwork would be a better place
-  // for NetworkApplier::Register() and NetworkApplier::Deregister(). This can
-  // also be fully eliminated by a RoutingTable refactor.
-  NetworkApplier::GetInstance()->Register(ifindex, ifname);
-
   NetworkApplier::GetInstance()->ApplyNetworkConfig(
       ifindex, ifname, static_cast<NetworkApplier::Area>(request.area()),
       network_config, priority, technology);
