@@ -75,3 +75,4 @@ socketpair: 1
 memfd_create: 1
 eventfd2: 1
 madvise: 1
+unlinkat: 1
