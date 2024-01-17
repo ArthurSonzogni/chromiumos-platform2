@@ -316,6 +316,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "hibernate";
     case ShutdownReason::HIBERNATE_LOW_BATTERY:
       return "low-battery-hibernate";
+    case ShutdownReason::HEARTD_REQUEST:
+      return "heartd-request";
     case ShutdownReason::MAX: {
       // Fall through, the entry is needed to keep the compiler happy.
     }

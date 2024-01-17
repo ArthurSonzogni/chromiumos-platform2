@@ -512,8 +512,10 @@ enum class ShutdownReason {
   HIBERNATE = 9,
   // Battery level dropped below hibernate threshold.
   HIBERNATE_LOW_BATTERY = 10,
+  // Request from heartd.
+  HEARTD_REQUEST = 11,
   // Maximum value for ShutdownReason (exclusive).
-  MAX = 11
+  MAX = 12
 };
 
 enum class WifiRegDomain {
