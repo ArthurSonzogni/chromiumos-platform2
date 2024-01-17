@@ -24,10 +24,7 @@ if (use.lvm_stateful_partition) {
 }
 
 executable("chromeos-install") {
-  sources = [
-    "chromeos_install.cc",
-    "chromeos_install_main.cc",
-  ]
+  sources = [ "chromeos_install_main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
 }
