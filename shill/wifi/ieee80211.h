@@ -42,6 +42,10 @@ const uint8_t kElemIdExt = 0xff;
 const uint8_t kElemIdExtHECap = 0x23;
 const uint8_t kElemIdExtHEOperation = 0x24;
 
+// Element Id Extensions from P802.11be/D4.0 Section 9.4.2.1.
+const uint8_t kElemIdExtEHTCap = 0x6C;
+const uint8_t kElemIdExtEHTOperation = 0x6A;
+
 const unsigned int kMaxSSIDLen = 32;
 
 const unsigned int kWEP40AsciiLen = 5;

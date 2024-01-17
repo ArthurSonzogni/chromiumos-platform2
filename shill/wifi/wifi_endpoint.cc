@@ -627,6 +627,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   bool found_ht = false;
   bool found_vht = false;
   bool found_he = false;
+  bool found_eht = false;
   bool found_erp = false;
   bool found_country = false;
   bool found_power_constraint = false;
@@ -694,6 +695,10 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
       case IEEE_80211::kElemIdExt:
         if (std::distance(it, ies.end()) > 2) {
           switch (*(it + 2)) {
+            case IEEE_80211::kElemIdExtEHTCap:
+            case IEEE_80211::kElemIdExtEHTOperation:
+              found_eht = true;
+              break;
             case IEEE_80211::kElemIdExtHECap:
             case IEEE_80211::kElemIdExtHEOperation:
               found_he = true;
@@ -718,7 +723,9 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   supported_features_.krv_support.otds_ft_supported =
       supported_features_.krv_support.otds_ft_supported &&
       supported_features_.krv_support.ota_ft_supported;
-  if (found_he) {
+  if (found_eht) {
+    *phy_mode = Metrics::kWiFiNetworkPhyMode11be;
+  } else if (found_he) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11ax;
   } else if (found_vht) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11ac;

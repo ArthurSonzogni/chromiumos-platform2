@@ -242,6 +242,7 @@ class Metrics {
     kWiFiNetworkPhyModeQuarter = 6,  // PSB Quarter-width
     kWiFiNetworkPhyMode11ac = 7,     // 802.11ac
     kWiFiNetworkPhyMode11ax = 8,     // 802.11ax
+    kWiFiNetworkPhyMode11be = 9,     // 802.11be
 
     kWiFiNetworkPhyModeMax
   };

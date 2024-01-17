@@ -513,6 +513,35 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
   }
   {
     std::vector<uint8_t> ies;
+    std::vector<uint8_t> kExtTag(1, IEEE_80211::kElemIdExtEHTCap);
+    AddIEWithData(IEEE_80211::kElemIdExt, kExtTag, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    EXPECT_TRUE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11be, phy_mode);
+  }
+  {
+    std::vector<uint8_t> ies;
+    std::vector<uint8_t> kExtTag(1, IEEE_80211::kElemIdExtEHTOperation);
+    AddIEWithData(IEEE_80211::kElemIdExt, kExtTag, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    EXPECT_TRUE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11be, phy_mode);
+  }
+  {
+    std::vector<uint8_t> ies;
+    std::vector<uint8_t> kExtTagEHT(1, IEEE_80211::kElemIdExtEHTOperation);
+    std::vector<uint8_t> kExtTagHE(1, IEEE_80211::kElemIdExtHEOperation);
+    AddIE(IEEE_80211::kElemIdErp, &ies);
+    AddIE(IEEE_80211::kElemIdHTCap, &ies);
+    AddIE(IEEE_80211::kElemIdVHTCap, &ies);
+    AddIEWithData(IEEE_80211::kElemIdExt, kExtTagHE, &ies);
+    AddIEWithData(IEEE_80211::kElemIdExt, kExtTagEHT, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    EXPECT_TRUE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11be, phy_mode);
+  }
+  {
+    std::vector<uint8_t> ies;
     const std::vector<uint8_t> kRmEnabledCap(5, 0);
     const std::string kCountryCode("GO");
     const std::vector<uint8_t> kCountryCodeAsVector(kCountryCode.begin(),
