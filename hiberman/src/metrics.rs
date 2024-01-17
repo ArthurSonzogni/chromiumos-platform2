@@ -20,7 +20,6 @@ use std::time::Duration;
 use anyhow::Context;
 use anyhow::Result;
 use lazy_static::lazy_static;
-use log::debug;
 use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
@@ -274,32 +273,14 @@ pub fn read_and_send_metrics(am: &ActiveMount) {
     let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
     let _ = metrics_logger.flush(am);
 
-    let metrics_file_path = METRICS_FILE_PATH.as_path();
-    if !metrics_file_path.exists() {
-        debug!("No metrics to send");
-        return;
-    }
-
-    let mut f = match File::open(metrics_file_path) {
-        Ok(f) => f,
+    let lines = match read_metric_file(am) {
+        Ok(l) => l,
         Err(e) => {
-            warn!("Failed to open metrics file {}: {}",
-                METRICS_FILE_PATH.display(), e);
+            warn!("Failed to read metrics file: {}", e);
             return;
         }
     };
-
-    let reader = BufReader::new(&mut f);
-
-    for line in reader.lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(e) => {
-                warn!("Failed to read metrics line, {}", e);
-                continue;
-            }
-        };
-
+    for line in lines {
         let sample: MetricsSample = match serde_json::from_str(&line) {
             Ok(s) => s,
             Err(e) => {
@@ -318,6 +299,32 @@ pub fn read_and_send_metrics(am: &ActiveMount) {
     if let Err(e) = fs::remove_file(METRICS_FILE_PATH.as_path()) {
         warn!("Failed to remove {}: {}", METRICS_FILE_PATH.display(), e);
     }
+}
+
+fn read_metric_file(_: &ActiveMount) -> Result<Vec<String>> {
+    let mut v = Vec::<String>::new();
+
+    let metrics_file_path = METRICS_FILE_PATH.as_path();
+    if !metrics_file_path.exists() {
+        return Ok(v);
+    }
+
+    let mut f = File::open(metrics_file_path).context(
+        format!("Failed to open metrics file {}", METRICS_FILE_PATH.display())
+        )?;
+
+    for line in BufReader::new(&mut f).lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(e) => {
+                warn!("Failed to read metrics line, {}", e);
+                continue;
+            }
+        };
+        v.push(line);
+    }
+
+    Ok(v)
 }
 
 fn write_metrics_file(_: &ActiveMount, buf: &mut VecDeque<String>) -> Result<()> {
