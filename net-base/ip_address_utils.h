@@ -198,6 +198,10 @@ class BRILLO_EXPORT CIDR {
   // Returns true if address is all zero and prefix length equals to 0.
   bool IsDefault() const { return address().IsZero() && prefix_length_ == 0; }
 
+  static bool IsValidPrefixLength(int prefix_length) {
+    return 0 <= prefix_length && prefix_length <= kMaxPrefixLength;
+  }
+
   // Returns the string in the CIDR notation.
   std::string ToString() const {
     return address_.ToString() + "/" + std::to_string(prefix_length_);
@@ -210,10 +214,6 @@ class BRILLO_EXPORT CIDR {
 
  private:
   using DataType = typename Address::DataType;
-
-  static bool IsValidPrefixLength(int prefix_length) {
-    return 0 <= prefix_length && prefix_length <= kMaxPrefixLength;
-  }
 
   static Address BitwiseAnd(const Address& a, const Address& b) {
     DataType data;

@@ -7,7 +7,6 @@
 #include <iterator>
 #include <memory>
 #include <optional>
-#include <utility>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -18,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -48,6 +48,7 @@ using testing::_;
 using testing::DoAll;
 using testing::Eq;
 using testing::Field;
+using testing::IsSupersetOf;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -572,7 +573,7 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
   options[9] = "dhcp-option dns 1.2.3.4 1.2.3.4";  // ignore invalid
   options[10] = "dhcp-option dns 1.2.3.4";
   std::vector<std::string> search_domains;
-  std::vector<std::string> name_servers;
+  std::vector<net_base::IPAddress> name_servers;
   OpenVPNDriver::ParseForeignOptions(options, &search_domains, &name_servers);
   ASSERT_EQ(5, search_domains.size());
   EXPECT_EQ("two.com", search_domains[0]);
@@ -581,36 +582,31 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
   EXPECT_EQ("seven.com", search_domains[3]);
   EXPECT_EQ("eight.com", search_domains[4]);
   ASSERT_EQ(1, name_servers.size());
-  EXPECT_EQ("1.2.3.4", name_servers[0]);
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("1.2.3.4"), name_servers[0]);
 }
 
-TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
+TEST_F(OpenVPNDriverTest, ParseNetworkConfig) {
   std::map<std::string, std::string> config;
-  std::unique_ptr<IPConfig::Properties> ipv4_props;
-  std::unique_ptr<IPConfig::Properties> ipv6_props;
-
-  const auto invoke = [&](bool ignore_redirect_gateway) {
-    auto ret =
-        OpenVPNDriver::ParseIPConfiguration(config, ignore_redirect_gateway);
-    ipv4_props = std::move(ret.ipv4_props);
-    ipv6_props = std::move(ret.ipv6_props);
-  };
 
   config["ifconfig_loCal"] = "4.5.6.7";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_EQ(net_base::IPFamily::kIPv4, ipv4_props->address_family);
-  EXPECT_EQ(32, ipv4_props->subnet_prefix);
+  std::optional<net_base::NetworkConfig> network_config =
+      driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  EXPECT_EQ(net_base::IPv4CIDR::CreateFromCIDRString("4.5.6.7/32"),
+            network_config->ipv4_address);
 
   // An "ifconfig_remote" parameter that looks like a netmask should be
   // applied to the subnet prefix instead of to the peer address.
   config["ifconfig_remotE"] = "255.255.0.0";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_EQ(16, ipv4_props->subnet_prefix);
-  EXPECT_EQ("", ipv4_props->peer_address);
+  network_config = driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  ASSERT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_EQ(16, network_config->ipv4_address->prefix_length());
+  ASSERT_EQ(1, network_config->included_route_prefixes.size());
+  EXPECT_EQ(*net_base::IPCIDR::CreateFromCIDRString("4.5.0.0/16"),
+            network_config->included_route_prefixes[0]);
 
   config["ifconFig_netmAsk"] = "255.255.255.0";
   config["ifconfig_remotE"] = "33.44.55.66";
@@ -627,73 +623,74 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["route_gateway_2"] = kGateway2;
   config["route_gateway_1"] = kGateway1;
   config["foo"] = "bar";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_EQ(net_base::IPFamily::kIPv4, ipv4_props->address_family);
-  EXPECT_EQ("4.5.6.7", ipv4_props->address);
-  EXPECT_EQ("0.0.0.0", ipv4_props->gateway);
-  EXPECT_EQ(24, ipv4_props->subnet_prefix);
-  EXPECT_EQ("", ipv4_props->peer_address);
-  EXPECT_TRUE(ipv4_props->exclusion_list.empty());
-  EXPECT_EQ(1000, ipv4_props->mtu);
-  ASSERT_EQ(3, ipv4_props->dns_servers.size());
-  EXPECT_EQ("1.1.1.1", ipv4_props->dns_servers[0]);
-  EXPECT_EQ("4.4.4.4", ipv4_props->dns_servers[1]);
-  EXPECT_EQ("2.2.2.2", ipv4_props->dns_servers[2]);
-  ASSERT_EQ(3, ipv4_props->inclusion_list.size());
-  ASSERT_EQ("33.44.55.66/32", ipv4_props->inclusion_list[0]);
-  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
-            ipv4_props->inclusion_list[1]);
-  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
-            ipv4_props->inclusion_list[2]);
-  EXPECT_FALSE(ipv4_props->default_route);
+  network_config = driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  EXPECT_EQ(net_base::IPv4CIDR::CreateFromCIDRString("4.5.6.7/24"),
+            network_config->ipv4_address);
+  EXPECT_FALSE(network_config->ipv4_gateway.has_value());
+  EXPECT_TRUE(network_config->excluded_route_prefixes.empty());
+  EXPECT_EQ(1000, network_config->mtu);
+  ASSERT_EQ(3, network_config->dns_servers.size());
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("1.1.1.1"),
+            network_config->dns_servers[0]);
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("4.4.4.4"),
+            network_config->dns_servers[1]);
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("2.2.2.2"),
+            network_config->dns_servers[2]);
+  ASSERT_EQ(3, network_config->included_route_prefixes.size());
+  EXPECT_EQ(*net_base::IPCIDR::CreateFromCIDRString("33.44.55.66/32"),
+            network_config->included_route_prefixes[0]);
+  EXPECT_EQ(*net_base::IPCIDR::CreateFromStringAndPrefix(kNetwork1, kPrefix1),
+            network_config->included_route_prefixes[1]);
+  EXPECT_EQ(*net_base::IPCIDR::CreateFromStringAndPrefix(kNetwork2, kPrefix2),
+            network_config->included_route_prefixes[2]);
+  EXPECT_FALSE(network_config->ipv4_default_route);
 
   config["redirect_gateway"] = "def1";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_TRUE(ipv4_props->default_route);
-  EXPECT_TRUE(ipv4_props->blackhole_ipv6);
+  network_config = driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  EXPECT_TRUE(network_config->ipv4_default_route);
+  EXPECT_TRUE(network_config->ipv6_blackhole_route);
 
   // Don't set a default route if the user asked to ignore it.
-  invoke(true);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_EQ(ipv6_props, nullptr);
-  EXPECT_FALSE(ipv4_props->default_route);
+  network_config = driver_->ParseNetworkConfig(config, true);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  EXPECT_FALSE(network_config->ipv4_default_route);
 
-  // Set IPv6 properties, both v4 and v6 properties should not be nullptr.
+  // Set IPv6 properties, both v4 and v6 properties should have values.
   config["ifconfig_ipv6_local"] = "fd00::1";
   config["ifconfig_ipv6_netbits"] = "64";
   config["route_ipv6_network_1"] = "fd02::/96";
   config["route_ipv6_gateway_1"] = "fd02::1";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_NE(ipv6_props, nullptr);
-  EXPECT_TRUE(ipv4_props->default_route);
-  EXPECT_FALSE(ipv4_props->blackhole_ipv6);
-  EXPECT_EQ(kTypeVPN, ipv6_props->method);
-  EXPECT_EQ(net_base::IPFamily::kIPv6, ipv6_props->address_family);
-  EXPECT_EQ("fd00::1", ipv6_props->address);
-  EXPECT_EQ(64, ipv6_props->subnet_prefix);
-  EXPECT_EQ(2, ipv6_props->inclusion_list.size());
-  EXPECT_EQ("fd00::/64", ipv6_props->inclusion_list[0]);
-  EXPECT_EQ("fd02::/96", ipv6_props->inclusion_list[1]);
-  EXPECT_FALSE(ipv6_props->default_route);
+  network_config = driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv4_address.has_value());
+  EXPECT_TRUE(network_config->ipv4_default_route);
+  EXPECT_FALSE(network_config->ipv6_blackhole_route);
+  ASSERT_EQ(1, network_config->ipv6_addresses.size());
+  EXPECT_EQ(*net_base::IPv6CIDR::CreateFromCIDRString("fd00::1/64"),
+            network_config->ipv6_addresses[0]);
+  // |network_config| contains 3 IPv4 routes and 2 IPv6 routes.
+  EXPECT_EQ(5, network_config->included_route_prefixes.size());
+  EXPECT_THAT(
+      network_config->included_route_prefixes,
+      IsSupersetOf({*net_base::IPCIDR::CreateFromCIDRString("fd00::/64"),
+                    *net_base::IPCIDR::CreateFromCIDRString("fd02::/96")}));
   // Original MTU value is too small for IPv6, so should be reset.
-  EXPECT_EQ(0, ipv6_props->mtu);
-  ASSERT_EQ(3, ipv6_props->dns_servers.size());
-  EXPECT_EQ("1.1.1.1", ipv6_props->dns_servers[0]);
-  EXPECT_EQ("4.4.4.4", ipv6_props->dns_servers[1]);
-  EXPECT_EQ("2.2.2.2", ipv6_props->dns_servers[2]);
+  EXPECT_FALSE(network_config->mtu.has_value());
 
   // Update MTU value.
   config["tun_mtu"] = "1500";
-  invoke(false);
-  ASSERT_NE(ipv4_props, nullptr);
-  ASSERT_NE(ipv6_props, nullptr);
-  EXPECT_EQ(1500, ipv4_props->mtu);
-  EXPECT_EQ(1500, ipv6_props->mtu);
+  network_config = driver_->ParseNetworkConfig(config, false);
+  ASSERT_TRUE(network_config.has_value());
+  EXPECT_TRUE(network_config->ipv4_address.has_value());
+  ASSERT_EQ(1, network_config->ipv6_addresses.size());
+  EXPECT_EQ(1500, network_config->mtu);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

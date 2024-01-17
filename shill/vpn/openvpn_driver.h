@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -127,7 +128,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
-  FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
+  FRIEND_TEST(OpenVPNDriverTest, ParseNetworkConfig);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPv4RouteOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPv6RouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
@@ -151,9 +152,10 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   static constexpr base::TimeDelta kReconnectTLSErrorTimeout =
       base::Seconds(20);
 
-  static void ParseForeignOptions(const ForeignOptions& options,
-                                  std::vector<std::string>* domain_search,
-                                  std::vector<std::string>* dns_servers);
+  static void ParseForeignOptions(
+      const ForeignOptions& options,
+      std::vector<std::string>* domain_search,
+      std::vector<net_base::IPAddress>* dns_servers);
   static IPConfig::Route* GetRouteOptionEntry(const std::string& prefix,
                                               const std::string& key,
                                               RouteOptions* routes);
@@ -173,19 +175,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                                 std::string* name,
                                 std::string* port);
 
-  static std::unique_ptr<IPConfig::Properties> CreateIPProperties(
-      net_base::IPFamily family,
-      const std::string& local,
-      const std::string& peer,
-      std::optional<int> prefix_length,
-      bool default_route,
-      const RouteOptions& routes);
-
-  struct IPProperties {
-    std::unique_ptr<IPConfig::Properties> ipv4_props;
-    std::unique_ptr<IPConfig::Properties> ipv6_props;
-  };
-  static IPProperties ParseIPConfiguration(
+  static std::optional<net_base::NetworkConfig> ParseNetworkConfig(
       const std::map<std::string, std::string>& configuration,
       bool ignore_redirect_gateway);
 

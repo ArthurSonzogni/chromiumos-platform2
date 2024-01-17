@@ -113,7 +113,7 @@ openvpn_script](../shims/openvpn_script.cc) is called when `openvpn` first opens
 the TUN interface *and* whenever `openvpn` restarts. This script leads to
 `OpenVPNDriver::Notify` being invoked (through OpenVPNDriver::rpc_task_), which
 will process environment variables passed by `openvpn` in order to populate an
-`IPConfig::Properties` instance appropriately.
+`net_base::NetworkConfig` instance appropriately.
 
 >   Note: From the OpenVPN documentation:
 >   >   On restart, OpenVPN will not pass the full set of environment variables
