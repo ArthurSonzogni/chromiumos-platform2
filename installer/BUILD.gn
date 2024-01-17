@@ -7,31 +7,25 @@ import("//common-mk/pkg_config.gni")
 if (use.lvm_stateful_partition) {
   action("chromeos_install_script") {
     inputs = [ "chromeos-install" ]
-    outputs = [ "${root_gen_dir}/chromeos-install.sh" ]
+    outputs = [ "${root_gen_dir}/chromeos-install" ]
 
     script = "/bin/sh"
     args = [
       "-c",
       "sed '/DEFINE_boolean lvm_stateful/s:FLAGS_FALSE:FLAGS_TRUE:'" +
-          " \$S/chromeos-install > ${root_gen_dir}/chromeos-install.sh",
+          " \$S/chromeos-install > ${root_gen_dir}/chromeos-install",
     ]
   }
 } else {
   copy("chromeos_install_script") {
     sources = [ "chromeos-install" ]
-    outputs = [ "${root_gen_dir}/chromeos-install.sh" ]
+    outputs = [ "${root_gen_dir}/chromeos-install" ]
   }
-}
-
-executable("chromeos-install") {
-  sources = [ "chromeos_install_main.cc" ]
-  configs += [ ":target_defaults" ]
-  install_path = "sbin"
 }
 
 install_config("sbin_scripts") {
   sources = [
-    "${root_gen_dir}/chromeos-install.sh",
+    "${root_gen_dir}/chromeos-install",
     "chromeos-install-kernel",
     "chromeos-postinst",
     "chromeos-recovery",
@@ -74,7 +68,6 @@ install_config("init_confs") {
 
 group("all") {
   deps = [
-    ":chromeos-install",
     ":cros_installer",
     ":crx_import_script",
     ":postinst_script_symlink",
