@@ -104,7 +104,6 @@ bool IsVividCamera(int device_fd) {
   memset(&cap, 0, sizeof(cap));
   if (Ioctl(device_fd, VIDIOC_QUERYCAP, &cap)) {
     PLOG(FATAL) << "VIDIOC_QUERYCAP failed: ";
-    return false;
   }
 
   // Check if vivid is emulating a video capture device.

@@ -389,7 +389,6 @@ bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
       return false;
     default:
       LOG(FATAL) << "Unknown D-Bus data type: " << variant_reader.GetDataType();
-      return false;
   }
 }
 

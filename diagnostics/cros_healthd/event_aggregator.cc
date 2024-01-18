@@ -61,7 +61,6 @@ void EventAggregator::AddObserver(
   switch (category) {
     case mojom::EventCategoryEnum::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      break;
     case mojom::EventCategoryEnum::kUsb:
       udev_events_->AddUsbObserver(std::move(observer));
       break;

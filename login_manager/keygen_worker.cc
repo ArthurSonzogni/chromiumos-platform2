@@ -57,7 +57,6 @@ int GenerateKey(const base::FilePath& file_path,
     return (key.Persist() ? 0 : 1);
   }
   LOG(FATAL) << "Could not generate owner key!";
-  return 0;
 }
 
 }  // namespace keygen

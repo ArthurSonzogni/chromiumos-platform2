@@ -34,7 +34,6 @@ U2fCorpProcessorInterface::U2fCorpProcessorInterface() {
   const char* dlsym_error = dlerror();
   if (dlsym_error) {
     LOG(FATAL) << "Cannot load symbol create: " << dlsym_error;
-    return;
   }
 
   processor_ = create_processor();
@@ -49,7 +48,6 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
   const char* dlsym_error = dlerror();
   if (dlsym_error) {
     LOG(FATAL) << "Cannot load symbol destroy: " << dlsym_error;
-    return;
   }
 
   destroy_processor(processor_);

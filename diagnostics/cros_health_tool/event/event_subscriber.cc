@@ -32,7 +32,6 @@ std::string EnumToString(mojom::UsbEventInfo::State state) {
   switch (state) {
     case mojom::UsbEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::UsbEventInfo::State::kAdd:
       return "Add";
     case mojom::UsbEventInfo::State::kRemove:
@@ -44,7 +43,6 @@ std::string EnumToString(mojom::ThunderboltEventInfo::State state) {
   switch (state) {
     case mojom::ThunderboltEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::ThunderboltEventInfo::State::kAdd:
       return "Device added";
     case mojom::ThunderboltEventInfo::State::kRemove:
@@ -60,7 +58,6 @@ std::string EnumToString(mojom::LidEventInfo::State state) {
   switch (state) {
     case mojom::LidEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::LidEventInfo::State::kClosed:
       return "Lid closed";
     case mojom::LidEventInfo::State::kOpened:
@@ -72,7 +69,6 @@ std::string EnumToString(mojom::AudioJackEventInfo::State state) {
   switch (state) {
     case mojom::AudioJackEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::AudioJackEventInfo::State::kAdd:
       return "Add";
     case mojom::AudioJackEventInfo::State::kRemove:
@@ -84,7 +80,6 @@ std::string EnumToString(mojom::SdCardEventInfo::State state) {
   switch (state) {
     case mojom::SdCardEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::SdCardEventInfo::State::kAdd:
       return "Sd Card added";
     case mojom::SdCardEventInfo::State::kRemove:
@@ -96,7 +91,6 @@ std::string EnumToString(mojom::PowerEventInfo::State state) {
   switch (state) {
     case mojom::PowerEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::PowerEventInfo::State::kAcInserted:
       return "Ac inserted";
     case mojom::PowerEventInfo::State::kAcRemoved:
@@ -112,7 +106,6 @@ std::string EnumToString(mojom::AudioEventInfo::State state) {
   switch (state) {
     case mojom::AudioEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::AudioEventInfo::State::kUnderrun:
       return "Underrun ";
     case mojom::AudioEventInfo::State::kSevereUnderrun:
@@ -124,7 +117,6 @@ std::string EnumToString(mojom::BluetoothEventInfo::State state) {
   switch (state) {
     case mojom::BluetoothEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::BluetoothEventInfo::State::kAdapterAdded:
       return "Adapter added";
     case mojom::BluetoothEventInfo::State::kAdapterRemoved:
@@ -144,7 +136,6 @@ std::string EnumToString(mojom::InputTouchButton button) {
   switch (button) {
     case mojom::InputTouchButton::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::InputTouchButton::kLeft:
       return "Left";
     case mojom::InputTouchButton::kMiddle:
@@ -158,7 +149,6 @@ std::string EnumToString(mojom::ExternalDisplayEventInfo::State state) {
   switch (state) {
     case mojom::ExternalDisplayEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::ExternalDisplayEventInfo::State::kAdd:
       return "External display added";
     case mojom::ExternalDisplayEventInfo::State::kRemove:
@@ -170,7 +160,6 @@ std::string EnumToString(mojom::StylusGarageEventInfo::State state) {
   switch (state) {
     case mojom::StylusGarageEventInfo::State::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::StylusGarageEventInfo::State::kInserted:
       return "Insert";
     case mojom::StylusGarageEventInfo::State::kRemoved:
@@ -298,7 +287,6 @@ void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::TouchpadEventInfo::Tag::kDefaultType:
       LOG(FATAL) << "Got TouchpadEventInfo::Tag::kDefaultType";
-      break;
     case mojom::TouchpadEventInfo::Tag::kButtonEvent:
       OutputTouchpadButtonEventInfo(info->get_button_event());
       break;
@@ -341,7 +329,6 @@ void OutputTouchscreenEventInfo(const mojom::TouchscreenEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::TouchscreenEventInfo::Tag::kDefaultType:
       LOG(FATAL) << "Got TouchscreenEventInfo::Tag::kDefaultType";
-      break;
     case mojom::TouchscreenEventInfo::Tag::kTouchEvent:
       OutputTouchscreenTouchEventInfo(info->get_touch_event());
       break;
@@ -447,7 +434,6 @@ void OutputStylusEventInfo(const mojom::StylusEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::StylusEventInfo::Tag::kDefaultType:
       LOG(FATAL) << "Got StylusEventInfo::Tag::kDefaultType";
-      break;
     case mojom::StylusEventInfo::Tag::kTouchEvent:
       OutputStylusTouchEventInfo(info->get_touch_event());
       break;
@@ -521,7 +507,6 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
   switch (info->which()) {
     case mojom::EventInfo::Tag::kDefaultType:
       LOG(FATAL) << "Got UnmappedEnumField";
-      break;
     case mojom::EventInfo::Tag::kUsbEventInfo:
       OutputUsbEventInfo(info->get_usb_event_info());
       break;

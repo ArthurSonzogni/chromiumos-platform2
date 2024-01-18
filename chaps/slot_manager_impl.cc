@@ -490,8 +490,9 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
       // number generator is working properly. If there is a problem with the
       // random number generator we want to get out.
       LOG(FATAL) << "Collision when trying to create new isolate credential.";
-#endif  // !USE_FUZZER
+#else
       return false;
+#endif  // !USE_FUZZER
     }
 
     AddIsolate(new_isolate_credential);

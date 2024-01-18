@@ -46,7 +46,6 @@ const char* CodecToString(Codec codec) {
       return "JPEG";
     default:
       LOG(FATAL) << "Unknown codec: " << static_cast<int>(codec);
-      return "";
   }
 }
 
@@ -136,7 +135,6 @@ std::vector<Profile> GetSupportedProfiles(int device_fd, const Codec codec) {
     case Codec::kJPEG:
     default:
       LOG(FATAL) << "Unknown codec: " << static_cast<uint32_t>(codec);
-      return {};
   }
 
   v4l2_queryctrl query_ctrl;
@@ -144,7 +142,6 @@ std::vector<Profile> GetSupportedProfiles(int device_fd, const Codec codec) {
   query_ctrl.id = query_id;
   if (Ioctl(device_fd, VIDIOC_QUERYCTRL, &query_ctrl) != 0) {
     PLOG(FATAL) << "VIDIOC_QUERYCTRL failed: ";
-    return {};
   }
 
   std::vector<Profile> profiles;

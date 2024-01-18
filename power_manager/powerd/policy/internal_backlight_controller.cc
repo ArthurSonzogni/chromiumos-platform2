@@ -128,7 +128,6 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
 
   LOG(FATAL) << "Unable to find initial brightness percentage in pref "
              << pref_name << " for " << backlight_nits << " nits";
-  return kMaxPercent;
 }
 
 }  // namespace
