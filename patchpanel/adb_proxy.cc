@@ -95,7 +95,6 @@ void AdbProxy::InitialSetup() {
 }
 
 void AdbProxy::Reset() {
-  src_watcher_.reset();
   src_.reset();
   fwd_.clear();
   arcvm_vsock_cid_ = std::nullopt;
@@ -288,12 +287,11 @@ void AdbProxy::Listen() {
   }
 
   src_ = std::move(src);
+  src_->SetReadableCallback(base::BindRepeating(
+      &AdbProxy::OnFileCanReadWithoutBlocking, base::Unretained(this)));
 
   // Run the accept loop.
   LOG(INFO) << "Accepting connections on " << addr;
-  src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      src_->Get(), base::BindRepeating(&AdbProxy::OnFileCanReadWithoutBlocking,
-                                       base::Unretained(this)));
   return;
 }
 

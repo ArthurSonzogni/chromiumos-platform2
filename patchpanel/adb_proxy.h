@@ -9,7 +9,6 @@
 #include <memory>
 #include <optional>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -66,7 +65,6 @@ class AdbProxy : public brillo::DBusDaemon {
   MessageDispatcher<SubprocessMessage> msg_dispatcher_;
   std::unique_ptr<net_base::Socket> src_;
   std::deque<std::unique_ptr<net_base::SocketForwarder>> fwd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> src_watcher_;
 
   GuestMessage::GuestType arc_type_;
   std::optional<uint32_t> arcvm_vsock_cid_;
