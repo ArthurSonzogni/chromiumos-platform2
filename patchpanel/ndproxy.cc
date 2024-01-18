@@ -24,13 +24,17 @@
 #include <sys/socket.h>
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <net-base/byte_utils.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -164,22 +168,22 @@ std::optional<net_base::IPv6CIDR> NDOptPrefixInfoToCIDR(
 
 }  // namespace
 
-NDProxy::NDProxy() {}
+NDProxy::NDProxy() = default;
 
 // static
-base::ScopedFD NDProxy::PreparePacketSocket() {
-  base::ScopedFD fd(
-      socket(AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IPV6)));
-  if (!fd.is_valid()) {
+std::unique_ptr<net_base::Socket> NDProxy::PreparePacketSocket() {
+  std::unique_ptr<net_base::Socket> socket = net_base::Socket::Create(
+      AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IPV6));
+  if (!socket) {
     PLOG(ERROR) << "socket() failed";
-    return base::ScopedFD();
+    return nullptr;
   }
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDPacketBpfProgram,
-                 sizeof(kNDPacketBpfProgram))) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_ATTACH_FILTER,
+                          net_base::byte_utils::AsBytes(kNDPacketBpfProgram))) {
     PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
-    return base::ScopedFD();
+    return nullptr;
   }
-  return fd;
+  return socket;
 }
 
 bool NDProxy::Init() {
@@ -763,7 +767,7 @@ NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
     : msg_dispatcher_(std::make_unique<MessageDispatcher<SubprocessMessage>>(
           std::move(control_fd))) {}
 
-NDProxyDaemon::~NDProxyDaemon() {}
+NDProxyDaemon::~NDProxyDaemon() = default;
 
 int NDProxyDaemon::OnInit() {
   // Prevent the main process from sending us any signals.
@@ -793,22 +797,21 @@ int NDProxyDaemon::OnInit() {
       &NDProxyDaemon::OnRouterDiscovery, weak_factory_.GetWeakPtr()));
 
   // Initialize data fd
-  fd_ = NDProxy::PreparePacketSocket();
-  if (!fd_.is_valid()) {
+  socket_ = NDProxy::PreparePacketSocket();
+  if (!socket_) {
     return EX_OSERR;
   }
 
   // Start watching on data fd
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd_.get(), base::BindRepeating(&NDProxyDaemon::OnDataSocketReadReady,
-                                     weak_factory_.GetWeakPtr()));
+  socket_->SetReadableCallback(base::BindRepeating(
+      &NDProxyDaemon::OnDataSocketReadReady, weak_factory_.GetWeakPtr()));
   LOG(INFO) << "Started watching on packet fd...";
 
   return Daemon::OnInit();
 }
 
 void NDProxyDaemon::OnDataSocketReadReady() {
-  proxy_.ReadAndProcessOnePacket(fd_.get());
+  proxy_.ReadAndProcessOnePacket(socket_->Get());
 }
 
 void NDProxyDaemon::OnParentProcessExit() {

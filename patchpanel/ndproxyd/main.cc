@@ -4,6 +4,8 @@
 
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -92,15 +94,14 @@ int main(int argc, char* argv[]) {
   proxy.RegisterOnGuestIpDiscoveryHandler(
       base::BindRepeating(&OnGuestIpDiscovery));
 
-  base::ScopedFD fd = patchpanel::NDProxy::PreparePacketSocket();
-  if (!fd.is_valid()) {
+  std::unique_ptr<net_base::Socket> socket =
+      patchpanel::NDProxy::PreparePacketSocket();
+  if (!socket) {
     PLOG(ERROR) << "Failed to initialize data socket";
     return EXIT_FAILURE;
   }
-
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher =
-      base::FileDescriptorWatcher::WatchReadable(
-          fd.get(), base::BindRepeating(&OnSocketReadReady, &proxy, fd.get()));
+  socket->SetReadableCallback(
+      base::BindRepeating(&OnSocketReadReady, &proxy, socket->Get()));
 
   return daemon.Run();
 }

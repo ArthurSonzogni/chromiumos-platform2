@@ -16,13 +16,12 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <string>
-#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv6_address.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
@@ -65,7 +64,7 @@ class NDProxy {
                                                  size_t icmp6_len);
 
   // Helper function to create a AF_PACKET socket suitable for frame read/write.
-  static base::ScopedFD PreparePacketSocket();
+  static std::unique_ptr<net_base::Socket> PreparePacketSocket();
 
   // Initialize the resources needed such as rtnl socket and dummy socket for
   // ioctl. Return false if failed.
@@ -218,12 +217,12 @@ class NDProxyDaemon : public brillo::Daemon {
   NDProxyDaemon(const NDProxyDaemon&) = delete;
   NDProxyDaemon& operator=(const NDProxyDaemon&) = delete;
 
-  virtual ~NDProxyDaemon();
+  ~NDProxyDaemon() override;
 
  private:
   // Overrides Daemon init callback. Returns 0 on success and < 0 on error.
   int OnInit() override;
-  // FileDescriptorWatcher callbacks for new data on fd_.
+  // FileDescriptorWatcher callbacks for new data on socket_.
   void OnDataSocketReadReady();
   // Callbacks to be registered to msg_dispatcher to handle control messages.
   void OnParentProcessExit();
@@ -238,9 +237,8 @@ class NDProxyDaemon : public brillo::Daemon {
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher<SubprocessMessage>> msg_dispatcher_;
 
-  // Data fd and its watcher
-  base::ScopedFD fd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+  // Data socket.
+  std::unique_ptr<net_base::Socket> socket_;
 
   NDProxy proxy_;
 
