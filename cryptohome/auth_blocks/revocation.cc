@@ -67,8 +67,8 @@ CryptoError RevokeTPMRetryActionToCryptoError(
     case hwsec::TPMRetryAction::kNoRetry:
     case hwsec::TPMRetryAction::kSpaceNotFound:
       // Do not return an error here. RemoveCredential returns:
-      // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
-      // - LE_CRED_ERROR_HASH_TREE for hash tree error (implies that all state
+      // - TPMRetryAction::kSpaceNotFound for invalid label.
+      // - TPMRetryAction::kNoRetry for hash tree error (implies that all state
       // in PinWeaver is lost). Both of these cases are considered as "success"
       // for revocation.
       return CryptoError::CE_NONE;

@@ -106,7 +106,7 @@ TEST(RevocationTest, RevokeSucceedsWithTPMRetryActionkNoRetry) {
   EXPECT_CALL(hwsec_pw_manager, RemoveCredential(_))
       .WillOnce(DoAll(SaveArg<0>(&label),
                       ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry)));
-  // Revoke succeeds after LE_CRED_ERROR_INVALID_LABEL.
+  // Revoke succeeds after TPMRetryAction::kNoRetry).
   ASSERT_THAT(
       Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager, state),
       IsOk());

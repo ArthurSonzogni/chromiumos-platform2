@@ -171,7 +171,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   EXPECT_EQ(delay_sched, LockoutDelaySchedule());
 }
 
-TEST_F(PinWeaverAuthBlockTest, CreateFailureLeManager) {
+TEST_F(PinWeaverAuthBlockTest, CreateFailurePinWeaverManager) {
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
@@ -180,7 +180,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob reset_secret(32, 'S');
 
-  // Now test that the method fails if the le_cred_manager fails.
+  // Now test that the method fails if pinweaver manager fails.
   ON_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillByDefault(ReturnError<hwsec::TPMError>(
           "fake", hwsec::TPMRetryAction::kNoRetry));

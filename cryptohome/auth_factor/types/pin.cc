@@ -91,7 +91,7 @@ CryptohomeStatusOr<base::TimeDelta> PinAuthFactorDriver::GetFactorDelay(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  // Try and extract the delay from the LE credential manager.
+  // Try and extract the delay from pinweaver manager.
   auto delay_in_seconds =
       crypto_->GetPinWeaverManager()->GetDelayInSeconds(*state->le_label);
   if (!delay_in_seconds.ok()) {

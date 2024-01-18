@@ -284,8 +284,6 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
       /*expiration_delay=*/std::nullopt);
   if (!result.ok()) {
     LOG(ERROR) << "Failed to insert credential with PinWeaver.";
-    LOG(INFO) << result.status();
-    LOG(INFO) << "TEST";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(

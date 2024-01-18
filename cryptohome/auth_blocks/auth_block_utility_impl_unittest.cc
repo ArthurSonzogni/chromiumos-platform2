@@ -1234,11 +1234,11 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockWithTypeTpmPinWeaver) {
 }
 
 // Test `GetAuthBlockWithType()` with the `kPinWeaver` type fails when
-// there's no LE manager.
+// there's no pinweaver manager.
 TEST_F(AuthBlockUtilityImplTest,
        GetAuthBlockWithTypeTpmPinWeaverFailNoManager) {
   // Setup. Set the PinWeaver hwsec backend to disabled; this will lead to
-  // having no LE manager being created.
+  // having no pinweaver manager being created.
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
       .WillRepeatedly(ReturnValue(false));

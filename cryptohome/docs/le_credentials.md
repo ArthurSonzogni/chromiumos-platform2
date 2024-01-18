@@ -160,7 +160,7 @@ It provides support for the following operations:
 
 ### LE secret
 
-The generation of the LE secret which is stored by the LE Credential manager can
+The generation of the LE secret which is stored by the pinweaver manager can
 be best illustrated by the following diagram:
 
 Definitions:

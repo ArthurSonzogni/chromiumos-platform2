@@ -711,7 +711,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // SETUP
   constexpr int kMaxWrongAttempts = 6;
 
-  // Setup low entropy credential manager.
+  // Setup pinweaver manager.
   hwsec::Tpm2SimulatorFactoryForTest factory;
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
   crypto_.set_pinweaver_manager_for_testing(pw_manager.get());

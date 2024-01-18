@@ -319,7 +319,7 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  // Try and extract the delay from the LE credential manager.
+  // Try and extract the delay from pinweaver manager..
   auto delay_in_seconds = crypto_->GetPinWeaverManager()->GetDelayInSeconds(
       *uss->fingerprint_rate_limiter_id());
   if (!delay_in_seconds.ok()) {
@@ -360,7 +360,7 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  // Try and extract the expiration from the LE credential manager.
+  // Try and extract the expiration from pinweaver manager..
   hwsec::StatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
       crypto_->GetPinWeaverManager()->GetExpirationInSeconds(
           *uss->fingerprint_rate_limiter_id());
