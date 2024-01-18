@@ -67,8 +67,10 @@ executable("arc-keymintd") {
 
 executable("arc_keymint_feature_query") {
   sources = [ "arc_keymint_feature_query.cc" ]
-  configs += [ "//featured:target_defaults" ]
-  deps = [ "//featured:libfeatures" ]
+  pkg_deps = [
+    "libchrome",
+    "libfeatures",
+  ]
   if (use.keymint) {
     install_path = "sbin"
   }
