@@ -505,6 +505,11 @@ void Device::SelectService(const ServiceRefPtr& service,
                 << link_name_;
 
   if (selected_service_.get() == service.get()) {
+    // Network may have been previously invalidated, if so, reset.
+    if (selected_service_ && !selected_service_->attached_network()) {
+      SLOG(this, 2) << __func__ << ": reattaching network to service";
+      ResetServiceAttachedNetwork();
+    }
     // No change to |selected_service_|. Return early to avoid
     // changing its state.
     return;

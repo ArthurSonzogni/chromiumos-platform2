@@ -2524,13 +2524,7 @@ void Cellular::DefaultLinkUp() {
   SetPrimaryMultiplexedInterface(default_pdn_->network()->interface_name());
   SetState(State::kLinked);
 
-  // When a tethering operation to connect or disconnect DUN as DEFAULT is
-  // ongoing we just update the attached network.
-  if (IsTetheringOperationDunAsDefaultOngoing()) {
-    ResetServiceAttachedNetwork();
-  } else {
-    SelectService(service_);
-  }
+  SelectService(service_);
   SetServiceState(Service::kStateConfiguring);
 
   default_pdn_->Start();
