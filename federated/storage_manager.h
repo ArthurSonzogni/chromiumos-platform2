@@ -38,14 +38,13 @@ class StorageManager : public SessionManagerObserverInterface {
   // Virtual for mocking:
   // Observes session status to connect/disconnect example database.
   virtual void InitializeSessionManagerProxy(dbus::Bus* bus);
-  // Inserts the received example to `client_name`'s table, returns true if no
-  // error occurs.
-  virtual bool OnExampleReceived(const std::string& client_name,
+  // Inserts the received example to the table, returns true if no error occurs.
+  virtual bool OnExampleReceived(const std::string& table_name,
                                  const std::string& serialized_example);
-  // Generates a iterator through examples in `client_name` table that meet the
+  // Generates a iterator through examples in `table_name` table that meet the
   // `criteria`.
   virtual std::optional<ExampleDatabase::Iterator> GetExampleIterator(
-      const std::string& client_name,
+      const std::string& table_name,
       const std::string& task_identifier,
       const fcp::client::CrosExampleSelectorCriteria& criteria) const;
   // Updates the new meta_record into meta table, called when a task finishes

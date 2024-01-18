@@ -6,6 +6,7 @@
 #define FEDERATED_MOCK_SCHEDULER_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -25,7 +26,7 @@ class MockScheduler : public Scheduler {
   MOCK_METHOD(
       void,
       Schedule,
-      ((const std::optional<base::flat_map<std::string, std::string>>&)),
+      (const std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>&),
       (override));
 };
 

@@ -4,67 +4,50 @@
 
 #include "federated/federated_metadata.h"
 
-#include <array>
+#include <base/containers/fixed_flat_map.h>
 
 #include "base/no_destructor.h"
 
 namespace federated {
 namespace {
 
-// All registered client configs. Users of federated service need to add their
-// client configs here. Each client has its own table in example database.
-constexpr std::array<const char* [3], 4> kClientMetadata = {{
-    {
-        /*name=*/"timezone_code_phh",
-        /*retry_token=*/"",
-        /*launch_stage=*/"prod",
-    },
-    {
-        "launcher_query_analytics_v1",
-        "",
-        "prod",
-    },
-    {
-        "launcher_query_analytics_v2",
-        "",
-        "dev",
-    },
-    {
-        "input_autocorrect_phh",
-        "",
-        // Launch staage is empty because we don't have any tasks for this yet.
-        "",
-    },
-}};
+using chromeos::federated::mojom::FederatedExampleTableId;
+
+static constexpr auto kTableIdToName =
+    base::MakeFixedFlatMap<FederatedExampleTableId, std::string_view>({
+        {FederatedExampleTableId::TIMEZONE_CODE, "timezone_code_phh"},
+        {FederatedExampleTableId::LAUNCHER_QUERY,
+         "launcher_query_analytics_v1"},
+        {FederatedExampleTableId::LAUNCHER_QUERY_V2,
+         "launcher_query_analytics_v2"},
+        {FederatedExampleTableId::INPUT_AUTOCORRECT, "input_autocorrect_phh"},
+    });
 
 }  // namespace
 
-std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
-  static const base::NoDestructor<
-      std::unordered_map<std::string, ClientConfigMetadata>>
-      client_config_map([] {
-        std::unordered_map<std::string, ClientConfigMetadata> map;
-        for (const auto& data : kClientMetadata) {
-          const ClientConfigMetadata meta{data[0], data[1], data[2]};
-          map[meta.name] = meta;
-        }
-        return map;
-      }());
-
-  return *client_config_map;
-}
-
-std::unordered_set<std::string> GetClientNames() {
-  static const base::NoDestructor<std::unordered_set<std::string>> client_names(
+// Reads the values of `kTableIdToName` as a set.
+std::unordered_set<std::string> GetRegisteredTableNames() {
+  static const base::NoDestructor<std::unordered_set<std::string>> table_names(
       [] {
         std::unordered_set<std::string> set;
-        for (const auto& data : kClientMetadata) {
-          set.insert(data[0]);
+        for (const auto& [id, table_name] : kTableIdToName) {
+          set.insert(std::string(table_name));
         }
         return set;
       }());
 
-  return *client_names;
+  return *table_names;
+}
+
+bool IsTableNameRegistered(const std::string& table_name) {
+  return GetRegisteredTableNames().contains(table_name);
+}
+
+std::optional<std::string> GetTableNameString(
+    const FederatedExampleTableId table_id) {
+  if (!kTableIdToName.contains(table_id))
+    return std::nullopt;
+  return std::string(kTableIdToName.at(table_id));
 }
 
 }  // namespace federated

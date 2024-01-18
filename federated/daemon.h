@@ -52,13 +52,6 @@ class Daemon : public brillo::DBusDaemon {
 
   std::unique_ptr<Scheduler> scheduler_;
 
-  // If true, starts the scheduling OnInit, useful when testing.
-#if USE_LOCAL_FEDERATED_SERVER
-  bool should_schedule_ = true;
-#else
-  bool should_schedule_ = false;
-#endif
-
   // Must be last class member.
   const base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };

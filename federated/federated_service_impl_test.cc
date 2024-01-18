@@ -61,7 +61,7 @@ class FederatedServiceImplTest : public testing::Test {
 };
 
 TEST_F(FederatedServiceImplTest, TestReportExample) {
-  const std::string registered_client_name = *GetClientNames().begin();
+  const std::string registered_client_name = *GetRegisteredTableNames().begin();
   EXPECT_CALL(*storage_manager_, OnExampleReceived(registered_client_name, _))
       .Times(1)
       .WillOnce(Return(true));
@@ -75,7 +75,7 @@ TEST_F(FederatedServiceImplTest, TestReportExample) {
 }
 
 TEST_F(FederatedServiceImplTest, TestClone) {
-  const std::string registered_client_name = *GetClientNames().begin();
+  const std::string registered_client_name = *GetRegisteredTableNames().begin();
   EXPECT_CALL(*storage_manager_, OnExampleReceived(registered_client_name, _))
       .Times(1)
       .WillOnce(Return(true));
@@ -92,7 +92,9 @@ TEST_F(FederatedServiceImplTest, TestClone) {
 
 TEST_F(FederatedServiceImplTest, TestStartScheduling) {
   EXPECT_CALL(*scheduler_, Schedule(_)).Times(1);
-  federated_service_->StartScheduling(/*client_launch_stage=*/std::nullopt);
+  federated_service_->StartSchedulingWithConfig(
+      std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>());
+
   base::RunLoop().RunUntilIdle();
 }
 

@@ -22,7 +22,6 @@ FederatedServiceImpl::FederatedServiceImpl(
     Scheduler* const scheduler)
     : storage_manager_(storage_manager),
       scheduler_(scheduler),
-      registered_clients_(GetClientNames()),
       receiver_(
           this,
           mojo::PendingReceiver<chromeos::federated::mojom::FederatedService>(
@@ -37,23 +36,23 @@ void FederatedServiceImpl::Clone(
 }
 
 void FederatedServiceImpl::ReportExample(
-    const std::string& client_name,
+    const std::string& table_name,
     const chromeos::federated::mojom::ExamplePtr example) {
   DCHECK_NE(storage_manager_, nullptr) << "storage_manager_ is not ready!";
-  if (registered_clients_.find(client_name) == registered_clients_.end()) {
-    VLOG(1) << "Unknown client_name: " << client_name;
+  if (!IsTableNameRegistered(table_name)) {
+    VLOG(1) << "Unknown table_name: " << table_name;
     return;
   }
 
   if (!example || !example->features || !example->features->feature.size()) {
-    VLOG(1) << "Invalid/empty example received from client " << client_name;
+    VLOG(1) << "Invalid/empty example received for table " << table_name;
     return;
   }
 
   if (!storage_manager_->OnExampleReceived(
-          client_name,
+          table_name,
           ConvertToTensorFlowExampleProto(example).SerializeAsString())) {
-    VLOG(1) << "Failed to insert the example from client " << client_name;
+    VLOG(1) << "Failed to insert the example to table " << table_name;
   }
 }
 
@@ -63,6 +62,26 @@ void FederatedServiceImpl::StartScheduling(
   // This is no-op if the scheduling already started.
   DVLOG(1) << "Received StartScheduling call.";
   scheduler_->Schedule(client_launch_stage);
+}
+
+void FederatedServiceImpl::ReportExampleToTable(
+    chromeos::federated::mojom::FederatedExampleTableId table_id,
+    chromeos::federated::mojom::ExamplePtr example) {
+  const auto maybe_table_name = GetTableNameString(table_id);
+  if (!maybe_table_name) {
+    DVLOG(1) << "Unable to find the table name";
+    return;
+  }
+
+  ReportExample(maybe_table_name.value(), std::move(example));
+}
+
+void FederatedServiceImpl::StartSchedulingWithConfig(
+    std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>
+        client_configs) {
+  // This is no-op if the scheduling already started.
+  DVLOG(1) << "Received StartScheduling call.";
+  scheduler_->Schedule(client_configs);
 }
 
 }  // namespace federated

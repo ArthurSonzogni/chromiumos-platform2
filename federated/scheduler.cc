@@ -62,6 +62,23 @@ std::optional<std::string> GetClientVersion() {
   return ConvertBrellaLibVersion(release_version);
 }
 
+// Checks whether a ClientConfigMetadata is valid.
+bool CheckClientConfigMetadata(const ClientConfigMetadata& client_config) {
+  if (client_config.launch_stage.empty()) {
+    LOG(ERROR) << "Client " << client_config.name
+               << " launch stage is empty, skpped";
+    return false;
+  }
+  if (!IsTableNameRegistered(client_config.table_name)) {
+    LOG(ERROR) << "Client " << client_config.name
+               << " has unregistered table name " << client_config.table_name
+               << ", skipped";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 Scheduler::~Scheduler() = default;
@@ -85,10 +102,67 @@ void Scheduler::Schedule(
     return;
   }
 
-  if (client_launch_stage.has_value()) {
-    client_launch_stage_ = client_launch_stage.value();
+  if (!client_launch_stage.has_value() || client_launch_stage->empty()) {
+    LOG(ERROR) << "Fail to schedule tasks for no client_launch_stage provided";
+    return;
   }
 
+  // Populate `client_configs_` from given `client_launch_stage`.
+  for (const auto& [client_name, launch_stage] : client_launch_stage.value()) {
+    // Set the table name as client name for backwards compatibility.
+    ClientConfigMetadata client_config{/*name=*/client_name,
+                                       /*retry_token=*/"",
+                                       /*launch_stage=*/launch_stage,
+                                       /*table_name=*/client_name};
+
+    if (CheckClientConfigMetadata(client_config)) {
+      DVLOG(1) << "Add client " << client_config.name
+               << " with launch_stage = " << client_config.launch_stage
+               << ", table_name = " << client_config.table_name;
+      client_configs_.push_back(client_config);
+    }
+  }
+
+  PrepareDlcLibraryAndStartScheduling();
+}
+
+void Scheduler::Schedule(
+    const std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>&
+        client_schedule_configs) {
+  if (scheduling_started_) {
+    DVLOG(1) << "Scheduling already started, does nothing.";
+    return;
+  }
+
+  if (client_schedule_configs.empty()) {
+    LOG(ERROR) << "Failed to schedule tasks: client_schedule_configs is empty!";
+    return;
+  }
+  for (const auto& client_schedule_config : client_schedule_configs) {
+    const auto maybe_table_name =
+        GetTableNameString(client_schedule_config->example_storage_table_id);
+    if (!maybe_table_name) {
+      DVLOG(1) << "client " << client_schedule_config->client_name
+               << " has invalid table id "
+               << client_schedule_config->example_storage_table_id;
+      continue;
+    }
+
+    ClientConfigMetadata client_config{client_schedule_config->client_name, "",
+                                       client_schedule_config->launch_stage,
+                                       std::move(maybe_table_name.value())};
+    if (CheckClientConfigMetadata(client_config)) {
+      DVLOG(1) << "Add client " << client_config.name
+               << " with launch_stage = " << client_config.launch_stage
+               << ", table_name = " << client_config.table_name;
+      client_configs_.push_back(client_config);
+    }
+  }
+
+  PrepareDlcLibraryAndStartScheduling();
+}
+
+void Scheduler::PrepareDlcLibraryAndStartScheduling() {
   dlcservice::DlcState dlc_state;
   brillo::ErrorPtr error;
   // Gets current dlc state.
@@ -104,8 +178,8 @@ void Scheduler::Schedule(
     return;
   }
 
-  // If installed, calls `ScheduleInternal()` instantly, otherwise triggers dlc
-  // install and waits for DlcStateChanged signals.
+  // If installed, calls `ScheduleInternal()` instantly, otherwise triggers
+  // dlc install and waits for DlcStateChanged signals.
   if (dlc_state.state() == dlcservice::DlcState::INSTALLED) {
     Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcAlreadyInstalled);
     DVLOG(1) << "dlc fcp is already installed, root path is "
@@ -157,12 +231,11 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
     return;
   }
 
-  auto client_configs = GetClientConfig();
-
   // Pointers to elements of `clients_` are passed to
   // KeepSchedulingJobForClient, which can be invalid if the capacity of
-  // `clients_` needs to be increased. Reserves the necessary capacity upfront.
-  clients_.reserve(client_configs.size());
+  // `clients_` needs to be increased. Reserves the necessary capacity
+  // upfront.
+  clients_.reserve(client_configs_.size());
 
   const auto brella_lib_version = GetClientVersion();
   if (!brella_lib_version.has_value()) {
@@ -171,19 +244,7 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
     return;
   }
 
-  for (auto& kv : client_configs) {
-    ClientConfigMetadata& client_config = kv.second;
-
-    // Overwrites the launch_stage if provided by the caller of `Schedule()`.
-    const auto iter = client_launch_stage_.find(kv.first);
-    if (iter != client_launch_stage_.end()) {
-      client_config.launch_stage = iter->second;
-    }
-
-    if (client_config.launch_stage.empty()) {
-      DVLOG(1) << "client " << kv.first << " has no valid launch_stage, skip.";
-      continue;
-    }
+  for (const auto& client_config : client_configs_) {
     clients_.push_back(federated_library->CreateClient(
         kServiceUri, kApiKey, brella_lib_version.value(), client_config,
         device_status_monitor_.get()));

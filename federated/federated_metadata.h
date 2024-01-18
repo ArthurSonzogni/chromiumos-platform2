@@ -5,9 +5,11 @@
 #ifndef FEDERATED_FEDERATED_METADATA_H_
 #define FEDERATED_FEDERATED_METADATA_H_
 
+#include <optional>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
+
+#include "federated/mojom/tables.mojom.h"
 
 namespace federated {
 
@@ -22,18 +24,23 @@ struct ClientConfigMetadata {
   // response.
   std::string retry_token;
   // The launch stage used to compose a unique population name together with
-  // `name`.
-  // Value can be overwritten by mojo call. After overwriting if launch stage
-  // is empty, scheduler will skip this client. (No federated tasks scheduled,
-  // but examples reported to this client will still be stored.)
+  // `name`. A client's launch stage is provided via the `StartScheduling` mojo
+  // call. If no valid launch stage, scheduler will skip this client.
   std::string launch_stage;
+
+  // The example storage table name. The client's task reads examples from table
+  // with this name in the database. It must be a registered table name, see
+  // federated_service_impl.cc.
+  std::string table_name;
 };
 
-// Returns a map from client_name to ClientConfigMetadata.
-std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig();
+std::unordered_set<std::string> GetRegisteredTableNames();
 
-// Returns a set of all registered client names;
-std::unordered_set<std::string> GetClientNames();
+bool IsTableNameRegistered(const std::string& table_name);
+
+// Tries to map table id to a registered table name, return nullopt if failed.
+std::optional<std::string> GetTableNameString(
+    const chromeos::federated::mojom::FederatedExampleTableId table_id);
 
 }  // namespace federated
 

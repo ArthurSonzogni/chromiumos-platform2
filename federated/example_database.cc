@@ -129,7 +129,7 @@ int GetAllTableNamesCallback(
 ExampleDatabase::Iterator::Iterator() : stmt_(nullptr) {}
 
 ExampleDatabase::Iterator::Iterator(sqlite3* const db,
-                                    const std::string& client_name,
+                                    const std::string& table_name,
                                     const base::Time& start_time,
                                     const base::Time& end_time,
                                     bool descending,
@@ -145,7 +145,7 @@ ExampleDatabase::Iterator::Iterator(sqlite3* const db,
 
   const std::string sql_code = base::StringPrintf(
       "SELECT id, example, timestamp FROM '%s' %s ORDER BY id %s %s;",
-      client_name.c_str(), MaybeWhereClause(start_time, end_time).c_str(),
+      table_name.c_str(), MaybeWhereClause(start_time, end_time).c_str(),
       order.c_str(), limit_clause.c_str());
   const int result =
       sqlite3_prepare_v2(db, sql_code.c_str(), -1, &stmt_, nullptr);
@@ -158,9 +158,9 @@ ExampleDatabase::Iterator::Iterator(sqlite3* const db,
 }
 
 ExampleDatabase::Iterator::Iterator(sqlite3* const db,
-                                    const std::string& client_name)
+                                    const std::string& table_name)
     : ExampleDatabase::Iterator::Iterator(db,
-                                          client_name,
+                                          table_name,
                                           base::Time(),
                                           base::Time(),
                                           /*descending=*/false,
@@ -241,7 +241,7 @@ ExampleDatabase::~ExampleDatabase() {
   Close();
 }
 
-bool ExampleDatabase::Init(const std::unordered_set<std::string>& clients) {
+bool ExampleDatabase::Init(const std::unordered_set<std::string>& table_names) {
   // SQLITE_OPEN_FULLMUTEX means sqlite3 threadding mode = serialized so that
   // it's safe to access the same database connection in multiple threads.
   // This is the default when `sqlite3_threadsafe() == 1` but no harm to make a
@@ -267,9 +267,9 @@ bool ExampleDatabase::Init(const std::unordered_set<std::string>& clients) {
   }
 
   // Prepares client tables.
-  for (const auto& client : clients) {
-    if ((!TableExists(client) && !CreateClientTable(client))) {
-      LOG(ERROR) << "Failed to prepare table for client " << client;
+  for (const auto& table_name : table_names) {
+    if ((!TableExists(table_name) && !CreateClientTable(table_name))) {
+      LOG(ERROR) << "Failed to prepare table " << table_name;
       Close();
 
       return false;
@@ -438,21 +438,21 @@ bool ExampleDatabase::UpdateMetaRecord(
 }
 
 ExampleDatabase::Iterator ExampleDatabase::GetIterator(
-    const std::string& client_name,
+    const std::string& table_name,
     const base::Time& start_time,
     const base::Time& end_time,
     bool descending,
     const size_t limit) const {
-  return Iterator(db_.get(), client_name, start_time, end_time, descending,
+  return Iterator(db_.get(), table_name, start_time, end_time, descending,
                   limit);
 }
 
 ExampleDatabase::Iterator ExampleDatabase::GetIteratorForTesting(
-    const std::string& client_name) const {
-  return Iterator(db_.get(), client_name);
+    const std::string& table_name) const {
+  return Iterator(db_.get(), table_name);
 }
 
-bool ExampleDatabase::InsertExample(const std::string& client_name,
+bool ExampleDatabase::InsertExample(const std::string& table_name,
                                     const ExampleRecord& example_record) {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to insert example into a closed database";
@@ -463,7 +463,7 @@ bool ExampleDatabase::InsertExample(const std::string& client_name,
   sqlite3_stmt* stmt = nullptr;
   const std::string sql_code =
       base::StringPrintf("INSERT INTO '%s' (example, timestamp) VALUES (?, ?);",
-                         client_name.c_str());
+                         table_name.c_str());
   const int result =
       sqlite3_prepare_v2(db_.get(), sql_code.c_str(), -1, &stmt, nullptr);
   if (result != SQLITE_OK) {
@@ -486,18 +486,18 @@ bool ExampleDatabase::InsertExample(const std::string& client_name,
   if (!ok) {
     LOG(ERROR) << "Failed to insert example: " << sqlite3_errmsg(db_.get());
   }
-  DVLOG(1) << "Insert example for client " << client_name;
+  DVLOG(1) << "Insert example for client " << table_name;
   return ok;
 }
 
-void ExampleDatabase::DeleteAllExamples(const std::string& client_name) {
+void ExampleDatabase::DeleteAllExamples(const std::string& table_name) {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to delete from a closed database";
     return;
   }
 
   const ExecResult result =
-      ExecSql(base::StringPrintf("DELETE FROM '%s';", client_name.c_str()));
+      ExecSql(base::StringPrintf("DELETE FROM '%s';", table_name.c_str()));
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to delete examples: " << result.error_msg;
   }
@@ -530,7 +530,7 @@ bool ExampleDatabase::TableExists(const std::string& table_name) const {
   return true;
 }
 
-bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
+bool ExampleDatabase::CreateClientTable(const std::string& table_name) {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to create table in a closed database";
     return false;
@@ -543,7 +543,7 @@ bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
         example    BLOB    NOT NULL,
         timestamp  INTEGER NOT NULL
       ))",
-                                             client_name.c_str());
+                                             table_name.c_str());
   const ExecResult result = ExecSql(sql);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to create table: " << result.error_msg;
@@ -578,23 +578,23 @@ bool ExampleDatabase::CreateMetaTable() {
   return true;
 }
 
-int ExampleDatabase::ExampleCount(const std::string& client_name,
+int ExampleDatabase::ExampleCount(const std::string& table_name,
                                   const base::Time& start_time,
                                   const base::Time& end_time) const {
   DCHECK(start_time != base::Time() && end_time != base::Time())
       << "start_time and end_time cannot be zero values";
-  return ExampleCountInternal(client_name,
+  return ExampleCountInternal(table_name,
                               MaybeWhereClause(start_time, end_time));
 }
 
 int ExampleDatabase::ExampleCountForTesting(
-    const std::string& client_name) const {
-  return ExampleCountInternal(client_name, /* where_clause = */
+    const std::string& table_name) const {
+  return ExampleCountInternal(table_name, /* where_clause = */
                               std::string());
 }
 
 int ExampleDatabase::ExampleCountInternal(
-    const std::string& client_name, const std::string& where_clause) const {
+    const std::string& table_name, const std::string& where_clause) const {
   if (!IsOpen()) {
     LOG(ERROR) << "Trying to count examples in a closed database";
     return 0;
@@ -603,7 +603,7 @@ int ExampleDatabase::ExampleCountInternal(
   int count = 0;
   const ExecResult result =
       ExecSql(base::StringPrintf("SELECT COUNT(*) FROM '%s' %s;",
-                                 client_name.c_str(), where_clause.c_str()),
+                                 table_name.c_str(), where_clause.c_str()),
               ExampleCountCallback, &count);
 
   if (result.code != SQLITE_OK) {

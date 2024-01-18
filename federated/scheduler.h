@@ -19,6 +19,7 @@
 #include <dlcservice/dbus-proxies.h>
 
 #include "federated/federated_client.h"
+#include "federated/mojom/federated_service.mojom.h"
 
 namespace federated {
 class StorageManager;
@@ -33,15 +34,26 @@ class Scheduler {
   Scheduler& operator=(const Scheduler&) = delete;
   virtual ~Scheduler();
 
-  // virtual for mocking.
   // Tries to schedule tasks if the library dlc is already installed, otherwise
   // triggers dlc install and schedules tasks when it receives a DlcStateChanged
   // signal indicating the library dlc is installed.
+
+  // TODO(b:319337341): remove after the caller side (chromium) starts to use
+  // the new interface.
+  void Schedule(const std::optional<base::flat_map<std::string, std::string>>&
+                    client_launch_stage);
+  // virtual for mocking.
   virtual void Schedule(
-      const std::optional<base::flat_map<std::string, std::string>>&
-          client_launch_stage);
+      const std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>&
+          client_schedule_configs);
 
  private:
+  // Called by `Schedule` after the `clients_` are ready, to enquiry the status
+  // of dlc library dependency. If already installed, calls `ScheduleInternal`
+  // immediately, otherwise triggers the dlc installation with
+  // `dlcservice_client_`. `ScheduleInternal` will run after the dlc ready
+  // signal is received.
+  void PrepareDlcLibraryAndStartScheduling();
   // Loads federated library from the given `dlc_root_path`, then for each
   // client, creates a FederatedClient instance and schedules recurring jobs.
   void ScheduleInternal(const std::string& dlc_root_path);
@@ -61,9 +73,9 @@ class Scheduler {
   // Registered clients.
   std::vector<FederatedClient> clients_;
 
-  // Clients' launch stage, provided by caller of `Schedule` and used for
-  // overwriting the hardcoded launch stage in federated_metadata.cc.
-  base::flat_map<std::string, std::string> client_launch_stage_;
+  // Client config metadata, e.g. client name, launch stage, table name it reads
+  // examples from. Used to create `clients_` when scheduling the tasks.
+  std::vector<ClientConfigMetadata> client_configs_;
 
   // Not owned
   StorageManager* const storage_manager_;

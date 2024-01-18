@@ -23,11 +23,6 @@
 namespace federated {
 
 namespace {
-#if USE_LOCAL_FEDERATED_SERVER
-constexpr base::TimeDelta kInitialWaitingWindow = base::Seconds(30);
-constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(30);
-constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(10);
-#else
 // The first checkin happens kInitialWaitingWindow after the device startup to
 // avoid resource competition.
 constexpr base::TimeDelta kInitialWaitingWindow = base::Minutes(5);
@@ -37,7 +32,6 @@ constexpr base::TimeDelta kDefaultRetryWindow = base::Minutes(30);
 // The retry window should not be shorter than kMinimalRetryWindow to avoid
 // spam.
 constexpr base::TimeDelta kMinimalRetryWindow = base::Minutes(1);
-#endif
 
 // Limits each round to 10 minutes.
 constexpr base::TimeDelta kMaximalExecutionTime = base::Minutes(10);
@@ -69,10 +63,12 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
 
 FederatedClient::Context::Context(
     const std::string& client_name,
+    const std::string& table_name,
     const std::string& population_name,
     const DeviceStatusMonitor* const device_status_monitor,
     const StorageManager* const storage_manager)
     : client_name_(client_name),
+      table_name_(table_name),
       population_name_(population_name),
       start_time_(base::Time::Now()),
       device_status_monitor_(device_status_monitor),
@@ -85,6 +81,7 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
                                                void* const context) {
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
   const std::string& client_name = typed_context->client_name_;
+  const std::string& table_name = typed_context->table_name_;
 
   fcp::client::CrosExampleSelectorCriteria criteria;
   if (!criteria.ParseFromArray(criteria_data, criteria_data_size)) {
@@ -101,7 +98,7 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
     return false;
   }
 
-  // Initializes `new_meta_record_`, if iterator is created successfully and the
+  // Initializes `new_meta_record_`. If iterator is created successfully and the
   // task starts, it keeps the largest seen example id and the associated
   // example timestamp . If the task succeeds, metatable will be updated with
   // `new_meta_record_`.
@@ -124,9 +121,10 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
 
   std::optional<ExampleDatabase::Iterator> example_iterator =
       typed_context->storage_manager_->GetExampleIterator(
-          client_name, typed_context->new_meta_record_.identifier, criteria);
+          table_name, typed_context->new_meta_record_.identifier, criteria);
   if (!example_iterator.has_value()) {
-    DVLOG(1) << "Client " << client_name << " failed to prepare examples.";
+    DVLOG(1) << "Client " << client_name
+             << " failed to prepare examples with table_name " << table_name;
     Metrics::GetInstance()->LogClientEvent(
         client_name, ClientEvent::kGetExampleIteratorError);
     return false;
@@ -264,7 +262,8 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
   const std::string population_name =
       base::StringPrintf("chromeos/%s/%s", client_config_.name.c_str(),
                          client_config_.launch_stage.c_str());
-  FederatedClient::Context context(client_config_.name, population_name,
+  FederatedClient::Context context(client_config_.name,
+                                   client_config_.table_name, population_name,
                                    device_status_monitor_, storage_manager);
 
   const std::string base_dir_in_cryptohome =

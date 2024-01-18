@@ -9,7 +9,7 @@
 #include <optional>
 
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
+#include <brillo/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -81,7 +81,7 @@ bool StorageManager::IsDatabaseConnected() const {
   return example_database_ != nullptr && example_database_->IsOpen();
 }
 
-bool StorageManager::OnExampleReceived(const std::string& client_name,
+bool StorageManager::OnExampleReceived(const std::string& table_name,
                                        const std::string& serialized_example) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!IsDatabaseConnected()) {
@@ -89,17 +89,17 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
     return false;
   }
 
-  Metrics::GetInstance()->LogExampleReceived(client_name);
+  Metrics::GetInstance()->LogExampleReceived(table_name);
 
   ExampleRecord example_record;
   example_record.serialized_example = serialized_example;
   example_record.timestamp = base::Time::Now();
 
-  return example_database_->InsertExample(client_name, example_record);
+  return example_database_->InsertExample(table_name, example_record);
 }
 
 std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
-    const std::string& client_name,
+    const std::string& table_name,
     const std::string& task_identifier,
     const fcp::client::CrosExampleSelectorCriteria& criteria) const {
   DCHECK(!criteria.task_name().empty());
@@ -143,18 +143,19 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
   const size_t min_example_count =
       criteria.min_examples() > 0 ? criteria.min_examples() : kMinExampleCount;
   const size_t example_count = example_database_->ExampleCount(
-      client_name, start_timestamp, end_timestamp);
+      table_name, start_timestamp, end_timestamp);
 
   DVLOG(1) << "For task_identifier = " << task_identifier
            << ", got valid example_count = " << example_count;
 
   if (example_count < min_example_count) {
-    DVLOG(1) << "Client " << client_name << " "
-             << "doesn't meet the minimum example count requirement";
+    DVLOG(1) << "Table " << table_name << " "
+             << "doesn't meet the minimum example count requirement for task "
+             << task_identifier;
     return std::nullopt;
   }
 
-  return example_database_->GetIterator(client_name, start_timestamp,
+  return example_database_->GetIterator(table_name, start_timestamp,
                                         end_timestamp, descending, limit);
 }
 
@@ -205,7 +206,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   const auto db_path = GetDatabasePath(sanitized_username_);
   example_database_ = std::make_unique<ExampleDatabase>(db_path);
 
-  if (!example_database_->Init(GetClientNames())) {
+  if (!example_database_->Init(GetRegisteredTableNames())) {
     LOG(ERROR) << "Failed to connect to database for user "
                << sanitized_username_;
     Metrics::GetInstance()->LogStorageEvent(StorageEvent::kDbInitError);
@@ -213,7 +214,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   } else if (!example_database_->CheckIntegrity()) {
     LOG(ERROR) << "Failed to verify the database integrity for user "
                << sanitized_username_ << ", delete the existing db file";
-    if (!base::DeleteFile(db_path)) {
+    if (!brillo::DeleteFile(db_path)) {
       LOG(ERROR) << "Failed to delete corrupted db file " << db_path.value();
     }
     Metrics::GetInstance()->LogStorageEvent(

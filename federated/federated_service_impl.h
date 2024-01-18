@@ -7,7 +7,7 @@
 
 #include <optional>
 #include <string>
-#include <unordered_set>
+#include <vector>
 
 #include <base/containers/flat_map.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -39,19 +39,25 @@ class FederatedServiceImpl
   // chromeos::federated::mojom::FederatedService:
   void Clone(mojo::PendingReceiver<chromeos::federated::mojom::FederatedService>
                  receiver) override;
-  void ReportExample(const std::string& client_name,
+  void ReportExample(const std::string& table_name,
                      chromeos::federated::mojom::ExamplePtr example) override;
   void StartScheduling(
       const std::optional<base::flat_map<std::string, std::string>>&
           client_launch_stage) override;
 
+  void ReportExampleToTable(
+      ::chromeos::federated::mojom::FederatedExampleTableId table_id,
+      ::chromeos::federated::mojom::ExamplePtr example) override;
+
+  // Starts scheduling federated training tasks for the given `client_configs`.
+  // Does nothing if the federated service already schedules tasks.
+  void StartSchedulingWithConfig(
+      std::vector<chromeos::federated::mojom::ClientScheduleConfigPtr>
+          client_configs) override;
+
   // Not owned.
   StorageManager* const storage_manager_;
   Scheduler* const scheduler_;
-
-  // All known clients, examples reported by unregistered clients will be
-  // ignored.
-  const std::unordered_set<std::string> registered_clients_;
 
   // Primordial receiver bootstrapped over D-Bus. Once opened, is never closed.
   mojo::Receiver<chromeos::federated::mojom::FederatedService> receiver_;

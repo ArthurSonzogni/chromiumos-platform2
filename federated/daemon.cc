@@ -44,11 +44,6 @@ int Daemon::OnInit() {
   scheduler_ =
       std::make_unique<Scheduler>(StorageManager::GetInstance(),
                                   std::move(device_status_monitor), bus_.get());
-  // Starts the scheduling if it's initialized so.
-  if (should_schedule_) {
-    scheduler_->Schedule(/*client_launch_stage=*/std::nullopt);
-  }
-
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),

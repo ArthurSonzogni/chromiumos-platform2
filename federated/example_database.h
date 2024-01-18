@@ -29,11 +29,10 @@ struct MetaRecord {
   base::Time timestamp;
 };
 
-// Example objects stored in corresponding `client_name` tables.
 // An example represents a training example of federated computation.
 struct ExampleRecord {
-  // The ID of this example in the client table. Only populated in records
-  // being retrieved from (c.f. being inserted into) the example database.
+  // The ID of this example in the table. Only populated in records being
+  // retrieved from (c.f. being inserted into) the example database.
   int64_t id = -1;
 
   std::string serialized_example;
@@ -129,11 +128,11 @@ class ExampleDatabase {
   // Initializes database connection. Must be called before any other queries.
   // Returns true if no error occurred.
   //
-  // WARNING: client names are used to construct SQL statements but are not
+  // WARNING: table names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
   //          code injection unless the provided names are carefully vetted or
   //          sanitized.
-  virtual bool Init(const std::unordered_set<std::string>& clients);
+  virtual bool Init(const std::unordered_set<std::string>& table_names);
   // Returns true if the database connection is open.
   virtual bool IsOpen() const;
   // Closes database connection. Returns true if no error occurred.
@@ -141,7 +140,7 @@ class ExampleDatabase {
   // Runs sqlite built-in integrity check. Returns true if no error is found.
   virtual bool CheckIntegrity() const;
 
-  // Deletes expired examples from all client tables in the db. They all have a
+  // Deletes expired examples from all tables in the db. They all have a
   // timestamp column. Returns true if no error occurred.
   virtual bool DeleteOutdatedExamples(const base::TimeDelta& example_ttl) const;
 
@@ -154,59 +153,59 @@ class ExampleDatabase {
   virtual bool UpdateMetaRecord(const std::string& identifier,
                                 const MetaRecord& new_meta_record) const;
 
-  // Returns an iterator through the examples for the given client within the
-  // time range. Limits examples if `limit` > 0, otherwise iterates through all
-  // examples in the range.
+  // Returns an iterator through the examples for the specified table within
+  // the time range. Limits examples if `limit` > 0, otherwise iterates through
+  // all examples in the range.
   //
-  // WARNING: client names are used to construct SQL statements but are not
+  // WARNING: table names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
   //          code injection unless the provided names are carefully vetted
   //          or sanitized.
-  virtual Iterator GetIterator(const std::string& client_name,
+  virtual Iterator GetIterator(const std::string& table_name,
                                const base::Time& start_time,
                                const base::Time& end_time,
                                bool descending = false,
                                size_t limit = 0) const;
 
   // Similar to GetIterator but without time range, returns an iterator through
-  // all examples for the given client.
-  virtual Iterator GetIteratorForTesting(const std::string& client_name) const;
+  // all examples for the given table_name.
+  virtual Iterator GetIteratorForTesting(const std::string& table_name) const;
 
-  // Inserts example into the table matching its client_name. Returns true
+  // Inserts example into the table matching its table_name. Returns true
   // if no error occurred.
   //
-  // WARNING: client names are used to construct SQL statements but are not
+  // WARNING: table names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
   //          code injection unless the provided names are carefully vetted or
   //          sanitized.
-  virtual bool InsertExample(const std::string& client_name,
+  virtual bool InsertExample(const std::string& table_name,
                              const ExampleRecord& example_record);
 
-  // Returns the count of examples in the client's table within the time range.
+  // Returns the count of examples in the table within the time range.
   //
-  // WARNING: client names are used to construct SQL statements but are not
+  // WARNING: table names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
   //          code injection unless the provided names are carefully vetted or
   //          sanitized.
 
-  virtual int ExampleCount(const std::string& client_name,
+  virtual int ExampleCount(const std::string& table_name,
                            const base::Time& start_time,
                            const base::Time& end_time) const;
 
   // Similar to ExampleCount but without time range, returns the count of all
   // examples in the client's table.
-  virtual int ExampleCountForTesting(const std::string& client_name) const;
+  virtual int ExampleCountForTesting(const std::string& table_name) const;
 
-  // Deletes all examples in the specified client table. We expose only this
+  // Deletes all examples in the specified table. We expose only this
   // rudimentary functionality since small federated clients typically delete
   // all training examples at the end of a training session. More sophiscated
   // behavior can be added if it is later needed.
   //
-  // WARNING: client names are used to construct SQL statements but are not
+  // WARNING: table names are used to construct SQL statements but are not
   //          sanitized in any way. Therefore this method is susceptible to
   //          code injection unless the provided names are carefully vetted or
   //          sanitized.
-  virtual void DeleteAllExamples(const std::string& client_name);
+  virtual void DeleteAllExamples(const std::string& table_name);
 
   sqlite3* sqlite3_for_testing() const { return db_.get(); }
 
@@ -224,18 +223,18 @@ class ExampleDatabase {
     std::string error_msg;
   };
 
-  // Counts the examples in the client's table that match the `where_clause` if
+  // Counts the examples in the specified table that match the `where_clause` if
   // it's a valid SQL WHERE clause, or counts all the examples if `where_clause`
   // is an empty string. Returns 0 if database is closed or `where_clause` is
   // invalid.
-  int ExampleCountInternal(const std::string& client_name,
+  int ExampleCountInternal(const std::string& table_name,
                            const std::string& where_clause) const;
 
   // Returns true if the given table_name exists.
   bool TableExists(const std::string& table_name) const;
 
   // Returns true if the client's table is created without error.
-  bool CreateClientTable(const std::string& client_name);
+  bool CreateClientTable(const std::string& table_name);
 
   // Returns true if the metatable exists.
   bool MetaTableExists() const;
