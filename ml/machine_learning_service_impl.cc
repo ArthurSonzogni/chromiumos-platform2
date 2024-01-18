@@ -930,10 +930,15 @@ void MachineLearningServiceImpl::LoadHeatmapPalmRejection(
     return;
   }
   // From here below is the worker process.
+  RequestMetrics request_metrics("HeatmapPalmRejection", kMetricsRequestName);
+  request_metrics.StartRecordingPerformanceMetrics();
 
   auto* const processor = ml::HeatmapProcessor::GetInstance();
   auto result = processor->Start(std::move(client), std::move(config));
+
   std::move(callback).Run(result);
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(result);
 }
 
 void MachineLearningServiceImpl::InternalLoadImageAnnotator(

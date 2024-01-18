@@ -10,6 +10,9 @@
 
 #include <base/logging.h>
 
+#include "ml/request_metrics.h"
+
+using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::FloatList;
 using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 using ::chromeos::machine_learning::mojom::HeatmapPalmRejectionClient;
@@ -25,6 +28,9 @@ namespace {
 // TFLite graph node names:
 constexpr char kInputNodeName[] = "input";
 constexpr char kOutputNodeName[] = "output";
+
+// Base name for UMA metrics related to graph execution
+constexpr char kMetricsRequestName[] = "ExecuteResult";
 }  // namespace
 
 HeatmapProcessor::HeatmapProcessor() = default;
@@ -39,7 +45,6 @@ LoadHeatmapPalmRejectionResult HeatmapProcessor::Start(
   std::unique_ptr<tflite::FlatBufferModel> model =
       tflite::FlatBufferModel::BuildFromFile(config->tf_model_path.c_str());
   if (model == nullptr) {
-    // TODO(b/320197551): replace LOG(ERROR) with UMA loggings.
     LOG(ERROR) << "Failed to load model file '" << config->tf_model_path
                << "'.";
     return LoadHeatmapPalmRejectionResult::LOAD_MODEL_ERROR;
@@ -54,7 +59,6 @@ LoadHeatmapPalmRejectionResult HeatmapProcessor::Start(
   if (model_delegate_->CreateGraphExecutorDelegate(
           false, false, GpuDelegateApi::UNKNOWN, &graph_executor_delegate) !=
       CreateGraphExecutorResult::OK) {
-    // TODO(b/320197551): replace LOG(ERROR) with UMA loggings.
     LOG(ERROR) << "Failed to create graph executor";
     return LoadHeatmapPalmRejectionResult::CREATE_GRAPH_EXECUTOR_ERROR;
   }
@@ -76,6 +80,9 @@ void HeatmapProcessor::Process(const std::vector<double>& heatmap_data,
     return;
   }
 
+  RequestMetrics request_metrics("HeatmapPalmRejection", kMetricsRequestName);
+  request_metrics.StartRecordingPerformanceMetrics();
+
   base::flat_map<std::string, TensorPtr> inputs;
   auto tensor = Tensor::New();
   tensor->shape = Int64List::New();
@@ -88,6 +95,8 @@ void HeatmapProcessor::Process(const std::vector<double>& heatmap_data,
   auto result = graph_executor_delegate_->Execute(std::move(inputs), outputs,
                                                   output_tensors);
 
+  request_metrics.FinishRecordingPerformanceMetrics();
+
   bool is_palm = false;
 
   if (result == ExecuteResult::OK) {
@@ -96,13 +105,14 @@ void HeatmapProcessor::Process(const std::vector<double>& heatmap_data,
         output_data->get_float_list()->value.size() == 1) {
       double prediction = output_data->get_float_list()->value[0];
       is_palm = prediction > palm_threshold_;
+      request_metrics.RecordRequestEvent(ExecuteResult::OK);
     } else {
-      // TODO(b/320197551): replace LOG(ERROR) with UMA loggings.
+      request_metrics.RecordRequestEvent(ExecuteResult::OUTPUT_MISSING_ERROR);
       LOG(ERROR)
           << "Heatmap palm rejection model returns unexpected output data";
     }
   } else {
-    // TODO(b/320197551): replace LOG(ERROR) with UMA loggings.
+    request_metrics.RecordRequestEvent(result);
     LOG(ERROR) << "Heatmap palm rejection model execution failed";
   }
 
