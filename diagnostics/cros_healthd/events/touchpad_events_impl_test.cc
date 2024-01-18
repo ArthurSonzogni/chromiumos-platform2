@@ -4,21 +4,16 @@
 
 #include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
 
-#include <memory>
 #include <utility>
 
-#include <base/check.h>
-#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "diagnostics/cros_healthd/events/mock_event_observer.h"
+#include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/cros_healthd/utils/mojo_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -27,8 +22,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::DoAll;
-using ::testing::StrictMock;
 
 // Tests for the TouchpadEventsImpl class.
 class TouchpadEventsImplTest : public testing::Test {
@@ -40,26 +33,6 @@ class TouchpadEventsImplTest : public testing::Test {
   TouchpadEventsImplTest() = default;
 
   void SetUp() override {
-    touchpad_events_impl_ =
-        std::make_unique<TouchpadEventsImpl>(&mock_context_);
-
-    SetExecutorMonitorTouchpad();
-    event_observer_ = CreateAndAddMockObserver();
-  }
-
-  MockEventObserver* mock_event_observer() { return event_observer_.get(); }
-  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-
-  std::unique_ptr<StrictMock<MockEventObserver>> CreateAndAddMockObserver() {
-    mojo::PendingRemote<mojom::EventObserver> touchpad_observer;
-    mojo::PendingReceiver<mojom::EventObserver> observer_receiver(
-        touchpad_observer.InitWithNewPipeAndPassReceiver());
-    touchpad_events_impl_->AddObserver(std::move(touchpad_observer));
-    return std::make_unique<StrictMock<MockEventObserver>>(
-        std::move(observer_receiver));
-  }
-
-  void SetExecutorMonitorTouchpad() {
     EXPECT_CALL(*mock_executor(), MonitorTouchpad(_, _))
         .WillOnce(
             [=, this](auto touchpad_observer, auto pending_process_control) {
@@ -68,7 +41,11 @@ class TouchpadEventsImplTest : public testing::Test {
             });
   }
 
-  void ResetEventObserver() { event_observer_.reset(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
+
+  void AddEventObserver(mojo::PendingRemote<mojom::EventObserver> observer) {
+    touchpad_events_impl_.AddObserver(std::move(observer));
+  }
 
   void EmitTouchpadConnectedEvent(
       const mojom::TouchpadConnectedEventPtr& event) {
@@ -87,106 +64,93 @@ class TouchpadEventsImplTest : public testing::Test {
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  std::unique_ptr<StrictMock<MockEventObserver>> event_observer_;
-  std::unique_ptr<TouchpadEventsImpl> touchpad_events_impl_;
+  TouchpadEventsImpl touchpad_events_impl_{&mock_context_};
 };
 
 // Test that we can receive touchpad touch events.
 TEST_F(TouchpadEventsImplTest, TouchpadTouchEvent) {
-  auto fake_touch_event = mojom::TouchpadTouchEvent::New();
-  fake_touch_event->touch_points.push_back(mojom::TouchPointInfo::New());
+  mojom::TouchpadTouchEvent fake_touch_event;
+  fake_touch_event.touch_points.push_back(mojom::TouchPointInfo::New());
 
-  base::test::TestFuture<void> future;
-  mojom::EventInfoPtr recv_info;
-  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
-                      base::test::RunOnceClosure(future.GetCallback())));
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
 
-  EmitTouchpadTouchEvent(fake_touch_event);
+  EmitTouchpadTouchEvent(fake_touch_event.Clone());
 
-  EXPECT_TRUE(future.Wait());
-  EXPECT_TRUE(recv_info->is_touchpad_event_info());
-  const auto& touchpad_event_info = recv_info->get_touchpad_event_info();
-  EXPECT_TRUE(touchpad_event_info->is_touch_event());
-  EXPECT_EQ(fake_touch_event, touchpad_event_info->get_touch_event());
+  auto event = event_observer.WaitForEvent();
+  ASSERT_TRUE(event->is_touchpad_event_info());
+  const auto& touchpad_event_info = event->get_touchpad_event_info();
+  ASSERT_TRUE(touchpad_event_info->is_touch_event());
+  EXPECT_EQ(fake_touch_event, *touchpad_event_info->get_touch_event());
 }
 
 // Test that we can receive touchpad button events.
 TEST_F(TouchpadEventsImplTest, TouchpadButtonEvent) {
-  auto fake_button_event = mojom::TouchpadButtonEvent::New();
-  fake_button_event->button = mojom::InputTouchButton::kLeft;
-  fake_button_event->pressed = true;
+  mojom::TouchpadButtonEvent fake_button_event;
+  fake_button_event.button = mojom::InputTouchButton::kLeft;
+  fake_button_event.pressed = true;
 
-  base::test::TestFuture<void> future;
-  mojom::EventInfoPtr recv_info;
-  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
-                      base::test::RunOnceClosure(future.GetCallback())));
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
 
-  EmitTouchpadButtonEvent(fake_button_event);
+  EmitTouchpadButtonEvent(fake_button_event.Clone());
 
-  EXPECT_TRUE(future.Wait());
-  EXPECT_TRUE(recv_info->is_touchpad_event_info());
-  const auto& touchpad_event_info = recv_info->get_touchpad_event_info();
+  auto event = event_observer.WaitForEvent();
+  ASSERT_TRUE(event->is_touchpad_event_info());
+  const auto& touchpad_event_info = event->get_touchpad_event_info();
   EXPECT_TRUE(touchpad_event_info->is_button_event());
-  EXPECT_EQ(fake_button_event, touchpad_event_info->get_button_event());
+  EXPECT_EQ(fake_button_event, *touchpad_event_info->get_button_event());
 }
 
 // Test that we can receive touchpad connected events.
 TEST_F(TouchpadEventsImplTest, TouchpadConnectedEvent) {
-  auto fake_connected_event = mojom::TouchpadConnectedEvent::New();
-  fake_connected_event->max_x = 1;
-  fake_connected_event->max_y = 2;
-  fake_connected_event->buttons = {mojom::InputTouchButton::kLeft};
+  mojom::TouchpadConnectedEvent fake_connected_event;
+  fake_connected_event.max_x = 1;
+  fake_connected_event.max_y = 2;
+  fake_connected_event.buttons = {mojom::InputTouchButton::kLeft};
 
-  base::test::TestFuture<void> future;
-  mojom::EventInfoPtr recv_info;
-  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(DoAll(SaveMojomArg<0>(&recv_info),
-                      base::test::RunOnceClosure(future.GetCallback())));
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
 
-  EmitTouchpadConnectedEvent(fake_connected_event);
+  EmitTouchpadConnectedEvent(fake_connected_event.Clone());
 
-  EXPECT_TRUE(future.Wait());
-  EXPECT_TRUE(recv_info->is_touchpad_event_info());
-  const auto& touchpad_event_info = recv_info->get_touchpad_event_info();
+  auto event = event_observer.WaitForEvent();
+  const auto& touchpad_event_info = event->get_touchpad_event_info();
   EXPECT_TRUE(touchpad_event_info->is_connected_event());
-  EXPECT_EQ(fake_connected_event, touchpad_event_info->get_connected_event());
+  EXPECT_EQ(fake_connected_event, *touchpad_event_info->get_connected_event());
 }
 
 // Test that we can receive touchpad connected events by multiple observers.
 TEST_F(TouchpadEventsImplTest, TouchpadConnectedEventWithMultipleObservers) {
-  auto fake_connected_event = mojom::TouchpadConnectedEvent::New();
-  fake_connected_event->max_x = 1;
-  fake_connected_event->max_y = 2;
-  fake_connected_event->buttons = {mojom::InputTouchButton::kLeft};
+  mojom::TouchpadConnectedEvent fake_connected_event;
+  fake_connected_event.max_x = 1;
+  fake_connected_event.max_y = 2;
+  fake_connected_event.buttons = {mojom::InputTouchButton::kLeft};
 
-  auto second_event_observer = CreateAndAddMockObserver();
+  EventObserverTestFuture event_observer, event_observer2;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+  AddEventObserver(event_observer2.BindNewPendingRemote());
 
-  base::test::TestFuture<void> future;
-  mojom::EventInfoPtr recv_info_1, recv_info_2;
-  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
-      .WillOnce(DoAll(SaveMojomArg<0>(&recv_info_1),
-                      SaveMojomArg<0>(&recv_info_2),
-                      base::test::RunOnceClosure(future.GetCallback())));
+  EmitTouchpadConnectedEvent(fake_connected_event.Clone());
 
-  EmitTouchpadConnectedEvent(fake_connected_event);
+  auto check_result = [&fake_connected_event](mojom::EventInfoPtr event) {
+    ASSERT_TRUE(event->is_touchpad_event_info());
+    const auto& touchpad_event_info = event->get_touchpad_event_info();
+    ASSERT_TRUE(touchpad_event_info->is_connected_event());
+    EXPECT_EQ(fake_connected_event,
+              *touchpad_event_info->get_connected_event());
+  };
 
-  EXPECT_TRUE(future.Wait());
-  ASSERT_TRUE(recv_info_1->is_touchpad_event_info());
-  const auto& touchpad_event_info_1 = recv_info_1->get_touchpad_event_info();
-  ASSERT_TRUE(touchpad_event_info_1->is_connected_event());
-  EXPECT_EQ(fake_connected_event, touchpad_event_info_1->get_connected_event());
-
-  ASSERT_TRUE(recv_info_2->is_touchpad_event_info());
-  const auto& touchpad_event_info_2 = recv_info_2->get_touchpad_event_info();
-  ASSERT_TRUE(touchpad_event_info_2->is_connected_event());
-  EXPECT_EQ(fake_connected_event, touchpad_event_info_2->get_connected_event());
+  check_result(event_observer.WaitForEvent());
+  check_result(event_observer2.WaitForEvent());
 }
 
 // Test that process control is reset when delegate observer disconnects.
 TEST_F(TouchpadEventsImplTest,
        ProcessControlResetWhenDelegateObserverDisconnects) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
   process_control_.receiver().FlushForTesting();
   EXPECT_TRUE(process_control_.IsConnected());
 
@@ -200,10 +164,13 @@ TEST_F(TouchpadEventsImplTest,
 
 // Test that process control is reset when there is no event observer.
 TEST_F(TouchpadEventsImplTest, ProcessControlResetWhenNoEventObserver) {
+  EventObserverTestFuture event_observer;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
   process_control_.receiver().FlushForTesting();
   EXPECT_TRUE(process_control_.IsConnected());
 
-  ResetEventObserver();
+  event_observer.Reset();
 
   process_control_.receiver().FlushForTesting();
   EXPECT_FALSE(process_control_.IsConnected());
