@@ -69,7 +69,7 @@ void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
                    << ifaces_iter.GetId();
         continue;
       }
-      if (iface < 0 || iface >= NL80211_IFTYPE_MAX) {
+      if (iface < 0 || iface > NL80211_IFTYPE_MAX) {
         LOG(ERROR) << "Invalid iface type: " << iface;
         continue;
       }
