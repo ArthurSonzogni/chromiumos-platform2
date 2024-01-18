@@ -45,11 +45,9 @@ class FloatingPointRoutineTestBase : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunFloatingPoint(_, _, _))
         .WillRepeatedly(
-            [=, this](
-                base::TimeDelta exec_duration,
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver,
-                Executor::RunFloatingPointCallback callback) {
+            [=, this](base::TimeDelta exec_duration,
+                      mojo::PendingReceiver<mojom::ProcessControl> receiver,
+                      Executor::RunFloatingPointCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_exec_duration_ = exec_duration;
               received_callback_ = std::move(callback);

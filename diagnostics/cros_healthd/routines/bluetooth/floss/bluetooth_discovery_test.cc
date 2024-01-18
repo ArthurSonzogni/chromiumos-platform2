@@ -95,8 +95,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
   void SetupStartBtmonCall() {
     EXPECT_CALL(*mock_executor(), StartBtmon(kDefaultHciInterface, _))
         .WillOnce(WithArg<1>(
-            [&](mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) {
+            [&](mojo::PendingReceiver<mojom::ProcessControl> receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
             }));
   }

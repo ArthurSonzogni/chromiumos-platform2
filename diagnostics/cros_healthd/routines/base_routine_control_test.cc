@@ -92,12 +92,10 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
     BaseRoutineControl::RaiseException(reason);
   }
 
-  mojo::Receiver<ash::cros_healthd::mojom::RoutineControl>* receiver() {
-    return &receiver_;
-  }
+  mojo::Receiver<mojom::RoutineControl>* receiver() { return &receiver_; }
 
  private:
-  mojo::Receiver<ash::cros_healthd::mojom::RoutineControl> receiver_{this};
+  mojo::Receiver<mojom::RoutineControl> receiver_{this};
 };
 
 namespace {
@@ -109,16 +107,12 @@ using ::testing::WithArg;
 
 class MockObserver : public mojom::RoutineObserver {
  public:
-  explicit MockObserver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineObserver> receiver)
+  explicit MockObserver(mojo::PendingReceiver<mojom::RoutineObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {}
-  MOCK_METHOD(void,
-              OnRoutineStateChange,
-              (ash::cros_healthd::mojom::RoutineStatePtr),
-              (override));
+  MOCK_METHOD(void, OnRoutineStateChange, (mojom::RoutineStatePtr), (override));
 
  private:
-  const mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_;
+  const mojo::Receiver<mojom::RoutineObserver> receiver_;
 };
 
 class BaseRoutineControlTest : public testing::Test {
@@ -248,8 +242,7 @@ TEST_F(BaseRoutineControlTest, EnterRunningState) {
 TEST_F(BaseRoutineControlTest, EnterRunningStateFromWaiting) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
-  rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                        kWaitingToBeScheduled,
+  rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   rc.SetRunningImpl();
   rc.GetState(base::BindOnce(
@@ -287,8 +280,7 @@ TEST_F(BaseRoutineControlTest, EnterWaitingStateFromRunning) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
 
-  rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                        kWaitingToBeScheduled,
+  rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   rc.GetState(base::BindOnce(
       &ExpectOutput, 0,
@@ -300,9 +292,8 @@ TEST_F(BaseRoutineControlTest, EnterWaitingStateFromRunning) {
 TEST_F(BaseRoutineControlTest, CannotEnterWaitingStateFromInitialized) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   EXPECT_DEATH_IF_SUPPORTED(
-      rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                            kWaitingToBeScheduled,
-                        ""),
+      rc.SetWaitingImpl(
+          mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled, ""),
       "");
 }
 
@@ -312,9 +303,8 @@ TEST_F(BaseRoutineControlTest, CannotEnterWaitingStateFromFinished) {
   rc.Start();
   rc.SetFinishedImpl(true, nullptr);
   EXPECT_DEATH_IF_SUPPORTED(
-      rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                            kWaitingToBeScheduled,
-                        ""),
+      rc.SetWaitingImpl(
+          mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled, ""),
       "");
 }
 
@@ -323,13 +313,11 @@ TEST_F(BaseRoutineControlTest, CannotEnterWaitingStateFromWaiting) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
 
-  rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                        kWaitingToBeScheduled,
+  rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   EXPECT_DEATH_IF_SUPPORTED(
-      rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                            kWaitingToBeScheduled,
-                        ""),
+      rc.SetWaitingImpl(
+          mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled, ""),
       "");
 }
 
@@ -356,8 +344,7 @@ TEST_F(BaseRoutineControlTest, CannotEnterFinishedStateFromWaiting) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
 
-  rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                        kWaitingToBeScheduled,
+  rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   EXPECT_DEATH_IF_SUPPORTED(rc.SetFinishedImpl(true, nullptr), "");
 }
@@ -379,29 +366,23 @@ TEST_F(BaseRoutineControlTest, NotifyObserver) {
   rc.SetObserver(std::move(observer_remote));
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
       .Times(AtLeast(1))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_initialized());
-          }))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_running());
-          }))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_waiting());
-          }))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_running());
-          }))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_finished());
-          }));
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_initialized());
+      }))
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_running());
+      }))
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_waiting());
+      }))
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_running());
+      }))
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_finished());
+      }));
   rc.Start();
-  rc.SetWaitingImpl(ash::cros_healthd::mojom::RoutineStateWaiting::Reason::
-                        kWaitingToBeScheduled,
+  rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   rc.SetRunningImpl();
   rc.SetFinishedImpl(true, nullptr);
@@ -414,10 +395,9 @@ TEST_F(BaseRoutineControlTest, SetObserverSendsUpdateImmediately) {
       observer_remote.InitWithNewPipeAndPassReceiver());
 
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
-      .WillOnce(
-          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
-            EXPECT_TRUE(state->state_union->is_initialized());
-          }));
+      .WillOnce(WithArg<0>([=](mojom::RoutineStatePtr state) {
+        EXPECT_TRUE(state->state_union->is_initialized());
+      }));
 
   rc.SetObserver(std::move(observer_remote));
   rc.FlushObserverForTesting();

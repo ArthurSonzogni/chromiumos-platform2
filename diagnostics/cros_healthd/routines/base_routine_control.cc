@@ -55,7 +55,7 @@ void BaseRoutineControl::SetOnExceptionCallback(
 }
 
 void BaseRoutineControl::SetObserver(
-    mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer) {
+    mojo::PendingRemote<mojom::RoutineObserver> observer) {
   observer_.Bind(std::move(observer));
   NotifyObserver();
 }

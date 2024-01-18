@@ -19,14 +19,16 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 class NetworkFetcherTest : public testing::Test {
  protected:
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
   }
 
-  ash::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfoSync() {
-    base::test::TestFuture<ash::cros_healthd::mojom::NetworkResultPtr> future;
+  mojom::NetworkResultPtr FetchNetworkInfoSync() {
+    base::test::TestFuture<mojom::NetworkResultPtr> future;
     FetchNetworkInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
@@ -49,8 +51,7 @@ TEST_F(NetworkFetcherTest, NoRemote) {
   ResetNetworkHealthService();
   auto result = FetchNetworkInfoSync();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            ash::cros_healthd::mojom::ErrorType::kServiceUnavailable);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);
 }
 
 // Test that if the remote is bound, the NetworkHealthState is returned.

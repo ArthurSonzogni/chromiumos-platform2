@@ -68,7 +68,7 @@ BluetoothScanningRoutine::CreateResult ReturnIfSupported(
 // static
 void BluetoothScanningRoutine::Create(
     Context* context,
-    const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg,
+    const mojom::BluetoothScanningRoutineArgumentPtr& arg,
     CreateCallback callback) {
   CHECK(!arg.is_null());
   if (arg->exec_duration && !arg->exec_duration->is_positive()) {

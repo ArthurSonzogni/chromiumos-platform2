@@ -207,8 +207,7 @@ std::optional<std::string> Convert(mojom::DiskReadTypeEnum disk_read_type) {
 }
 
 std::optional<std::vector<std::string>> GenerateFioCommand(
-    const base::FilePath& fio_path,
-    ash::cros_healthd::mojom::FioJobArgumentPtr argument) {
+    const base::FilePath& fio_path, mojom::FioJobArgumentPtr argument) {
   switch (argument->which()) {
     case mojom::FioJobArgument::Tag::kPrepare:
       return std::vector<std::string>{
@@ -541,7 +540,7 @@ void Executor::SetLedColor(mojom::LedName name,
   delegate_ptr->StartAsync();
 }
 
-void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
+void Executor::ResetLedColor(mojom::LedName name,
                              ResetLedColorCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kLed,
@@ -616,7 +615,7 @@ void Executor::RunStressAppTest(
     uint32_t test_mem_mib,
     uint32_t test_seconds,
     mojom::StressAppTestType test_type,
-    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
+    mojo::PendingReceiver<mojom::ProcessControl> receiver) {
   // Run with |test_mem_mib| memory and run for |test_seconds| seconds.
   std::vector<std::string> command = {path::kStressAppTestBinary,
                                       "-W",
@@ -731,8 +730,8 @@ void Executor::RunFio(mojom::FioJobArgumentPtr argument,
 }
 
 void Executor::RunFioWithDlcRoot(
-    ash::cros_healthd::mojom::FioJobArgumentPtr argument,
-    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
+    mojom::FioJobArgumentPtr argument,
+    mojo::PendingReceiver<mojom::ProcessControl> receiver,
     std::optional<base::FilePath> dlc_root_path) {
   if (!dlc_root_path.has_value()) {
     receiver.reset();
@@ -863,7 +862,7 @@ void Executor::RunFloatingPoint(
 
 void Executor::StartBtmon(
     int32_t hci_interface,
-    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
+    mojo::PendingReceiver<mojom::ProcessControl> receiver) {
   std::vector<std::string> command = {path::kBtmonBinary, "--index",
                                       base::NumberToString(hci_interface), "-w",
                                       path::kBtmonLogFile};
@@ -938,7 +937,7 @@ void Executor::OnRunAndWaitProcessFinished(
 
 void Executor::RunLongRunningProcess(
     std::unique_ptr<SandboxedProcess> process,
-    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
+    mojo::PendingReceiver<mojom::ProcessControl> receiver,
     bool combine_stdout_and_stderr) {
   auto controller =
       std::make_unique<ProcessControl>(std::move(process), process_reaper_);

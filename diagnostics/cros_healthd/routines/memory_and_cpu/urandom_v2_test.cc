@@ -42,11 +42,9 @@ class UrandomRoutineV2Test : public testing::Test {
   void SetUp() {
     EXPECT_CALL(*mock_context_.mock_executor(), RunUrandom(_, _, _))
         .WillRepeatedly(
-            [=, this](
-                base::TimeDelta exec_duration,
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver,
-                Executor::RunUrandomCallback callback) {
+            [=, this](base::TimeDelta exec_duration,
+                      mojo::PendingReceiver<mojom::ProcessControl> receiver,
+                      Executor::RunUrandomCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_exec_duration_ = exec_duration;
               received_callback_ = std::move(callback);

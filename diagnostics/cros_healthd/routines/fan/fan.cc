@@ -51,8 +51,7 @@ constexpr auto kUnsupportedModels = base::MakeFixedFlatSet<std::string_view>({
 
 }  // namespace
 
-base::expected<std::unique_ptr<BaseRoutineControl>,
-               ash::cros_healthd::mojom::SupportStatusPtr>
+base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
 FanRoutine::Create(Context* context, const mojom::FanRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
 

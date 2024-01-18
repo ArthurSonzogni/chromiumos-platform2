@@ -46,11 +46,9 @@ class PrimeSearchRoutineTestBase : public BaseFileTest {
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunPrimeSearch(_, _, _, _))
         .WillRepeatedly(
-            [=, this](
-                base::TimeDelta exec_duration, uint64_t max_num,
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver,
-                Executor::RunPrimeSearchCallback callback) {
+            [=, this](base::TimeDelta exec_duration, uint64_t max_num,
+                      mojo::PendingReceiver<mojom::ProcessControl> receiver,
+                      Executor::RunPrimeSearchCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_exec_duration_ = exec_duration;
               received_max_num_ = max_num;

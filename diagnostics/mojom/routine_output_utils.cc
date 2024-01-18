@@ -127,7 +127,7 @@ base::Value::Dict ConvertToValue(
 }
 
 base::Value::Dict ConvertToValue(
-    const ash::cros_healthd::mojom::BluetoothPairingRoutineDetailPtr& detail) {
+    const mojom::BluetoothPairingRoutineDetailPtr& detail) {
   base::Value::Dict output;
 
   if (detail->pairing_peripheral) {
@@ -237,8 +237,7 @@ base::Value::Dict ConvertToValue(const mojom::FanRoutineDetailPtr& detail) {
 }
 
 base::Value::Dict ConvertToValue(
-    const ash::cros_healthd::mojom::CameraAvailabilityRoutineDetailPtr&
-        detail) {
+    const mojom::CameraAvailabilityRoutineDetailPtr& detail) {
   base::Value::Dict output;
 
   output.Set("camera_service_available_check",

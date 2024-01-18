@@ -136,8 +136,7 @@ bool IsInternalTouchpad(const brillo::UdevDevice& dev) {
 }
 }  // namespace
 
-base::expected<std::vector<ash::cros_healthd::mojom::TouchpadDevicePtr>,
-               std::string>
+base::expected<std::vector<mojom::TouchpadDevicePtr>, std::string>
 PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
                         std::string root_path) {
   if (udev == nullptr)

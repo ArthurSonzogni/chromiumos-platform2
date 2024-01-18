@@ -13,6 +13,12 @@
 
 namespace diagnostics {
 
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
+
 BaseRoutineControl::ExceptionCallback UnexpectedRoutineExceptionCallback() {
   return base::BindOnce([](uint32_t error, const std::string& reason) {
     CHECK(false) << "An unexpected routine exception has occurred; error="
@@ -24,8 +30,7 @@ FakeRoutineObserver::FakeRoutineObserver() = default;
 
 FakeRoutineObserver::~FakeRoutineObserver() = default;
 
-void FakeRoutineObserver::OnRoutineStateChange(
-    ash::cros_healthd::mojom::RoutineStatePtr state) {
+void FakeRoutineObserver::OnRoutineStateChange(mojom::RoutineStatePtr state) {
   last_routine_state_ = std::move(state);
 }
 

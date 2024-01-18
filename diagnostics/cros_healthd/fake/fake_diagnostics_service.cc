@@ -84,7 +84,7 @@ void FakeDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
 }
 
 void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
-    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
+    mojom::NullableUint32Ptr wear_level_threshold,
     RunNvmeWearLevelRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

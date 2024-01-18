@@ -352,12 +352,10 @@ bool DiagActions::ActionRunSignalStrengthRoutine() {
 bool DiagActions::ActionRunSmartctlCheckRoutine(
     const std::optional<uint32_t>& percentage_used_threshold) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  ash::cros_healthd::mojom::NullableUint32Ptr
-      percentage_used_threshold_parameter;
+  mojom::NullableUint32Ptr percentage_used_threshold_parameter;
   if (percentage_used_threshold.has_value()) {
     percentage_used_threshold_parameter =
-        ash::cros_healthd::mojom::NullableUint32::New(
-            percentage_used_threshold.value());
+        mojom::NullableUint32::New(percentage_used_threshold.value());
   }
   cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(
       std::move(percentage_used_threshold_parameter), waiter.CreateCallback());

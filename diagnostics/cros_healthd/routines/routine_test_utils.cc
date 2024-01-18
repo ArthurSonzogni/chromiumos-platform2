@@ -12,10 +12,15 @@
 
 namespace diagnostics {
 
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
+
 void VerifyInteractiveUpdate(
-    const ash::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
-    ash::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
-        expected_user_message) {
+    const mojom::RoutineUpdateUnionPtr& update_union,
+    mojom::DiagnosticRoutineUserMessageEnum expected_user_message) {
   ASSERT_FALSE(update_union.is_null());
   ASSERT_TRUE(update_union->is_interactive_update());
   const auto& interactive_update = update_union->get_interactive_update();
@@ -23,8 +28,8 @@ void VerifyInteractiveUpdate(
 }
 
 void VerifyNonInteractiveUpdate(
-    const ash::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
-    ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum expected_status,
+    const mojom::RoutineUpdateUnionPtr& update_union,
+    mojom::DiagnosticRoutineStatusEnum expected_status,
     const std::string& expected_status_message) {
   ASSERT_FALSE(update_union.is_null());
   ASSERT_TRUE(update_union->is_noninteractive_update());

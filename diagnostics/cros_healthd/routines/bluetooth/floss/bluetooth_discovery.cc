@@ -250,8 +250,7 @@ void BluetoothDiscoveryRoutine::ReadBtmonLog(int retry_count) {
 }
 
 void BluetoothDiscoveryRoutine::EnsureBtmonReady(
-    int retry_count,
-    ash::cros_healthd::mojom::ExecutedProcessResultPtr result) {
+    int retry_count, mojom::ExecutedProcessResultPtr result) {
   if (!HandleReadBtmonLogResponse(result)) {
     SetResultAndStop(base::unexpected("Failed to check btmon log file."));
     return;

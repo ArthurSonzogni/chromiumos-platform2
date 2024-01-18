@@ -429,7 +429,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
     EXPECT_TRUE(future.Wait());
     EXPECT_TRUE(recv_info->is_external_display_event_info());
     EXPECT_EQ(recv_info->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
   }
@@ -459,9 +459,8 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
     TriggerExternalDisplayEvent();
     EXPECT_TRUE(future.Wait());
     EXPECT_TRUE(recv_info->is_external_display_event_info());
-    EXPECT_EQ(
-        recv_info->get_external_display_event_info()->state,
-        ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kRemove);
+    EXPECT_EQ(recv_info->get_external_display_event_info()->state,
+              mojom::ExternalDisplayEventInfo::State::kRemove);
     EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
   }
@@ -512,7 +511,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     EXPECT_TRUE(future.Wait());
     EXPECT_TRUE(recv_info->is_external_display_event_info());
     EXPECT_EQ(recv_info->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display2"));
   }
@@ -548,13 +547,13 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
 
     EXPECT_TRUE(recv_info_1->is_external_display_event_info());
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
 
     EXPECT_TRUE(recv_info_2->is_external_display_event_info());
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display2"));
   }
@@ -606,12 +605,12 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
     EXPECT_TRUE(future_2.Wait());
     EXPECT_TRUE(recv_info_1->is_external_display_event_info());
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
     EXPECT_TRUE(recv_info_2->is_external_display_event_info());
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
-              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+              mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
   }

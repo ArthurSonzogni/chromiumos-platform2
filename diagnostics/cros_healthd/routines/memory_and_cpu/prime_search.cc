@@ -27,8 +27,7 @@ const uint64_t kPrimeSearchDefaultMaxNum = 1000000;
 }  // namespace
 
 PrimeSearchRoutine::PrimeSearchRoutine(
-    Context* context,
-    const ash::cros_healthd::mojom::PrimeSearchRoutineArgumentPtr& arg)
+    Context* context, const mojom::PrimeSearchRoutineArgumentPtr& arg)
     : context_(context) {
   CHECK(context_);
 

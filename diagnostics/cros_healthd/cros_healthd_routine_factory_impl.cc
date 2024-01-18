@@ -48,6 +48,11 @@
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
 
 CrosHealthdRoutineFactoryImpl::CrosHealthdRoutineFactoryImpl(Context* context)
     : context_(context) {
@@ -77,7 +82,7 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    ash::cros_healthd::mojom::NullableUint32Ptr percentage_used_threshold) {
+    mojom::NullableUint32Ptr percentage_used_threshold) {
   CHECK(debugd_proxy);
   return std::make_unique<SmartctlCheckRoutine>(
       debugd_proxy,
@@ -88,7 +93,7 @@ CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
-    ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
 }
@@ -96,7 +101,7 @@ CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
+    mojom::NullableUint32Ptr wear_level_threshold) {
   CHECK(debugd_proxy);
   std::optional<uint32_t> threshold;
   context_->ground_truth()->PrepareRoutineNvmeWearLevel(threshold);
@@ -109,12 +114,11 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
+    mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
   CHECK(debugd_proxy);
 
   NvmeSelfTestRoutine::SelfTestType type =
-      nvme_self_test_type ==
-              ash::cros_healthd::mojom::NvmeSelfTestTypeEnum::kShortSelfTest
+      nvme_self_test_type == mojom::NvmeSelfTestTypeEnum::kShortSelfTest
           ? NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest
           : NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest;
 

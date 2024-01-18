@@ -147,8 +147,7 @@ mojo::ScopedHandle ConvertRoutineDetailToMojoHandle(
 
 }  // namespace
 
-RoutineAdapter::RoutineAdapter(
-    ash::cros_healthd::mojom::RoutineArgument::Tag routine_type)
+RoutineAdapter::RoutineAdapter(mojom::RoutineArgument::Tag routine_type)
     : routine_type_{routine_type} {
   error_occured_ = false;
   routine_cancelled_ = false;
@@ -179,8 +178,8 @@ void RoutineAdapter::SetupAdapter(
                                  observer_receiver_.BindNewPipeAndPassRemote());
 }
 
-std::tuple<mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>,
-           mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>>
+std::tuple<mojo::PendingReceiver<mojom::RoutineControl>,
+           mojo::PendingRemote<mojom::RoutineObserver>>
 RoutineAdapter::SetupRoutineControlAndObserver() {
   mojo::PendingReceiver<mojom::RoutineControl> pending_receiver =
       routine_control_.BindNewPipeAndPassReceiver();
@@ -219,7 +218,7 @@ mojom::DiagnosticRoutineStatusEnum RoutineAdapter::GetStatus() {
 }
 
 void RoutineAdapter::NotifyStatusChanged(
-    ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status) {
+    mojom::DiagnosticRoutineStatusEnum status) {
   bool is_status_changed = last_status_ != status;
   last_status_ = status;
 
@@ -235,8 +234,8 @@ void RoutineAdapter::RegisterStatusChangedCallback(
   status_changed_callbacks_.push_back(std::move(callback));
 }
 
-void RoutineAdapter::PopulateStatusUpdate(
-    ash::cros_healthd::mojom::RoutineUpdate* response, bool include_output) {
+void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
+                                          bool include_output) {
   CHECK(response);
 
   if (error_occured_) {

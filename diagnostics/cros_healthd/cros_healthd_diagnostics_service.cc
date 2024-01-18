@@ -96,7 +96,7 @@ void CheckFlossEnabled(
 CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
     Context* context,
     CrosHealthdRoutineFactory* routine_factory,
-    ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service)
+    mojom::CrosHealthdRoutinesService* routine_service)
     : context_(context),
       routine_factory_(routine_factory),
       routine_service_(routine_service) {
@@ -354,15 +354,14 @@ void CrosHealthdDiagnosticsService::RunNvmeSelfTestRoutine(
 
 void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
-  RunRoutine(
-      routine_factory_->MakeNvmeWearLevelRoutine(
-          context_->debugd_proxy(),
-          ash::cros_healthd::mojom::NullableUint32::New(wear_level_threshold)),
-      mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
+  RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
+                 context_->debugd_proxy(),
+                 mojom::NullableUint32::New(wear_level_threshold)),
+             mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunNvmeWearLevelRoutine(
-    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
+    mojom::NullableUint32Ptr wear_level_threshold,
     RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
                  context_->debugd_proxy(), std::move(wear_level_threshold)),
@@ -574,7 +573,7 @@ void CrosHealthdDiagnosticsService::RunBluetoothScanningRoutine(
 
 void CrosHealthdDiagnosticsService::
     RunBluetoothScanningRoutineBasedOnFlossEnabled(
-        ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+        mojom::NullableUint32Ptr length_seconds,
         RunBluetoothScanningRoutineCallback callback,
         brillo::Error* err,
         bool floss_enabled) {
@@ -687,7 +686,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 }
 
 void CrosHealthdDiagnosticsService::RunRoutineWithAdapter(
-    ash::cros_healthd::mojom::RoutineArgumentPtr argument,
+    mojom::RoutineArgumentPtr argument,
     mojom::DiagnosticRoutineEnum routine_enum,
     base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
   auto routine_v2 = std::make_unique<RoutineAdapter>(argument->which());

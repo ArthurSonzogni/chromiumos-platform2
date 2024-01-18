@@ -234,7 +234,7 @@ FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
+    mojom::NullableUint32Ptr wear_level_threshold) {
   CHECK(debugd_proxy);
   return std::move(next_routine_);
 }

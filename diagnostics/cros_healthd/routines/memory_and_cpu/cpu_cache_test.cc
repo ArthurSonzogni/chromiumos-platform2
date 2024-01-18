@@ -59,10 +59,8 @@ class CpuCacheRoutineTestBase : public BaseFileTest {
     EXPECT_CALL(*mock_context_.mock_executor(),
                 RunStressAppTest(_, _, mojom::StressAppTestType::kCpuCache, _))
         .WillRepeatedly(WithArgs<1, 3>(
-            [=, this](
-                uint32_t test_seconds,
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) {
+            [=, this](uint32_t test_seconds,
+                      mojo::PendingReceiver<mojom::ProcessControl> receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_test_seconds_ = test_seconds;
             }));

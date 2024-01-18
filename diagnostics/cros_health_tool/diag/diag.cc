@@ -77,7 +77,7 @@ mojom::LedColor LedColorFromString(const std::string& str) {
 }
 
 int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
-  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+  mojo::Remote<mojom::CrosHealthdRoutinesService>
       cros_healthd_routines_service_;
   RequestMojoServiceWithDisconnectHandler(
       chromeos::mojo_services::kCrosHealthdRoutines,
@@ -91,7 +91,7 @@ int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
 }
 
 int CheckV2RoutineSupportStatus(mojom::RoutineArgumentPtr argument) {
-  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+  mojo::Remote<mojom::CrosHealthdRoutinesService>
       cros_healthd_routines_service_;
   RequestMojoServiceWithDisconnectHandler(
       chromeos::mojo_services::kCrosHealthdRoutines,

@@ -65,9 +65,7 @@ class DiskReadRoutineTest : public testing::Test {
   void SetRunFioPrepareResponse() {
     EXPECT_CALL(*mock_executor(), RunFio(_, _))
         .WillOnce(WithArg<1>(
-            [=, this](
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) {
+            [=, this](mojo::PendingReceiver<mojom::ProcessControl> receiver) {
               fake_process_control_prepare_.BindReceiver(std::move(receiver));
             }));
   }
@@ -75,9 +73,7 @@ class DiskReadRoutineTest : public testing::Test {
   void SetRunFioReadResponse() {
     EXPECT_CALL(*mock_executor(), RunFio(_, _))
         .WillOnce(WithArg<1>(
-            [=, this](
-                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-                    receiver) {
+            [=, this](mojo::PendingReceiver<mojom::ProcessControl> receiver) {
               fake_process_control_read_.BindReceiver(std::move(receiver));
             }));
   }
