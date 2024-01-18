@@ -7,12 +7,14 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
@@ -50,7 +52,7 @@ bool OpenVPNManagementServer::Start(
     return true;
   }
 
-  auto socket =
+  std::unique_ptr<net_base::Socket> socket =
       socket_factory_->Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
   if (!socket) {
     PLOG(ERROR) << "Unable to create management server socket.";
@@ -72,15 +74,8 @@ bool OpenVPNManagementServer::Start(
 
   SLOG(2) << "Listening socket: " << socket;
   socket_ = std::move(socket);
-
-  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      socket_->Get(),
-      base::BindRepeating(&OpenVPNManagementServer::OnAcceptReady,
-                          base::Unretained(this)));
-  if (!socket_watcher_) {
-    LOG(ERROR) << "Failed to watch on listening socket.";
-    return false;
-  }
+  socket_->SetReadableCallback(base::BindRepeating(
+      &OpenVPNManagementServer::OnAcceptReady, base::Unretained(this)));
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
@@ -105,9 +100,7 @@ void OpenVPNManagementServer::Stop() {
   }
   state_.clear();
 
-  connected_socket_watcher_.reset();
   connected_socket_.reset();
-  socket_watcher_.reset();
   socket_.reset();
 }
 
@@ -135,22 +128,16 @@ void OpenVPNManagementServer::Restart() {
 void OpenVPNManagementServer::OnAcceptReady() {
   SLOG(2) << __func__;
 
-  connected_socket_watcher_.reset();
   connected_socket_ = socket_->Accept(nullptr, nullptr);
   if (!connected_socket_) {
     PLOG(ERROR) << "Accept on listen socket failed.";
     return;
   }
-  socket_watcher_.reset();
+  // Reset the callback to avoid accepting another connection.
+  socket_->UnsetReadableCallback();
 
-  connected_socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      connected_socket_->Get(),
-      base::BindRepeating(&OpenVPNManagementServer::OnInputReady,
-                          base::Unretained(this)));
-  if (!connected_socket_watcher_) {
-    LOG(ERROR) << "Failed on watching the connected socket.";
-    return;
-  }
+  connected_socket_->SetReadableCallback(base::BindRepeating(
+      &OpenVPNManagementServer::OnInputReady, base::Unretained(this)));
   SendState("on");
 }
 

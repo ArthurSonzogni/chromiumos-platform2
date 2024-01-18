@@ -71,6 +71,10 @@ void Socket::SetReadableCallback(base::RepeatingClosure callback) {
       base::FileDescriptorWatcher::WatchReadable(Get(), std::move(callback));
 }
 
+void Socket::UnsetReadableCallback() {
+  watcher_ = nullptr;
+}
+
 // static
 int Socket::Release(std::unique_ptr<Socket> socket) {
   if (socket == nullptr) {

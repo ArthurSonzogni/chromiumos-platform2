@@ -67,18 +67,26 @@ TEST(Socket, SetReadableCallback) {
       Socket::CreateFromFd(base::ScopedFD(sv[0]));
   std::unique_ptr<Socket> read_socket =
       Socket::CreateFromFd(base::ScopedFD(sv[1]));
-
   MockCallback callback;
+
+  // The callback should be called once after write_socket sends data.
   EXPECT_CALL(callback, OnSocketReadable()).WillOnce([&read_socket, msg]() {
     std::vector<uint8_t> buf;
     read_socket->RecvMessage(&buf);
     EXPECT_EQ(byte_utils::ByteStringFromBytes(buf), msg);
   });
-
   read_socket->SetReadableCallback(base::BindRepeating(
       &MockCallback::OnSocketReadable, base::Unretained(&callback)));
   write_socket->Send(msg);
 
+  task_environment.RunUntilIdle();
+  testing::Mock::VerifyAndClearExpectations(&callback);
+
+  // After unsetting the callback, the callback should not be triggered.
+  EXPECT_CALL(callback, OnSocketReadable()).Times(0);
+  read_socket->UnsetReadableCallback();
+
+  write_socket->Send(msg);
   task_environment.RunUntilIdle();
 }
 

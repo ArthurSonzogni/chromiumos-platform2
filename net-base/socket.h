@@ -39,8 +39,10 @@ class BRILLO_EXPORT Socket {
   // Returns the raw socket file descriptor.
   int Get() const;
 
-  // Sets the callback which will be called when the socket is ready to be read.
+  // Sets/unsets the callback which will be called when the socket is ready to
+  // be read.
   void SetReadableCallback(base::RepeatingClosure callback);
+  void UnsetReadableCallback();
 
   // Releases and returns the socket file descriptor, allowing the socket to
   // remain open as the Socket is destroyed. After the call, |socket| will be

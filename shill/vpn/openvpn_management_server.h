@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/containers/span.h>
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
 
@@ -148,15 +147,7 @@ class OpenVPNManagementServer {
   std::unique_ptr<net_base::SocketFactory> socket_factory_ =
       std::make_unique<net_base::SocketFactory>();
   std::unique_ptr<net_base::Socket> socket_;
-  // Watcher to wait for |socket_| ready to accept a connection. It should be
-  // destructed prior than |socket_|.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
-
   std::unique_ptr<net_base::Socket> connected_socket_;
-  // Watcher to wait for |connected_socket_| ready to read. It should be
-  // destructed prior than |connected_socket_|.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller>
-      connected_socket_watcher_;
 
   std::string state_;
 
