@@ -26,6 +26,7 @@ class IPConfigAdaptorInterface;
 
 class IPConfig {
  public:
+  // TODO(b/307855773): Mark it private after Properties is set private.
   struct Route {
     Route() {}
     Route(const std::string& host_in,

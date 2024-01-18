@@ -15,6 +15,8 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
@@ -108,7 +110,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, ConnectAsync);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetCommandLineArgs);
-  FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitCertificateVerifyOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitClientAuthOptions);
@@ -129,8 +130,8 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseNetworkConfig);
-  FRIEND_TEST(OpenVPNDriverTest, ParseIPv4RouteOption);
-  FRIEND_TEST(OpenVPNDriverTest, ParseIPv6RouteOption);
+  FRIEND_TEST(OpenVPNDriverTest, ParseIPv4RouteOptions);
+  FRIEND_TEST(OpenVPNDriverTest, ParseIPv6RouteOptions);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, WriteConfigFile);
@@ -138,7 +139,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // The map is a sorted container that allows us to iterate through the options
   // in order.
   using ForeignOptions = std::map<int, std::string>;
-  using RouteOptions = std::map<int, IPConfig::Route>;
 
   static constexpr char kDefaultCACertificates[] =
       "/etc/ssl/certs/ca-certificates.crt";
@@ -156,18 +156,13 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
       const ForeignOptions& options,
       std::vector<std::string>* domain_search,
       std::vector<net_base::IPAddress>* dns_servers);
-  static IPConfig::Route* GetRouteOptionEntry(const std::string& prefix,
-                                              const std::string& key,
-                                              RouteOptions* routes);
 
-  // Tries parsing |key| and |value| as a route option and updates the
-  // corresponding entry in |routes|. Returns whether the parsing succeeds.
-  static bool ParseIPv4RouteOption(const std::string& key,
-                                   const std::string& value,
-                                   RouteOptions* routes);
-  static bool ParseIPv6RouteOption(const std::string& key,
-                                   const std::string& value,
-                                   RouteOptions* routes);
+  // Parses |configuration| and returns a list of route CIDRs. Gateways are
+  // ignored because they are not used.
+  static std::vector<net_base::IPCIDR> ParseIPv4RouteOptions(
+      const std::map<std::string, std::string>& configuration);
+  static std::vector<net_base::IPCIDR> ParseIPv6RouteOptions(
+      const std::map<std::string, std::string>& configuration);
 
   // If |host| is in the "name:port" format, sets up |name| and |port|
   // appropriately and returns true. Otherwise, returns false.

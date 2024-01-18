@@ -6,15 +6,18 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <iterator>
 #include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/containers/fixed_flat_map.h>
+#include <base/containers/flat_map.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -57,9 +60,6 @@ constexpr char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
 constexpr char kOpenVPNIfconfigIPv6Local[] = "ifconfig_ipv6_local";
 constexpr char kOpenVPNIfconfigIPv6Netbits[] = "ifconfig_ipv6_netbits";
 constexpr char kOpenVPNRedirectGateway[] = "redirect_gateway";
-constexpr char kOpenVPNRouteOptionPrefix[] = "route_";
-constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
-constexpr char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 
 // Typically OpenVPN will set environment variables for IPv4 like:
@@ -80,11 +80,13 @@ constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 // Different from IPv4, for a route entry, there are only two variables for it
 // in IPv6, and the network variable will be a prefix string.
 
+constexpr std::string_view kOpenVPNRouteOptionPrefix = "route_";
+constexpr std::string_view kOpenVPNRouteIPv6OptionPrefix = "route_ipv6_";
+constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
+constexpr char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 constexpr char kOpenVPNRouteNetworkPrefix[] = "network_";
 constexpr char kOpenVPNRouteNetmaskPrefix[] = "netmask_";
 constexpr char kOpenVPNRouteGatewayPrefix[] = "gateway_";
-constexpr char kOpenVPNRouteIPv6NetworkPrefix[] = "ipv6_network_";
-constexpr char kOpenVPNRouteIPv6GatewayPrefix[] = "ipv6_gateway_";
 
 constexpr char kDefaultPKCS11Provider[] = "libchaps.so";
 
@@ -370,10 +372,8 @@ std::optional<net_base::NetworkConfig> OpenVPNDriver::ParseNetworkConfig(
   std::optional<int> ipv4_prefix = std::nullopt;
   std::optional<net_base::IPv4Address> ipv4_remote;
   bool ipv4_redirect_gateway = false;
-  RouteOptions ipv4_routes;
   std::optional<net_base::IPv6Address> ipv6_local;
   std::optional<int> ipv6_prefix = std::nullopt;
-  RouteOptions ipv6_routes;
 
   for (const auto& [key, value] : configuration) {
     SLOG(2) << "Processing: " << key << " -> " << value;
@@ -445,20 +445,10 @@ std::optional<net_base::NetworkConfig> OpenVPNDriver::ParseNetworkConfig(
       } else {
         LOG(ERROR) << "Ignored unexpected foreign option suffix: " << suffix;
       }
-    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteNetGateway) ||
-               base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteVPNGateway)) {
-      // These options are unused.  Catch them here so that they don't
-      // get passed to ParseRouteOption().
     } else if (base::StartsWith(key, kOpenVPNRouteOptionPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
-      const std::string trimmed_key =
-          key.substr(strlen(kOpenVPNRouteOptionPrefix));
-      // TODO(b/307855773): Migrate IPConfig::Route to std::pair<IPv4CIDR,
-      // IPv4Address>.
-      if (!ParseIPv4RouteOption(trimmed_key, value, &ipv4_routes) &&
-          !ParseIPv6RouteOption(trimmed_key, value, &ipv6_routes)) {
-        LOG(WARNING) << "Route option ignored: " << key;
-      }
+      // These options will be parsed later in |ParseIPv4RouteOptions| and
+      // |ParseIPv6RouteOptions|.
     } else {
       SLOG(2) << "Key ignored.";
     }
@@ -548,27 +538,17 @@ std::optional<net_base::NetworkConfig> OpenVPNDriver::ParseNetworkConfig(
           net_base::IPCIDR(network_config->ipv6_addresses[0].GetPrefixCIDR()));
     }
   }
-  // Add routes to |included_route_prefixes|. Ignore |route.gateway|. If it's
-  // wrong, it can cause the kernel to refuse to add the route. If it's correct,
-  // it has no effect anyway.
-  for (const auto& routes : {ipv4_routes, ipv6_routes}) {
-    for (const auto& route_map : routes) {
-      const IPConfig::Route& route = route_map.second;
-      if (route.host.empty() || route.gateway.empty()) {
-        LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
-        continue;
-      }
-      const std::optional<net_base::IPCIDR> route_item =
-          net_base::IPCIDR::CreateFromStringAndPrefix(route.host, route.prefix);
-      if (!route_item.has_value()) {
-        LOG(WARNING) << "Ignoring invalid route: " << route.host << "/"
-                     << route.prefix;
-        continue;
-      }
-      network_config->included_route_prefixes.push_back(*route_item);
-    }
-  }
 
+  // Parse IPv4 and IPv6 routes from |configuration|.
+  std::vector<net_base::IPCIDR> ipv4_routes =
+      ParseIPv4RouteOptions(configuration);
+  std::vector<net_base::IPCIDR> ipv6_routes =
+      ParseIPv6RouteOptions(configuration);
+  // Add routes to |included_route_prefixes|.
+  std::copy(ipv4_routes.begin(), ipv4_routes.end(),
+            std::back_inserter(network_config->included_route_prefixes));
+  std::copy(ipv6_routes.begin(), ipv6_routes.end(),
+            std::back_inserter(network_config->included_route_prefixes));
   return network_config;
 }
 
@@ -614,70 +594,165 @@ void OpenVPNDriver::ParseForeignOptions(
   }
 }
 
-// static
-IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(const std::string& prefix,
-                                                    const std::string& key,
-                                                    RouteOptions* routes) {
-  int order = 0;
-  if (!base::StartsWith(key, prefix, base::CompareCase::INSENSITIVE_ASCII) ||
-      !base::StringToInt(key.substr(prefix.size()), &order)) {
-    return nullptr;
+namespace {
+struct RouteOption {
+  std::string_view prefix;
+  int index;
+};
+
+// Tries to parse a key as a route option. If the key follow the format
+// {network,netmask,prefix}_<index>, then {network_,netmask_,prefix_} will be
+// returned as |prefix| and <index> will be returned as |index|. Otherwise
+// std::nullopt will be returned.
+std::optional<RouteOption> ParseKeyAsRouteOption(std::string_view key) {
+  RouteOption ret;
+  for (const auto& prefix :
+       {kOpenVPNRouteNetworkPrefix, kOpenVPNRouteNetmaskPrefix,
+        kOpenVPNRouteGatewayPrefix}) {
+    if (base::StartsWith(key, prefix, base::CompareCase::INSENSITIVE_ASCII)) {
+      ret.prefix = prefix;
+      break;
+    }
   }
-  return &(*routes)[order];
+  if (ret.prefix.empty() ||
+      !base::StringToInt(key.substr(ret.prefix.size()), &ret.index)) {
+    return std::nullopt;
+  }
+  return std::make_optional(ret);
 }
+}  // namespace
 
 // static
-bool OpenVPNDriver::ParseIPv4RouteOption(const std::string& key,
-                                         const std::string& value,
-                                         RouteOptions* routes) {
-  // IPv4 uses route_{network,netmask,gateway}_<index>
-  IPConfig::Route* route =
-      GetRouteOptionEntry(kOpenVPNRouteNetworkPrefix, key, routes);
-  if (route) {
-    route->host = value;
-    return true;
-  }
-  route = GetRouteOptionEntry(kOpenVPNRouteNetmaskPrefix, key, routes);
-  if (route) {
-    const auto netmask = net_base::IPv4Address::CreateFromString(value);
-    if (netmask) {
-      route->prefix = net_base::IPv4CIDR::GetPrefixLength(*netmask).value_or(0);
-    }
-    if (route->prefix == 0) {
-      LOG(WARNING) << "Failed to get prefix length from " << value;
-    }
-    return true;
-  }
-  route = GetRouteOptionEntry(kOpenVPNRouteGatewayPrefix, key, routes);
-  if (route) {
-    route->gateway = value;
-    return true;
-  }
-  return false;
-}
+std::vector<net_base::IPCIDR> OpenVPNDriver::ParseIPv4RouteOptions(
+    const std::map<std::string, std::string>& configuration) {
+  struct IPv4Route {
+    std::optional<net_base::IPv4Address> network;
+    int prefix_length = 0;
+    std::optional<net_base::IPv4Address> gateway;
+  };
 
-// static
-bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
-                                         const std::string& value,
-                                         RouteOptions* routes) {
-  // IPv6 uses route_ipv6_{network,gateway}_<index>
-  IPConfig::Route* route =
-      GetRouteOptionEntry(kOpenVPNRouteIPv6NetworkPrefix, key, routes);
-  if (route) {
-    auto cidr = net_base::IPCIDR::CreateFromCIDRString(value);
+  // Temporarily store the parsed routes here. The key is the route index.
+  base::flat_map<int, IPv4Route> routes;
+
+  for (const auto& [key, value] : configuration) {
+    // Keys for IPv4 routes start with route_ while those for IPv6 routes starts
+    // with route_ipv6_. As we are parsing IPv4 routes here, we need to drop
+    // those for IPv6 routes.
+    if (!base::StartsWith(key, kOpenVPNRouteOptionPrefix,
+                          base::CompareCase::INSENSITIVE_ASCII) ||
+        base::StartsWith(key, kOpenVPNRouteIPv6OptionPrefix,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      continue;
+    }
+    // These options are unused. Catch them here so that they don't get passed
+    // to ParseKeyAsRouteOption().
+    if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteNetGateway) ||
+        base::EqualsCaseInsensitiveASCII(key, kOpenVPNRouteVPNGateway)) {
+      continue;
+    }
+    // The format of keys for IPv4 routes is
+    // route_{network,netmask,gateway}_<index>.
+    std::optional<RouteOption> route_option =
+        ParseKeyAsRouteOption(key.substr(kOpenVPNRouteOptionPrefix.size()));
+    if (!route_option.has_value()) {
+      LOG(WARNING) << "Route option ignored: " << key;
+      continue;
+    }
+    const std::optional<net_base::IPv4Address> addr =
+        net_base::IPv4Address::CreateFromString(value);
+    if (!addr.has_value()) {
+      LOG(WARNING) << "Failed to get address from " << value
+                   << " for route option " << key;
+      continue;
+    }
+    IPv4Route& route = routes[route_option->index];
+    if (route_option->prefix == kOpenVPNRouteNetworkPrefix) {
+      route.network = addr;
+    } else if (route_option->prefix == kOpenVPNRouteNetmaskPrefix) {
+      route.prefix_length =
+          net_base::IPv4CIDR::GetPrefixLength(*addr).value_or(0);
+      if (route.prefix_length == 0) {
+        LOG(WARNING) << "Failed to get prefix length from " << value;
+      }
+    } else {
+      // route_option->prefix == kOpenVPNRouteGatewayPrefix.
+      route.gateway = addr;
+    }
+  }
+
+  // Build routes with the temporary |routes|.
+  std::vector<net_base::IPCIDR> ret;
+  for (const auto& [index, route] : routes) {
+    if (!route.network.has_value() || !route.gateway.has_value()) {
+      LOG(WARNING) << "Ignoring incomplete route: " << index;
+      continue;
+    }
+    const std::optional<net_base::IPCIDR> cidr =
+        net_base::IPCIDR::CreateFromAddressAndPrefix(
+            net_base::IPAddress(*route.network), route.prefix_length);
     if (!cidr.has_value()) {
-      return false;
+      LOG(WARNING) << "Ignoring invalid route: " << *route.network << "/"
+                   << route.prefix_length;
+      continue;
     }
-    route->host = cidr->address().ToString();
-    route->prefix = cidr->prefix_length();
-    return true;
+    ret.push_back(*cidr);
   }
-  route = GetRouteOptionEntry(kOpenVPNRouteIPv6GatewayPrefix, key, routes);
-  if (route) {
-    route->gateway = value;
-    return true;
+
+  return ret;
+}
+
+// static
+std::vector<net_base::IPCIDR> OpenVPNDriver::ParseIPv6RouteOptions(
+    const std::map<std::string, std::string>& configuration) {
+  struct IPv6Route {
+    std::optional<net_base::IPv6CIDR> network;
+    std::optional<net_base::IPv6Address> gateway;
+  };
+  // Temporarily store the parsed routes here. The key is the route index.
+  base::flat_map<int, IPv6Route> routes;
+
+  for (const auto& [key, value] : configuration) {
+    if (!base::StartsWith(key, kOpenVPNRouteIPv6OptionPrefix,
+                          base::CompareCase::INSENSITIVE_ASCII)) {
+      continue;
+    }
+    // The format of keys for IPv6 routes is
+    // route_ipv6_{network,gateway}_<index>.
+    std::optional<RouteOption> route_option =
+        ParseKeyAsRouteOption(key.substr(kOpenVPNRouteIPv6OptionPrefix.size()));
+    if (!route_option.has_value()) {
+      LOG(WARNING) << "Route option ignored: " << key;
+      continue;
+    }
+    IPv6Route& route = routes[route_option->index];
+    if (route_option->prefix == kOpenVPNRouteNetworkPrefix) {
+      route.network = net_base::IPv6CIDR::CreateFromCIDRString(value);
+      if (!route.network.has_value()) {
+        LOG(WARNING) << "Failed to get network from " << value;
+      }
+    } else if (route_option->prefix == kOpenVPNRouteGatewayPrefix) {
+      route.gateway = net_base::IPv6Address::CreateFromString(value);
+      if (!route.gateway.has_value()) {
+        LOG(WARNING) << "Failed to get gateway from " << value;
+      }
+    } else {
+      // route_option->prefix == kOpenVPNRouteNetmaskPrefix, which should not
+      // exist for IPv6 routes.
+      LOG(WARNING) << "Route option ignored: " << key;
+    }
   }
-  return false;
+
+  // Build routes with the temporary |routes|.
+  std::vector<net_base::IPCIDR> ret;
+  for (const auto& [index, route] : routes) {
+    if (!route.network.has_value() || !route.gateway.has_value()) {
+      LOG(WARNING) << "Ignoring incomplete route: " << index;
+      continue;
+    }
+    ret.push_back(net_base::IPCIDR(*route.network));
+  }
+
+  return ret;
 }
 
 // static
