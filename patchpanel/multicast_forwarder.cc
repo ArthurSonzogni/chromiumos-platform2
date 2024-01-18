@@ -64,16 +64,18 @@ void SetSockaddr(struct sockaddr_storage* saddr_storage,
     struct sockaddr_in* saddr4 = reinterpret_cast<struct sockaddr_in*>(saddr);
     saddr4->sin_family = AF_INET;
     saddr4->sin_port = htons(port);
-    if (addr)
+    if (addr) {
       memcpy(&saddr4->sin_addr, addr, sizeof(struct in_addr));
+    }
     return;
   }
   if (sa_family == AF_INET6) {
     struct sockaddr_in6* saddr6 = reinterpret_cast<sockaddr_in6*>(saddr);
     saddr6->sin6_family = AF_INET6;
     saddr6->sin6_port = htons(port);
-    if (addr)
+    if (addr) {
       memcpy(&saddr6->sin6_addr, addr, sizeof(struct in6_addr));
+    }
     return;
   }
   LOG(ERROR) << "Invalid socket family " << sa_family;
@@ -83,15 +85,15 @@ void SetSockaddr(struct sockaddr_storage* saddr_storage,
 
 namespace patchpanel {
 
-std::unique_ptr<MulticastForwarder::Socket> MulticastForwarder::CreateSocket(
+MulticastForwarder::SocketWithError MulticastForwarder::CreateSocket(
     base::ScopedFD fd, sa_family_t sa_family) {
-  auto socket = std::make_unique<Socket>();
-  socket->watcher = base::FileDescriptorWatcher::WatchReadable(
-      fd.get(),
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::Socket::CreateFromFd(std::move(fd));
+  socket->SetReadableCallback(
       base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this), fd.get(), sa_family));
-  socket->fd = std::move(fd);
-  return socket;
+                          base::Unretained(this), socket->Get(), sa_family));
+
+  return SocketWithError{.socket = std::move(socket)};
 }
 
 MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
@@ -264,7 +266,7 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
 void MulticastForwarder::RemoveGuest(const std::string& int_ifname) {
   const auto& socket4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
   if (socket4 != int_sockets_.end()) {
-    int_fds_.erase(std::make_pair(AF_INET, socket4->second->fd.get()));
+    int_fds_.erase(std::make_pair(AF_INET, socket4->second.socket->Get()));
     int_sockets_.erase(socket4);
   } else {
     LOG(WARNING) << "IPv4 forwarding is not started between " << lan_ifname_
@@ -273,7 +275,7 @@ void MulticastForwarder::RemoveGuest(const std::string& int_ifname) {
 
   const auto& socket6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
   if (socket6 != int_sockets_.end()) {
-    int_fds_.erase(std::make_pair(AF_INET6, socket6->second->fd.get()));
+    int_fds_.erase(std::make_pair(AF_INET6, socket6->second.socket->Get()));
     int_sockets_.erase(socket6);
   } else {
     LOG(WARNING) << "IPv6 forwarding is not started between " << lan_ifname_
@@ -333,14 +335,16 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
 
   // Forward ingress traffic to all guests.
   const auto& lan_socket = lan_socket_.find(sa_family);
-  if ((lan_socket != lan_socket_.end() && fd == lan_socket->second->fd.get())) {
+  if ((lan_socket != lan_socket_.end() &&
+       fd == lan_socket->second.socket->Get())) {
     SendToGuests(data, len, dst, addrlen);
     return;
   }
 
   const auto& int_fd = int_fds_.find(std::make_pair(sa_family, fd));
-  if (int_fd == int_fds_.end() || lan_socket == lan_socket_.end())
+  if (int_fd == int_fds_.end() || lan_socket == lan_socket_.end()) {
     return;
+  }
 
   // Forward egress traffic from one guest to all other guests.
   // No IP translation is required as other guests can route to each other
@@ -354,7 +358,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
     // as an input argument, based on the properties of the network
     // currently connected on |lan_ifname_|.
     const struct in_addr lan_ip =
-        GetInterfaceIp(lan_socket->second->fd.get(), lan_ifname_);
+        GetInterfaceIp(lan_socket->second.socket->Get(), lan_ifname_);
     if (lan_ip.s_addr == htonl(INADDR_ANY)) {
       // When the physical interface has no IPv4 address, IPv4 is not
       // provisioned and there is no point in trying to forward traffic in
@@ -375,17 +379,17 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
                                 size_t len,
                                 const struct sockaddr* dst,
                                 socklen_t dst_len) {
-  auto* lan_socket = lan_socket_.find(dst->sa_family)->second.get();
+  SocketWithError& lan_socket = lan_socket_.find(dst->sa_family)->second;
   if (src_port == port_) {
-    if (sendto(lan_socket->fd.get(), data, len, 0, dst, dst_len) < 0) {
-      if (lan_socket->last_errno != errno) {
+    if (sendto(lan_socket.socket->Get(), data, len, 0, dst, dst_len) < 0) {
+      if (lan_socket.last_errno != errno) {
         PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
                       << " from port " << src_port << " failed";
-        lan_socket->last_errno = errno;
+        lan_socket.last_errno = errno;
       }
       return false;
     }
-    lan_socket->last_errno = 0;
+    lan_socket.last_errno = 0;
     return true;
   }
 
@@ -443,14 +447,14 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
                            MSG_NOSIGNAL, dst, dst_len)) {
     // Use |lan_socket_| to track last errno. The only expected difference
     // between |temp_socket| and |lan_socket_| is port number.
-    if (lan_socket->last_errno != errno) {
+    if (lan_socket.last_errno != errno) {
       PLOG(WARNING) << "sendto " << *dst << " on " << lan_ifname_
                     << " from port " << src_port << " failed";
-      lan_socket->last_errno = errno;
+      lan_socket.last_errno = errno;
     }
     return false;
   }
-  lan_socket->last_errno = 0;
+  lan_socket.last_errno = 0;
   return true;
 }
 
@@ -460,23 +464,25 @@ bool MulticastForwarder::SendToGuests(const void* data,
                                       socklen_t dst_len,
                                       int ignore_fd) {
   bool success = true;
-  for (const auto& socket : int_sockets_) {
-    if (socket.first.first != dst->sa_family)
+  for (auto& socket : int_sockets_) {
+    if (socket.first.first != dst->sa_family) {
       continue;
-    int fd = socket.second->fd.get();
-    if (fd == ignore_fd)
+    }
+    int fd = socket.second.socket->Get();
+    if (fd == ignore_fd) {
       continue;
+    }
 
     // Use already created multicast fd.
     if (sendto(fd, data, len, 0, dst, dst_len) < 0) {
-      if (socket.second->last_errno != errno) {
+      if (socket.second.last_errno != errno) {
         PLOG(WARNING) << "sendto " << socket.first.second << " failed";
-        socket.second->last_errno = errno;
+        socket.second.last_errno = errno;
       }
       success = false;
       continue;
     }
-    socket.second->last_errno = 0;
+    socket.second.last_errno = 0;
   }
   return success;
 }

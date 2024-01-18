@@ -10,11 +10,11 @@
 #include <sys/types.h>
 
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/test/task_environment.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/ipv4_address.h>
@@ -38,7 +38,7 @@ class TestMulticastForwarder : public MulticastForwarder {
       : MulticastForwarder(lan_ifname, mcast_addr, mcast_addr6, port) {}
   TestMulticastForwarder(const TestMulticastForwarder&) = delete;
   TestMulticastForwarder& operator=(const TestMulticastForwarder&) = delete;
-  ~TestMulticastForwarder() = default;
+  ~TestMulticastForwarder() override = default;
 
   base::ScopedFD Bind(sa_family_t sa_family,
                       const std::string& ifname) override {
@@ -46,13 +46,6 @@ class TestMulticastForwarder : public MulticastForwarder {
     int fd = socket(sa_family, SOCK_DGRAM, 0);
     fds.push_back(fd);
     return base::ScopedFD(fd);
-  }
-
-  std::unique_ptr<MulticastForwarder::Socket> CreateSocket(
-      base::ScopedFD fd, sa_family_t sa_family) override {
-    auto socket = std::make_unique<Socket>();
-    socket->fd = std::move(fd);
-    return socket;
   }
 
   bool SendTo(uint16_t src_port,
@@ -97,6 +90,8 @@ class TestMulticastForwarder : public MulticastForwarder {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Turn off logging.
   logging::SetMinLogLevel(logging::LOGGING_FATAL);
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   // Copy the input data so that TranslateMdnsIp can mutate it.
   char* payload = new char[size];

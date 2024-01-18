@@ -15,10 +15,10 @@
 #include <string>
 #include <utility>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
 
@@ -72,10 +72,9 @@ class MulticastForwarder {
   void OnFileCanReadWithoutBlocking(int fd, sa_family_t sa_family);
 
  protected:
-  // Socket is used to keep track of an fd and its watcher.
-  struct Socket {
-    base::ScopedFD fd;
-    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+  // SocketWithError is used to keep track of a socket and last errno.
+  struct SocketWithError {
+    std::unique_ptr<net_base::Socket> socket;
 
     // Keep track of last errno to avoid spammy logs.
     int last_errno = 0;
@@ -109,8 +108,7 @@ class MulticastForwarder {
                           struct sockaddr* src_addr,
                           socklen_t* addrlen);
 
-  virtual std::unique_ptr<Socket> CreateSocket(base::ScopedFD fd,
-                                               sa_family_t family);
+  SocketWithError CreateSocket(base::ScopedFD fd, sa_family_t family);
 
  private:
   // Name of the physical interface that this forwarder is bound to.
@@ -122,10 +120,9 @@ class MulticastForwarder {
   // IPv6 multicast address of the protocol that this forwarder is processing.
   net_base::IPv6Address mcast_addr6_;
   // IPv4 and IPv6 sockets bound by this forwarder onto |lan_ifname_|.
-  std::map<sa_family_t, std::unique_ptr<Socket>> lan_socket_;
+  std::map<sa_family_t, SocketWithError> lan_socket_;
   // Mapping from internal interface names to internal sockets.
-  std::map<std::pair<sa_family_t, std::string>, std::unique_ptr<Socket>>
-      int_sockets_;
+  std::map<std::pair<sa_family_t, std::string>, SocketWithError> int_sockets_;
   // A set of internal file descriptors (guest facing sockets) to its guest
   // IP address.
   std::set<std::pair<sa_family_t, int>> int_fds_;
