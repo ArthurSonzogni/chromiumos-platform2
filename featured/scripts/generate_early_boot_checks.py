@@ -41,6 +41,10 @@ def generate_code(defaults_json: str, template_folder: str, header_path: str):
         autoescape=jinja2.select_autoescape(enabled_extensions=("cpp",)),
     )
 
+    for feature in features:
+        if not feature.name.startswith("CrOSEarlyBoot"):
+            raise ValueError(f"{feature.name} must start with CrOSEarlyBoot")
+
     cc_template = env.get_template("early_boot_state_checks_cc.jinja")
     h_template = env.get_template("early_boot_state_checks_h.jinja")
 
