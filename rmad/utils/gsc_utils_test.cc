@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -441,6 +443,79 @@ TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed_Invalid) {
 
   bool status;
   EXPECT_FALSE(gsc_utils->GetChassisOpenStatus(&status));
+}
+
+TEST_F(GscUtilsTest, GetAddressingMode_Success) {
+  // "3byte".
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("3byte"), Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  EXPECT_EQ(gsc_utils->GetAddressingMode(), SpiAddressingMode::k3Byte);
+
+  // "4byte".
+  mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("4byte"), Return(true)));
+  gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  EXPECT_EQ(gsc_utils->GetAddressingMode(), SpiAddressingMode::k4Byte);
+
+  // "not provisioned".
+  mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("not provisioned"), Return(true)));
+  gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  EXPECT_EQ(gsc_utils->GetAddressingMode(), SpiAddressingMode::kNotProvisioned);
+}
+
+TEST_F(GscUtilsTest, GetAddressingMode_Failed) {
+  // "Invalid format".
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("invalid"), Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  auto result = gsc_utils->GetAddressingMode();
+  EXPECT_EQ(result, SpiAddressingMode::kUnknown);
+
+  // |cmd_utils| errors.
+  mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
+  gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  result = gsc_utils->GetAddressingMode();
+  EXPECT_EQ(result, SpiAddressingMode::kUnknown);
+}
+
+TEST_F(GscUtilsTest, SetAddressingMode_Success) {
+  // 0x0001000 -> "3byte".
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(
+      *mock_cmd_utils,
+      GetOutputAndError(
+          testing::ElementsAreArray({"gsctool", "-a", "-C", "3byte"}), _))
+      .WillOnce(Return(true));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  EXPECT_TRUE(gsc_utils->SetAddressingMode(SpiAddressingMode::k3Byte));
+
+  // 0x1000001 -> "4byte".
+  mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(
+      *mock_cmd_utils,
+      GetOutputAndError(
+          testing::ElementsAreArray({"gsctool", "-a", "-C", "4byte"}), _))
+      .WillOnce(Return(true));
+  gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+  EXPECT_TRUE(gsc_utils->SetAddressingMode(SpiAddressingMode::k4Byte));
+}
+
+TEST_F(GscUtilsTest, GetAddressingModeByFlashSize) {
+  auto gsc_utils = std::make_unique<GscUtilsImpl>();
+
+  EXPECT_EQ(gsc_utils->GetAddressingModeByFlashSize(0x0001000),
+            SpiAddressingMode::k3Byte);
+  EXPECT_EQ(gsc_utils->GetAddressingModeByFlashSize(0x1000000),
+            SpiAddressingMode::k3Byte);
+  EXPECT_EQ(gsc_utils->GetAddressingModeByFlashSize(0x1000001),
+            SpiAddressingMode::k4Byte);
 }
 
 }  // namespace rmad

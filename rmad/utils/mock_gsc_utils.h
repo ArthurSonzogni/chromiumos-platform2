@@ -7,6 +7,7 @@
 
 #include "rmad/utils/gsc_utils.h"
 
+#include <cstdint>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -37,6 +38,12 @@ class MockGscUtils : public GscUtils {
               (bool is_chassis_branded, int hw_compliance_version),
               (const, override));
   MOCK_METHOD(bool, GetChassisOpenStatus, (bool* status), (override));
+  MOCK_METHOD(SpiAddressingMode, GetAddressingMode, (), (override));
+  MOCK_METHOD(bool, SetAddressingMode, (SpiAddressingMode mode), (override));
+  MOCK_METHOD(SpiAddressingMode,
+              GetAddressingModeByFlashSize,
+              (uint64_t flash_size),
+              (override));
 };
 
 }  // namespace rmad

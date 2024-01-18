@@ -35,6 +35,9 @@ class GscUtilsImpl : public GscUtils {
   bool SetFactoryConfig(bool is_chassis_branded,
                         int hw_compliance_version) const override;
   bool GetChassisOpenStatus(bool* status) override;
+  SpiAddressingMode GetAddressingMode() override;
+  bool SetAddressingMode(SpiAddressingMode mode) override;
+  SpiAddressingMode GetAddressingModeByFlashSize(uint64_t flash_size) override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

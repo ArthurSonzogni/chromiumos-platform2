@@ -9,6 +9,13 @@
 
 namespace rmad {
 
+enum class SpiAddressingMode {
+  kUnknown = 0,
+  k3Byte = 1,
+  k4Byte = 2,
+  kNotProvisioned = 3,
+};
+
 class GscUtils {
  public:
   GscUtils() = default;
@@ -59,6 +66,16 @@ class GscUtils {
 
   // Get CHASSIS_OPEN status.
   virtual bool GetChassisOpenStatus(bool* status) = 0;
+
+  // Get addressing mode of Ti50 device.
+  virtual SpiAddressingMode GetAddressingMode() = 0;
+
+  // Set addressing mode for ap ro verification on Ti50.
+  virtual bool SetAddressingMode(SpiAddressingMode mode) = 0;
+
+  // Decide the addressing mode by the given flash size.
+  virtual SpiAddressingMode GetAddressingModeByFlashSize(
+      uint64_t flash_size) = 0;
 };
 
 }  // namespace rmad

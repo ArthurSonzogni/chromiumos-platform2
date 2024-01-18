@@ -11,12 +11,14 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
 #include "rmad/utils/cmd_utils_impl.h"
+#include "rmad/utils/gsc_utils.h"
 
 namespace rmad {
 
@@ -57,6 +59,23 @@ constexpr char kFactoryConfigRegexp[] = R"(raw value: ([[:xdigit:]]{16}))";
 const std::vector<std::string> kGetChassisOpenArgv{kGsctoolCmd, "-a", "-K",
                                                    "chassis_open"};
 constexpr char kChassisOpenRegexp[] = R"(Chassis Open: ((true)|(false)))";
+
+// Constants for addressing mode.
+constexpr std::array<std::string_view, 3> kAddressingMode = {kGsctoolCmd, "-a",
+                                                             "-C"};
+
+// SPI addressing mode mappings from enum to string.
+constexpr char kSpiAddressingMode3Byte[] = "3byte";
+constexpr char kSpiAddressingMode4Byte[] = "4byte";
+constexpr char kSpiAddressingModeNotProvisioned[] = "Not Provisioned";
+constexpr char kSpiAddressingModeUnknown[] = "Unknown";
+constexpr auto kSpiAddressingModeMap =
+    base::MakeFixedFlatMap<SpiAddressingMode, std::string_view>({
+        {SpiAddressingMode::kUnknown, kSpiAddressingModeUnknown},
+        {SpiAddressingMode::k3Byte, kSpiAddressingMode3Byte},
+        {SpiAddressingMode::k4Byte, kSpiAddressingMode4Byte},
+        {SpiAddressingMode::kNotProvisioned, kSpiAddressingModeNotProvisioned},
+    });
 
 // Factory config encoding/decoding functions.
 // According to b/275356839, factory config is stored in GSC INFO page with 64
@@ -273,6 +292,55 @@ bool GscUtilsImpl::GetChassisOpenStatus(bool* status) {
   *status = (bool_string == "true");
 
   return true;
+}
+
+SpiAddressingMode GscUtilsImpl::GetAddressingMode() {
+  std::string output;
+  std::vector<std::string> argv{kAddressingMode.begin(), kAddressingMode.end()};
+
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
+    LOG(ERROR) << "Failed to get addressing mode";
+    LOG(ERROR) << output;
+    return SpiAddressingMode::kUnknown;
+  }
+
+  // The output can be "3byte", "4byte", or "not provisioned".
+  if (output == "3byte") {
+    return SpiAddressingMode::k3Byte;
+  } else if (output == "4byte") {
+    return SpiAddressingMode::k4Byte;
+  } else if (output == "not provisioned") {
+    return SpiAddressingMode::kNotProvisioned;
+  }
+
+  return SpiAddressingMode::kUnknown;
+}
+
+bool GscUtilsImpl::SetAddressingMode(SpiAddressingMode mode) {
+  if (mode != SpiAddressingMode::k3Byte && mode != SpiAddressingMode::k4Byte) {
+    LOG(ERROR) << "Only 3byte and 4byte addressing modes are available.";
+    return false;
+  }
+
+  std::string output;
+  std::vector<std::string> argv{kAddressingMode.begin(), kAddressingMode.end()};
+  argv.push_back(std::string(kSpiAddressingModeMap.at(mode)));
+
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
+    LOG(ERROR) << "Failed to set addressing mode";
+    LOG(ERROR) << output;
+    return false;
+  }
+
+  return true;
+}
+
+SpiAddressingMode GscUtilsImpl::GetAddressingModeByFlashSize(
+    uint64_t flash_size) {
+  if (flash_size <= 0x1000000) {  // 2^24
+    return SpiAddressingMode::k3Byte;
+  }
+  return SpiAddressingMode::k4Byte;
 }
 
 }  // namespace rmad
