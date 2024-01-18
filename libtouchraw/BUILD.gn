@@ -1,0 +1,67 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_headers",
+    ":libtouchraw",
+    ":libtouchraw_pc",
+  ]
+  if (use.test) {
+    deps += [ ":libtouchraw_test" ]
+  }
+}
+
+default_pkg_deps = [
+  "absl",
+  "libbrillo",
+  "libchrome",
+]
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = default_pkg_deps
+}
+
+shared_library("libtouchraw") {
+  sources = [ "reader.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "lib"
+}
+
+install_config("install_headers") {
+  sources = [
+    "consumer_interface.h",
+    "touchraw.h",
+    "touchraw_export.h",
+  ]
+  install_path = "/usr/include/chromeos/libtouchraw"
+}
+
+generate_pkg_config("libtouchraw_pc") {
+  name = "libtouchraw"
+  output_name = "libtouchraw"
+  description = "ChromiumOS library for building and parsing touch raw data"
+  version = "0.1"
+
+  requires_private = default_pkg_deps
+  libs = [ "-ltouchraw" ]
+  install = true
+}
+
+if (use.test) {
+  executable("libtouchraw_test") {
+    sources = [ "reader_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
+    ]
+    run_test = true
+    deps = [
+      ":libtouchraw",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [ "libchrome-test" ]
+  }
+}
