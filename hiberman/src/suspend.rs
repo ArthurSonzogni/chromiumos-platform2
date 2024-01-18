@@ -36,12 +36,12 @@ use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberlog::LogFile;
 use crate::hiberutil::checked_command_output;
+use crate::hiberutil::get_available_memory_mb;
 use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::has_user_logged_out;
 use crate::hiberutil::path_to_stateful_block;
-use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
@@ -181,8 +181,6 @@ impl SuspendConductor<'_> {
             libc::sync();
         }
 
-        prealloc_mem().context("Failed to preallocate memory for hibernate")?;
-
         self.suspend_system()
     }
 
@@ -211,6 +209,12 @@ impl SuspendConductor<'_> {
         mem::drop(log_file);
         drop(hibermeta_mount);
 
+        // Abort the hibernation if there is clearly not enough free memory for the snapshot.
+        if !might_have_enough_free_memory_for_snapshot() {
+            Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
+            return Err(HibernateError::InsufficientMemoryAvailableError().into());
+        }
+
         self.volume_manager.thicken_hiberimage()?;
 
         // Make sure the thinpool has time to commit pending metadata changes
@@ -222,6 +226,8 @@ impl SuspendConductor<'_> {
         if let Err(e) = drop_pagecache() {
             error!("Failed to drop pagecache: {e}");
         }
+
+        record_free_memory_metric();
 
         if let Err(e) = self.snapshot_and_save(frozen_userspace) {
             if let Some(HibernateError::SnapshotIoctlError(_, err)) = e.downcast_ref() {
@@ -453,6 +459,30 @@ impl SuspendConductor<'_> {
     }
 }
 
+/// Check whether the system might have enough free memory for creating the
+/// hibernate snapshot. This check can give false positives (the system doesn't
+/// actually have enough memory), but shouldn't give false negatives.
+///
+/// Generally half of the system RAM needs to be free to be able to store the
+/// hibernate snapshot in memory. A kernel optimization which removes pages that
+/// only contain zeros can shrink the image by up to 35%, so check whether at
+/// least 65% of half of the RAM is  available. If the image has less than 35%
+/// of pages with zeros then the creation of the snapshot will fail with -ENOMEM,
+/// which is explicitly handled by hiberman.
+fn might_have_enough_free_memory_for_snapshot() -> bool {
+    let ram_size_mb = get_ram_size() / (1024 * 1024);
+    let required_mb = ((ram_size_mb / 2) * 65) / 100;
+    let free_mb = get_available_memory_mb() as u64;
+
+    if free_mb < required_mb {
+        info!("not enough free memory ({}MB) for creating the hibernate snapshot (min: {}MB)",
+        free_mb, required_mb);
+        return false;
+    }
+
+    true
+}
+
 /// Logs a hibernate metric event.
 fn log_metric_event(event: HibernateEvent) {
     let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
@@ -502,4 +532,21 @@ fn drop_pagecache() -> Result<()> {
         .open(DROP_CACHES_ATTR_PATH)
         .context("Failed to open {DROP_CACHES_ATTR_PATH}")?;
     Ok(f.write_all("1".as_bytes())?)
+}
+
+/// Record the amount of free memory as a metric.
+pub fn record_free_memory_metric() {
+    let available_mb = get_available_memory_mb();
+
+    debug!("System has {available_mb} MB of free memory");
+
+    let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+    metrics_logger.log_metric(
+        "Platform.Hibernate.MemoryAvailable",
+        available_mb as isize,
+        0,
+        32768,
+        50,
+    );
 }
