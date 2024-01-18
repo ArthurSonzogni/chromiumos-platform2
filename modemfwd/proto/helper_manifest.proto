@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package modemfwd;
 
-option go_package = "chromiumos/modemfwd";
+option go_package = "go.chromium.org/chromiumos/modemfwd";
 
 message HelperEntry {
   string filename = 1;
