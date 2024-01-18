@@ -76,20 +76,14 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
     return;
   }
 
-  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      rtnl_socket_->Get(),
+  rtnl_socket_->SetReadableCallback(
       base::BindRepeating(&RTNLHandler::OnReadable, base::Unretained(this)));
-  if (socket_watcher_ == nullptr) {
-    LOG(ERROR) << "Failed on watching netlink socket.";
-    return;
-  }
 
   NextRequest(last_dump_sequence_);
   VLOG(2) << "RTNLHandler started";
 }
 
 void RTNLHandler::Stop() {
-  socket_watcher_.reset();
   rtnl_socket_.reset();
   in_request_ = false;
   request_flags_ = 0;

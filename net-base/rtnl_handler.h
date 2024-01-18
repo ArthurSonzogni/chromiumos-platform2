@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/containers/span.h>
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
@@ -161,7 +160,7 @@ class BRILLO_EXPORT RTNLHandler {
   // reset netlink socket, sequence number and create new socket.
   void ResetSocket();
 
-  // Called by the |socket_watcher_| when the |rtnl_socket_| is ready to read.
+  // Called when the |rtnl_socket_| is ready to read.
   void OnReadable();
 
   // Dispatches an rtnl message to all listeners
@@ -214,9 +213,6 @@ class BRILLO_EXPORT RTNLHandler {
   bool in_request_;
 
   std::unique_ptr<Socket> rtnl_socket_;
-  // Watcher to wait for |rtnl_socket_| ready to read. It should be destructed
-  // prior than |rtnl_socket_|, so it's declared after |rtnl_socket_|.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
 
   uint32_t netlink_groups_mask_;
   uint32_t request_flags_;
