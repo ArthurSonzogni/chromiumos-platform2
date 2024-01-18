@@ -9,6 +9,8 @@
 #include <sysexits.h>
 
 #include "absl/status/status.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -51,7 +53,22 @@ class SecAgentTestFixture
     : public ::testing::TestWithParam<XdrFeatureAndPolicy> {
  protected:
   SecAgentTestFixture() = default;
+
+  void CreateFakeFs(const base::FilePath& root) {
+    const base::FilePath bpf_dir = root.Append("sys/fs/bpf/secagentd");
+    ASSERT_TRUE(base::CreateDirectory(bpf_dir));
+    std::vector<std::string> bpf_maps{"shared_process_info"};
+    for (auto& map : bpf_maps) {
+      pinned_maps_.push_back(bpf_dir.Append(map));
+      ASSERT_TRUE(base::WriteFile(pinned_maps_.back(), map));
+    }
+  }
+
   void SetUp() override {
+    ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
+    const base::FilePath& root = fake_root_.GetPath();
+    CreateFakeFs(root);
+
     agent_plugin_ = std::make_unique<MockPlugin>();
     agent_plugin_ref_ = agent_plugin_.get();
 
@@ -79,7 +96,7 @@ class SecAgentTestFixture
         std::move(plugin_factory_),
         // attestation and tpm proxies.
         nullptr /* Attestation */, nullptr /* Tpm */,
-        nullptr /* PlatformFeatures */, 0, 0, 0, 300, 120, 10);
+        nullptr /* PlatformFeatures */, 0, 0, 0, 300, 120, 10, root);
     secagent_->policies_features_broker_ = this->policies_features_broker_;
 
     ON_CALL(*process_plugin_ref_, GetName())
@@ -152,7 +169,6 @@ class SecAgentTestFixture
     EXPECT_CALL(*process_cache_, InitializeFilter);
     EXPECT_CALL(*policies_features_broker_, StartAndBlockForSync);
   }
-
   base::OnceCallback<void()> agent_activation_callback_;
   std::unique_ptr<SecAgent> secagent_;
   std::unique_ptr<MockPluginFactory> plugin_factory_;
@@ -171,7 +187,16 @@ class SecAgentTestFixture
   scoped_refptr<MockDeviceUser> device_user_;
   ::testing::StrictMock<MockSystemQuit> mock_system_quit_;
   base::test::TaskEnvironment task_environment_;
+  base::ScopedTempDir fake_root_;
+  std::vector<base::FilePath> pinned_maps_;
 };
+
+TEST_F(SecAgentTestFixture, TestPinnedBpfMapsCleanedUpOnActivate) {
+  secagent_->Activate();
+  for (const auto& map : pinned_maps_) {
+    EXPECT_FALSE(base::PathExists(map));
+  }
+}
 
 TEST_F(SecAgentTestFixture, TestReportingEnabled) {
   InstallActivateExpectations();

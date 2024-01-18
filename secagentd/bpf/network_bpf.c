@@ -56,6 +56,16 @@ struct {
 #define CROS_FAILED_HEAP_ALLOC (4)
 #define CROS_NO_SOCK_TO_PROCESS (5)
 
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 65536);  // up to 2^16 task info for processes can be
+  // stored.
+  __type(key, uint32_t);
+  __type(value, struct cros_process_start);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+  __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
+} shared_process_info SEC(".maps");
+
 /* A recording of sockets that have at least one
  * flow map entry associated with it.
  * This should only be used by the BPF to determine

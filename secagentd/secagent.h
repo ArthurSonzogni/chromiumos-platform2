@@ -43,7 +43,8 @@ class SecAgent {
            bool stop_reporting_for_unaffiliated_users,
            uint32_t heartbeat_period_s,
            uint32_t plugin_batch_interval_s,
-           uint32_t feature_poll_interval_s_for_testing);
+           uint32_t feature_poll_interval_s_for_testing,
+           const base::FilePath& root_path_);
   ~SecAgent() = default;
 
   // Start polling for policy and feature flags.
@@ -97,6 +98,7 @@ class SecAgent {
   uint32_t plugin_batch_interval_s_;
   uint32_t feature_poll_interval_s_;
   base::OnceCallback<void(int)> quit_daemon_cb_;
+  base::FilePath root_path_;
   base::WeakPtrFactory<SecAgent> weak_ptr_factory_;
 };
 };      // namespace secagentd

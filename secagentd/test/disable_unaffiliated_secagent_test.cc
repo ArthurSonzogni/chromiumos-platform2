@@ -9,6 +9,7 @@
 #include <sysexits.h>
 
 #include "absl/status/status.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -77,6 +78,8 @@ class DisableUnaffiliatedSecAgentTestFixture
     policies_features_broker_ =
         base::MakeRefCounted<MockPoliciesFeaturesBroker>();
     device_user_ = base::MakeRefCounted<MockDeviceUser>();
+    ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
+
     secagent_ = std::make_unique<SecAgent>(
         base::BindOnce(&MockSystemQuit::Quit,
                        mock_system_quit_.weak_factory_.GetWeakPtr()),
@@ -84,7 +87,8 @@ class DisableUnaffiliatedSecAgentTestFixture
         std::move(plugin_factory_),
         // attestation and tpm proxies.
         nullptr /* Attestation */, nullptr /* Tpm */,
-        nullptr /* PlatformFeatures */, 0, 0, 1, 300, 120, 10);
+        nullptr /* PlatformFeatures */, 0, 0, 1, 300, 120, 10,
+        fake_root_.GetPath());
     secagent_->policies_features_broker_ = this->policies_features_broker_;
 
     ON_CALL(*process_plugin_ref_, GetName())
@@ -186,6 +190,7 @@ class DisableUnaffiliatedSecAgentTestFixture
   scoped_refptr<MockDeviceUser> device_user_;
   ::testing::StrictMock<MockSystemQuit> mock_system_quit_;
   base::test::TaskEnvironment task_environment_;
+  base::ScopedTempDir fake_root_;
 };
 
 TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestReportingEnabled) {

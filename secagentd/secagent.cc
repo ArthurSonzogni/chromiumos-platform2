@@ -14,11 +14,15 @@
 
 #include "absl/status/status.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
+#include "brillo/files/file_util.h"
+#include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
@@ -42,7 +46,8 @@ SecAgent::SecAgent(
     bool stop_reporting_for_unaffiliated_users,
     uint32_t heartbeat_period_s,
     uint32_t plugin_batch_interval_s,
-    uint32_t feature_poll_interval_s_for_testing)
+    uint32_t feature_poll_interval_s_for_testing,
+    const base::FilePath& root_path)
     : message_sender_(message_sender),
       process_cache_(process_cache),
       device_user_(device_user),
@@ -58,6 +63,7 @@ SecAgent::SecAgent(
       plugin_batch_interval_s_(plugin_batch_interval_s),
       feature_poll_interval_s_(feature_poll_interval_s_for_testing),
       quit_daemon_cb_(std::move(quit_daemon_cb)),
+      root_path_(root_path),
       weak_ptr_factory_(this) {
   policies_features_broker_ = base::MakeRefCounted<PoliciesFeaturesBroker>(
       std::make_unique<policy::PolicyProvider>(), platform_features_,
@@ -93,7 +99,23 @@ void SecAgent::Activate() {
     policies_features_broker_->StartAndBlockForSync(
         base::Seconds(feature_poll_interval_s_));
   }
+  // Some BPF maps are pinned for easy sharing between BPF programs.
+  std::string_view relative_bpf_pin_path(kDefaultBpfPinDir);
+  if (relative_bpf_pin_path.starts_with("/")) {
+    relative_bpf_pin_path.remove_prefix(1);
+  }
 
+  base::FilePath absolute_bpf_pin_dir =
+      root_path_.Append(relative_bpf_pin_path);
+  const std::vector<base::FilePath> pinned_map_names{
+      base::FilePath("shared_process_info")};
+  for (const auto& map_path : pinned_map_names) {
+    base::FilePath pinned_map = absolute_bpf_pin_dir.Append(map_path);
+    if (base::PathExists(pinned_map)) {
+      LOG(INFO) << "Cleaning up " << absolute_bpf_pin_dir.Append(map_path);
+      brillo::DeleteFile(absolute_bpf_pin_dir.Append(map_path));
+    }
+  }
   process_cache_->InitializeFilter();
 }
 

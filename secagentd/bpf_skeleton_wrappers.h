@@ -32,6 +32,9 @@ class NetworkBpfTestFixture;
 // Directory with min_core_btf payloads. Must match the ebuild.
 constexpr char kMinCoreBtfDir[] = "/usr/share/btf/secagentd/";
 
+// Directory where maps will be pinned.
+constexpr char kDefaultBpfPinDir[] = "/sys/fs/bpf/secagentd";
+
 // The following callback definitions must have void return type since they will
 // bind to an object method.
 using BpfEventCb = base::RepeatingCallback<void(const bpf::cros_event&)>;
@@ -125,11 +128,14 @@ class BpfSkeleton : public BpfSkeletonInterface {
     const std::string btf_path =
         base::StrCat({secagentd::kMinCoreBtfDir, name_, "_bpf.min.btf"});
     DECLARE_LIBBPF_OPTS(bpf_object_open_opts, open_opts,
+                        .pin_root_path = secagentd::kDefaultBpfPinDir,
                         .btf_custom_path = btf_path.c_str());
     skel_ = skel_cbs_.open_opts.Run(&open_opts);
 #else
     // Let libbpf extract BTF from /sys/kernel/btf/vmlinux.
-    skel_ = skel_cbs_.open.Run();
+    DECLARE_LIBBPF_OPTS(bpf_object_open_opts, open_opts,
+                        .pin_root_path = secagentd::kDefaultBpfPinDir);
+    skel_ = skel_cbs_.open_opts.Run(&open_opts);
 #endif  // USE_MIN_CORE_BTF
 
     if (!skel_) {

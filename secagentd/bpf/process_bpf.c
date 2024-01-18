@@ -21,6 +21,7 @@ struct {
   __type(key, uint32_t);
   __type(value, struct cros_process_start);
   __uint(map_flags, BPF_F_NO_PREALLOC);
+  __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
 } shared_process_info SEC(".maps");
 
 /* BPF Verifier only allows a stack of 512 bytes max.

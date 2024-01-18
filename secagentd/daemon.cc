@@ -60,8 +60,7 @@ int Daemon::OnInit() {
       feature::PlatformFeatures::Get(), bypass_policy_for_testing_,
       bypass_enq_ok_wait_for_testing_, stop_reporting_for_unaffiliated_users_,
       heartbeat_period_s_, plugin_batch_interval_s_,
-      feature_polling_interval_s_);
-
+      feature_polling_interval_s_, base::FilePath("/"));
   // Set up ERP.
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
       "missive_thread_pool");
