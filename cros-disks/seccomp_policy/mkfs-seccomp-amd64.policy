@@ -42,6 +42,7 @@ readlink: 1
 restart_syscall: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
+sendto: 1
 socket: arg0 == AF_UNIX
 uname: 1
 write: 1
