@@ -127,7 +127,6 @@ class IcmpSessionTest : public Test {
 
   void VerifyIcmpSessionStopped() {
     EXPECT_TRUE(icmp_session_.timeout_callback_.IsCancelled());
-    EXPECT_FALSE(icmp_session_.icmp_watcher_);
   }
 
   void OnEchoReplyReceived(base::span<const uint8_t> data) {

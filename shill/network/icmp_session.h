@@ -10,13 +10,11 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/containers/span.h>
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/default_tick_clock.h>
@@ -109,7 +107,7 @@ class IcmpSession {
   // reached.
   void TransmitEchoRequestTask();
 
-  // Called by |icmp_watcher_| when the ICMP socket is ready to read.
+  // Called by |icmp_->socket()| when the ICMP socket is ready to read.
   void OnIcmpReadable();
 
   // Called when an ICMP packet is received.
@@ -132,9 +130,6 @@ class IcmpSession {
   EventDispatcher* dispatcher_;
 
   std::unique_ptr<Icmp> icmp_;
-  // Watcher to wait for |icmp_->socket()| ready to read. It should be
-  // destructed prior than |icmp_->socket()|.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> icmp_watcher_;
 
   const uint16_t echo_id_;  // unique ID for this object's echo request/replies
   uint16_t current_sequence_number_;

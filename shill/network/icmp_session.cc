@@ -65,9 +65,8 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
     return false;
   }
 
-  icmp_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      icmp_->socket()->Get(), base::BindRepeating(&IcmpSession::OnIcmpReadable,
-                                                  base::Unretained(this)));
+  icmp_->socket()->SetReadableCallback(base::BindRepeating(
+      &IcmpSession::OnIcmpReadable, base::Unretained(this)));
   result_callback_ = std::move(result_callback);
   timeout_callback_.Reset(BindOnce(&IcmpSession::ReportResultAndStopSession,
                                    weak_ptr_factory_.GetWeakPtr()));
@@ -87,7 +86,6 @@ void IcmpSession::Stop() {
     return;
   }
   timeout_callback_.Cancel();
-  icmp_watcher_.reset();
   icmp_->Stop();
 }
 
