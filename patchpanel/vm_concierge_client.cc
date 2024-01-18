@@ -78,7 +78,8 @@ bool ReadDetachResponse(dbus::Response* dbus_response) {
 
 namespace patchpanel {
 
-VmConciergeClient::VmConciergeClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
+VmConciergeClientImpl::VmConciergeClientImpl(scoped_refptr<dbus::Bus> bus)
+    : bus_(bus) {
   dbus::Bus::Options options;
   concierge_proxy_ = bus_->GetObjectProxy(
       vm_tools::concierge::kVmConciergeServiceName,
@@ -86,26 +87,24 @@ VmConciergeClient::VmConciergeClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
   concierge_proxy_->ConnectToSignal(
       vm_tools::concierge::kVmConciergeServiceName,
       vm_tools::concierge::kVmStartedSignal,
-      base::BindRepeating(&VmConciergeClient::OnVmStarted,
+      base::BindRepeating(&VmConciergeClientImpl::OnVmStarted,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&HandleSignalConnected));
   concierge_proxy_->ConnectToSignal(
       vm_tools::concierge::kVmConciergeServiceName,
       vm_tools::concierge::kVmStoppingSignal,
-      base::BindRepeating(&VmConciergeClient::OnVmStopping,
+      base::BindRepeating(&VmConciergeClientImpl::OnVmStopping,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&HandleSignalConnected));
 }
 
-VmConciergeClient::~VmConciergeClient() = default;
-
-bool VmConciergeClient::RegisterVm(int64_t vm_cid) {
+bool VmConciergeClientImpl::RegisterVm(int64_t vm_cid) {
   return cid_vmid_map_.insert({vm_cid, std::nullopt}).second;
 }
 
-void VmConciergeClient::DoAttachTapDevice(const std::string& tap_name,
-                                          AttachTapCallback callback,
-                                          const VmId& vm_id) {
+void VmConciergeClientImpl::DoAttachTapDevice(const std::string& tap_name,
+                                              AttachTapCallback callback,
+                                              const VmId& vm_id) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kAttachNetDeviceMethod);
   vm_tools::concierge::AttachNetDeviceRequest attach_request_proto;
@@ -122,9 +121,9 @@ void VmConciergeClient::DoAttachTapDevice(const std::string& tap_name,
   concierge_proxy_->CallMethod(&method_call, kNonBlockingDbusTimeoutMs,
                                std::move(dbus_callback));
 }
-bool VmConciergeClient::AttachTapDevice(int64_t vm_cid,
-                                        const std::string& tap_name,
-                                        AttachTapCallback callback) {
+bool VmConciergeClientImpl::AttachTapDevice(int64_t vm_cid,
+                                            const std::string& tap_name,
+                                            AttachTapCallback callback) {
   const auto itr = cid_vmid_map_.find(vm_cid);
   if (itr == cid_vmid_map_.end()) {
     LOG(ERROR) << __func__ << ": VM " << vm_cid << " is not registered.";
@@ -135,7 +134,7 @@ bool VmConciergeClient::AttachTapDevice(int64_t vm_cid,
   } else {
     // Queue requests since VM is not ready.
     DeferredRequest request =
-        base::BindOnce(&VmConciergeClient::DoAttachTapDevice,
+        base::BindOnce(&VmConciergeClientImpl::DoAttachTapDevice,
                        base::Unretained(this), tap_name, std::move(callback));
     auto [q_itr, _] =
         cid_requestq_map_.insert({vm_cid, std::queue<DeferredRequest>()});
@@ -144,9 +143,9 @@ bool VmConciergeClient::AttachTapDevice(int64_t vm_cid,
   return true;
 }
 
-void VmConciergeClient::DoDetachTapDevice(uint32_t bus_num,
-                                          DetachTapCallback callback,
-                                          const VmId& vm_id) {
+void VmConciergeClientImpl::DoDetachTapDevice(uint32_t bus_num,
+                                              DetachTapCallback callback,
+                                              const VmId& vm_id) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kDetachNetDeviceMethod);
   vm_tools::concierge::DetachNetDeviceRequest detach_request_proto;
@@ -164,9 +163,9 @@ void VmConciergeClient::DoDetachTapDevice(uint32_t bus_num,
                                std::move(dbus_callback));
 }
 
-bool VmConciergeClient::DetachTapDevice(int64_t vm_cid,
-                                        uint32_t bus_num,
-                                        DetachTapCallback callback) {
+bool VmConciergeClientImpl::DetachTapDevice(int64_t vm_cid,
+                                            uint32_t bus_num,
+                                            DetachTapCallback callback) {
   const auto itr = cid_vmid_map_.find(vm_cid);
   if (itr == cid_vmid_map_.end()) {
     // VM may already be shutdown, treat removal of device as successful.
@@ -176,7 +175,7 @@ bool VmConciergeClient::DetachTapDevice(int64_t vm_cid,
   if (!itr->second.has_value()) {
     // Queue requests since VM is not ready.
     DeferredRequest request =
-        base::BindOnce(&VmConciergeClient::DoDetachTapDevice,
+        base::BindOnce(&VmConciergeClientImpl::DoDetachTapDevice,
                        base::Unretained(this), bus_num, std::move(callback));
     auto [q_itr, _] =
         cid_requestq_map_.insert({vm_cid, std::queue<DeferredRequest>()});
@@ -187,7 +186,7 @@ bool VmConciergeClient::DetachTapDevice(int64_t vm_cid,
   return true;
 }
 
-void VmConciergeClient::OnVmStarted(dbus::Signal* signal) {
+void VmConciergeClientImpl::OnVmStarted(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
   vm_tools::concierge::VmStartedSignal started_signal;
   if (!reader.PopArrayOfBytesAsProto(&started_signal)) {
@@ -215,7 +214,7 @@ void VmConciergeClient::OnVmStarted(dbus::Signal* signal) {
   }
 }
 
-void VmConciergeClient::OnVmStopping(dbus::Signal* signal) {
+void VmConciergeClientImpl::OnVmStopping(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
   vm_tools::concierge::VmStoppingSignal stopping_signal;
   if (!reader.PopArrayOfBytesAsProto(&stopping_signal)) {
@@ -228,7 +227,7 @@ void VmConciergeClient::OnVmStopping(dbus::Signal* signal) {
     // Removes pending tasks:
     cid_requestq_map_.erase(cid);
     LOG(INFO) << __func__ << ": VM " << cid
-              << " is removed from VmConciergeClient.";
+              << " is removed from VmConciergeClientImpl.";
   }
 }
 

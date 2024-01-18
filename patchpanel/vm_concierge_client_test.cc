@@ -90,7 +90,7 @@ class VmConciergeClientTest : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
         .WillRepeatedly(
             Return(base::SingleThreadTaskRunner::GetCurrentDefault().get()));
-    client_ = std::make_unique<VmConciergeClient>(mock_bus_);
+    client_ = std::make_unique<VmConciergeClientImpl>(mock_bus_);
   }
 
   void ResolveAttachAsSuccess(testing::Unused,

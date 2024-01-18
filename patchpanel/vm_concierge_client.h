@@ -29,11 +29,7 @@ namespace patchpanel {
 // received for this VM.
 class VmConciergeClient {
  public:
-  explicit VmConciergeClient(scoped_refptr<dbus::Bus> bus);
-  VmConciergeClient(const VmConciergeClient&) = delete;
-  VmConciergeClient& operator=(const VmConciergeClient&) = delete;
-
-  ~VmConciergeClient();
+  virtual ~VmConciergeClient() = default;
 
   // VmId is the identifier concierge dbus uses for a VM after it started.
   struct VmId {
@@ -45,20 +41,21 @@ class VmConciergeClient {
   //
   // Returns true if the cid is not known to VmConciergeClient yet, false if it
   // has already been registered.
-  bool RegisterVm(int64_t vm_cid);
+  virtual bool RegisterVm(int64_t vm_cid) = 0;
 
   // Callback after response for TapAttachRequest is received.
   //
   // |bus_num|: PCI bus number of on guest VM on success, nullopt on failure.
   using AttachTapCallback =
       base::OnceCallback<void(std::optional<uint32_t> bus_num)>;
+
   // Attaches a tap device, handles response by |callback|.
   //
   // Returns true if the Request cannot be made, for example if the VM is not
   // registered, or already shutdown.
-  bool AttachTapDevice(int64_t vm_cid,
-                       const std::string& tap_name,
-                       AttachTapCallback callback);
+  virtual bool AttachTapDevice(int64_t vm_cid,
+                               const std::string& tap_name,
+                               AttachTapCallback callback) = 0;
 
   // Callback after response for TapDetachRequest is received.
   //
@@ -69,9 +66,28 @@ class VmConciergeClient {
   //
   // Returns true if the Request cannot be made, for example if the VM is not
   // registered, or already shutdown.
+  virtual bool DetachTapDevice(int64_t vm_cid,
+                               uint32_t bus_num,
+                               DetachTapCallback callback) = 0;
+};
+
+class VmConciergeClientImpl : public VmConciergeClient {
+ public:
+  explicit VmConciergeClientImpl(scoped_refptr<dbus::Bus> bus);
+  VmConciergeClientImpl(const VmConciergeClientImpl&) = delete;
+  VmConciergeClientImpl& operator=(const VmConciergeClientImpl&) = delete;
+
+  ~VmConciergeClientImpl() = default;
+
+  bool RegisterVm(int64_t vm_cid) override;
+
+  bool AttachTapDevice(int64_t vm_cid,
+                       const std::string& tap_name,
+                       AttachTapCallback callback) override;
+
   bool DetachTapDevice(int64_t vm_cid,
                        uint32_t bus_num,
-                       DetachTapCallback callback);
+                       DetachTapCallback callback) override;
 
  private:
   // DeferredRequest is a request deferred until VmId is available.
@@ -93,7 +109,7 @@ class VmConciergeClient {
   scoped_refptr<dbus::ObjectProxy> concierge_proxy_;
   std::map<int64_t, std::optional<VmId>> cid_vmid_map_;
   std::map<int64_t, std::queue<DeferredRequest>> cid_requestq_map_;
-  base::WeakPtrFactory<VmConciergeClient> weak_ptr_factory_{this};
+  base::WeakPtrFactory<VmConciergeClientImpl> weak_ptr_factory_{this};
 };
 
 std::ostream& operator<<(std::ostream& os,
