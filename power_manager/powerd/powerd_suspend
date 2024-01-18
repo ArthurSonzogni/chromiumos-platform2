@@ -132,32 +132,6 @@ bind_igb_devices() {
   done
 }
 
-# Powers "on" or "off" the built-in modem via EC.
-ec_power_modem() {
-  local op="$1"
-
-  case "${op}" in
-    on)
-      ectool wireless 0x4 0x4
-      ;;
-    off)
-      ectool wireless 0x0 0x4
-      ;;
-    *)
-      log_msg "Invalid operation 'ec_power_modem ${op}'"
-      return 1
-      ;;
-  esac
-
-  if [ $? -eq 0 ]; then
-    log_msg "Power ${op} built-in modem"
-    return 0
-  else
-    log_msg "Failed to power ${op} built-in modem"
-    return 1
-  fi
-}
-
 to_hex() {
   echo "obase=16; $(($1))" | bc
 }
