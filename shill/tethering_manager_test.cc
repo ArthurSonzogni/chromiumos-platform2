@@ -1471,9 +1471,8 @@ TEST_F(TetheringManagerTest, UpstreamNetworkValidationFails) {
       GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
 
   // The Tethering session has stopped.
-  // TODO(b/271322391) Update Chrome to handle
-  // kTetheringIdleReasonUpstreamNoInternet.
-  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonInactive);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonUpstreamNoInternet);
 }
 
 TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
@@ -1525,9 +1524,8 @@ TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
       GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
 
   // The Tethering session has stopped.
-  // TODO(b/271322391) Update Chrome to handle
-  // kTetheringIdleReasonUpstreamNoInternet.
-  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonInactive);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonUpstreamNoInternet);
   Mock::VerifyAndClearExpectations(&manager_);
 }
 

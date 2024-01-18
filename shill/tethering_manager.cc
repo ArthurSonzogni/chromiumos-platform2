@@ -1369,10 +1369,7 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
     case StopReason::kUpstreamDisconnect:
       return kTetheringIdleReasonUpstreamDisconnect;
     case StopReason::kUpstreamNoInternet:
-      // TODO(b/271322391) Update Chrome to handle
-      // kTetheringIdleReasonUpstreamNoInternet.
-      // return kTetheringIdleReasonUpstreamNoInternet;
-      return kTetheringIdleReasonInactive;
+      return kTetheringIdleReasonUpstreamNoInternet;
     case StopReason::kInactive:
       return kTetheringIdleReasonInactive;
     case StopReason::kError:
