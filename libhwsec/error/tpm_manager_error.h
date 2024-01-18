@@ -44,7 +44,7 @@ class HWSEC_EXPORT TPMManagerError : public TPMErrorBase {
         static_cast<unified_tpm_error::UnifiedError>(error_code_);
     error_code += unified_tpm_error::kUnifiedErrorTpmManagerBase;
     DCHECK_LT(error_code, unified_tpm_error::kUnifiedErrorTpmManagerMax);
-    return error_code;
+    return error_code | unified_tpm_error::kUnifiedErrorBit;
   }
 
  private:

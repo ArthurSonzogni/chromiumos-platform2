@@ -38,7 +38,7 @@ class HWSEC_EXPORT PinWeaverError : public TPMErrorBase {
         static_cast<unified_tpm_error::UnifiedError>(error_code_);
     error_code += unified_tpm_error::kUnifiedErrorPinWeaverBase;
     DCHECK_LT(error_code, unified_tpm_error::kUnifiedErrorPinWeaverMax);
-    return error_code;
+    return error_code | unified_tpm_error::kUnifiedErrorBit;
   }
 
  private:

@@ -39,10 +39,11 @@ TEST_F(TestingTPMManagerErrorTest, TPMRetryAction) {
       TpmManagerStatus::STATUS_DBUS_ERROR;
   Status status = MakeStatus<TPMManagerError>(kTestTpmManagerStatus1);
   EXPECT_EQ(status->ToTPMRetryAction(), TPMRetryAction::kCommunication);
-  EXPECT_EQ(
-      status->UnifiedErrorCode(),
-      static_cast<unified_tpm_error::UnifiedError>(kTestTpmManagerStatus1) +
-          unified_tpm_error::kUnifiedErrorTpmManagerBase);
+  EXPECT_EQ(status->UnifiedErrorCode(),
+            unified_tpm_error::kUnifiedErrorBit |
+                (static_cast<unified_tpm_error::UnifiedError>(
+                     kTestTpmManagerStatus1) +
+                 unified_tpm_error::kUnifiedErrorTpmManagerBase));
 
   Status status2 = MakeStatus<TPMError>("OuO+").Wrap(std::move(status));
   EXPECT_EQ("OuO+: TpmManager status 3 (STATUS_DBUS_ERROR)",

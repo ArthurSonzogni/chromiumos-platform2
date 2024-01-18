@@ -41,8 +41,9 @@ TEST_F(TestingPinWeaverErrorTest, TPMRetryAction) {
   EXPECT_EQ(status.HintNotOk()->ToTPMRetryAction(),
             TPMRetryAction::kPinWeaverOutOfSync);
   EXPECT_EQ(status->UnifiedErrorCode(),
-            static_cast<unified_tpm_error::UnifiedError>(kTestPWError1) +
-                unified_tpm_error::kUnifiedErrorPinWeaverBase);
+            unified_tpm_error::kUnifiedErrorBit |
+                (static_cast<unified_tpm_error::UnifiedError>(kTestPWError1) +
+                 unified_tpm_error::kUnifiedErrorPinWeaverBase));
 
   Status status2 = MakeStatus<TPMError>("OuO+").Wrap(std::move(status));
   EXPECT_EQ("OuO+: Pinweaver Manager Error Code 4 (kHashTreeOutOfSync)",

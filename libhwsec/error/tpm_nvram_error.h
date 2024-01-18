@@ -44,7 +44,7 @@ class HWSEC_EXPORT TPMNvramError : public TPMErrorBase {
         static_cast<unified_tpm_error::UnifiedError>(error_code_);
     error_code += unified_tpm_error::kUnifiedErrorNvramBase;
     DCHECK_LT(error_code, unified_tpm_error::kUnifiedErrorNvramMax);
-    return error_code;
+    return error_code | unified_tpm_error::kUnifiedErrorBit;
   }
 
  private:
