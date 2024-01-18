@@ -55,7 +55,6 @@ class RoutineAdapter : public DiagnosticRoutine,
 
   // Exported for testing only.
   void FlushRoutineControlForTesting();
-  mojo::Remote<ash::cros_healthd::mojom::RoutineControl>& routine_control();
 
  private:
   // Sets error message when routine disconnects.

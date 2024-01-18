@@ -353,9 +353,4 @@ void RoutineAdapter::FlushRoutineControlForTesting() {
   routine_control_.FlushForTesting();
 }
 
-mojo::Remote<ash::cros_healthd::mojom::RoutineControl>&
-RoutineAdapter::routine_control() {
-  return routine_control_;
-}
-
 }  // namespace diagnostics
