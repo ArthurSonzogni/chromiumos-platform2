@@ -23,7 +23,7 @@ use std::time::Duration;
 
 use chrono::Local;
 use dbus::blocking::Connection;
-use libc::c_int;
+use libc::{c_int, epoll_event};
 use libchromeos::chromeos;
 use libchromeos::signal::{clear_signal_handler, register_signal_handler};
 use log::error;
@@ -41,6 +41,9 @@ const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
 // The return value of cryptohome when call install_attributes_get and the value is not set.
 const CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED: i32 = 34;
+// 30 seconds is the default timeout for epoll.
+const DEFAULT_EPOLL_TIMEOUT: i32 = 30000;
+const MAX_EPOLL_EVENTS: i32 = 1;
 
 static INCLUDE_DEV: AtomicBool = AtomicBool::new(false);
 static INCLUDE_USB: AtomicBool = AtomicBool::new(false);
@@ -51,6 +54,8 @@ pub enum Error {
     DbusConnection(dbus::Error),
     DbusGetUserIdHash(chromeos::Error),
     DbusGuestSessionActive(dbus::Error),
+    EpollAdd(i32),
+    EpollCreate(i32),
     NoMatchFound,
     WrappedError(String),
 }
@@ -76,6 +81,8 @@ impl Display for Error {
                     err
                 )
             }
+            EpollAdd(err) => write!(f, "failed to add to epoll: {}", err),
+            EpollCreate(err) => write!(f, "failed to create epoll: {}", err),
             NoMatchFound => write!(f, "No match found."),
             WrappedError(err) => write!(f, "{}", err),
         }
@@ -270,6 +277,40 @@ pub fn prompt_for_yes(msg: &str) -> bool {
     let mut response = String::new();
     stdin().read_line(&mut response).ok();
     matches!(response.as_str(), "y\n" | "Y\n")
+}
+
+// Creates a new epoll instance watching the provided fd.
+pub fn add_epoll_for_fd(fd: i32) -> Result<i32> {
+    // Safe because this will create a new epoll instance. Then we check the
+    // return value.
+    let epoll_fd = unsafe { libc::epoll_create1(0) };
+    if epoll_fd < 0 {
+        error!(
+            "ERROR: Got unexpected result from epoll_create1(): {}",
+            epoll_fd
+        );
+        return Err(Error::EpollCreate(epoll_fd));
+    }
+
+    let mut evt = epoll_event { events: 0, u64: 0 };
+    // Safe because this only adds an entry to the epoll interest list. Then we
+    // check the return value.
+    let add_result = unsafe { libc::epoll_ctl(epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut evt) };
+    if add_result != 0 {
+        error!("ERROR: Got unexpected epoll result: {}", add_result);
+        return Err(Error::EpollAdd(add_result));
+    }
+
+    Ok(epoll_fd)
+}
+
+// Waits for an epoll event on the provided fd.
+//
+// The return value of the underlying syscall is returned.
+pub fn epoll_wait(epoll_fd: i32) -> i32 {
+    let mut evt = epoll_event { events: 0, u64: 0 };
+    // Safe because we give an epoll_event array that can hold MAX_EPOLL_EVENTS.
+    unsafe { libc::epoll_wait(epoll_fd, &mut evt, MAX_EPOLL_EVENTS, DEFAULT_EPOLL_TIMEOUT) }
 }
 
 #[cfg(test)]
