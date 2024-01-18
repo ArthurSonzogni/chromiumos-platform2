@@ -181,10 +181,12 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     }
   }
 
+  bool hs20_support_changed = false;
   if (properties.Contains<std::vector<uint8_t>>(
           WPASupplicant::kBSSPropertyIEs)) {
     Metrics::WiFiNetworkPhyMode new_phy_mode =
         Metrics::kWiFiNetworkPhyModeUndef;
+    bool old_hs20_suppported = hs20_information().supported;
     if (!ParseIEs(properties, &new_phy_mode)) {
       new_phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
     }
@@ -195,6 +197,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
       physical_mode_ = new_phy_mode;
       should_notify = true;
     }
+    hs20_support_changed = old_hs20_suppported != hs20_information().supported;
   }
 
   WiFiSecurity::Mode new_security_mode =
@@ -209,6 +212,9 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
 
   if (should_notify) {
     device_->NotifyEndpointChanged(this);
+  }
+  if (hs20_support_changed) {
+    device_->NotifyHS20InformationChanged(this);
   }
 }
 

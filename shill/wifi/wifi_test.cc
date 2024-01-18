@@ -6013,6 +6013,45 @@ TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
   ReportScanDone();
 }
 
+TEST_F(WiFiMainTest, BSSUpdateTriggersInterworkingSelect) {
+  // Ensure the provider contains credentials
+  MockPasspointCredentialsRefPtr cred0 = new MockPasspointCredentials("cred0");
+  EXPECT_CALL(*cred0, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(Return(true));
+
+  std::vector<PasspointCredentialsRefPtr> credentials{cred0};
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*wifi_provider(), has_passpoint_credentials())
+      .WillRepeatedly(Return(credentials.size()));
+
+  StartWiFi();
+  SetInterworkingSelectEnabled(true, nullptr);
+
+  // First BSS report should not trigger a interworking select.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect()).Times(0);
+
+  RpcIdentifier bss0_path("bss0");
+  ReportBSS(bss0_path, "ssid0", "00:00:00:00:00:00", 0, 0,
+            kNetworkModeInfrastructure, 0);
+  ReportScanDone();
+
+  // Update the BSS with Passpoint support, check it triggers an interworking
+  // select.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect()).Times(1);
+
+  std::vector<uint8_t> ies;
+  std::vector<uint8_t> data = {0x20};
+  AddVendorIE(IEEE_80211::kOUIVendorWiFiAlliance,
+              IEEE_80211::kOUITypeWiFiAllianceHS20Indicator, data, &ies);
+  KeyValueStore properties;
+  properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ies);
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().at(bss0_path);
+  endpoint->PropertiesChanged(properties);
+  ReportScanDone();
+}
+
 TEST_F(WiFiMainTest, AddCredTriggersInterworkingSelect) {
   StartWiFi();
 

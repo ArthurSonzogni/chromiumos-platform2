@@ -935,6 +935,24 @@ TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
   EXPECT_EQ(frequency, endpoint->frequency());
 }
 
+TEST_F(WiFiEndpointTest, PropertiesChangedHS20Support) {
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+                   WiFiEndpoint::SecurityFlags());
+
+  KeyValueStore changed_properties;
+  std::vector<uint8_t> ies;
+  std::vector<uint8_t> data = {0x20};
+  AddVendorIE(IEEE_80211::kOUIVendorWiFiAlliance,
+              IEEE_80211::kOUITypeWiFiAllianceHS20Indicator, data, &ies);
+  changed_properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs,
+                                               ies);
+
+  EXPECT_CALL(*wifi(), NotifyHS20InformationChanged(_));
+  endpoint->PropertiesChanged(changed_properties);
+  EXPECT_TRUE(endpoint->hs20_information().supported);
+}
+
 TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");

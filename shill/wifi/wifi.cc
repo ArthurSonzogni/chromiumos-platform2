@@ -910,6 +910,14 @@ void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
   provider_->OnEndpointUpdated(endpoint);
 }
 
+void WiFi::NotifyHS20InformationChanged(
+    const WiFiEndpointConstRefPtr& endpoint) {
+  // Endpoint update changed Passpoint support, an interworking might be
+  // required.
+  need_interworking_select_ =
+      need_interworking_select_ || endpoint->hs20_information().supported;
+}
+
 std::string WiFi::AppendBgscan(WiFiService* service,
                                KeyValueStore* service_params) const {
   std::string method = bgscan_method_;

@@ -206,6 +206,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by WiFiEndpoint.
   virtual void NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint);
 
+  // Called by WiFiEndpoint.
+  virtual void NotifyHS20InformationChanged(
+      const WiFiEndpointConstRefPtr& endpoint);
+
   // Utility, used by WiFiService and WiFiEndpoint.
   // Replace non-ASCII characters with '?'. Return true if one or more
   // characters were changed.
