@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <net-base/socket.h>
 
@@ -48,8 +47,7 @@ class EapListener {
   // Creates the socket file descriptor. Returns nullptr on failure.
   std::unique_ptr<net_base::Socket> CreateSocket();
 
-  // Retrieves an EAP packet from |socket_|.  This is the callback method
-  // configured on |socket_watcher_|.
+  // Retrieves an EAP packet from |socket_|.
   void ReceiveRequest();
 
   const std::string& LoggingTag();
@@ -69,10 +67,6 @@ class EapListener {
 
   // Receive socket configured to receive PAE (Port Access Entity) packets.
   std::unique_ptr<net_base::Socket> socket_;
-
-  // Watcher to wait for |socket_| ready to read. It should be destructed
-  // prior than |socket_|, so it's declared after |socket_|.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
 };
 
 }  // namespace shill

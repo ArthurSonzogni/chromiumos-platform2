@@ -35,31 +35,25 @@ EapListener::EapListener(int interface_index, const std::string& link_name)
 EapListener::~EapListener() = default;
 
 bool EapListener::Start() {
-  auto socket = CreateSocket();
+  std::unique_ptr<net_base::Socket> socket = CreateSocket();
   if (!socket) {
     LOG(ERROR) << LoggingTag() << ": Could not open EAP listener socket";
     return false;
   }
 
   socket_ = std::move(socket);
-  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      socket_->Get(), base::BindRepeating(&EapListener::ReceiveRequest,
-                                          base::Unretained(this)));
-  if (!socket_watcher_) {
-    LOG(ERROR) << LoggingTag() << ": Failed on watching EAP listener socket";
-    return false;
-  }
+  socket_->SetReadableCallback(base::BindRepeating(&EapListener::ReceiveRequest,
+                                                   base::Unretained(this)));
   return true;
 }
 
 void EapListener::Stop() {
-  socket_watcher_.reset();
   socket_.reset();
 }
 
 std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
-  auto socket = socket_factory_->Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-                                        htons(ETH_P_PAE));
+  std::unique_ptr<net_base::Socket> socket = socket_factory_->Create(
+      PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE));
   if (!socket) {
     PLOG(ERROR) << LoggingTag() << ": Could not create EAP listener socket";
     return nullptr;
