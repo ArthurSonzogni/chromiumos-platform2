@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 
   // Set TPM metrics client ID.
   hwsec_foundation::SetTpmMetricsClientID(
-      hwsec_foundation::TpmMetricsClientID::kBootLockBox);
+      hwsec_foundation::TpmMetricsClientID::kDeviceManagement);
 
   return device_management::DeviceManagementDaemon().Run();
 }
