@@ -1658,24 +1658,56 @@ message PrepareAuthFactorProgress {
   }
 }
 
-// Contains the result of authenticating the auth factor.
-// Used in the AuthenticateAuthFactorCompleted signal to notify
-// if authentication was successful/failed.
+// Used to signal the start of an Authentication operation. Note that creating
+// a new user is also considered to be such an operation since creating a new
+// user implicitly authenticates.
+message AuthenticateStarted {
+  // Unique ID associated with the authenticate operation.
+  uint64 operation_id = 1;
+
+  oneof auth_factor {
+    // The type of factor being used for authentication. Set on authentication
+    // of an existing user.
+    AuthFactorType auth_factor_type = 2;
+
+    // Set to true when the authentication is an implicit result of a user
+    // creation operation.
+    bool user_creation = 3;
+  }
+}
+
+// Used to signal the completion of an authentication operation.
+// TODO(b/316597268): Rename to AuthenticateCompleted.
 message AuthenticateAuthFactorCompleted {
-  // error and error_info will be empty in case of success.
+  // Unique ID associated with the authenticate operation. Will match the ID of
+  // the corresponding start signal.
+  uint64 operation_id = 5;
+
+  // Set to indicate that the authentication operation failed. Unset in the
+  // case of a successful authentication.
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
 
   oneof auth_factor {
-    // The auth factor type should be filled when it is not a new
-    // new user creation.
+    // See AuthenticateStarted.auth_factor_type.
     AuthFactorType auth_factor_type = 3;
 
-    // When a new user is created they are implicitly authenticated,
-    // so authentication does not occur.
-    // Create a new signal with this flag set on user creation instead.
+    // See AuthenticateStarted.user_creation.
     bool user_creation = 4;
   }
+}
+
+// Used to signal the start of a Mount operation.
+message MountStarted {
+  // Unique ID associated with the mount operation.
+  uint64 operation_id = 1;
+}
+
+// Used to signal the completion of a Mount operation.
+message MountCompleted {
+  // Unique ID associated with the mount operation. Will match the ID of the
+  // corresponding start signal.
+  uint64 operation_id = 1;
 }
 
 // The message sent in signal EvictedKeyRestoreSignal
