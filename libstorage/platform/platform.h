@@ -78,10 +78,14 @@ BRILLO_EXPORT extern const char kLoopPrefix[];
 // IDs of necessary groups and users
 inline constexpr uid_t kRootUid = 0;
 inline constexpr gid_t kRootGid = 0;
+static constexpr uid_t kBiodUid = 282;
+static constexpr gid_t kBiodGid = 282;
 inline constexpr gid_t kDaemonStoreGid = 400;
 inline constexpr uid_t kChronosUid = 1000;
 inline constexpr gid_t kChronosGid = 1000;
 inline constexpr gid_t kChronosAccessGid = 1001;
+static constexpr uid_t kHibermanUid = 20184;
+static constexpr gid_t kHibermanGid = 20184;
 
 // exit codes as defined in fsck(8)
 enum {
