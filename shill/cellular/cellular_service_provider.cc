@@ -413,7 +413,9 @@ bool CellularServiceProvider::VariantSupportsTethering(
       {// trogdor variants
        "kingoftown", "lazor", "limozeen", "pazquel", "pazquel360",
        // strongbad variants
-       "coachz", "quackingstick"});
+       "coachz", "quackingstick",
+       // Temporarily disabled on pujjoteen5 b/321064759
+       "pujjoteen5_fm350"});
 
   if (blocklist.contains(variant_.value())) {
     SLOG(1) << "Cellular hardware does not support tethering";
