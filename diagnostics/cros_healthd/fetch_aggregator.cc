@@ -72,8 +72,7 @@ void OnFinish(
 
 }  // namespace
 
-FetchAggregator::FetchAggregator(Context* context)
-    : disk_fetcher_(context), context_(context) {}
+FetchAggregator::FetchAggregator(Context* context) : context_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
 

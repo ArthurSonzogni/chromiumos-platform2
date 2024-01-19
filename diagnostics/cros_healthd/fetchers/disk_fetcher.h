@@ -7,9 +7,6 @@
 
 #include <memory>
 
-#include <base/files/file_path.h>
-
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -17,9 +14,12 @@ namespace diagnostics {
 
 // The DiskFetcher class is responsible for gathering disk info reported by
 // cros_healthd.
-class DiskFetcher final : public BaseFetcher {
+class DiskFetcher final {
  public:
-  using BaseFetcher::BaseFetcher;
+  DiskFetcher();
+  DiskFetcher(const DiskFetcher&) = delete;
+  DiskFetcher& operator=(const DiskFetcher&) = delete;
+  ~DiskFetcher();
 
   // Returns a structure with either the device's non-removable block device
   // info or the error that occurred fetching the information.

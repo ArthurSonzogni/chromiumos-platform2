@@ -24,6 +24,10 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
+DiskFetcher::DiskFetcher() = default;
+
+DiskFetcher::~DiskFetcher() = default;
+
 mojom::ProbeErrorPtr DiskFetcher::InitManager() {
   auto udev = brillo::Udev::Create();
   if (!udev)
