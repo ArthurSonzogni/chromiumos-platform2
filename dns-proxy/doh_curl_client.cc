@@ -153,7 +153,7 @@ void DoHCurlClient::AddWriteWatcher(curl_socket_t socket_fd) {
   if (!base::Contains(write_watchers_, socket_fd)) {
     write_watchers_.emplace(
         socket_fd,
-        base::FileDescriptorWatcher::WatchReadable(
+        base::FileDescriptorWatcher::WatchWritable(
             socket_fd,
             base::BindRepeating(&DoHCurlClient::OnFileCanWriteWithoutBlocking,
                                 weak_factory_.GetWeakPtr(), socket_fd)));
