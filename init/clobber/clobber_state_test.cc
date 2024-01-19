@@ -925,13 +925,14 @@ TEST_F(AttemptSwitchToFastWipeTest, NoLegacySalt) {
   clobber_.SetArgsForTest(args);
 
   ASSERT_TRUE(brillo::DeleteFile(fake_stateful_.Append("home/.shadow/salt")));
-#ifndef USE_TPM_INSECURE_FALLBACK
-  ASSERT_TRUE(clobber_.GetArgsForTest().fast_wipe);
-#else
-  // Missing legacy system salt has no effect on devices that allow non-tpm
-  // encryption.
-  ASSERT_FALSE(clobber_.GetArgsForTest().fast_wipe);
-#endif
+  clobber_.AttemptSwitchToFastWipe(false);
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    ASSERT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  } else {
+    // Missing legacy system salt has no effect on devices that allow non-tpm
+    // encryption.
+    ASSERT_FALSE(clobber_.GetArgsForTest().fast_wipe);
+  }
 }
 
 class ShredRotationalStatefulFilesTest : public ::testing::Test {

@@ -986,13 +986,13 @@ void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
 
   // Do not use legacy salt as a fast_wipe allowence marker on devices which
   // allow non-tpm fallback for encryption.
-#ifndef USE_TPM_INSECURE_FALLBACK
-  if (!brillo::cryptohome::home::IsLegacySystemSalt(root_path_)) {
-    args_.fast_wipe = true;
-    LOG(INFO) << "No legacy salt file, switching to fast wipe";
-    return;
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    if (!brillo::cryptohome::home::IsLegacySystemSalt(stateful_)) {
+      args_.fast_wipe = true;
+      LOG(INFO) << "No legacy salt file, switching to fast wipe";
+      return;
+    }
   }
-#endif
 
   // For drives that support secure erasure, wipe the stateful key material, and
   // then run the drives through "fast" mode.
