@@ -4,6 +4,8 @@
 
 #include "flex_hwis/flex_hwis_check.h"
 
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
@@ -15,6 +17,79 @@
 namespace flex_hwis {
 
 namespace {
+
+enum class PolicyType {
+  // Managed
+  DeviceSystemInfo,
+  DeviceCpuInfo,
+  DeviceGraphicsStatus,
+  DeviceMemoryInfo,
+  DeviceVersionInfo,
+  DeviceNetworkConfig,
+
+  // Unmanaged
+  HardwareDataUsage,
+};
+
+// Convert a PolicyType to a string for logging.
+std::string PolicyTypeToString(PolicyType policy_type) {
+  switch (policy_type) {
+    case PolicyType::DeviceSystemInfo:
+      return "DeviceSystemInfo";
+    case PolicyType::DeviceCpuInfo:
+      return "DeviceCpuInfo";
+    case PolicyType::DeviceGraphicsStatus:
+      return "DeviceGraphicsStatus";
+    case PolicyType::DeviceMemoryInfo:
+      return "DeviceMemoryInfo";
+    case PolicyType::DeviceVersionInfo:
+      return "DeviceVersionInfo";
+    case PolicyType::DeviceNetworkConfig:
+      return "DeviceNetworkConfig";
+    case PolicyType::HardwareDataUsage:
+      return "HardwareDataUsage";
+  }
+}
+
+// Get the list of policies to check, depending on whether the device is
+// enrolled or not.
+std::vector<PolicyType> GetPolicyTypesToCheck(bool is_enterprise_enrolled) {
+  if (is_enterprise_enrolled) {
+    return {PolicyType::DeviceSystemInfo,     PolicyType::DeviceCpuInfo,
+            PolicyType::DeviceGraphicsStatus, PolicyType::DeviceMemoryInfo,
+            PolicyType::DeviceVersionInfo,    PolicyType::DeviceNetworkConfig};
+  } else {
+    return {PolicyType::HardwareDataUsage};
+  }
+}
+
+// Read a device policy.
+//
+// If successfully retrieved, the policy value will be set in |val|.
+//
+// Returns true if the policy was successfully retrieved, or false if an
+// error occurs.
+bool ReadDevicePolicy(const policy::DevicePolicy& policy,
+                      PolicyType policy_type,
+                      bool* val) {
+  switch (policy_type) {
+    case PolicyType::DeviceSystemInfo:
+      return policy.GetReportSystemInfo(val);
+    case PolicyType::DeviceCpuInfo:
+      return policy.GetReportCpuInfo(val);
+    case PolicyType::DeviceGraphicsStatus:
+      return policy.GetReportGraphicsStatus(val);
+    case PolicyType::DeviceMemoryInfo:
+      return policy.GetReportMemoryInfo(val);
+    case PolicyType::DeviceVersionInfo:
+      return policy.GetReportVersionInfo(val);
+    case PolicyType::DeviceNetworkConfig:
+      return policy.GetReportNetworkConfig(val);
+    case PolicyType::HardwareDataUsage:
+      return policy.GetHwDataUsageEnabled(val);
+  }
+}
+
 std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   std::string out;
   if (!base::ReadFileToString(file_path, &out))
@@ -24,10 +99,17 @@ std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   return out;
 }
 
-bool CheckPolicy(const std::function<bool(bool*)> policy_member,
-                 const std::string& log_name) {
+// Check a single device policy to see whether it will deny permission
+// for HWIS to send data.
+//
+// Returns true if the policy is successfully retrieved and the policies
+// value is true. Returns false otherwise.
+bool CheckPermissionForPolicy(const policy::DevicePolicy& policy,
+                              PolicyType policy_type) {
+  const std::string log_name = PolicyTypeToString(policy_type);
   bool policy_permission = false;
-  if (!policy_member(&policy_permission)) {
+
+  if (!ReadDevicePolicy(policy, policy_type, &policy_permission)) {
     LOG(INFO) << log_name << " is not set";
     return false;
   }
@@ -124,7 +206,6 @@ void FlexHwisCheck::RecordSendTime() {
 }
 
 PermissionInfo FlexHwisCheck::CheckPermission() {
-  bool permission = true;
   PermissionInfo info;
 
   policy_provider_.Reload();
@@ -134,35 +215,17 @@ PermissionInfo FlexHwisCheck::CheckPermission() {
   }
   info.loaded = true;
 
-  const policy::DevicePolicy* policy = &policy_provider_.GetDevicePolicy();
-  info.managed = policy->IsEnterpriseEnrolled();
-  if (info.managed) {
-    LOG(INFO) << "The device is managed";
-    auto system_fn = std::bind(&policy::DevicePolicy::GetReportSystemInfo,
-                               policy, std::placeholders::_1);
-    auto cpu_fn = std::bind(&policy::DevicePolicy::GetReportCpuInfo, policy,
-                            std::placeholders::_1);
-    auto graphic_fn = std::bind(&policy::DevicePolicy::GetReportGraphicsStatus,
-                                policy, std::placeholders::_1);
-    auto memory_fn = std::bind(&policy::DevicePolicy::GetReportMemoryInfo,
-                               policy, std::placeholders::_1);
-    auto version_fn = std::bind(&policy::DevicePolicy::GetReportVersionInfo,
-                                policy, std::placeholders::_1);
-    auto network_fn = std::bind(&policy::DevicePolicy::GetReportNetworkConfig,
-                                policy, std::placeholders::_1);
-    permission = permission && CheckPolicy(system_fn, "DeviceSystemInfo");
-    permission = permission && CheckPolicy(cpu_fn, "DeviceCpuInfo");
-    permission = permission && CheckPolicy(graphic_fn, "DeviceGraphicsStatus");
-    permission = permission && CheckPolicy(memory_fn, "DeviceMemoryInfo");
-    permission = permission && CheckPolicy(version_fn, "DeviceVersionInfo");
-    permission = permission && CheckPolicy(network_fn, "DeviceNetworkConfig");
-  } else {
-    LOG(INFO) << "The device is not managed";
-    auto hw_data_fn = std::bind(&policy::DevicePolicy::GetHwDataUsageEnabled,
-                                policy, std::placeholders::_1);
-    permission = permission && CheckPolicy(hw_data_fn, "HardwareDataUsage");
+  const policy::DevicePolicy& policy = policy_provider_.GetDevicePolicy();
+  info.managed = policy.IsEnterpriseEnrolled();
+
+  // Deny permission if any one of the checked policies is disabled.
+  info.permission = true;
+  for (const auto policy_type : GetPolicyTypesToCheck(info.managed)) {
+    if (!CheckPermissionForPolicy(policy, policy_type)) {
+      info.permission = false;
+    }
   }
-  info.permission = permission;
+
   return info;
 }
 }  // namespace flex_hwis
