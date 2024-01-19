@@ -132,11 +132,7 @@ bool SandboxedProcess::EnterPivotRoot() {
 }
 
 void SandboxedProcess::NewNetworkNamespace() {
-  // As of 2021-08-04, this can log a warning to /var/log/messages:
-  // "ioctl(SIOCSIFFLAGS) failed: Operation not permitted"
-  //
-  // This libminijail message is harmless: https://crbug.com/1226229
-  minijail_namespace_net(jail_);
+  minijail_namespace_net_loopback(jail_, false);
 }
 
 void SandboxedProcess::SetNoNewPrivileges() {
