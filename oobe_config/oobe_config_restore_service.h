@@ -36,6 +36,7 @@ class OobeConfigRestoreService
   //   - See org.chromium.OobeConfigRestoreInterface.xml
   void ProcessAndGetOobeAutoConfig(int32_t* error,
                                    OobeRestoreData* oobe_config_blob) override;
+  bool DeleteFlexOobeConfig(brillo::ErrorPtr*) override;
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

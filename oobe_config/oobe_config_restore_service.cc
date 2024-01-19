@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "dbus/dbus-protocol.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "oobe_config/load_oobe_config_flex.h"
@@ -96,6 +97,15 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   LOG(INFO) << "No Flex OOBE config found.";
 
   oobe_config_proto->set_chrome_config_json("");
+}
+
+// TODO(b/316944501): Implement Flex OOBE config deletion.
+bool OobeConfigRestoreService::DeleteFlexOobeConfig(brillo::ErrorPtr* error) {
+  LOG(ERROR) << "UNIMPLEMENTED";
+  brillo::Error::AddTo(
+      error, FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+      "DeleteFlexOobeConfig method is not supported on this platform.");
+  return false;
 }
 
 }  // namespace oobe_config

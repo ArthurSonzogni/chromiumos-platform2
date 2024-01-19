@@ -22,5 +22,10 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="DeleteFlexOobeConfig">
+      <tp:docstring>
+        Deletes the Flex OOBE config file.
+      </tp:docstring>
+    </method>
   </interface>
 </node>
