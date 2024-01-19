@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 
 namespace diagnostics {
@@ -44,9 +45,9 @@ void FakeChromiumDataCollector::SetPrivacyScreenState(
       privacy_screen_response_delay_);
 }
 
-void FakeChromiumDataCollector::SetAudioOutputMute(
-    bool mute_on, SetAudioOutputMuteCallback callback) {
-  std::move(callback).Run(audio_output_mute_request_result_);
+void FakeChromiumDataCollector::DEPRECATED_SetAudioOutputMute(
+    bool mute_on, DEPRECATED_SetAudioOutputMuteCallback callback) {
+  NOTREACHED_NORETURN();
 }
 
 }  // namespace diagnostics

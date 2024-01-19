@@ -49,18 +49,14 @@ class FakeChromiumDataCollector
     privacy_screen_request_processed_ = response_value;
   }
 
-  void SetAudioOutputMuteRequestResult(bool expected_result) {
-    audio_output_mute_request_result_ = expected_result;
-  }
-
  private:
   // `ash::cros_healthd::internal::mojom::ChromiumDataCollector` overrides.
   void GetTouchscreenDevices(GetTouchscreenDevicesCallback callback) override;
   void GetTouchpadLibraryName(GetTouchpadLibraryNameCallback callback) override;
   void SetPrivacyScreenState(bool state,
                              SetPrivacyScreenStateCallback callback) override;
-  void SetAudioOutputMute(bool mute_on,
-                          SetAudioOutputMuteCallback callback) override;
+  void DEPRECATED_SetAudioOutputMute(
+      bool mute_on, DEPRECATED_SetAudioOutputMuteCallback callback) override;
 
   // Mojo receiver for binding pipe.
   mojo::Receiver<ash::cros_healthd::internal::mojom::ChromiumDataCollector>
@@ -76,8 +72,6 @@ class FakeChromiumDataCollector
   base::TimeDelta privacy_screen_response_delay_;
   // Expected result of processing privacy screen request.
   bool privacy_screen_request_processed_;
-  // Expected audio output mute request result.
-  bool audio_output_mute_request_result_;
 };
 
 }  // namespace diagnostics
