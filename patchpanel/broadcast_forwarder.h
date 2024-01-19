@@ -12,12 +12,10 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/rtnl_message.h>
 #include <net-base/rtnl_listener.h>
-
-#include "patchpanel/shill_client.h"
+#include <net-base/socket.h>
 
 namespace patchpanel {
 
@@ -50,11 +48,10 @@ class BroadcastForwarder {
   void AddrMsgHandler(const net_base::RTNLMessage& msg);
 
  protected:
-  // Socket is used to keep track of an fd and its watcher.
-  // It also stores addresses corresponding to the interface it is bound to.
-  struct Socket {
-    base::ScopedFD fd;
-    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+  // SocketWithIPv4Addr keeps track of an socket fd and addresses corresponding
+  // to the interface it is bound to.
+  struct SocketWithIPv4Addr {
+    std::unique_ptr<net_base::Socket> socket;
     net_base::IPv4Address addr;
     net_base::IPv4Address broadaddr;
     net_base::IPv4Address netmask;
@@ -92,7 +89,7 @@ class BroadcastForwarder {
                          size_t buffer_len,
                          const struct sockaddr_in* dst_addr);
 
-  virtual std::unique_ptr<Socket> CreateSocket(
+  virtual std::unique_ptr<SocketWithIPv4Addr> CreateSocket(
       base::ScopedFD fd,
       const net_base::IPv4Address& addr,
       const net_base::IPv4Address& broadaddr,
@@ -104,9 +101,9 @@ class BroadcastForwarder {
   // Name of the physical interface that this forwarder is bound to.
   const std::string dev_ifname_;
   // IPv4 socket bound by this forwarder onto |dev_ifname_|.
-  std::unique_ptr<Socket> dev_socket_;
+  std::unique_ptr<SocketWithIPv4Addr> dev_socket_;
   // Mapping from guest bridge interface name to its sockets.
-  std::map<std::string, std::unique_ptr<Socket>> br_sockets_;
+  std::map<std::string, std::unique_ptr<SocketWithIPv4Addr>> br_sockets_;
 
   base::WeakPtrFactory<BroadcastForwarder> weak_factory_{this};
 };

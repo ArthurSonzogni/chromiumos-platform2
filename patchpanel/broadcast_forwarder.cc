@@ -17,13 +17,14 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <algorithm>
+#include <memory>
 #include <utility>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/byte_utils.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/net_util.h"
 
@@ -122,21 +123,19 @@ net_base::IPv4Address GetIfreqNetmask(const struct ifreq& ifr) {
 
 namespace patchpanel {
 
-std::unique_ptr<BroadcastForwarder::Socket> BroadcastForwarder::CreateSocket(
-    base::ScopedFD fd,
-    const net_base::IPv4Address& addr,
-    const net_base::IPv4Address& broadaddr,
-    const net_base::IPv4Address& netmask) {
-  auto socket = std::make_unique<Socket>();
-  socket->watcher = base::FileDescriptorWatcher::WatchReadable(
-      fd.get(),
+std::unique_ptr<BroadcastForwarder::SocketWithIPv4Addr>
+BroadcastForwarder::CreateSocket(base::ScopedFD fd,
+                                 const net_base::IPv4Address& addr,
+                                 const net_base::IPv4Address& broadaddr,
+                                 const net_base::IPv4Address& netmask) {
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::Socket::CreateFromFd(std::move(fd));
+  socket->SetReadableCallback(
       base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this), fd.get()));
-  socket->fd = std::move(fd);
-  socket->addr = addr;
-  socket->broadaddr = broadaddr;
-  socket->netmask = netmask;
-  return socket;
+                          base::Unretained(this), socket->Get()));
+
+  return std::make_unique<SocketWithIPv4Addr>(std::move(socket), addr,
+                                              broadaddr, netmask);
 }
 
 BroadcastForwarder::BroadcastForwarder(const std::string& dev_ifname)
@@ -301,7 +300,7 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
   Ioctl(br_fd.get(), br_ifname, SIOCGIFNETMASK, &ifr);
   const auto br_netmask = GetIfreqNetmask(ifr);
 
-  std::unique_ptr<Socket> br_socket =
+  std::unique_ptr<SocketWithIPv4Addr> br_socket =
       CreateSocket(std::move(br_fd), br_addr, br_broadaddr, br_netmask);
 
   br_sockets_.emplace(br_ifname, std::move(br_socket));
@@ -398,7 +397,7 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   dst.sin_addr.s_addr = ip_hdr->daddr;
 
   // Forward ingress traffic to guests.
-  if (fd == dev_socket_->fd.get()) {
+  if (fd == dev_socket_->socket->Get()) {
     // Prevent looped back broadcast packets to be forwarded.
     if (net_base::IPv4Address(fromaddr.sin_addr) == dev_socket_->addr)
       return;
@@ -408,7 +407,7 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   }
 
   for (auto const& socket : br_sockets_) {
-    if (fd != socket.second->fd.get())
+    if (fd != socket.second->socket->Get())
       continue;
 
     // Prevent looped back broadcast packets to be forwarded.

@@ -31,7 +31,7 @@ class TestBroadcastForwarder : public BroadcastForwarder {
       : BroadcastForwarder(lan_ifname) {}
   TestBroadcastForwarder(const TestBroadcastForwarder&) = delete;
   TestBroadcastForwarder& operator=(const TestBroadcastForwarder&) = delete;
-  ~TestBroadcastForwarder() = default;
+  ~TestBroadcastForwarder() override = default;
 
   base::ScopedFD Bind(const std::string& ifname, uint16_t port) override {
     // Make a real socket to satisfy ScopedFD's checks.
@@ -45,14 +45,15 @@ class TestBroadcastForwarder : public BroadcastForwarder {
     return Bind(ifname, 0);
   }
 
-  std::unique_ptr<Socket> CreateSocket(
+  std::unique_ptr<SocketWithIPv4Addr> CreateSocket(
       base::ScopedFD fd,
       const net_base::IPv4Address& addr,
       const net_base::IPv4Address& broadaddr,
       const net_base::IPv4Address& netmask) override {
-    auto socket = std::make_unique<Socket>();
-    socket->fd = std::move(fd);
-    return socket;
+    std::unique_ptr<net_base::Socket> socket =
+        net_base::Socket::CreateFromFd(std::move(fd));
+    return std::make_unique<SocketWithIPv4Addr>(std::move(socket), addr,
+                                                broadaddr, netmask);
   }
 
   ssize_t ReceiveMessage(int fd, struct msghdr* msg) override {
