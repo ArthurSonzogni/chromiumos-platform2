@@ -148,6 +148,13 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
       return CreateErrorResponse(TPM_RC_RETRY);
     }
   }
+
+  // We don't support these commands.
+  if (command_info.code == TPM_CC_ContextLoad ||
+      command_info.code == TPM_CC_ContextSave) {
+    return CreateErrorResponse(SAPI_RC_ABI_MISMATCH);
+  }
+
   // A special case for FlushContext. It requires special handling because it
   // has a handle as a parameter and because we need to cleanup if it succeeds.
   if (command_info.code == TPM_CC_FlushContext) {
@@ -195,23 +202,6 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
       return CreateErrorResponse(result);
     }
   }
-  // On a ContextLoad we may need to map virtualized context data.
-  if (command_info.code == TPM_CC_ContextLoad) {
-    std::string actual_load_data =
-        GetActualContextFromExternalContext(command_info.parameter_data);
-    // Check equality to see if replacement is necessary, and check size to see
-    // if the command looks like we expect (the idea is to avoid 'fixing'
-    // malformed commands). Note: updated_command.size() is guaranteed to be >=
-    // kMessageHeaderSize based on the sanitization in ParseCommand.
-    if (actual_load_data != command_info.parameter_data &&
-        actual_load_data.size() ==
-            updated_command.size() - kMessageHeaderSize) {
-      // Replace the parameter section of the command with |actual_load_data|.
-      VLOG(1) << "REPLACE_EXTERNAL_CONTEXT";
-      updated_command.replace(kMessageHeaderSize, std::string::npos,
-                              actual_load_data);
-    }
-  }
   // Send the |updated_command| to the next layer. Attempt to fix any actionable
   // warnings for up to kMaxCommandAttempts.
   std::string response;
@@ -240,11 +230,7 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
         CleanupFlushedHandle(command_info.auth_session_handles[i]);
       }
     }
-    // On a successful context save we need to cache the context data in case it
-    // needs to be virtualized later.
-    if (command_info.code == TPM_CC_ContextSave) {
-      ProcessExternalContextSave(command_info, response_info);
-    }
+
     // Process all the output handles, which is loosely the inverse of the input
     // handle processing. E.g. virtualize handles.
     std::vector<TPM_HANDLE> virtual_handles;
@@ -325,16 +311,6 @@ void ResourceManager::CleanupFlushedHandle(TPM_HANDLE flushed_handle) {
       return;
     }
     // For session handles, remove the handle and any associated context data.
-    HandleInfo& info = iter->second;
-    if (!info.is_loaded) {
-      std::string actual_context_data;
-      Serialize_TPMS_CONTEXT(info.context, &actual_context_data);
-      if (actual_context_to_external_.count(actual_context_data) > 0) {
-        external_context_to_actual_.erase(
-            actual_context_to_external_[actual_context_data]);
-        actual_context_to_external_.erase(actual_context_data);
-      }
-    }
     session_handles_.erase(flushed_handle);
     VLOG(1) << "CLEANUP_SESSION: " << std::hex << flushed_handle;
   }
@@ -529,17 +505,6 @@ void ResourceManager::FixContextGap(const MessageInfo& command_info) {
                    << GetErrorString(result);
       continue;
     }
-    // If this context is one that we're tracking for external use, update it.
-    auto iter = actual_context_to_external_.find(old_context_blob);
-    if (iter == actual_context_to_external_.end()) {
-      continue;
-    }
-    std::string new_context_blob;
-    Serialize_TPMS_CONTEXT(info.context, &new_context_blob);
-    const std::string& external_context_blob = iter->second;
-    actual_context_to_external_[new_context_blob] = external_context_blob;
-    external_context_to_actual_[external_context_blob] = new_context_blob;
-    actual_context_to_external_.erase(old_context_blob);
   }
 }
 
@@ -597,15 +562,6 @@ void ResourceManager::FlushSession(const MessageInfo& command_info) {
     return;
   }
   CleanupFlushedHandle(session_to_flush);
-}
-
-std::string ResourceManager::GetActualContextFromExternalContext(
-    const std::string& external_context) {
-  auto iter = external_context_to_actual_.find(external_context);
-  if (iter == external_context_to_actual_.end()) {
-    return external_context;
-  }
-  return iter->second;
 }
 
 bool ResourceManager::IsObjectHandle(TPM_HANDLE handle) const {
@@ -837,52 +793,6 @@ TPM_RC ResourceManager::ParseResponse(const MessageInfo& command_info,
     response_info->parameter_data = buffer;
   }
   return TPM_RC_SUCCESS;
-}
-
-void ResourceManager::ProcessExternalContextSave(
-    const MessageInfo& command_info, const MessageInfo& response_info) {
-  CHECK_EQ(command_info.code, TPM_CC_ContextSave);
-  if (command_info.handles.size() != 1) {
-    LOG(WARNING) << "Invalid context save command.";
-    return;
-  }
-  // We know command_info.handles[0] is valid because this is validated when the
-  // command is parsed.
-  TPM_HANDLE saved_handle = command_info.handles[0];
-  // Only track external context data for session handles.
-  if (!IsSessionHandle(saved_handle)) {
-    return;
-  }
-  std::string mutable_parameter = response_info.parameter_data;
-  TPMS_CONTEXT context;
-  std::string context_blob;
-  TPM_RC result =
-      Parse_TPMS_CONTEXT(&mutable_parameter, &context, &context_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(WARNING) << "Invalid context save response: " << GetErrorString(result);
-    return;
-  }
-  if (!mutable_parameter.empty()) {
-    LOG(WARNING) << "Invalid length of context save response string.";
-    return;
-  }
-  auto iter = session_handles_.find(saved_handle);
-  if (iter != session_handles_.end()) {
-    iter->second.is_loaded = false;
-    iter->second.context = context;
-  } else {
-    // Unknown handle? Not anymore.
-    LOG(WARNING) << "Context for unknown handle.";
-    HandleInfo new_handle_info;
-    new_handle_info.Init(saved_handle);
-    new_handle_info.is_loaded = false;
-    new_handle_info.context = context;
-    session_handles_[saved_handle] = new_handle_info;
-  }
-  // Use the original context data as the 'external' context data. If this gets
-  // virtualized, only the 'actual' context data will change.
-  external_context_to_actual_[context_blob] = context_blob;
-  actual_context_to_external_[context_blob] = context_blob;
 }
 
 std::string ResourceManager::ProcessFlushContext(

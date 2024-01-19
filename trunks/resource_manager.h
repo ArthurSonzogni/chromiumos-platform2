@@ -181,16 +181,6 @@ class ResourceManager : public CommandTransceiver {
   // best effort; any errors will be ignored.
   void FlushSession(const MessageInfo& command_info);
 
-  // When a caller saves context, the resource manager retains that context and
-  // possible trades it for new context data to fix a context gap (see
-  // FixContextGap). So when the caller wants to load the original context again
-  // it needs to be swapped with the latest actual context maintained by the
-  // resource manager. This method finds the correct TPM context for a given
-  // |external_context| previously returned to the caller. If not found,
-  // |external_context| is returned.
-  std::string GetActualContextFromExternalContext(
-      const std::string& external_context);
-
   // Returns true iff |handle| is a transient object handle.
   bool IsObjectHandle(TPM_HANDLE handle) const;
 
@@ -216,12 +206,6 @@ class ResourceManager : public CommandTransceiver {
   TPM_RC ParseResponse(const MessageInfo& command_info,
                        const std::string& response,
                        MessageInfo* response_info);
-
-  // Performs processing after a successful external ContextSave operation.
-  // A subsequent call to GetActualContextFromExternalContext will succeed for
-  // the context.
-  void ProcessExternalContextSave(const MessageInfo& command_info,
-                                  const MessageInfo& response_info);
 
   // Process an external flush context |command|.
   std::string ProcessFlushContext(const std::string& command,
@@ -267,10 +251,6 @@ class ResourceManager : public CommandTransceiver {
   std::map<TPM_HANDLE, TPM_HANDLE> tpm_object_handles_;
   // A mapping of known session handles to corresponding HandleInfo.
   std::map<TPM_HANDLE, HandleInfo> session_handles_;
-  // A mapping of external context blobs to current context blobs.
-  std::map<std::string, std::string> external_context_to_actual_;
-  // A mapping of actual context blobs to external context blobs.
-  std::map<std::string, std::string> actual_context_to_external_;
   // A mapping of command handle to public area cache.
   std::map<TPM_HANDLE, std::string> public_area_cache_;
 

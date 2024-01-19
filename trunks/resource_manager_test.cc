@@ -878,45 +878,14 @@ TEST_F(ResourceManagerTest, ExternalContext) {
   std::vector<TPM_HANDLE> handles = {kArbitrarySessionHandle};
   std::string context_save = CreateCommand(TPM_CC_ContextSave, handles,
                                            kNoAuthorization, kNoParameters);
-  std::string context_parameter1 = CreateContextParameter(1);
-  std::string context_save_response1 = CreateResponse(
-      TPM_RC_SUCCESS, kNoHandles, kNoAuthorization, context_parameter1);
-  EXPECT_CALL(transceiver_, SendCommandAndWait(context_save))
-      .WillOnce(Return(context_save_response1));
-  std::string actual_response =
-      resource_manager_.SendCommandAndWait(context_save);
-  EXPECT_EQ(context_save_response1, actual_response);
+  EXPECT_EQ(CreateErrorResponse(SAPI_RC_ABI_MISMATCH),
+            resource_manager_.SendCommandAndWait(context_save));
 
-  // Invoke a context gap (which will cause context1 to be mapped to context2).
-  EXPECT_CALL(tpm_,
-              ContextLoadSync(Field(&TPMS_CONTEXT::sequence, Eq(1u)), _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(tpm_, ContextSaveSync(kArbitrarySessionHandle, _, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<2>(CreateContext(2)), Return(TPM_RC_SUCCESS)));
-  std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
-                                      kNoAuthorization, kNoParameters);
-  std::string response = CreateErrorResponse(TPM_RC_CONTEXT_GAP);
-  std::string success_response = CreateResponse(
-      TPM_RC_SUCCESS, kNoHandles, kNoAuthorization, kNoParameters);
-  EXPECT_CALL(transceiver_, SendCommandAndWait(command))
-      .WillOnce(Return(response))
-      .WillOnce(Return(success_response));
-  actual_response = resource_manager_.SendCommandAndWait(command);
-  EXPECT_EQ(success_response, actual_response);
-
-  // Now load external context1 and expect an actual load of context2.
-  std::string context_load1 = CreateCommand(
-      TPM_CC_ContextLoad, kNoHandles, kNoAuthorization, context_parameter1);
-  std::string context_load2 =
+  std::string context_load =
       CreateCommand(TPM_CC_ContextLoad, kNoHandles, kNoAuthorization,
                     CreateContextParameter(2));
-  std::string context_load_response =
-      CreateResponse(TPM_RC_SUCCESS, handles, kNoAuthorization, kNoParameters);
-  EXPECT_CALL(transceiver_, SendCommandAndWait(context_load2))
-      .WillOnce(Return(context_load_response));
-  actual_response = resource_manager_.SendCommandAndWait(context_load1);
-  EXPECT_EQ(context_load_response, actual_response);
+  EXPECT_EQ(CreateErrorResponse(SAPI_RC_ABI_MISMATCH),
+            resource_manager_.SendCommandAndWait(context_load));
 }
 
 TEST_F(ResourceManagerTest, NestedFailures) {
