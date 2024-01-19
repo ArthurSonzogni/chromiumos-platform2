@@ -116,6 +116,10 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "vshd started";
 
+  // Ignore SIGPIPE because we'll take care of the broken pipe error by handling
+  // EPIPE.
+  signal(SIGPIPE, SIG_IGN);
+
   if (FLAGS_forward_to_host_port != 0) {
     uint32_t port = static_cast<uint32_t>(FLAGS_forward_to_host_port);
     if (port != FLAGS_forward_to_host_port) {
