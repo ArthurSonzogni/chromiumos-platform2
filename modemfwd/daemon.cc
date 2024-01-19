@@ -74,6 +74,7 @@ constexpr auto kDevicesSupportingRecoveryMap =
         {kFM350DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // FM350
         {kFM101DeviceID, kFM101FailedHeartbeatsBeforeRecovery},    // FM101
         {kEM060DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // EM060
+        {kNL668DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // NL668
     });
 
 constexpr char const* kDevicesSupportingFlashModeCheck[] = {
