@@ -133,7 +133,6 @@ if (use.test) {
       "balloon_policy_test.cc",
       "dlc_helper_test.cc",
       "fake_crosvm_control.cc",
-      "if_method_exists_test.cc",
       "metrics/duration_recorder_test.cc",
       "mm/balloon_blocker_test.cc",
       "mm/balloon_broker_test.cc",

@@ -90,13 +90,13 @@
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
+
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dlc_helper.h"
-#include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/mm/resize_priority.h"
 #include "vm_tools/concierge/network/borealis_network.h"

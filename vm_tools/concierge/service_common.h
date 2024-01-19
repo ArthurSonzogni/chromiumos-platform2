@@ -17,7 +17,6 @@
 #include <base/logging.h>
 #include <base/system/sys_info.h>
 
-#include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -126,15 +125,15 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
                          _ResponseProto& response,
                          bool empty_vm_name_allowed = false) {
   auto set_failure_reason = [&](const char* reason) {
-    if constexpr (kHasFailureReason<_ResponseProto>) {
+    if constexpr (requires { response.set_failure_reason(reason); }) {
       response.set_failure_reason(reason);
-    } else if constexpr (kHasReason<_ResponseProto>) {
+    } else if constexpr (requires { response.set_reason(reason); }) {
       response.set_reason(reason);
     } else {
     }
   };
 
-  if constexpr (kHasOwnerId<_RequestProto>) {
+  if constexpr (requires { request.owner_id(); }) {
     if (!IsValidOwnerId(request.owner_id())) {
       LOG(ERROR) << "Empty or malformed owner ID";
       set_failure_reason("Empty or malformed owner ID");
@@ -142,7 +141,7 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
     }
   }
 
-  if constexpr (kHasCryptohomeId<_RequestProto>) {
+  if constexpr (requires { request.cryptohome_id(); }) {
     if (!IsValidOwnerId(request.cryptohome_id())) {
       LOG(ERROR) << "Empty or malformed owner ID";
       set_failure_reason("Empty or malformed owner ID");
@@ -150,7 +149,7 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
     }
   }
 
-  if constexpr (kHasName<_RequestProto>) {
+  if constexpr (requires { request.name(); }) {
     if (!IsValidVmName(request.name())) {
       LOG(ERROR) << "Empty or malformed VM name";
       set_failure_reason("Empty or malformed VM name");
@@ -158,7 +157,7 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
     }
   }
 
-  if constexpr (kHasVmName<_RequestProto>) {
+  if constexpr (requires { request.vm_name(); }) {
     if (request.vm_name().empty() && empty_vm_name_allowed) {
       // Allow empty VM name, for ListVmDisks
     } else if (!IsValidVmName(request.vm_name())) {
