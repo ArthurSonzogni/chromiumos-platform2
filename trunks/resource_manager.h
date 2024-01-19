@@ -7,6 +7,7 @@
 
 #include "trunks/command_transceiver.h"
 
+#include <cstdint>
 #include <map>
 #include <set>
 #include <string>
@@ -56,6 +57,12 @@ class ResourceManager : public CommandTransceiver {
                    ResponseCallback callback) override;
 
   std::string SendCommandAndWait(const std::string& command) override;
+
+  void SendCommandWithSender(const std::string& command,
+                             uint64_t sender,
+                             ResponseCallback callback) override;
+  std::string SendCommandWithSenderAndWait(const std::string& command,
+                                           uint64_t sender) override;
 
   // Handle suspending the system to memory, when there is a change that
   // TPM will be reset while suspended.

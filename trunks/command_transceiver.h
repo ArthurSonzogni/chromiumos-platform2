@@ -6,8 +6,9 @@
 #define TRUNKS_COMMAND_TRANSCEIVER_H_
 
 #include <string>
+#include <utility>
 
-#include <base/functional/callback_forward.h>
+#include <base/functional/callback.h>
 #include <trunks/tpm_constants.h>
 
 namespace trunks {
@@ -32,6 +33,21 @@ class CommandTransceiver {
   // the response. If a transmission error occurs the response will be populated
   // with a well-formed error response.
   virtual std::string SendCommandAndWait(const std::string& command) = 0;
+
+  // Similar to the SendCommand, but we add an extra sender information.
+  // By default, it will fallback to the normal implementation.
+  virtual void SendCommandWithSender(const std::string& command,
+                                     uint64_t sender,
+                                     ResponseCallback callback) {
+    return SendCommand(command, std::move(callback));
+  }
+
+  // Similar to the SendCommandAndWait, but we add an extra sender information.
+  // By default, it will fallback to the normal implementation.
+  virtual std::string SendCommandWithSenderAndWait(const std::string& command,
+                                                   uint64_t sender) {
+    return SendCommandAndWait(command);
+  }
 
   // Initializes the actual interface, replaced by the derived classes, where
   // needed.

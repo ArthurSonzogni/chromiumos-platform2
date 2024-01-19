@@ -15,6 +15,8 @@
 
 namespace {
 
+const uint64_t kUnknownSender = 0;
+
 // A simple callback useful when waiting for an asynchronous call.
 void AssignAndSignal(std::string* destination,
                      base::WaitableEvent* event,
@@ -47,6 +49,16 @@ BackgroundCommandTransceiver::~BackgroundCommandTransceiver() {}
 
 void BackgroundCommandTransceiver::SendCommand(const std::string& command,
                                                ResponseCallback callback) {
+  SendCommandWithSender(command, kUnknownSender, std::move(callback));
+}
+
+std::string BackgroundCommandTransceiver::SendCommandAndWait(
+    const std::string& command) {
+  return SendCommandWithSenderAndWait(command, kUnknownSender);
+}
+
+void BackgroundCommandTransceiver::SendCommandWithSender(
+    const std::string& command, uint64_t sender, ResponseCallback callback) {
   if (task_runner_.get()) {
     ResponseCallback background_callback =
         base::BindOnce(PostCallbackToTaskRunner, std::move(callback),
@@ -62,8 +74,8 @@ void BackgroundCommandTransceiver::SendCommand(const std::string& command,
   }
 }
 
-std::string BackgroundCommandTransceiver::SendCommandAndWait(
-    const std::string& command) {
+std::string BackgroundCommandTransceiver::SendCommandWithSenderAndWait(
+    const std::string& command, uint64_t sender) {
   if (task_runner_.get()) {
     std::string response;
     base::WaitableEvent response_ready(

@@ -38,6 +38,7 @@ const size_t kMinimumAuthorizationSize = 9;
 const size_t kMessageHeaderSize = 10;
 const trunks::TPM_HANDLE kMaxVirtualHandle =
     (trunks::HR_TRANSIENT + trunks::HR_HANDLE_MASK);
+const uint64_t kUnknownSender = 0;
 
 class ScopedBool {
  public:
@@ -104,10 +105,21 @@ void ResourceManager::Initialize() {
 
 void ResourceManager::SendCommand(const std::string& command,
                                   ResponseCallback callback) {
-  std::move(callback).Run(SendCommandAndWait(command));
+  SendCommandWithSender(command, kUnknownSender, std::move(callback));
 }
 
 std::string ResourceManager::SendCommandAndWait(const std::string& command) {
+  return SendCommandWithSenderAndWait(command, kUnknownSender);
+}
+
+void ResourceManager::SendCommandWithSender(const std::string& command,
+                                            uint64_t sender,
+                                            ResponseCallback callback) {
+  std::move(callback).Run(SendCommandAndWait(command));
+}
+
+std::string ResourceManager::SendCommandWithSenderAndWait(
+    const std::string& command, uint64_t sender) {
   // Sanitize the |command|. If this succeeds consistency of the command header
   // and the size of all other sections can be assumed.
   MessageInfo command_info;

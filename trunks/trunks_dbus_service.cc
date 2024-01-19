@@ -68,8 +68,8 @@ void TrunksDBusAdaptor::SendCommand(
                         CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;
   }
-  command_transceiver_.SendCommand(
-      in_request.command(),
+  command_transceiver_.SendCommandWithSender(
+      in_request.command(), in_request.sender_id(),
       base::BindOnce(&TrunksDBusAdaptor::SendCommandCallback,
                      weak_factory_.GetWeakPtr(), in_request.sender_id(),
                      base::Time::Now(), std::unique_ptr(std::move(response))));

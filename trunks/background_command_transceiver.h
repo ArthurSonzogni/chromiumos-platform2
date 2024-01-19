@@ -7,6 +7,7 @@
 
 #include "trunks/command_transceiver.h"
 
+#include <cstdint>
 #include <string>
 
 #include <base/memory/ref_counted.h>
@@ -48,6 +49,11 @@ class TRUNKS_EXPORT BackgroundCommandTransceiver : public CommandTransceiver {
   void SendCommand(const std::string& command,
                    ResponseCallback callback) override;
   std::string SendCommandAndWait(const std::string& command) override;
+  void SendCommandWithSender(const std::string& command,
+                             uint64_t sender,
+                             ResponseCallback callback) override;
+  std::string SendCommandWithSenderAndWait(const std::string& command,
+                                           uint64_t sender) override;
 
  private:
   // Sends a |command| to the |next_transceiver_| and invokes a |callback| with
