@@ -99,6 +99,11 @@ constexpr const char kPerfDataDescription[] =
 
 #define CMD_KERNEL_MODULE_PARAMS(module_name) \
   "cd /sys/module/" #module_name "/parameters 2>/dev/null && grep -sH ^ *"
+#define CMD_VM_LOGS(base64_name)                 \
+  "nsenter -t1 -m /bin/sh -c 'tail -n+1"         \
+  " /run/daemon-store/crosvm/*/log/" base64_name \
+  ".log.1"                                       \
+  " /run/daemon-store/crosvm/*/log/" base64_name ".log'"
 
 using Log = LogTool::Log;
 constexpr Log::LogType kCommand = Log::kCommand;
@@ -203,9 +208,8 @@ const std::array kCommandLogs {
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
   // Ym9yZWFsaXM= is base64 encoded "borealis", the hardcoded VM name.
-  Log{kCommand, "borealis_crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
-    " /run/daemon-store/crosvm/*/log/Ym9yZWFsaXM=.log.1"
-    " /run/daemon-store/crosvm/*/log/Ym9yZWFsaXM=.log'", kRoot, kRoot},
+  Log{kCommand, "borealis_crosvm.log", CMD_VM_LOGS("Ym9yZWFsaXM="),
+    kRoot, kRoot},
   Log{kCommand, "bt_usb_disconnects",
     "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -244,9 +248,8 @@ const std::array kCommandLogs {
   // dGVybWluYQ== == "termina", the default Crostini VM name. There may be other
   // Crostini VMs, but we don't know their names in debugd and don't want to
   // collect logs for non-Crostini VMs. See also b/245504047.
-  Log{kCommand, "crostini_crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
-    " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log.1"
-    " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log'", kRoot, kRoot},
+  Log{kCommand, "crostini_crosvm.log", CMD_VM_LOGS("dGVybWluYQ=="),
+    kRoot, kRoot},
   // dmesg: add full timestamps to dmesg to match other logs.
   // 'dmesg' needs CAP_SYSLOG.
   Log{kCommand, "dmesg", "TZ=UTC /bin/dmesg --raw --time-format iso",
