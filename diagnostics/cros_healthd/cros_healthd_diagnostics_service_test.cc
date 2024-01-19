@@ -43,8 +43,6 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrictMock;
 
-using base::test::TestFuture;
-
 constexpr char kRoutineDoesNotExistStatusMessage[] =
     "Specified routine does not exist.";
 
@@ -179,7 +177,8 @@ class CrosHealthdDiagnosticsServiceTest : public BaseFileTest {
   }
 
   std::vector<mojom::DiagnosticRoutineEnum> ExecuteGetAvailableRoutines() {
-    TestFuture<const std::vector<mojom::DiagnosticRoutineEnum>&> future;
+    base::test::TestFuture<const std::vector<mojom::DiagnosticRoutineEnum>&>
+        future;
     service()->GetAvailableRoutines(future.GetCallback());
     return future.Take();
   }
@@ -188,7 +187,7 @@ class CrosHealthdDiagnosticsServiceTest : public BaseFileTest {
       int32_t id,
       mojom::DiagnosticRoutineCommandEnum command,
       bool include_output) {
-    TestFuture<mojom::RoutineUpdatePtr> future;
+    base::test::TestFuture<mojom::RoutineUpdatePtr> future;
     service()->GetRoutineUpdate(id, command, include_output,
                                 future.GetCallback());
     return future.Take();
@@ -348,7 +347,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryCapacityRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBatteryCapacityRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -364,7 +363,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryHealthRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBatteryHealthRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -377,7 +376,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUrandomRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunUrandomRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
 
@@ -394,7 +393,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithoutParam) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   // Pass the threshold as nullptr to test interface's backward compatibility.
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/nullptr, future.GetCallback());
@@ -412,7 +411,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithParam) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojom::NullableUint32::New(255),
       future.GetCallback());
@@ -430,7 +429,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunEmmcLifetimeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunEmmcLifetimeRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -440,7 +439,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunEmmcLifetimeRoutine) {
 
 // Test that the LED routine is unsupported.
 TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunLedLitUpRoutine) {
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->DEPRECATED_RunLedLitUpRoutine(
       /*name=*/mojom::DEPRECATED_LedName::kAdapter,
       /*color=*/mojom::DEPRECATED_LedColor::kAmber,
@@ -455,7 +454,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunLedLitUpRoutine) {
 
 // Test that the audio set volume routine is unsupported.
 TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunAudioSetVolumeRoutine) {
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->DEPRECATED_RunAudioSetVolumeRoutine(
       /*node_id=*/10, /*volume=*/10, /*mute_on=*/true, future.GetCallback());
 
@@ -466,7 +465,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunAudioSetVolumeRoutine) {
 
 // Test that the audio set gain routine is unsupported.
 TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunAudioSetGainRoutine) {
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->DEPRECATED_RunAudioSetGainRoutine(
       /*node_id=*/10, /*gain=*/10, /*deprecated_mute_on=*/true,
       future.GetCallback());
@@ -484,7 +483,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAcPowerRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunAcPowerRoutine(
       /*expected_status=*/mojom::AcPowerStatusEnum::kConnected,
       /*expected_power_type=*/std::optional<std::string>{"power_type"},
@@ -500,7 +499,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuCacheRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunCpuCacheRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
 
@@ -514,7 +513,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuStressRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunCpuStressRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
 
@@ -531,7 +530,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFloatingPointAccuracyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunFloatingPointAccuracyRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
 
@@ -548,7 +547,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeWearLevelRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunNvmeWearLevelRoutine(
       /*wear_level_threshold=*/mojom::NullableUint32::New(30),
       future.GetCallback());
@@ -566,7 +565,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeSelfTestRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunNvmeSelfTestRoutine(
       /*nvme_self_test_type=*/mojom::NvmeSelfTestTypeEnum::kShortSelfTest,
       future.GetCallback());
@@ -581,7 +580,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDiskReadRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunDiskReadRoutine(
       /*type*/ mojom::DiskReadRoutineTypeEnum::kLinearRead,
       /*length_seconds=*/10, /*file_size_mb=*/1024, future.GetCallback());
@@ -596,7 +595,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrimeSearchRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunPrimeSearchRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
 
@@ -614,7 +613,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryDischargeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBatteryDischargeRoutine(
       /*length_seconds=*/23,
       /*maximum_discharge_percent_allowed=*/78, future.GetCallback());
@@ -633,7 +632,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBatteryChargeRoutine(
       /*length_seconds=*/54,
       /*minimum_charge_percent_required=*/56, future.GetCallback());
@@ -651,7 +650,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunMemoryRoutine(
       /*max_testing_mem_kib=*/std::nullopt, future.GetCallback());
 
@@ -668,7 +667,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunLanConnectivityRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunLanConnectivityRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -684,7 +683,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSignalStrengthRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSignalStrengthRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -700,7 +699,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunGatewayCanBePingedRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunGatewayCanBePingedRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -716,7 +715,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHasSecureWiFiConnectionRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunHasSecureWiFiConnectionRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -732,7 +731,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolverPresentRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunDnsResolverPresentRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -748,7 +747,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsLatencyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunDnsLatencyRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -764,7 +763,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolutionRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunDnsResolutionRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -780,7 +779,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCaptivePortalRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunCaptivePortalRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -796,7 +795,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpFirewallRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunHttpFirewallRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -812,7 +811,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsFirewallRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunHttpsFirewallRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -828,7 +827,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsLatencyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunHttpsLatencyRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -844,7 +843,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunVideoConferencingRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/std::optional<
           std::string>{"http://www.stunserverhostname.com/path?k=v"},
@@ -863,7 +862,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcHttpRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunArcHttpRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -879,7 +878,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcPingRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunArcPingRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -895,7 +894,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcDnsResolutionRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunArcDnsResolutionRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -911,7 +910,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSensitiveSensorRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSensitiveSensorRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -927,7 +926,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFingerprintRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunFingerprintRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -943,7 +942,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFingerprintAliveRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunFingerprintAliveRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -959,7 +958,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrivacyScreenRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunPrivacyScreenRoutine(/*target_state=*/true,
                                      future.GetCallback());
 
@@ -982,7 +981,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPowerRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1002,7 +1001,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPowerRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1026,7 +1025,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPowerRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1049,7 +1048,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPowerRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1071,7 +1070,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1091,7 +1090,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1115,7 +1114,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1138,7 +1137,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1161,7 +1160,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothScanningRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
 
@@ -1182,7 +1181,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothScanningRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
 
@@ -1207,7 +1206,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothScanningRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
 
@@ -1231,7 +1230,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothScanningRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
 
@@ -1254,7 +1253,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
                                         future.GetCallback());
 
@@ -1275,7 +1274,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
                                         future.GetCallback());
 
@@ -1300,7 +1299,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
                                         future.GetCallback());
 
@@ -1324,7 +1323,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
                                         future.GetCallback());
 
@@ -1341,7 +1340,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunPowerButtonRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunPowerButtonRoutine(/*timeout_seconds=*/10,
                                    future.GetCallback());
 
@@ -1358,7 +1357,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioDriverRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunAudioDriverRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1374,7 +1373,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUfsLifetimeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunUfsLifetimeRoutine(future.GetCallback());
 
   auto response = future.Take();
@@ -1388,7 +1387,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, AccessStoppedRoutine) {
       mojom::DiagnosticRoutineStatusEnum::kRunning, /*status_message=*/"",
       /*progress_percent=*/50, /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojom::NullableUint32Ptr(),
       future.GetCallback());
@@ -1417,7 +1416,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUnsupportedRoutine) {
       /*status_message=*/"", /*progress_percent=*/0,
       /*output=*/"");
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojom::NullableUint32Ptr(),
       future.GetCallback());
@@ -1463,7 +1462,7 @@ TEST_P(DiagnosticsUpdateCommandTest, SendCommand) {
                                              kExpectedProgressPercent,
                                              kExpectedOutput);
 
-  TestFuture<mojom::RunRoutineResponsePtr> future;
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojom::NullableUint32Ptr(),
       future.GetCallback());

@@ -28,8 +28,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-using base::test::TestFuture;
-
 inline constexpr char kFakeBsgNodePath[] =
     "sys/devices/pci0000:00/0000:00:12.7/host0/ufs-bsg0";
 inline constexpr char kFakeBsgNodePath2[] =
@@ -74,7 +72,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    TestFuture<void> signal;
+    base::test::TestFuture<void> signal;
     RoutineObserverForTesting observer{signal.GetCallback()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
@@ -84,7 +82,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
   }
 
   void RunRoutineAndWaitForException(const std::string& expected_reason) {
-    TestFuture<uint32_t, const std::string&> future;
+    base::test::TestFuture<uint32_t, const std::string&> future;
     routine_->SetOnExceptionCallback(future.GetCallback());
     routine_->Start();
     EXPECT_EQ(future.Get<std::string>(), expected_reason)
