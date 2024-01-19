@@ -256,6 +256,127 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   FillSubnetProto(arc_ipv4_subnet(), output->mutable_ipv4_subnet());
 }
 
+ArcService::HotplugGuestIfManager::HotplugGuestIfManager(
+    std::unique_ptr<VmConciergeClient> vm_concierge_client,
+    const std::string& arc0_tap_ifname,
+    uint32_t cid)
+    : arc0_tap_ifname_(arc0_tap_ifname), cid_(cid) {
+  client_ = std::move(vm_concierge_client);
+  // eth0 is always occupied by arc0 device, and excluded from hotplug.
+  guest_if_idx_bitset_.set(0);
+  client_->RegisterVm(cid);
+}
+
+void ArcService::HotplugGuestIfManager::HotplugCallback(
+    std::string tap_ifname, std::optional<uint32_t> bus_num) {
+  if (!bus_num.has_value()) {
+    LOG(ERROR) << "Hotplug host tap " << tap_ifname
+               << " to guest failed: concierge error.";
+    return;
+  }
+  // Valid PCI Bus indices are 0-255 inclusive.
+  if (*bus_num > UINT8_MAX) {
+    LOG(ERROR) << "Hotplug host tap " << tap_ifname
+               << " to guest failed: invalid bus number " << *bus_num;
+    return;
+  }
+  const uint8_t bus_num_uint8 = uint8_t(*bus_num);
+  const auto emplace_result =
+      guest_buses_.try_emplace(std::move(tap_ifname), bus_num_uint8);
+  if (emplace_result.second) {
+    LOG(INFO) << "Hotplug host tap " << tap_ifname
+              << " to guest succeeded, guest bus: " << bus_num_uint8;
+  } else {
+    LOG(ERROR) << "Hotplug host tap " << tap_ifname
+               << " failed: device was already reported inserted at bus "
+               << guest_buses_.at(tap_ifname) << ", but replaced by "
+               << bus_num_uint8;
+    emplace_result.first->second = bus_num_uint8;
+  }
+}
+
+void ArcService::HotplugGuestIfManager::RemoveCallback(
+    const std::string& tap_ifname, bool success) {
+  if (!success) {
+    LOG(ERROR) << "Remove host tap" << tap_ifname
+               << " failed: concierge error.";
+    return;
+  }
+  if (guest_buses_.erase(tap_ifname) == 0) {
+    LOG(WARNING) << tap_ifname << " is already removed";
+  }
+}
+
+std::optional<std::string> ArcService::HotplugGuestIfManager::AddInterface(
+    const std::string& tap_ifname) {
+  if (guest_if_idx_.find(tap_ifname) != guest_if_idx_.end()) {
+    LOG(ERROR) << "Hotplug host tap " << tap_ifname
+               << " failed: tap is already attached to the guest.";
+    return std::nullopt;
+  }
+  if (!client_->AttachTapDevice(
+          cid_, tap_ifname,
+          base::BindOnce(&HotplugGuestIfManager::HotplugCallback,
+                         base::Unretained(this), tap_ifname))) {
+    LOG(ERROR) << "Hotplug host tap " << tap_ifname
+               << " failed: cannot make DBus request to concierge.";
+    return std::nullopt;
+  }
+  // The index of the ethernet device is the lowest integer not currently used.
+  for (size_t i = 0; i < guest_if_idx_bitset_.size(); i++) {
+    if (!guest_if_idx_bitset_.test(i)) {
+      guest_if_idx_bitset_.set(i);
+      guest_if_idx_.emplace(tap_ifname, i);
+      return kArcVmIfnamePrefix + std::to_string(i);
+    }
+  }
+  LOG(ERROR) << "Hotplug host tap " << tap_ifname
+             << " failed: all possible network indices are already taken.";
+  return std::nullopt;
+}
+
+bool ArcService::HotplugGuestIfManager::RemoveInterface(
+    const std::string& tap_ifname) {
+  auto idx_itr = guest_if_idx_.find(tap_ifname);
+  if (idx_itr == guest_if_idx_.end()) {
+    LOG(ERROR) << "Remove network interface failed: " << tap_ifname
+               << " is not found on guest";
+    return false;
+  }
+  auto bus_itr = guest_buses_.find(tap_ifname);
+  if (bus_itr == guest_buses_.end()) {
+    LOG(ERROR) << "Remove network interface failed: " << tap_ifname
+               << " hotplug failed";
+    return false;
+  }
+  if (!client_->DetachTapDevice(
+          cid_, bus_itr->second,
+          base::BindOnce(&HotplugGuestIfManager::RemoveCallback,
+                         base::Unretained(this), tap_ifname))) {
+    LOG(ERROR) << "Remove network interface failed";
+    return false;
+  }
+  guest_if_idx_bitset_.reset(idx_itr->second);
+  guest_if_idx_.erase(idx_itr);
+  return true;
+}
+
+std::optional<std::string> ArcService::HotplugGuestIfManager::GetGuestIfName(
+    const std::string& tap_ifname) const {
+  auto itr = guest_if_idx_.find(tap_ifname);
+  if (itr == guest_if_idx_.end()) {
+    return std::nullopt;
+  } else {
+    return kArcVmIfnamePrefix + std::to_string(itr->second);
+  }
+}
+
+std::vector<std::string>
+ArcService::HotplugGuestIfManager::GetStaticTapDevices() const {
+  // For ARCVM with hotplug support, only the arc0 device is always attached.
+  return {arc0_tap_ifname_};
+}
+
 ArcService::ArcService(ArcType arc_type,
                        Datapath* datapath,
                        AddressManager* addr_mgr,

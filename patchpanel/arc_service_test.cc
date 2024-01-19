@@ -26,6 +26,7 @@
 #include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_forwarding_service.h"
+#include "patchpanel/mock_vm_concierge_client.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -48,6 +49,8 @@ namespace patchpanel {
 namespace {
 constexpr uint32_t kTestPID = 2;
 constexpr uint32_t kTestCID = 2;
+constexpr uint32_t kBusSlotA = 3;
+constexpr uint32_t kBusSlotB = 4;
 const IPv4CIDR kArcHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.1/30");
 const IPv4CIDR kArcGuestCIDR =
@@ -1548,6 +1551,51 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
       UnorderedElementsAre(
           Pair(StrEq("arc_wlan0"), NetworkDeviceChangedSignal::DEVICE_ADDED)));
   Mock::VerifyAndClearExpectations(datapath_.get());
+}
+
+TEST_F(ArcServiceTest, HotplugGuestIfManager) {
+  // Expectations for mock VmConciergeClient.
+  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
+  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
+      .WillOnce(Invoke([](int64_t, const std::string&,
+                          VmConciergeClient::AttachTapCallback callback) {
+        std::move(callback).Run({kBusSlotA});
+        return true;
+      }));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp1"), _))
+      .WillOnce(Invoke([](int64_t, const std::string&,
+                          VmConciergeClient::AttachTapCallback callback) {
+        std::move(callback).Run({kBusSlotB});
+        return true;
+      }));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              DetachTapDevice(Eq(kTestCID), Eq(kBusSlotA), _))
+      .WillOnce(Invoke(
+          [](int64_t, uint32_t, VmConciergeClient::DetachTapCallback callback) {
+            std::move(callback).Run(true);
+            return true;
+          }));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp2"), _))
+      .WillOnce(Invoke([](int64_t, const std::string&,
+                          VmConciergeClient::AttachTapCallback callback) {
+        std::move(callback).Run({kBusSlotA});
+        return true;
+      }));
+  auto if_manager = ArcService::HotplugGuestIfManager(
+      std::move(mock_vm_concierge_client), "vmtap-static", kTestCID);
+  const auto static_ifs = if_manager.GetStaticTapDevices();
+  ASSERT_THAT(static_ifs, UnorderedElementsAre("vmtap-static"));
+  // Expect guest ifname to start from eth1 since eth0 is taken by arc0 device.
+  EXPECT_EQ(if_manager.AddInterface("vmtap-hp0"), "eth1");
+  EXPECT_EQ(if_manager.AddInterface("vmtap-hp1"), "eth2");
+  EXPECT_TRUE(if_manager.RemoveInterface("vmtap-hp0"));
+  EXPECT_EQ(if_manager.AddInterface("vmtap-hp2"), "eth1");
+  EXPECT_EQ(if_manager.GetGuestIfName("vmtap-hp1"), "eth2");
 }
 
 TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
