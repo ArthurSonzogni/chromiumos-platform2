@@ -45,7 +45,12 @@ bool WouldBlock() {
 
 // static
 std::unique_ptr<Socket> Socket::Create(int domain, int type, int protocol) {
-  return Socket::CreateFromFd(base::ScopedFD(socket(domain, type, protocol)));
+  base::ScopedFD fd(socket(domain, type, protocol));
+  if (!fd.is_valid()) {
+    return nullptr;
+  }
+
+  return std::unique_ptr<Socket>(new Socket(std::move(fd), type));
 }
 
 // static
@@ -54,10 +59,18 @@ std::unique_ptr<Socket> Socket::CreateFromFd(base::ScopedFD fd) {
     return nullptr;
   }
 
-  return std::unique_ptr<Socket>(new Socket(std::move(fd)));
+  int type;
+  socklen_t type_len = sizeof(type);
+  if (getsockopt(fd.get(), SOL_SOCKET, SO_TYPE, &type, &type_len) < 0) {
+    PLOG(ERROR) << "Could not get type of socket";
+    return nullptr;
+  }
+
+  return std::unique_ptr<Socket>(new Socket(std::move(fd), type));
 }
 
-Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {
+Socket::Socket(base::ScopedFD fd, int socket_type)
+    : fd_(std::move(fd)), socket_type_(socket_type) {
   LOG_IF(FATAL, !fd_.is_valid()) << "the socket fd is invalid";
 }
 Socket::~Socket() = default;
@@ -137,8 +150,37 @@ std::optional<size_t> Socket::RecvFrom(base::span<uint8_t> buf,
   return ToOptionalSizeT(res, WouldBlock());
 }
 
+bool Socket::RecvStream(std::vector<uint8_t>* message) const {
+  constexpr size_t kReadChunkSize = 4096;
+  size_t offset = 0;
+
+  while (true) {
+    // Resize the buffer to hold more data.
+    message->resize(offset + kReadChunkSize, 0);
+    base::span<uint8_t> buf(message->data() + offset, kReadChunkSize);
+    std::optional<size_t> read_size =
+        RecvFrom(buf, MSG_DONTWAIT, nullptr, nullptr);
+    if (!read_size.has_value()) {
+      return false;
+    }
+
+    offset += *read_size;
+    if (*read_size < kReadChunkSize) {
+      break;
+    }
+  }
+
+  // Shrink the buffer back to the exact size of the returned data.
+  message->resize(offset, 0);
+  return true;
+}
+
 bool Socket::RecvMessage(std::vector<uint8_t>* message) const {
   DCHECK(message) << "message is null";
+
+  if (socket_type_ == SOCK_STREAM) {
+    return RecvStream(message);
+  }
 
   // Determine the amount of data currently waiting.
   const size_t kFakeReadByteCount = 1;

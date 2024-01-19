@@ -90,7 +90,8 @@ class BRILLO_EXPORT Socket {
 
   // Reads data from the socket into |message| and returns true if successful.
   // The |message| parameter will be resized to hold the entirety of the read
-  // message (and any data in |message| will be overwritten).
+  // message (and any data in |message| will be overwritten). If the socket
+  // is stream-oriented, this will read all available data.
   virtual bool RecvMessage(std::vector<uint8_t>* message) const;
 
   // Delegates to send(fd_.get(), ...). On success, returns the number of bytes
@@ -125,15 +126,23 @@ class BRILLO_EXPORT Socket {
   virtual bool SetReceiveBuffer(int size) const;
 
  protected:
-  explicit Socket(base::ScopedFD fd);
+  Socket(base::ScopedFD fd, int socket_type);
 
   // The socket file descriptor. It's always valid during the lifetime of the
   // Socket instance.
   base::ScopedFD fd_;
 
+  // Type of the socket. This is fetched once by the static factory function
+  // if an existing socket is passed in.
+  int socket_type_;
+
   // The read watcher of the |fd_|. It should be destroyed before |fd_| is
   // closed, so it's declared after |fd_|.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+
+ private:
+  // Helper to perform RecvMessage on SOCK_STREAM-type sockets.
+  bool RecvStream(std::vector<uint8_t>* message) const;
 };
 
 // Creates the Socket instance. It's used for injecting MockSocketFactory at

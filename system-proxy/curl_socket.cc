@@ -13,7 +13,7 @@
 namespace system_proxy {
 
 CurlSocket::CurlSocket(base::ScopedFD fd, ScopedCurlEasyhandle curl_easyhandle)
-    : net_base::Socket(std::move(fd)),
+    : net_base::Socket(std::move(fd), SOCK_STREAM),
       curl_easyhandle_(std::move(curl_easyhandle)) {}
 
 CurlSocket::~CurlSocket() {

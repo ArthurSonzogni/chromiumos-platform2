@@ -22,6 +22,9 @@ typedef std::unique_ptr<CURL, FreeCurlEasyhandle> ScopedCurlEasyhandle;
 
 // CurlSocket wraps a socket opened by curl in an net_base::Socket object
 // with an owned CURL handle.
+// TODO(b/324429360): This class makes a mess out of some abstractions, so
+// we should refactor how ProxyConnectJob starts up a forwarder and remove
+// this class.
 class CurlSocket : public net_base::Socket {
  public:
   CurlSocket(base::ScopedFD fd, ScopedCurlEasyhandle curl_easyhandle);

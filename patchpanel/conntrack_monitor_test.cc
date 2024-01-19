@@ -455,7 +455,7 @@ MATCHER_P(IsConntrackEvent, event, "") {
 
 TEST_F(ConntrackMonitorTest, Start) {
   auto socket = std::make_unique<net_base::MockSocket>(
-      base::ScopedFD(std::move(read_fd_)));
+      base::ScopedFD(std::move(read_fd_)), SOCK_RAW);
   bool read_once = 0;
   EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
       .WillOnce([&socket, this, &read_once]() {
@@ -500,7 +500,7 @@ TEST_F(ConntrackMonitorTest, CreateGetSockNameFailed) {
   EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
       .WillOnce([this]() {
         auto socket = std::make_unique<net_base::MockSocket>(
-            base::ScopedFD(std::move(read_fd_)));
+            base::ScopedFD(std::move(read_fd_)), SOCK_RAW);
         EXPECT_CALL(*socket, GetSockName(IsNetlinkAddr(kDefaultEventBitMask),
                                          IsNetlinkAddrLength()))
             .WillOnce(Return(false));
@@ -516,8 +516,8 @@ TEST_F(ConntrackMonitorTest, CreateGetSockNameFailed) {
 TEST_F(ConntrackMonitorTest, CreateBindFailed) {
   EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
       .WillOnce([this]() {
-        auto socket =
-            std::make_unique<net_base::MockSocket>(std::move(read_fd_));
+        auto socket = std::make_unique<net_base::MockSocket>(
+            std::move(read_fd_), SOCK_RAW);
 
         EXPECT_CALL(*socket, GetSockName(IsNetlinkAddr(kDefaultEventBitMask),
                                          IsNetlinkAddrLength()))

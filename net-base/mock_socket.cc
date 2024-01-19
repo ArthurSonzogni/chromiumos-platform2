@@ -28,8 +28,9 @@ base::ScopedFD CreateFakeSocketFd() {
 
 }  // namespace
 
-MockSocket::MockSocket() : Socket(CreateFakeSocketFd()) {}
-MockSocket::MockSocket(base::ScopedFD fd) : Socket(std::move(fd)) {}
+MockSocket::MockSocket() : Socket(CreateFakeSocketFd(), SOCK_RAW) {}
+MockSocket::MockSocket(base::ScopedFD fd, int type)
+    : Socket(std::move(fd), type) {}
 MockSocket::~MockSocket() = default;
 
 MockSocketFactory::MockSocketFactory() = default;

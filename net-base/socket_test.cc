@@ -29,7 +29,11 @@ using testing::_;
 using testing::Return;
 
 TEST(Socket, CreateFromFd) {
-  base::ScopedFD fd(open("/dev/null", O_RDONLY));
+  int sv[2];
+  ASSERT_EQ(socketpair(AF_UNIX, SOCK_RAW, 0, sv), 0);
+  close(sv[1]);
+
+  base::ScopedFD fd(sv[0]);
   int raw_fd = fd.get();
 
   auto socket = Socket::CreateFromFd(std::move(fd));
@@ -42,7 +46,11 @@ TEST(Socket, CreateFromFdInvalid) {
 }
 
 TEST(Socket, Release) {
-  base::ScopedFD fd(open("/dev/null", O_RDONLY));
+  int sv[2];
+  ASSERT_EQ(socketpair(AF_UNIX, SOCK_RAW, 0, sv), 0);
+  close(sv[1]);
+
+  base::ScopedFD fd(sv[0]);
   int raw_fd = fd.get();
 
   // Socket::Release() returns the raw fd, and not close the fd.
@@ -90,9 +98,51 @@ TEST(Socket, SetReadableCallback) {
   task_environment.RunUntilIdle();
 }
 
+TEST(Socket, ReadFromStream) {
+  // Make sure this is long enough to exercise the chunking behavior.
+  // So we need to use a value of at least 1025.
+  constexpr int kMsgInts = 1500;
+  std::vector<uint8_t> msg;
+  msg.reserve(kMsgInts * 4);
+
+  unsigned int seed = 0;
+  for (int i = 0; i < kMsgInts; i++) {
+    int r = rand_r(&seed);
+    msg.push_back(r & 0xFF);
+    msg.push_back((r >> 8) & 0xFF);
+    msg.push_back((r >> 16) & 0xFF);
+    msg.push_back((r >> 24) & 0xFF);
+  }
+
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
+  int sv[2];
+  ASSERT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, sv), 0);
+  std::unique_ptr<Socket> write_socket =
+      Socket::CreateFromFd(base::ScopedFD(sv[0]));
+  std::unique_ptr<Socket> read_socket =
+      Socket::CreateFromFd(base::ScopedFD(sv[1]));
+
+  std::vector<uint8_t> buf;
+  read_socket->SetReadableCallback(base::BindRepeating(
+      [](Socket* sock, std::vector<uint8_t>* out,
+         base::RepeatingClosure quit_closure) {
+        sock->RecvMessage(out);
+        quit_closure.Run();
+      },
+      read_socket.get(), &buf, task_environment.QuitClosure()));
+
+  write_socket->Send(msg);
+  task_environment.RunUntilQuit();
+
+  EXPECT_EQ(msg, buf);
+}
+
 class SocketUnderTest : public Socket {
  public:
-  SocketUnderTest() : Socket(base::ScopedFD(open("/dev/null", O_RDONLY))) {}
+  SocketUnderTest()
+      : Socket(base::ScopedFD(open("/dev/null", O_RDONLY)), SOCK_RAW) {}
   ~SocketUnderTest() override = default;
 
   // Mocks RecvFrom() to verify RecvMessage().

@@ -19,7 +19,7 @@ namespace net_base {
 class BRILLO_EXPORT MockSocket : public Socket {
  public:
   MockSocket();
-  explicit MockSocket(base::ScopedFD fd);
+  explicit MockSocket(base::ScopedFD fd, int type);
   ~MockSocket() override;
 
   MOCK_METHOD(std::unique_ptr<Socket>,
