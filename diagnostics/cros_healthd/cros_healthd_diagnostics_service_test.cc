@@ -438,6 +438,44 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunEmmcLifetimeRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
+// Test that the LED routine is unsupported.
+TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunLedLitUpRoutine) {
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->DEPRECATED_RunLedLitUpRoutine(
+      /*name=*/mojom::DEPRECATED_LedName::kAdapter,
+      /*color=*/mojom::DEPRECATED_LedColor::kAmber,
+      /*replier=*/
+      mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier>(),
+      future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 0);
+  EXPECT_EQ(response->status, mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+}
+
+// Test that the audio set volume routine is unsupported.
+TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunAudioSetVolumeRoutine) {
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->DEPRECATED_RunAudioSetVolumeRoutine(
+      /*node_id=*/10, /*volume=*/10, /*mute_on=*/true, future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 0);
+  EXPECT_EQ(response->status, mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+}
+
+// Test that the audio set gain routine is unsupported.
+TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunAudioSetGainRoutine) {
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->DEPRECATED_RunAudioSetGainRoutine(
+      /*node_id=*/10, /*gain=*/10, /*deprecated_mute_on=*/true,
+      future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 0);
+  EXPECT_EQ(response->status, mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+}
+
 // Test that the AC power routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunAcPowerRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
