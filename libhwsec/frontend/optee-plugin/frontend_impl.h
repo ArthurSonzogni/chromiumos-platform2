@@ -29,6 +29,8 @@ class OpteePluginFrontendImpl : public OpteePluginFrontend,
   StatusOr<brillo::Blob> GetRootOfTrustCert() const override;
 
   StatusOr<brillo::Blob> GetChipIdentifyKeyCert() const override;
+
+  StatusOr<brillo::Blob> GetPkcs7CertChain() const override;
 };
 
 }  // namespace hwsec

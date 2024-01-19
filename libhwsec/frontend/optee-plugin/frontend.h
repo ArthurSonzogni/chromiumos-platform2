@@ -28,6 +28,9 @@ class OpteePluginFrontend : public Frontend {
 
   // Get the chip identity key certificate.
   virtual StatusOr<brillo::Blob> GetChipIdentifyKeyCert() const = 0;
+
+  // Get the Pkcs7 certificate chain.
+  virtual StatusOr<brillo::Blob> GetPkcs7CertChain() const = 0;
 };
 
 }  // namespace hwsec

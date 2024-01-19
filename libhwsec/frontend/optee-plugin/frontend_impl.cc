@@ -4,12 +4,18 @@
 
 #include "libhwsec/frontend/optee-plugin/frontend_impl.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <openssl/bio.h>
+#include <openssl/pkcs7.h>
+#include <openssl/safestack.h>
+#include <openssl/x509.h>
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/middleware/middleware.h"
@@ -17,6 +23,17 @@
 #include "libhwsec/structures/space.h"
 
 using hwsec_foundation::status::MakeStatus;
+
+namespace {
+
+// Note: The stack doesn't own the elements, it just references them.
+struct StackOfX509RefFree {
+  void operator()(STACK_OF(X509) * ptr) const { sk_X509_free(ptr); }
+};
+using ScopedStackOfX509Ref =
+    std::unique_ptr<STACK_OF(X509), StackOfX509RefFree>;
+
+}  // namespace
 
 namespace hwsec {
 
@@ -47,6 +64,71 @@ StatusOr<brillo::Blob> OpteePluginFrontendImpl::GetChipIdentifyKeyCert() const {
   }
   return middleware_.CallSync<&Backend::RoData::Read>(
       RoSpace::kChipIdentityKeyCert);
+}
+
+StatusOr<brillo::Blob> OpteePluginFrontendImpl::GetPkcs7CertChain() const {
+  ASSIGN_OR_RETURN(const brillo::Blob& cik_cert, GetChipIdentifyKeyCert(),
+                   _.WithStatus<TPMError>("Failed to get CIK cert"));
+
+  const uint8_t* cik_cert_ptr = cik_cert.data();
+  crypto::ScopedX509 cik_x509(
+      d2i_X509(/*px=*/nullptr, &cik_cert_ptr, cik_cert.size()));
+  if (!cik_x509) {
+    return MakeStatus<TPMError>("Failed to parse CIK cert",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  ASSIGN_OR_RETURN(const brillo::Blob& rot_cert, GetRootOfTrustCert(),
+                   _.WithStatus<TPMError>("Failed to get RoT cert"));
+
+  const uint8_t* rot_cert_ptr = rot_cert.data();
+  crypto::ScopedX509 rot_x509(
+      d2i_X509(/*px=*/nullptr, &rot_cert_ptr, rot_cert.size()));
+  if (!rot_x509) {
+    return MakeStatus<TPMError>("Failed to parse RoT cert",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // Put CIK and RoT certs into a STACK_OF(X509) structure.
+  ScopedStackOfX509Ref x509_stack(sk_X509_new_null());
+  if (!x509_stack) {
+    return MakeStatus<TPMError>("Failed to allocate STACK_OF(X509) structure",
+                                TPMRetryAction::kNoRetry);
+  }
+  if (sk_X509_push(x509_stack.get(), cik_x509.get()) < 0) {
+    return MakeStatus<TPMError>("Failed to push CIK cert into STACK_OF(X509)",
+                                TPMRetryAction::kNoRetry);
+  }
+  if (sk_X509_push(x509_stack.get(), rot_x509.get()) < 0) {
+    return MakeStatus<TPMError>("Failed to push RoT cert into STACK_OF(X509)",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  // Empty data to sign.
+  crypto::ScopedBIO bio(BIO_new(BIO_s_mem()));
+
+  crypto::ScopedOpenSSL<PKCS7, PKCS7_free> p7(PKCS7_sign(
+      nullptr, nullptr, x509_stack.get(), bio.get(), PKCS7_DETACHED));
+  if (!p7) {
+    return MakeStatus<TPMError>("Failed to allocate PKCS7",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  int p7_len = i2d_PKCS7(p7.get(), nullptr);
+  if (p7_len < 0) {
+    return MakeStatus<TPMError>("Failed to get pkcs7 length",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  brillo::Blob p7_blob(p7_len);
+  uint8_t* p7_ptr = p7_blob.data();
+  p7_len = i2d_PKCS7(p7.get(), &p7_ptr);
+  if (p7_len != p7_blob.size()) {
+    return MakeStatus<TPMError>("Mismatched pkcs7 length",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  return p7_blob;
 }
 
 }  // namespace hwsec

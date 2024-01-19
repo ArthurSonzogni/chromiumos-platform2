@@ -31,6 +31,7 @@ class MockOpteePluginFrontend : public MockFrontend,
               GetChipIdentifyKeyCert,
               (),
               (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, GetPkcs7CertChain, (), (const override));
 };
 
 }  // namespace hwsec
