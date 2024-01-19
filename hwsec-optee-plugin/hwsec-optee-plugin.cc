@@ -30,6 +30,7 @@ extern "C" {
 #define SEND_RAW_COMMAND 0
 #define GET_ROT_CERT_COMMAND 1
 #define GET_CIK_CERT_COMMAND 2
+#define GET_PKCS7_CERT_CHAIN_COMMAND 3
 
 namespace {
 
@@ -125,6 +126,25 @@ static TEEC_Result GetCikCert(unsigned int sub_cmd,
   return TEEC_SUCCESS;
 }
 
+static TEEC_Result GetPkcs7CertChain(unsigned int sub_cmd,
+                                     uint8_t* data,
+                                     size_t data_len,
+                                     size_t* out_len) {
+  ASSIGN_OR_RETURN(const brillo::Blob& output, GetHwsec().GetPkcs7CertChain(),
+                   _.LogError().As(TEEC_ERROR_BAD_STATE));
+
+  if (output.size() > data_len) {
+    LOG(ERROR) << "The output buffer is not enough for output!";
+    *out_len = output.size();
+    return TEEC_ERROR_SHORT_BUFFER;
+  }
+
+  *out_len = output.size();
+  memcpy(data, output.data(), output.size());
+
+  return TEEC_SUCCESS;
+}
+
 static TEEC_Result HwsecPluginInvoke(unsigned int cmd,
                                      unsigned int sub_cmd,
                                      void* data,
@@ -140,6 +160,9 @@ static TEEC_Result HwsecPluginInvoke(unsigned int cmd,
     case GET_CIK_CERT_COMMAND:
       return GetCikCert(sub_cmd, static_cast<uint8_t*>(data), data_len,
                         out_len);
+    case GET_PKCS7_CERT_CHAIN_COMMAND:
+      return GetPkcs7CertChain(sub_cmd, static_cast<uint8_t*>(data), data_len,
+                               out_len);
     default:
       return TEEC_ERROR_NOT_SUPPORTED;
   }
