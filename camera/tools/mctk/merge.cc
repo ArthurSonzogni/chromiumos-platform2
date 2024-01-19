@@ -83,15 +83,42 @@ bool MergeControl(V4lMcControl& tc, class V4lMcControl& sc) {
 bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all entities */
   for (auto& se : source.entities_) {
-    __u32 te_id = se->desc_.id;
-    if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+    if (remap) {
+      /* Check if the entity ID is remapped to a name, at all. */
+      std::optional<std::string> name = remap->LookupEntityName(se->desc_.id);
 
-    auto te = target.EntityById(te_id);
+      /* If a remapping entry exists, then insist that the target has an
+       * entry with the remapped name.
+       *
+       * These semantics have been chosen since they are more useful when
+       * using mctk as a foundation for automated tests, than semantics where
+       * an entity that fails halfway to remap by name gets a second chance
+       * to be remapped by ID. Tests should catch remappings that should
+       * happen, but don't.
+       */
+      if (name) {
+        auto entity = target.EntityByName(*name);
 
-    if (!te) {
-      MCTK_PANIC("Merge: target lacking an entity mentioned by source.");
+        if (!entity)
+          MCTK_PANIC(
+              "Merge: Encountered an entity that should be remapped "
+              "according to remap table, but the target does not "
+              "contain an entity with the name: " +
+              *name);
+
+        /* Remapped entity found - continue checking next entity. */
+        continue;
+      }
     }
+
+    /* We're not using remapping, or the source entity we're analysing does
+     * not have a remapping entry.
+     * Ensure that an entity with the same ID exists in the target.
+     */
+    auto te = target.EntityById(se->desc_.id);
+
+    if (!te)
+      MCTK_PANIC("Merge: target lacking an entity mentioned by source.");
   }
 
   /* Check: See if target contains all pads */

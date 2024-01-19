@@ -22,6 +22,7 @@
 #define CAMERA_TOOLS_MCTK_REMAP_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility> /* std::pair */
 #include <vector>
@@ -34,6 +35,7 @@ class V4lMcRemap {
  public:
   /* Public functions */
 
+  std::optional<std::string> LookupEntityName(__u32 in_entity);
   __u32 LookupEntityId(__u32 in_entity, V4lMcDev& mc_target);
 
   static std::unique_ptr<V4lMcRemap> CreateFromYamlNode(YamlNode& node_remap);

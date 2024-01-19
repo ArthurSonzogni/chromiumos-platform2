@@ -24,12 +24,40 @@
 #include <linux/media.h>
 #include <linux/types.h>
 
+#include <optional>
+#include <string>
 #include <utility> /* std::pair */
 #include <vector>
 
 #include "tools/mctk/debug.h"
 #include "tools/mctk/mcdev.h"
 
+/* Look up a remapped entity ID's name.
+ *
+ * Returns:
+ *  - An entity name if there is a remap entry for this ID.
+ *  - std::nullopt if there is no remap entry.
+ */
+std::optional<std::string> V4lMcRemap::LookupEntityName(__u32 in_entity) {
+  for (std::pair<__u32, std::string> entry : remap_list_)
+    if (entry.first == in_entity)
+      return std::optional<std::string>(entry.second);
+
+  return std::nullopt;
+}
+
+/* Look up a remapped entity ID, with a fallback to the input ID.
+ *
+ * This checks if the input ID is mentioned in the remapping table.
+ * If yes, it looks for an entity with the mapped name in the target graph.
+ *
+ * Returns:
+ *  - The found target entity's ID, if both lookups succeed.
+ *  - The input ID if any step fails.
+ *
+ * This allows using this function safely everywhere, covering both remapped
+ * and not remapped entities.
+ */
 __u32 V4lMcRemap::LookupEntityId(__u32 in_entity, V4lMcDev& mc_target) {
   for (std::pair<__u32, std::string> entry : remap_list_) {
     if (entry.first == in_entity) {
