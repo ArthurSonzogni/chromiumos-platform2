@@ -723,7 +723,6 @@ if (use.test) {
       "default_profile_test.cc",
       "device_id_test.cc",
       "device_info_test.cc",
-      "device_portal_detector_test.cc",
       "device_test.cc",
       "dns_client_test.cc",
       "dns_util_test.cc",
