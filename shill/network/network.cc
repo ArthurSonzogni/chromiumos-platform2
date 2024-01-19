@@ -849,28 +849,18 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
   }
 
   network_validation_result_ = result;
-
   for (auto& ev : event_handlers_) {
     ev.OnNetworkValidationResult(interface_index_, result);
   }
 
-  switch (result.GetValidationState()) {
-    case PortalDetector::ValidationState::kNoConnectivity:
-      break;
-    case PortalDetector::ValidationState::kInternetConnectivity:
-      // Conclusive result that allows the Service to transition to the
-      // "online" state. Stop portal detection.
-      StopPortalDetection(/*is_failure=*/false);
-      break;
-    case PortalDetector::ValidationState::kPortalRedirect:
-      // Conclusive result that allows to start the portal detection sign-in
-      // flow.
-      break;
-    case PortalDetector::ValidationState::kPortalSuspected:
-      // b/309175584: the "portal-suspected" also starts the portal detection
-      // sign-in flow and is considered conclusive. Do not run additional
-      // connection diagnostics.
-      break;
+  if (result.GetValidationState() ==
+      PortalDetector::ValidationState::kInternetConnectivity) {
+    // Conclusive result that allows the Service to transition to the
+    // "online" state. Stop portal detection.
+    StopPortalDetection(/*is_failure=*/false);
+  } else {
+    // Restart the next network validation attempt.
+    StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation);
   }
 }
 

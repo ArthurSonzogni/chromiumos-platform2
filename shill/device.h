@@ -284,6 +284,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
   void OnNetworkValidationStop(int interface_index, bool is_failure) override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
   void OnNetworkValidationResult(int interface_index,
                                  const NetworkMonitor::Result& result) override;
   void OnNetworkDestroyed(int interface_index) override;

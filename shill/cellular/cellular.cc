@@ -1190,14 +1190,8 @@ void Cellular::OnNetworkValidationResult(int interface_index,
         multiplexed_tethering_pdn_->network()->StopPortalDetection();
         break;
       case PortalDetector::ValidationState::kNoConnectivity:
-        // Retry network validation. If the retry fails, let the tethering
-        // session stops itself when its upstream network validation timer
-        // fires.
-        if (!multiplexed_tethering_pdn_->network()->StartPortalDetection(
-                NetworkMonitor::ValidationReason::kRetryValidation)) {
-          LOG(WARNING) << multiplexed_tethering_pdn_->network()
-                       << ": Failed to restart network validation";
-        }
+        // Nothing to do: the Network already continues the network validation
+        // loop when the Network reaches the kInternetConnectivity state.
         break;
     }
   }
