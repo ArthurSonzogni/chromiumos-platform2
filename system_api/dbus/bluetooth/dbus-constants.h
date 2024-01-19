@@ -659,6 +659,12 @@ constexpr char kBluetoothManagerServiceName[] =
     "org.chromium.bluetooth.Manager";
 constexpr char kBluetoothManagerCallbackInterface[] =
     "org.chromium.bluetooth.ManagerCallback";
+
+// Methods.
+constexpr char kBluetoothManagerRegisterCallback[] = "RegisterCallback";
+
+// Callback Methods.
+constexpr char kBluetoothManagerOnHciEnabledChanged[] = "OnHciEnabledChanged";
 }  // namespace bluetooth_manager
 
 #endif  // SYSTEM_API_DBUS_BLUETOOTH_DBUS_CONSTANTS_H_
