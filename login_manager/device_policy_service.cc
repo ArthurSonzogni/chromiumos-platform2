@@ -55,15 +55,8 @@ constexpr char DevicePolicyService::kChromadMigrationSkipOobePreservePath[] =
 
 namespace {
 
-// Note: The keys in the map must be in the sorted order for the code to
-// compile!
-//
-// TODO(b:319229572): Migrate to hase::MakeFixedFlatMap once
-// backward-compatibility-0300-Revert-Make-base-MakeFixedFlatMap-consteval.patch
-// is removed.
 constexpr auto attrs_to_ownership =
-    base::MakeFixedFlatMapSortedUnique<std::string_view,
-                                       LoginMetrics::OwnershipState>(
+    base::MakeFixedFlatMap<std::string_view, LoginMetrics::OwnershipState>(
         {{"", LoginMetrics::OwnershipState::kConsumer},
          {InstallAttributesReader::kDeviceModeConsumerKiosk,
           LoginMetrics::OwnershipState::kConsumerKiosk},
