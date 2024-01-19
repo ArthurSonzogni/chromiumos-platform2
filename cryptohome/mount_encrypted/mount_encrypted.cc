@@ -60,13 +60,6 @@ constexpr char kFeaturedTpmSeedTmpDir[] = "/run/featured_seed";
 constexpr char kFeaturedTpmSeedFile[] = "tpm_seed";
 constexpr char kOldTpmOwnershipStateFile[] =
     "mnt/stateful_partition/.tpm_owned";
-static const uid_t kBiodUid = 282;
-static const gid_t kBiodGid = 282;
-static const uid_t kHibermanUid = 20184;
-static const gid_t kHibermanGid = 20184;
-static const uid_t kRootUid = 0;
-static const gid_t kRootGid = 0;
-
 constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
 constexpr char kMountEncryptedMetricsPath[] =
     "/run/mount_encrypted/metrics.mount-encrypted";
@@ -260,9 +253,9 @@ bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
     return true;
   }
 
-  return SendSecretToTmpFile(key, std::string(kBioTpmSeedSalt),
-                             base::FilePath(kBioTpmSeedTmpDir), kBioTpmSeedFile,
-                             kBiodUid, kBiodGid, platform);
+  return SendSecretToTmpFile(
+      key, std::string(kBioTpmSeedSalt), base::FilePath(kBioTpmSeedTmpDir),
+      kBioTpmSeedFile, libstorage::kBiodUid, libstorage::kBiodGid, platform);
 }
 
 // Send a secret derived from the system key to hiberman, if available, via a
@@ -277,8 +270,8 @@ bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
 
   return SendSecretToTmpFile(key, std::string(kHibermanTpmSeedSalt),
                              base::FilePath(kHibermanTpmSeedTmpDir),
-                             kHibermanTpmSeedFile, kHibermanUid, kHibermanGid,
-                             platform);
+                             kHibermanTpmSeedFile, libstorage::kHibermanUid,
+                             libstorage::kHibermanGid, platform);
 }
 
 // Send a secret derived from the system key to featured, if available, via a
@@ -288,8 +281,8 @@ bool SendSecretToFeaturedTmpFile(const mount_encrypted::EncryptionKey& key,
                                  libstorage::Platform* platform) {
   return SendSecretToTmpFile(key, std::string(kFeaturedTpmSeedSalt),
                              base::FilePath(kFeaturedTpmSeedTmpDir),
-                             kFeaturedTpmSeedFile, kRootUid, kRootGid,
-                             platform);
+                             kFeaturedTpmSeedFile, libstorage::kRootUid,
+                             libstorage::kRootGid, platform);
 }
 
 // Originally .tpm_owned file is located in /mnt/stateful_partition. Since the

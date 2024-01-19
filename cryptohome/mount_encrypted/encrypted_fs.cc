@@ -48,10 +48,6 @@ constexpr uint64_t kExt4BlockSize = 4096;
 constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
-constexpr uid_t kRootUid = 0;
-constexpr gid_t kRootGid = 0;
-constexpr uid_t kChronosUid = 1000;
-constexpr gid_t kChronosGid = 1000;
 
 bool CheckBind(libstorage::Platform* platform, const BindMount& bind) {
   if (platform->Access(bind.src, R_OK) &&
@@ -124,12 +120,14 @@ EncryptedFs::EncryptedFs(
       platform_(platform),
       device_mapper_(device_mapper),
       container_(std::move(container)),
-      bind_mounts_({{rootdir_.Append(ENCRYPTED_MNT "/var"),
-                     rootdir_.Append("var"), kRootUid, kRootGid,
-                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false},
-                    {rootdir_.Append(ENCRYPTED_MNT "/chronos"),
-                     rootdir_.Append("home/chronos"), kChronosUid, kChronosGid,
-                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, true}}) {}
+      bind_mounts_(
+          {{rootdir_.Append(ENCRYPTED_MNT "/var"), rootdir_.Append("var"),
+            libstorage::kRootUid, libstorage::kRootGid,
+            S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false},
+           {rootdir_.Append(ENCRYPTED_MNT "/chronos"),
+            rootdir_.Append("home/chronos"), libstorage::kChronosUid,
+            libstorage::kChronosGid,
+            S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, true}}) {}
 
 // static
 std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
