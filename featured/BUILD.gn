@@ -77,8 +77,8 @@ executable("featured") {
 action("early_boot_state_checks") {
   visibility = [ ":libfeatures" ]
   script = "scripts/generate_early_boot_checks.py"
-  json_path = rebase_path("//system_api/dbus/featured/default_states.json",
-                          root_build_dir)
+  json_path =
+      "${sysroot}/usr/include/chromeos/dbus/featured/default_states.json"
   inputs = [
     json_path,
     "scripts/early_boot_state_checks_cc.jinja",
