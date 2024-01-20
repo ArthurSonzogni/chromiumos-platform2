@@ -5,6 +5,7 @@
 #include "shill/network/network.h"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -23,6 +24,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mock_proc_fs_stub.h>
+#include <net-base/network_config.h>
 
 #include "shill/http_request.h"
 #include "shill/ipconfig.h"
@@ -123,16 +125,6 @@ net_base::NetworkConfig CreateIPv4NetworkConfig(
                  });
   config.mtu = mtu;
   return config;
-}
-
-// TODO(b/232177767): This function is IPv4-only currently. Implement the IPv6
-// part when necessary.
-IPConfig::Properties NetworkConfigToIPProperties(
-    const net_base::NetworkConfig& config) {
-  IPConfig::Properties props = {};
-  props.address_family = net_base::IPFamily::kIPv4;
-  props.UpdateFromNetworkConfig(config);
-  return props;
 }
 
 // Allows us to fake/mock some functions in this test.
@@ -424,12 +416,10 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   EXPECT_CALL(*proc_fs_,
               SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
-  auto link_protocol_properties = std::make_unique<IPConfig::Properties>();
-  link_protocol_properties->address = "2001:db8:abcd::1234";
-  network_->set_link_protocol_network_config(
-      std::make_unique<net_base::NetworkConfig>(
-          IPConfig::Properties::ToNetworkConfig(
-              nullptr, link_protocol_properties.get())));
+  auto network_config = std::make_unique<net_base::NetworkConfig>();
+  network_config->ipv6_addresses.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:abcd::1234"));
+  network_->set_link_protocol_network_config(std::move(network_config));
   network_->Start(Network::StartOptions{});
 }
 
@@ -1199,30 +1189,18 @@ class NetworkStartTest : public NetworkTest {
         kIPv4LinkProtocolAddress, kIPv4LinkProtocolPrefix,
         kIPv4LinkProtocolGateway, {kIPv4LinkProtocolNameServer},
         kIPv4LinkProtocolMTU);
+    ipv4_dhcp_with_static_config_ = ipv4_static_config_;
+    ipv4_dhcp_with_static_config_.mtu = kIPv4DHCPMTU;
+    ipv4_link_protocol_with_static_config_ = ipv4_static_config_;
+    ipv4_link_protocol_with_static_config_.mtu = kIPv4LinkProtocolMTU;
 
-    ipv4_dhcp_props_ = NetworkConfigToIPProperties(ipv4_dhcp_config_);
-    ipv4_static_props_ = NetworkConfigToIPProperties(ipv4_static_config_);
-    ipv4_link_protocol_props_ =
-        NetworkConfigToIPProperties(ipv4_link_protocol_config_);
-
-    ipv4_dhcp_with_static_props_ = ipv4_static_props_;
-    ipv4_dhcp_with_static_props_.mtu = kIPv4DHCPMTU;
-    ipv4_link_protocol_with_static_props_ = ipv4_static_props_;
-    ipv4_link_protocol_with_static_props_.mtu = kIPv4LinkProtocolMTU;
-
-    ipv6_slaac_props_.address_family = net_base::IPFamily::kIPv6;
-    ipv6_slaac_props_.method = kTypeSLAAC;
-    ipv6_slaac_props_.address = kIPv6SLAACAddress;
-    ipv6_slaac_props_.subnet_prefix = kIPv6SLAACPrefix;
-    ipv6_slaac_props_.gateway = kIPv6SLAACGateway;
-    ipv6_slaac_props_.dns_servers = {kIPv6SLAACNameserver};
-
-    ipv6_link_protocol_props_.address_family = net_base::IPFamily::kIPv6;
-    ipv6_link_protocol_props_.method = kTypeSLAAC;
-    ipv6_link_protocol_props_.address = kIPv6LinkProtocolAddress;
-    ipv6_link_protocol_props_.subnet_prefix = kIPv6LinkProtocolPrefix;
-    ipv6_link_protocol_props_.gateway = kIPv6LinkProtocolGateway;
-    ipv6_link_protocol_props_.dns_servers = {kIPv6LinkProtocolNameserver};
+    ipv6_link_protocol_config_.ipv6_addresses = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(
+            kIPv6LinkProtocolAddress, kIPv6LinkProtocolPrefix)};
+    ipv6_link_protocol_config_.ipv6_gateway =
+        net_base::IPv6Address::CreateFromString(kIPv6LinkProtocolGateway);
+    ipv6_link_protocol_config_.dns_servers = {
+        *net_base::IPAddress::CreateFromString(kIPv6LinkProtocolNameserver)};
   }
 
   void InvokeStart(const TestOptions& test_opts) {
@@ -1230,11 +1208,11 @@ class NetworkStartTest : public NetworkTest {
       ConfigureStaticIPv4Config();
     }
     if (test_opts.link_protocol_ipv4 || test_opts.link_protocol_ipv6) {
-      IPConfig::Properties* ipv6 =
-          test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_props_ : nullptr;
-      IPConfig::Properties* ipv4 =
-          test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_props_ : nullptr;
-      auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
+      net_base::NetworkConfig* ipv6 =
+          test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_config_ : nullptr;
+      net_base::NetworkConfig* ipv4 =
+          test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_config_ : nullptr;
+      auto network_config = CombineNetworkConfigs(ipv4, ipv6);
       network_->set_link_protocol_network_config(
           std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
     }
@@ -1306,13 +1284,14 @@ class NetworkStartTest : public NetworkTest {
   }
 
   void ExpectConnectionUpdateFromIPConfig(IPConfigType ipconfig_type) {
-    const auto expected_props = GetIPPropertiesFromType(ipconfig_type);
-    const auto family = expected_props.address_family;
+    const std::optional<net_base::IPFamily> family =
+        GetIPFamilyFromType(ipconfig_type);
     EXPECT_CALL(*network_,
                 ApplyNetworkConfig(ContainsAddressAndRoute(family), _));
   }
 
-  // Verifies the IPConfigs object exposed by Network is expected.
+  // Verifies the IPConfigs and the NetworkConfig objects exposed by Network are
+  // expected.
   void VerifyIPConfigs(IPConfigType ipv4_type, IPConfigType ipv6_type) {
     if (ipv4_type == IPConfigType::kNone) {
       EXPECT_EQ(network_->ipconfig(), nullptr);
@@ -1325,9 +1304,9 @@ class NetworkStartTest : public NetworkTest {
     } else {
       ASSERT_NE(network_->ip6config(), nullptr);
     }
-    EXPECT_EQ(IPConfig::Properties::ToNetworkConfig(
-                  GetIPPropertiesPtrFromType(ipv4_type),
-                  GetIPPropertiesPtrFromType(ipv6_type)),
+
+    EXPECT_EQ(CombineNetworkConfigs(GetNetworkConfigPtrFromType(ipv4_type),
+                                    GetNetworkConfigPtrFromType(ipv6_type)),
               network_->GetNetworkConfig());
   }
 
@@ -1336,14 +1315,12 @@ class NetworkStartTest : public NetworkTest {
   void VerifyGetAddresses(IPConfigType ipv4_type, IPConfigType ipv6_type) {
     std::vector<net_base::IPCIDR> expected_result;
     if (ipv4_type != IPConfigType::kNone) {
-      expected_result.push_back(*net_base::IPCIDR::CreateFromStringAndPrefix(
-          GetIPPropertiesFromType(ipv4_type).address,
-          GetIPPropertiesFromType(ipv4_type).subnet_prefix));
+      expected_result.push_back(net_base::IPCIDR(
+          *GetNetworkConfigPtrFromType(ipv4_type)->ipv4_address));
     }
     if (ipv6_type != IPConfigType::kNone) {
-      expected_result.push_back(*net_base::IPCIDR::CreateFromStringAndPrefix(
-          GetIPPropertiesFromType(ipv6_type).address,
-          GetIPPropertiesFromType(ipv6_type).subnet_prefix));
+      expected_result.push_back(net_base::IPCIDR(
+          GetNetworkConfigPtrFromType(ipv6_type)->ipv6_addresses[0]));
     }
 
     EXPECT_EQ(network_->GetAddresses(), expected_result);
@@ -1357,48 +1334,85 @@ class NetworkStartTest : public NetworkTest {
   }
 
  private:
-  const IPConfig::Properties* GetIPPropertiesPtrFromType(IPConfigType type) {
+  const net_base::NetworkConfig* GetNetworkConfigPtrFromType(
+      IPConfigType type) {
     switch (type) {
       case IPConfigType::kIPv4DHCP:
-        return &ipv4_dhcp_props_;
+        return &ipv4_dhcp_config_;
       case IPConfigType::kIPv4Static:
-        return &ipv4_static_props_;
+        return &ipv4_static_config_;
       case IPConfigType::kIPv4LinkProtocol:
-        return &ipv4_link_protocol_props_;
+        return &ipv4_link_protocol_config_;
       case IPConfigType::kIPv4DHCPWithStatic:
-        return &ipv4_dhcp_with_static_props_;
+        return &ipv4_dhcp_with_static_config_;
       case IPConfigType::kIPv4LinkProtocolWithStatic:
-        return &ipv4_link_protocol_with_static_props_;
+        return &ipv4_link_protocol_with_static_config_;
       case IPConfigType::kIPv6SLAAC:
-        return &ipv6_slaac_props_;
+        return &slaac_config_;
       case IPConfigType::kIPv6LinkProtocol:
-        return &ipv6_link_protocol_props_;
+        return &ipv6_link_protocol_config_;
       default:
         return nullptr;
     }
   }
 
-  IPConfig::Properties GetIPPropertiesFromType(IPConfigType type) {
-    auto ptr = GetIPPropertiesPtrFromType(type);
-    CHECK_NE(nullptr, ptr);
-    return IPConfig::Properties(*ptr);
+  static std::optional<net_base::IPFamily> GetIPFamilyFromType(
+      IPConfigType type) {
+    switch (type) {
+      case IPConfigType::kIPv4DHCP:
+      case IPConfigType::kIPv4Static:
+      case IPConfigType::kIPv4LinkProtocol:
+      case IPConfigType::kIPv4DHCPWithStatic:
+      case IPConfigType::kIPv4LinkProtocolWithStatic:
+        return net_base::IPFamily::kIPv4;
+      case IPConfigType::kIPv6SLAAC:
+      case IPConfigType::kIPv6LinkProtocol:
+        return net_base::IPFamily::kIPv6;
+      case IPConfigType::kNone:
+        return std::nullopt;
+    }
+  }
+
+  // Combines IPv4 properties from |ipv4_config| and IPv6 properties from
+  // |ipv6_config| to create a new NetworkConfig. Only considers address,
+  // gateway, DNS servers, and MTU properties.
+  static net_base::NetworkConfig CombineNetworkConfigs(
+      const net_base::NetworkConfig* ipv4_config,
+      const net_base::NetworkConfig* ipv6_config) {
+    net_base::NetworkConfig ret;
+    const int min_mtu = ipv6_config ? net_base::NetworkConfig::kMinIPv6MTU
+                                    : net_base::NetworkConfig::kMinIPv4MTU;
+    if (ipv6_config) {
+      ret.ipv6_addresses = ipv6_config->ipv6_addresses;
+      ret.ipv6_gateway = ipv6_config->ipv6_gateway;
+      ret.dns_servers.insert(ret.dns_servers.end(),
+                             ipv6_config->dns_servers.begin(),
+                             ipv6_config->dns_servers.end());
+      ret.mtu = ipv6_config->mtu;
+    }
+    if (ipv4_config) {
+      ret.ipv4_address = ipv4_config->ipv4_address;
+      ret.ipv4_gateway = ipv4_config->ipv4_gateway;
+      ret.dns_servers.insert(ret.dns_servers.end(),
+                             ipv4_config->dns_servers.begin(),
+                             ipv4_config->dns_servers.end());
+      if (ipv4_config->mtu.has_value()) {
+        ret.mtu = ret.mtu.has_value() ? std::min(ret.mtu, ipv4_config->mtu)
+                                      : ipv4_config->mtu;
+        ret.mtu = std::max(min_mtu, *ret.mtu);
+      }
+    }
+    return ret;
   }
 
   net_base::NetworkConfig ipv4_dhcp_config_;
   net_base::NetworkConfig ipv4_static_config_;
   net_base::NetworkConfig ipv4_link_protocol_config_;
+  net_base::NetworkConfig ipv4_dhcp_with_static_config_;
+  net_base::NetworkConfig ipv4_link_protocol_with_static_config_;
 
   net_base::NetworkConfig slaac_config_;
-
-  // IPConfig::Properties version of the above.
-  IPConfig::Properties ipv4_dhcp_props_;
-  IPConfig::Properties ipv4_static_props_;
-  IPConfig::Properties ipv4_link_protocol_props_;
-
-  IPConfig::Properties ipv4_dhcp_with_static_props_;
-  IPConfig::Properties ipv4_link_protocol_with_static_props_;
-  IPConfig::Properties ipv6_slaac_props_;
-  IPConfig::Properties ipv6_link_protocol_props_;
+  net_base::NetworkConfig ipv6_link_protocol_config_;
 };
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
