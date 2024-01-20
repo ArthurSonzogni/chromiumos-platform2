@@ -50,6 +50,7 @@
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <chromeos/constants/crash_reporter.h>
 #include <debugd/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <policy/device_policy_impl.h>
@@ -2115,11 +2116,11 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
                                      &chronos_gid)) {
       LOG(ERROR) << "User " << kDefaultUserName << " doesn't exist";
     } else if (!CreateDirectoryWithSettings(
-                   FilePath(paths::kCrashReporterCrashpadReadyDirectory),
+                   FilePath(crash_reporter::kCrashpadReadyDirectory),
                    kSystemRunStateDirectoryMode, chronos_uid, chronos_gid,
                    nullptr)) {
       LOG(ERROR) << "Could not create "
-                 << paths::kCrashReporterCrashpadReadyDirectory;
+                 << crash_reporter::kCrashpadReadyDirectory;
     }
   }
 
