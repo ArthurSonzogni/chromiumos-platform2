@@ -369,6 +369,10 @@ chromeos:
             <<: *some_whitelabel_config
             wallpaper: "{{$wallpaper}}"
             touch: *some_touch_config
+            wifi:
+              mtcl-file:
+                build-path: "build-path/wifi_mctl.bin"
+                system-path: "/firmware/cbfs-rw-raw/proj/wifi_mtcl.bin"
         - $sku-id: 9
           config:
             <<: *some_whitelabel_config

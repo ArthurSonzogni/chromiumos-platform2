@@ -64,6 +64,7 @@ ConfigFiles = collections.namedtuple(
         "dptf_map",
         "camera_map",
         "wifi_sar_map",
+        "wifi_mtcl_map",
         "proximity_map",
     ],
 )
@@ -1317,16 +1318,23 @@ def _build_intel_config(config, config_files):
     return config_files.wifi_sar_map.get((coreboot_target, wifi_sar_id))
 
 
-def _build_mtk_config(mtk_config):
+def _build_mtk_config(mtk_config, coreboot_target, config_files):
     """Builds the wifi configuration for the mtk driver.
 
     Args:
         mtk_config: MtkConfig config.
+        coreboot_target: Coreboot target device to associate binary file with.
+        config_files: ConfigFiles config files.
 
     Returns:
         wifi configuration for the mtk driver.
     """
     result = {}
+
+    if mtk_config.HasField("country_list"):
+        mtcl_file = config_files.wifi_mtcl_map.get(coreboot_target)
+        if mtcl_file is not None:
+            result = mtcl_file
 
     def power_chain(power):
         chain = {}
@@ -1435,7 +1443,13 @@ def _build_wifi(config, config_files):
     if config_field == "intel_config":
         return _build_intel_config(config, config_files)
     if config_field == "mtk_config":
-        return _build_mtk_config(wifi_config.mtk_config)
+        coreboot_target = (
+            config.sw_config.firmware_build_config.build_targets.coreboot
+            + _calculate_image_name_suffix(config.hw_design_config)
+        )
+        return _build_mtk_config(
+            wifi_config.mtk_config, coreboot_target, config_files
+        )
     if config_field == "rtw89_config":
         return _build_rtw89_config(wifi_config.rtw89_config)
     return {}
@@ -2871,6 +2885,7 @@ def _transform_build_configs(
         dptf_map={},
         camera_map={},
         wifi_sar_map={},
+        wifi_mtcl_map={},
         proximity_map={},
     ),
 ):
@@ -3642,6 +3657,45 @@ def _proximity_map(configs, project_name, output_dir, build_root_dir):
     return result
 
 
+def _write_cbfs_wifi_file(
+    output_dir, build_root_dir, coreboot_target, file_content, filename
+):
+    """Writes CBFS file used for WiFi functionality.
+
+    In this process a binary hex file is written so that it can be incorporated
+    into the chromeos-bootimage and used within coreboot.
+
+    Args:
+        output_dir: Path to the generated output.
+        build_root_dir: Path to the config file from portage's perspective.
+        coreboot_target: Coreboot target device to associate binary file with.
+        file_content: Binary file content to write.
+        filename: Name of binary file to write.
+
+    Returns:
+        file that was written in /firmware/cbfs-rw-raw, and the build path
+    """
+    output_path = os.path.join(output_dir, "wifi", coreboot_target)
+    os.makedirs(output_path, exist_ok=True)
+    output_path = os.path.join(output_path, filename)
+    build_path = os.path.join(build_root_dir, "wifi", coreboot_target, filename)
+    if os.path.exists(output_path):
+        with open(output_path, "rb") as f:
+            if f.read() != file_content:
+                raise Exception(
+                    f"Firmware {coreboot_target} has conflicting "
+                    "file content under filename {filename}."
+                )
+    else:
+        with open(output_path, "wb") as f:
+            f.write(file_content)
+
+    return (
+        os.path.join("/firmware/cbfs-rw-raw", coreboot_target, filename),
+        build_path,
+    )
+
+
 def _wifi_sar_map(configs, output_dir, build_root_dir):
     """Constructs a map from (design name, sar ID) to wifi sar config.
 
@@ -3683,30 +3737,71 @@ def _wifi_sar_map(configs, output_dir, build_root_dir):
                 wifi_sar_id = _extract_fw_config_value(
                     hw_design_config, hw_design_config.hardware_topology.wifi
                 )
-                output_path = os.path.join(output_dir, "wifi", coreboot_target)
-                os.makedirs(output_path, exist_ok=True)
-                filename = f"wifi_sar_{wifi_sar_id}.hex"
-                output_path = os.path.join(output_path, filename)
-                build_path = os.path.join(
-                    build_root_dir, "wifi", coreboot_target, filename
+                system_path, build_path = _write_cbfs_wifi_file(
+                    output_dir,
+                    build_root_dir,
+                    coreboot_target,
+                    sar_file_content,
+                    f"wifi_sar_{wifi_sar_id}.hex",
                 )
-                if os.path.exists(output_path):
-                    with open(output_path, "rb") as f:
-                        if f.read() != sar_file_content:
-                            raise Exception(
-                                f"Firmware {coreboot_target} has conflicting "
-                                "wifi sar file content under wifi sar id "
-                                f"{wifi_sar_id}."
-                            )
-                else:
-                    with open(output_path, "wb") as f:
-                        f.write(sar_file_content)
-                system_path = os.path.join(
-                    "/firmware/cbfs-rw-raw", coreboot_target, filename
-                )
-                result[(coreboot_target, wifi_sar_id)] = {
-                    "sar-file": _file_v2(build_path, system_path)
-                }
+                if system_path is not None:
+                    result[(coreboot_target, wifi_sar_id)] = {
+                        "sar-file": _file_v2(build_path, system_path)
+                    }
+
+    return result
+
+
+def _wifi_mtcl_map(configs, output_dir, build_root_dir):
+    """Constructs a map from the design name to wifi mtcl file for that design.
+
+    In the process a wifi mtcl hex file is generated that the config points at.
+    This mapping is only made for MediaTek wifi chips that have 6GHz capable
+    radios in order to provide the file when building coreboot.
+
+    Args:
+        configs: Source ConfigBundle to process.
+        project_name: Name of the project to process for.
+        output_dir: Path to the generated output.
+        build_root_dir: Path to the config file from portage's perspective.
+
+    Returns:
+        dict that maps the design name onto the wifi config for that design.
+    """
+    result = {}
+    sw_configs = list(configs.software_configs)
+    for hw_design in configs.design_list:
+        for hw_design_config in hw_design.configs:
+            wifi = hw_design_config.hardware_features.wifi
+            sw_config = _sw_config(sw_configs, hw_design_config.id.value)
+            if hw_design_config.hardware_features.wifi.HasField("wifi_config"):
+                wifi_config = wifi.wifi_config
+            else:
+                wifi_config = sw_config.wifi_config
+
+            if wifi_config.HasField("mtk_config"):
+                if wifi_config.mtk_config.HasField("country_list"):
+                    mtcl_file_content = _create_mtcl_file_content(
+                        wifi_config.mtk_config.country_list
+                    )
+                    coreboot_target = (
+                        sw_config.firmware_build_config.build_targets.coreboot
+                        + _calculate_image_name_suffix(hw_design_config)
+                    )
+                    if not coreboot_target:
+                        continue
+
+                    system_path, build_path = _write_cbfs_wifi_file(
+                        output_dir,
+                        build_root_dir,
+                        coreboot_target,
+                        mtcl_file_content,
+                        "wifi_mtcl.bin",
+                    )
+                    if system_path is not None:
+                        result[coreboot_target] = {
+                            "mtcl-file": _file_v2(build_path, system_path)
+                        }
     return result
 
 
@@ -4173,6 +4268,60 @@ def _create_intel_sar_file_content(intel_config):
     return marker + header + payload
 
 
+def _create_mtcl_file_content(country_list):
+    """creates and returns the mtcl file content for the given config.
+
+    creates and returns the mtcl file content that is used with MediaTek drivers
+    only.
+
+    args:
+        country_list: MtclTable country list.
+
+    returns:
+      mtcl file content for the given config
+    """
+
+    if country_list.version != 2:
+        raise Exception(
+            f"Version: {country_list.version} is not supported. Only version "
+            "2 is currently supported."
+        )
+    if (country_list.bitmask_6ghz & 0xFFFF) != 0x0000:
+        raise Exception(
+            f"6GHz bitmask: {country_list.bitmask_6ghz} does not reserve the "
+            "last two bytes as required!"
+        )
+    if (country_list.bitmask_5p9ghz & 0xFFFF) != 0x0000:
+        raise Exception(
+            f"5.9GHz bitmask: {country_list.bitmask_5p9ghz} does not reserve "
+            "the last two bytes as required!"
+        )
+    if country_list.support_6ghz > 2:
+        raise Exception(
+            f"6GHz support: {country_list.support_6ghz} is an unknown value "
+            "only 0, 1, and 2 are valid values!"
+        )
+    if country_list.support_5p9ghz > 2:
+        raise Exception(
+            f"6GHz support: {country_list.support_5p9ghz} is an unknown value "
+            "only 0, 1, and 2 are valid values!"
+        )
+    payload = bytearray(0)
+    payload += "MTCL".encode()
+    payload += country_list.version.to_bytes(1, "big")
+    payload += country_list.support_6ghz.to_bytes(1, "big")
+    payload += ((country_list.bitmask_6ghz & 0xFFFF00000000) >> 32).to_bytes(
+        2, "big"
+    )
+    payload += (country_list.bitmask_6ghz & 0xFFFFFFFF).to_bytes(4, "big")
+    payload += country_list.support_5p9ghz.to_bytes(1, "big")
+    payload += ((country_list.bitmask_5p9ghz & 0xFFFF00000000) >> 32).to_bytes(
+        2, "big"
+    )
+    payload += (country_list.bitmask_5p9ghz & 0xFFFFFFFF).to_bytes(4, "big")
+    return payload
+
+
 def Main(
     project_configs, program_config, output, dtd_path
 ):  # pylint: disable=invalid-name
@@ -4217,6 +4366,7 @@ def Main(
         )
 
     wifi_sar_map = _wifi_sar_map(configs, output_dir, build_root_dir)
+    wifi_mtcl_map = _wifi_mtcl_map(configs, output_dir, build_root_dir)
     if os.path.exists(TOUCH_PATH):
         touch_fw = _build_touch_file_config(configs, project_name)
     arc_hw_feature_file_writer = _arc_hardware_feature_file_writer(
@@ -4234,6 +4384,7 @@ def Main(
         dptf_map=dptf_map,
         camera_map=camera_map,
         wifi_sar_map=wifi_sar_map,
+        wifi_mtcl_map=wifi_mtcl_map,
         proximity_map=proximity_map,
     )
     write_output(_transform_build_configs(configs, config_files), output)

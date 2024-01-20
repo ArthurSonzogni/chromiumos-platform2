@@ -324,12 +324,12 @@ class DeviceConfig:
             this device proximity sensors, especially the semtech ones.
         """
 
-    def GetIntelWifiSarFiles(self):
-        """Get a list of intel wifi sar files
+    def GetWifiFiles(self):
+        """Get a list of wifi files
 
         Returns:
-            List of BaseFile objects representing the intel wifi sar filesi
-            referenced for this device.
+            List of BaseFile objects representing the intel wifi sar files
+            and mediatek mtcl referenced for this device.
         """
 
     def GetFirmwareInfo(self):
@@ -415,7 +415,7 @@ class CrosConfigBaseImpl:
             result["GetBluetoothFiles"] = bluetooth_files
         result["GetCameraFiles"] = self.GetCameraFiles()
         result["GetThermalFiles"] = self.GetThermalFiles()
-        result["GetIntelWifiSarFiles"] = self.GetIntelWifiSarFiles()
+        result["GetWifiFiles"] = self.GetWifiFiles()
         result["GetProximitySensorFiles"] = self.GetProximitySensorFiles()
         result["GetFirmwareInfo"] = self.GetFirmwareInfo()
         for target in ["coreboot", "ec"]:
@@ -737,14 +737,14 @@ class CrosConfigBaseImpl:
         """
         return self._GetFiles("GetProximitySensorFiles")
 
-    def GetIntelWifiSarFiles(self):
-        """Get a list of unique intel wifi sar files for all models
+    def GetWifiFiles(self):
+        """Get a list of unique wifi files for all models
 
         Returns:
             List of BaseFile objects representing all the intel wifi sar files
-            referenced by all devices
+            and mediatek mtcl referenced by all devices
         """
-        return self._GetFiles("GetIntelWifiSarFiles")
+        return self._GetFiles("GetWifiFiles")
 
     def ShowTree(self, base_path, tree):
         print("%-10s%s" % ("Size", "Path"))

@@ -1144,7 +1144,13 @@
             "position": "0.3"
           }
         },
-        "wallpaper": "wallpaper-wl1"
+        "wallpaper": "wallpaper-wl1",
+        "wifi": {
+          "mtcl-file": {
+            "build-path": "build-path/wifi_mctl.bin",
+            "system-path": "/firmware/cbfs-rw-raw/proj/wifi_mtcl.bin"
+          }
+        }
       },
       {
         "arc": {
@@ -1356,7 +1362,13 @@
             "position": "0.3"
           }
         },
-        "wallpaper": "wallpaper-wl2"
+        "wallpaper": "wallpaper-wl2",
+        "wifi": {
+          "mtcl-file": {
+            "build-path": "build-path/wifi_mctl.bin",
+            "system-path": "/firmware/cbfs-rw-raw/proj/wifi_mtcl.bin"
+          }
+        }
       },
       {
         "arc": {

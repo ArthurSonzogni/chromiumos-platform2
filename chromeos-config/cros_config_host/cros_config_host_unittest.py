@@ -141,7 +141,13 @@ class CrosConfigHostTest(unittest.TestCase):
         self.CheckManyLines(output, 1)
 
     def testGetIntelWifiSarFiles(self):
+        # TODO(b:323455324): Remove this after all callers have been converted
+        # to get-wifi-files.
         output = self._check_output("get-intel-wifi-sar-files")
+        self.CheckManyLines(output, 1)
+
+    def testGetWifiFiles(self):
+        output = self._check_output("get-wifi-files")
         self.CheckManyLines(output, 1)
 
     def testGetProximitySensorFiles(self):

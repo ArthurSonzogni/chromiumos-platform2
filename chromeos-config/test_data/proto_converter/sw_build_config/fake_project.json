@@ -2178,6 +2178,10 @@
             "offset-2g": 13,
             "offset-5g": 14
           },
+          "mtcl-file": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/wifi/fake/wifi_mtcl.bin",
+            "system-path": "/firmware/cbfs-rw-raw/fake/wifi_mtcl.bin"
+          },
           "non-tablet-mode-power-table-mtk": {
             "limit-2g": 1,
             "limit-5g-1": 2,

@@ -254,8 +254,8 @@ def GetThermalFiles(config):
         print(files.dest)
 
 
-def GetIntelWifiSarFiles(config):
-    """Print a list of intel wifi sar files across all models
+def GetWifiFiles(config):
+    """Print a list of wifi files across all models
 
     The output is one line for the source file
     and one line for the install file, e.g.:
@@ -266,7 +266,7 @@ def GetIntelWifiSarFiles(config):
     Args:
         config: A CrosConfig instance
     """
-    for files in config.GetIntelWifiSarFiles():
+    for files in config.GetWifiFiles():
         print(files.source)
         print(files.dest)
 
@@ -531,11 +531,19 @@ def GetParser(description):
         help="Lists pairs of thermal files in sequence: first line is "
         "the relative source file, second line is the full install pathname",
     )
+    # TODO(b:323455324): Remove this when all references to
+    # get-intel-wifi-sar-files have been removed.
     # Parser: get-intel-wifi-sar-files
     subparsers.add_parser(
         "get-intel-wifi-sar-files",
-        help="Lists pairs of intel wifi sar files in sequence: first line is "
-        "the relative source file, second line is the full install pathname",
+        help="Lists pairs of wifi files in sequence: first line is the relative"
+        "source file, second line is the full install pathname",
+    )
+    # Parser: get-wifi-files
+    subparsers.add_parser(
+        "get-wifi-files",
+        help="Lists pairs of wifi files in sequence: first line is the relative"
+        "source file, second line is the full install pathname",
     )
     # Parser: get-proximity-sensor-files
     subparsers.add_parser(
@@ -702,7 +710,9 @@ def main(argv=None):
     elif opts.subcommand == "get-thermal-files":
         GetThermalFiles(config)
     elif opts.subcommand == "get-intel-wifi-sar-files":
-        GetIntelWifiSarFiles(config)
+        GetWifiFiles(config)
+    elif opts.subcommand == "get-wifi-files":
+        GetWifiFiles(config)
     elif opts.subcommand == "get-proximity-sensor-files":
         GetProximitySensorFiles(config)
     elif opts.subcommand == "file-tree":
