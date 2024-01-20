@@ -410,6 +410,10 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   // Populates the given event context with the capture info debug annotation.
   void PopulateEventAnnotation(perfetto::EventContext& ctx) const;
 
+  bool is_empty() const {
+    return !has_metadata() && !has_input_buffer() && partial_result() == 0 &&
+           num_output_buffers() == 0;
+  }
   bool is_valid() const { return type_ != Type::kInvalidType; }
   uint32_t frame_number() const { return frame_number_; }
   bool has_metadata() const { return !metadata_.isEmpty(); }

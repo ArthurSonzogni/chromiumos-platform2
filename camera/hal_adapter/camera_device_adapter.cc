@@ -960,9 +960,7 @@ void CameraDeviceAdapter::ReturnResultToClient(
     result_descriptor.PopulateEventAnnotation(ctx);
   });
 
-  if (!result_descriptor.has_metadata() &&
-      !result_descriptor.has_input_buffer() &&
-      result_descriptor.num_output_buffers() == 0) {
+  if (result_descriptor.is_empty()) {
     // Android camera framework doesn't accept empty capture results. Since ZSL
     // would remove the input buffer, output buffers and metadata it added, it's
     // possible that we end up with an empty capture result.
