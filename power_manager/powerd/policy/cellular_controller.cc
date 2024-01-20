@@ -345,7 +345,7 @@ void CellularController::SetCellularTransmitPowerInModemManager(
   brillo::ErrorPtr error;
   uint32_t offset = 0;
   if (!mm_sar_proxy_) {
-    LOG(ERROR) << __func__ << " called before SAR interface is up";
+    LOG(INFO) << __func__ << " called before SAR interface is up";
     return;
   }
   auto power_it = level_mappings_.find(power);
