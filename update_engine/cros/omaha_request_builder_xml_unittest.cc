@@ -102,22 +102,7 @@ TEST_F(OmahaRequestBuilderXmlTest, XmlEncodeWithDefaultTest) {
   EXPECT_EQ("<not escaped>", XmlEncodeWithDefault("\xc2", "<not escaped>"));
 }
 
-TEST_F(OmahaRequestBuilderXmlTest, PlatformGetAppTest) {
-  params_.set_device_requisition("device requisition");
-  OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
-  OmahaAppData dlc_app_data = {.id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-                               .version = "",
-                               .skip_update = false,
-                               .is_dlc = false};
-
-  // Verify that the attributes that shouldn't be missing for Platform AppID are
-  // in fact present in the <app ...></app>.
-  const string app = omaha_request.GetApp(dlc_app_data);
-  EXPECT_NE(string::npos, app.find("requisition="));
-}
-
 TEST_F(OmahaRequestBuilderXmlTest, GetLastFpTest) {
-  params_.set_device_requisition("device requisition");
   params_.set_last_fp("1.75");
   utils::ToggleFeature(kPrefsAllowRepeatedUpdates, true);
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
@@ -130,18 +115,6 @@ TEST_F(OmahaRequestBuilderXmlTest, GetLastFpTest) {
   // in fact present in the <app ...></app>.
   const string app = omaha_request.GetApp(dlc_app_data);
   EXPECT_NE(string::npos, app.find("last_fp=\"1.75\""));
-}
-
-TEST_F(OmahaRequestBuilderXmlTest, DlcGetAppTest) {
-  params_.set_device_requisition("device requisition");
-  OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
-  OmahaAppData dlc_app_data = {
-      .id = "_dlc_id", .version = "", .skip_update = false, .is_dlc = true};
-
-  // Verify that the attributes that should be missing for DLC AppIDs are in
-  // fact not present in the <app ...></app>.
-  const string app = omaha_request.GetApp(dlc_app_data);
-  EXPECT_EQ(string::npos, app.find("requisition="));
 }
 
 TEST_F(OmahaRequestBuilderXmlTest, GetNotRunningMiniOS) {

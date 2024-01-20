@@ -277,11 +277,6 @@ TEST_F(OmahaRequestParamsTest, ShouldPowerwashTest) {
   EXPECT_TRUE(params_.ShouldPowerwash());
 }
 
-TEST_F(OmahaRequestParamsTest, RequisitionIsSetTest) {
-  EXPECT_TRUE(params_.Init("", "", {}));
-  EXPECT_EQ("fake_requisition", params_.device_requisition());
-}
-
 TEST_F(OmahaRequestParamsTest, GetMissingDlcId) {
   EXPECT_TRUE(params_.Init("", "", {}));
 

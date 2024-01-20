@@ -45,9 +45,6 @@ extern "C" {
 #include "update_engine/common/utils.h"
 #include "update_engine/cros/boot_control_chromeos.h"
 #include "update_engine/cros/dbus_connection.h"
-#if USE_CFM || USE_REPORT_REQUISITION
-#include "update_engine/cros/requisition_util.h"
-#endif
 
 using std::string;
 using std::vector;
@@ -255,14 +252,6 @@ string HardwareChromeOS::GetHardwareClass() const {
     return HwidOverride::Read(base::FilePath("/"));
   }
   return ReadValueFromCrosSystem("hwid");
-}
-
-string HardwareChromeOS::GetDeviceRequisition() const {
-#if USE_CFM || USE_REPORT_REQUISITION
-  return ReadDeviceRequisition(ReadLocalState().get());
-#else
-  return "";
-#endif
 }
 
 int HardwareChromeOS::GetMinKernelKeyVersion() const {

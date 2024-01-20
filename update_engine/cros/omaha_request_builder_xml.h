@@ -149,9 +149,7 @@ class OmahaRequestBuilderXml : OmahaRequestBuilder {
   void GetRequestAsync(GetRequestCallback callback);
 
  private:
-  FRIEND_TEST(OmahaRequestBuilderXmlTest, PlatformGetAppTest);
   FRIEND_TEST(OmahaRequestBuilderXmlTest, GetLastFpTest);
-  FRIEND_TEST(OmahaRequestBuilderXmlTest, DlcGetAppTest);
 
   // Returns an XML that corresponds to the entire <os> node of the Omaha
   // request based on the member variables.

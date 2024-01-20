@@ -172,7 +172,6 @@ _IUSE = [
     "proto_force_optimize_speed",
     "qualcomm_camx",
     "qrtr",
-    "report_requisition",
     "reven_partition_migration",
     "secagentd_min_core_btf",
     "selinux",

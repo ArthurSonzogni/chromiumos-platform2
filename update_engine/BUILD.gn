@@ -64,11 +64,9 @@ pkg_config("target_defaults") {
     "__CHROMEOS__",
     "_FILE_OFFSET_BITS=64",
     "_POSIX_C_SOURCE=199309L",
-    "USE_CFM=${use.cfm}",
     "USE_FEC=0",
     "USE_HWID_OVERRIDE=${use.hwid_override}",
     "USE_HW_DETAILS=${use.hw_details}",
-    "USE_REPORT_REQUISITION=${use.report_requisition}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
   ]
   include_dirs = [
@@ -204,7 +202,6 @@ static_library("libupdate_engine") {
     "cros/payload_state.cc",
     "cros/power_manager_chromeos.cc",
     "cros/real_system_state.cc",
-    "cros/requisition_util.cc",
     "cros/shill_proxy.cc",
     "cros/update_attempter.cc",
     "libcurl_http_fetcher.cc",
@@ -531,7 +528,6 @@ if (use.test) {
       "cros/omaha_utils_unittest.cc",
       "cros/p2p_manager_unittest.cc",
       "cros/payload_state_unittest.cc",
-      "cros/requisition_util_unittest.cc",
       "cros/update_attempter_unittest.cc",
       "libcurl_http_fetcher_unittest.cc",
       "metrics_utils_unittest.cc",

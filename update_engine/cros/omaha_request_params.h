@@ -109,7 +109,6 @@ class OmahaRequestParams {
     image_props_.canary_product_id = app_id;
   }
   inline std::string hwid() const { return hwid_; }
-  inline std::string device_requisition() const { return device_requisition_; }
 
   inline void set_app_version(const std::string& version) {
     image_props_.version = version;
@@ -354,10 +353,6 @@ class OmahaRequestParams {
     return mutable_image_props_.is_powerwash_allowed;
   }
 
-  void set_device_requisition(const std::string& requisition) {
-    device_requisition_ = requisition;
-  }
-
  private:
   FRIEND_TEST(OmahaRequestParamsTest, ChannelIndexTest);
   FRIEND_TEST(OmahaRequestParamsTest, IsValidChannelTest);
@@ -423,9 +418,6 @@ class OmahaRequestParams {
   std::string release_lts_tag_;
 
   std::string hwid_;  // Hardware Qualification ID of the client
-  // TODO(b:133324571) tracks removal of this field once it is no longer
-  // needed in AU requests. Remove by October 1st 2019.
-  std::string device_requisition_;  // Chrome OS Requisition type.
   bool delta_okay_ = true;          // If this client can accept a delta
   bool interactive_ = false;  // Whether this is a user-initiated update check
 

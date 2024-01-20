@@ -385,13 +385,6 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
     }
   }
 
-  string requisition_arg;
-  if (!params->device_requisition().empty()) {
-    requisition_arg = "requisition=\"" +
-                      XmlEncodeWithDefault(params->device_requisition()) +
-                      "\" ";
-  }
-
   // clang-format off
   string app_xml = "    <app "
       "appid=\"" + XmlEncodeWithDefault(app_data.id) + "\" " +
@@ -405,10 +398,6 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
       "hardware_class=\"" + XmlEncodeWithDefault(params->hwid()) + "\" " +
       "delta_okay=\"" + delta_okay_str + "\" " +
       install_date_in_days_str +
-
-      // DLC excluded for installs and updates.
-      (app_data.is_dlc ? "" : requisition_arg) +
-
       ">\n" +
          app_body +
       "    </app>\n";

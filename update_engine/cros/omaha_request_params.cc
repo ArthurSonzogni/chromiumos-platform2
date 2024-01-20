@@ -114,7 +114,6 @@ bool OmahaRequestParams::Init(const string& app_version,
   const auto* hardware = SystemState::Get()->hardware();
   managed_device_in_oobe_ = hardware->IsManagedDeviceInOobe();
   hwid_ = hardware->GetHardwareClass();
-  device_requisition_ = hardware->GetDeviceRequisition();
   if (hardware->IsRunningFromMiniOs()) {
     delta_okay_ = false;
     image_props_.version = kNoVersion;

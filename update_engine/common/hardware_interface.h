@@ -70,10 +70,6 @@ class HardwareInterface {
   // Returns the HWID or an empty string on error.
   virtual std::string GetHardwareClass() const = 0;
 
-  // Returns the OEM device requisition or an empty string if the system does
-  // not have a requisition, or if not running Chrome OS.
-  virtual std::string GetDeviceRequisition() const = 0;
-
   // Returns the Local State root as base::Value
   virtual std::unique_ptr<base::Value> ReadLocalState() const = 0;
 
