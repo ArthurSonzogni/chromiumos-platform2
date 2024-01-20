@@ -660,6 +660,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
               context->yuv_stream_for_blob_owned.get();
           modified_streams.push_back(context->yuv_stream_for_blob);
         }
+        SetStillCaptureUsage(context->yuv_stream_for_blob);
       }
       metrics_.RecordStreamSize(context->stream_type, s->width * s->height);
       stream_contexts_.emplace_back(std::move(context));

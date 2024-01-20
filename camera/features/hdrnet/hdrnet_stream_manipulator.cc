@@ -1322,13 +1322,7 @@ HdrNetStreamManipulator::CreateHdrNetStreamContext(camera3_stream_t* requested,
     // We still need the BLOB stream for extracting the JPEG APPs segments, so
     // we add a new YUV stream instead of replacing the BLOB stream.
     context->mode = HdrNetStreamContext::Mode::kAppendWithBlob;
-
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
-    // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the
-    // camera HAL to process the stream using the still pipe for higher quality
-    // output.
-    context->hdrnet_stream->usage |= GRALLOC_USAGE_PRIVATE_1;
-#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+    SetStillCaptureUsage(context->hdrnet_stream.get());
   }
 
   HdrNetStreamContext* addr = context.get();

@@ -124,6 +124,15 @@ inline uint32_t GetFrameNumber(const camera3_notify_msg_t& msg) {
   }
 }
 
+inline void SetStillCaptureUsage(camera3_stream* stream) {
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+  // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the
+  // camera HAL to process the stream using the still pipe for higher quality
+  // output.
+  stream->usage |= GRALLOC_USAGE_PRIVATE_1;
+#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+}
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {
