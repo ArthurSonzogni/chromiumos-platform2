@@ -1192,18 +1192,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->reliable_link_callback_.IsCancelled();
   }
 
-  // Used by tests for link status (L2 failure, reliability).
-  void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
-    auto ipconfig =
-        std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
-    // We use ReturnRef() below for this object so use `static` here.
-    static IPConfig::Properties ip_props;
-    ip_props.address_family = net_base::IPFamily::kIPv4;
-    ip_props.gateway = ipv4_gateway_address;
-    EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
-    network_->set_ipconfig(std::move(ipconfig));
-  }
-
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
     return wifi_->SetBgscanShortInterval(interval, error);
   }
@@ -3362,7 +3350,6 @@ TEST_F(WiFiMainTest,
   StartWiFi();
 
   const std::string kGatewayIPAddressString = "192.168.1.1";
-  SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress =
       *net_base::IPAddress::CreateFromString(kGatewayIPAddressString);
 
@@ -3977,7 +3964,6 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   using Status = patchpanel::Client::NeighborStatus;
 
   const std::string kGatewayIPAddressString = "192.168.1.1";
-  SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress =
       *net_base::IPAddress::CreateFromString(kGatewayIPAddressString);
 
@@ -4037,8 +4023,6 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   using Status = patchpanel::Client::NeighborStatus;
 
   // Make the object ready to respond to link monitor failures.
-  constexpr auto kGatewayIPAddressString = "192.168.0.1";
-  SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress =
       *net_base::IPAddress::CreateFromString("192.168.0.1");
   OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
