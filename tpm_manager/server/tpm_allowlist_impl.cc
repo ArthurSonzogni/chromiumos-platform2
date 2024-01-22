@@ -77,6 +77,7 @@ constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
 };
 
 constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
+    DeviceName{"HP", "HP Elite t655 Thin Client", kVendorIdIfx},
     DeviceName{"HP", "HP Elite x360 830 13 inch G10 2-in-1 Notebook PC",
                kVendorIdNtc},
     DeviceName{"HP", "HP EliteBook 640 14 inch G10 Notebook PC", kVendorIdNtc},
