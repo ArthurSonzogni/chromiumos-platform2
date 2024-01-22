@@ -13,7 +13,6 @@ use std::time::Duration;
 
 use log::warn;
 
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 
@@ -57,37 +56,32 @@ impl<'m> LogFile<'m> {
     /// exists. The file is opened with O_SYNC to make sure data from writes
     /// isn't buffered by the kernel but submitted to storage immediately.
     fn create(stage: HibernateStage) -> Result<File> {
-        let path = Self::get_path(stage);
+        let p = Self::get_path(stage);
 
-        let opts = OpenOptions::new()
+        OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
             .custom_flags(libc::O_SYNC)
-            .clone();
-
-        Self::open_file(path, &opts)
+            .open(p.clone()).context(format!("Failed to create log file '{}'", p.display()))
     }
 
     /// Open existing log file at given hibernation stage. The file is opened with
     /// O_SYNC to make sure data from writes isn't buffered by the kernel but
     /// submitted to storage immediately.
     pub fn open(stage: HibernateStage) -> Result<File> {
-        let path = Self::get_path(stage);
+        let p = Self::get_path(stage);
 
-        let opts = OpenOptions::new()
+        OpenOptions::new()
             .read(true)
             .write(true)
             .custom_flags(libc::O_SYNC)
-            .clone();
-
-        Self::open_file(path, &opts)
+            .open(p.clone()).context(format!("Failed to open log file '{}'", p.display()))
     }
 
     /// Check if log file exists for a given hibernation stage.
     pub fn exists(stage: HibernateStage) -> bool {
-        let path = Self::get_path(stage);
-        path.exists()
+        Self::get_path(stage).exists()
     }
 
     /// Clear the log file for a given hibernation stage.
@@ -106,16 +100,6 @@ impl<'m> LogFile<'m> {
         };
 
         Path::new(HIBERMETA_DIR).join(name)
-    }
-
-    fn open_file<P: AsRef<Path>>(path: P, open_options: &OpenOptions) -> Result<File> {
-        match open_options.open(&path) {
-            Ok(f) => Ok(f),
-            Err(e) => Err(anyhow!(e).context(format!(
-                "Failed to open log file '{}'",
-                path.as_ref().display()
-            ))),
-        }
     }
 }
 
