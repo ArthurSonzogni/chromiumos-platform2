@@ -83,11 +83,11 @@ group("policy-goprotos") {
 goproto_library("enterprise_management_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
 
-  proto_out_dir = "go/src/chromiumos/policy/"
+  proto_out_dir = "go/src/go.chromium.org/chromiumos/policy/"
   import_mapping = [
-    "private_membership.proto=chromiumos/policy/github.com/google/private-membership",
-    "private_membership_rlwe.proto=chromiumos/policy/github.com/google/private-membership",
-    "serialization.proto=chromiumos/policy/github.com/google/shell-encryption",
+    "private_membership.proto=go.chromium.org/chromiumos/policy/github.com/google/private-membership",
+    "private_membership_rlwe.proto=go.chromium.org/chromiumos/policy/github.com/google/private-membership",
+    "serialization.proto=go.chromium.org/chromiumos/policy/github.com/google/shell-encryption",
   ]
   gen_grpc = true
   sources = [
@@ -103,10 +103,10 @@ goproto_library("enterprise_management_goprotos") {
 goproto_library("private_membership_rlwe_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
 
-  proto_out_dir = "go/src/chromiumos/policy/"
+  proto_out_dir = "go/src/go.chromium.org/chromiumos/policy/"
 
   import_mapping = [
-    "serialization.proto=chromiumos/policy/github.com/google/shell-encryption",
+    "serialization.proto=go.chromium.org/chromiumos/policy/github.com/google/shell-encryption",
   ]
 
   sources = [ "${proto_in_dir}/private_membership_rlwe.proto" ]
@@ -114,13 +114,13 @@ goproto_library("private_membership_rlwe_goprotos") {
 
 goproto_library("private_membership_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
-  proto_out_dir = "go/src/chromiumos/policy/"
+  proto_out_dir = "go/src/go.chromium.org/chromiumos/policy/"
   sources = [ "${proto_in_dir}/private_membership.proto" ]
 }
 
 goproto_library("rlwe_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
-  proto_out_dir = "go/src/chromiumos/policy/"
+  proto_out_dir = "go/src/go.chromium.org/chromiumos/policy/"
   sources = [ "${proto_in_dir}/serialization.proto" ]
 }
 
