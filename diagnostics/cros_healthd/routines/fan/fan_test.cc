@@ -48,6 +48,8 @@ class FanRoutineTest : public BaseFileTest {
         });
     // Defaults to 1 fan in setup.
     SetFanCrosConfig("1");
+    // Create cros ec.
+    SetFile(paths::sysfs::kCrosEc, "");
   }
 
   void SetupAndStartRoutine(bool passed, base::OnceClosure on_finish) {
@@ -745,10 +747,19 @@ TEST_F(FanRoutineTest, RunRoutineWithoutCrosConfig) {
             mojom::HardwarePresenceStatus::kNotConfigured);
 }
 
-// Test that the routine can be run if no fan-count cros config is present
-TEST_F(FanRoutineTest, RoutineUnsupportedWithNoFanCrosConfig) {
+// Test that the routine cannot be run if fan-count is set to 0.
+TEST_F(FanRoutineTest, RoutineUnsupportedWithZeroFan) {
   SetFanCrosConfig("0");
 
+  auto routine_create =
+      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
+  ASSERT_FALSE(routine_create.has_value());
+  ASSERT_TRUE(routine_create.error()->is_unsupported());
+}
+
+// Test that the routine cannot be run if the device doesn't have a cros ec.
+TEST_F(FanRoutineTest, RoutineUnsupportedWithNoCrosEc) {
+  UnsetPath(paths::sysfs::kCrosEc);
   auto routine_create =
       FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
   ASSERT_FALSE(routine_create.has_value());

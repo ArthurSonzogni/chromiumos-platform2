@@ -295,6 +295,10 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineUfsLifetime() const {
 
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineFan(
     std::optional<uint8_t>& fan_count) const {
+  if (!HasCrosEC()) {
+    return MakeUnsupported("Not supported on a non-CrosEC device");
+  }
+
   std::string error;
   uint8_t fan_count_value;
   AssignOrAppendError(

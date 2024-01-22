@@ -399,6 +399,7 @@ TEST_F(RoutineServiceTest, BluetoothDiscoveryFlossDisable) {
 }
 
 TEST_F(RoutineServiceTest, Fan) {
+  SetFile(paths::sysfs::kCrosEc, "");
   SetFakeCrosConfig(paths::cros_config::kFanCount, "1");
 
   CheckIsRoutineArgumentSupported(
@@ -409,6 +410,7 @@ TEST_F(RoutineServiceTest, Fan) {
 }
 
 TEST_F(RoutineServiceTest, FanNoCrosConfig) {
+  SetFile(paths::sysfs::kCrosEc, "");
   SetFakeCrosConfig(paths::cros_config::kFanCount, std::nullopt);
 
   auto status = MakeSupported();
@@ -419,6 +421,7 @@ TEST_F(RoutineServiceTest, FanNoCrosConfig) {
 }
 
 TEST_F(RoutineServiceTest, FanNoFan) {
+  SetFile(paths::sysfs::kCrosEc, "");
   SetFakeCrosConfig(paths::cros_config::kFanCount, "0");
 
   auto status = MakeUnsupported("Doesn't support device with no fan.");
