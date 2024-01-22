@@ -79,3 +79,6 @@ stat: 1
 tgkill: 1
 uname: 1
 write: 1
+# Used to delete Flex config. Only hardcoded, prespecified paths
+# are deleted.
+unlinkat: 1

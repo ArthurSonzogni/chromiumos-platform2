@@ -147,12 +147,23 @@ FileHandlerForTesting::StartLockMetricsFileProcess(
 }
 
 bool FileHandlerForTesting::CreateFlexConfigDirectory() const {
-  return base::CreateDirectory(GetFullPath(kFlexConfigDirPath));
+  return base::CreateDirectory(GetFullPath(kFlexOobeConfigDirPath));
 }
 
-bool FileHandlerForTesting::WriteFlexConfigData(
+bool FileHandlerForTesting::WriteFlexOobeConfigData(
     const std::string& config) const {
-  return base::WriteFile(GetFullPath(kFlexConfigFilePath), config);
+  return base::WriteFile(GetFullPath(kFlexOobeConfigFilePath), config);
+}
+
+void FileHandlerForTesting::SimulateRemoveFlexOobeConfigFailure() {
+  simulate_remove_flex_oobe_config_failure_ = true;
+}
+
+bool FileHandlerForTesting::RemoveFlexOobeConfig() {
+  if (simulate_remove_flex_oobe_config_failure_) {
+    return false;
+  }
+  return FileHandler::RemoveFlexOobeConfig();
 }
 
 base::FilePath FileHandlerForTesting::GetFullPath(

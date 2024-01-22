@@ -12,7 +12,7 @@
 #include "dbus/dbus-protocol.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
-#include "oobe_config/load_oobe_config_flex.h"
+#include "oobe_config/flex_oobe_config.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/oobe_config.h"
@@ -57,10 +57,10 @@ std::optional<std::string> ReadRollbackConfig() {
 }
 
 std::optional<std::string> ReadFlexConfig() {
-  LoadOobeConfigFlex load_oobe_config_flex;
+  FlexOobeConfig flex_oobe_config;
   std::string flex_config;
   const bool flex_config_success =
-      load_oobe_config_flex.GetOobeConfigJson(&flex_config);
+      flex_oobe_config.GetOobeConfigJson(&flex_config);
   return flex_config_success ? std::optional<std::string>(flex_config)
                              : std::nullopt;
 }
@@ -101,11 +101,8 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
 
 // TODO(b/316944501): Implement Flex OOBE config deletion.
 bool OobeConfigRestoreService::DeleteFlexOobeConfig(brillo::ErrorPtr* error) {
-  LOG(ERROR) << "UNIMPLEMENTED";
-  brillo::Error::AddTo(
-      error, FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
-      "DeleteFlexOobeConfig method is not supported on this platform.");
-  return false;
+  FlexOobeConfig flex_oobe_config;
+  return flex_oobe_config.DeleteFlexOobeConfig(error);
 }
 
 }  // namespace oobe_config

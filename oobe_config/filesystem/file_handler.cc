@@ -11,6 +11,7 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <sys/file.h>
@@ -249,12 +250,16 @@ void FileHandler::UnlockFile(base::File& file) const {
   return;
 }
 
-bool FileHandler::HasFlexConfigFile() const {
-  return base::PathExists(GetFullPath(kFlexConfigFilePath));
+bool FileHandler::HasFlexOobeConfigFile() const {
+  return base::PathExists(GetFullPath(kFlexOobeConfigFilePath));
 }
 
-bool FileHandler::ReadFlexConfig(std::string* config) {
-  return base::ReadFileToString(GetFullPath(kFlexConfigFilePath), config);
+bool FileHandler::ReadFlexOobeConfig(std::string* config) {
+  return base::ReadFileToString(GetFullPath(kFlexOobeConfigFilePath), config);
+}
+
+bool FileHandler::RemoveFlexOobeConfig() {
+  return brillo::DeleteFile(GetFullPath(kFlexOobeConfigFilePath));
 }
 
 base::FilePath FileHandler::GetFullPath(

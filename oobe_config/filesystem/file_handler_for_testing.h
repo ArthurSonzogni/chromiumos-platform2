@@ -88,17 +88,26 @@ class FileHandlerForTesting : public FileHandler {
 
   // Creates config.json with contents specified by `config`, at the location
   // specified by `kFlexConfigFilePath`.
-  bool WriteFlexConfigData(const std::string& config) const;
+  bool WriteFlexOobeConfigData(const std::string& config) const;
 
   base::FilePath GetFullPath(
       const std::string& path_without_root) const override;
 
+  // Forces `RemoveFlexOobeConfig` to return false, so as to simulate handling
+  // of errors.
+  void SimulateRemoveFlexOobeConfigFailure();
+
+  // Override for testing, behaves normally unless
+  // `SimulateRemoveFlexOobeConfigFailure` has been called.
+  bool RemoveFlexOobeConfig() override;
+
  private:
   static inline constexpr char kRamoops0FileName[] = "pmsg-ramoops-0";
-  static inline constexpr char kFlexConfigDirPath[] =
+  static inline constexpr char kFlexOobeConfigDirPath[] =
       "mnt/stateful_partition/unencrypted/flex_config";
 
   base::ScopedTempDir fake_root_dir_;
+  bool simulate_remove_flex_oobe_config_failure_ = false;
 };
 
 }  // namespace oobe_config

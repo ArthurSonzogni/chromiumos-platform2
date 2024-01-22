@@ -73,7 +73,7 @@ class FileHandlerTest : public ::testing::Test {
       "enterprise-rollback-metrics-data";
   static constexpr char kTestPreserveData[] =
       "mnt/stateful_partition/unencrypted/preserve/test";
-  static constexpr char kExpectedFlexConfigFilePath[] =
+  static constexpr char kExpectedFlexOobeConfigFilePath[] =
       "mnt/stateful_partition/unencrypted/flex_config/config.json";
 
   void VerifyHasFunction(const std::string& path,
@@ -590,16 +590,22 @@ TEST_F(FileHandlerTest, LockAndTruncateFile) {
   ASSERT_TRUE(base::DeleteFile(path));
 }
 
-TEST_F(FileHandlerTest, HasFlexConfigFile) {
-  VerifyHasFunction(FileHandlerTest::kExpectedFlexConfigFilePath,
-                    base::BindRepeating(&FileHandler::HasFlexConfigFile,
+TEST_F(FileHandlerTest, HasFlexOobeConfigFile) {
+  VerifyHasFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
+                    base::BindRepeating(&FileHandler::HasFlexOobeConfigFile,
                                         base::Unretained(&file_handler_)));
 }
 
-TEST_F(FileHandlerTest, ReadFlexConfig) {
-  VerifyReadFunction(FileHandlerTest::kExpectedFlexConfigFilePath,
-                     base::BindRepeating(&FileHandler::ReadFlexConfig,
+TEST_F(FileHandlerTest, ReadFlexOobeConfig) {
+  VerifyReadFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
+                     base::BindRepeating(&FileHandler::ReadFlexOobeConfig,
                                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, RemoveFlexOobeConfig) {
+  VerifyRemoveFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
+                       base::BindRepeating(&FileHandler::RemoveFlexOobeConfig,
+                                           base::Unretained(&file_handler_)));
 }
 
 }  // namespace oobe_config

@@ -73,7 +73,7 @@ static_library("liboobeconfig") {
   sources = [
     "encryption/openssl_encryption.cc",
     "encryption/pstore_storage.cc",
-    "load_oobe_config_flex.cc",
+    "flex_oobe_config.cc",
     "load_oobe_config_rollback.cc",
     "network_exporter.cc",
     "oobe_config.cc",
@@ -212,13 +212,11 @@ if (use.test) {
   executable("oobe_config_test") {
     sources = [
       "encryption/openssl_encryption_test.cc",
+      "flex_oobe_config_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
       "rollback_cleanup_test.cc",
     ]
-    if (use.reven_oobe_config) {
-      sources += [ "load_oobe_config_flex_test.cc" ]
-    }
     configs += [
       "//common-mk:test",
       ":target_defaults",
