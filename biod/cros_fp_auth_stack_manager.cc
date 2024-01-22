@@ -185,7 +185,7 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
 }
 
 CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
-    const CreateCredentialRequestV2& request) {
+    const CreateCredentialRequest& request) {
   CreateCredentialReply reply;
 
   if (!CanCreateCredential()) {
@@ -278,7 +278,7 @@ BioSession CrosFpAuthStackManager::StartAuthSession(
 }
 
 void CrosFpAuthStackManager::AuthenticateCredential(
-    const AuthenticateCredentialRequestV2& request,
+    const AuthenticateCredentialRequest& request,
     AuthStackManager::AuthenticateCredentialCallback callback) {
   AuthenticateCredentialReply reply;
 

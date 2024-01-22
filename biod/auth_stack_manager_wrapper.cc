@@ -238,7 +238,7 @@ bool AuthStackManagerWrapper::StartEnrollSession(
 
 void AuthStackManagerWrapper::CreateCredential(
     std::unique_ptr<DBusMethodResponse<const CreateCredentialReply&>> response,
-    const CreateCredentialRequestV2& request) {
+    const CreateCredentialRequest& request) {
   response->Return(auth_stack_manager_->CreateCredential(request));
 }
 
@@ -281,7 +281,7 @@ bool AuthStackManagerWrapper::StartAuthSession(
 void AuthStackManagerWrapper::AuthenticateCredential(
     std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
         response,
-    const AuthenticateCredentialRequestV2& request) {
+    const AuthenticateCredentialRequest& request) {
   auto callback =
       [](std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
              response,

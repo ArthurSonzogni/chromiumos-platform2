@@ -88,7 +88,7 @@ void AuthStackManagerProxyBase::EndEnrollSession() {
 }
 
 void AuthStackManagerProxyBase::CreateCredential(
-    const CreateCredentialRequestV2& request,
+    const CreateCredentialRequest& request,
     base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback) {
   dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
                                biod::kAuthStackManagerCreateCredentialMethod);
@@ -123,7 +123,7 @@ void AuthStackManagerProxyBase::EndAuthSession() {
 }
 
 void AuthStackManagerProxyBase::AuthenticateCredential(
-    const AuthenticateCredentialRequestV2& request,
+    const AuthenticateCredentialRequest& request,
     base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
         callback) {
   dbus::MethodCall method_call(

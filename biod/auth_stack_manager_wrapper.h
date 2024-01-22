@@ -55,7 +55,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
                           dbus::ObjectPath* enroll_session_path);
   void CreateCredential(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                             const CreateCredentialReply&>> response,
-                        const CreateCredentialRequestV2& request);
+                        const CreateCredentialRequest& request);
   bool StartAuthSession(brillo::ErrorPtr* error,
                         dbus::Message* message,
                         const StartAuthSessionRequest& request,
@@ -63,7 +63,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
   void AuthenticateCredential(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const AuthenticateCredentialReply&>> response,
-      const AuthenticateCredentialRequestV2& request);
+      const AuthenticateCredentialRequest& request);
   void DeleteCredential(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                             const DeleteCredentialReply&>> response,
                         const DeleteCredentialRequest& request);

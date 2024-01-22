@@ -56,7 +56,7 @@ class AuthStackManager {
   // enroll session completes successfully. See CreateCredentialRequest/Reply
   // protos for the detailed function signature.
   virtual CreateCredentialReply CreateCredential(
-      const CreateCredentialRequestV2& request) = 0;
+      const CreateCredentialRequest& request) = 0;
 
   // Puts this AuthStackManager into AuthSession mode, which can be ended by
   // letting the returned session fall out of scope. This will fail if ANY other
@@ -69,10 +69,10 @@ class AuthStackManager {
       base::OnceCallback<void(AuthenticateCredentialReply)>;
   // Loads the fingerprint records and perform the fingerprint match. Should
   // only be called after an auth session completes successfully. See
-  // AuthenticateCredentialRequestV2/Reply protos for the detailed function
+  // AuthenticateCredentialRequest/Reply protos for the detailed function
   // signature.
   virtual void AuthenticateCredential(
-      const AuthenticateCredentialRequestV2& request,
+      const AuthenticateCredentialRequest& request,
       AuthenticateCredentialCallback callback) = 0;
 
   virtual DeleteCredentialReply DeleteCredential(

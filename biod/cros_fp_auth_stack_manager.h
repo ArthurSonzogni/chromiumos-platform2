@@ -85,11 +85,11 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::Session StartEnrollSession(
       const StartEnrollSessionRequest& request) override;
   CreateCredentialReply CreateCredential(
-      const CreateCredentialRequestV2& request) override;
+      const CreateCredentialRequest& request) override;
   AuthStackManager::Session StartAuthSession(
       const StartAuthSessionRequest& request) override;
   void AuthenticateCredential(
-      const AuthenticateCredentialRequestV2& request,
+      const AuthenticateCredentialRequest& request,
       AuthStackManager::AuthenticateCredentialCallback callback) override;
   DeleteCredentialReply DeleteCredential(
       const DeleteCredentialRequest& request) override;

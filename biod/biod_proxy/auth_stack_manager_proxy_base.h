@@ -62,10 +62,10 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   virtual void EndEnrollSession();
 
   // Creates the actual fingerprint record. Should only be called after an
-  // enroll session completes successfully. See CreateCredentialRequestV2/Reply
+  // enroll session completes successfully. See CreateCredentialRequest/Reply
   // protos for the detailed function signature.
   virtual void CreateCredential(
-      const CreateCredentialRequestV2& request,
+      const CreateCredentialRequest& request,
       base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback);
 
   // Starts biometrics auth session asynchronously.
@@ -78,10 +78,10 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   virtual void EndAuthSession();
 
   // Performs the fingerprint match. Should only be called after an auth session
-  // completes successfully. See AuthenticateCredentialRequestV2/Reply protos
+  // completes successfully. See AuthenticateCredentialRequest/Reply protos
   // for the detailed function signature.
   virtual void AuthenticateCredential(
-      const AuthenticateCredentialRequestV2& request,
+      const AuthenticateCredentialRequest& request,
       base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
           callback);
 

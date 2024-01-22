@@ -141,7 +141,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredential) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
-  CreateCredentialRequestV2 request;
+  CreateCredentialRequest request;
   std::optional<CreateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->CreateCredential(
@@ -168,7 +168,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredentialInvalidResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
-  CreateCredentialRequestV2 request;
+  CreateCredentialRequest request;
   std::optional<CreateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->CreateCredential(
@@ -260,7 +260,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredential) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
-  AuthenticateCredentialRequestV2 request;
+  AuthenticateCredentialRequest request;
   std::optional<AuthenticateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->AuthenticateCredential(
@@ -288,7 +288,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
-  AuthenticateCredentialRequestV2 request;
+  AuthenticateCredentialRequest request;
   std::optional<AuthenticateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->AuthenticateCredential(

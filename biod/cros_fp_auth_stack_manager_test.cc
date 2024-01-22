@@ -65,9 +65,9 @@ StartEnrollSessionRequest MakeStartEnrollSessionRequest(
   return request;
 }
 
-CreateCredentialRequestV2 MakeCreateCredentialRequest(
-    const brillo::Blob& pub_x, const brillo::Blob& pub_y) {
-  CreateCredentialRequestV2 request;
+CreateCredentialRequest MakeCreateCredentialRequest(const brillo::Blob& pub_x,
+                                                    const brillo::Blob& pub_y) {
+  CreateCredentialRequest request;
   request.mutable_pub()->set_x(BlobToString(pub_x));
   request.mutable_pub()->set_y(BlobToString(pub_y));
   return request;
@@ -86,9 +86,9 @@ StartAuthSessionRequest MakeStartAuthSessionRequest(
   return request;
 }
 
-AuthenticateCredentialRequestV2 MakeAuthenticateCredentialRequest(
+AuthenticateCredentialRequest MakeAuthenticateCredentialRequest(
     const brillo::Blob& pub_x, const brillo::Blob& pub_y) {
-  AuthenticateCredentialRequestV2 request;
+  AuthenticateCredentialRequest request;
   request.mutable_pub()->set_x(BlobToString(pub_x));
   request.mutable_pub()->set_y(BlobToString(pub_y));
   return request;

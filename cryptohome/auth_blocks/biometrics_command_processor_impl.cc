@@ -443,7 +443,7 @@ void BiometricsCommandProcessorImpl::CreateCredential(
     return;
   }
 
-  biod::CreateCredentialRequestV2 request;
+  biod::CreateCredentialRequest request;
   *request.mutable_pub() = std::move(*pub);
 
   proxy_->CreateCredential(
@@ -474,7 +474,7 @@ void BiometricsCommandProcessorImpl::MatchCredential(
     return;
   }
 
-  biod::AuthenticateCredentialRequestV2 request;
+  biod::AuthenticateCredentialRequest request;
   *request.mutable_pub() = std::move(*pub);
 
   proxy_->AuthenticateCredential(

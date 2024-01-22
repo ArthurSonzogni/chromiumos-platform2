@@ -120,7 +120,7 @@ class AuthStackManagerWrapperTest : public ::testing::Test {
   std::unique_ptr<dbus::Response> StartEnrollSession(
       dbus::ObjectPath* object_path);
   std::unique_ptr<dbus::Response> CreateCredential(
-      const CreateCredentialRequestV2& request, CreateCredentialReply* reply);
+      const CreateCredentialRequest& request, CreateCredentialReply* reply);
   std::unique_ptr<dbus::Response> StartAuthSession(
       dbus::ObjectPath* object_path);
   void EmitNameOwnerChangedSignal(const std::string& name,
@@ -267,7 +267,7 @@ std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::StartEnrollSession(
 }
 
 std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::CreateCredential(
-    const CreateCredentialRequestV2& request, CreateCredentialReply* reply) {
+    const CreateCredentialRequest& request, CreateCredentialReply* reply) {
   dbus::MethodCall create_credential(kAuthStackManagerInterface,
                                      kAuthStackManagerCreateCredentialMethod);
   dbus::MessageWriter writer(&create_credential);
@@ -695,7 +695,7 @@ TEST_F(AuthStackManagerWrapperTest, TestCreateCredential) {
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const std::string kRecordId("record_id");
 
-  CreateCredentialRequestV2 request;
+  CreateCredentialRequest request;
   request.mutable_pub()->set_x(BlobToString(kPubInX));
   request.mutable_pub()->set_y(BlobToString(kPubInY));
 

@@ -30,7 +30,7 @@ class MockAuthStackManager : public AuthStackManager {
               (override));
   MOCK_METHOD(CreateCredentialReply,
               CreateCredential,
-              (const CreateCredentialRequestV2&),
+              (const CreateCredentialRequest&),
               (override));
   MOCK_METHOD(Session,
               StartAuthSession,
@@ -38,7 +38,7 @@ class MockAuthStackManager : public AuthStackManager {
               (override));
   MOCK_METHOD(void,
               AuthenticateCredential,
-              (const AuthenticateCredentialRequestV2&,
+              (const AuthenticateCredentialRequest&,
                AuthStackManager::AuthenticateCredentialCallback),
               (override));
   MOCK_METHOD(DeleteCredentialReply,
