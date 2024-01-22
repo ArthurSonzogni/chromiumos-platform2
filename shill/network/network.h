@@ -93,7 +93,7 @@ class Network : public NetworkMonitor::ClientNetwork {
     // state to a connected state.
     // TODO(b/232177767): Currently this function will not be called if there is
     // an IPv6 update when IPv4 is working.
-    virtual void OnConnectionUpdated(int interface_index) = 0;
+    virtual void OnConnectionUpdated(int interface_index) {}
 
     // Called when the Network becomes idle from a non-idle state (configuring
     // or connected), no matter if this state change is caused by a failure
@@ -101,41 +101,41 @@ class Network : public NetworkMonitor::ClientNetwork {
     // indicates this failure is triggered by a DHCP failure. Note that
     // currently this is the only failure type generated inside the Network
     // class.
-    virtual void OnNetworkStopped(int interface_index, bool is_failure) = 0;
+    virtual void OnNetworkStopped(int interface_index, bool is_failure) {}
 
     // The IPConfig object lists held by this Network has changed.
-    virtual void OnIPConfigsPropertyUpdated(int interface_index) = 0;
+    virtual void OnIPConfigsPropertyUpdated(int interface_index) {}
 
     // Called when a new DHCPv4 lease is obtained for this device. This is
     // called before OnConnectionUpdated() is called as a result of the lease
     // acquisition.
-    virtual void OnGetDHCPLease(int interface_index) = 0;
+    virtual void OnGetDHCPLease(int interface_index) {}
     // Called when DHCPv4 fails to acquire a lease.
-    virtual void OnGetDHCPFailure(int interface_index) = 0;
+    virtual void OnGetDHCPFailure(int interface_index) {}
     // Called on when an IPv6 address is obtained from SLAAC. SLAAC is initiated
     // by the kernel when the link is connected and is currently not monitored
     // by shill. Derived class should implement this function to listen to this
     // event. Base class does nothing. This is called before
     // OnConnectionUpdated() is called and before captive portal detection is
     // started if IPv4 is not configured.
-    virtual void OnGetSLAACAddress(int interface_index) = 0;
+    virtual void OnGetSLAACAddress(int interface_index) {}
 
     // Called after IPv4 has been configured as a result of acquiring a new DHCP
     // lease. This is called after OnGetDHCPLease, OnIPConfigsPropertyUpdated,
     // and OnConnectionUpdated.
-    virtual void OnIPv4ConfiguredWithDHCPLease(int interface_index) = 0;
+    virtual void OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
     // Called after IPv6 has been configured as a result of acquiring an IPv6
     // address from the kernel when SLAAC completes. This is called after
     // OnGetSLAACAddress, OnIPConfigsPropertyUpdated, and OnConnectionUpdated
     // (if IPv4 is not yet configured).
-    virtual void OnIPv6ConfiguredWithSLAACAddress(int interface_index) = 0;
+    virtual void OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
     // Called after shill receives a NeighborReachabilityEventSignal from
     // patchpanel's link monitor for the network interface of this Network.
     virtual void OnNeighborReachabilityEvent(
         int interface_index,
         const net_base::IPAddress& ip_address,
         patchpanel::Client::NeighborRole role,
-        patchpanel::Client::NeighborStatus status) = 0;
+        patchpanel::Client::NeighborStatus status) {}
 
     // Called with |is_failure| set to false when the NetworkMonitor has been
     // started a network validation attempt successfully. Called with
@@ -147,24 +147,24 @@ class Network : public NetworkMonitor::ClientNetwork {
     // NetworkMonitor starts the first attempt when OnConnected() is called.
     // NetworkMonitor may run multiple times for the same network.
     virtual void OnNetworkValidationStart(int interface_index,
-                                          bool is_failure) = 0;
+                                          bool is_failure) {}
     // Called when NetworkMonitor is stopped. If |is_failure| is false,
     // NetworkMonitor was stopped normally either by an external trigger or
     // because Internet connectivity was verified. If |is_failure| is true, the
     // Network is not able to run network validation because of an incorrect
     // configuration state (no DNS, ...) and should be considered as having no
     // Internet connectivity.
-    virtual void OnNetworkValidationStop(int interface_index,
-                                         bool is_failure) = 0;
+    virtual void OnNetworkValidationStop(int interface_index, bool is_failure) {
+    }
     // Called when a NetworkMonitor attempt finishes and Internet
     // connectivity has been evaluated.
     virtual void OnNetworkValidationResult(
-        int interface_index, const NetworkMonitor::Result& result) = 0;
+        int interface_index, const NetworkMonitor::Result& result) {}
 
     // Called when the Network object is about to be destroyed and become
     // invalid. Any EventHandler still registered should stop any reference
     // they hold for that Network object.
-    virtual void OnNetworkDestroyed(int interface_index) = 0;
+    virtual void OnNetworkDestroyed(int interface_index) {}
   };
 
   // Options for starting a network.

@@ -189,20 +189,8 @@ class TetheringManager : public Network::EventHandler {
                                  const NetworkMonitor::Result& result) override;
   void OnNetworkStopped(int interface_index, bool is_failure) override;
   void OnNetworkDestroyed(int interface_index) override;
-  // TetheringManager does nothing for the below network events.
-  void OnConnectionUpdated(int interface_index) override;
-  void OnIPConfigsPropertyUpdated(int interface_index) override;
-  void OnGetDHCPLease(int interface_index) override;
-  void OnGetDHCPFailure(int interface_index) override;
-  void OnGetSLAACAddress(int interface_index) override;
   void OnNetworkValidationStart(int interface_index, bool is_failure) override;
   void OnNetworkValidationStop(int interface_index, bool is_failure) override;
-  void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
-  void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
-  void OnNeighborReachabilityEvent(int interface_index,
-                                   const net_base::IPAddress& ip_address,
-                                   patchpanel::Client::NeighborRole,
-                                   patchpanel::Client::NeighborStatus) override;
 
   bool SetAndPersistConfig(const KeyValueStore& config, Error* error);
   // Populate the shill D-Bus parameter map |properties| with the

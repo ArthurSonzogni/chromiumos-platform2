@@ -251,14 +251,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   const ServiceRefPtr& selected_service() const { return selected_service_; }
 
-  // Responds to a neighbor reachability event from patchpanel. The base class
-  // does nothing here so the derived class doesn't need to call this.
-  void OnNeighborReachabilityEvent(
-      int interface_index,
-      const net_base::IPAddress& ip_address,
-      patchpanel::Client::NeighborRole role,
-      patchpanel::Client::NeighborStatus status) override;
-
   // Returns a string formatted as "$ifname $service_log_name", or
   // "$ifname no_service" if |selected_service_| is currently not defined.
   std::string LoggingTag() const;
@@ -269,26 +261,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   void OnNetworkStopped(int interface_index, bool is_failure) override;
   // Emit a property change signal for the "IPConfigs" property of this device.
   void OnIPConfigsPropertyUpdated(int interface_index) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnGetDHCPLease(int interface_index) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnGetDHCPFailure(int interface_index) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnGetSLAACAddress(int interface_index) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnNetworkValidationStart(int interface_index, bool is_failure) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnNetworkValidationStop(int interface_index, bool is_failure) override;
-  // Derived class should implement this function to listen to this event. Base
-  // class does nothing.
-  void OnNetworkValidationResult(int interface_index,
-                                 const NetworkMonitor::Result& result) override;
-  void OnNetworkDestroyed(int interface_index) override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
@@ -366,13 +338,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   /// be reimplemented by classes (e.g. Cellular) that don't require the
   // implicit network.
   virtual void BringNetworkInterfaceDown();
-
-  // This is currently only used in the WiFi child class for triggering
-  // WakeOnWiFi::OnConnectedAndReachable().
-  void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
-  // This is currently only used in the WiFi child class for triggering
-  // WakeOnWiFi::OnConnectedAndReachable().
-  void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
 
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected

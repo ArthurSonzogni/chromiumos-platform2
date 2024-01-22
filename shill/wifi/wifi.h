@@ -713,11 +713,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ReportScanResultToUma(WiFiState::PhyState state,
                              WiFiState::ScanMethod method);
 
+  // Overrides for Network::EventHandler.
   // Call WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
   void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
   void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
-
-  // These Device functions are overridden for retrieving link statistics.
+  // Retrieve link statistics.
   void OnGetDHCPLease(int interface_index) override;
   void OnGetDHCPFailure(int interface_index) override;
   void OnGetSLAACAddress(int interface_index) override;

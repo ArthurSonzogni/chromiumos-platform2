@@ -1477,18 +1477,4 @@ void TetheringManager::OnNetworkValidationStart(int interface_index,
   }
 }
 
-// Stub Network::EventHandler handlers for network events
-void TetheringManager::OnConnectionUpdated(int interface_index) {}
-void TetheringManager::OnGetDHCPLease(int interface_index) {}
-void TetheringManager::OnGetDHCPFailure(int interface_index) {}
-void TetheringManager::OnGetSLAACAddress(int interface_index) {}
-void TetheringManager::OnIPConfigsPropertyUpdated(int interface_index) {}
-void TetheringManager::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
-void TetheringManager::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
-void TetheringManager::OnNeighborReachabilityEvent(
-    int interface_index,
-    const net_base::IPAddress& ip_address,
-    patchpanel::Client::NeighborRole role,
-    patchpanel::Client::NeighborStatus status) {}
-
 }  // namespace shill

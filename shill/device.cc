@@ -347,14 +347,6 @@ void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
                               AsWeakPtr(), traffic_counter_callback_id_));
 }
 
-void Device::OnNeighborReachabilityEvent(
-    int interface_index,
-    const net_base::IPAddress& ip_address,
-    patchpanel::Client::NeighborRole role,
-    patchpanel::Client::NeighborStatus status) {
-  // Does nothing in the general case.
-}
-
 void Device::HelpRegisterConstDerivedString(
     std::string_view name, std::string (Device::*get)(Error* error)) {
   store_.RegisterDerivedString(
@@ -432,16 +424,13 @@ void Device::OnNetworkStopped(int interface_index, bool is_failure) {
   OnIPConfigFailure();
 }
 
-void Device::OnGetDHCPLease(int interface_index) {}
-void Device::OnGetDHCPFailure(int interface_index) {}
-void Device::OnGetSLAACAddress(int interface_index) {}
-void Device::OnNetworkValidationStart(int interface_index, bool is_failure) {}
-void Device::OnNetworkValidationStop(int interface_index, bool is_failure) {}
-void Device::OnNetworkValidationResult(int interface_index,
-                                       const NetworkMonitor::Result& result) {}
-void Device::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
-void Device::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
-void Device::OnNetworkDestroyed(int interface_index) {}
+void Device::OnIPConfigsPropertyUpdated(int interface_index) {
+  if (!IsEventOnPrimaryNetwork(interface_index)) {
+    return;
+  }
+  adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
+                                          AvailableIPConfigs(nullptr));
+}
 
 void Device::OnIPConfigFailure() {
   if (selected_service_) {
@@ -757,14 +746,6 @@ void Device::SetEnabledUnchecked(bool enable,
     }
     Stop(std::move(chained_callback));
   }
-}
-
-void Device::OnIPConfigsPropertyUpdated(int interface_index) {
-  if (!IsEventOnPrimaryNetwork(interface_index)) {
-    return;
-  }
-  adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
-                                          AvailableIPConfigs(nullptr));
 }
 
 // static

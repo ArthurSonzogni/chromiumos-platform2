@@ -220,19 +220,6 @@ class Service : public base::RefCounted<Service> {
    public:
     explicit NetworkEventHandler(Service* service) : service_(service) {}
     virtual ~NetworkEventHandler() = default;
-    void OnConnectionUpdated(int interface_index) override {}
-    void OnNetworkStopped(int interface_index, bool is_failure) override {}
-    void OnIPConfigsPropertyUpdated(int interface_index) override {}
-    void OnGetDHCPLease(int interface_index) override {}
-    void OnGetDHCPFailure(int interface_index) override {}
-    void OnGetSLAACAddress(int interface_index) override {}
-    void OnIPv4ConfiguredWithDHCPLease(int interface_index) override {}
-    void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override {}
-    void OnNeighborReachabilityEvent(
-        int interface_index,
-        const net_base::IPAddress& ip_address,
-        patchpanel::Client::NeighborRole role,
-        patchpanel::Client::NeighborStatus status) override {}
     // Ensures that the Service is considered as no-connectivity if network
     // validation failed to start.
     void OnNetworkValidationStart(int interface_index,
@@ -243,7 +230,6 @@ class Service : public base::RefCounted<Service> {
     void OnNetworkValidationStop(int interface_index, bool is_failure) override;
     void OnNetworkValidationResult(
         int interface_index, const NetworkMonitor::Result& result) override;
-    void OnNetworkDestroyed(int interface_index) override {}
 
    protected:
     Service* service_;
