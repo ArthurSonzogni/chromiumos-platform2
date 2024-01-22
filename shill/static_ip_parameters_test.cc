@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
 
 #include "shill/ipconfig.h"
@@ -180,22 +181,25 @@ class StaticIPParametersTest : public Test {
   void ExpectProperties(const std::string& property_prefix) {
     ExpectPropertiesWithVersion(property_prefix, 0);
   }
-  void PopulateIPConfig() {
-    IPConfig::Properties ipconfig_props;
-    ipconfig_props.address_family = net_base::IPFamily::kIPv4;
-    ipconfig_props.address = kAddress;
-    ipconfig_props.gateway = kGateway;
-    ipconfig_props.mtu = kMtu;
-    ipconfig_props.dns_servers = {kNameServer0, kNameServer1};
-    ipconfig_props.domain_search = {kSearchDomain0, kSearchDomain1};
-    ipconfig_props.subnet_prefix = kPrefixLen;
-    ipconfig_props.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
-    ipconfig_props.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
-    ipconfig_props.default_route = false;
-    net_base::NetworkConfig network_config =
-        IPConfig::Properties::ToNetworkConfig(&ipconfig_props, nullptr);
-    network_->set_link_protocol_network_config(
-        std::make_unique<net_base::NetworkConfig>(network_config));
+  void PopulateNetworkConfig() {
+    auto network_config = std::make_unique<net_base::NetworkConfig>();
+    network_config->ipv4_address =
+        net_base::IPv4CIDR::CreateFromStringAndPrefix(kAddress, kPrefixLen);
+    network_config->ipv4_gateway =
+        net_base::IPv4Address::CreateFromString(kGateway);
+    network_config->mtu = kMtu;
+    network_config->dns_servers = {
+        *net_base::IPAddress::CreateFromString(kNameServer0),
+        *net_base::IPAddress::CreateFromString(kNameServer1)};
+    network_config->dns_search_domains = {kSearchDomain0, kSearchDomain1};
+    network_config->excluded_route_prefixes = {
+        *net_base::IPCIDR::CreateFromCIDRString(kExcludedRoute0),
+        *net_base::IPCIDR::CreateFromCIDRString(kExcludedRoute1)};
+    network_config->included_route_prefixes = {
+        *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute0),
+        *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute1)};
+    network_config->ipv4_default_route = false;
+    network_->set_link_protocol_network_config(std::move(network_config));
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {
@@ -271,7 +275,7 @@ TEST_F(StaticIPParametersTest, InitState) {
 }
 
 TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
-  PopulateIPConfig();
+  PopulateNetworkConfig();
   AttachNetwork();
   ExpectPopulatedIPConfig();
 }
@@ -372,7 +376,7 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   Error unused_error;
 
   AttachNetwork();
-  PopulateIPConfig();
+  PopulateNetworkConfig();
 
   // Set the config property will cause Network push a task to configure the
   // IPConfig using that.
@@ -392,7 +396,7 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(0);
 
   // Reset current IPConfig to version 0.
-  PopulateIPConfig();
+  PopulateNetworkConfig();
 
   // Set static config to version to, and the current IPConfig should also be
   // updated to version 2, and the saved config should record the previous
