@@ -567,6 +567,14 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86_64) {
   EXPECT_EQ("kernel-(SOFTLOCKUP)-lkdtm_SOFTLOCKUP-D438E355",
             kernel_util::ComputeKernelStackSignature(test_contents, arch));
 
+  // echo HUNG_TASK > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_X86_64_PROVOKE_KERNEL_HUNG_TASK",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(HANG)-lkdtm_HUNG_TASK-8DC41ACD",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
   const char kStackTraceWithRIP[] =
       "<6>[ 1504.062071] tpm_tis tpm_tis: command 0x65 (size 18) returned code "
       "0x0\n"

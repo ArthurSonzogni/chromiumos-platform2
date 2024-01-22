@@ -274,7 +274,10 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
 
       // Store the first non-ignored function since that's a good candidate
       // for the "human readable" part of the signature.
-      if (stack_fn->empty() && !IsBoringFunction(function_name)) {
+      // NOTE: Checking the first character for '<' avoids entries in the
+      // stack crawl like "<TASK>".
+      if (stack_fn->empty() && !IsBoringFunction(function_name) &&
+          !function_name.starts_with('<')) {
         *stack_fn = function_name;
       }
     }
