@@ -47,10 +47,6 @@ int FakePlatform::GetBootAlertForArg(const std::string& arg) {
   return alert_result_map_[arg];
 }
 
-void FakePlatform::SetVpdResult(const int result) {
-  vpd_result_ = result;
-}
-
 void FakePlatform::SetClobberLogFile(const base::FilePath& path) {
   clobber_log_ = path;
 }
@@ -151,15 +147,6 @@ int FakePlatform::MountEncrypted(const std::vector<std::string>& args,
 
 void FakePlatform::BootAlert(const std::string& arg) {
   alert_result_map_[arg] = 1;
-}
-
-bool FakePlatform::VpdSlow(const std::vector<std::string>& args,
-                           std::string* output) {
-  if (vpd_result_ == -1) {
-    return false;
-  }
-  *output = std::to_string(vpd_result_);
-  return true;
 }
 
 void FakePlatform::RemoveInBackground(

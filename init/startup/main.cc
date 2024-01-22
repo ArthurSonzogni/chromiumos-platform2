@@ -15,6 +15,7 @@
 #include <brillo/syslog_logging.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <vpd/vpd.h>
 
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/flags.h"
@@ -82,10 +83,10 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
           std::unique_ptr<crossystem::Crossystem>(std::move(cros_system)),
-          flags, base::FilePath("/"), base::FilePath(kStatefulPartition),
-          base::FilePath(kLsbRelease), base::FilePath(kProcPath),
-          std::make_unique<startup::Platform>(), std::move(mount_helper),
-          std::move(tlcl));
+          std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
+          base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
+          base::FilePath(kProcPath), std::make_unique<startup::Platform>(),
+          std::move(mount_helper), std::move(tlcl));
 
   return startup->Run();
 }

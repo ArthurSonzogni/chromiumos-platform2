@@ -31,6 +31,7 @@
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <openssl/sha.h>
+#include <vpd/vpd.h>
 
 #include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
@@ -299,6 +300,7 @@ bool ChromeosStartup::IsVarFull() {
 
 ChromeosStartup::ChromeosStartup(
     std::unique_ptr<crossystem::Crossystem> cros_system,
+    std::unique_ptr<vpd::Vpd> vpd,
     const Flags& flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
@@ -308,6 +310,7 @@ ChromeosStartup::ChromeosStartup(
     std::unique_ptr<MountHelper> mount_helper,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
     : cros_system_(std::move(cros_system)),
+      vpd_(std::move(vpd)),
       flags_(flags),
       lsb_file_(lsb_file),
       proc_(proc_file),
@@ -977,36 +980,19 @@ void ChromeosStartup::DevCheckBlockDevMode(
     return;
   }
 
-  // The file indicates the system has booted in developer mode and must
-  // initiate a wiping process in the next (normal mode) boot.
-  base::FilePath vpd_block_dir = root_.Append("sys/firmware/vpd/rw");
-  base::FilePath vpd_block_file = vpd_block_dir.Append("block_devmode");
   bool block_devmode = false;
-
   // Checks ordered by run time.
-  // 1. Try reading VPD through /sys.
+  // 1. Try reading VPD through vpd library.
   // 2. Try crossystem.
-  // 3. Re-read VPD directly from SPI flash (slow!) but only for systems
-  //    that don't have VPD in sysplatform and only when NVRAM indicates that it
-  //    has been cleared.
-  int val;
-  if (utils::ReadFileToInt(vpd_block_file, &val) && val == 1) {
+  std::optional<std::string> val =
+      vpd_->GetValue(vpd::VpdRw, crossystem::Crossystem::kBlockDevmode);
+  if (val == "1") {
     block_devmode = true;
   } else {
     std::optional<int> crossys_block = cros_system_->VbGetSystemPropertyInt(
         crossystem::Crossystem::kBlockDevmode);
     if (crossys_block == 1) {
       block_devmode = true;
-    } else {
-      std::optional<int> nvram = cros_system_->VbGetSystemPropertyInt(
-          crossystem::Crossystem::kNvramCleared);
-      if (!base::DirectoryExists(vpd_block_dir) && nvram == 1) {
-        std::string output;
-        std::vector<std::string> args = {"-i", "RW_VPD", "-g", "block_devmode"};
-        if (platform_->VpdSlow(args, &output) && output == "1") {
-          block_devmode = true;
-        }
-      }
     }
   }
 

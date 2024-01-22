@@ -40,8 +40,6 @@ class FakePlatform : public Platform {
 
   int GetBootAlertForArg(const std::string& arg);
 
-  void SetVpdResult(const int result);
-
   void SetClobberLogFile(const base::FilePath& path);
 
   void SetIoctlReturnValue(int ret);
@@ -72,9 +70,6 @@ class FakePlatform : public Platform {
 
   void BootAlert(const std::string& arg) override;
 
-  bool VpdSlow(const std::vector<std::string>& args,
-               std::string* output) override;
-
   void ClobberLog(const std::string& msg) override;
 
   void Clobber(const std::string& boot_alert_msg,
@@ -92,7 +87,6 @@ class FakePlatform : public Platform {
   int ioctl_ret_ = 0;
   std::unordered_map<std::string, std::string> mount_enc_result_map_;
   std::unordered_map<std::string, int> alert_result_map_;
-  int vpd_result_;
   base::FilePath clobber_log_;
   std::set<std::string> clobber_args_;
 };

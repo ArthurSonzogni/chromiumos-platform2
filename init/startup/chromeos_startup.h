@@ -15,6 +15,7 @@
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <metrics/bootstat.h>
+#include <vpd/vpd.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -37,6 +38,7 @@ class ChromeosStartup {
 
   // Constructor for the class
   ChromeosStartup(std::unique_ptr<crossystem::Crossystem> cros_system,
+                  std::unique_ptr<vpd::Vpd> vpd,
                   const Flags& flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
@@ -116,10 +118,8 @@ class ChromeosStartup {
   friend class DevCheckBlockTest;
   friend class StatefulWipeTest;
   FRIEND_TEST(DevCheckBlockTest, DevSWBoot);
-  FRIEND_TEST(DevCheckBlockTest, SysFsVpdSlow);
+  FRIEND_TEST(DevCheckBlockTest, VpdCrosSysBlockDev);
   FRIEND_TEST(DevCheckBlockTest, CrosSysBlockDev);
-  FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowFail);
-  FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowPass);
   FRIEND_TEST(StatefulWipeTest, PowerwashForced);
   FRIEND_TEST(StatefulWipeTest, PowerwashNormal);
   FRIEND_TEST(StatefulWipeTest, NoStateDev);
@@ -160,6 +160,7 @@ class ChromeosStartup {
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
   std::unique_ptr<crossystem::Crossystem> cros_system_;
+  std::unique_ptr<vpd::Vpd> vpd_;
   const Flags flags_;
   const base::FilePath lsb_file_;
   const base::FilePath proc_;

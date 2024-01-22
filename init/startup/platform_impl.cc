@@ -143,22 +143,6 @@ void Platform::BootAlert(const std::string& arg) {
   exit(1);
 }
 
-bool Platform::VpdSlow(const std::vector<std::string>& args,
-                       std::string* output) {
-  brillo::ProcessImpl vpd;
-  vpd.AddArg("/usr/sbin/vpd");
-  for (const std::string& arg : args) {
-    vpd.AddArg(arg);
-  }
-  vpd.RedirectUsingMemory(STDOUT_FILENO);
-
-  if (vpd.Run() == 0) {
-    *output = vpd.GetOutputString(STDOUT_FILENO);
-    return true;
-  }
-  return false;
-}
-
 void Platform::ClobberLog(const std::string& msg) {
   brillo::ProcessImpl log;
   log.AddArg("/sbin/clobber-log");

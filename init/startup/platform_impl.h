@@ -97,10 +97,6 @@ class Platform {
   // Runs hiberman resume-init with the given output file.
   virtual bool RunHiberman(const base::FilePath& output_file);
 
-  // Run vpd with the given args.
-  virtual bool VpdSlow(const std::vector<std::string>& args,
-                       std::string* output);
-
   // Run clobber-log with the given message.
   virtual void ClobberLog(const std::string& msg);
 

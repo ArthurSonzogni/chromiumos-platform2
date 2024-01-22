@@ -60,6 +60,7 @@ pkg_config("target_defaults") {
     "bootstat",
     "rootdev",
     "secure_erase_file",
+    "vpd",
   ]
 }
 
