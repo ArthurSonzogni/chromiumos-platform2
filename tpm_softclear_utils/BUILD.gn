@@ -42,6 +42,7 @@ static_library("utility_library") {
       # linker flags won't be in the right order.
       "system_api",
       "protobuf-lite",
+      "libstorage_platform",
     ]
   }
   if (use.tpm) {
@@ -65,6 +66,7 @@ if (use.test) {
     if (use.tpm2) {
       sources = [ "tpm2_test.cc" ]
       libs = [ "trunks_test" ]
+      pkg_deps = [ "libstorage_fake_platform" ]
     }
     deps = [
       ":utility_library",

@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_state.h>
@@ -18,52 +19,12 @@
 #include <trunks/trunks_factory_for_test.h>
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::ElementsAreArray;
 using ::testing::NiceMock;
 using ::testing::Return;
 
 namespace tpm_softclear_utils {
-
-// This class has the same behavior of Tpm2Impl except for that the file utils
-// are mocked.
-class Tpm2ImplFakeFileUtils : public Tpm2Impl {
- public:
-  Tpm2ImplFakeFileUtils() = default;
-  ~Tpm2ImplFakeFileUtils() = default;
-
-  void set_local_data_content(const std::string& data) {
-    local_data_content_ = data;
-  }
-
-  void set_is_reading_file_successful(bool is_successful) {
-    is_reading_file_successful_ = is_successful;
-  }
-
-  bool is_local_data_file_read() const { return is_local_data_file_read_; }
-
- protected:
-  bool ReadFileToString(const base::FilePath& path,
-                        std::string* data) override {
-    if (path != expected_local_data_path_) {
-      return false;
-    }
-    is_local_data_file_read_ = true;
-
-    if (!is_reading_file_successful_) {
-      return false;
-    }
-
-    *data = local_data_content_;
-    return true;
-  }
-
- private:
-  std::string local_data_content_;
-  bool is_local_data_file_read_ = false;
-  bool is_reading_file_successful_ = true;
-
-  const base::FilePath expected_local_data_path_{kTpmLocalDataFile};
-};
 
 class Tpm2ImplTest : public testing::Test {
  public:
@@ -82,11 +43,12 @@ class Tpm2ImplTest : public testing::Test {
   }
 
  protected:
+  NiceMock<libstorage::MockPlatform> mock_platform_;
   NiceMock<trunks::MockTpm> mock_tpm_;
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
   trunks::TrunksFactoryForTest trunks_factory_;
 
-  Tpm2ImplFakeFileUtils tpm2_impl_;
+  Tpm2Impl tpm2_impl_{&mock_platform_};
   std::vector<std::string> used_lockout_passwords_;
 };
 
@@ -96,70 +58,82 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordFromFile) {
   std::string expected_lockout_password(kLockoutPasswordSize, '1');
   tpm_manager::LocalData local_data;
   local_data.set_lockout_password(expected_lockout_password);
-  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
+
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .WillOnce(DoAll(SetArgPointee<1>(local_data.SerializeAsString()),
+                      Return(true)));
 
   std::optional<std::string> actual_lockout_password =
       tpm2_impl_.GetAuthForOwnerReset();
   EXPECT_TRUE(actual_lockout_password);
   EXPECT_EQ(*actual_lockout_password, expected_lockout_password);
-  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetDefaultLockoutPassword) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(false));
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .Times(0);
 
   std::optional<std::string> actual_lockout_password =
       tpm2_impl_.GetAuthForOwnerReset();
   EXPECT_TRUE(actual_lockout_password);
   EXPECT_EQ(*actual_lockout_password, kDefaultLockoutPassword);
-  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordUninitializedTrunksFactory) {
   tpm2_impl_.set_trunks_factory(nullptr);
 
   EXPECT_CALL(mock_tpm_state_, Initialize()).Times(0);
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .Times(0);
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
-  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordTpmStateError) {
   EXPECT_CALL(mock_tpm_state_, Refresh())
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).Times(0);
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .Times(0);
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
-  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordReadFileError) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .WillOnce(Return(false));
 
   tpm_manager::LocalData local_data;
   std::string password(kLockoutPasswordSize, '1');
   local_data.set_lockout_password(password);
-  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
-  tpm2_impl_.set_is_reading_file_successful(false);
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
-  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordParseFileError) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
-
-  tpm2_impl_.set_local_data_content("nonsense");
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .WillOnce(DoAll(SetArgPointee<1>("nonsense"), Return(true)));
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
-  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordBadPassword) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
 
   tpm_manager::LocalData local_data;
-  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
+  EXPECT_CALL(mock_platform_,
+              ReadFileToString(base::FilePath(kTpmLocalDataFile), _))
+      .WillOnce(DoAll(SetArgPointee<1>(local_data.SerializeAsString()),
+                      Return(true)));
 
   EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
 }

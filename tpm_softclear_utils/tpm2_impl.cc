@@ -50,7 +50,7 @@ std::optional<std::string> Tpm2Impl::GetAuthForOwnerReset() {
   }
 
   std::string raw_data;
-  if (!ReadFileToString(local_data_path_, &raw_data)) {
+  if (!platform_->ReadFileToString(local_data_path_, &raw_data)) {
     // This covers both the cases of local data file not existing and failing to
     // read that file. The local data file should exist if the lockout password
     // is set.

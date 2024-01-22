@@ -19,7 +19,7 @@ namespace tpm_softclear_utils {
 Tpm* Tpm::Create() {
   TPM_SELECT_BEGIN;
   TPM1_SECTION({ return new TpmImpl(); });
-  TPM2_SECTION({ return new Tpm2Impl(); });
+  TPM2_SECTION({ return new Tpm2Impl(new libstorage::Platform()); });
   OTHER_TPM_SECTION();
   TPM_SELECT_END;
   return nullptr;

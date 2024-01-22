@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <libstorage/platform/platform.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
@@ -26,7 +27,7 @@ constexpr size_t kLockoutPasswordSize = 20;
 // Utility class for soft-clearing TPM 2.0.
 class Tpm2Impl : public Tpm {
  public:
-  Tpm2Impl() = default;
+  explicit Tpm2Impl(libstorage::Platform* platform) : platform_(platform) {}
   Tpm2Impl(const Tpm2Impl&) = delete;
   Tpm2Impl& operator=(const Tpm2Impl&) = delete;
 
@@ -56,17 +57,8 @@ class Tpm2Impl : public Tpm {
     trunks_factory_ = factory;
   }
 
- protected:
-  // Reads the contents of |path| and stores the contents in |data|. This
-  // function can be overridden for testing purposes.
-  //
-  // TODO(garryxiao): move cryptohome::Platform to a common place, use Platform
-  // to read file, and unit-test with its mock instead.
-  virtual bool ReadFileToString(const base::FilePath& path, std::string* data) {
-    return base::ReadFileToString(path, data);
-  }
-
  private:
+  libstorage::Platform* platform_;
   trunks::TrunksFactoryImpl default_trunks_factory_;
   trunks::TrunksFactory* trunks_factory_ = nullptr;
 
