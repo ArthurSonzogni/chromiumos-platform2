@@ -17,7 +17,10 @@ group("all") {
     ":cryptohomed",
     ":encrypted-reboot-vault",
     ":homedirs_initializer",
-    ":install_tmpfilesd",
+    ":install_dbus_config",
+    ":install_tmpfilesd_cryptohome",
+    ":install_tmpfilesd_freezer",
+    ":install_udev_rule",
     ":lockbox-cache",
     ":lockbox-cache-manager",
     ":mount-encrypted",
@@ -68,7 +71,7 @@ config("local_print_proto_include") {
 
 # We invoke systemd-tmpfiles explicitly from the upstart config
 # since it needs to run when /sys/fs/cgroup is available.
-install_config("install_tmpfilesd") {
+install_config("install_tmpfilesd_freezer") {
   sources = [ "tmpfiles.d/cryptohome_freezer.conf" ]
   install_path = "tmpfiled_ondemand"
 }
@@ -124,13 +127,13 @@ executable("cryptohome") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
-
   pkg_deps = [
     "dbus-1",
     "libecryptfs",
     "libmetrics",
     "libuser_data_auth-client",
   ]
+  install_path = "sbin"
 }
 
 executable("cryptohome-path") {
@@ -139,6 +142,7 @@ executable("cryptohome-path") {
     "libbrillo",
     "libchrome",
   ]
+  install_path = "sbin"
 }
 
 executable("cryptohomed") {
@@ -161,6 +165,7 @@ executable("cryptohomed") {
     "libecryptfs",
     "libmetrics",
   ]
+  install_path = "sbin"
 }
 
 # This executable is used to mount cryptohomes.
@@ -174,6 +179,7 @@ executable("cryptohome-namespace-mounter") {
     "libs:libcryptohome",
     "libs:namespace-mounter-ipc-proto",
   ]
+  install_path = "sbin"
 }
 
 executable("lockbox-cache") {
@@ -201,6 +207,7 @@ executable("lockbox-cache") {
     "libecryptfs",
     "libmetrics",
   ]
+  install_path = "sbin"
 }
 
 pkg_config("lockbox-cache-manager_config") {
@@ -253,6 +260,7 @@ executable("encrypted-reboot-vault") {
     "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
   ]
   deps = [ "libs:libcrostpm" ]
+  install_path = "sbin"
 }
 
 executable("mount-encrypted") {
@@ -262,7 +270,9 @@ executable("mount-encrypted") {
     ":mount_encrypted_lib",
     "libs:libcrostpm",
   ]
+  install_path = "sbin"
 }
+
 executable("homedirs_initializer") {
   sources = [ "homedirs_initializer.cc" ]
   configs += [ ":target_defaults" ]
@@ -270,6 +280,7 @@ executable("homedirs_initializer") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
+  install_path = "sbin"
 }
 
 static_library("stateful_recovery_lib") {
@@ -285,6 +296,22 @@ executable("stateful-recovery") {
   configs += [ ":target_defaults" ]
   deps = [ ":stateful_recovery_lib" ]
   pkg_deps = [ "dbus-1" ]
+  install_path = "sbin"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "etc/org.chromium.UserDataAuth.conf" ]
+  install_path = "dbus_system_d"
+}
+
+install_config("install_udev_rule") {
+  sources = [ "udev/50-dm-cryptohome.rules" ]
+  install_path = "/lib/udev/rules.d"
+}
+
+install_config("install_tmpfilesd_cryptohome") {
+  sources = [ "tmpfiles.d/cryptohome.conf" ]
+  install_path = "tmpfilesd"
 }
 
 if (use.test || use.fuzzer) {
