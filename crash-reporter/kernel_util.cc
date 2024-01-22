@@ -202,6 +202,7 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
   while (RE2::FindAndConsume(&kernel_dump, line_re, &line)) {
     std::string certainty;
     std::string function_name;
+    std::string possible_cpureg_fn;
 
     // While we're in a warning we eat lines until we get out of the warning.
     // Warnings are collected by the warning collector--we never want them
@@ -220,7 +221,16 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
     // After we've skipped warnings, always capture the function from any
     // CPU registers that we see. This is often going to be the same function
     // name we capture below (AKA stack_fn).
-    if (RE2::PartialMatch(line, cpureg_fn_re, &cpureg_timestamp, &cpureg_fn)) {
+    if (RE2::PartialMatch(line, cpureg_fn_re, &cpureg_timestamp,
+                          &possible_cpureg_fn)) {
+      // Wait to copy to cpureg_fn until after we are sure we weren't already
+      // at the right stack. This is because the registers get printed before
+      // the stack crawl start.
+      if (found_the_stack) {
+        break;
+      }
+      cpureg_fn = possible_cpureg_fn;
+
       if (IsBoringFunction(cpureg_fn)) {
         cpureg_fn.clear();
         cpureg_timestamp = 0;
@@ -279,18 +289,20 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
   *hash = util::HashString(hashable);
 
   // We'll claim that we have a good result if either:
-  // - We have a tag, which means we recognized a hang.
   // - We got a PC from CPU Registers that's has a timestamp that was recent.
   //   This covers the pattern of:
   //     __show_regs(regs);
   //     panic("message");
   //   Where the "regs" has the actual failing PC (and thus is extremely
   //   relevant). Note that panic() never prints CPU registers.
-  if (!crash_tag->empty()) {
-    return true;
-  } else if (!cpureg_fn.empty() &&
-             stack_timestamp - cpureg_timestamp < kSignatureTimestampWindow) {
+  // - We have a tag, which means we recognized a hang. We need this extra
+  //   case because in the case of hung tasks we won't necessarily have
+  //   a set of CPU registers.
+  if (!cpureg_fn.empty() &&
+      stack_timestamp - cpureg_timestamp < kSignatureTimestampWindow) {
     *stack_fn = cpureg_fn;
+    return true;
+  } else if (!crash_tag->empty()) {
     return true;
   }
 

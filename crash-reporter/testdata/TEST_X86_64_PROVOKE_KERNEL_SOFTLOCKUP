@@ -1,0 +1,99 @@
+<6>[   39.173218] device-mapper: verity: sha256 using implementation "sha256-ni"
+<6>[   72.294201] lkdtm: Performing direct entry SOFTLOCKUP
+<0>[   84.967035] watchdog: BUG: soft lockup - CPU#1 stuck for 13s! [sh:5431]
+<4>[   84.967045] Modules linked in: 8021q lzo_rle lzo_compress zram zsmalloc veth uinput snd_soc_sof_rt5682 snd_soc_rt5682s snd_soc_rt5645 snd_soc_hdac_hdmi snd_soc_intel_hda_dsp_common snd_soc_intel_sof_maxim_common snd_soc_intel_sof_realtek_common snd_soc_intel_sof_ssp_common snd_sof_probes snd_soc_dmic snd_hda_codec_hdmi snd_sof_pci_intel_icl snd_sof_intel_hda_common snd_sof_intel_hda soundwire_intel soundwire_generic_allocation snd_sof_intel_hda_mlink soundwire_cadence snd_sof_xtensa_dsp snd_soc_hdac_hda snd_soc_acpi_intel_match snd_soc_acpi snd_hda_ext_core soundwire_bus snd_hda_codec snd_hwdep snd_hda_core snd_sof_pci snd_sof uvcvideo snd_sof_utils snd_intel_dspcfg snd_intel_sdw_acpi videobuf2_vmalloc snd_soc_rt5682_i2c snd_soc_rt5682 snd_soc_rt1015 snd_soc_rl6231 at24 cros_ec_typec roles typec dw9714 ov5675 intel_ipu6_psys intel_ipu6_isys videobuf2_dma_contig videobuf2_v4l2 videobuf2_memops videobuf2_common rfcomm intel_ipu6 fuse xt_cgroup xt_MASQUERADE iwlmvm iwl7000_mac80211 cmac
+<4>[   84.967097]  algif_hash iwlwifi algif_skcipher af_alg ip6table_nat cfg80211 r8152 mii btusb btrtl btintel btmtk btbcm bluetooth ecdh_generic ecc joydev hid_rmi rmi_core
+<4>[   84.967116] CPU: 1 PID: 5431 Comm: sh Tainted: G     U             6.1.73-09469-gaa257c819efc-dirty #1 (HASH:4644 4)
+<4>[   84.967121] Hardware name: Google Magolor/Magolor, BIOS Google_Magolor.13606.560.0 06/16/2023
+<4>[   84.967123] RIP: 0010:lkdtm_SOFTLOCKUP+0x12/0x14
+<4>[   84.967129] Code: 34 12 0f 44 c8 89 0d e4 d7 73 01 48 c7 c7 e4 5f 44 bd 5d e9 df bb 4a 00 0f 1f 44 00 00 55 48 89 e5 65 ff 05 cf 68 98 43 f3 90 <eb> fc 0f 1f 44 00 00 55 48 89 e5 fa f3 90 eb fc 0f 1f 44 00 00 55
+<4>[   84.967132] RSP: 0018:ffffac09c791fda8 EFLAGS: 00000282
+<4>[   84.967135] RAX: 0000000000000029 RBX: 000000000000000b RCX: 003f05c3f656b900
+<4>[   84.967138] RDX: ffff9135fc127500 RSI: ffff9135fc11b448 RDI: ffffffffbddd1b10
+<4>[   84.967140] RBP: ffffac09c791fda8 R08: 0000000000000000 R09: ffffac09c791fc40
+<4>[   84.967142] R10: 00000000ffffdfff R11: ffffffffbc694429 R12: ffff9135c7e1c000
+<4>[   84.967145] R13: ffffffffbddd1b10 R14: ffffac09c791fed8 R15: ffffffffffffffea
+<4>[   84.967147] FS:  00007d6afdabb740(0000) GS:ffff9135fc100000(0000) knlGS:0000000000000000
+<4>[   84.967150] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+<4>[   84.967153] CR2: 00005943d77aa5e8 CR3: 0000000147e04000 CR4: 0000000000350ee0
+<4>[   84.967155] Call Trace:
+<4>[   84.967159]  <IRQ>
+<4>[   84.967163]  ? watchdog_timer_fn+0x238/0x29f
+<4>[   84.967168]  ? proc_watchdog_cpumask+0x8f/0x8f
+<4>[   84.967172]  ? __hrtimer_run_queues+0xcd/0x247
+<4>[   84.967176]  ? hrtimer_interrupt+0xf7/0x202
+<4>[   84.967179]  ? __sysvec_apic_timer_interrupt+0x5a/0x133
+<4>[   84.967184]  ? sysvec_apic_timer_interrupt+0x70/0x80
+<4>[   84.967187]  </IRQ>
+<4>[   84.967189]  <TASK>
+<4>[   84.967191]  ? asm_sysvec_apic_timer_interrupt+0x16/0x20
+<4>[   84.967196]  ? lkdtm_UNALIGNED_LOAD_STORE_WRITE+0x30/0x30
+<4>[   84.967199]  ? lkdtm_SOFTLOCKUP+0x12/0x14
+<4>[   84.967202]  lkdtm_do_action+0x1a/0x33
+<4>[   84.967205]  direct_entry+0xd7/0xe5
+<4>[   84.967208]  full_proxy_write+0x56/0x7b
+<4>[   84.967212]  vfs_write+0x10b/0x31d
+<4>[   84.967215]  ? auditd_test_task+0x3d/0x47
+<4>[   84.967219]  ? __audit_syscall_entry+0xca/0x156
+<4>[   84.967222]  ksys_write+0x71/0xd6
+<4>[   84.967225]  do_syscall_64+0x4e/0x9b
+<4>[   84.967228]  ? exit_to_user_mode_prepare+0x3c/0x85
+<4>[   84.967232]  entry_SYSCALL_64_after_hwframe+0x5e/0xc8
+<4>[   84.967235] RIP: 0033:0x7d6afdbb6873
+<4>[   84.967239] Code: 64 89 02 48 c7 c0 ff ff ff ff eb bd 66 2e 0f 1f 84 00 00 00 00 00 90 64 8b 04 25 18 00 00 00 85 c0 75 14 b8 01 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 55 c3 0f 1f 40 00 55 48 89 e5 48 83 ec 20 48
+<4>[   84.967242] RSP: 002b:00007ffea081d7d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+<4>[   84.967245] RAX: ffffffffffffffda RBX: 00005943d5e5bea0 RCX: 00007d6afdbb6873
+<4>[   84.967247] RDX: 000000000000000b RSI: 00005943d77a85e0 RDI: 0000000000000001
+<4>[   84.967249] RBP: 00007ffea081d810 R08: 00005943d77a85e0 R09: 00007ffea081da00
+<4>[   84.967251] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000001
+<4>[   84.967254] R13: 000000000000000b R14: 000000000000000b R15: 00005943d77a85e0
+<4>[   84.967257]  </TASK>
+<6>[   84.967259] Sending NMI from CPU 1 to CPUs 0:
+<4>[   84.967282] NMI backtrace for cpu 0 skipped: idling at intel_idle+0x61/0xa6
+<0>[   84.968263] Kernel panic - not syncing: softlockup: hung tasks
+<4>[   84.968267] CPU: 1 PID: 5431 Comm: sh Tainted: G     U       L     6.1.73-09469-gaa257c819efc-dirty #1 (HASH:4644 4)
+<4>[   84.968270] Hardware name: Google Magolor/Magolor, BIOS Google_Magolor.13606.560.0 06/16/2023
+<4>[   84.968272] Call Trace:
+<4>[   84.968275]  <IRQ>
+<4>[   84.968277]  dump_stack_lvl+0x69/0x98
+<4>[   84.968280]  panic+0x117/0x2d8
+<4>[   84.968283]  ? __wake_up_klogd+0x53/0x6a
+<4>[   84.968288]  watchdog_timer_fn+0x293/0x29f
+<4>[   84.968291]  ? proc_watchdog_cpumask+0x8f/0x8f
+<4>[   84.968295]  __hrtimer_run_queues+0xcd/0x247
+<4>[   84.968299]  hrtimer_interrupt+0xf7/0x202
+<4>[   84.968302]  __sysvec_apic_timer_interrupt+0x5a/0x133
+<4>[   84.968305]  sysvec_apic_timer_interrupt+0x70/0x80
+<4>[   84.968309]  </IRQ>
+<4>[   84.968311]  <TASK>
+<4>[   84.968313]  asm_sysvec_apic_timer_interrupt+0x16/0x20
+<4>[   84.968316] RIP: 0010:unittest_shouldnt_find_this_SOFTLOCKUP_tag+0x12/0x14
+<4>[   84.968319] Code: 34 12 0f 44 c8 89 0d e4 d7 73 01 48 c7 c7 e4 5f 44 bd 5d e9 df bb 4a 00 0f 1f 44 00 00 55 48 89 e5 65 ff 05 cf 68 98 43 f3 90 <eb> fc 0f 1f 44 00 00 55 48 89 e5 fa f3 90 eb fc 0f 1f 44 00 00 55
+<4>[   84.968321] RSP: 0018:ffffac09c791fda8 EFLAGS: 00000282
+<4>[   84.968324] RAX: 0000000000000029 RBX: 000000000000000b RCX: 003f05c3f656b900
+<4>[   84.968326] RDX: ffff9135fc127500 RSI: ffff9135fc11b448 RDI: ffffffffbddd1b10
+<4>[   84.968328] RBP: ffffac09c791fda8 R08: 0000000000000000 R09: ffffac09c791fc40
+<4>[   84.968331] R10: 00000000ffffdfff R11: ffffffffbc694429 R12: ffff9135c7e1c000
+<4>[   84.968333] R13: ffffffffbddd1b10 R14: ffffac09c791fed8 R15: ffffffffffffffea
+<4>[   84.968335]  ? lkdtm_UNALIGNED_LOAD_STORE_WRITE+0x30/0x30
+<4>[   84.968339]  lkdtm_do_action+0x1a/0x33
+<4>[   84.968342]  direct_entry+0xd7/0xe5
+<4>[   84.968344]  full_proxy_write+0x56/0x7b
+<4>[   84.968347]  vfs_write+0x10b/0x31d
+<4>[   84.968350]  ? auditd_test_task+0x3d/0x47
+<4>[   84.968354]  ? __audit_syscall_entry+0xca/0x156
+<4>[   84.968357]  ksys_write+0x71/0xd6
+<4>[   84.968359]  do_syscall_64+0x4e/0x9b
+<4>[   84.968362]  ? exit_to_user_mode_prepare+0x3c/0x85
+<4>[   84.968365]  entry_SYSCALL_64_after_hwframe+0x5e/0xc8
+<4>[   84.968368] RIP: 0033:0x7d6afdbb6873
+<4>[   84.968371] Code: 64 89 02 48 c7 c0 ff ff ff ff eb bd 66 2e 0f 1f 84 00 00 00 00 00 90 64 8b 04 25 18 00 00 00 85 c0 75 14 b8 01 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 55 c3 0f 1f 40 00 55 48 89 e5 48 83 ec 20 48
+<4>[   84.968373] RSP: 002b:00007ffea081d7d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+<4>[   84.968376] RAX: ffffffffffffffda RBX: 00005943d5e5bea0 RCX: 00007d6afdbb6873
+<4>[   84.968379] RDX: 000000000000000b RSI: 00005943d77a85e0 RDI: 0000000000000001
+<4>[   84.968381] RBP: 00007ffea081d810 R08: 00005943d77a85e0 R09: 00007ffea081da00
+<4>[   84.968383] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000001
+<4>[   84.968385] R13: 000000000000000b R14: 000000000000000b R15: 00005943d77a85e0
+<4>[   84.968388]  </TASK>
+<0>[   84.968399] Kernel Offset: 0x3ae00000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+<0>[   84.970580] gsmi: Log Shutdown Reason 0x02
