@@ -656,11 +656,11 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
                   .usage = GRALLOC_USAGE_SW_READ_OFTEN,
                   .crop_rotate_scale_degrees = s->crop_rotate_scale_degrees,
               });
+          SetStillCaptureUsage(context->yuv_stream_for_blob_owned.get());
           context->yuv_stream_for_blob =
               context->yuv_stream_for_blob_owned.get();
           modified_streams.push_back(context->yuv_stream_for_blob);
         }
-        SetStillCaptureUsage(context->yuv_stream_for_blob);
       }
       metrics_.RecordStreamSize(context->stream_type, s->width * s->height);
       stream_contexts_.emplace_back(std::move(context));
