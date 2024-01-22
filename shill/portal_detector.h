@@ -342,9 +342,9 @@ class PortalDetector {
   // Process the HttpRequest Result of the HTTPS probe.
   void ProcessHTTPSProbeResult(HttpRequest::Result result);
 
-  // Called after each trial to return |result| after attempting to determine
-  // connectivity status.
-  void CompleteTrial(Result result);
+  // Called after each probe result to check if the current trial can be
+  // stopped and if |portal_result_callback_| can be invoked.
+  void StopTrialIfComplete(Result result);
 
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.

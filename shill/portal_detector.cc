@@ -179,9 +179,11 @@ void PortalDetector::StartTrialTask() {
                                        weak_ptr_factory_.GetWeakPtr()));
 }
 
-void PortalDetector::CompleteTrial(Result result) {
-  LOG(INFO) << LoggingTag()
-            << ": Trial result: " << result.GetValidationState();
+void PortalDetector::StopTrialIfComplete(Result result) {
+  LOG(INFO) << LoggingTag() << ": " << result;
+  if (!result.IsComplete()) {
+    return;
+  }
   CleanupTrial();
   previous_result_ = result;
   portal_result_callback_.Run(result);
@@ -245,10 +247,7 @@ void PortalDetector::ProcessHTTPProbeResult(HttpRequest::Result result) {
     }
   }
   result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": " << *result_;
-  if (result_->IsComplete()) {
-    CompleteTrial(*result_);
-  }
+  StopTrialIfComplete(*result_);
 }
 
 void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
@@ -261,10 +260,7 @@ void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
     result_->https_result = ProbeResult::kSuccess;
   }
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag() << ": " << *result_;
-  if (result_->IsComplete()) {
-    CompleteTrial(*result_);
-  }
+  StopTrialIfComplete(*result_);
 }
 
 bool PortalDetector::IsInProgress() const {
@@ -549,7 +545,7 @@ std::ostream& operator<<(std::ostream& stream,
 std::ostream& operator<<(std::ostream& stream,
                          const PortalDetector::Result& result) {
   stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe";
-  if (result.IsHTTPProbeComplete()) {
+  if (!result.IsHTTPProbeComplete()) {
     stream << " in-flight";
   } else {
     stream << " result=" << result.http_result
@@ -560,7 +556,7 @@ std::ostream& operator<<(std::ostream& stream,
     stream << " duration=" << result.http_duration;
   }
   stream << ", HTTPS probe";
-  if (result.IsHTTPSProbeComplete()) {
+  if (!result.IsHTTPSProbeComplete()) {
     stream << " in-flight";
   } else {
     stream << " result=" << result.https_result
@@ -572,6 +568,7 @@ std::ostream& operator<<(std::ostream& stream,
   if (result.probe_url) {
     stream << ", probe_url=" << result.probe_url->ToString();
   }
+  stream << ", is_complete=" << std::boolalpha << result.IsComplete();
   return stream << "}";
 }
 
