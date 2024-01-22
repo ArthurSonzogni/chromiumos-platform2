@@ -123,7 +123,7 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
   // Sanitize the |command|. If this succeeds consistency of the command header
   // and the size of all other sections can be assumed.
   MessageInfo command_info;
-  TPM_RC result = ParseCommand(command, &command_info);
+  TPM_RC result = ParseCommand(command, sender, &command_info);
   if (result != TPM_RC_SUCCESS) {
     return CreateErrorResponse(result);
   }
@@ -162,13 +162,13 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
   }
 
   // Update the virtual handles LRU.
-  for (size_t i = 0; i + 1 < loaded_virtual_object_handles_.size(); i++) {
+  for (size_t i = 0; i + 1 < loaded_object_infos_.size(); i++) {
     if (std::find(command_info.handles.begin(), command_info.handles.end(),
-                  loaded_virtual_object_handles_[i].handle) !=
+                  *loaded_object_infos_[i].handle) !=
         command_info.handles.end()) {
-      std::rotate(loaded_virtual_object_handles_.begin() + i,
-                  loaded_virtual_object_handles_.begin() + i + 1,
-                  loaded_virtual_object_handles_.end());
+      std::rotate(loaded_object_infos_.begin() + i,
+                  loaded_object_infos_.begin() + i + 1,
+                  loaded_object_infos_.end());
     }
   }
 
@@ -177,7 +177,8 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
     // authorization.
     if (command_info.handles.size() == 1 &&
         command_info.auth_session_handles.size() == 0) {
-      auto iter = public_area_cache_.find(command_info.handles[0]);
+      auto iter =
+          public_area_cache_.find(VirtualHandle(command_info.handles[0]));
       if (iter != public_area_cache_.end()) {
         return iter->second;
       }
@@ -196,7 +197,7 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
   }
   std::string updated_command = ReplaceHandles(command, updated_handles);
   // Make sure all the required sessions are loaded.
-  for (auto handle : command_info.all_session_handles) {
+  for (const auto& handle : command_info.all_session_handles) {
     result = EnsureSessionIsLoaded(command_info, handle);
     if (result != TPM_RC_SUCCESS) {
       return CreateErrorResponse(result);
@@ -233,17 +234,17 @@ std::string ResourceManager::SendCommandWithSenderAndWait(
 
     // Process all the output handles, which is loosely the inverse of the input
     // handle processing. E.g. virtualize handles.
-    std::vector<TPM_HANDLE> virtual_handles;
+    std::vector<TPM_HANDLE> replace_handles;
     for (auto handle : response_info.handles) {
-      virtual_handles.push_back(ProcessOutputHandle(handle));
+      replace_handles.push_back(ProcessOutputHandle(handle, sender));
     }
-    response = ReplaceHandles(response, virtual_handles);
+    response = ReplaceHandles(response, replace_handles);
     if (command_info.code == TPM_CC_ReadPublic) {
       // Only caching the public area cache if the command didn't need
       // authorization.
       if (command_info.handles.size() == 1 &&
           command_info.auth_session_handles.size() == 0) {
-        public_area_cache_[command_info.handles[0]] = response;
+        public_area_cache_[VirtualHandle(command_info.handles[0])] = response;
       }
     }
   }
@@ -265,16 +266,15 @@ void ResourceManager::Resume() {
 }
 
 bool ResourceManager::ChooseSessionToEvict(
-    const std::vector<TPM_HANDLE>& sessions_to_retain,
-    TPM_HANDLE* session_to_evict) {
+    const std::vector<SessionHandle>& sessions_to_retain,
+    SessionHandle* session_to_evict) {
   // Build a list of candidates by excluding |sessions_to_retain|.
-  std::vector<TPM_HANDLE> candidates;
-  for (auto& item : session_handles_) {
-    HandleInfo& info = item.second;
+  std::vector<SessionHandle> candidates;
+  for (const auto& [session, info] : session_handles_) {
     if (info.is_loaded &&
         std::find(sessions_to_retain.begin(), sessions_to_retain.end(),
-                  info.tpm_handle) == sessions_to_retain.end()) {
-      candidates.push_back(item.first);
+                  session) == sessions_to_retain.end()) {
+      candidates.push_back(session);
     }
   }
   if (candidates.empty()) {
@@ -282,83 +282,123 @@ bool ResourceManager::ChooseSessionToEvict(
     return false;
   }
   // Choose the candidate with the earliest |time_of_last_use|.
-  auto oldest_iter = std::min_element(
-      candidates.begin(), candidates.end(), [this](TPM_HANDLE a, TPM_HANDLE b) {
-        return (session_handles_[a].time_of_last_use <
-                session_handles_[b].time_of_last_use);
-      });
+  auto oldest_iter =
+      std::min_element(candidates.begin(), candidates.end(),
+                       [this](const SessionHandle& a, const SessionHandle& b) {
+                         return (session_handles_[a].time_of_last_use <
+                                 session_handles_[b].time_of_last_use);
+                       });
   *session_to_evict = *oldest_iter;
   return true;
 }
 
-void ResourceManager::CleanupFlushedHandle(TPM_HANDLE flushed_handle) {
-  if (IsObjectHandle(flushed_handle)) {
-    // For transient object handles, remove both the actual and virtual handles.
-    if (unloaded_virtual_object_handles_.count(flushed_handle) > 0) {
-      unloaded_virtual_object_handles_.erase(flushed_handle);
+void ResourceManager::CleanupFlushedHandle(
+    const SessionHandle& flushed_handle) {
+  if (!IsSessionHandle(flushed_handle.handle)) {
+    LOG(WARNING) << "Flushing non-session handle with session handler";
+    return;
+  }
+
+  auto iter = session_handles_.find(flushed_handle);
+  if (iter == session_handles_.end()) {
+    return;
+  }
+  // For session handles, remove the handle and any associated context data.
+  session_handles_.erase(flushed_handle);
+  VLOG(1) << "CLEANUP_SESSION: " << std::hex << flushed_handle.handle;
+}
+
+void ResourceManager::CleanupFlushedHandle(VirtualHandle flushed_handle) {
+  if (!IsTransientObjectHandle(*flushed_handle)) {
+    LOG(WARNING) << "Flushing non-object handle with object handler";
+    return;
+  }
+
+  // For transient object handles, remove both the actual and virtual handles.
+  if (unloaded_object_infos_.count(flushed_handle) > 0) {
+    unloaded_object_infos_.erase(flushed_handle);
+    public_area_cache_.erase(flushed_handle);
+  } else {
+    auto iter = FindLoadedObjectInfo(flushed_handle);
+    if (iter != loaded_object_infos_.end()) {
+      tpm_to_virtual_handle_.erase(iter->info.tpm_handle);
+      loaded_object_infos_.erase(iter);
       public_area_cache_.erase(flushed_handle);
-    } else {
-      auto iter = FindLoadedVirtualObjectHandle(flushed_handle);
-      if (iter != loaded_virtual_object_handles_.end()) {
-        tpm_object_handles_.erase(iter->info.tpm_handle);
-        loaded_virtual_object_handles_.erase(iter);
-        public_area_cache_.erase(flushed_handle);
-      }
     }
-  } else if (IsSessionHandle(flushed_handle)) {
-    auto iter = session_handles_.find(flushed_handle);
-    if (iter == session_handles_.end()) {
-      return;
-    }
-    // For session handles, remove the handle and any associated context data.
-    session_handles_.erase(flushed_handle);
-    VLOG(1) << "CLEANUP_SESSION: " << std::hex << flushed_handle;
   }
 }
 
-TPM_HANDLE ResourceManager::CreateVirtualHandle() {
-  TPM_HANDLE handle;
+ResourceManager::VirtualHandle ResourceManager::CreateVirtualHandle() {
+  VirtualHandle handle;
   do {
     handle = next_virtual_handle_;
-    if (next_virtual_handle_ == kMaxVirtualHandle) {
-      next_virtual_handle_ = TRANSIENT_FIRST;
+    if (next_virtual_handle_ == VirtualHandle(kMaxVirtualHandle)) {
+      LOG(WARNING) << "Re-using the object handle!";
+      next_virtual_handle_ = VirtualHandle(TRANSIENT_FIRST);
     } else {
-      ++next_virtual_handle_;
+      next_virtual_handle_ = VirtualHandle(*next_virtual_handle_ + 1);
     }
-  } while (unloaded_virtual_object_handles_.count(handle) > 0 ||
-           FindLoadedVirtualObjectHandle(handle) !=
-               loaded_virtual_object_handles_.end());
+  } while (unloaded_object_infos_.count(handle) > 0 ||
+           FindLoadedObjectInfo(handle) != loaded_object_infos_.end());
   return handle;
 }
 
-TPM_RC ResourceManager::EnsureSessionIsLoaded(const MessageInfo& command_info,
-                                              TPM_HANDLE session_handle) {
+TPM_RC ResourceManager::EnsureSessionIsLoaded(
+    const MessageInfo& command_info, const SessionHandle& session_handle) {
   // A password authorization can skip all this.
-  if (session_handle == TPM_RS_PW) {
+  if (session_handle.handle == TPM_RS_PW) {
     return TPM_RC_SUCCESS;
   }
+
   auto handle_iter = session_handles_.find(session_handle);
   if (handle_iter == session_handles_.end()) {
     return MakeError(TPM_RC_HANDLE, FROM_HERE);
   }
+
+  std::vector<SessionHandle> sessions_to_evict;
+  for (const auto& [session, info] : session_handles_) {
+    // The session conflicts with the session we want to ensure.
+    if (info.is_loaded && session.handle == session_handle.handle &&
+        session.sender != session_handle.sender) {
+      sessions_to_evict.push_back(session);
+    }
+  }
+
+  for (const SessionHandle& session : sessions_to_evict) {
+    TPM_RC result = SaveContext(command_info, &session_handles_[session]);
+    if (result == TPM_RC_SUCCESS) {
+      continue;
+    }
+    LOG(WARNING) << "Failed to evict session: " << GetErrorString(result);
+
+    result = factory_.GetTpm()->FlushContextSync(session.handle, nullptr);
+    // Only clean up the handle if we flushed the handle successfully or the
+    // handle is not exist.
+    if (result == TPM_RC_SUCCESS || result == TPM_RC_HANDLE) {
+      CleanupFlushedHandle(session);
+      continue;
+    }
+    LOG(WARNING) << "Failed to flush session: " << GetErrorString(result);
+  }
+
   HandleInfo& handle_info = handle_iter->second;
   if (!handle_info.is_loaded) {
     TPM_RC result = LoadContext(command_info, &handle_info);
     if (result != TPM_RC_SUCCESS) {
       return result;
     }
-    VLOG(1) << "RELOAD_SESSION: " << std::hex << session_handle;
+    VLOG(1) << "RELOAD_SESSION: " << std::hex << session_handle.handle;
   }
   handle_info.time_of_last_use = base::TimeTicks::Now();
   return TPM_RC_SUCCESS;
 }
 
 void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
-  for (size_t i = 0; i < loaded_virtual_object_handles_.size(); i++) {
-    auto& item = loaded_virtual_object_handles_[i];
+  for (size_t i = 0; i < loaded_object_infos_.size(); i++) {
+    auto& item = loaded_object_infos_[i];
     HandleInfo& info = item.info;
     if (std::find(command_info.handles.begin(), command_info.handles.end(),
-                  item.handle) != command_info.handles.end()) {
+                  *item.handle) != command_info.handles.end()) {
       continue;
     }
     TPM_RC result = SaveContext(command_info, &info);
@@ -385,25 +425,23 @@ void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
     }
     VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
     info.is_loaded = false;
-    tpm_object_handles_.erase(info.tpm_handle);
-    unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
-    loaded_virtual_object_handles_.erase(
-        loaded_virtual_object_handles_.begin() + i);
+    tpm_to_virtual_handle_.erase(info.tpm_handle);
+    unloaded_object_infos_.emplace(item.handle, std::move(item.info));
+    loaded_object_infos_.erase(loaded_object_infos_.begin() + i);
     break;
   }
 }
 
 void ResourceManager::EvictObjects(const MessageInfo& command_info) {
   size_t evict_num = 0;
-  for (size_t i = 0; i < loaded_virtual_object_handles_.size(); i++) {
+  for (size_t i = 0; i < loaded_object_infos_.size(); i++) {
     if (evict_num) {
-      loaded_virtual_object_handles_[i - evict_num] =
-          std::move(loaded_virtual_object_handles_[i]);
+      loaded_object_infos_[i - evict_num] = std::move(loaded_object_infos_[i]);
     }
-    auto& item = loaded_virtual_object_handles_[i - evict_num];
+    auto& item = loaded_object_infos_[i - evict_num];
     HandleInfo& info = item.info;
     if (std::find(command_info.handles.begin(), command_info.handles.end(),
-                  item.handle) != command_info.handles.end()) {
+                  *item.handle) != command_info.handles.end()) {
       continue;
     }
     TPM_RC result = SaveContext(command_info, &info);
@@ -430,16 +468,15 @@ void ResourceManager::EvictObjects(const MessageInfo& command_info) {
     }
     VLOG(1) << "EVICT_OBJECT: " << std::hex << info.tpm_handle;
     info.is_loaded = false;
-    tpm_object_handles_.erase(info.tpm_handle);
-    unloaded_virtual_object_handles_.emplace(item.handle, std::move(item.info));
+    tpm_to_virtual_handle_.erase(info.tpm_handle);
+    unloaded_object_infos_.emplace(item.handle, std::move(item.info));
     evict_num++;
   }
-  loaded_virtual_object_handles_.resize(loaded_virtual_object_handles_.size() -
-                                        evict_num);
+  loaded_object_infos_.resize(loaded_object_infos_.size() - evict_num);
 }
 
 void ResourceManager::EvictSession(const MessageInfo& command_info) {
-  TPM_HANDLE session_to_evict;
+  SessionHandle session_to_evict;
   if (!ChooseSessionToEvict(command_info.all_session_handles,
                             &session_to_evict)) {
     return;
@@ -453,7 +490,7 @@ void ResourceManager::EvictSession(const MessageInfo& command_info) {
     // Otherwise there is no way to fix the TPM_RC_*_MEMORY issues.
     FlushSession(command_info);
   }
-  VLOG(1) << "EVICT_SESSION: " << std::hex << session_to_evict;
+  VLOG(1) << "EVICT_SESSION: " << std::hex << session_to_evict.handle;
 }
 
 void ResourceManager::SaveAllContexts() {
@@ -475,7 +512,7 @@ std::vector<TPM_HANDLE> ResourceManager::ExtractHandlesFromBuffer(
 }
 
 void ResourceManager::FixContextGap(const MessageInfo& command_info) {
-  std::vector<TPM_HANDLE> sessions_to_ungap;
+  std::vector<SessionHandle> sessions_to_ungap;
   for (const auto& item : session_handles_) {
     const HandleInfo& info = item.second;
     if (!info.is_loaded) {
@@ -484,7 +521,7 @@ void ResourceManager::FixContextGap(const MessageInfo& command_info) {
   }
   // Sort by |time_of_create|.
   std::sort(sessions_to_ungap.begin(), sessions_to_ungap.end(),
-            [this](TPM_HANDLE a, TPM_HANDLE b) {
+            [this](const SessionHandle& a, const SessionHandle& b) {
               return (session_handles_[a].time_of_create <
                       session_handles_[b].time_of_create);
             });
@@ -548,14 +585,14 @@ bool ResourceManager::FixWarnings(const MessageInfo& command_info,
 }
 
 void ResourceManager::FlushSession(const MessageInfo& command_info) {
-  TPM_HANDLE session_to_flush;
+  SessionHandle session_to_flush;
   LOG(WARNING) << "Resource manager needs to flush a session.";
   if (!ChooseSessionToEvict(command_info.all_session_handles,
                             &session_to_flush)) {
     return;
   }
   TPM_RC result =
-      factory_.GetTpm()->FlushContextSync(session_to_flush, nullptr);
+      factory_.GetTpm()->FlushContextSync(session_to_flush.handle, nullptr);
   // Ignore it case is the session already been flushed.
   if (result != TPM_RC_SUCCESS && result != TPM_RC_HANDLE) {
     LOG(WARNING) << "Failed to flush session: " << GetErrorString(result);
@@ -564,7 +601,7 @@ void ResourceManager::FlushSession(const MessageInfo& command_info) {
   CleanupFlushedHandle(session_to_flush);
 }
 
-bool ResourceManager::IsObjectHandle(TPM_HANDLE handle) const {
+bool ResourceManager::IsTransientObjectHandle(TPM_HANDLE handle) const {
   return ((handle & HR_RANGE_MASK) == HR_TRANSIENT);
 }
 
@@ -605,6 +642,7 @@ TPM_RC ResourceManager::MakeError(TPM_RC tpm_error,
 }
 
 TPM_RC ResourceManager::ParseCommand(const std::string& command,
+                                     uint64_t sender,
                                      MessageInfo* command_info) {
   CHECK(command_info);
   std::string buffer = command;
@@ -617,6 +655,7 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
     return MakeError(TPM_RC_TAG, FROM_HERE);
   }
   command_info->has_sessions = (tag == TPM_ST_SESSIONS);
+  command_info->sender = sender;
 
   UINT32 size = 0;
   result = Parse_UINT32(&buffer, &size, nullptr);
@@ -652,7 +691,8 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
   }
   for (const auto handle : command_info->handles) {
     if (IsSessionHandle(handle)) {
-      command_info->all_session_handles.push_back(handle);
+      command_info->all_session_handles.push_back(
+          SessionHandle{.handle = handle, .sender = sender});
     }
   }
 
@@ -677,7 +717,9 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
       if (result != TPM_RC_SUCCESS) {
         return MakeError(result, FROM_HERE);
       }
-      if (handle != TPM_RS_PW && session_handles_.count(handle) == 0) {
+      if (handle != TPM_RS_PW &&
+          session_handles_.count(
+              SessionHandle{.handle = handle, .sender = sender}) == 0) {
         return MakeError(TPM_RC_HANDLE, FROM_HERE);
       }
       TPM2B_NONCE nonce;
@@ -695,8 +737,10 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
       if (result != TPM_RC_SUCCESS) {
         return MakeError(result, FROM_HERE);
       }
-      command_info->auth_session_handles.push_back(handle);
-      command_info->all_session_handles.push_back(handle);
+      command_info->auth_session_handles.push_back(
+          SessionHandle{.handle = handle, .sender = sender});
+      command_info->all_session_handles.push_back(
+          SessionHandle{.handle = handle, .sender = sender});
       command_info->session_continued.push_back((attributes & 1) == 1);
     }
   } else {
@@ -720,6 +764,7 @@ TPM_RC ResourceManager::ParseResponse(const MessageInfo& command_info,
     return MakeError(TPM_RC_TAG, FROM_HERE);
   }
   response_info->has_sessions = (tag == TPM_ST_SESSIONS);
+  response_info->sender = command_info.sender;
 
   UINT32 size = 0;
   result = Parse_UINT32(&buffer, &size, nullptr);
@@ -803,21 +848,30 @@ std::string ResourceManager::ProcessFlushContext(
   if (handles.size() != 1) {
     return CreateErrorResponse(MakeError(TPM_RC_SIZE, FROM_HERE));
   }
-  TPM_HANDLE handle = handles[0];
-  TPM_HANDLE actual_handle = handle;
-  if (IsObjectHandle(handle)) {
-    if (unloaded_virtual_object_handles_.find(handle) !=
-        unloaded_virtual_object_handles_.end()) {
+  TPM_HANDLE raw_handle = handles[0];
+  TPM_HANDLE actual_handle = raw_handle;
+  if (IsTransientObjectHandle(raw_handle)) {
+    VirtualHandle handle = VirtualHandle(raw_handle);
+    if (unloaded_object_infos_.find(handle) != unloaded_object_infos_.end()) {
       // The handle wasn't loaded so no need to bother the TPM.
       CleanupFlushedHandle(handle);
       return CreateErrorResponse(TPM_RC_SUCCESS);
     }
-    auto iter = FindLoadedVirtualObjectHandle(handle);
-    if (iter == loaded_virtual_object_handles_.end()) {
+    auto iter = FindLoadedObjectInfo(handle);
+    if (iter == loaded_object_infos_.end()) {
       return CreateErrorResponse(MakeError(TPM_RC_HANDLE, FROM_HERE));
     }
     actual_handle = iter->info.tpm_handle;
+  } else if (IsSessionHandle(raw_handle)) {
+    SessionHandle handle{.handle = raw_handle, .sender = command_info.sender};
+    auto iter = session_handles_.find(handle);
+    if (iter == session_handles_.end() || !iter->second.is_loaded) {
+      // The handle wasn't loaded so no need to bother the TPM.
+      CleanupFlushedHandle(handle);
+      return CreateErrorResponse(TPM_RC_SUCCESS);
+    }
   }
+
   // Send a command with the original header but with |actual_handle| as the
   // parameter.
   std::string handle_blob;
@@ -832,81 +886,91 @@ std::string ResourceManager::ProcessFlushContext(
   if (result != TPM_RC_SUCCESS) {
     return CreateErrorResponse(result);
   }
+
   // Cleanup the handle locally even if the TPM did not recognize it.
   if (response_info.code == TPM_RC_SUCCESS ||
       response_info.code == TPM_RC_HANDLE) {
-    CleanupFlushedHandle(handle);
+    if (IsTransientObjectHandle(raw_handle)) {
+      CleanupFlushedHandle(VirtualHandle(raw_handle));
+    } else if (IsSessionHandle(raw_handle)) {
+      CleanupFlushedHandle(
+          SessionHandle{.handle = raw_handle, .sender = command_info.sender});
+    }
   }
   return response;
 }
 
 TPM_RC ResourceManager::ProcessInputHandle(const MessageInfo& command_info,
-                                           TPM_HANDLE virtual_handle,
+                                           TPM_HANDLE input_handle,
                                            TPM_HANDLE* actual_handle) {
   // Only transient object handles are virtualized.
-  if (!IsObjectHandle(virtual_handle)) {
-    *actual_handle = virtual_handle;
+  if (!IsTransientObjectHandle(input_handle)) {
+    *actual_handle = input_handle;
     return TPM_RC_SUCCESS;
   }
 
-  auto loaded_iter = FindLoadedVirtualObjectHandle(virtual_handle);
-  if (loaded_iter != loaded_virtual_object_handles_.end()) {
+  VirtualHandle virtual_handle = VirtualHandle(input_handle);
+
+  auto loaded_iter = FindLoadedObjectInfo(virtual_handle);
+  if (loaded_iter != loaded_object_infos_.end()) {
     *actual_handle = loaded_iter->info.tpm_handle;
   } else {
-    auto unloaded_iter = unloaded_virtual_object_handles_.find(virtual_handle);
-    if (unloaded_iter != unloaded_virtual_object_handles_.end()) {
+    auto unloaded_iter = unloaded_object_infos_.find(virtual_handle);
+    if (unloaded_iter != unloaded_object_infos_.end()) {
       HandleInfo& handle_info = unloaded_iter->second;
       TPM_RC result = LoadContext(command_info, &handle_info);
       if (result != TPM_RC_SUCCESS) {
         return result;
       }
-      tpm_object_handles_[handle_info.tpm_handle] = virtual_handle;
-      loaded_virtual_object_handles_.emplace_back(
-          VirtualHandle{.handle = unloaded_iter->first,
-                        .info = std::move(unloaded_iter->second)});
-      VLOG(1) << "RELOAD_OBJECT: " << std::hex << virtual_handle;
+      tpm_to_virtual_handle_[handle_info.tpm_handle] = virtual_handle;
+      loaded_object_infos_.emplace_back(
+          ObjectInfo{.handle = unloaded_iter->first,
+                     .info = std::move(unloaded_iter->second)});
+      VLOG(1) << "RELOAD_OBJECT: " << std::hex << input_handle;
       *actual_handle = handle_info.tpm_handle;
-      unloaded_virtual_object_handles_.erase(unloaded_iter);
+      unloaded_object_infos_.erase(unloaded_iter);
     } else {
       return MakeError(TPM_RC_HANDLE, FROM_HERE);
     }
   }
-  VLOG(1) << "INPUT_HANDLE_REPLACE: " << std::hex << virtual_handle << " -> "
+  VLOG(1) << "INPUT_HANDLE_REPLACE: " << std::hex << input_handle << " -> "
           << std::hex << *actual_handle;
   return TPM_RC_SUCCESS;
 }
 
-TPM_HANDLE ResourceManager::ProcessOutputHandle(TPM_HANDLE handle) {
+TPM_HANDLE ResourceManager::ProcessOutputHandle(TPM_HANDLE handle,
+                                                uint64_t sender) {
   // Track, but do not virtualize, session handles.
   if (IsSessionHandle(handle)) {
-    auto session_handle_iter = session_handles_.find(handle);
+    SessionHandle session_handle{.handle = handle, .sender = sender};
+    auto session_handle_iter = session_handles_.find(session_handle);
     if (session_handle_iter == session_handles_.end()) {
       HandleInfo new_handle_info;
-      new_handle_info.Init(handle);
-      session_handles_[handle] = new_handle_info;
+      new_handle_info.Init(handle, sender);
+      session_handles_[session_handle] = new_handle_info;
       VLOG(1) << "OUTPUT_HANDLE_NEW_SESSION: " << std::hex << handle;
     }
     return handle;
   }
   // Only transient object handles are virtualized.
-  if (!IsObjectHandle(handle)) {
+  if (!IsTransientObjectHandle(handle)) {
     return handle;
   }
-  auto virtual_handle_iter = tpm_object_handles_.find(handle);
-  if (virtual_handle_iter == tpm_object_handles_.end()) {
-    TPM_HANDLE new_virtual_handle = CreateVirtualHandle();
+  auto virtual_handle_iter = tpm_to_virtual_handle_.find(handle);
+  if (virtual_handle_iter == tpm_to_virtual_handle_.end()) {
+    VirtualHandle new_virtual_handle = CreateVirtualHandle();
     HandleInfo new_handle_info;
-    new_handle_info.Init(handle);
-    loaded_virtual_object_handles_.emplace_back(VirtualHandle{
+    new_handle_info.Init(handle, sender);
+    loaded_object_infos_.emplace_back(ObjectInfo{
         .handle = new_virtual_handle, .info = std::move(new_handle_info)});
-    tpm_object_handles_[handle] = new_virtual_handle;
+    tpm_to_virtual_handle_[handle] = new_virtual_handle;
     VLOG(1) << "OUTPUT_HANDLE_NEW_VIRTUAL: " << std::hex << handle << " -> "
-            << std::hex << new_virtual_handle;
-    return new_virtual_handle;
+            << std::hex << *new_virtual_handle;
+    return *new_virtual_handle;
   }
   VLOG(1) << "OUTPUT_HANDLE_REPLACE: " << std::hex << handle << " -> "
-          << std::hex << virtual_handle_iter->second;
-  return virtual_handle_iter->second;
+          << std::hex << *virtual_handle_iter->second;
+  return *virtual_handle_iter->second;
 }
 
 std::string ResourceManager::ReplaceHandles(
@@ -951,11 +1015,10 @@ TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
   return result;
 }
 
-std::vector<ResourceManager::VirtualHandle>::iterator
-ResourceManager::FindLoadedVirtualObjectHandle(TPM_HANDLE handle) {
+std::vector<ResourceManager::ObjectInfo>::iterator
+ResourceManager::FindLoadedObjectInfo(VirtualHandle handle) {
   return std::find_if(
-      loaded_virtual_object_handles_.begin(),
-      loaded_virtual_object_handles_.end(),
+      loaded_object_infos_.begin(), loaded_object_infos_.end(),
       [handle](const auto& cmp) { return cmp.handle == handle; });
 }
 
@@ -963,11 +1026,12 @@ ResourceManager::HandleInfo::HandleInfo() : is_loaded(false), tpm_handle(0) {
   memset(&context, 0, sizeof(TPMS_CONTEXT));
 }
 
-void ResourceManager::HandleInfo::Init(TPM_HANDLE handle) {
+void ResourceManager::HandleInfo::Init(TPM_HANDLE handle, uint64_t cmd_sender) {
   tpm_handle = handle;
   is_loaded = true;
   time_of_create = base::TimeTicks::Now();
   time_of_last_use = base::TimeTicks::Now();
+  sender = cmd_sender;
 }
 
 }  // namespace trunks
