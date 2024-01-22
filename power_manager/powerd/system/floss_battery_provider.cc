@@ -28,13 +28,19 @@ void FlossBatteryProvider::Init(DBusWrapperInterface* dbus_wrapper) {
   bluetooth_manager_object_proxy_ = dbus_wrapper_->GetObjectProxy(
       bluetooth_manager::kBluetoothManagerServiceName,
       bluetooth_manager::kBluetoothManagerServicePath);
-  provider_manager_object_proxy_ =
-      dbus_wrapper_->GetObjectProxy(kFlossBatteryProviderManagerServiceName,
-                                    kFlossBatteryProviderManagerServicePath);
+  provider_manager_object_proxy_ = dbus_wrapper_->GetObjectProxy(
+      battery_manager::kFlossBatteryProviderManagerServiceName,
+      battery_manager::kFlossBatteryProviderManagerServicePath);
+
+  auto bus = dbus_wrapper_->GetBus();
+  if (bus)
+    provider_manager_object_manager_ = bus->GetObjectManager(
+        battery_manager::kFlossBatteryProviderManagerServiceName,
+        dbus::ObjectPath("/"));
 
   dbus_wrapper_->ExportMethod(
       kFlossBatteryProviderManagerRefreshBatteryInfo,
-      kFlossBatteryProviderManagerCallbackInterface,
+      battery_manager::kFlossBatteryProviderManagerCallbackInterface,
       base::BindRepeating(&FlossBatteryProvider::RefreshBatteryInfo,
                           weak_ptr_factory_.GetWeakPtr()));
 
@@ -45,17 +51,20 @@ void FlossBatteryProvider::Init(DBusWrapperInterface* dbus_wrapper) {
 }
 
 void FlossBatteryProvider::Reset() {
-  dbus_wrapper_->RegisterForServiceAvailability(
-      provider_manager_object_proxy_,
-      base::BindOnce(&FlossBatteryProvider::RegisterAsBatteryProvider,
-                     weak_ptr_factory_.GetWeakPtr()));
+  is_registered_with_provider_manager_ = false;
+  dbus_wrapper_->RegisterForInterfaceAvailability(
+      provider_manager_object_manager_,
+      battery_manager::kFlossBatteryProviderManagerInterface,
+      base::BindRepeating(&FlossBatteryProvider::RegisterAsBatteryProvider,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void FlossBatteryProvider::UpdateDeviceBattery(const std::string& address,
                                                int level) {}
 
 bool FlossBatteryProvider::IsRegistered() {
-  return is_registered_with_bluetooth_manager_;
+  return is_registered_with_bluetooth_manager_ &&
+         is_registered_with_provider_manager_;
 }
 
 void FlossBatteryProvider::RegisterBluetoothManagerCallback(bool available) {
@@ -92,18 +101,49 @@ void FlossBatteryProvider::OnRegisteredBluetoothManagerCallback(
   }
 
   is_registered_with_bluetooth_manager_ = true;
+  Reset();
 }
 
 void FlossBatteryProvider::OnHciEnabledChanged(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  dbus::MessageReader reader(method_call);
+  int32_t hci_interface;
+  bool enabled;
+
+  reader.PopInt32(&hci_interface);
+  reader.PopBool(&enabled);
+
+  if (!enabled) {
+    LOG(INFO) << __func__ << ": Bluetooth was disabled.";
+    is_registered_with_provider_manager_ = false;
+    return;
+  }
+
   LOG(INFO) << __func__
-            << ": Bluetooth was enabled/disabled. Re-registering "
-               "FlossBatteryProvider.";
+            << ": Bluetooth was enabled. Re-registering FlossBatteryProvider.";
   Reset();
 }
 
-void FlossBatteryProvider::RegisterAsBatteryProvider(bool available) {}
+void FlossBatteryProvider::RegisterAsBatteryProvider(
+    const std::string& interface_name, bool available) {
+  if (!available) {
+    LOG(ERROR) << __func__
+               << ": Failed waiting for btadapterd to become available.";
+    return;
+  }
+
+  dbus::MethodCall method_call(
+      battery_manager::kFlossBatteryProviderManagerInterface,
+      kFlossBatteryProviderManagerRegisterBatteryProvider);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendObjectPath(dbus::ObjectPath(kPowerManagerServicePath));
+  dbus_wrapper_->CallMethodAsync(
+      provider_manager_object_proxy_, &method_call,
+      kFlossBatteryProviderDBusTimeout,
+      base::BindOnce(&FlossBatteryProvider::OnRegisteredAsBatteryProvider,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
 
 void FlossBatteryProvider::OnRegisteredAsBatteryProvider(
     dbus::Response* response) {

@@ -50,7 +50,8 @@ class FlossBatteryProvider : public BluetoothBatteryProvider,
       dbus::ExportedObject::ResponseSender response_sender) override;
 
   // FlossBatteryProviderManagerInterface overrides.
-  void RegisterAsBatteryProvider(bool available) override;
+  void RegisterAsBatteryProvider(const std::string& interface_name,
+                                 bool available) override;
   void OnRegisteredAsBatteryProvider(dbus::Response* response) override;
   void RefreshBatteryInfo(
       dbus::MethodCall* method_call,
@@ -68,8 +69,14 @@ class FlossBatteryProvider : public BluetoothBatteryProvider,
   // DBus object proxy for interacting with the Floss BatteryProviderManager.
   dbus::ObjectProxy* provider_manager_object_proxy_;
 
+  // DBus object manager for monitoring Floss's BatteryProviderManager status.
+  dbus::ObjectManager* provider_manager_object_manager_;
+
   // This provider is registered with the Bluetooth manager.
   bool is_registered_with_bluetooth_manager_ = false;
+
+  // This provider is registered with the BatteryProviderManager.
+  bool is_registered_with_provider_manager_ = false;
 
   // Weak pointer for callbacks to this object.
   base::WeakPtrFactory<FlossBatteryProvider> weak_ptr_factory_;

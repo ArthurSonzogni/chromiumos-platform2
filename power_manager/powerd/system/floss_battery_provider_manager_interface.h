@@ -5,22 +5,14 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_FLOSS_BATTERY_PROVIDER_MANAGER_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_FLOSS_BATTERY_PROVIDER_MANAGER_INTERFACE_H_
 
+#include <string>
+
 namespace power_manager::system {
 
 // Represents Floss's BatteryProviderManager's DBus API.
 class FlossBatteryProviderManagerInterface {
  public:
   virtual ~FlossBatteryProviderManagerInterface() = default;
-
-  // DBus routing.
-  static constexpr char kFlossBatteryProviderManagerInterface[] =
-      "org.chromium.bluetooth.BatteryProviderManager";
-  static constexpr char kFlossBatteryProviderManagerServiceName[] =
-      "org.chromium.bluetooth";
-  static constexpr char kFlossBatteryProviderManagerServicePath[] =
-      "/org/chromium/bluetooth/hci0/battery_provider_manager";
-  static constexpr char kFlossBatteryProviderManagerCallbackInterface[] =
-      "org.chromium.bluetooth.BatteryProviderCallback";
 
   // DBus methods.
   static constexpr char kFlossBatteryProviderManagerRegisterBatteryProvider[] =
@@ -31,7 +23,8 @@ class FlossBatteryProviderManagerInterface {
       "RefreshBatteryInfo";
 
   // Register for Floss BatteryProviderManager updates.
-  virtual void RegisterAsBatteryProvider(bool available) = 0;
+  virtual void RegisterAsBatteryProvider(const std::string& interface_name,
+                                         bool available) = 0;
 
   // Runs when this provider has been registered for BatteryProviderManager
   // updates.
