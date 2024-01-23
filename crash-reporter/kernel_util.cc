@@ -146,7 +146,7 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
   RE2 warning_end_re(std::string(kTimestampNoCaptureRegex) +
                      " ---\\[ end trace [[:xdigit:]]+ \\]---");
   RE2 hard_lockup_re(std::string(kTimestampNoCaptureRegex) +
-                     " Watchdog detected hard LOCKUP");
+                     " (watchdog: )?Watchdog detected hard LOCKUP");
   RE2 soft_lockup_re(std::string(kTimestampNoCaptureRegex) +
                      " watchdog: BUG: soft lockup");
   RE2 hung_task_re(std::string(kTimestampNoCaptureRegex) +

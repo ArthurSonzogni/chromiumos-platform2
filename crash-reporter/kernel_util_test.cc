@@ -559,6 +559,14 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86_64) {
   const kernel_util::ArchKind arch = kernel_util::kArchX86_64;
   std::string test_contents;
 
+  // echo HARDLOCKUP > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_X86_64_PROVOKE_KERNEL_HARDLOCKUP",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(HARDLOCKUP)-lkdtm_HARDLOCKUP-14D59A88",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
   // echo SOFTLOCKUP > /sys/kernel/debug/provoke-crash/DIRECT
   EXPECT_TRUE(base::ReadFileToString(
       test_util::GetTestDataPath("TEST_X86_64_PROVOKE_KERNEL_SOFTLOCKUP",

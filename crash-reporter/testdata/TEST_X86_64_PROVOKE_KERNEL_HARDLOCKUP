@@ -1,0 +1,131 @@
+<6>[   16.459615] fscrypt: AES-256-CTS-CBC using implementation "cts-cbc-aes-aesni"
+<6>[  173.642882] lkdtm: Performing direct entry HARDLOCKUP
+<0>[  181.062484] watchdog: Watchdog detected hard LOCKUP on cpu 1
+<4>[  181.062495] Modules linked in: lzo_rle lzo_compress zram zsmalloc 8021q uinput snd_soc_sof_da7219_max98373 snd_soc_intel_hda_dsp_common snd_sof_probes iio_trig_hrtimer industrialio_sw_trigger industrialio_configfs iio_trig_sysfs snd_soc_dmic snd_hda_codec_hdmi snd_sof_pci_intel_icl snd_sof_intel_hda_common snd_sof_intel_hda soundwire_intel soundwire_generic_allocation snd_sof_intel_hda_mlink soundwire_cadence snd_sof_pci snd_sof_xtensa_dsp snd_soc_hdac_hda snd_soc_acpi_intel_match snd_soc_acpi snd_hda_ext_core snd_sof snd_sof_utils soundwire_bus snd_intel_dspcfg snd_intel_sdw_acpi snd_hda_codec uvcvideo videobuf2_vmalloc videobuf2_v4l2 snd_hwdep videobuf2_memops snd_hda_core videobuf2_common cros_ec_typec rfcomm roles typec veth acpi_als snd_soc_da7219 industrialio_triggered_buffer kfifo_buf industrialio snd_soc_max98357a fuse cdc_mbim cdc_ncm cdc_wdm xt_cgroup xt_MASQUERADE iwlmvm iwl7000_mac80211 cmac algif_hash iwlwifi algif_skcipher ip6table_nat af_alg cfg80211 r8153_ecm cdc_ether
+<4>[  181.062574]  usbnet r8152 mii btusb btrtl btintel btmtk btbcm bluetooth ecdh_generic ecc joydev
+<6>[  181.062586] Sending NMI from CPU 0 to CPUs 1:
+<4>[  181.062593] NMI backtrace for cpu 1
+<4>[  181.062595] CPU: 1 PID: 5974 Comm: sh Tainted: G     U             6.1.74-09499-g77b17e98cc76 #1 (HASH:b830 4)
+<4>[  181.062598] Hardware name: Google Sasuke/Sasuke, BIOS Google_Sasuke.13606.519.0 02/07/2023
+<4>[  181.062600] RIP: 0010:lkdtm_HARDLOCKUP+0xc/0xe
+<4>[  181.062607] Code: 4c 63 24 be 5d e9 d3 bc 4a 00 0f 1f 44 00 00 55 48 89 e5 65 ff 05 b3 63 b8 42 f3 90 eb fc 0f 1f 44 00 00 55 48 89 e5 fa f3 90 <eb> fc 0f 1f 44 00 00 55 48 89 e5 48 c7 c7 a8 e9 21 bf 5d e9 22 b0
+<4>[  181.062608] RSP: 0018:ffff9bae06f97db8 EFLAGS: 00000086
+<4>[  181.062610] RAX: 0000000000000029 RBX: 000000000000000b RCX: 18bd57b58273d000
+<4>[  181.062612] RDX: ffff8e8a80127500 RSI: ffff8e8a8011b448 RDI: ffffffffbebd1d10
+<4>[  181.062613] RBP: ffff9bae06f97db8 R08: 0000000000000000 R09: ffff9bae06f97c40
+<4>[  181.062614] R10: 00000000ffffdfff R11: ffffffffbd494959 R12: ffff8e8a5ac00000
+<4>[  181.062615] R13: ffffffffbebd1d10 R14: ffff9bae06f97ed8 R15: ffffffffffffffea
+<4>[  181.062616] FS:  000078261a832740(0000) GS:ffff8e8a80100000(0000) knlGS:0000000000000000
+<4>[  181.062618] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+<4>[  181.062620] CR2: 000059d9abe105e8 CR3: 0000000161dd0000 CR4: 0000000000350ee0
+<4>[  181.062621] Call Trace:
+<4>[  181.062624]  <NMI>
+<4>[  181.062627]  ? nmi_cpu_backtrace+0x101/0x124
+<4>[  181.062631]  ? nmi_cpu_backtrace_handler+0x11/0x1e
+<4>[  181.062634]  ? nmi_handle+0x59/0x151
+<4>[  181.062637]  ? lkdtm_HARDLOCKUP+0xc/0xe
+<4>[  181.062639]  ? default_do_nmi+0x46/0x106
+<4>[  181.062641]  ? exc_nmi+0xa6/0x115
+<4>[  181.062643]  ? end_repeat_nmi+0x16/0x67
+<4>[  181.062646]  ? lkdtm_SOFTLOCKUP+0x14/0x14
+<4>[  181.062648]  ? lkdtm_HARDLOCKUP+0xc/0xe
+<4>[  181.062649]  ? lkdtm_HARDLOCKUP+0xc/0xe
+<4>[  181.062651]  ? lkdtm_HARDLOCKUP+0xc/0xe
+<4>[  181.062652]  </NMI>
+<4>[  181.062652]  <TASK>
+<4>[  181.062653]  direct_entry+0xd7/0xdf
+<4>[  181.062655]  full_proxy_write+0x56/0x7b
+<4>[  181.062659]  vfs_write+0x10b/0x31d
+<4>[  181.062662]  ? auditd_test_task+0x3d/0x47
+<4>[  181.062665]  ? __audit_syscall_entry+0xca/0x156
+<4>[  181.062667]  ksys_write+0x71/0xd6
+<4>[  181.062668]  do_syscall_64+0x4e/0x9b
+<4>[  181.062671]  ? exit_to_user_mode_prepare+0x3c/0x85
+<4>[  181.062673]  entry_SYSCALL_64_after_hwframe+0x5e/0xc8
+<4>[  181.062675] RIP: 0033:0x78261a92d873
+<4>[  181.062679] Code: 64 89 02 48 c7 c0 ff ff ff ff eb bd 66 2e 0f 1f 84 00 00 00 00 00 90 64 8b 04 25 18 00 00 00 85 c0 75 14 b8 01 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 55 c3 0f 1f 40 00 55 48 89 e5 48 83 ec 20 48
+<4>[  181.062680] RSP: 002b:00007ffe86f8c888 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+<4>[  181.062682] RAX: ffffffffffffffda RBX: 000059d9ab646ea0 RCX: 000078261a92d873
+<4>[  181.062683] RDX: 000000000000000b RSI: 000059d9abe0e5e0 RDI: 0000000000000001
+<4>[  181.062684] RBP: 00007ffe86f8c8c0 R08: 000059d9abe0e5e0 R09: 00007ffe86f8cab0
+<4>[  181.062685] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000001
+<4>[  181.062686] R13: 000000000000000b R14: 000000000000000b R15: 000059d9abe0e5e0
+<4>[  181.062688]  </TASK>
+<4>[  181.063591] NMI backtrace for cpu 0
+<4>[  181.063656] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G     U             6.1.74-09499-g77b17e98cc76 #1 (HASH:b830 4)
+<4>[  181.063661] Hardware name: Google Sasuke/Sasuke, BIOS Google_Sasuke.13606.519.0 02/07/2023
+<4>[  181.063663] Call Trace:
+<4>[  181.063667]  <IRQ>
+<4>[  181.063669]  dump_stack_lvl+0x69/0x98
+<4>[  181.063674]  nmi_cpu_backtrace+0xe9/0x124
+<4>[  181.063680]  ? arch_trigger_cpumask_backtrace+0x16/0x16
+<4>[  181.063685]  nmi_trigger_cpumask_backtrace+0x91/0x14c
+<4>[  181.063689]  watchdog_hardlockup_check+0x179/0x1e5
+<4>[  181.063695]  watchdog_timer_fn+0x62/0x29f
+<4>[  181.063699]  ? proc_watchdog_cpumask+0x8f/0x8f
+<4>[  181.063703]  __hrtimer_run_queues+0xcd/0x247
+<4>[  181.063709]  hrtimer_interrupt+0xf7/0x202
+<4>[  181.063713]  __sysvec_apic_timer_interrupt+0x5a/0x133
+<4>[  181.063717]  sysvec_apic_timer_interrupt+0x70/0x80
+<4>[  181.063722]  </IRQ>
+<4>[  181.063724]  <TASK>
+<4>[  181.063726]  asm_sysvec_apic_timer_interrupt+0x16/0x20
+<4>[  181.063731] RIP: 0010:cpuidle_enter_state+0x136/0x363
+<4>[  181.063736] Code: 0c 75 ff 45 84 f6 74 1e 48 c7 45 c8 00 00 00 00 9c 8f 45 c8 0f ba 65 c8 09 0f 82 8f 01 00 00 31 ff e8 b4 fd 7a ff fb 45 85 e4 <0f> 88 a8 00 00 00 44 89 e1 48 6b f1 68 49 8b 54 37 48 4c 2b 6d b8
+<4>[  181.063740] RSP: 0018:ffffffffbea03e18 EFLAGS: 00000202
+<4>[  181.063744] RAX: ffff8e8a8002b0c0 RBX: ffff8e8a80032f30 RCX: 0000002a282a3897
+<4>[  181.063747] RDX: 0000000000000000 RSI: 0000002a298632f5 RDI: 0000000000000000
+<4>[  181.063750] RBP: ffffffffbea03e60 R08: 0000000000000000 R09: 0000000000000000
+<4>[  181.063752] R10: 00000000ffffffff R11: ffffffffbd94f15f R12: 0000000000000001
+<4>[  181.063755] R13: 0000002a282a3897 R14: 0000000000000000 R15: ffffffffbebb58d8
+<4>[  181.063759]  ? cpu_idle_poll+0xe5/0xe5
+<4>[  181.063764]  ? cpuidle_enter_state+0x10f/0x363
+<4>[  181.063768]  ? menu_select+0x475/0x516
+<4>[  181.063772]  cpuidle_enter+0x2c/0x40
+<4>[  181.063776]  do_idle+0x165/0x1f7
+<4>[  181.063782]  cpu_startup_entry+0x29/0x2b
+<4>[  181.063786]  rest_init+0xc2/0xc2
+<4>[  181.063790]  arch_call_rest_init+0xe/0xe
+<4>[  181.063796]  start_kernel+0x39d/0x3fc
+<4>[  181.063800]  secondary_startup_64_no_verify+0xcf/0xdb
+<4>[  181.063806]  </TASK>
+<0>[  181.063809] Kernel panic - not syncing: Hard LOCKUP
+<4>[  181.063811] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G     U             6.1.74-09499-g77b17e98cc76 #1 (HASH:b830 4)
+<4>[  181.063816] Hardware name: Google Sasuke/Sasuke, BIOS Google_Sasuke.13606.519.0 02/07/2023
+<4>[  181.063818] Call Trace:
+<4>[  181.063820]  <IRQ>
+<4>[  181.063823]  dump_stack_lvl+0x69/0x98
+<4>[  181.063827]  panic+0x117/0x2d8
+<4>[  181.063831]  nmi_panic+0x3c/0x3c
+<4>[  181.063836]  watchdog_hardlockup_check+0x1a2/0x1e5
+<4>[  181.063841]  watchdog_timer_fn+0x62/0x29f
+<4>[  181.063845]  ? proc_watchdog_cpumask+0x8f/0x8f
+<4>[  181.063849]  __hrtimer_run_queues+0xcd/0x247
+<4>[  181.063854]  hrtimer_interrupt+0xf7/0x202
+<4>[  181.063858]  __sysvec_apic_timer_interrupt+0x5a/0x133
+<4>[  181.063862]  sysvec_apic_timer_interrupt+0x70/0x80
+<4>[  181.063866]  </IRQ>
+<4>[  181.063868]  <TASK>
+<4>[  181.063870]  asm_sysvec_apic_timer_interrupt+0x16/0x20
+<4>[  181.063874] RIP: 0010:cpuidle_enter_state+0x136/0x363
+<4>[  181.063879] Code: 0c 75 ff 45 84 f6 74 1e 48 c7 45 c8 00 00 00 00 9c 8f 45 c8 0f ba 65 c8 09 0f 82 8f 01 00 00 31 ff e8 b4 fd 7a ff fb 45 85 e4 <0f> 88 a8 00 00 00 44 89 e1 48 6b f1 68 49 8b 54 37 48 4c 2b 6d b8
+<4>[  181.063882] RSP: 0018:ffffffffbea03e18 EFLAGS: 00000202
+<4>[  181.063885] RAX: ffff8e8a8002b0c0 RBX: ffff8e8a80032f30 RCX: 0000002a282a3897
+<4>[  181.063888] RDX: 0000000000000000 RSI: 0000002a298632f5 RDI: 0000000000000000
+<4>[  181.063891] RBP: ffffffffbea03e60 R08: 0000000000000000 R09: 0000000000000000
+<4>[  181.063894] R10: 00000000ffffffff R11: ffffffffbd94f15f R12: 0000000000000001
+<4>[  181.063896] R13: 0000002a282a3897 R14: 0000000000000000 R15: ffffffffbebb58d8
+<4>[  181.063899]  ? cpu_idle_poll+0xe5/0xe5
+<4>[  181.063904]  ? cpuidle_enter_state+0x10f/0x363
+<4>[  181.063908]  ? menu_select+0x475/0x516
+<4>[  181.063912]  cpuidle_enter+0x2c/0x40
+<4>[  181.063916]  do_idle+0x165/0x1f7
+<4>[  181.063920]  cpu_startup_entry+0x29/0x2b
+<4>[  181.063923]  rest_init+0xc2/0xc2
+<4>[  181.063928]  arch_call_rest_init+0xe/0xe
+<4>[  181.063932]  start_kernel+0x39d/0x3fc
+<4>[  181.063936]  secondary_startup_64_no_verify+0xcf/0xdb
+<4>[  181.063941]  </TASK>
+<0>[  182.126530] Shutting down cpus with NMI
+<0>[  182.126539] Kernel Offset: 0x3bc00000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+<0>[  182.128743] gsmi: Log Shutdown Reason 0x02
