@@ -224,6 +224,33 @@ constexpr uint8_t kExpectedPkcs7[] = {
     0x0d, 0x16, 0xff, 0x31, 0x00,
 };
 
+constexpr char kExpectedPem[] =
+    R"(-----BEGIN CERTIFICATE-----
+MIICTjCCAfSgAwIBAgIQAQAAAAAAAAADTP1bG0Lv+jAKBggqhkjOPQQDAjBoMQswCQYDVQQGEwJV
+UzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEChMLR29vZ2xlIEluYy4xFDASBgNVBAsTC0Vu
+Z2luZWVyaW5nMRgwFgYDVQQDEw9DUk9TIEQyIFRQTSBDSUswIhgPMjAwMDAxMDEwMDAwMDBaGA8y
+MDk5MTIzMTIzNTk1OVowDzENMAsGA1UEAwwEVGk1MDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+BANM/VsbQu/6ONV0z54EhUPF9bKWPSKn6I98p28tajLOoBmctxMFxq7I+pdF10EC2qnb7z2kXUzL
+/PMMN22ed8yjgdQwgdEwGgYKKwYBBAHWeQIBIQQMWlNaVqWspal/fwAAMA8GCisGAQQB1nkCASIE
+ARQwLgYKKwYBBAHWeQIBIwQgierzUTS0s8ZJ9EwMdluWrquLs07oPMemg8TlPRWByMcwLgYKKwYB
+BAHWeQIBJAQg3FTyn0v0x1hKjZkVsJNZlZ+OE/EwCcHqtLAMIbhfGTAwLgYKKwYBBAHWeQIBJQQg
+3FTyn0v0x1hKjZkVsJNZlZ+OE/EwCcHqtLAMIbhfGTAwEgYKKwYBBAHWeQIBJgQEAAAAADAKBggq
+hkjOPQQDAgNIADBFAiEAoWmQJ6hbSy6txCvEIQNF5TSpji1rmTITpjb79dG8iYECIGAbnnoDl4wW
+3zSYgYffjvryjEq5O2tzr/8B7zFkDRb/
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIB6DCCAY2gAwIBAgIKSWj2Lvak6lGiCzAKBggqhkjOPQQDAjBkMQswCQYDVQQGEwJVUzETMBEG
+A1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEChMLR29vZ2xlIEluYy4xFDASBgNVBAsTC0VuZ2luZWVy
+aW5nMRQwEgYDVQQDEwtDUk9TIEQyIENJSzAeFw0yMDA3MDgwMDAwMDBaFw00OTEyMzEyMzU5NTla
+MGgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRQwEgYDVQQKEwtHb29nbGUgSW5j
+LjEUMBIGA1UECxMLRW5naW5lZXJpbmcxGDAWBgNVBAMTD0NST1MgRDIgVFBNIENJSzBZMBMGByqG
+SM49AgEGCCqGSM49AwEHA0IABGSeOSt182ILaE/zXsMr6y6y/8tjPySLSkrJ6/Oi/kFS3yF8vgoG
++tqwq9INoMnoqC2O8rrdYwn9X0vh2FzKfc2jIzAhMB8GA1UdIwQYMBaAFJ14CUkL2Rm+LGmPU4P4
+NFOwTuPyMAoGCCqGSM49BAMCA0kAMEYCIQDi9xshD9+xlcaEKNSGOz9FwRfc3BZBIa9TzWK0sde5
+XwIhAIAbWbPnTW5515+ht//avxMThag+7CpD9lG7rLLLLonn
+-----END CERTIFICATE-----
+)";
+
 }  // namespace
 
 namespace hwsec {
@@ -328,6 +355,16 @@ TEST_F(OpteePluginFrontendImplTpm2SimTest, MalformedRot) {
 
   EXPECT_THAT(hwsec_optee_plugin_->GetPkcs7CertChain(),
               NotOkWith("Failed to parse RoT cert"));
+}
+
+TEST_F(OpteePluginFrontendImplTpm2SimTest, GetPemCertChain) {
+  EXPECT_CALL(ro_data, IsReady(RoSpace::kChipIdentityKeyCert)).Times(1);
+  EXPECT_CALL(ro_data, IsReady(RoSpace::kWidevineRootOfTrustCert)).Times(1);
+  EXPECT_CALL(ro_data, Read(RoSpace::kChipIdentityKeyCert)).Times(1);
+  EXPECT_CALL(ro_data, Read(RoSpace::kWidevineRootOfTrustCert)).Times(1);
+
+  EXPECT_THAT(hwsec_optee_plugin_->GetPemCertChain(),
+              IsOkAndHolds(std::string(kExpectedPem)));
 }
 
 }  // namespace hwsec

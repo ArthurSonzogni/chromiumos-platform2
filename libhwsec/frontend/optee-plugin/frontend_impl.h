@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_OPTEE_PLUGIN_FRONTEND_IMPL_H_
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -31,6 +32,8 @@ class OpteePluginFrontendImpl : public OpteePluginFrontend,
   StatusOr<brillo::Blob> GetChipIdentifyKeyCert() const override;
 
   StatusOr<brillo::Blob> GetPkcs7CertChain() const override;
+
+  StatusOr<std::string> GetPemCertChain() const override;
 };
 
 }  // namespace hwsec

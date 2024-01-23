@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_OPTEE_PLUGIN_MOCK_FRONTEND_H_
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -32,6 +33,7 @@ class MockOpteePluginFrontend : public MockFrontend,
               (),
               (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetPkcs7CertChain, (), (const override));
+  MOCK_METHOD(StatusOr<std::string>, GetPemCertChain, (), (const override));
 };
 
 }  // namespace hwsec

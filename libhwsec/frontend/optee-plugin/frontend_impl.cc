@@ -6,9 +6,11 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <base/base64.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -32,6 +34,23 @@ struct StackOfX509RefFree {
 };
 using ScopedStackOfX509Ref =
     std::unique_ptr<STACK_OF(X509), StackOfX509RefFree>;
+
+constexpr size_t kPemWrapSize = 76;
+constexpr char kPemCertTemplate[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "%s"
+    "-----END CERTIFICATE-----\n";
+
+std::string RawX509ToPEM(const brillo::Blob& x509) {
+  std::string base64 = base::Base64Encode(x509);
+
+  std::string wrapped;
+  for (size_t pos = 0; pos < base64.size(); pos += kPemWrapSize) {
+    wrapped += base64.substr(pos, kPemWrapSize) + "\n";
+  }
+
+  return base::StringPrintf(kPemCertTemplate, wrapped.c_str());
+}
 
 }  // namespace
 
@@ -129,6 +148,19 @@ StatusOr<brillo::Blob> OpteePluginFrontendImpl::GetPkcs7CertChain() const {
   }
 
   return p7_blob;
+}
+
+StatusOr<std::string> OpteePluginFrontendImpl::GetPemCertChain() const {
+  ASSIGN_OR_RETURN(const brillo::Blob& cik_cert, GetChipIdentifyKeyCert(),
+                   _.WithStatus<TPMError>("Failed to get CIK cert"));
+
+  ASSIGN_OR_RETURN(const brillo::Blob& rot_cert, GetRootOfTrustCert(),
+                   _.WithStatus<TPMError>("Failed to get RoT cert"));
+
+  std::string cik_pem = RawX509ToPEM(cik_cert);
+  std::string rot_pem = RawX509ToPEM(rot_cert);
+
+  return rot_pem + cik_pem;
 }
 
 }  // namespace hwsec

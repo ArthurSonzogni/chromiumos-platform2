@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_OPTEE_PLUGIN_FRONTEND_H_
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -31,6 +32,10 @@ class OpteePluginFrontend : public Frontend {
 
   // Get the Pkcs7 certificate chain.
   virtual StatusOr<brillo::Blob> GetPkcs7CertChain() const = 0;
+
+  // Get the PEM certificate chain.
+  // Note: The PEM format only contains the visible characters.
+  virtual StatusOr<std::string> GetPemCertChain() const = 0;
 };
 
 }  // namespace hwsec
