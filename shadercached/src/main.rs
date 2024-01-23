@@ -35,7 +35,8 @@ pub async fn main() -> Result<()> {
     let identity =
         syslog::get_ident_from_process().unwrap_or_else(|| String::from(BINARY_IDENTITY));
     if let Err(e) = syslog::init_with_level(identity, false, syslog::LevelFilter::Info) {
-        panic!("Failed to initialize syslog: {}", e);
+        println!("Failed to initialize syslog: {}", e);
+        std::process::exit(1);
     }
 
     info!("Starting shadercached...");
@@ -72,8 +73,8 @@ pub async fn main() -> Result<()> {
     tokio::spawn(async {
         let err = resource.await;
         attempt_unmount_all(mount_map_resource).await;
-        error!("Lost connection to D-Bus: {}", err);
-        panic!("Lost connection to D-Bus: {}", err);
+        error!("Lost connection to system D-Bus: {}", err);
+        std::process::exit(1);
     });
     let dbus_conn = dbus_wrapper::DbusConnection::new(c.clone());
 
@@ -259,9 +260,8 @@ pub async fn main() -> Result<()> {
     tokio::spawn(async {
         let err = resource_listen.await;
         attempt_unmount_all(mount_map_listener).await;
-
-        error!("Lost connection to D-Bus: {}", err);
-        panic!("Lost connection to D-Bus: {}", err);
+        error!("Lost connection to system D-Bus: {}", err);
+        std::process::exit(1);
     });
 
     // Listen to DlcService DlcStateChanged
