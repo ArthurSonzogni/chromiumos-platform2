@@ -15,6 +15,7 @@
 #include <base/types/cxx23_to_underlying.h>
 #include <net-base/dns_client.h>
 
+#include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/routing_service.h"
@@ -190,14 +191,6 @@ QoSService::QoSService(
 
 QoSService::~QoSService() = default;
 
-namespace {
-// TCP protocol used to set protocol field in conntrack command.
-constexpr char kProtocolTCP[] = "TCP";
-
-// UDP protocol used to set protocol field in conntrack command.
-constexpr char kProtocolUDP[] = "UDP";
-}  // namespace
-
 void QoSService::Enable() {
   if (is_enabled_) {
     return;
@@ -283,15 +276,16 @@ void QoSService::ProcessSocketConnectionEvent(
     return;
   }
 
-  std::string proto;
+  ConnmarkUpdater::IPProtocol proto;
   if (msg.proto() == patchpanel::SocketConnectionEvent::IpProtocol::
                          SocketConnectionEvent_IpProtocol_TCP) {
-    proto = kProtocolTCP;
+    proto = ConnmarkUpdater::IPProtocol::kTCP;
   } else if (msg.proto() == patchpanel::SocketConnectionEvent::IpProtocol::
                                 SocketConnectionEvent_IpProtocol_UDP) {
-    proto = kProtocolUDP;
+    proto = ConnmarkUpdater::IPProtocol::kUDP;
   } else {
     LOG(ERROR) << __func__ << ": invalid protocol: " << msg.proto();
+    return;
   }
 
   QoSCategory qos_category;
@@ -316,31 +310,19 @@ void QoSService::ProcessSocketConnectionEvent(
   }
 
   // Update connmark based on QoS category or set to default connmark if socket
-  // connection event is CLOSE. Use ConnmarkUpdater to handle connmark update
-  // for UDP connections since the updater will handle the delay between
-  // receiving UDP socket connection event and the connection entry appears in
-  // the conntrack table.
-  if (proto == kProtocolUDP) {
-    connmark_updater_->UpdateUDPConnectionConnmark(
-        ConnmarkUpdater::UDPConnection{
-            .src_addr = *src_addr,
-            .dst_addr = *dst_addr,
-            .sport = static_cast<uint16_t>(msg.sport()),
-            .dport = static_cast<uint16_t>(msg.dport())},
-        Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
-    return;
-  }
-  // Update TCP connections directly because they are guaranteed to be
-  // established on ARC side.
-  std::vector<std::string> args = {"-p",      proto,
-                                   "-s",      src_addr.value().ToString(),
-                                   "-d",      dst_addr.value().ToString(),
-                                   "--sport", std::to_string(msg.sport()),
-                                   "--dport", std::to_string(msg.dport()),
-                                   "-m",      QoSFwmarkWithMask(qos_category)};
-  if (process_runner_->conntrack("-U", args) != 0) {
-    LOG(ERROR) << "Failed to update connmark for TCP connection.";
-  }
+  // connection event is CLOSE. Use connmark updater to handle connmark update.
+  // If initial try to update connmark for UDP connections fails, updater will
+  // try updating once again when this connection appears in conntrack table.
+  // For TCP connection connmark updater will try updating connmark only once.
+  // More details can be found in comment of ConnmarkUpdater class.
+  connmark_updater_->UpdateConnmark(
+      ConnmarkUpdater::Conntrack5Tuple{
+          .src_addr = *src_addr,
+          .dst_addr = *dst_addr,
+          .sport = static_cast<uint16_t>(msg.sport()),
+          .dport = static_cast<uint16_t>(msg.dport()),
+          .proto = proto},
+      Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
 }
 
 void QoSService::UpdateDoHProviders(

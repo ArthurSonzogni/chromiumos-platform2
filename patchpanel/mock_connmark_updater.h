@@ -19,8 +19,8 @@ class MockConnmarkUpdater : public ConnmarkUpdater {
   ~MockConnmarkUpdater();
 
   MOCK_METHOD(void,
-              UpdateUDPConnectionConnmark,
-              (const UDPConnection& conn, const Fwmark mark, const Fwmark mask),
+              UpdateConnmark,
+              (const Conntrack5Tuple& conn, Fwmark mark, Fwmark mask),
               (override));
 };
 

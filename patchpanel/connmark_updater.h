@@ -16,6 +16,7 @@
 
 namespace patchpanel {
 
+// This class handles connmark update for UDP and TCP connections.
 // When trying to update connmark for UDP sockets, there is possibility that
 // UDP sockets are not yet know in conntrack table at the moment and connmark
 // update fails. More details can be found in: b/302076027.
@@ -24,6 +25,10 @@ namespace patchpanel {
 // - Adds failed connmark update requests into a pending list.
 // - Gets conntrack table updates from ConntrackMonitor and retries connmark
 // update when pending connections appears in conntrack table.
+//
+// TCP connections are guaranteed to be established on ARC side and they
+// should be already in conntrack table when updating, so updater will only try
+// updating connmark for TCP connections only once.
 //
 // In general, this class mainly interacts with conntrack table and
 // ConntrackMonitor for connmark update management:
@@ -35,18 +40,24 @@ namespace patchpanel {
 //     entry from the pending list.
 // Destructing this object will cancel all the pending requests and unregister
 // listener on ConntrackMonitor.
-// TODO(b/177389948): Add TCP handling in this class.
+//
 class ConnmarkUpdater {
  public:
-  struct UDPConnection {
+  enum class IPProtocol {
+    kTCP,
+    kUDP,
+  };
+
+  struct Conntrack5Tuple {
     net_base::IPAddress src_addr;
     net_base::IPAddress dst_addr;
     uint16_t sport;
     uint16_t dport;
+    IPProtocol proto;
 
     // 3-way comparison operator for able to be keyed in a map.
-    friend std::strong_ordering operator<=>(const UDPConnection&,
-                                            const UDPConnection&) = default;
+    friend std::strong_ordering operator<=>(const Conntrack5Tuple&,
+                                            const Conntrack5Tuple&) = default;
   };
 
   explicit ConnmarkUpdater(ConntrackMonitor* monitor);
@@ -60,17 +71,21 @@ class ConnmarkUpdater {
   ConnmarkUpdater(const ConnmarkUpdater&) = delete;
   ConnmarkUpdater& operator=(const ConnmarkUpdater&) = delete;
 
-  // Adds UDP socket connection for update.
-  virtual void UpdateUDPConnectionConnmark(const UDPConnection& conn,
-                                           Fwmark mark,
-                                           Fwmark mask);
+  // Updates connmark for TCP and UDP connections.
+  virtual void UpdateConnmark(const Conntrack5Tuple& conn,
+                              Fwmark mark,
+                              Fwmark mask);
+
+  // Updates connmark in conntrack table for given |conn|, returns true if the
+  // update succeeds, otherwise returns false.
+  bool InvokeConntrack(const Conntrack5Tuple& conn, Fwmark mark, Fwmark mask);
 
   // Gets size of the pending list, only used for testing.
   size_t GetPendingListSizeForTesting();
 
  private:
   // Handles conntrack events from ConntrackMonitor and updates connmark
-  // for UDP connections in |pending_connections_| if applies.
+  // for UDP connections in |pending_udp_connmark_operations_| if applies.
   void HandleConntrackEvent(const ConntrackMonitor::Event& event);
 
   // Dependencies.
@@ -84,7 +99,8 @@ class ConnmarkUpdater {
   // is sent. Entries in the list are removed as soon as the expected UDP
   // connection is observed through ConntrackMonitor, even if the connmark
   // update operation failed.
-  std::map<UDPConnection, std::pair<Fwmark, Fwmark>> pending_connections_;
+  std::map<Conntrack5Tuple, std::pair<Fwmark, Fwmark>>
+      pending_udp_connmark_operations_;
 
   // Listens to conntrack events.
   std::unique_ptr<ConntrackMonitor::Listener> listener_;

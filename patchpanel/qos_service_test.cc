@@ -19,6 +19,7 @@
 #include <net-base/dns_client.h>
 #include <net-base/ipv4_address.h>
 
+#include "patchpanel/connmark_updater.h"
 #include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
@@ -44,8 +45,6 @@ constexpr char kIPAddress1[] = "8.8.8.8";
 constexpr char kIPAddress2[] = "8.8.8.4";
 constexpr int kPort1 = 10000;
 constexpr int kPort2 = 20000;
-constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
-    ConntrackMonitor::EventType::kNew};
 
 std::unique_ptr<patchpanel::SocketConnectionEvent>
 CreateOpenSocketConnectionEvent() {
@@ -224,48 +223,53 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
 TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
   auto datapath = MockDatapath();
   auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
   MockConntrackMonitor conntrack_monitor;
   QoSService qos_svc(&datapath, /*dns_client_factory=*/nullptr,
                      std::move(runner), &conntrack_monitor);
+  auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor);
+  auto updater_ptr = updater.get();
+  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
   std::unique_ptr<patchpanel::SocketConnectionEvent> close_msg =
       CreateCloseSocketConnectionEvent();
 
-  // No interaction with ProcessRunner before feature is enabled.
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  // No interaction with ConnmarkUpdater before feature is enabled.
+  EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
   qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(updater_ptr);
 
   // After feature is enabled, process socket connection event will trigger
   // corresponding connmark update.
   qos_svc.Enable();
-  std::vector<std::string> argv = {
-      "-p",      "TCP",
-      "-s",      kIPAddress1,
-      "-d",      kIPAddress2,
-      "--sport", std::to_string(kPort1),
-      "--dport", std::to_string(kPort2),
-      "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _));
-
+  // When enabling QoS service, a new ConnmarkUpdater will be assigned, so
+  // assign mock ConnmarkUpdater to QoS service again.
+  updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor);
+  updater_ptr = updater.get();
+  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
+  auto tcp_conn = ConnmarkUpdater::Conntrack5Tuple{
+      .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
+      .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = static_cast<uint16_t>(kPort1),
+      .dport = static_cast<uint16_t>(kPort2),
+      .proto = ConnmarkUpdater::IPProtocol::kTCP};
+  EXPECT_CALL(
+      *updater_ptr,
+      UpdateConnmark(Eq(tcp_conn),
+                     Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
+                     kFwmarkQoSCategoryMask));
   qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  argv = {"-p",      "TCP",
-          "-s",      kIPAddress1,
-          "-d",      kIPAddress2,
-          "--sport", std::to_string(kPort1),
-          "--dport", std::to_string(kPort2),
-          "-m",      QoSFwmarkWithMask(QoSCategory::kDefault)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _));
+  EXPECT_CALL(*updater_ptr,
+              UpdateConnmark(Eq(tcp_conn),
+                             Fwmark::FromQoSCategory(QoSCategory::kDefault),
+                             kFwmarkQoSCategoryMask));
   qos_svc.ProcessSocketConnectionEvent(*close_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
-
-  // No interaction with process runner after feature is disabled.
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  Mock::VerifyAndClearExpectations(updater_ptr);
+  // No interaction with ConnmarkUpdater after feature is disabled.
+  EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
   qos_svc.Disable();
   qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(updater_ptr);
 }
 
 // QoSService should start DNS queries for each valid hostname in DoHProviders,
@@ -429,90 +433,56 @@ TEST(QoSServiceTest, OnBorealisVMStopped) {
   svc.OnBorealisVMStopped("vmtap1");
 }
 
-// QoSService should add conntrack listener once when enabled from disabled
-// state.
-TEST(QoSServiceTest, AddListener) {
-  MockDatapath mock_datapath;
-  StrictMock<MockConntrackMonitor> conntrack_monitor;
-  QoSService qos_svc(&mock_datapath, &conntrack_monitor);
-
-  // Listener will be added when QoSService is enabled.
-  EXPECT_CALL(conntrack_monitor,
-              AddListener(ElementsAreArray(kConntrackEvents), _));
-  qos_svc.Enable();
-  Mock::VerifyAndClearExpectations(&conntrack_monitor);
-
-  qos_svc.Enable();
-  Mock::VerifyAndClearExpectations(&conntrack_monitor);
-
-  // Listener will be added again when QoSService is re-enabled.
-  EXPECT_CALL(conntrack_monitor,
-              AddListener(ElementsAreArray(kConntrackEvents), _));
-  qos_svc.Disable();
-  qos_svc.Enable();
-  Mock::VerifyAndClearExpectations(&conntrack_monitor);
-}
-
-// QoSService can handle socket connection events correctly.
-// Note that only handling for TCP socket connection events is tested here.
-// Handling for UDP socket connection events is tested in ConnmarkUpdaterTest.
+// QoSService can handle socket connection events correctly. When socket
+// connection event is received, call ConnmarkUpdater to handle the update
+// task.
 TEST(QoSServiceTest, HandleSocketConnectionEvent) {
   MockDatapath mock_datapath;
   auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
 
   MockConntrackMonitor monitor;
-  monitor.Start(kConntrackEvents);
   QoSService qos_svc(&mock_datapath, /*dns_client_factory=*/nullptr,
                      std::move(runner), &monitor);
   qos_svc.Enable();
-
-  // When updating connmark for TCP sockets fails, it will not be updated again
-  // even getting conntrack event from ConntrackMonitor.
-  std::vector<std::string> argv = {
-      "-p",      "TCP",
-      "-s",      kIPAddress1,
-      "-d",      kIPAddress2,
-      "--sport", std::to_string(kPort1),
-      "--dport", std::to_string(kPort2),
-      "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
-      .WillOnce(Return(-1));
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
-  const ConntrackMonitor::Event kTCPEvent = ConntrackMonitor::Event{
-      .src = *net_base::IPAddress::CreateFromString(kIPAddress1),
-      .dst = (*net_base::IPAddress::CreateFromString(kIPAddress2)),
-      .sport = kPort1,
-      .dport = kPort2,
-      .proto = IPPROTO_TCP,
-      .type = ConntrackMonitor::EventType::kNew};
-  monitor.DispatchEventForTesting(kTCPEvent);
-  Mock::VerifyAndClearExpectations(runner_ptr);
-
-  // When notified of UDP socket event, call connmark updater for connmark
-  // update for this connection.
   auto updater = std::make_unique<MockConnmarkUpdater>(&monitor);
   auto updater_ptr = updater.get();
   qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
 
-  auto conn = ConnmarkUpdater::UDPConnection{
+  // When notified of TCP socket event, call ConnmarkUpdater for connmark
+  // update for this connection.
+  auto tcp_conn = ConnmarkUpdater::Conntrack5Tuple{
       .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
       .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
       .sport = static_cast<uint16_t>(kPort1),
-      .dport = static_cast<uint16_t>(kPort2)};
+      .dport = static_cast<uint16_t>(kPort2),
+      .proto = ConnmarkUpdater::IPProtocol::kTCP};
   EXPECT_CALL(
       *updater_ptr,
-      UpdateUDPConnectionConnmark(
-          Eq(conn), Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
-          kFwmarkQoSCategoryMask));
+      UpdateConnmark(Eq(tcp_conn),
+                     Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
+                     kFwmarkQoSCategoryMask));
+  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  Mock::VerifyAndClearExpectations(updater_ptr);
+
+  // When notified of UDP socket event, call ConnmarkUpdater for connmark
+  // update for this connection.
+  auto udp_conn = ConnmarkUpdater::Conntrack5Tuple{
+      .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
+      .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = static_cast<uint16_t>(kPort1),
+      .dport = static_cast<uint16_t>(kPort2),
+      .proto = ConnmarkUpdater::IPProtocol::kUDP};
+  EXPECT_CALL(
+      *updater_ptr,
+      UpdateConnmark(Eq(udp_conn),
+                     Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
+                     kFwmarkQoSCategoryMask));
   open_msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
                           SocketConnectionEvent_IpProtocol_UDP);
   qos_svc.ProcessSocketConnectionEvent(*open_msg);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(updater_ptr);
 }
 }  // namespace
 }  // namespace patchpanel

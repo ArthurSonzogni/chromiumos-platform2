@@ -120,8 +120,7 @@ class QoSService {
   class DoHUpdater;
   std::unique_ptr<DoHUpdater> doh_updater_;
 
-  // Manages connmark update requests for UDP connections. If the update fails,
-  // retries updating again when the connection appears in conntrack table.
+  // Manages connmark update requests for TCP and UDP connections.
   std::unique_ptr<ConnmarkUpdater> connmark_updater_;
 
   base::WeakPtrFactory<QoSService> weak_factory_{this};
