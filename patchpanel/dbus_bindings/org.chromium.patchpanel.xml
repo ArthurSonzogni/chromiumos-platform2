@@ -341,15 +341,15 @@
       </arg>
     </method>
 
-    <method name="NotifyVPNSocketConnectionEvent">
+    <method name="NotifyARCVPNSocketConnectionEvent">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyVPNSocketConnectionEventRequest" />
+                    value="patchpanel::NotifyARCVPNSocketConnectionEventRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyVPNSocketConnectionEventResponse" />
+                    value="patchpanel::NotifyARCVPNSocketConnectionEventResponse" />
       </arg>
     </method>
 

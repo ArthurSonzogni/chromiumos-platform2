@@ -457,10 +457,10 @@ PatchpanelAdaptor::NotifySocketConnectionEvent(
   return {};
 }
 
-NotifyVPNSocketConnectionEventResponse
-PatchpanelAdaptor::NotifyVPNSocketConnectionEvent(
-    const NotifyVPNSocketConnectionEventRequest& request) {
-  manager_->NotifyVPNSocketConnectionEvent(request);
+NotifyARCVPNSocketConnectionEventResponse
+PatchpanelAdaptor::NotifyARCVPNSocketConnectionEvent(
+    const NotifyARCVPNSocketConnectionEventRequest& request) {
+  manager_->NotifyARCVPNSocketConnectionEvent(request);
   return {};
 }
 

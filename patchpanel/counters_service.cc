@@ -198,7 +198,7 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   return counters;
 }
 
-void CountersService::HandleVPNSocketConnectionEvent(
+void CountersService::HandleARCVPNSocketConnectionEvent(
     const SocketConnectionEvent& msg) {
   // TODO(b/177389948): Add implementation.
 }

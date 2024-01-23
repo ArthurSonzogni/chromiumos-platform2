@@ -1089,9 +1089,9 @@ message SetFeatureFlagResponse {
 
 // Notification for a socket connection event of an ARC VPN app.
 // Currently used for ARC VPN traffic counting.
-message NotifyVPNSocketConnectionEventRequest {
+message NotifyARCVPNSocketConnectionEventRequest {
   SocketConnectionEvent msg = 1;
 }
 
-// Response to a NotifyVPNSocketConnectionEvent call.
-message NotifyVPNSocketConnectionEventResponse {}
+// Response to a NotifyARCVPNSocketConnectionEvent call.
+message NotifyARCVPNSocketConnectionEventResponse {}

@@ -1309,13 +1309,13 @@ void Manager::NotifySocketConnectionEvent(
   qos_svc_->ProcessSocketConnectionEvent(request.msg());
 }
 
-void Manager::NotifyVPNSocketConnectionEvent(
-    const NotifyVPNSocketConnectionEventRequest& request) {
+void Manager::NotifyARCVPNSocketConnectionEvent(
+    const NotifyARCVPNSocketConnectionEventRequest& request) {
   if (!request.has_msg()) {
     LOG(ERROR) << __func__ << ": no message attached.";
     return;
   }
-  counters_svc_->HandleVPNSocketConnectionEvent(request.msg());
+  counters_svc_->HandleARCVPNSocketConnectionEvent(request.msg());
 }
 
 bool Manager::SetFeatureFlag(
