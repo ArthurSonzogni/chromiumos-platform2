@@ -292,6 +292,9 @@ class SenderBase {
   virtual std::unique_ptr<ScopedProcessingFileBase> MakeScopedProcessingFile(
       const base::FilePath& meta_file) = 0;
 
+  // Access segmentation information
+  virtual std::optional<int> RunFeatureCheckAndGetValue(std::string_view flag);
+
   // Looks through |keys| in the os-release data using brillo::OsReleaseReader.
   // Keys are searched in order until a value is found. Returns the value in
   // the Optional if found, otherwise the Optional is empty.
@@ -304,8 +307,8 @@ class SenderBase {
   std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;
 
   // If already populated, feature and scope level for |AddSegmentationDetails|.
-  std::optional<std::string> feature_level_;
-  std::optional<std::string> scope_level_;
+  std::optional<int> feature_level_;
+  std::optional<int> scope_level_;
 };
 
 }  // namespace util

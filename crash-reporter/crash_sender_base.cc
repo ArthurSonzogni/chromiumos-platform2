@@ -16,6 +16,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/uuid.h>
+#include <brillo/files/file_util.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender_paths.h"
@@ -33,6 +34,8 @@ constexpr size_t kClientIdLength = 32U;
 
 // Buffer size for reading a meta file into memory, in bytes.
 constexpr size_t kMaxMetaFileSize = 1024 * 1024;
+
+const char kFeatureCheckPath[] = "/usr/sbin/feature_check";
 
 // Returns true if the given report kind is known.
 // TODO(satorux): Move collector constants to a common file.
@@ -500,42 +503,26 @@ void SenderBase::EnsureDBusIsReady() {
 }
 
 void SenderBase::AddSegmentationDetails(FullCrash& crash) {
-  if (feature_level_.has_value() && scope_level_.has_value()) {
+  if (!scope_level_.has_value()) {
+    scope_level_ = RunFeatureCheckAndGetValue("--scope_level");
+    if (!scope_level_.has_value()) {
+      LOG(WARNING) << "Failed to get scope level, will do without";
+    }
+  }
+  if (scope_level_.has_value()) {
     crash.key_vals.emplace_back(constants::kScopeLevelKey,
-                                scope_level_.value());
-    crash.key_vals.emplace_back(constants::kFeatureLevelKey,
-                                feature_level_.value());
-    return;
+                                base::NumberToString(scope_level_.value()));
   }
 
-  base::FilePath segmentation_file = paths::GetAt(
-      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
-  std::string raw_segmentation;
-  if (!base::ReadFileToStringWithMaxSize(segmentation_file, &raw_segmentation,
-                                         kMaxMetaFileSize)) {
-    LOG(WARNING) << "Failed to read semgentation data file";
-    return;
+  if (!feature_level_.has_value()) {
+    feature_level_ = RunFeatureCheckAndGetValue("--feature_level");
+    if (!feature_level_.has_value()) {
+      LOG(WARNING) << "Failed to get feature level, will do without";
+      return;
+    }
   }
-  brillo::KeyValueStore segmentation_data;
-  if (!ParseMetadata(raw_segmentation, &segmentation_data)) {
-    LOG(WARNING) << "Failed to parse segmentation data; continuing without";
-    return;
-  }
-  std::string scope_level;
-  if (!segmentation_data.GetString(constants::kScopeLevelKey, &scope_level)) {
-    LOG(WARNING) << "Failed to get scope level; continuing without";
-  } else {
-    scope_level_ = scope_level;
-    crash.key_vals.emplace_back(constants::kScopeLevelKey, scope_level);
-  }
-  std::string feature_level;
-  if (!segmentation_data.GetString(constants::kFeatureLevelKey,
-                                   &feature_level)) {
-    LOG(WARNING) << "Failed to get scope level; continuing without";
-    return;
-  }
-  feature_level_ = feature_level;
-  crash.key_vals.emplace_back(constants::kFeatureLevelKey, feature_level);
+  crash.key_vals.emplace_back(constants::kFeatureLevelKey,
+                              base::NumberToString(feature_level_.value()));
 }
 
 FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
@@ -659,4 +646,34 @@ std::optional<std::string> SenderBase::GetOsReleaseValue(
   return std::optional<std::string>();
 }
 
+// Run the feature_check binary to get feature_level or scope_level and get its
+// value.
+std::optional<int> SenderBase::RunFeatureCheckAndGetValue(
+    std::string_view flag) {
+  brillo::ProcessImpl feature_check;
+  feature_check.AddArg(kFeatureCheckPath);
+  feature_check.AddArg(std::string(flag));
+  feature_check.RedirectUsingMemory(STDOUT_FILENO);
+
+  int result = feature_check.Run();
+  if (result != 0) {
+    LOG(WARNING) << "Failed to run feature_check: " << result;
+    return std::nullopt;
+  }
+
+  std::string level_contents = feature_check.GetOutputString(STDOUT_FILENO);
+  if (!base::TrimWhitespaceASCII(level_contents, base::TrimPositions::TRIM_ALL,
+                                 &level_contents)) {
+    LOG(WARNING) << "Failed to trim whitespace from feature_check output";
+    return std::nullopt;
+  }
+  // The conversion isn't *strictly* necessary, but it's a nice way to validate
+  // that the string is valid.
+  int level = -1;
+  if (!base::StringToInt(level_contents, &level)) {
+    LOG(WARNING) << "Failed to parse level from feature_check into an int";
+    return std::nullopt;
+  }
+  return level;
+}
 }  // namespace util

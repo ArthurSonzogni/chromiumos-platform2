@@ -872,7 +872,7 @@ TEST_P(CrashSerializerParameterizedTest, SerializeCrash) {
   EXPECT_EQ(info.in_progress_integration_test(), "test.Test");
   EXPECT_EQ(info.collector(), "fake_collector");
 
-  int num_fields = 8;
+  int num_fields = 10;
   // Absolute paths are masked
   if (!absolute_paths_ && missing_file_ != kTextFile) {
     num_fields++;  // No missing text file

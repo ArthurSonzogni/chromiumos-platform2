@@ -1963,7 +1963,15 @@ TEST_P(CreateCrashFormDataTest, TestCreateCrashFormData) {
        "--boundary\r\n"
        "Content-Disposition: form-data; name=\"foovar\"\r\n"
        "\r\n"
-       "bar\r\n",
+       "bar\r\n"
+       "--boundary\r\n"
+       "Content-Disposition: form-data; name=\"scope_level\"\r\n"
+       "\r\n"
+       "0\r\n"
+       "--boundary\r\n"
+       "Content-Disposition: form-data; name=\"feature_level\"\r\n"
+       "\r\n"
+       "0\r\n",
        missing_file_ == kBinFile
            ? ""
            : "--boundary\r\n"

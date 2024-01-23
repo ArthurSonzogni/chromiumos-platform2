@@ -20,6 +20,7 @@ namespace util {
 namespace {
 using ::testing::_;
 using ::testing::Not;
+using ::testing::Return;
 using ::testing::StartsWith;
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
@@ -67,6 +68,11 @@ class CrashSenderBaseForTesting : public util::SenderBase {
     EXPECT_CALL(*this, MakeScopedProcessingFile(_)).Times(0);
     EXPECT_CALL(*this, RecordCrashRemoveReason(_)).Times(0);
   }
+
+  MOCK_METHOD(std::optional<int>,
+              RunFeatureCheckAndGetValue,
+              (std::string_view flag),
+              (override));
 
  private:
   MOCK_METHOD(std::unique_ptr<ScopedProcessingFileBase>,
@@ -221,7 +227,7 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_BlockAbsoluteAttachments) {
   EXPECT_EQ(2, log_files_blocked);
 }
 
-TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation) {
+TEST_F(CrashSenderBaseTest, SegmentationData) {
   const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
   const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
   const std::string meta =
@@ -243,23 +249,22 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation) {
       .metadata = metadata,
   };
 
-  const base::FilePath segmentation_file = paths::GetAt(
-      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
-  ASSERT_TRUE(test_util::CreateFile(segmentation_file,
-                                    "feature_level=1\nscope_level=0\n"));
-
   SenderBase::Options options;
   CrashSenderBaseForTesting sender(
       std::make_unique<test_util::AdvancingClock>(), options);
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--scope_level"))
+      .WillOnce(Return(2));
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--feature_level"))
+      .WillOnce(Return(3));
   FullCrash crash = sender.ReadMetaFile(details);
   EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
   EXPECT_THAT(crash.key_vals,
-              testing::Contains(std::make_pair("feature_level", "1")));
+              testing::Contains(std::make_pair("feature_level", "3")));
   EXPECT_THAT(crash.key_vals,
-              testing::Contains(std::make_pair("scope_level", "0")));
+              testing::Contains(std::make_pair("scope_level", "2")));
 }
 
-TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoScope) {
+TEST_F(CrashSenderBaseTest, SegmentationData_NoScope) {
   const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
   const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
   const std::string meta =
@@ -281,13 +286,13 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoScope) {
       .metadata = metadata,
   };
 
-  const base::FilePath segmentation_file = paths::GetAt(
-      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
-  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "feature_level=1\n"));
-
   SenderBase::Options options;
   CrashSenderBaseForTesting sender(
       std::make_unique<test_util::AdvancingClock>(), options);
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--scope_level"))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--feature_level"))
+      .WillOnce(Return(1));
   FullCrash crash = sender.ReadMetaFile(details);
   // Should still succeed.
   EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
@@ -298,7 +303,7 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoScope) {
       testing::Not(testing::Contains(std::make_pair("scope_level", "0"))));
 }
 
-TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoFeature) {
+TEST_F(CrashSenderBaseTest, SegmentationData_NoFeature) {
   const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
   const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
   const std::string meta =
@@ -320,13 +325,13 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoFeature) {
       .metadata = metadata,
   };
 
-  const base::FilePath segmentation_file = paths::GetAt(
-      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
-  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "scope_level=1\n"));
-
   SenderBase::Options options;
   CrashSenderBaseForTesting sender(
       std::make_unique<test_util::AdvancingClock>(), options);
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--scope_level"))
+      .WillOnce(Return(1));
+  EXPECT_CALL(sender, RunFeatureCheckAndGetValue("--feature_level"))
+      .WillOnce(Return(std::nullopt));
   FullCrash crash = sender.ReadMetaFile(details);
   // Should still succeed.
   EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
@@ -335,40 +340,6 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoFeature) {
   EXPECT_THAT(
       crash.key_vals,
       testing::Not(testing::Contains(std::make_pair("feature_level", "0"))));
-}
-
-TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_BadFormat) {
-  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
-  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
-  const std::string meta =
-      base::StrCat({"payload=read_meta_file.xyz\n"
-                    "exec_name=exec_bar\n"
-                    "fake_report_id=456\n"
-                    "upload_var_prod=bar\n"
-                    "done=1\n"});
-  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
-  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
-  brillo::KeyValueStore metadata;
-  EXPECT_TRUE(ParseMetadata(meta, &metadata));
-
-  const util::CrashDetails details = {
-      .meta_file = meta_file,
-      .payload_file = payload_file.BaseName(),
-      .payload_kind = "log",
-      .client_id = "client",
-      .metadata = metadata,
-  };
-
-  const base::FilePath segmentation_file = paths::GetAt(
-      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
-  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "feature_level=\n"));
-
-  SenderBase::Options options;
-  CrashSenderBaseForTesting sender(
-      std::make_unique<test_util::AdvancingClock>(), options);
-  FullCrash crash = sender.ReadMetaFile(details);
-  // Should still succeed.
-  EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
 }
 
 TEST_F(CrashSenderBaseTest, CreateClientId) {
