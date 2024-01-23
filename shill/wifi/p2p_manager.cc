@@ -155,6 +155,12 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
+  std::optional<uint32_t> priority;
+  if (args.Contains<uint32_t>(kP2PDevicePriority)) {
+    priority = args.Get<uint32_t>(kP2PDevicePriority);
+    LOG(INFO) << "Priority argument value: " << *priority;
+  }
+
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << "Failed to create P2P group, primary P2PDevice proxy "
                   "is not connected";
@@ -233,6 +239,12 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   std::optional<uint32_t> freq;
   if (args.Contains<uint32_t>(kP2PDeviceFrequency)) {
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
+  }
+
+  std::optional<uint32_t> priority;
+  if (args.Contains<uint32_t>(kP2PDevicePriority)) {
+    priority = args.Get<uint32_t>(kP2PDevicePriority);
+    LOG(INFO) << "Prioirty argument value: " << *priority;
   }
 
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {

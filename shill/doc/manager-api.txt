@@ -520,6 +520,7 @@ Methods		dict GetProperties()
 			the group owner. Possible arguments are "ssid" (string),
 			"passphrase" (string), and "frequency" (uint32). All arguments are
 			optional and all omitted args will be chosen by the platform.
+			Argument "priority" (uint32) exists as a non-functional stub.
 
 			Returns a dictionary with the following entries:
 
@@ -540,7 +541,8 @@ Methods		dict GetProperties()
 			config. Possible arguments are "ssid" (string), "passphrase"
 			(string), and "frequency" (uint32). "ssid" and "passphrase" are
 			mandatory. If "frequency" is omitted then the platform will scan
-			all available channels.
+			all available channels. Argument "priority" (uint32) exists as a
+			non-functional stub.
 
 			Returns a dictionary with the following entries:
 

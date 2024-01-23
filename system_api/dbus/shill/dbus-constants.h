@@ -1156,6 +1156,7 @@ constexpr char kP2PDeviceSSID[] = "ssid";
 constexpr char kP2PDevicePassphrase[] = "passphrase";
 constexpr char kP2PDeviceFrequency[] = "frequency";
 constexpr char kP2PDeviceBSSID[] = "bssid";
+constexpr char kP2PDevicePriority[] = "priority";
 
 // P2P result dictionary key names
 constexpr char kP2PDeviceShillID[] = "shill_id";
