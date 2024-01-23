@@ -194,7 +194,7 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
   // GSC has rebooted. Transition to the next state.
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateRoFirmware);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,

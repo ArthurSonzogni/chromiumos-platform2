@@ -161,7 +161,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   const UpdateRoFirmwareState& update_ro_firmware = state.update_ro_firmware();
   if (update_ro_firmware.choice() ==
       UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_UNKNOWN) {
-    LOG(ERROR) << "RmadState missing |udpate| argument.";
+    LOG(ERROR) << "RmadState missing |update| argument.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
   if (!state_.update_ro_firmware().optional() &&
@@ -179,11 +179,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
       // Firmware update completed. Same behavior as SKIP.
       [[fallthrough]];
     case UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_SKIP:
-      if (bool mlb_repair;
-          json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
-        return NextStateCaseWrapper(RmadState::StateCase::kRestock);
-      }
-      return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
+      return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
     default:
       break;
   }

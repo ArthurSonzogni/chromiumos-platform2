@@ -100,7 +100,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Skip) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Update) {

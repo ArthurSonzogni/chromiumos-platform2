@@ -113,7 +113,11 @@ WriteProtectDisableCompleteStateHandler::TryGetNextStateCaseAtBoot() {
       return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
     }
     // TODO(chenghan): Check if AP/EC SWWP are actually disabled.
-    return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
+    if (bool mlb_repair;
+        json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
+      return NextStateCaseWrapper(RmadState::StateCase::kRestock);
+    }
+    return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
   }
 
   // Otherwise, stay on the same state.

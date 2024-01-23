@@ -403,7 +403,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
 
   state_ = state;
 
-  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
+  return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
 }
 
 bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
