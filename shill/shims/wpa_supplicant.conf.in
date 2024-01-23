@@ -9,6 +9,16 @@ disable_scan_offload=1
 pmf=1
 sae_check_mfp=1
 
+# SAE mechanism for PWE derivation
+# 0 = hunting-and-pecking loop only (default without password identifier)
+# 1 = hash-to-element only (default with password identifier)
+# 2 = both hunting-and-pecking loop and hash-to-element enabled
+# Note: The default value is likely to change from 0 to 2 once the new
+# hash-to-element mechanism has received more interoperability testing.
+# When using SAE password identifier, the hash-to-element mechanism is used
+# regardless of the sae_pwe parameter value.
+sae_pwe=2
+
 # Configure P2P Interface MAC address policy by default.
 # use random MAC address on creating the interface.
 p2p_interface_random_mac_addr=1
