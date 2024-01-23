@@ -48,7 +48,9 @@ enum ScanResult {
 
   // Chrome OS specific error codes.
   SCAN_RESULT_NO_MATCH = 10000;  // Scan was success, but no template matched.
-  SCAN_RESULT_MAX = 10001;
+  // Power button event seen along with match. Treat as an error to prevent
+  // accidental unlock.
+  SCAN_RESULT_POWER_BUTTON_PRESSED = 10001;
 }
 
 // Included in biod's BiometricsManagerStatusChanged.

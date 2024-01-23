@@ -21,7 +21,7 @@
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_cros_fp_session_manager.h"
 #include "biod/mock_pairing_key_storage.h"
-#include "biod/power_button_filter.h"
+#include "biod/mock_power_button_filter.h"
 
 namespace biod {
 
@@ -123,19 +123,10 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
   void SetUpWithInitialState(
       State state = State::kNone,
       std::optional<uint32_t> pending_match_event = std::nullopt) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
-
-    const auto power_manager_proxy =
-        base::MakeRefCounted<dbus::MockObjectProxy>(
-            mock_bus.get(), power_manager::kPowerManagerServiceName,
-            dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-    EXPECT_CALL(*mock_bus,
-                GetObjectProxy(
-                    power_manager::kPowerManagerServiceName,
-                    dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
-        .WillOnce(testing::Return(power_manager_proxy.get()));
+    auto mock_power_button_filter = std::make_unique<MockPowerButtonFilter>();
+    mock_power_button_filter_ = mock_power_button_filter.get();
+    ON_CALL(*mock_power_button_filter_, ShouldFilterFingerprintMatch)
+        .WillByDefault(Return(false));
 
     auto mock_cros_dev = std::make_unique<MockCrosFpDevice>();
     // Keep a pointer to the fake device to manipulate it later.
@@ -161,7 +152,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     mock_pinweaver_manager_ = mock_pinweaver_manager.get();
 
     auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
-        PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
+        std::move(mock_power_button_filter), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
         std::move(mock_pk_storage), std::move(mock_pinweaver_manager), state,
         pending_match_event);
@@ -188,6 +179,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
   std::optional<CrosFpAuthStackManagerPeer> cros_fp_auth_stack_manager_peer_;
   metrics::MockBiodMetrics mock_metrics_;
   CrosFpAuthStackManager* cros_fp_auth_stack_manager_;
+  MockPowerButtonFilter* mock_power_button_filter_;
   MockPairingKeyStorage* mock_pk_storage_;
   MockCrosFpSessionManager* mock_session_manager_;
   MockCrosFpDevice* mock_cros_dev_;
@@ -1062,6 +1054,31 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
                               &reply));
 
   EXPECT_EQ(reply.status(), AuthenticateCredentialReply::NO_SECRET);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kWaitForFingerUp);
+
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
+}
+
+TEST_F(CrosFpAuthStackManagerInitiallyAuthDone, PowerButtonEvent) {
+  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
+  const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
+
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_power_button_filter_, ShouldFilterFingerprintMatch)
+      .WillOnce(Return(true));
+
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
+
+  AuthenticateCredentialReply reply;
+  cros_fp_auth_stack_manager_->AuthenticateCredential(
+      request, base::BindOnce([](AuthenticateCredentialReply* reply,
+                                 AuthenticateCredentialReply r) { *reply = r; },
+                              &reply));
+  EXPECT_EQ(reply.status(), AuthenticateCredentialReply::SUCCESS);
+  EXPECT_EQ(reply.scan_result(), ScanResult::SCAN_RESULT_POWER_BUTTON_PRESSED);
+
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kWaitForFingerUp);
 
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);

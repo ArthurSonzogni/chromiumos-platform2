@@ -308,6 +308,14 @@ CryptohomeStatus ScanResultToCryptohomeStatus(biod::ScanResult scan_result) {
           CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorMatchCredentialNoMatch),
           ErrorActionSet(PrimaryAction::kIncorrectAuth),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
+    case biod::SCAN_RESULT_POWER_BUTTON_PRESSED:
+      // If fingerprint sensor touch overlapped with a power button press, it
+      // will be treated as an error, but doesn't need to show an incorrect auth
+      // error message on the screen.
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorMatchCredentialIgnored),
+          ErrorActionSet({PossibleAction::kRetry}),
+          user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
     default:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
