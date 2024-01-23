@@ -30,6 +30,7 @@
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/notreached.h>
+#include <base/rand_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
@@ -144,6 +145,36 @@ void ReplyWithStatus(InUseAuthSession unused_auth_session,
                      CryptohomeStatus status) {
   ReplyType reply;
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+}
+
+// Function that can be used to inject the sending of an auth completion signal
+// to an on_done callback. The function requires a copy of the start signal that
+// it uses as a template for the completion signal.
+template <typename ReplyType>
+void SignalAuthCompletedThenDone(
+    SignallingInterface* signalling,
+    user_data_auth::AuthenticateStarted start_signal,
+    UserDataAuth::OnDoneCallback<ReplyType> on_done,
+    const ReplyType& reply) {
+  user_data_auth::AuthenticateAuthFactorCompleted signal;
+  signal.set_operation_id(start_signal.operation_id());
+  if (reply.has_error_info()) {
+    signal.set_error(reply.error());
+    *signal.mutable_error_info() = reply.error_info();
+  }
+  switch (start_signal.auth_factor_case()) {
+    case user_data_auth::AuthenticateStarted::kAuthFactorType:
+      signal.set_auth_factor_type(start_signal.auth_factor_type());
+      break;
+    case user_data_auth::AuthenticateStarted::kUserCreation:
+      signal.set_user_creation(start_signal.user_creation());
+      break;
+    case user_data_auth::AuthenticateStarted::AUTH_FACTOR_NOT_SET:
+      break;
+  }
+
+  signalling->SendAuthenticateAuthFactorCompleted(signal);
+  std::move(on_done).Run(reply);
 }
 
 // This function returns the AuthFactorPolicy from the UserPolicy. It will
@@ -3072,10 +3103,21 @@ void UserDataAuth::CreatePersistentUserWithSession(
     ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
   };
 
+  // Send the auth started signal and wrap the completion callback in a sender
+  // for the completion signal.
+  uint64_t operation_id = base::RandUint64();
+  user_data_auth::AuthenticateStarted start_signal;
+  start_signal.set_operation_id(operation_id);
+  start_signal.set_user_creation(true);
+  signalling_intf_->SendAuthenticateStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalAuthCompletedThenDone<user_data_auth::CreatePersistentUserReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
+
   user_data_auth::CreatePersistentUserReply reply;
   if (auth_session->ephemeral_user()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthCreatePersistentUserInEphemeralSession),
@@ -3096,7 +3138,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
   if (exists_or.ok() && exists_or.value()) {
     LOG(ERROR) << "User already exists: " << obfuscated_username;
     // TODO(b/208898186, dlunev): replace with a more appropriate error
-    ReplyWithError(std::move(on_done), reply,
+    ReplyWithError(std::move(on_done_with_signal), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthUserExistsInCreatePersistentUser),
@@ -3112,7 +3154,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
     LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
                << ", code: " << mount_error;
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeMountError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthCheckExistsFailedInCreatePersistentUser),
@@ -3128,7 +3170,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
   // between these two error cases in metrics and logs.
   if (auth_session->user_exists()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthUserDirExistsInCreatePersistentUser),
@@ -3153,7 +3195,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
       !homedirs_->Create(auth_session->username())) {
     LOG(ERROR) << "Failed to create shadow directory for: "
                << obfuscated_username;
-    ReplyWithError(std::move(on_done), reply,
+    ReplyWithError(std::move(on_done_with_signal), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthCreateFailedInCreatePersistentUser),
@@ -3170,7 +3212,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
   CryptohomeStatus ret = auth_session->OnUserCreated();
   if (!ret.ok()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthFinalizeFailedInCreatePersistentUser))
@@ -3180,14 +3222,8 @@ void UserDataAuth::CreatePersistentUserWithSession(
 
   PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
   reply.set_sanitized_username(*auth_session->obfuscated_username());
-
-  // Send a special authentication complete to signal that a new user was
-  // created and signed in.
-  user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
-  completed_proto.set_user_creation(true);
-  signalling_intf_->SendAuthenticateAuthFactorCompleted(completed_proto);
-
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  ReplyWithError(std::move(on_done_with_signal), reply,
+                 OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
@@ -3467,30 +3503,22 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
     event = hwsec_->NotifyAuthenticateEvent().value_or(hwsec::ScopedEvent());
   }
 
-  // Wrap callback to signal AuthenticateAuthFactorCompleted.
-  OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply>
-      on_done_wrapped_with_signal_cb = base::BindOnce(
-          [](SignallingInterface* signalling_intf, hwsec::ScopedEvent event,
-             OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> cb,
-             user_data_auth::AuthFactorType auth_factor_type,
-             const user_data_auth::AuthenticateAuthFactorReply& reply) {
-            user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
+  // Extract the auth factor type.
+  std::optional<AuthFactorType> auth_factor_type =
+      DetermineFactorTypeFromAuthInput(request.auth_input());
+  user_data_auth::AuthFactorType auth_factor_type_proto = AuthFactorTypeToProto(
+      auth_factor_type.value_or(AuthFactorType::kUnspecified));
 
-            if (reply.has_error_info()) {
-              completed_proto.set_error(reply.error());
-              auto* error_info = completed_proto.mutable_error_info();
-              *error_info = reply.error_info();
-            }
-            completed_proto.set_auth_factor_type(auth_factor_type);
-
-            signalling_intf->SendAuthenticateAuthFactorCompleted(
-                completed_proto);
-            std::move(cb).Run(reply);
-          },
-          signalling_intf_, std::move(event), std::move(on_done),
-          AuthFactorTypeToProto(
-              DetermineFactorTypeFromAuthInput(request.auth_input())
-                  .value_or(AuthFactorType::kUnspecified)));
+  // Send the auth started signal and wrap the completion callback in a sender
+  // for the completion signal.
+  uint64_t operation_id = base::RandUint64();
+  user_data_auth::AuthenticateStarted start_signal;
+  start_signal.set_operation_id(operation_id);
+  start_signal.set_auth_factor_type(auth_factor_type_proto);
+  signalling_intf_->SendAuthenticateStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalAuthCompletedThenDone<user_data_auth::AuthenticateAuthFactorReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
 
   user_data_auth::AuthenticateAuthFactorReply reply;
 
@@ -3502,7 +3530,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
     LOG(ERROR) << "Cannot accept request with both auth_factor_label and "
                   "auth_factor_labels.";
     ReplyWithError(
-        std::move(on_done_wrapped_with_signal_cb), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataMalformedRequestInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3523,7 +3551,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
       LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
-        std::move(on_done_wrapped_with_signal_cb), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocCouldntLoadUserPolicyFileInAuthenticateAuthFactor),
@@ -3532,12 +3560,10 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
     return;
   }
 
-  std::optional<AuthFactorType> auth_factor_type =
-      DetermineFactorTypeFromAuthInput(request.auth_input());
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy;
   if (!auth_factor_type.has_value()) {
     ReplyWithError(
-        std::move(on_done_wrapped_with_signal_cb), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthAuthFactorNotFoundInAuthenticateAuthFactor),
@@ -3564,7 +3590,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
       base::BindOnce(&HandleAuthenticationResult,
                      std::move(auth_session).BindForCallback(),
                      std::move(auth_factor_type_policy),
-                     std::move(on_done_wrapped_with_signal_cb)));
+                     std::move(on_done_with_signal)));
 }
 
 void UserDataAuth::UpdateAuthFactor(

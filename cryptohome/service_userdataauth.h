@@ -431,6 +431,10 @@ class UserDataAuthAdaptor
         const user_data_auth::PrepareAuthFactorProgress& signal) override {
       adaptor_->SendPrepareAuthFactorProgressSignal(signal);
     }
+    void SendAuthenticateStarted(
+        const user_data_auth::AuthenticateStarted& signal) override {
+      adaptor_->SendAuthenticateStartedSignal(signal);
+    }
     void SendAuthenticateAuthFactorCompleted(
         const user_data_auth::AuthenticateAuthFactorCompleted& signal)
         override {

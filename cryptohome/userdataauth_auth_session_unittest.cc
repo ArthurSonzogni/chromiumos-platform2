@@ -76,6 +76,7 @@ using ::testing::IsFalse;
 using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Le;
+using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -2184,9 +2185,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
   // Set up signalling to capture the relevant signal.
   NiceMock<MockSignalling> signalling;
   userdataauth_.SetSignallingInterface(signalling);
-  user_data_auth::AuthenticateAuthFactorCompleted signal_proto;
+  user_data_auth::AuthenticateStarted started_signal;
+  user_data_auth::AuthenticateAuthFactorCompleted completed_signal;
+  EXPECT_CALL(signalling, SendAuthenticateStarted(_))
+      .WillOnce(SaveArg<0>(&started_signal));
   EXPECT_CALL(signalling, SendAuthenticateAuthFactorCompleted(_))
-      .WillOnce(SaveArg<0>(&signal_proto));
+      .WillOnce(SaveArg<0>(&completed_signal));
 
   // Act.
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeFromState(_))
@@ -2200,9 +2204,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
       AuthenticateAuthFactor(request);
 
   // Verify
-  ASSERT_TRUE(signal_proto.has_error_info());
-  EXPECT_EQ(user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-            signal_proto.error());
+  EXPECT_THAT(started_signal.operation_id(), Ne(0));
+  EXPECT_THAT(completed_signal.operation_id(),
+              Eq(started_signal.operation_id()));
+  ASSERT_TRUE(completed_signal.has_error_info());
+  EXPECT_THAT(completed_signal.error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
 }
 
 }  // namespace

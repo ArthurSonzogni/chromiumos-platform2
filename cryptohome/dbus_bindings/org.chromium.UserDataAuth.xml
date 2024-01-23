@@ -617,7 +617,17 @@ do.
       </arg>
     </signal>
 
-    <!-- AuthenticateAuthFactorCompleted: Emitted when Authenticating Auth Factor is completed with the result. -->
+    <!-- AuthenticateStarted: Emitted when an authentication operation is started. -->
+    <signal name="AuthenticateStarted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthenticateStarted" />
+      </arg>
+    </signal>
+
+    <!-- AuthenticateAuthFactorCompleted: Emitted when an authentication operation is completed. -->
     <signal name="AuthenticateAuthFactorCompleted">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
