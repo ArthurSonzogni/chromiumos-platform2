@@ -28,32 +28,33 @@ WriteProtectUtilsImpl::WriteProtectUtilsImpl(
       ec_utils_(std::move(ec_utils)),
       futility_utils_(std::move(futility_utils)) {}
 
-bool WriteProtectUtilsImpl::GetHardwareWriteProtectionStatus(
-    bool* enabled) const {
+std::optional<bool> WriteProtectUtilsImpl::GetHardwareWriteProtectionStatus()
+    const {
   int hwwp_status;
   if (!crossystem_utils_->GetHwwpStatus(&hwwp_status)) {
     LOG(ERROR) << "Failed to get hardware write protect with crossystem utils.";
-    return false;
+    return std::nullopt;
   }
 
-  *enabled = (hwwp_status == 1);
-  return true;
+  return (hwwp_status == 1);
 }
 
-bool WriteProtectUtilsImpl::GetApWriteProtectionStatus(bool* enabled) const {
-  if (!futility_utils_->GetApWriteProtectionStatus(enabled)) {
+std::optional<bool> WriteProtectUtilsImpl::GetApWriteProtectionStatus() const {
+  auto enabled = futility_utils_->GetApWriteProtectionStatus();
+  if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to get AP write protect with futility utils.";
-    return false;
   }
-  return true;
+
+  return enabled;
 }
 
-bool WriteProtectUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) const {
-  if (!ec_utils_->GetEcWriteProtectionStatus(enabled)) {
+std::optional<bool> WriteProtectUtilsImpl::GetEcWriteProtectionStatus() const {
+  auto enabled = ec_utils_->GetEcWriteProtectionStatus();
+  if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to get EC write protect with ec utils.";
-    return false;
   }
-  return true;
+
+  return enabled;
 }
 
 bool WriteProtectUtilsImpl::DisableSoftwareWriteProtection() {

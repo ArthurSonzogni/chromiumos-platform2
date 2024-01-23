@@ -83,9 +83,9 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Make sure HWWP is off before initializing the state.
-  if (bool hwwp_enabled;
-      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
-      hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      !hwwp_enabled.has_value() || hwwp_enabled.value()) {
     return RMAD_ERROR_WP_ENABLED;
   }
 
@@ -330,21 +330,21 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
   }
 
   // Make sure HWWP is off.
-  if (bool hwwp_enabled;
-      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
-      hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      !hwwp_enabled.has_value() || hwwp_enabled.value()) {
     LOG(ERROR) << "HWWP is enabled. Aborting firmware update.";
     return false;
   }
 
   // Make sure AP/EC WP are off.
-  if (bool enabled;
-      !write_protect_utils_->GetApWriteProtectionStatus(&enabled) || enabled) {
+  if (auto enabled = write_protect_utils_->GetApWriteProtectionStatus();
+      !enabled.has_value() || enabled.value()) {
     LOG(ERROR) << "AP SWWP is enabled. Aborting firmware update.";
     return false;
   }
-  if (bool enabled;
-      !write_protect_utils_->GetEcWriteProtectionStatus(&enabled) || enabled) {
+  if (auto enabled = write_protect_utils_->GetEcWriteProtectionStatus();
+      !enabled.has_value() || enabled.value()) {
     LOG(ERROR) << "EC SWWP is enabled. Aborting firmware update.";
     return false;
   }

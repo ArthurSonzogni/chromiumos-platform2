@@ -18,7 +18,7 @@ class MockFutilityUtils : public FutilityUtils {
   MockFutilityUtils() = default;
   ~MockFutilityUtils() override = default;
 
-  MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (override));
+  MOCK_METHOD(std::optional<bool>, GetApWriteProtectionStatus, (), (override));
   MOCK_METHOD(bool, EnableApSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, DisableApSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, SetHwid, (const std::string&), (override));

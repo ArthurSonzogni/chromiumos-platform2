@@ -17,7 +17,7 @@ class MockEcUtils : public EcUtils {
   ~MockEcUtils() override = default;
 
   MOCK_METHOD(bool, Reboot, (), (override));
-  MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (override));
+  MOCK_METHOD(std::optional<bool>, GetEcWriteProtectionStatus, (), (override));
   MOCK_METHOD(bool, EnableEcSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, DisableEcSoftwareWriteProtection, (), (override));
 };

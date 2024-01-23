@@ -140,9 +140,9 @@ void FinalizeStateHandler::StartFinalize() {
 
 void FinalizeStateHandler::FinalizeTask() {
   // Enable SWWP if HWWP is still disabled.
-  if (bool hwwp_enabled;
-      write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
-      !hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      hwwp_enabled.has_value() && !hwwp_enabled.value()) {
     if (!write_protect_utils_->EnableSoftwareWriteProtection()) {
       LOG(ERROR) << "Failed to enable software write protection";
       status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
@@ -164,9 +164,9 @@ void FinalizeStateHandler::FinalizeTask() {
   status_.set_progress(0.8);
 
   // Make sure HWWP is disabled.
-  if (bool hwwp_enabled;
-      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
-      !hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      !hwwp_enabled.has_value() || !hwwp_enabled.value()) {
     LOG(ERROR) << "HWWP is still disabled";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);

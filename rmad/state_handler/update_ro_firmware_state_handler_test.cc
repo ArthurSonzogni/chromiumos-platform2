@@ -53,9 +53,8 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
-    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.hwwp_enabled), Return(true)));
+    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus())
+        .WillByDefault(Return(args.hwwp_enabled));
 
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =

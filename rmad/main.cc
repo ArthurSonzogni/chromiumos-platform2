@@ -23,9 +23,10 @@ namespace {
 void CheckWriteProtectAndEnterMinijail() {
   bool set_admin_caps = false;
   rmad::WriteProtectUtilsImpl write_protect_utils;
-  bool hwwp_enabled;
-  if (write_protect_utils.GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
-      !hwwp_enabled) {
+
+  if (auto hwwp_enabled =
+          write_protect_utils.GetHardwareWriteProtectionStatus();
+      hwwp_enabled.has_value() && !hwwp_enabled.value()) {
     VLOG(1) << "Hardware write protection off.";
     set_admin_caps = true;
   } else {

@@ -24,9 +24,9 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
       std::unique_ptr<FutilityUtils> futility_utils);
   ~WriteProtectUtilsImpl() override = default;
 
-  bool GetHardwareWriteProtectionStatus(bool* enabled) const override;
-  bool GetApWriteProtectionStatus(bool* enabled) const override;
-  bool GetEcWriteProtectionStatus(bool* enabled) const override;
+  std::optional<bool> GetHardwareWriteProtectionStatus() const override;
+  std::optional<bool> GetApWriteProtectionStatus() const override;
+  std::optional<bool> GetEcWriteProtectionStatus() const override;
   bool DisableSoftwareWriteProtection() override;
   bool EnableSoftwareWriteProtection() override;
 

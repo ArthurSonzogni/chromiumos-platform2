@@ -5,7 +5,7 @@
 #ifndef RMAD_UTILS_EC_UTILS_H_
 #define RMAD_UTILS_EC_UTILS_H_
 
-#include <string>
+#include <optional>
 
 namespace rmad {
 
@@ -15,7 +15,7 @@ class EcUtils {
   virtual ~EcUtils() = default;
 
   virtual bool Reboot() = 0;
-  virtual bool GetEcWriteProtectionStatus(bool* enabled) = 0;
+  virtual std::optional<bool> GetEcWriteProtectionStatus() = 0;
   virtual bool EnableEcSoftwareWriteProtection() = 0;
   virtual bool DisableEcSoftwareWriteProtection() = 0;
 

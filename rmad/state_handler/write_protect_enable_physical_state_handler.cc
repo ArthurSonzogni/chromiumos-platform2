@@ -69,9 +69,9 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
-  bool hwwp_enabled;
-  if (write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
-      hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      hwwp_enabled.has_value() && hwwp_enabled.value()) {
     return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
   return NextStateCaseWrapper(RMAD_ERROR_WAIT);
@@ -80,12 +80,12 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
 void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
   VLOG(1) << "Check write protection";
 
-  bool hwwp_enabled;
-  if (!write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled)) {
+  auto hwwp_enabled = write_protect_utils_->GetHardwareWriteProtectionStatus();
+  if (!hwwp_enabled.has_value()) {
     LOG(ERROR) << "Failed to get HWWP status";
     return;
   }
-  if (hwwp_enabled) {
+  if (hwwp_enabled.value()) {
     daemon_callback_->GetWriteProtectSignalCallback().Run(true);
     timer_.Stop();
   }

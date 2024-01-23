@@ -126,9 +126,9 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(segmentation_utils_);
 
   // Make sure HWWP is off before initializing the state.
-  if (bool hwwp_enabled;
-      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
-      hwwp_enabled) {
+  if (auto hwwp_enabled =
+          write_protect_utils_->GetHardwareWriteProtectionStatus();
+      !hwwp_enabled.has_value() || hwwp_enabled.value()) {
     return RMAD_ERROR_WP_ENABLED;
   }
 
@@ -393,10 +393,9 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   if (!WriteDeviceInfo(state.update_device_info())) {
     vpd_utils_->ClearRoVpdCache();
     vpd_utils_->ClearRwVpdCache();
-    if (bool hwwp_enabled;
-        !write_protect_utils_->GetHardwareWriteProtectionStatus(
-            &hwwp_enabled) ||
-        hwwp_enabled) {
+    if (auto hwwp_enabled =
+            write_protect_utils_->GetHardwareWriteProtectionStatus();
+        !hwwp_enabled.has_value() || hwwp_enabled.value()) {
       return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
     }
     return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);

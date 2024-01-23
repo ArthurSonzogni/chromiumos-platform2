@@ -16,12 +16,18 @@ class MockWriteProtectUtils : public WriteProtectUtils {
   MockWriteProtectUtils() = default;
   ~MockWriteProtectUtils() override = default;
 
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<bool>,
               GetHardwareWriteProtectionStatus,
-              (bool*),
+              (),
               (const, override));
-  MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (const, override));
-  MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetApWriteProtectionStatus,
+              (),
+              (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetEcWriteProtectionStatus,
+              (),
+              (const, override));
   MOCK_METHOD(bool, DisableSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, EnableSoftwareWriteProtection, (), (override));
 };

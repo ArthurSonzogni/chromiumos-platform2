@@ -5,6 +5,7 @@
 #ifndef RMAD_UTILS_FUTILITY_UTILS_H_
 #define RMAD_UTILS_FUTILITY_UTILS_H_
 
+#include <optional>
 #include <string>
 
 namespace rmad {
@@ -14,7 +15,7 @@ class FutilityUtils {
   FutilityUtils() = default;
   virtual ~FutilityUtils() = default;
 
-  virtual bool GetApWriteProtectionStatus(bool* enabled) = 0;
+  virtual std::optional<bool> GetApWriteProtectionStatus() = 0;
   virtual bool EnableApSoftwareWriteProtection() = 0;
   virtual bool DisableApSoftwareWriteProtection() = 0;
   virtual bool SetHwid(const std::string& hwid) = 0;

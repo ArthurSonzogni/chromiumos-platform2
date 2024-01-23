@@ -118,8 +118,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     {
       InSequence seq;
       for (bool enabled : args.wp_status_list) {
-        EXPECT_CALL(*write_protect_utils, GetHardwareWriteProtectionStatus(_))
-            .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
+        EXPECT_CALL(*write_protect_utils, GetHardwareWriteProtectionStatus())
+            .WillOnce(Return(enabled));
       }
     }
 

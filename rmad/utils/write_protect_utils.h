@@ -5,6 +5,8 @@
 #ifndef RMAD_UTILS_WRITE_PROTECT_UTILS_H_
 #define RMAD_UTILS_WRITE_PROTECT_UTILS_H_
 
+#include <optional>
+
 namespace rmad {
 
 class WriteProtectUtils {
@@ -12,9 +14,9 @@ class WriteProtectUtils {
   WriteProtectUtils() = default;
   virtual ~WriteProtectUtils() = default;
 
-  virtual bool GetHardwareWriteProtectionStatus(bool* enabled) const = 0;
-  virtual bool GetApWriteProtectionStatus(bool* enabled) const = 0;
-  virtual bool GetEcWriteProtectionStatus(bool* enabled) const = 0;
+  virtual std::optional<bool> GetHardwareWriteProtectionStatus() const = 0;
+  virtual std::optional<bool> GetApWriteProtectionStatus() const = 0;
+  virtual std::optional<bool> GetEcWriteProtectionStatus() const = 0;
   // Disable both AP and EC write protection.
   virtual bool DisableSoftwareWriteProtection() = 0;
   // Enable both AP and EC write protection.

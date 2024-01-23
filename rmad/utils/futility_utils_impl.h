@@ -24,7 +24,7 @@ class FutilityUtilsImpl : public FutilityUtils {
                              std::unique_ptr<HwidUtils> hwid_utils);
   ~FutilityUtilsImpl() override = default;
 
-  bool GetApWriteProtectionStatus(bool* enabled) override;
+  std::optional<bool> GetApWriteProtectionStatus() override;
   bool EnableApSoftwareWriteProtection() override;
   bool DisableApSoftwareWriteProtection() override;
   bool SetHwid(const std::string& hwid) override;

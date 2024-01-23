@@ -113,10 +113,9 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
         // If HWWP is already disabled, assume the user will select the physical
         // method and go directly to WpDisablePhysical state. Otherwise, let the
         // user choose between physical method or RSU.
-        if (bool hwwp_enabled;
-            write_protect_utils_->GetHardwareWriteProtectionStatus(
-                &hwwp_enabled) &&
-            !hwwp_enabled) {
+        if (auto hwwp_enabled =
+                write_protect_utils_->GetHardwareWriteProtectionStatus();
+            hwwp_enabled.has_value() && !hwwp_enabled.value()) {
           next_state = RmadState::StateCase::kWpDisablePhysical;
         } else {
           next_state = RmadState::StateCase::kWpDisableMethod;

@@ -629,10 +629,8 @@ void ProvisionDeviceStateHandler::Reboot() {
 }
 
 bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
-  bool hwwp_enabled;
-  return (
-      write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
-      !hwwp_enabled);
+  auto hwwp_enabled = write_protect_utils_->GetHardwareWriteProtectionStatus();
+  return (hwwp_enabled.has_value() && !hwwp_enabled.value());
 }
 
 ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateFirmwareConfig() {

@@ -40,19 +40,18 @@ FutilityUtilsImpl::FutilityUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils,
                                      std::unique_ptr<HwidUtils> hwid_utils)
     : cmd_utils_(std::move(cmd_utils)), hwid_utils_(std::move(hwid_utils)) {}
 
-bool FutilityUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
+std::optional<bool> FutilityUtilsImpl::GetApWriteProtectionStatus() {
   std::string futility_output;
   // Get WP status output string.
   if (!cmd_utils_->GetOutput(
           {kFutilityCmd, "flash", "--wp-status", "--ignore-hw"},
           &futility_output)) {
-    return false;
+    return std::nullopt;
   }
 
   // Check if WP is disabled.
-  *enabled = (futility_output.find(kFutilityWriteProtectDisabledStr) ==
-              std::string::npos);
-  return true;
+  return (futility_output.find(kFutilityWriteProtectDisabledStr) ==
+          std::string::npos);
 }
 
 bool FutilityUtilsImpl::EnableApSoftwareWriteProtection() {

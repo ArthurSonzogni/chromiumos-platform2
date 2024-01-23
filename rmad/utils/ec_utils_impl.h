@@ -19,7 +19,7 @@ class EcUtilsImpl : public EcUtils {
   ~EcUtilsImpl() override = default;
 
   bool Reboot() override;
-  bool GetEcWriteProtectionStatus(bool* enabled) override;
+  std::optional<bool> GetEcWriteProtectionStatus() override;
   bool EnableEcSoftwareWriteProtection() override;
   bool DisableEcSoftwareWriteProtection() override;
 

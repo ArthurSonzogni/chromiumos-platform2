@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <libec/flash_protect_command.h>
 #include <libec/reboot_command.h>
+#include <optional>
 
 namespace {
 
@@ -51,24 +52,21 @@ bool EcUtilsImpl::DisableEcSoftwareWriteProtection() {
   return EcUtilsImpl::SetEcSoftwareWriteProtection(false);
 }
 
-bool EcUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
+std::optional<bool> EcUtilsImpl::GetEcWriteProtectionStatus() {
   base::ScopedFD ec_fd = GetEcFd();
   if (!ec_fd.is_valid()) {
-    return false;
+    return std::nullopt;
   }
 
   ec::flash_protect::Flags flags = ec::flash_protect::Flags::kNone;
   auto flashprotect_cmd = ec::FlashProtectCommand_v1(flags, flags);
   if (!flashprotect_cmd.Run(ec_fd.get())) {
     LOG(ERROR) << "Failed to run EC WP status command";
-    return false;
+    return std::nullopt;
   }
 
-  *enabled =
-      (flashprotect_cmd.GetFlags() & ec::flash_protect::Flags::kRoAtBoot) !=
-      ec::flash_protect::Flags::kNone;
-
-  return true;
+  return (flashprotect_cmd.GetFlags() & ec::flash_protect::Flags::kRoAtBoot) !=
+         ec::flash_protect::Flags::kNone;
 }
 
 base::ScopedFD EcUtilsImpl::GetEcFd() const {

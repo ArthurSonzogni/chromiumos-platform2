@@ -45,9 +45,9 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Enabled) {
   auto futility_utils = std::make_unique<FutilityUtilsImpl>(
       std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
-  bool enabled;
-  EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
-  EXPECT_TRUE(enabled);
+  auto enabled = futility_utils->GetApWriteProtectionStatus();
+  EXPECT_TRUE(enabled.has_value());
+  EXPECT_TRUE(enabled.value());
 }
 
 TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Disabled) {
@@ -58,9 +58,9 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Disabled) {
   auto futility_utils = std::make_unique<FutilityUtilsImpl>(
       std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
-  bool enabled;
-  EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
-  EXPECT_FALSE(enabled);
+  auto enabled = futility_utils->GetApWriteProtectionStatus();
+  EXPECT_TRUE(enabled.has_value());
+  EXPECT_FALSE(enabled.value());
 }
 
 TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Misconfigured) {
@@ -72,9 +72,9 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Misconfigured) {
   auto futility_utils = std::make_unique<FutilityUtilsImpl>(
       std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
-  bool enabled;
-  EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
-  EXPECT_TRUE(enabled);
+  auto enabled = futility_utils->GetApWriteProtectionStatus();
+  EXPECT_TRUE(enabled.has_value());
+  EXPECT_TRUE(enabled.value());
 }
 
 TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Failed) {
@@ -83,8 +83,8 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Failed) {
   auto futility_utils = std::make_unique<FutilityUtilsImpl>(
       std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
-  bool enabled;
-  EXPECT_FALSE(futility_utils->GetApWriteProtectionStatus(&enabled));
+  auto enabled = futility_utils->GetApWriteProtectionStatus();
+  EXPECT_FALSE(enabled.has_value());
 }
 
 TEST_F(FutilityUtilsTest, EnableApSoftwareWriteProtection_Success) {
