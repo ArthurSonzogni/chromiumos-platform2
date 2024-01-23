@@ -25,5 +25,9 @@ install_config("install_scripts") {
     "modem-common.sh",
   ]
   type = "executable"
+
+  # Linter recommendation to use "lib" alias conflicts with GN helpers'
+  # expectations of an absolute path.
+  # gnlint: disable=GnLintInstallPathAlias
   install_path = "/usr/lib"
 }
