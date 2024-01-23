@@ -28,6 +28,7 @@ constexpr char kNVChipPath[] =
 #elif USE_TPM_DYNAMIC
 
 constexpr char kTpmPpiPath[] = "/sys/class/tpm/tpm0/ppi/request";
+constexpr char kTpmPpiRespPath[] = "/sys/class/tpm/tpm0/ppi/response";
 constexpr char kTpmTcgOpPath[] = "/sys/class/tpm/tpm0/ppi/tcg_operations";
 constexpr int kTpmPpiNothingId = 0;
 constexpr int kTpmPpiClearId = 22;
@@ -131,17 +132,20 @@ std::optional<bool> GetClearTpmRequest() {
   }
 
   std::string data;
-  if (!base::ReadFileToString(base::FilePath(kTpmPpiPath), &data)) {
+  if (!base::ReadFileToString(base::FilePath(kTpmPpiRespPath), &data)) {
     return std::nullopt;
   }
 
-  auto request = base::TrimWhitespaceASCII(data, base::TRIM_ALL);
+  int value = -1;
+  if (sscanf(data.c_str(), "%d", &value) != 1) {
+    return std::nullopt;
+  }
 
-  if (request == std::to_string(kTpmPpiClearId)) {
+  if (value == kTpmPpiClearId) {
     return true;
   }
 
-  if (request == std::to_string(kTpmPpiNothingId)) {
+  if (value == kTpmPpiNothingId) {
     return false;
   }
 
