@@ -670,7 +670,7 @@
   <event name="CellularConnectionAttempt">
     <summary>
       Records information of the last cellular connection attempt. An entry is
-      logged inmediately after the cellular connection fails or succeeds.
+      logged immediately after the cellular connection fails or succeeds.
     </summary>
     <metric name="apn_id" type="int">
       <summary>
@@ -800,7 +800,7 @@
     </metric>
     <metric name="connection_apn_types" type="int">
       <summary>
-        Indicates the APN type used in the connection attemp, and the APN
+        Indicates the APN type used in the connection attempt, and the APN
         types of all other connected bearers. Each APN type is represented
         by a digit, and the order of the digits represents the connection order
         from first on the left, to last on the right.
@@ -876,7 +876,7 @@
 
   <event name="PowerOptimization">
     <summary>
-      The event is submit when an power optimization action is performed.
+      The event is submit when a power optimization action is performed.
     </summary>
     <metric name="power_state" type="int">
       <summary>
@@ -1063,7 +1063,7 @@
 
   <event name="RollbackOobeConfigSave">
     <summary>
-      Result of the the process that encrypts and saves rollback data.
+      Result of the process that encrypts and saves rollback data.
       This event happens before powerwash.
     </summary>
     <metric name="origin_chromeos_version_major" type="int">
@@ -1433,7 +1433,7 @@
   </summary>
   <event name="UsbSessionEvent">
     <summary>
-      Records events emmitted by the kernel at notable points during a USB connection lifecycle.
+      Records events emitted by the kernel at notable points during a USB connection lifecycle.
     </summary>
     <metric name="BootId" type="hmac-string">
       <summary>
