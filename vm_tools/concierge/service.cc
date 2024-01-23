@@ -278,7 +278,7 @@ constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
 
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kVmMemoryManagementServiceFeature{
-    kVmMemoryManagementServiceFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+    kVmMemoryManagementServiceFeatureName, FEATURE_ENABLED_BY_DEFAULT};
 
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
