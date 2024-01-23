@@ -1194,7 +1194,7 @@ class Metrics {
   // This metric is only recorded at most once by network connection when a
   // portal is found with an HTTP redirect.
   static constexpr EnumMetric<FixedName> kMetricCapportSupported = {
-      .n = FixedName{"Network.Shill.PortalDector.CAPPORTSupported"},
+      .n = FixedName{"Network.Shill.PortalDetector.CAPPORTSupported"},
       .max = kCapportSupportedMax,
   };
 
@@ -1203,7 +1203,7 @@ class Metrics {
   // CAPPORT was advertised, regardless of whether a HTTP redirect was found or
   // not with legacy HTTP probes.
   static constexpr EnumMetric<FixedName> kMetricCapportAdvertised = {
-      .n = FixedName{"Network.Shill.PortalDector.CAPPORTAdvertised"},
+      .n = FixedName{"Network.Shill.PortalDetector.CAPPORTAdvertised"},
       .max = kCapportSupportedMax,
   };
 
