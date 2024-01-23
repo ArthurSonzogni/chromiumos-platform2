@@ -12,6 +12,9 @@ group("all") {
     ":libdm-bht",
     ":verity",
   ]
+  if (use.cros_host) {
+    deps += [ ":install_subtool" ]
+  }
   if (use.test) {
     deps += [ ":verity_tests" ]
   }
@@ -58,6 +61,11 @@ install_config("install_headers") {
 install_config("install_fls_header") {
   sources = [ "include/asm-generic/bitops/fls.h" ]
   install_path = "/usr/include/verity/asm-generic/bitops/"
+}
+
+install_config("install_subtool") {
+  sources = [ "subtool.textproto" ]
+  install_path = "/etc/cros/sdk-packages.d/verity"
 }
 
 if (use.test) {
