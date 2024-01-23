@@ -126,9 +126,10 @@ class ResourceManager : public CommandTransceiver {
     void Init(TPM_HANDLE handle, uint64_t sender);
 
     bool is_loaded;
+    bool has_context;
     // Valid only if |is_loaded| is true.
     TPM_HANDLE tpm_handle;
-    // Valid only if |is_loaded| is false.
+    // Valid only if |has_context| is true.
     TPMS_CONTEXT context;
     // Time when the handle is create.
     base::TimeTicks time_of_create;

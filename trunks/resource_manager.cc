@@ -991,6 +991,14 @@ TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
     LOG(ERROR) << __func__ << ": Attempted to save an unloaded handle.";
     return TCTI_RC_BAD_CONTEXT;
   }
+
+  // We already saved the context of this transient object, we don't need to
+  // save it again.
+  if (handle_info->has_context &&
+      IsTransientObjectHandle(handle_info->tpm_handle)) {
+    return TPM_RC_SUCCESS;
+  }
+
   TPM_RC result = TPM_RC_SUCCESS;
   int attempts = 0;
   while (attempts++ < kMaxCommandAttempts) {
@@ -1008,6 +1016,9 @@ TPM_RC ResourceManager::SaveContext(const MessageInfo& command_info,
                << ": Failed to save context: " << GetErrorString(result);
     return result;
   }
+
+  handle_info->has_context = true;
+
   // We only mark it as loaded when it is a session handle.
   if (IsSessionHandle(handle_info->tpm_handle)) {
     handle_info->is_loaded = false;
@@ -1029,6 +1040,7 @@ ResourceManager::HandleInfo::HandleInfo() : is_loaded(false), tpm_handle(0) {
 void ResourceManager::HandleInfo::Init(TPM_HANDLE handle, uint64_t cmd_sender) {
   tpm_handle = handle;
   is_loaded = true;
+  has_context = false;
   time_of_create = base::TimeTicks::Now();
   time_of_last_use = base::TimeTicks::Now();
   sender = cmd_sender;
