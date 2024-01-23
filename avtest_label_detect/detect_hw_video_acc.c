@@ -441,14 +441,14 @@ static bool is_vaapi_enc_av1_vbr_device(int fd) {
 #if VA_CHECK_VERSION(1, 17, 0)
   VAProfile va_profiles[] = {VAProfileAV1Profile0, VAProfileNone};
   VAConfigAttrib va_attribs[] = {{VAConfigAttribRateControl, VA_RC_VBR}};
-  if ((is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSliceLP,
-                                VA_RT_FORMAT_YUV420) ||
-       is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSlice,
-                                VA_RT_FORMAT_YUV420)) &&
-      are_vaapi_attribs_supported(fd, VAProfileAV1Profile0,
-                                  VAEntrypointEncSliceLP, va_attribs, 1)) {
-    return true;
-  }
+  return (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSliceLP,
+                                   VA_RT_FORMAT_YUV420) &&
+          are_vaapi_attribs_supported(fd, VAProfileAV1Profile0,
+                                      VAEntrypointEncSliceLP, va_attribs, 1)) ||
+         (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSlice,
+                                   VA_RT_FORMAT_YUV420) &&
+          are_vaapi_attribs_supported(fd, VAProfileAV1Profile0,
+                                      VAEntrypointEncSlice, va_attribs, 1));
 #endif
   return false;
 }
