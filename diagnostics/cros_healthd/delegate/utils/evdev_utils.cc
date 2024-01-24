@@ -179,17 +179,17 @@ void EvdevUtil::OnEvdevEvent(LibevdevWrapper* dev) {
            rc == LIBEVDEV_READ_STATUS_SYNC);
 }
 
-EvdevAudioJackObserver::EvdevAudioJackObserver(
+AudioJackEvdevDelegate::AudioJackEvdevDelegate(
     mojo::PendingRemote<mojom::AudioJackObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevAudioJackObserver::IsTarget(LibevdevWrapper* dev) {
+bool AudioJackEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   // Sarien board has separated event nodes so we use || instead of && here.
   return dev->HasEventCode(EV_SW, SW_HEADPHONE_INSERT) ||
          dev->HasEventCode(EV_SW, SW_MICROPHONE_INSERT);
 }
 
-void EvdevAudioJackObserver::FireEvent(const input_event& ev,
+void AudioJackEvdevDelegate::FireEvent(const input_event& ev,
                                        LibevdevWrapper* dev) {
   if (ev.type != EV_SW) {
     return;
@@ -212,18 +212,18 @@ void EvdevAudioJackObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevAudioJackObserver::InitializationFail(
+void AudioJackEvdevDelegate::InitializationFail(
     uint32_t custom_reason, const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevAudioJackObserver::ReportProperties(LibevdevWrapper* dev) {}
+void AudioJackEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {}
 
-EvdevTouchpadObserver::EvdevTouchpadObserver(
+TouchpadEvdevDelegate::TouchpadEvdevDelegate(
     mojo::PendingRemote<mojom::TouchpadObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevTouchpadObserver::IsTarget(LibevdevWrapper* dev) {
+bool TouchpadEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   // - Typical pointer devices: touchpads, tablets, mice.
   // - Typical non-direct devices: touchpads, mice.
   // - Check for event type EV_ABS to exclude mice, which report movement with
@@ -232,7 +232,7 @@ bool EvdevTouchpadObserver::IsTarget(LibevdevWrapper* dev) {
          !dev->HasProperty(INPUT_PROP_DIRECT) && dev->HasEventType(EV_ABS);
 }
 
-void EvdevTouchpadObserver::FireEvent(const input_event& ev,
+void TouchpadEvdevDelegate::FireEvent(const input_event& ev,
                                       LibevdevWrapper* dev) {
   if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
     observer_->OnTouch(mojom::TouchpadTouchEvent::New(FetchTouchPoints(dev)));
@@ -246,12 +246,12 @@ void EvdevTouchpadObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevTouchpadObserver::InitializationFail(uint32_t custom_reason,
+void TouchpadEvdevDelegate::InitializationFail(uint32_t custom_reason,
                                                const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevTouchpadObserver::ReportProperties(LibevdevWrapper* dev) {
+void TouchpadEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
   auto connected_event = mojom::TouchpadConnectedEvent::New();
   connected_event->max_x = std::max(dev->GetAbsMaximum(ABS_X), 0);
   connected_event->max_y = std::max(dev->GetAbsMaximum(ABS_Y), 0);
@@ -271,11 +271,11 @@ void EvdevTouchpadObserver::ReportProperties(LibevdevWrapper* dev) {
   observer_->OnConnected(std::move(connected_event));
 }
 
-EvdevTouchscreenObserver::EvdevTouchscreenObserver(
+TouchscreenEvdevDelegate::TouchscreenEvdevDelegate(
     mojo::PendingRemote<mojom::TouchscreenObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevTouchscreenObserver::IsTarget(LibevdevWrapper* dev) {
+bool TouchscreenEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   // - Typical non-pointer devices: touchscreens.
   // - Typical direct devices: touchscreens, drawing tablets.
   // - Use ABS_MT_TRACKING_ID to filter out stylus.
@@ -284,7 +284,7 @@ bool EvdevTouchscreenObserver::IsTarget(LibevdevWrapper* dev) {
          dev->HasEventCode(EV_ABS, ABS_MT_TRACKING_ID);
 }
 
-void EvdevTouchscreenObserver::FireEvent(const input_event& ev,
+void TouchscreenEvdevDelegate::FireEvent(const input_event& ev,
                                          LibevdevWrapper* dev) {
   if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
     observer_->OnTouch(
@@ -292,12 +292,12 @@ void EvdevTouchscreenObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevTouchscreenObserver::InitializationFail(
+void TouchscreenEvdevDelegate::InitializationFail(
     uint32_t custom_reason, const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevTouchscreenObserver::ReportProperties(LibevdevWrapper* dev) {
+void TouchscreenEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
   auto connected_event = mojom::TouchscreenConnectedEvent::New();
   connected_event->max_x = std::max(dev->GetAbsMaximum(ABS_X), 0);
   connected_event->max_y = std::max(dev->GetAbsMaximum(ABS_Y), 0);
@@ -306,15 +306,15 @@ void EvdevTouchscreenObserver::ReportProperties(LibevdevWrapper* dev) {
   observer_->OnConnected(std::move(connected_event));
 }
 
-EvdevStylusGarageObserver::EvdevStylusGarageObserver(
+StylusGarageEvdevDelegate::StylusGarageEvdevDelegate(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevStylusGarageObserver::IsTarget(LibevdevWrapper* dev) {
+bool StylusGarageEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   return dev->HasEventCode(EV_SW, SW_PEN_INSERTED);
 }
 
-void EvdevStylusGarageObserver::FireEvent(const input_event& ev,
+void StylusGarageEvdevDelegate::FireEvent(const input_event& ev,
                                           LibevdevWrapper* dev) {
   if (ev.type != EV_SW) {
     return;
@@ -329,18 +329,18 @@ void EvdevStylusGarageObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevStylusGarageObserver::InitializationFail(
+void StylusGarageEvdevDelegate::InitializationFail(
     uint32_t custom_reason, const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevStylusGarageObserver::ReportProperties(LibevdevWrapper* dev) {}
+void StylusGarageEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {}
 
-EvdevStylusObserver::EvdevStylusObserver(
+StylusEvdevDelegate::StylusEvdevDelegate(
     mojo::PendingRemote<mojom::StylusObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevStylusObserver::IsTarget(LibevdevWrapper* dev) {
+bool StylusEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   // - Typical non-pointer devices: touchscreens.
   // - Typical direct devices: touchscreens, drawing tablets.
   // - Use ABS_MT_TRACKING_ID to filter out touchscreen.
@@ -352,7 +352,7 @@ bool EvdevStylusObserver::IsTarget(LibevdevWrapper* dev) {
           dev->HasEventCode(EV_KEY, BTN_STYLUS2));
 }
 
-void EvdevStylusObserver::FireEvent(const input_event& ev,
+void StylusEvdevDelegate::FireEvent(const input_event& ev,
                                     LibevdevWrapper* dev) {
   if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
     bool is_stylus_in_contact = dev->GetEventValue(EV_KEY, BTN_TOUCH);
@@ -375,12 +375,12 @@ void EvdevStylusObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevStylusObserver::InitializationFail(uint32_t custom_reason,
+void StylusEvdevDelegate::InitializationFail(uint32_t custom_reason,
                                              const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevStylusObserver::ReportProperties(LibevdevWrapper* dev) {
+void StylusEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
   auto connected_event = mojom::StylusConnectedEvent::New();
   connected_event->max_x = std::max(dev->GetAbsMaximum(ABS_X), 0);
   connected_event->max_y = std::max(dev->GetAbsMaximum(ABS_Y), 0);
@@ -388,17 +388,17 @@ void EvdevStylusObserver::ReportProperties(LibevdevWrapper* dev) {
   observer_->OnConnected(std::move(connected_event));
 }
 
-EvdevPowerButtonObserver::EvdevPowerButtonObserver(
+PowerButtonEvdevDelegate::PowerButtonEvdevDelegate(
     mojo::PendingRemote<mojom::PowerButtonObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevPowerButtonObserver::IsTarget(LibevdevWrapper* dev) {
+bool PowerButtonEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   // Only internal power button is desired. Filter out USB devices to exclude
   // external power buttons.
   return dev->HasEventCode(EV_KEY, KEY_POWER) && dev->GetIdBustype() != BUS_USB;
 }
 
-void EvdevPowerButtonObserver::FireEvent(const input_event& ev,
+void PowerButtonEvdevDelegate::FireEvent(const input_event& ev,
                                          LibevdevWrapper* dev) {
   if (ev.type == EV_KEY && ev.code == KEY_POWER) {
     if (ev.value == 0) {
@@ -411,25 +411,25 @@ void EvdevPowerButtonObserver::FireEvent(const input_event& ev,
   }
 }
 
-void EvdevPowerButtonObserver::InitializationFail(
+void PowerButtonEvdevDelegate::InitializationFail(
     uint32_t custom_reason, const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevPowerButtonObserver::ReportProperties(LibevdevWrapper* dev) {
+void PowerButtonEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
   observer_->OnConnectedToEventNode();
 }
 
-EvdevVolumeButtonObserver::EvdevVolumeButtonObserver(
+VolumeButtonEvdevDelegate::VolumeButtonEvdevDelegate(
     mojo::PendingRemote<mojom::VolumeButtonObserver> observer)
     : observer_(std::move(observer)) {}
 
-bool EvdevVolumeButtonObserver::IsTarget(LibevdevWrapper* dev) {
+bool VolumeButtonEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
   return dev->HasEventCode(EV_KEY, KEY_VOLUMEDOWN) &&
          dev->HasEventCode(EV_KEY, KEY_VOLUMEUP);
 }
 
-void EvdevVolumeButtonObserver::FireEvent(const input_event& ev,
+void VolumeButtonEvdevDelegate::FireEvent(const input_event& ev,
                                           LibevdevWrapper* dev) {
   if (ev.type != EV_KEY) {
     return;
@@ -458,11 +458,11 @@ void EvdevVolumeButtonObserver::FireEvent(const input_event& ev,
   observer_->OnEvent(button, button_state);
 }
 
-void EvdevVolumeButtonObserver::InitializationFail(
+void VolumeButtonEvdevDelegate::InitializationFail(
     uint32_t custom_reason, const std::string& description) {
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void EvdevVolumeButtonObserver::ReportProperties(LibevdevWrapper* dev) {}
+void VolumeButtonEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {}
 
 }  // namespace diagnostics

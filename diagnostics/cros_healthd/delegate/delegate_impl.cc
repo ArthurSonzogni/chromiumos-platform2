@@ -365,7 +365,7 @@ void DelegateImpl::ResetLedColor(mojom::LedName name,
 
 void DelegateImpl::MonitorAudioJack(
     mojo::PendingRemote<mojom::AudioJackObserver> observer) {
-  auto delegate = std::make_unique<EvdevAudioJackObserver>(std::move(observer));
+  auto delegate = std::make_unique<AudioJackEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
@@ -373,7 +373,7 @@ void DelegateImpl::MonitorAudioJack(
 
 void DelegateImpl::MonitorTouchpad(
     mojo::PendingRemote<mojom::TouchpadObserver> observer) {
-  auto delegate = std::make_unique<EvdevTouchpadObserver>(std::move(observer));
+  auto delegate = std::make_unique<TouchpadEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate));
@@ -386,7 +386,7 @@ void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
 void DelegateImpl::MonitorTouchscreen(
     mojo::PendingRemote<mojom::TouchscreenObserver> observer) {
   auto delegate =
-      std::make_unique<EvdevTouchscreenObserver>(std::move(observer));
+      std::make_unique<TouchscreenEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate));
@@ -395,7 +395,7 @@ void DelegateImpl::MonitorTouchscreen(
 void DelegateImpl::MonitorStylusGarage(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer) {
   auto delegate =
-      std::make_unique<EvdevStylusGarageObserver>(std::move(observer));
+      std::make_unique<StylusGarageEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate));
@@ -403,7 +403,7 @@ void DelegateImpl::MonitorStylusGarage(
 
 void DelegateImpl::MonitorStylus(
     mojo::PendingRemote<mojom::StylusObserver> observer) {
-  auto delegate = std::make_unique<EvdevStylusObserver>(std::move(observer));
+  auto delegate = std::make_unique<StylusEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate));
@@ -640,7 +640,7 @@ void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
 void DelegateImpl::MonitorPowerButton(
     mojo::PendingRemote<mojom::PowerButtonObserver> observer) {
   auto delegate =
-      std::make_unique<EvdevPowerButtonObserver>(std::move(observer));
+      std::make_unique<PowerButtonEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
@@ -669,7 +669,7 @@ void DelegateImpl::RunPrimeSearch(base::TimeDelta exec_duration,
 void DelegateImpl::MonitorVolumeButton(
     mojo::PendingRemote<mojom::VolumeButtonObserver> observer) {
   auto delegate =
-      std::make_unique<EvdevVolumeButtonObserver>(std::move(observer));
+      std::make_unique<VolumeButtonEvdevDelegate>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);

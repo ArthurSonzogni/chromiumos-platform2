@@ -94,9 +94,9 @@ class EvdevUtil {
   std::unique_ptr<Delegate> delegate_;
 };
 
-class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
+class AudioJackEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevAudioJackObserver(
+  explicit AudioJackEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver>
           observer);
 
@@ -111,9 +111,9 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
 };
 
-class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
+class TouchpadEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevTouchpadObserver(
+  explicit TouchpadEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer);
 
   // EvdevUtil::Delegate overrides.
@@ -127,9 +127,9 @@ class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::TouchpadObserver> observer_;
 };
 
-class EvdevTouchscreenObserver final : public EvdevUtil::Delegate {
+class TouchscreenEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevTouchscreenObserver(
+  explicit TouchscreenEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::TouchscreenObserver>
           observer);
 
@@ -144,9 +144,9 @@ class EvdevTouchscreenObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::TouchscreenObserver> observer_;
 };
 
-class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
+class StylusGarageEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevStylusGarageObserver(
+  explicit StylusGarageEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::StylusGarageObserver>
           observer);
 
@@ -161,9 +161,9 @@ class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::StylusGarageObserver> observer_;
 };
 
-class EvdevStylusObserver final : public EvdevUtil::Delegate {
+class StylusEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevStylusObserver(
+  explicit StylusEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer);
 
   // EvdevUtil::Delegate overrides.
@@ -180,9 +180,9 @@ class EvdevStylusObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::StylusObserver> observer_;
 };
 
-class EvdevPowerButtonObserver final : public EvdevUtil::Delegate {
+class PowerButtonEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevPowerButtonObserver(
+  explicit PowerButtonEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
           observer);
 
@@ -197,9 +197,9 @@ class EvdevPowerButtonObserver final : public EvdevUtil::Delegate {
   mojo::Remote<ash::cros_healthd::mojom::PowerButtonObserver> observer_;
 };
 
-class EvdevVolumeButtonObserver final : public EvdevUtil::Delegate {
+class VolumeButtonEvdevDelegate final : public EvdevUtil::Delegate {
  public:
-  explicit EvdevVolumeButtonObserver(
+  explicit VolumeButtonEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
           observer);
 
