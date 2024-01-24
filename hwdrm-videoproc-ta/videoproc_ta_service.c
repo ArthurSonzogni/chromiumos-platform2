@@ -81,6 +81,24 @@ TEE_Result ParseH264SliceHeader(uint32_t param_types,
     goto out;
   }
 
+  // Verify the memory types on the input/output data.
+  res = TEE_CheckMemoryAccessRights(
+      TEE_MEMORY_ACCESS_READ | TEE_MEMORY_ACCESS_NONSECURE |
+          TEE_MEMORY_ACCESS_ANY_OWNER,
+      params[2].memref.buffer, params[2].memref.size);
+  if (res != TEE_SUCCESS) {
+    EMSG("Invalid input memory");
+    goto out;
+  }
+  res = TEE_CheckMemoryAccessRights(
+      TEE_MEMORY_ACCESS_WRITE | TEE_MEMORY_ACCESS_NONSECURE |
+          TEE_MEMORY_ACCESS_ANY_OWNER,
+      params[3].memref.buffer, params[3].memref.size);
+  if (res != TEE_SUCCESS) {
+    EMSG("Invalid output memory");
+    goto out;
+  }
+
   struct H264SliceHeaderData slice_hdr;
   struct StreamDataForSliceHeader* stream_data = params[2].memref.buffer;
   if (!ParseSliceHeader(((uint8_t*)in_addr) + params[1].value.a,
