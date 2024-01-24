@@ -1659,7 +1659,8 @@ void PowerSupply::SchedulePoll() {
   // samples then poll every |poll_delay_|.
   if (battery_stabilized_timestamp_ > now) {
     delay = battery_stabilized_timestamp_ - now + kBatteryStabilizedSlack;
-  } else if (!has_max_samples_ && num_zero_samples_ < samples) {
+  } else if (!has_max_samples_ && num_zero_samples_ < samples &&
+             power_status_.battery_is_present) {
     delay = poll_delay_initial_;
   } else {
     delay = poll_delay_;
