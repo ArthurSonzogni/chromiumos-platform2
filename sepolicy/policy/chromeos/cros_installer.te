@@ -50,4 +50,7 @@ no_arc(`
   rw_dir_file(cros_installer, efivarfs)
   allow cros_installer efivarfs:filesystem getattr;
   allow cros_installer efivarfs:file { create unlink };
+  # Allow cros_installer to perform privileged operations on efivarfs.
+  # TODO(b/322370774): drop dac_override in favor of more targeted permissions.
+  allow cros_installer cros_installer:capability dac_override;
 ')
