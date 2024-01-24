@@ -346,6 +346,11 @@ void Camera3DeviceImpl::AddStreamOnThread(int format,
       // This is a preview stream. Add the usage flag for preview.
       stream.usage |= GRALLOC_USAGE_HW_COMPOSER;
     }
+    if (type == CAMERA3_STREAM_OUTPUT &&
+        format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
+      // This is a video stream. Add the usage flag for video.
+      stream.usage |= GRALLOC_USAGE_HW_VIDEO_ENCODER;
+    }
     if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
       stream.physical_camera_id = "";
     }
