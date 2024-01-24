@@ -40,6 +40,9 @@
 
 namespace runtime_probe {
 
+// Please update docs/probe_functions.md.
+// See go/ifthisthenthatlint#ignoring-the-linter to ignore the linter.
+// LINT.IfChange
 using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     AtaStorageFunction,
                                     AudioCodecFunction,
@@ -70,6 +73,7 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     UsbCameraFunction,
                                     VPDCached,
                                     WirelessNetworkFunction>;
+// LINT.ThenChange(//runtime_probe/docs/probe_functions.md)
 
 using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
                                                 AudioCodecFunction,
