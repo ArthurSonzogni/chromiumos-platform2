@@ -52,7 +52,6 @@ void ProbeCpuTelemetryInfoCallback(
   } else {
     const auto& cpu_info = cpu_result->get_cpu_info();
     for (const auto& physical_cpu_info : cpu_info->physical_cpus) {
-      // TODO(b/285999787): include chip_id in the probe result.
       probe_result.Append(
           base::Value::Dict()
               .Set("cores", CountLogicalCores(physical_cpu_info))

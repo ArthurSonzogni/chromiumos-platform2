@@ -578,7 +578,7 @@ TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
                                            kNoModelNameCpuinfoContents));
 
-  // For Qualcomm devices we _should_ just be looking at the "family" and
+  // For Arm devices we _should_ just be looking at the "family" and
   // "machine" files, but throw others in there (based on a real device)
   // to make sure it doesn't confuse the parser.
   SetFile({kRelativeSoCDevicesDir, "soc0", "family"}, "jep106:0070\n");
@@ -595,6 +595,30 @@ TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCID) {
   auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
   EXPECT_TRUE(model_name.has_value());
   ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
+}
+
+// Test that we have soc_id for MediaTek devices
+TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCID) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
+                                           kNoModelNameCpuinfoContents));
+
+  // For Arm devices we _should_ just be looking at the "family" and
+  // "machine" files, but throw others in there (based on a real device)
+  // to make sure it doesn't confuse the parser.
+  SetFile({kRelativeSoCDevicesDir, "soc0", "family"}, "MediaTek\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "machine"},
+          "Kompanio 520 (MT8186)\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "family"}, "jep106:0426\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "soc_id"}, "jep106:0426:8186\n");
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "MediaTek Kompanio 520 (MT8186)");
 }
 
 // Test that we have device tree compatible string for Arm devices.

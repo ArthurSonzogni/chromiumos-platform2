@@ -310,17 +310,18 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
           base::FileEnumerator::FileType::DIRECTORIES |
           base::FileEnumerator::FileType::SHOW_SYM_LINKS);
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
-    // Qualcomm devices have a specific SoC driver that will report a "family"
-    // of "Snapdragon" and then provide the marketing name of the SoC. If we
-    // find this then we return right away.
-    if (ReadAndTrimString(path.Append("family"), &family)) {
+    // Newer kernels have a specific SoC driver that will report a "family"
+    // like "Snapdragon" or "Mediatek" and then provide the marketing name of
+    // the SoC. If we find this then we return right away.
+    if (ReadAndTrimString(path.Append("family"), &family) &&
+        ReadAndTrimString(path.Append("machine"), &machine)) {
+      // "Snapdragon" doesn't include the brand name so add a "Qualcomm" prefix
+      // for better marketing display name.
       if (family == kQualcommFamilyName) {
-        if (!ReadAndTrimString(path.Append("machine"), &machine)) {
-          continue;
-        }
-        *model_name = "Qualcomm " + family + " " + machine;
-        return;
+        family = "Qualcomm " + family;
       }
+      *model_name = family + " " + machine;
+      return;
     }
 
     if (!base::ReadFileToString(path.Append("soc_id"), &content)) {
