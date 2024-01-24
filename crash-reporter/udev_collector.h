@@ -143,13 +143,12 @@ class UdevCollector : public CrashCollector {
   // firmware dump is created.
   void EmitConnectivityDebugDumpCreatedSignal(const base::FilePath& file_name);
 
-  // This variable is set false by default and set to true from
-  // unit test to invoke connectivity fwdump feature for testing.
-  // This is a temporary variable to block fwdump in FR feature until
-  // policy to control this feature is available. This will be removed
-  // when the feature is fully ready. TODO(b/291344512): Remove this
-  // flag support once fwdump feature is fully ready.
-  bool connectivity_fwdump_feature_enabled_ = false;
+  // A temporary member variable to keep firmware dump in feedback report
+  // feature disabled and only gets enabled if fbpreprocessord use flag is
+  // added in the overlays for that board.
+  // TODO(b/291344512): Remove this flag support once fwdump
+  // feature is fully ready.
+  bool connectivity_fwdump_feature_enabled_;
 
   // Variable to store the session value when the connectivity
   // firmware dump is triggered.

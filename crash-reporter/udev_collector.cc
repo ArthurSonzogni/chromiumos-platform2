@@ -67,7 +67,21 @@ UdevCollector::UdevCollector(
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
     : CrashCollector("udev", metrics_lib),
-      dev_coredump_directory_(kDefaultDevCoredumpDirectory) {}
+      dev_coredump_directory_(kDefaultDevCoredumpDirectory) {
+#if !USE_FBPREPROCESSORD
+  // By default, generate connectivity fwdumps only on boards that
+  // have a fbpreprocessord running to process them. The code is
+  // controlled by a member variable instead of directly by a
+  // preprocessor symbol so that unit tests can continue to test
+  // the feature on boards that do not have a fbpreprocessord.
+  // This will be removed when the feature is fully ready.
+  // TODO(b/291344512): Remove this flag support once fwdump
+  // feature is fully ready.
+  connectivity_fwdump_feature_enabled_ = false;
+#else   // !USE_FBPREPROCESSORD
+  connectivity_fwdump_feature_enabled_ = true;
+#endif  // !USE_FBPREPROCESSORD
+}
 
 UdevCollector::~UdevCollector() {}
 

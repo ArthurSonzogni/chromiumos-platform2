@@ -15,6 +15,7 @@ shared_defines = [
   "USE_CHROMELESS_TTY=${use.chromeless_tty}",
   "USE_FORCE_BREAKPAD=${use.force_breakpad}",
   "USE_HW_DETAILS=${use.hw_details}",
+  "USE_FBPREPROCESSORD=${use.fbpreprocessord}",
 ]
 
 group("all") {

@@ -93,6 +93,7 @@ _IUSE = [
     "enterprise_rollback_reven",
     "factory_runtime_probe",
     "fake_drivefs_launcher",
+    "fbpreprocessord",
     "feature_management",
     "feedback",
     "flex_internal",
