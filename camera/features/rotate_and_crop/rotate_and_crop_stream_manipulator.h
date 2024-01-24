@@ -86,9 +86,12 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
                              uint8_t rc_mode);
 
   struct CaptureContext {
+    bool IsObsolete();
+
     uint8_t client_rc_mode = 0;
     uint8_t hal_rc_mode = 0;
     uint32_t num_pending_buffers = 0;
+    bool has_pending_input_buffer = false;
     bool metadata_received = false;
     bool has_pending_blob = false;
     std::optional<CameraBufferPool::Buffer> yuv_buffer;
