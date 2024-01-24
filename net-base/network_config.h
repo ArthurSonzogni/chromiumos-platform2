@@ -33,6 +33,11 @@ struct BRILLO_EXPORT NetworkConfig {
   bool operator==(const NetworkConfig& rhs) const;
   bool IsEmpty() const;
 
+  // Creates a new NetworkConfig with IPv4 properties from |ipv4_config| and
+  // IPv6 properties from |ipv6_config|. Non-family-specific fields are merged.
+  static NetworkConfig Merge(const NetworkConfig* ipv4_config,
+                             const NetworkConfig* ipv6_config);
+
   // IPv4 configurations. If |ipv4_address| is null, no IPv4 is configured on
   // the Network. If |ipv4_address| is present but |ipv4_gateway| is null,
   // routes are to be added on-link to the netdevice.

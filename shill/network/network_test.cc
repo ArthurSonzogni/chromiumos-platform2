@@ -1122,7 +1122,7 @@ class NetworkStartTest : public NetworkTest {
           test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_config_ : nullptr;
       net_base::NetworkConfig* ipv4 =
           test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_config_ : nullptr;
-      auto network_config = CombineNetworkConfigs(ipv4, ipv6);
+      auto network_config = net_base::NetworkConfig::Merge(ipv4, ipv6);
       network_->set_link_protocol_network_config(
           std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
     }
@@ -1215,9 +1215,10 @@ class NetworkStartTest : public NetworkTest {
       ASSERT_NE(network_->ip6config(), nullptr);
     }
 
-    EXPECT_EQ(CombineNetworkConfigs(GetNetworkConfigPtrFromType(ipv4_type),
-                                    GetNetworkConfigPtrFromType(ipv6_type)),
-              network_->GetNetworkConfig());
+    EXPECT_EQ(
+        net_base::NetworkConfig::Merge(GetNetworkConfigPtrFromType(ipv4_type),
+                                       GetNetworkConfigPtrFromType(ipv6_type)),
+        network_->GetNetworkConfig());
   }
 
   // Verifies that GetAddresses() returns all configured addresses, in the order
@@ -1281,38 +1282,6 @@ class NetworkStartTest : public NetworkTest {
       case IPConfigType::kNone:
         return std::nullopt;
     }
-  }
-
-  // Combines IPv4 properties from |ipv4_config| and IPv6 properties from
-  // |ipv6_config| to create a new NetworkConfig. Only considers address,
-  // gateway, DNS servers, and MTU properties.
-  static net_base::NetworkConfig CombineNetworkConfigs(
-      const net_base::NetworkConfig* ipv4_config,
-      const net_base::NetworkConfig* ipv6_config) {
-    net_base::NetworkConfig ret;
-    const int min_mtu = ipv6_config ? net_base::NetworkConfig::kMinIPv6MTU
-                                    : net_base::NetworkConfig::kMinIPv4MTU;
-    if (ipv6_config) {
-      ret.ipv6_addresses = ipv6_config->ipv6_addresses;
-      ret.ipv6_gateway = ipv6_config->ipv6_gateway;
-      ret.dns_servers.insert(ret.dns_servers.end(),
-                             ipv6_config->dns_servers.begin(),
-                             ipv6_config->dns_servers.end());
-      ret.mtu = ipv6_config->mtu;
-    }
-    if (ipv4_config) {
-      ret.ipv4_address = ipv4_config->ipv4_address;
-      ret.ipv4_gateway = ipv4_config->ipv4_gateway;
-      ret.dns_servers.insert(ret.dns_servers.end(),
-                             ipv4_config->dns_servers.begin(),
-                             ipv4_config->dns_servers.end());
-      if (ipv4_config->mtu.has_value()) {
-        ret.mtu = ret.mtu.has_value() ? std::min(ret.mtu, ipv4_config->mtu)
-                                      : ipv4_config->mtu;
-        ret.mtu = std::max(min_mtu, *ret.mtu);
-      }
-    }
-    return ret;
   }
 
   net_base::NetworkConfig ipv4_dhcp_config_;

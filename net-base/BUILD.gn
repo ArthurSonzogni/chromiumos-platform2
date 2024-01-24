@@ -140,6 +140,7 @@ if (use.test) {
       "netlink_attribute_test.cc",
       "netlink_packet_test.cc",
       "netlink_socket_test.cc",
+      "network_config_test.cc",
       "process_manager_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
