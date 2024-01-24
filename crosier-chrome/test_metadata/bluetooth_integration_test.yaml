@@ -5,7 +5,7 @@
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "BluetoothPowerStateObserver"
+name: "BluetoothIntegrationTest"
 harness: "crosier"
 category: "integration"
 owners:
