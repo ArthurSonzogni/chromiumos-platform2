@@ -102,6 +102,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":liblvmd",
+      ":lvmd_dbus_adaptors",
       "//common-mk/testrunner",
     ]
   }
