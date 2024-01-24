@@ -30,7 +30,7 @@ The steps for developing a DLC involves the following:
 * [Building a DLC locally]
 * [Enabling a DLC]
 * [Install/Uninstall a DLC]
-* [Write tests dependant on a DLC]
+* [Write tests dependent on a DLC]
 
 ### Create a DLC
 
@@ -146,12 +146,12 @@ If your service/daemon also starts on `starting system-services`:
 
 On a locally built test build|image, calling dlcservice API does not download
 the DLC (no DLC is being served), unless the DLC is preloaded using
-[Write tests dependant on a DLC]. For local development, please follow
+[Write tests dependent on a DLC]. For local development, please follow
 [Building a DLC locally].
 
-### Write tests dependant on a DLC
+### Write tests dependent on a DLC
 
-In order to test a DLC dependant feature, the optional variable field
+In order to test a DLC dependent feature, the optional variable field
 `DLC_PRELOAD` needs to be set to true while the integration/tast tests invoke
 installing the DLC. This will allow tests to seamlessly install the DLC on test
 images.
@@ -229,7 +229,7 @@ Also, for legacy DLCs, this will only work for "live" images
 [Building a DLC locally]: #Building-a-DLC-locally
 [Enabling a DLC]: #Enabling-a-DLC
 [Install/Uninstall a DLC]: #Install_Uninstall-a-DLC
-[Write tests dependant on a DLC]: #Write-tests-dependant-on-a-DLC
+[Write tests dependent on a DLC]: #Write-tests-dependent-on-a-DLC
 
 [go/dlc-framework]: http://go/dlc-framework
 [crosh]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/crosh
