@@ -4812,6 +4812,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
       return false;
     }
 
+    if (!::testing::Mock::VerifyAndClearExpectations(&signalling_)) {
+      return false;
+    }
     return true;
   }
 
@@ -5595,6 +5598,47 @@ TEST_F(UserDataAuthApiTest, MountGuestWithOtherMounts) {
   EXPECT_THAT(guest_reply->error_info(),
               HasPossibleActions(
                   std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, ResetLECredentials) {
+  constexpr uint64_t kLabel = 100;
+  ASSERT_TRUE(CreateTestUser());
+
+  AuthFactorManager* af_manager =
+      userdataauth_->GetAuthFactorManagerForTesting();
+
+  // Inject a PIN factor.
+  auto pin_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, "pin-label",
+      AuthFactorMetadata{.metadata = PinMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState{}});
+  ASSERT_THAT(af_manager->SaveAuthFactorFile(GetObfuscatedUsername(kUsername1),
+                                             *pin_factor),
+              IsOk());
+
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Add the PIN auth factor.
+  ON_CALL(hwsec_pw_manager_, IsEnabled).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_pw_manager_, GetDelayInSeconds).WillByDefault(ReturnValue(0));
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential)
+      .WillOnce(ReturnValue(kLabel));
+  user_data_auth::AddAuthFactorRequest add_factor_request;
+  add_factor_request.set_auth_session_id(session_id.value());
+  add_factor_request.mutable_auth_factor()->set_type(
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN);
+  add_factor_request.mutable_auth_factor()->set_label("pin-label");
+  add_factor_request.mutable_auth_factor()->mutable_pin_metadata();
+  add_factor_request.mutable_auth_input()->mutable_pin_input()->set_secret(
+      "pin");
+  std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
+      AddAuthFactorSync(add_factor_request);
+
+  EXPECT_CALL(hwsec_pw_manager_, GetWrongAuthAttempts(kLabel))
+      .WillOnce(ReturnValue(1));
+  EXPECT_CALL(hwsec_pw_manager_, ResetCredential(kLabel, _, _));
+  ASSERT_TRUE(GetTestAuthedAuthSession().has_value());
 }
 
 }  // namespace cryptohome
