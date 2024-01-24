@@ -497,7 +497,13 @@ void HandleAuthenticationResult(
   if (reply.auth_properties().has_seconds_left()) {
     reply.set_seconds_left(reply.auth_properties().seconds_left());
   }
+  bool auth_succeeded = status.ok();
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+
+  // Reset LE credentials if authentication succeeded.
+  if (auth_succeeded) {
+    auth_session->ResetLECredentials();
+  }
 
   // The reply is sent, carry out any post-auth actions.
   switch (post_auth_action.action_type) {

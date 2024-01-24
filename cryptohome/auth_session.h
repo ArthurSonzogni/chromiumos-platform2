@@ -278,6 +278,11 @@ class AuthSession final {
       const user_data_auth::TerminateAuthFactorRequest& request,
       StatusCallback on_done);
 
+  // This function is used to reset the attempt count for a low entropy
+  // credential. Currently, this resets all low entropy credentials both
+  // stored in USS and VK.
+  void ResetLECredentials();
+
   // Subobjects that implement operations that require the session to be
   // authforized for a specific intent. While these are technically classes they
   // are not really intended to be used as independent types. Instead it is
@@ -664,11 +669,6 @@ class AuthSession final {
                                  auth_session_performance_timer,
                              CryptohomeStatus original_status,
                              StatusCallback on_done);
-
-  // This function is used to reset the attempt count for a low entropy
-  // credential. Currently, this resets all low entropy credentials both
-  // stored in USS and VK.
-  void ResetLECredentials();
 
   // This function is used to reset the attempt count and expiration
   // for rate-limiters. Normally credentials guarded by rate-limiters will never
