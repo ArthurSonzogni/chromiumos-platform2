@@ -67,7 +67,7 @@ const char ConnectionDiagnostics::kIssueNone[] =
     "No connection issue detected.";
 const char ConnectionDiagnostics::kIssueGatewayUpstream[] =
     "We can find a route to the target web server at a remote IP address, "
-    "and the local gateway is pingable. Gatway issue or upstream "
+    "and the local gateway is pingable. Gateway issue or upstream "
     "connectivity problem detected.";
 const char ConnectionDiagnostics::kIssueGatewayNotResponding[] =
     "This gateway appears to be on the local network, but is not responding to "
