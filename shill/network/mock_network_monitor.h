@@ -41,6 +41,7 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
                int,
                std::string_view,
                PortalDetector::ProbingConfiguration,
+               NetworkMonitor::ValidationMode validation_mode,
                std::unique_ptr<ValidationLog>,
                std::string_view),
               (override));

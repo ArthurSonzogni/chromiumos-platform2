@@ -14,6 +14,7 @@
 #include <net-base/network_config.h>
 
 #include "shill/manager.h"
+#include "shill/network/network_monitor.h"
 
 namespace shill {
 
@@ -65,6 +66,7 @@ void VirtualDevice::UpdateNetworkConfig(
       .accept_ra = false,
       .probing_configuration =
           manager()->GetPortalDetectorProbingConfiguration(),
+      .validation_mode = NetworkMonitor::ValidationMode::kDisabled,
   });
 }
 

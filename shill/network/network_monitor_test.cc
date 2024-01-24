@@ -37,6 +37,8 @@ constexpr int kInterfaceIndex = 1;
 constexpr std::string_view kInterface = "wlan1";
 constexpr std::string_view kLoggingTag = "logging_tag";
 constexpr Technology kTechnology = Technology::kWiFi;
+constexpr NetworkMonitor::ValidationMode kDefaultValidationMode =
+    NetworkMonitor::ValidationMode::kFullValidation;
 const net_base::HttpUrl kCapportAPI =
     *net_base::HttpUrl::CreateFromString("https://example.org/api");
 
@@ -84,8 +86,9 @@ class NetworkMonitorTest : public ::testing::Test {
 
     network_monitor_ = std::make_unique<NetworkMonitor>(
         &dispatcher_, &metrics_, &client_, kTechnology, kInterfaceIndex,
-        kInterface, probing_configuration_, std::move(mock_validation_log),
-        kLoggingTag, std::move(mock_portal_detector_factory),
+        kInterface, probing_configuration_, kDefaultValidationMode,
+        std::move(mock_validation_log), kLoggingTag,
+        std::move(mock_portal_detector_factory),
         std::move(mock_connection_diagnostics_factory));
 
     SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);

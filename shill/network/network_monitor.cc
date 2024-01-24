@@ -80,6 +80,7 @@ NetworkMonitor::NetworkMonitor(
     int interface_index,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
+    NetworkMonitor::ValidationMode validation_mode,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
     std::unique_ptr<PortalDetectorFactory> portal_detector_factory,
@@ -93,6 +94,7 @@ NetworkMonitor::NetworkMonitor(
       interface_(std::string(interface)),
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
+      validation_mode_(validation_mode),
       trial_scheduler_(dispatcher),
       validation_log_(std::move(network_validation_log)),
       connection_diagnostics_factory_(
@@ -283,6 +285,17 @@ void NetworkMonitor::StartConnectionDiagnostics() {
             << ": Connection diagnostics started";
 }
 
+void NetworkMonitor::SetValidationMode(
+    NetworkMonitor::ValidationMode validation_mode) {
+  if (validation_mode_ == validation_mode) {
+    return;
+  }
+  LOG(INFO) << logging_tag_ << __func__ << " " << validation_mode_ << " -> "
+            << validation_mode;
+  // TODO(b/314693271): Stop or restart network validation if needed.
+  validation_mode_ = validation_mode;
+}
+
 void NetworkMonitor::set_portal_detector_for_testing(
     std::unique_ptr<PortalDetector> portal_detector) {
   portal_detector_ = std::move(portal_detector);
@@ -296,11 +309,23 @@ std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     int interface_index,
     std::string_view interface,
     PortalDetector::ProbingConfiguration probing_configuration,
+    NetworkMonitor::ValidationMode validation_mode,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
       dispatcher, metrics, client, technology, interface_index, interface,
-      probing_configuration, std::move(network_validation_log), logging_tag);
+      probing_configuration, validation_mode, std::move(network_validation_log),
+      logging_tag);
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         NetworkMonitor::ValidationMode mode) {
+  switch (mode) {
+    case NetworkMonitor::ValidationMode::kDisabled:
+      return stream << "Disabled";
+    case NetworkMonitor::ValidationMode::kFullValidation:
+      return stream << "FullValidation";
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream,

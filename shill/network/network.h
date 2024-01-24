@@ -182,6 +182,10 @@ class Network : public NetworkMonitor::ClientNetwork {
     bool ignore_link_monitoring = false;
     // PortalDetector probe configuration for network validation.
     PortalDetector::ProbingConfiguration probing_configuration;
+    // NetworkMonitor validation mode when the Network connection starts. The
+    // owner of the Network can configure this mode later during the connection.
+    NetworkMonitor::ValidationMode validation_mode =
+        NetworkMonitor::ValidationMode::kFullValidation;
   };
 
   // State for tracking the L3 connectivity (e.g., portal state is not

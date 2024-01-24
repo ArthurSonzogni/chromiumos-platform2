@@ -32,6 +32,17 @@ class ValidationLog;
 // TODO(b/305129516): Integrate the CapportClient into this class.
 class NetworkMonitor {
  public:
+  // Indicates the type of network validation to conduct on a connected Network.
+  // TODO(b/318370676): Add "HTTP probe only" mode.
+  enum class ValidationMode {
+    // Network validation with web probes is disabled. Captive portal detection
+    // with CAPPORT or Passpoint R3 can still occur.
+    kDisabled,
+    // Network validation with web probes is enabled. Both HTTPS validation and
+    // HTTP captive portal detection are performed.
+    kFullValidation,
+  };
+
   // Reasons for starting portal validation on a Network.
   enum class ValidationReason {
     // IPv4 or IPv6 configuration of the network has completed.
@@ -107,6 +118,7 @@ class NetworkMonitor {
       int interface_index,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
+      ValidationMode validation_mode,
       std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "",
       std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
@@ -158,6 +170,12 @@ class NetworkMonitor {
   mockable void SetCapportAPI(const net_base::HttpUrl& capport_api,
                               CapportSource source);
 
+  // Sets and gets the current network validation mode.
+  // TODO(b/314693271): update the state of |portal_detector_| appropriately
+  // when the validation mode changes.
+  mockable void SetValidationMode(ValidationMode mode);
+  mockable ValidationMode GetValidationMode() { return validation_mode_; }
+
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(
       std::unique_ptr<PortalDetector> portal_detector);
@@ -187,6 +205,7 @@ class NetworkMonitor {
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
+  ValidationMode validation_mode_;
 
   // The lifetime of these instances are the same as the NetworkMonitor.
   TrialScheduler trial_scheduler_;
@@ -213,10 +232,13 @@ class NetworkMonitorFactory {
       int interface_index,
       std::string_view interface,
       PortalDetector::ProbingConfiguration probing_configuration,
+      NetworkMonitor::ValidationMode validation_mode,
       std::unique_ptr<ValidationLog> network_validation_log,
       std::string_view logging_tag = "");
 };
 
+std::ostream& operator<<(std::ostream& stream,
+                         NetworkMonitor::ValidationMode mode);
 std::ostream& operator<<(std::ostream& stream,
                          NetworkMonitor::ValidationReason reason);
 
