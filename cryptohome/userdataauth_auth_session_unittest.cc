@@ -160,6 +160,16 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_pinweaver_manager(&hwsec_pw_manager_);
     userdataauth_.set_uss_manager_for_testing(&uss_manager_);
+
+    userdataauth_.SetSignallingInterface(signalling_);
+    EXPECT_CALL(signalling_, SendMountStarted(_))
+        .WillRepeatedly([this](auto&& signal) {
+          mount_started_signals_.push_back(std::move(signal));
+        });
+    EXPECT_CALL(signalling_, SendMountCompleted(_))
+        .WillRepeatedly([this](auto&& signal) {
+          mount_completed_signals_.push_back(std::move(signal));
+        });
   }
 
   void SetUpHWSecExpectations() {
@@ -339,6 +349,18 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
                 AllOf(testing::Ge(0), Le(base::Minutes(1).InSeconds())));
   }
 
+  // Assert that there are N mount start+completed signals and that each one of
+  // those start+completed pairs have matching operation IDs.
+  void AssertMountSignalCount(int expected_signals) {
+    ASSERT_THAT(mount_started_signals_.size(), Eq(expected_signals));
+    ASSERT_THAT(mount_completed_signals_.size(), Eq(expected_signals));
+    for (int i = 0; i < expected_signals; ++i) {
+      EXPECT_THAT(mount_started_signals_[i].operation_id(), Ne(0));
+      EXPECT_THAT(mount_started_signals_[i].operation_id(),
+                  Eq(mount_completed_signals_[i].operation_id()));
+    }
+  }
+
   const Username kUsername{kUsernameString};
   const Username kUsername2{kUsername2String};
   const Username kUsername3{kUsername3String};
@@ -374,6 +396,11 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       user_activity_timestamp_manager_;
   NiceMock<MockInstallAttributes> install_attrs_;
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
+
+  NiceMock<MockSignalling> signalling_;
+  std::vector<user_data_auth::MountStarted> mount_started_signals_;
+  std::vector<user_data_auth::MountCompleted> mount_completed_signals_;
+
   UserDataAuth userdataauth_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   FakeFeaturesForTesting features_;
@@ -433,6 +460,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultWithInvalidAuthSession) {
 
   ASSERT_EQ(PreparePersistentVaultImpl(/*auth_session_id=*/"").error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  AssertMountSignalCount(0);
 }
 
 // Test for checking if PreparePersistentVaultImpl will proceed when given the
@@ -450,6 +478,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultWithBroadcastId) {
 
   ASSERT_EQ(PreparePersistentVaultImpl(serialized_token).error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  AssertMountSignalCount(0);
 }
 
 // Test for checking if PreparePersistentVaultImpl will proceed with
@@ -468,6 +497,7 @@ TEST_F(AuthSessionInterfaceTest,
 
   ASSERT_EQ(PreparePersistentVaultImpl(serialized_token).error(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+  AssertMountSignalCount(0);
 }
 
 // Test for checking if PreparePersistentVaultImpl will proceed with
@@ -490,6 +520,7 @@ TEST_F(AuthSessionInterfaceTest,
 
   ASSERT_EQ(PreparePersistentVaultImpl(serialized_token).error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  AssertMountSignalCount(1);
 }
 
 // Test to check if PreparePersistentVaultImpl will succeed if user is not
@@ -515,6 +546,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
 
   ASSERT_EQ(PreparePersistentVaultImpl(serialized_token).error(),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+
+  AssertMountSignalCount(1);
 }
 
 // Test CreatePersistentUserImpl with invalid auth_session.
@@ -951,6 +984,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // No auth session.
   ASSERT_THAT(PrepareEphemeralVaultImpl("").error(),
               Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+  AssertMountSignalCount(0);
 
   // Auth session is initially not authenticated for ephemeral users.
   std::string serialized_token;
@@ -969,6 +1003,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // Using the broadcast ID as the session ID should fail.
   ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_public_token).error(),
               Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+  AssertMountSignalCount(0);
 
   // User authed and exists.
   auto user_session = std::make_unique<MockUserSession>();
@@ -992,6 +1027,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
         EXPECT_EQ(auth_session.GetRemainingTime(),
                   kDefaultTimeAfterAuthenticate);
       }));
+  AssertMountSignalCount(1);
 
   // Set up expectation for add credential callback success.
   user_data_auth::AddAuthFactorRequest request;
@@ -1010,6 +1046,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // Trying to mount again will yield busy.
   ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  AssertMountSignalCount(2);
 
   // Guest fails if other sessions present.
   CryptohomeStatus status = PrepareGuestVaultImpl();
@@ -1028,6 +1065,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   }
   ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  AssertMountSignalCount(3);
 
   // But a different regular mount succeeds.
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername3);
@@ -1049,6 +1087,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   EXPECT_THAT(PreparePersistentVaultImpl(serialized_token).has_error_info(),
               IsFalse());
+  AssertMountSignalCount(4);
 }
 
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
@@ -1295,6 +1334,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuth) {
   // Act.
   user_data_auth::PreparePersistentVaultReply prepare_reply =
       PreparePersistentVaultImpl(serialized_token);
+  AssertMountSignalCount(1);
 
   // Assert.
   EXPECT_THAT(prepare_reply.has_error_info(), IsFalse());
@@ -1336,6 +1376,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuthMountPointBusy) {
   // Act.
   user_data_auth::PreparePersistentVaultReply prepare_reply =
       PreparePersistentVaultImpl(serialized_token);
+  AssertMountSignalCount(1);
 
   // Assert.
   EXPECT_THAT(prepare_reply.has_error_info(), IsFalse());
@@ -1349,6 +1390,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuthMountPointBusy) {
   EXPECT_THAT(prepare_reply.has_error_info(), IsTrue());
   ASSERT_EQ(prepare_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  AssertMountSignalCount(2);
 }
 
 // Test the PreparePersistentVault, when called after a successful
@@ -1379,6 +1421,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   // Act.
   user_data_auth::PreparePersistentVaultReply prepare_reply =
       PreparePersistentVaultImpl(serialized_token);
+  AssertMountSignalCount(1);
 
   // Assert.
   EXPECT_THAT(prepare_reply.has_error_info(), IsFalse());
@@ -1390,6 +1433,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   // Trying to mount again will yield busy.
   ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  AssertMountSignalCount(2);
 }
 
 }  // namespace

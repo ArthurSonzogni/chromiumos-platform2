@@ -177,6 +177,21 @@ void SignalAuthCompletedThenDone(
   std::move(on_done).Run(reply);
 }
 
+// Function that can be used to inject the sending of a mount completion signal
+// to an on_done callback. The function requires a copy of the start signal that
+// it uses as a template for the completion signal.
+template <typename ReplyType>
+void SignalMountCompletedThenDone(
+    SignallingInterface* signalling,
+    user_data_auth::MountStarted start_signal,
+    UserDataAuth::OnDoneCallback<ReplyType> on_done,
+    const ReplyType& reply) {
+  user_data_auth::MountCompleted signal;
+  signal.set_operation_id(start_signal.operation_id());
+  signalling->SendMountCompleted(signal);
+  std::move(on_done).Run(reply);
+}
+
 // This function returns the AuthFactorPolicy from the UserPolicy. It will
 // return an empty policy if the user policy doesn't exist, or if the
 // auth_factor_type doesn't exist in the user policy.
@@ -2907,10 +2922,20 @@ void UserDataAuth::PrepareGuestVault(
     user_data_auth::PrepareGuestVaultRequest request,
     OnDoneCallback<user_data_auth::PrepareGuestVaultReply> on_done) {
   AssertOnMountThread();
-
   LOG(INFO) << "Preparing guest vault";
-  user_data_auth::PrepareGuestVaultReply reply;
+
+  // Send a mount starting signal.
+  user_data_auth::MountStarted start_signal;
+  start_signal.set_operation_id(base::RandUint64());
+  signalling_intf_->SendMountStarted(start_signal);
+
   CryptohomeStatus status = PrepareGuestVaultImpl();
+
+  // Send the mount completed signal and then the RPC reply.
+  user_data_auth::MountCompleted completed_signal;
+  completed_signal.set_operation_id(start_signal.operation_id());
+  signalling_intf_->SendMountCompleted(completed_signal);
+  user_data_auth::PrepareGuestVaultReply reply;
   reply.set_sanitized_username(*SanitizeUserName(guest_user_));
   ReplyWithError(std::move(on_done), reply, status);
   return;
@@ -2933,8 +2958,16 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
     OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done,
     InUseAuthSession auth_session) {
   AssertOnMountThread();
-
   LOG(INFO) << "Preparing ephemeral vault";
+
+  // Send a mount starting signal and wrap the on_done callback to send the
+  // completion signal.
+  user_data_auth::MountStarted start_signal;
+  start_signal.set_operation_id(base::RandUint64());
+  signalling_intf_->SendMountStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalMountCompletedThenDone<user_data_auth::PrepareEphemeralVaultReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
 
   user_data_auth::PrepareEphemeralVaultReply reply;
 
@@ -2943,7 +2976,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
   if (sessions_->size() != 0 || CleanUpStaleMounts(false)) {
     LOG(ERROR) << "Can not mount ephemeral while other sessions are active.";
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault),
@@ -2955,7 +2988,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
 
   if (!auth_session->ephemeral_user()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault),
@@ -2971,7 +3004,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
       GetMountableUserSession(auth_session.Get());
   if (!session_status.ok()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthGetSessionFailedInPrepareEphemeralVault))
@@ -2987,7 +3020,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
   PostMountHook(session_status.value(), mount_status);
   if (!mount_status.ok()) {
     RemoveInactiveUserSession(auth_session->username());
-    ReplyWithError(std::move(on_done), reply,
+    ReplyWithError(std::move(on_done_with_signal), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthMountFailedInPrepareEphemeralVault))
@@ -3000,7 +3033,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
   CryptohomeStatus ret = auth_session->OnUserCreated();
   if (!ret.ok()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_with_signal), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthFinalizeFailedInPrepareEphemeralVault))
@@ -3010,7 +3043,8 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
 
   PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
   reply.set_sanitized_username(*auth_session->obfuscated_username());
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  ReplyWithError(std::move(on_done_with_signal), reply,
+                 OkStatus<CryptohomeError>());
 }
 
 void UserDataAuth::PreparePersistentVault(
@@ -3033,6 +3067,12 @@ void UserDataAuth::PreparePersistentVaultWithSession(
     OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done,
     InUseAuthSession auth_session) {
   LOG(INFO) << "Preparing persistent vault";
+
+  // Send a mount starting signal.
+  user_data_auth::MountStarted start_signal;
+  start_signal.set_operation_id(base::RandUint64());
+  signalling_intf_->SendMountStarted(start_signal);
+
   CryptohomeVault::Options options = {
       .force_type =
           DbusEncryptionTypeToContainerType(request.encryption_type()),
@@ -3045,6 +3085,11 @@ void UserDataAuth::PreparePersistentVaultWithSession(
     keyset_management_->RecordAllVaultKeysetMetrics(
         auth_session->obfuscated_username());
   }
+
+  // Send the mount completed signal and then the RPC reply.
+  user_data_auth::MountCompleted completed_signal;
+  completed_signal.set_operation_id(start_signal.operation_id());
+  signalling_intf_->SendMountCompleted(completed_signal);
   user_data_auth::PreparePersistentVaultReply reply;
   reply.set_sanitized_username(*auth_session->obfuscated_username());
   ReplyWithError(std::move(on_done), reply, status);
@@ -3070,13 +3115,23 @@ void UserDataAuth::PrepareVaultForMigrationWithSession(
     OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done,
     InUseAuthSession auth_session) {
   AssertOnMountThread();
-
   LOG(INFO) << "Preparing vault for migration";
+
+  // Send a mount starting signal.
+  user_data_auth::MountStarted start_signal;
+  start_signal.set_operation_id(base::RandUint64());
+  signalling_intf_->SendMountStarted(start_signal);
+
   CryptohomeVault::Options options = {
       .migrate = true,
   };
-  user_data_auth::PrepareVaultForMigrationReply reply;
   CryptohomeStatus status = PreparePersistentVaultImpl(auth_session, options);
+
+  // Send the mount completed signal and then the RPC reply.
+  user_data_auth::MountCompleted completed_signal;
+  completed_signal.set_operation_id(start_signal.operation_id());
+  signalling_intf_->SendMountCompleted(completed_signal);
+  user_data_auth::PrepareVaultForMigrationReply reply;
   reply.set_sanitized_username(*auth_session->obfuscated_username());
   ReplyWithError(std::move(on_done), reply, status);
 }

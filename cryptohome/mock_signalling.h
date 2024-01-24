@@ -44,6 +44,14 @@ class MockSignalling : public SignallingInterface {
               (const user_data_auth::AuthenticateAuthFactorCompleted&),
               (override));
   MOCK_METHOD(void,
+              SendMountStarted,
+              (const user_data_auth::MountStarted&),
+              (override));
+  MOCK_METHOD(void,
+              SendMountCompleted,
+              (const user_data_auth::MountCompleted&),
+              (override));
+  MOCK_METHOD(void,
               SendAuthFactorAdded,
               (const user_data_auth::AuthFactorAdded&),
               (override));

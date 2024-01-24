@@ -440,6 +440,13 @@ class UserDataAuthAdaptor
         override {
       adaptor_->SendAuthenticateAuthFactorCompletedSignal(signal);
     }
+    void SendMountStarted(const user_data_auth::MountStarted& signal) override {
+      adaptor_->SendMountStartedSignal(signal);
+    }
+    void SendMountCompleted(
+        const user_data_auth::MountCompleted& signal) override {
+      adaptor_->SendMountCompletedSignal(signal);
+    }
     void SendAuthFactorAdded(
         const user_data_auth::AuthFactorAdded& signal) override {
       adaptor_->SendAuthFactorAddedSignal(signal);

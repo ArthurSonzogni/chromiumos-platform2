@@ -637,6 +637,26 @@ do.
       </arg>
     </signal>
 
+    <!-- MountStarted: Emitted when a mounting operation is started. -->
+    <signal name="MountStarted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MountStarted" />
+      </arg>
+    </signal>
+
+    <!-- MountCompleted: Emitted when a mounting operation is completed. -->
+    <signal name="MountCompleted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MountCompleted" />
+      </arg>
+    </signal>
+
     <!-- AuthFactorAdded: Emitted to when a new AuthFactor has been added -->
     <signal name="AuthFactorAdded">
       <annotation name="org.chromium.DBus.Method.Kind"

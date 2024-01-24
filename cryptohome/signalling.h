@@ -28,6 +28,9 @@ class SignallingInterface {
       const user_data_auth::AuthenticateStarted& signal) = 0;
   virtual void SendAuthenticateAuthFactorCompleted(
       const user_data_auth::AuthenticateAuthFactorCompleted& signal) = 0;
+  virtual void SendMountStarted(const user_data_auth::MountStarted& signal) = 0;
+  virtual void SendMountCompleted(
+      const user_data_auth::MountCompleted& signal) = 0;
   virtual void SendAuthFactorAdded(
       const user_data_auth::AuthFactorAdded& signal) = 0;
   virtual void SendAuthFactorRemoved(
@@ -62,6 +65,9 @@ class NullSignalling : public SignallingInterface {
       const user_data_auth::AuthenticateStarted& signal) override {}
   void SendAuthenticateAuthFactorCompleted(
       const user_data_auth::AuthenticateAuthFactorCompleted& signal) override {}
+  void SendMountStarted(const user_data_auth::MountStarted& signal) override {}
+  void SendMountCompleted(
+      const user_data_auth::MountCompleted& signal) override {}
   void SendAuthFactorAdded(
       const user_data_auth::AuthFactorAdded& signal) override {}
   void SendAuthFactorRemoved(
