@@ -19,6 +19,6 @@ proto_library("security_xdr_events_proto") {
 goproto_library("libsecagentd-goprotos") {
   proto_in_dir = "//secagentd/proto"
   proto_out_dir = "go/src/"
-  import_mapping = [ "security_xdr_events.proto=chromiumos/xdr/secagentd" ]
+  import_mapping = [ "security_xdr_events.proto=go.chromium.org/chromiumos/xdr/secagentd" ]
   sources = [ "security_xdr_events.proto" ]
 }
