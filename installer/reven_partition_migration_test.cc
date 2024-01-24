@@ -190,7 +190,7 @@ TEST_F(PartitionMigrationTest, SlotPlanInitializeGptReadRootError) {
 }
 
 TEST_F(PartitionMigrationTest, SlotPlanInitializeRootUnexpectedSize) {
-  orig_partitions_[PartitionNum::ROOT_A].count = MibToSectors(3047);
+  orig_partitions_[PartitionNum::ROOT_A].count = MibToSectors(2700);
 
   SlotPlan slot_plan = SlotPlan::ForSlotA(cgpt_manager_);
   EXPECT_EQ(slot_plan.Initialize(),

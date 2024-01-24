@@ -70,15 +70,18 @@ PartitionMigrationResult SlotPlan::Initialize() {
     return PartitionMigrationResult::kGptReadRootError;
   }
 
-  // 3048MiB was the size of the root partition in CloudReady. In more
-  // recent installs of reven the size is 4096MiB. Require the root
-  // partition to be one of these two sizes. This ensures that if an
-  // error occurs after shrinking the root partition, we do not continue
-  // to shrink the partition on future migration attempts.
-  const uint64_t cloudready_root_num_sectors = MibToSectors(3048);
-  const uint64_t modern_root_num_sectors = MibToSectors(4096);
-  if (root_sectors.count != cloudready_root_num_sectors &&
-      root_sectors.count != modern_root_num_sectors) {
+  // The root partition needs to be large enough to still hold the
+  // rootfs after 64MiB have been taken to hold the new kernel
+  // partition. The rootfs is about 2300MiB, plus some extra space for
+  // metadata such as the verity hashes.
+  //
+  // Modern reven installations have a root partition size of
+  // 4096MiB. Installations that upgraded from CloudReady have a size of
+  // 3048MiB. A small number of installations in the field have other
+  // sizes, for unknown reasons. So, choose a reasonably permissive
+  // minimum size to allow as many systems as possible to migrate.
+  const uint64_t min_root_num_sectors = MibToSectors(2800);
+  if (root_sectors.count < min_root_num_sectors) {
     LOG(ERROR) << "Root partition " << root_num_
                << " has unexpected size: " << root_sectors.count << " sectors";
     return PartitionMigrationResult::kRootPartitionUnexpectedSize;
