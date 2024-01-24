@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/strings/string_split.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -241,12 +242,7 @@ class ProcessFetcherTest : public BaseFileTest {
       const base::flat_map<uint32_t, std::string>& io_contents) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_context_.mock_executor(), GetProcessIOContents(_, _))
-        .WillOnce(WithArg<1>(
-            [=](mojom::Executor::GetProcessIOContentsCallback callback) {
-              base::flat_map<uint32_t, std::string> content;
-              content = io_contents;
-              std::move(callback).Run(content);
-            }));
+        .WillOnce(base::test::RunOnceCallback<1>(io_contents));
   }
 
  private:

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
@@ -73,19 +74,14 @@ class FingerprintRoutineTest : public testing::Test {
   // The value in detect zone is "4" (type 1), so it's a good pixel.
   void SetExecutorCheckerboardFrameResponse(
       const std::optional<std::string>& err) {
+    auto result = mojom::FingerprintFrameResult::New();
+    result->width = 4;
+    result->height = 4;
+    result->frame = {1, 16, 2, 15, 14, 3, 13, 4, 5, 12, 6, 11, 10, 7, 9, 8};
     EXPECT_CALL(*mock_executor(),
                 GetFingerprintFrame(
                     mojom::FingerprintCaptureType::kCheckerboardTest, _))
-        .WillOnce(WithArg<1>(
-            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
-              mojom::FingerprintFrameResult result;
-              result.width = 4;
-              result.height = 4;
-              result.frame = {1, 16, 2, 15, 14, 3, 13, 4,
-                              5, 12, 6, 11, 10, 7, 9,  8};
-
-              std::move(callback).Run(result.Clone(), err);
-            }));
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(result), err));
   }
 
   // Return the following 4*4 inverted checkerboard frame.
@@ -104,20 +100,15 @@ class FingerprintRoutineTest : public testing::Test {
   //   - max deviation: 4
   void SetExecutorInvertedCheckerboardFrameResponse(
       const std::optional<std::string>& err) {
+    auto result = mojom::FingerprintFrameResult::New();
+    result->width = 4;
+    result->height = 4;
+    result->frame = {1, 16, 2, 15, 14, 3, 13, 4, 5, 12, 6, 11, 10, 7, 9, 8};
     EXPECT_CALL(
         *mock_executor(),
         GetFingerprintFrame(
             mojom::FingerprintCaptureType::kInvertedCheckerboardTest, _))
-        .WillOnce(WithArg<1>(
-            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
-              mojom::FingerprintFrameResult result;
-              result.width = 4;
-              result.height = 4;
-              result.frame = {1, 16, 2, 15, 14, 3, 13, 4,
-                              5, 12, 6, 11, 10, 7, 9,  8};
-
-              std::move(callback).Run(result.Clone(), err);
-            }));
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(result), err));
   }
 
   // Return the following 5*1 reset test frame.
@@ -135,18 +126,14 @@ class FingerprintRoutineTest : public testing::Test {
   //   - max deviation: 2
   void SetExecutorResetTestFrameResponse(
       const std::optional<std::string>& err) {
+    auto result = mojom::FingerprintFrameResult::New();
+    result->width = 1;
+    result->height = 5;
+    result->frame = {1, 2, 3, 4, 5};
     EXPECT_CALL(
         *mock_executor(),
         GetFingerprintFrame(mojom::FingerprintCaptureType::kResetTest, _))
-        .WillOnce(WithArg<1>(
-            [=](mojom::Executor::GetFingerprintFrameCallback callback) {
-              mojom::FingerprintFrameResult result;
-              result.width = 1;
-              result.height = 5;
-              result.frame = {1, 2, 3, 4, 5};
-
-              std::move(callback).Run(result.Clone(), err);
-            }));
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(result), err));
   }
 
   MockContext* mock_context() { return &mock_context_; }

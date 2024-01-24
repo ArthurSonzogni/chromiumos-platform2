@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
@@ -71,14 +72,13 @@ class ThermalFetcherTest : public BaseFileTest {
 
   void SetUpEcExecutorCall() {
     // Set up expect call for EC data.
+    std::vector<mojom::ThermalSensorInfoPtr> ec_thermal_response;
+    ec_thermal_response.push_back(mojom::ThermalSensorInfo::New(
+        kFirstEcSensorName, kFirstEcSensorTemp,
+        mojom::ThermalSensorInfo::ThermalSensorSource::kEc));
     EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-        .WillOnce([](mojom::Executor::GetEcThermalSensorsCallback callback) {
-          std::vector<mojom::ThermalSensorInfoPtr> ec_thermal_response;
-          ec_thermal_response.push_back(mojom::ThermalSensorInfo::New(
-              kFirstEcSensorName, kFirstEcSensorTemp,
-              mojom::ThermalSensorInfo::ThermalSensorSource::kEc));
-          std::move(callback).Run(std::move(ec_thermal_response), std::nullopt);
-        });
+        .WillOnce(base::test::RunOnceCallback<0>(std::move(ec_thermal_response),
+                                                 std::nullopt));
   }
 
   double TemperatureMillicelsiusToDoubleCelsius(std::string temperature) {
@@ -176,9 +176,8 @@ TEST_F(ThermalFetcherTest, TestInvalidSysfsFetchSuccess) {
 // Test that fetcher works with no ec info.
 TEST_F(ThermalFetcherTest, TestNoEcFetchSuccess) {
   EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-      .WillOnce([](mojom::Executor::GetEcThermalSensorsCallback callback) {
-        std::move(callback).Run({}, std::nullopt);
-      });
+      .WillOnce(base::test::RunOnceCallback<0>(
+          std::vector<mojom::ThermalSensorInfoPtr>{}, std::nullopt));
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());
@@ -203,9 +202,8 @@ TEST_F(ThermalFetcherTest, TestNoEcFetchSuccess) {
 // Test that fetcher succeeds when EC fetch fails with error.
 TEST_F(ThermalFetcherTest, TestEcErrorFetchFailure) {
   EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-      .WillOnce([](mojom::Executor::GetEcThermalSensorsCallback callback) {
-        std::move(callback).Run({}, kEcFailureMessage);
-      });
+      .WillOnce(base::test::RunOnceCallback<0>(
+          std::vector<mojom::ThermalSensorInfoPtr>{}, kEcFailureMessage));
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());

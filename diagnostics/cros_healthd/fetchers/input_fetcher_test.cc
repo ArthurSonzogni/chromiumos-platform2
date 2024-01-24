@@ -8,12 +8,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/mojo_task_environment.h"
@@ -34,10 +34,8 @@ class InputFetcherTest : public ::testing::Test {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
 
     ON_CALL(*mock_executor(), GetTouchpadDevices(_))
-        .WillByDefault(
-            [](mojom::Executor::GetTouchpadDevicesCallback callback) {
-              std::move(callback).Run({}, std::nullopt);
-            });
+        .WillByDefault(base::test::RunOnceCallback<0>(
+            std::vector<mojom::TouchpadDevicePtr>{}, std::nullopt));
   }
 
   mojom::InputResultPtr FetchInputInfoSync() {
@@ -109,23 +107,11 @@ TEST_F(InputFetcherTest, FetchTouchpadDevices) {
   fake_device->input_device = std::move(input_device);
   fake_device->driver_name = "FakeDriver";
 
+  std::vector<mojom::TouchpadDevicePtr> expected_result;
+  expected_result.push_back(fake_device->Clone());
   EXPECT_CALL(*mock_executor(), GetTouchpadDevices(_))
-      .WillOnce(([](mojom::Executor::GetTouchpadDevicesCallback callback) {
-        auto expected_device = mojom::TouchpadDevice::New();
-        auto input_device = mojom::InputDevice::New();
-        input_device->connection_type =
-            mojom::InputDevice::ConnectionType::kInternal;
-        input_device->physical_location = "physical_location";
-        input_device->is_enabled = true;
-        input_device->name = "FakeName";
-
-        expected_device->input_device = std::move(input_device);
-        expected_device->driver_name = "FakeDriver";
-
-        std::vector<mojom::TouchpadDevicePtr> result;
-        result.push_back(std::move(expected_device));
-        std::move(callback).Run(std::move(result), std::nullopt);
-      }));
+      .WillOnce(base::test::RunOnceCallback<0>(std::move(expected_result),
+                                               std::nullopt));
 
   auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());
@@ -137,9 +123,8 @@ TEST_F(InputFetcherTest, FetchTouchpadDevices) {
 
 TEST_F(InputFetcherTest, FetchTouchpadDevicesHasError) {
   EXPECT_CALL(*mock_executor(), GetTouchpadDevices(_))
-      .WillOnce(([](mojom::Executor::GetTouchpadDevicesCallback callback) {
-        std::move(callback).Run({}, "An error has occurred");
-      }));
+      .WillOnce(base::test::RunOnceCallback<0>(
+          std::vector<mojom::TouchpadDevicePtr>{}, "An error has occurred"));
 
   auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());

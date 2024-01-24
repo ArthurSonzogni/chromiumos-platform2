@@ -12,6 +12,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/time/time.h>
@@ -79,13 +80,10 @@ class DiskReadRoutineTest : public testing::Test {
   }
 
   void SetRemoveFioTestFileResponse(int return_code = EXIT_SUCCESS) {
+    auto result = mojom::ExecutedProcessResult::New();
+    result->return_code = return_code;
     EXPECT_CALL(*mock_executor(), RemoveFioTestFile(_))
-        .WillOnce(WithArg<0>(
-            [=](mojom::Executor::RemoveFioTestFileCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = return_code;
-              std::move(callback).Run(result.Clone());
-            }));
+        .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
   }
 
   void SetGetFioTestDirectoryFreeSpaceResponse(
@@ -93,17 +91,11 @@ class DiskReadRoutineTest : public testing::Test {
     if (free_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
           .WillByDefault(
-              WithArg<1>([=](base::OnceCallback<void(int64_t /*reply*/)>
-                                 success_callback) {
-                std::move(success_callback).Run(free_space_byte.value());
-              }));
+              base::test::RunOnceCallback<1>(free_space_byte.value()));
     } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(
-              [](base::OnceCallback<void(brillo::Error*)> error_callback) {
-                auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-                std::move(error_callback).Run(error.get());
-              }));
+          .WillByDefault(base::test::RunOnceCallback<2>(error_.get()));
     }
   }
 
@@ -145,6 +137,7 @@ class DiskReadRoutineTest : public testing::Test {
   std::unique_ptr<BaseRoutineControl> routine_;
   FakeProcessControl fake_process_control_prepare_;
   FakeProcessControl fake_process_control_read_;
+  brillo::ErrorPtr error_;
 };
 
 class DiskReadRoutineAdapterTest : public DiskReadRoutineTest {

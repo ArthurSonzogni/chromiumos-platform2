@@ -146,10 +146,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
       }
     }
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(
-            [](base::OnceCallback<void(bool is_success)> on_success) {
-              std::move(on_success).Run(/*is_success=*/true);
-            }));
+        .WillOnce(base::test::RunOnceCallback<0>(/*is_success=*/true));
   }
 
   // Setup the call when the adapter added event is received in Floss event hub.
@@ -379,10 +376,7 @@ TEST_F(BluetoothScanningRoutineTest, StopDiscoveryError) {
 
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<0>([](base::OnceCallback<void(bool is_success)> on_success) {
-            std::move(on_success).Run(/*is_success=*/true);
-          }));
+      .WillOnce(base::test::RunOnceCallback<0>(/*is_success=*/true));
   // Stop discovery.
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))

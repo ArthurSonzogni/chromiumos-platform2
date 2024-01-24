@@ -13,6 +13,7 @@
 
 #include <base/check_op.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/udev/mock_udev.h>
@@ -33,7 +34,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::WithArg;
 
 class FakeUdevDevice : public brillo::MockUdevDevice {
  public:
@@ -80,11 +80,7 @@ class BusFetcherTest : public BaseFileTest {
       const std::vector<brillo::VariantDictionary>& fwupd_response) {
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
         .WillRepeatedly(
-            WithArg<0>([=](base::OnceCallback<void(
-                               const std::vector<brillo::VariantDictionary>&)>
-                               success_callback) {
-              std::move(success_callback).Run(std::move(fwupd_response));
-            }));
+            base::test::RunOnceCallback<0>(std::move(fwupd_response)));
   }
 
   // Creates a pci device with default attributes. Returns the device's

@@ -4,9 +4,9 @@
 
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 
-#include <utility>
 #include <vector>
 
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <fwupd/dbus-proxy-mocks.h>
@@ -21,7 +21,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::AnyNumber;
-using ::testing::WithArg;
 
 constexpr char kAsoundPath[] = "/proc/asound";
 constexpr char kFakeAlsaId[] = "FakeId";
@@ -32,11 +31,8 @@ class AudioHardwareFetcherTest : public BaseFileTest {
  protected:
   void SetUp() override {
     ON_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
-        .WillByDefault(WithArg<0>(
-            [](base::OnceCallback<void(
-                   const std::vector<brillo::VariantDictionary>&)> callback) {
-              std::move(callback).Run({});
-            }));
+        .WillByDefault(base::test::RunOnceCallback<0>(
+            std::vector<brillo::VariantDictionary>{}));
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
         .Times(AnyNumber());
 

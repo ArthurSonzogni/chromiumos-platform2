@@ -5,9 +5,9 @@
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 
 #include <string>
-#include <utility>
 
 #include <base/files/file_path.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
@@ -26,7 +26,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::WithArg;
 
 const char kFakeMountSource[] = "/dev/mmcblk0p1";
 const char kFakeFilesystem[] = "ext4";
@@ -59,34 +58,24 @@ class StatefulePartitionFetcherTest : public BaseFileTest {
   void SetAvailableSpaceResponse(std::optional<int64_t> free_space_byte) {
     if (free_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<1>(
-              [=](base::OnceCallback<void(int64_t)> success_callback) {
-                std::move(success_callback).Run(free_space_byte.value());
-              }));
+          .WillByDefault(
+              base::test::RunOnceCallback<1>(free_space_byte.value()));
     } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       ON_CALL(*mock_spaced_proxy(), GetFreeDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(
-              [](base::OnceCallback<void(brillo::Error*)> error_callback) {
-                auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-                std::move(error_callback).Run(error.get());
-              }));
+          .WillByDefault(base::test::RunOnceCallback<2>(error_.get()));
     }
   }
 
   void SetTotalSpaceResponse(std::optional<int64_t> total_space_byte) {
     if (total_space_byte.has_value()) {
       ON_CALL(*mock_spaced_proxy(), GetTotalDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<1>(
-              [=](base::OnceCallback<void(int64_t)> success_callback) {
-                std::move(success_callback).Run(total_space_byte.value());
-              }));
+          .WillByDefault(
+              base::test::RunOnceCallback<1>(total_space_byte.value()));
     } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       ON_CALL(*mock_spaced_proxy(), GetTotalDiskSpaceAsync(_, _, _, _))
-          .WillByDefault(WithArg<2>(
-              [](base::OnceCallback<void(brillo::Error*)> error_callback) {
-                auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-                std::move(error_callback).Run(error.get());
-              }));
+          .WillByDefault(base::test::RunOnceCallback<2>(error_.get()));
     }
   }
 
@@ -97,6 +86,7 @@ class StatefulePartitionFetcherTest : public BaseFileTest {
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
+  brillo::ErrorPtr error_;
 };
 
 TEST_F(StatefulePartitionFetcherTest, Success) {

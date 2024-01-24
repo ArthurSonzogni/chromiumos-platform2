@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
@@ -37,14 +38,10 @@ class FingerprintAliveRoutineTest : public testing::Test {
 
   void SetExecutorGetFingerprintInfoResponse(
       const std::optional<std::string>& err, bool rw_fw) {
+    auto result = mojom::FingerprintInfoResult::New();
+    result->rw_fw = rw_fw;
     EXPECT_CALL(*mock_executor(), GetFingerprintInfo(_))
-        .WillOnce(WithArg<0>(
-            [=](mojom::Executor::GetFingerprintInfoCallback callback) {
-              mojom::FingerprintInfoResult result;
-              result.rw_fw = rw_fw;
-
-              std::move(callback).Run(result.Clone(), err);
-            }));
+        .WillOnce(base::test::RunOnceCallback<0>(std::move(result), err));
   }
 
   MockContext* mock_context() { return &mock_context_; }

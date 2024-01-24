@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -101,23 +102,17 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
               const std::string& interface_name,
               const int32_t return_code,
               const std::string& output) {
+    auto result = mojom::ExecutedProcessResult::New();
+    result->return_code = return_code;
+    result->out = output;
     EXPECT_CALL(*mock_context_.mock_executor(), RunIw(cmd, interface_name, _))
-        .WillRepeatedly(WithArg<2>(
-            [return_code, output](mojom::Executor::RunIwCallback callback) {
-              auto result = mojom::ExecutedProcessResult::New();
-              result->return_code = return_code;
-              result->out = output;
-              std::move(callback).Run(std::move(result));
-            }));
+        .WillRepeatedly(base::test::RunOnceCallback<2>(std::move(result)));
   }
 
   void MockReadPowerSchema(const std::optional<std::string>& content) {
     EXPECT_CALL(*mock_context_.mock_executor(),
                 ReadFile(mojom::Executor::File::kWirelessPowerScheme, _))
-        .WillRepeatedly(
-            WithArg<1>([=](mojom::Executor::ReadFileCallback callback) {
-              std::move(callback).Run(std::move(content));
-            }));
+        .WillRepeatedly(base::test::RunOnceCallback<1>(content));
   }
 
  private:

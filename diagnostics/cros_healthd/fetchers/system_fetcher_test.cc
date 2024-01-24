@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -212,47 +213,45 @@ class SystemUtilsTest : public BaseFileTest {
                                const std::string& content) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_executor(), ReadFile(file_enum, _))
-        .WillOnce(
-            WithArg<1>([content](mojom::Executor::ReadFileCallback callback) {
-              std::move(callback).Run(content);
-            }));
+        .WillOnce(base::test::RunOnceCallback<1>(content));
   }
 
   void SetPsrInfoResponse(const std::optional<std::string>& err) {
-    EXPECT_CALL(*mock_executor(), GetPsr(_))
-        .WillOnce(WithArg<0>([=](mojom::Executor::GetPsrCallback callback) {
-          if (err) {
-            std::move(callback).Run(nullptr, err);
-            return;
-          }
-          mojom::PsrInfo result;
-          result.log_state = mojom::PsrInfo::LogState::kStarted;
-          result.uuid = "ed6703fa-d312-4e8b-9ddd-2155bb2dee65";
-          result.upid = "ok6703fa-d312-4e8b-9ddd-2155bb2dee65";
-          result.log_start_date = 163987200;
-          result.oem_name = "Panasonic";
-          result.oem_make = "Toughbook";
-          result.oem_model = "55";
-          result.manufacture_country = "United States";
-          result.oem_data = "None";
-          result.uptime_seconds = 30233443;
-          result.s5_counter = 3;
-          result.s4_counter = 2;
-          result.s3_counter = 1;
-          result.warm_reset_counter = 0;
-          auto event = mojom::PsrEvent::New();
-          event->type = mojom::PsrEvent::EventType::kLogStart;
-          event->time = 163987200;
-          event->data = 342897977;
-          result.events.push_back(event.Clone());
-          event->type = mojom::PsrEvent::EventType::kPrtcFailure;
-          event->time = 453987200;
-          event->data = 643897977;
-          result.events.push_back(event.Clone());
-          result.is_supported = true;
+    if (err) {
+      EXPECT_CALL(*mock_executor(), GetPsr(_))
+          .WillOnce(base::test::RunOnceCallback<0>(nullptr, err));
+      return;
+    }
 
-          std::move(callback).Run(result.Clone(), err);
-        }));
+    auto result = mojom::PsrInfo::New();
+    result->log_state = mojom::PsrInfo::LogState::kStarted;
+    result->uuid = "ed6703fa-d312-4e8b-9ddd-2155bb2dee65";
+    result->upid = "ok6703fa-d312-4e8b-9ddd-2155bb2dee65";
+    result->log_start_date = 163987200;
+    result->oem_name = "Panasonic";
+    result->oem_make = "Toughbook";
+    result->oem_model = "55";
+    result->manufacture_country = "United States";
+    result->oem_data = "None";
+    result->uptime_seconds = 30233443;
+    result->s5_counter = 3;
+    result->s4_counter = 2;
+    result->s3_counter = 1;
+    result->warm_reset_counter = 0;
+    auto event = mojom::PsrEvent::New();
+    event->type = mojom::PsrEvent::EventType::kLogStart;
+    event->time = 163987200;
+    event->data = 342897977;
+    result->events.push_back(event.Clone());
+    event->type = mojom::PsrEvent::EventType::kPrtcFailure;
+    event->time = 453987200;
+    event->data = 643897977;
+    result->events.push_back(event.Clone());
+    result->is_supported = true;
+
+    EXPECT_CALL(*mock_executor(), GetPsr(_))
+        .WillOnce(
+            base::test::RunOnceCallback<0>(std::move(result), std::nullopt));
   }
 
   // Sets the mock file with |value|. If the |value| is omitted, deletes the
