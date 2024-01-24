@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include <gmock/gmock.h>
 #include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/fingerprint/fp_mode.h>
 

@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <libec/ec_command.h>
@@ -65,6 +67,28 @@ std::string MatchResultToString(int result) {
     default:
       return "Unknown matcher result";
   }
+}
+
+std::vector<int> GetDirtyList(ec::CrosFpDeviceInterface* device) {
+  std::vector<int> dirty_list;
+
+  // Retrieve which templates have been updated.
+  std::optional<std::bitset<32>> dirty_bitmap = device->GetDirtyMap();
+  if (!dirty_bitmap) {
+    LOG(ERROR) << "Failed to get updated templates map.";
+    return dirty_list;
+  }
+
+  // Create a list of modified template indexes from the bitmap.
+  dirty_list.reserve(dirty_bitmap->count());
+  for (int i = 0; dirty_bitmap->any() && i < dirty_bitmap->size(); i++) {
+    if ((*dirty_bitmap)[i]) {
+      dirty_list.emplace_back(i);
+      dirty_bitmap->reset(i);
+    }
+  }
+
+  return dirty_list;
 }
 
 }  // namespace biod

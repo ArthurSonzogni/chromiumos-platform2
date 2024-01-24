@@ -144,6 +144,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool RequestFingerUp();
   void OnFingerUpEvent(uint32_t event);
 
+  void UpdateDirtyTemplates();
+
   std::string CurrentStateToString();
   // Whether current state is waiting for a next session action.
   bool IsActiveState();

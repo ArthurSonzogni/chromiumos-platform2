@@ -77,7 +77,6 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
               (override));
 
   // Expose protected methods for testing
-  using CrosFpBiometricsManager::GetDirtyList;
   using CrosFpBiometricsManager::LoadRecord;
   using CrosFpBiometricsManager::UpdateTemplatesOnDisk;
 };

@@ -7,6 +7,9 @@
 
 #include <string>
 #include <type_traits>
+#include <vector>
+
+#include <libec/fingerprint/cros_fp_device_interface.h>
 
 namespace biod {
 
@@ -52,6 +55,11 @@ std::string EnrollResultToString(int result);
  * @return std::string The description string of |result|.
  */
 std::string MatchResultToString(int result);
+
+// Common implementation of GetDirtyList for auth stack manager and biometrics
+// manager.
+std::vector<int> GetDirtyList(ec::CrosFpDeviceInterface* device);
+
 }  // namespace biod
 
 #endif  // BIOD_UTILS_H_

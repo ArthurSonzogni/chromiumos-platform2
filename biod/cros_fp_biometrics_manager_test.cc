@@ -937,19 +937,6 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   MockCrosFpRecordManager* mock_record_manager_;
 };
 
-TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList_Empty) {
-  EXPECT_CALL(*mock_cros_dev_, GetDirtyMap).WillOnce(Return(std::bitset<32>()));
-  auto dirty_list = mock_->GetDirtyList();
-  EXPECT_EQ(dirty_list, std::vector<int>());
-}
-
-TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList) {
-  EXPECT_CALL(*mock_cros_dev_, GetDirtyMap)
-      .WillOnce(Return(std::bitset<32>("1001")));
-  auto dirty_list = mock_->GetDirtyList();
-  EXPECT_EQ(dirty_list, (std::vector<int>{0, 3}));
-}
-
 TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};

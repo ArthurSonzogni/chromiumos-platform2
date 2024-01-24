@@ -752,6 +752,57 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnMaintenanceTimerRescheduled) {
   task_environment_.FastForwardBy(base::Minutes(10));
 }
 
+TEST_F(CrosFpAuthStackManagerTest, UpdateDirtyTemplates) {
+  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
+  const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
+  const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
+  const RecordMetadata kMetadata{.record_id = "record"};
+  const brillo::Blob kTemplate(10, 1);
+
+  SetUpWithInitialState(State::kAuthDone,
+                        EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES_UPDATED);
+
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
+      .WillOnce(Return(true));
+  ON_CALL(*mock_session_manager_, GetRecordMetadata)
+      .WillByDefault(Return(kMetadata));
+  EXPECT_CALL(*mock_cros_dev_,
+              GetPositiveMatchSecretWithPubkey(0, kPubInX, kPubInY))
+      .WillOnce(Return(GetSecretReply{
+          .encrypted_secret = kEncryptedSecret,
+          .iv = kSecretIv,
+          .pk_out_x = kPubOutX,
+          .pk_out_y = kPubOutY,
+      }));
+  EXPECT_CALL(*mock_cros_dev_, GetDirtyMap)
+      .WillOnce(Return(std::bitset<32>("1010")));
+  ON_CALL(*mock_cros_dev_, GetTemplate).WillByDefault([&kTemplate](int idx) {
+    return std::make_unique<VendorTemplate>(kTemplate);
+  });
+  EXPECT_CALL(*mock_session_manager_, UpdateRecord)
+      .Times(2)
+      .WillRepeatedly(Return(true));
+
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
+
+  AuthenticateCredentialReply reply;
+  cros_fp_auth_stack_manager_->AuthenticateCredential(
+      request, base::BindOnce([](AuthenticateCredentialReply* reply,
+                                 AuthenticateCredentialReply r) { *reply = r; },
+                              &reply));
+  EXPECT_EQ(reply.status(), AuthenticateCredentialReply::SUCCESS);
+  EXPECT_EQ(reply.scan_result(), ScanResult::SCAN_RESULT_SUCCESS);
+  EXPECT_EQ(reply.encrypted_secret(), BlobToString(kEncryptedSecret));
+  EXPECT_EQ(reply.pub().x(), BlobToString(kPubOutX));
+  EXPECT_EQ(reply.pub().y(), BlobToString(kPubOutY));
+  EXPECT_EQ(reply.record_id(), "record");
+
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kWaitForFingerUp);
+
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
+}
+
 class CrosFpAuthStackManagerInitiallyEnrollDoneTest
     : public CrosFpAuthStackManagerTest {
  public:
@@ -1108,6 +1159,7 @@ TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
   const RecordMetadata kMetadata{.record_id = "record1"};
   AuthScanResultTestParam param = GetParam();
 
+  ON_CALL(*mock_cros_dev_, GetDirtyMap).WillByDefault(Return(std::nullopt));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
   if (param.status == AuthenticateCredentialReply::SUCCESS &&

@@ -79,7 +79,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   // Returns RecordId for given template id.
   virtual std::optional<std::string> GetLoadedRecordId(int id);
 
-  std::vector<int> GetDirtyList();
   /**
    * @param dirty_list            templates that have been updated on the
    * FPMCU, but not written to disk.

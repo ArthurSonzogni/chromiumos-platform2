@@ -397,7 +397,11 @@ void CrosFpAuthStackManager::AuthenticateCredential(
   std::move(callback).Run(std::move(reply));
 
   // TODO(b/253993586): Get latency stats and send UMA.
-  // TODO(b/254164023): Update dirty templates.
+
+  if (match_result == EC_MKBP_FP_ERR_MATCH_YES_UPDATED) {
+    UpdateDirtyTemplates();
+  }
+
   return;
 }
 
@@ -732,6 +736,32 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
   } else {
     LOG(ERROR) << "Finger up event receiving in unexpected state: "
                << CurrentStateToString();
+  }
+}
+
+void CrosFpAuthStackManager::UpdateDirtyTemplates() {
+  std::vector<int> dirty_list = GetDirtyList(cros_dev_.get());
+  for (int i : dirty_list) {
+    std::unique_ptr<VendorTemplate> templ = cros_dev_->GetTemplate(i);
+    if (!templ) {
+      LOG(WARNING) << "Failed to get template with index " << i << ".";
+      continue;
+    }
+
+    const std::optional<BiodStorageInterface::RecordMetadata> metadata =
+        session_manager_->GetRecordMetadata(i);
+    if (!metadata.has_value()) {
+      LOG(WARNING) << "Can't find metadata for template index " << i << ".";
+      continue;
+    }
+
+    if (!session_manager_->UpdateRecord(*metadata, std::move(templ))) {
+      LOG(WARNING) << "Failed to update record with template index " << i
+                   << ".";
+      continue;
+    }
+
+    LOG(INFO) << "Successfully updated template index " << i << ".";
   }
 }
 
