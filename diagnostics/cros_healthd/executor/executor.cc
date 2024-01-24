@@ -979,9 +979,9 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
           .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
       });
   auto* delegate_ptr = delegate.get();
-  delegate_ptr->remote()->GetPrivacyScreenInfo(
-      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
-                                 false, false, kFailToLaunchDelegate));
+  delegate_ptr->remote()->GetPrivacyScreenInfo(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::GetPrivacyScreenInfoResult::NewError(kFailToLaunchDelegate)));
   delegate_ptr->StartAsync();
 }
 

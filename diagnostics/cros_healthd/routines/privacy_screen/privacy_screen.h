@@ -5,14 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 
-#include <string>
-
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
-
-namespace mojom = ::ash::cros_healthd::mojom;
 
 const char kPrivacyScreenRoutineSucceededMessage[] =
     "Privacy screen routine passes.";
@@ -36,7 +33,7 @@ class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
 
  private:
@@ -48,20 +45,19 @@ class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
   void ValidateState();
 
   // Callback function of GetPrivacyScreenInfo in ValidateState.
-  void ValidateStateCallback(bool privacy_screen_supported,
-                             bool current_state,
-                             const std::optional<std::string>& error);
+  void ValidateStateCallback(
+      ash::cros_healthd::mojom::GetPrivacyScreenInfoResultPtr result);
 
   // Context object used to communicate with the browser and to call executor
   // functions.
-  Context* context_;
+  Context* const context_ = nullptr;
 
   // Expected privacy screen target state.
   bool target_state_;
 
   // Whether request is processed by browser. |std::nullopt| indicates browser
   // has not yet responded.
-  std::optional<bool> request_processed_ = std::nullopt;
+  std::optional<bool> request_processed_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<PrivacyScreenRoutine> weak_factory_{this};

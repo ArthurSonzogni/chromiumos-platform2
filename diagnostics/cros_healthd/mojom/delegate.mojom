@@ -104,16 +104,11 @@ interface Delegate {
   GetConnectedExternalDisplayConnectors(array<uint32>? last_known_connectors)
       => (map<uint32, ExternalDisplayInfo> connectors, string? err);
 
-  // Returns whether a privacy screen is supported and whether is enabled on the
-  // embedded display.
+  // Returns privacy screen info.
   //
   // The response:
-  // * |privacy_screen_supported| - Whether privacy screen is supported on the
-  //                                device.
-  // * |privacy_screen_enabled| - Whether privacy screen is on.
-  GetPrivacyScreenInfo() => (bool privacy_screen_supported,
-                             bool privacy_screen_enabled,
-                             string? err);
+  // * |result| - Information about the privacy screen.
+  GetPrivacyScreenInfo() => (GetPrivacyScreenInfoResult result);
 
   // Fetch display info.
   //

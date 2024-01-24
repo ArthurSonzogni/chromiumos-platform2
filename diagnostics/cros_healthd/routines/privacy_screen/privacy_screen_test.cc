@@ -9,14 +9,14 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/functional/callback_forward.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/test/bind.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/time/time.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -25,11 +25,10 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
-using ::testing::_;
-using ::testing::WithArg;
 
-const char kDisplayUtilInitializationError[] =
-    "Failed to initialize DisplayUtil";
+using ::testing::_;
+
+const char kDelegateError[] = "Delegate error";
 
 class PrivacyScreenRoutineTest : public ::testing::Test {
  public:
@@ -70,7 +69,7 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
   }
 
   void RunRoutineAndWaitUntilFinished() {
-    routine()->Start();
+    routine_->Start();
     // Privacy screen routine should be finished within 1 second. Set 2 seconds
     // as a safe timeout.
     task_environment_.FastForwardBy(base::Seconds(2));
@@ -85,22 +84,30 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
                                      std::move(update.routine_update_union));
   }
 
-  DiagnosticRoutine* routine() { return routine_.get(); }
-
  private:
   void SetDelegateDestiny(bool initialization_success,
                           bool privacy_screen_supported,
                           bool privacy_screen_enabled) {
-    std::optional<std::string> error_message =
-        initialization_success
-            ? std::nullopt
-            : std::make_optional(kDisplayUtilInitializationError);
-    EXPECT_CALL(*context_.mock_executor(), GetPrivacyScreenInfo(_))
-        .WillRepeatedly(WithArg<0>(
-            [=](MockExecutor::GetPrivacyScreenInfoCallback callback) {
-              std::move(callback).Run(privacy_screen_supported,
-                                      privacy_screen_enabled, error_message);
-            }));
+    if (initialization_success) {
+      EXPECT_CALL(*context_.mock_executor(), GetPrivacyScreenInfo(_))
+          .WillRepeatedly(
+              [=](MockExecutor::GetPrivacyScreenInfoCallback callback) {
+                auto info = mojom::PrivacyScreenInfo::New();
+                info->privacy_screen_enabled = privacy_screen_enabled;
+                info->privacy_screen_supported = privacy_screen_supported;
+                std::move(callback).Run(
+                    mojom::GetPrivacyScreenInfoResult::NewInfo(
+                        std::move(info)));
+              });
+    } else {
+      EXPECT_CALL(*context_.mock_executor(), GetPrivacyScreenInfo(_))
+          .WillRepeatedly(
+              [](MockExecutor::GetPrivacyScreenInfoCallback callback) {
+                std::move(callback).Run(
+                    mojom::GetPrivacyScreenInfoResult::NewError(
+                        kDelegateError));
+              });
+    }
   }
 
   MockContext context_;
@@ -109,8 +116,8 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
-// Test that routine error occurs if display_util fails to be initialized.
-TEST_F(PrivacyScreenRoutineTest, DisplayUtilInitializationFailedError) {
+// Test that routine error occurs if there is an error in executor delegate.
+TEST_F(PrivacyScreenRoutineTest, ErrorIfExecutorDelegateEncountersErrors) {
   CreateRoutine(/*target_state=*/true);
   SetRoutineDestiny(/*display_util_init_success=*/false,
                     /*privacy_screen_supported=*/true,
@@ -120,7 +127,7 @@ TEST_F(PrivacyScreenRoutineTest, DisplayUtilInitializationFailedError) {
   RunRoutineAndWaitUntilFinished();
   VerifyNonInteractiveUpdate(GetUpdate()->routine_update_union,
                              mojom::DiagnosticRoutineStatusEnum::kError,
-                             kDisplayUtilInitializationError);
+                             kDelegateError);
 }
 
 // Test that routine fails if browser rejects request.
@@ -143,7 +150,6 @@ TEST_F(PrivacyScreenRoutineTest, BrowserResponseTimeoutExceeded) {
   SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
-
                     /*privacy_screen_request_processed=*/std::nullopt,
                     /*privacy_screen_enabled_after=*/true);
   RunRoutineAndWaitUntilFinished();

@@ -612,21 +612,25 @@ void DelegateImpl::GetConnectedExternalDisplayConnectorsHelper(
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
   DisplayUtil display_util;
   if (!display_util.Initialize()) {
-    std::move(callback).Run(false, false, "Failed to initialize DisplayUtil");
+    std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
+        "Failed to initialize DisplayUtil"));
     return;
   }
 
   std::optional<uint32_t> connector_id =
       display_util.GetEmbeddedDisplayConnectorID();
   if (!connector_id.has_value()) {
-    std::move(callback).Run(false, false, "Failed to find valid display");
+    std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
+        "Failed to find valid display"));
     return;
   }
-  bool supported, enabled;
-  display_util.FillPrivacyScreenInfo(connector_id.value(), &supported,
-                                     &enabled);
+  auto info = mojom::PrivacyScreenInfo::New();
+  display_util.FillPrivacyScreenInfo(connector_id.value(),
+                                     &info->privacy_screen_supported,
+                                     &info->privacy_screen_enabled);
 
-  std::move(callback).Run(supported, enabled, std::nullopt);
+  std::move(callback).Run(
+      mojom::GetPrivacyScreenInfoResult::NewInfo(std::move(info)));
 }
 
 void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {

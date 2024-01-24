@@ -9,10 +9,17 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
+
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
 
 PrivacyScreenRoutine::PrivacyScreenRoutine(Context* context, bool target_state)
     : context_(context), target_state_(target_state) {}
@@ -89,14 +96,16 @@ void PrivacyScreenRoutine::ValidateState() {
 }
 
 void PrivacyScreenRoutine::ValidateStateCallback(
-    bool privacy_screen_supported,
-    bool current_state,
-    const std::optional<std::string>& error) {
-  if (error.has_value()) {
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError, error.value());
+    mojom::GetPrivacyScreenInfoResultPtr result) {
+  if (result->is_error()) {
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 result->get_error());
     return;
   }
-  if (current_state != target_state_) {
+  CHECK(result->is_info());
+  const auto& info = result->get_info();
+  CHECK(info);
+  if (info->privacy_screen_enabled != target_state_) {
     UpdateStatus(
         mojom::DiagnosticRoutineStatusEnum::kFailed,
         target_state_
