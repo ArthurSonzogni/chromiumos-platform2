@@ -54,13 +54,11 @@ generate_dbus_adaptors("permission_broker_adaptors") {
 
 static_library("libpermission_broker") {
   sources = [
-    "allow_external_tagged_usb_device_rule.cc",
+    "allow_conforming_usb_device_rule.cc",
     "allow_group_tty_device_rule.cc",
     "allow_hidraw_device_rule.cc",
     "allow_tty_device_rule.cc",
-    "allow_usb_device_rule.cc",
     "deny_claimed_hidraw_device_rule.cc",
-    "deny_claimed_usb_device_rule.cc",
     "deny_fwupdate_hidraw_device_rule.cc",
     "deny_group_tty_device_rule.cc",
     "deny_hammer_device_rule.cc",
@@ -102,11 +100,9 @@ if (use.test) {
   }
   executable("permission_broker_test") {
     sources = [
-      "allow_external_tagged_usb_device_rule_test.cc",
+      "allow_conforming_usb_device_rule_test.cc",
       "allow_tty_device_rule_test.cc",
-      "allow_usb_device_rule_test.cc",
       "deny_claimed_hidraw_device_rule_test.cc",
-      "deny_claimed_usb_device_rule_test.cc",
       "deny_fwupdate_hidraw_device_rule_test.cc",
       "deny_unsafe_hidraw_device_rule_test.cc",
       "deny_usb_device_class_rule_test.cc",

@@ -69,7 +69,7 @@ const DevicePolicy::UsbDeviceId kHIDAllowedIds[] = {
     {0x2e73, 0x0012},  // BackyardBrains Neuron SpikerBox
 };
 
-const DevicePolicy::UsbDeviceId kFixedAllowedIds[] = {
+const DevicePolicy::UsbDeviceId kInternalAllowedIds[] = {
     {0x0c27, 0x3bfa},  // USB card reader
     {0x0554, 0x1001},  // Nuance PowerMic III
     {0xdf04, 0x0004},  // Nuance PowerMic III

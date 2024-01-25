@@ -23,15 +23,12 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 
-// TODO(b/187784160): don't include directly
 #include "featured/feature_library.h"
-#include "permission_broker/allow_external_tagged_usb_device_rule.h"
+#include "permission_broker/allow_conforming_usb_device_rule.h"
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/allow_hidraw_device_rule.h"
 #include "permission_broker/allow_tty_device_rule.h"
-#include "permission_broker/allow_usb_device_rule.h"
 #include "permission_broker/deny_claimed_hidraw_device_rule.h"
-#include "permission_broker/deny_claimed_usb_device_rule.h"
 #include "permission_broker/deny_fwupdate_hidraw_device_rule.h"
 #include "permission_broker/deny_group_tty_device_rule.h"
 #include "permission_broker/deny_hammer_device_rule.h"
@@ -68,10 +65,8 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
                     "be able to check for system flags.";
   }
 
-  rule_engine_.AddRule(new AllowUsbDeviceRule());
-  rule_engine_.AddRule(new AllowExternalTaggedUsbDeviceRule());
+  rule_engine_.AddRule(new AllowConformingUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
-  rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
   rule_engine_.AddRule(new DenyUninitializedDeviceRule());
   rule_engine_.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_HUB));
   rule_engine_.AddRule(new DenyUsbVendorIdRule(kLinuxFoundationUsbVendorId));
