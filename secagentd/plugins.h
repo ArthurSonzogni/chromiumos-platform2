@@ -423,6 +423,7 @@ class AuthenticationPlugin : public PluginInterface {
           {user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT,
            AuthFactorType::Authentication_AuthenticationType_AUTH_FINGERPRINT},
       };
+  std::string signed_in_user_ = "";
   int64_t latest_successful_login_timestamp_{-1};
   uint64_t latest_pin_failure_{0};
   bool is_active_{false};

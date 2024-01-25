@@ -247,6 +247,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   expected_event->mutable_logoff();
   expected_event->mutable_common()->set_create_timestamp_us(
       logout_event->common().create_timestamp_us());
+  expected_event->mutable_common()->set_device_user(kDeviceUser);
   EXPECT_THAT(*expected_event, EqualsProto(*logout_event));
 }
 
@@ -459,12 +460,14 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenLogin) {
             failure_event_1->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(2,
             failure_event_1->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kDeviceUser, failure_event_1->common().device_user());
   // Failure 2.
   ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
             failure_event_2->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(3,
             failure_event_2->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kDeviceUser, failure_event_2->common().device_user());
 
   // Success.
   ASSERT_EQ(1, login_event->logon().authentication().auth_factor_size());
@@ -541,12 +544,14 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenDelayBetweenAttempts) {
             failure_event_1->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(2,
             failure_event_1->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kDeviceUser, failure_event_1->common().device_user());
   // Failure 2.
   ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
             failure_event_2->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(3,
             failure_event_2->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kDeviceUser, failure_event_2->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {

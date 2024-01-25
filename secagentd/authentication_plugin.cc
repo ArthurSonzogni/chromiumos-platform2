@@ -231,6 +231,11 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   } else if (state == kStopped) {
     log_event->mutable_logoff();
+    if (signed_in_user_ != "") {
+      log_event->mutable_common()->set_device_user(signed_in_user_);
+    } else {
+      log_event->mutable_common()->set_device_user("Unknown");
+    }
   } else if (state == kInit) {
     device_user_->GetDeviceUserAsync(
         base::BindOnce(&AuthenticationPlugin::OnFirstSessionStart,
@@ -353,7 +358,19 @@ void AuthenticationPlugin::DelayedCheckForAuthSignal(
 void AuthenticationPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::UserEventAtomicVariant> atomic_event,
     const std::string& device_user) {
-  atomic_event->mutable_common()->set_device_user(device_user);
+  // Do not set device user for logoff events because it will be empty.
+  if (!atomic_event->has_logoff()) {
+    atomic_event->mutable_common()->set_device_user(device_user);
+  }
+
+  if (atomic_event->has_logon()) {
+    if (device_user == "") {
+      LOG(ERROR) << "Logon does NOT contain a device user";
+      signed_in_user_ = "Unknown";
+    } else {
+      signed_in_user_ = device_user;
+    }
+  }
 
   // Send metric for which auth factor is used.
   auto pair = GetEventEnumTypeAndAuthFactor(*atomic_event.get());
@@ -372,6 +389,7 @@ void AuthenticationPlugin::OnFirstSessionStart(const std::string& device_user) {
   // will be simulated.
   if (!device_user.empty()) {
     HandleSessionStateChange(kStarted);
+    signed_in_user_ = device_user;
   }
 }
 
