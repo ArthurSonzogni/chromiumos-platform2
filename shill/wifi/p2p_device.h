@@ -147,12 +147,6 @@ class P2PDevice : public LocalDevice,
   void PeerJoined(const dbus::ObjectPath& peer) override;
   void PeerDisconnected(const dbus::ObjectPath& peer) override;
 
-  // TODO(b/299915001): The NetworkStarted handler should be called internally
-  // in response to events from patchpanel. To push device into next state it
-  // may be posted by P2PManager via EmulateNetworkStarted, until patchpanel
-  // changes are ready.
-  void EmulateNetworkStarted();
-
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
@@ -187,11 +181,12 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileNotExpected);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOStarting);
-  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOConfiguring);
+  FRIEND_TEST(P2PDeviceTest, DISABLED_StartingTimerExpired_WhileGOConfiguring);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOActive);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientAssociating);
-  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConfiguring);
+  FRIEND_TEST(P2PDeviceTest,
+              DISABLED_StartingTimerExpired_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting);
 
@@ -260,10 +255,21 @@ class P2PDevice : public LocalDevice,
   void TeardownGroup(const KeyValueStore& properties);
   void TeardownGroup();
 
+  // TODO(b/299915001): The OnClientIPAcquired handler should be called
+  // internally in response to events from Shill::Network.
+  void EmulateClientIPAcquired();
+
+  // TODO(b/299915001): The OnGroupNetworkStarted handler should be called
+  // internally in response to events from patchpanel.
+  void EmulateGroupNetworkStarted();
+
   // These helper methods provide operation required for network setup/teardown.
   // Depending on device role, they may be called in response to events either
   // from patchpanel or Shill::Network, in case of GO and Client, respectively.
-  void NetworkStarted();
+  void AcquireClientIP();
+  void OnClientIPAcquired();
+  void StartGroupNetwork();
+  void OnGroupNetworkStarted();
   void NetworkFinished();
   void NetworkFailure(const std::string& reason);
 

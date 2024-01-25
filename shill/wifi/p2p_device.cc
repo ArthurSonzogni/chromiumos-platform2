@@ -664,12 +664,14 @@ void P2PDevice::GroupStarted(const KeyValueStore& properties) {
       SetupGroup(properties);
       SetState(P2PDeviceState::kClientConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
+      AcquireClientIP();
       break;
     // Expected P2P GO state for GroupStarted event
     case P2PDeviceState::kGOStarting:
       SetupGroup(properties);
       SetState(P2PDeviceState::kGOConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
+      StartGroupNetwork();
       break;
     // Common states for all roles.
     case P2PDeviceState::kUninitialized:
@@ -769,24 +771,63 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
   }
 }
 
-// TODO(b/299915001): The NetworkStarted handler should be called internally
-// in response to events from patchpanel. To push device into next state it
-// may be posted by P2PManager via EmulateNetworkStarted, until patchpanel
-// changes are ready.
-void P2PDevice::EmulateNetworkStarted() {
-  Dispatcher()->PostTask(FROM_HERE, base::BindOnce(&P2PDevice::NetworkStarted,
-                                                   base::Unretained(this)));
+// TODO(b/299915001): The OnClientIPAcquired handler should be called
+// internally in response to events from Shill::Network.
+void P2PDevice::EmulateClientIPAcquired() {
+  Dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&P2PDevice::OnClientIPAcquired, base::Unretained(this)));
 }
 
-void P2PDevice::NetworkStarted() {
+// TODO(b/299915001): The NetworkStarted handler should be called internally
+// in response to events from patchpanel.
+void P2PDevice::EmulateGroupNetworkStarted() {
+  Dispatcher()->PostTask(FROM_HERE,
+                         base::BindOnce(&P2PDevice::OnGroupNetworkStarted,
+                                        base::Unretained(this)));
+}
+
+// TODO(b/299915001): Actually trigger IP acquisition via Shill::Network.
+void P2PDevice::AcquireClientIP() {
+  EmulateClientIPAcquired();
+}
+
+// TODO(b/299915001): Actually trigger network creation via patchpanel.
+void P2PDevice::StartGroupNetwork() {
+  EmulateGroupNetworkStarted();
+}
+
+void P2PDevice::OnClientIPAcquired() {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
   switch (state_) {
-    // Expected P2P client state for NetworkStarted signal
+    // Expected P2P client state for OnClientIPAcquired signal
     case P2PDeviceState::kClientConfiguring:
       SetState(P2PDeviceState::kClientConnected);
       PostDeviceEvent(DeviceEvent::kNetworkUp);
       break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    // P2P GO states.
+    case P2PDeviceState::kGOStarting:
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
+}
+
+void P2PDevice::OnGroupNetworkStarted() {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+  switch (state_) {
     // Expected P2P GO state for NetworkStarted signal
     case P2PDeviceState::kGOConfiguring:
       SetState(P2PDeviceState::kGOActive);
@@ -797,6 +838,7 @@ void P2PDevice::NetworkStarted() {
     case P2PDeviceState::kReady:
     // P2P client states.
     case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConfiguring:
     case P2PDeviceState::kClientConnected:
     case P2PDeviceState::kClientDisconnecting:
     // P2P GO states.
