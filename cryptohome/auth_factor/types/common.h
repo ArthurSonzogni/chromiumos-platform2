@@ -192,12 +192,6 @@ class AfDriverFullAuthIsRepeatable : public virtual AuthFactorDriver {
   bool IsFullAuthRepeatable() const { return is_repeatable; }
 };
 
-template <AuthFactorDriver::ResetCapability kCapability>
-class AfDriverResetCapability : public virtual AuthFactorDriver {
- private:
-  ResetCapability GetResetCapability() const final { return kCapability; }
-};
-
 // Common implementation of the verifier functions for drivers which do not
 // support verifiers.
 class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {

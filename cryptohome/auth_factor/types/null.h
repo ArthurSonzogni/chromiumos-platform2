@@ -30,8 +30,6 @@ class NullAuthFactorDriver final
       public AfDriverWithBlockTypes<>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthUnsupported,
-      public AfDriverResetCapability<
-          AuthFactorDriver::ResetCapability::kNoReset>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,

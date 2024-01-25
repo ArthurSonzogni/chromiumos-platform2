@@ -33,8 +33,6 @@ class KioskAuthFactorDriver final
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverFullAuthIsRepeatable<false>,
-      public AfDriverResetCapability<
-          AuthFactorDriver::ResetCapability::kNoReset>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,

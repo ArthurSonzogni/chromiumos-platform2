@@ -34,8 +34,6 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverFullAuthIsRepeatable<false>,
-      public AfDriverResetCapability<
-          AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,

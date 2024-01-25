@@ -665,21 +665,18 @@ class AuthSession final {
                              StatusCallback on_done);
 
   // This function is used to reset the attempt count for a low entropy
-  // credential. Currently, this resets all low entropy credentials both stored
-  // in USS and VK. In the USSv2 world, with passwords or even other auth types
-  // backed by PinWeaver, the code will need to reset specific LE credentials.
+  // credential. Currently, this resets all low entropy credentials both
+  // stored in USS and VK.
   void ResetLECredentials();
 
-  // This function is used to reset the attempt count and expiration (depending
-  // on |capability|) for rate-limiters. Normally credentials guarded by
-  // rate-limiters will never be locked, but we still check them to see if
-  // they're accidentally locked. In that case, the reset secret is the same as
-  // the rate-limiter's.
-  void ResetRateLimiterCredentials(
-      AuthFactorDriver::ResetCapability capability);
+  // This function is used to reset the attempt count and expiration
+  // for rate-limiters. Normally credentials guarded by rate-limiters will never
+  // be locked, but we still check them to see if they're accidentally locked.
+  // In that case, the reset secret is the same as the rate-limiter's.
+  void ResetRateLimiterCredentials();
 
   // Whether there are some credentials that can be reset after a full auth.
-  bool NeedsFullAuthForReset(AuthFactorDriver::ResetCapability capability);
+  bool NeedsFullAuthForReset();
 
   // Authenticate the user with the single given auth factor. Additional
   // parameters are provided to aid legacy vault keyset authentication and

@@ -39,8 +39,6 @@ class FingerprintAuthFactorDriver final
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<FingerprintMetadata>,
       public AfDriverFullAuthIsRepeatable<false>,
-      public AfDriverResetCapability<
-          AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
       public AfDriverWithConfigurableIntents<
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
           AuthIntentSequence<AuthIntent::kDecrypt>>,

@@ -3399,8 +3399,7 @@ void AuthSession::CompleteVerifyOnlyAuthentication(
         auth_factor_driver_manager_->GetDriver(auth_factor_type);
     // There is at least 1 AuthFactor that needs full auth to reset, and the
     // current auth factor used for authentication supports repeating full auth.
-    if (factor_driver.IsFullAuthRepeatable() &&
-        NeedsFullAuthForReset(factor_driver.GetResetCapability())) {
+    if (factor_driver.IsFullAuthRepeatable() && NeedsFullAuthForReset()) {
       original_request.flags.force_full_auth = ForceFullAuthFlag::kForce;
       PostAuthAction action{
           .action_type = PostAuthActionType::kRepeat,
@@ -3850,7 +3849,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Reset all of the rate limiters and and credential lockouts.
   ResetLECredentials();
-  ResetRateLimiterCredentials(factor_driver.GetResetCapability());
 
   // Backup VaultKeyset of the authenticated factor can still be in disk if
   // the migration is not completed. Break the dependency of the migrated and
@@ -4075,10 +4073,11 @@ void AuthSession::ResetLECredentials() {
                    << state->le_label.value() << " with error: " << error;
     }
   }
+
+  ResetRateLimiterCredentials();
 }
 
-void AuthSession::ResetRateLimiterCredentials(
-    AuthFactorDriver::ResetCapability capability) {
+void AuthSession::ResetRateLimiterCredentials() {
   if (!decrypt_token_) {
     return;
   }
@@ -4097,19 +4096,11 @@ void AuthSession::ResetRateLimiterCredentials(
     return;
   }
   CryptoError error;
-  bool strong_reset =
-      capability ==
-      AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration;
-  // The only situation we don't need to reset the rate-limiter leaf is that
-  // wrong attempts is zero and expiration shouldn't be reset.
-  if (strong_reset ||
-      crypto_->GetWrongAuthAttempts(rate_limiter_label.value()) != 0) {
-    if (!crypto_->ResetLeCredential(rate_limiter_label.value(),
-                                    reset_secret.value(), strong_reset,
-                                    error)) {
-      LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
-                   << error;
-    }
+  if (!crypto_->ResetLeCredential(rate_limiter_label.value(),
+                                  reset_secret.value(), /*strong_reset=*/true,
+                                  error)) {
+    LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
+                 << error;
   }
 
   for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
@@ -4142,8 +4133,7 @@ void AuthSession::ResetRateLimiterCredentials(
   }
 }
 
-bool AuthSession::NeedsFullAuthForReset(
-    AuthFactorDriver::ResetCapability capability) {
+bool AuthSession::NeedsFullAuthForReset() {
   // Check if LE credentials need reset.
   for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
@@ -4165,21 +4155,11 @@ bool AuthSession::NeedsFullAuthForReset(
     }
   }
 
-  // Check if the rate-limiter needs reset.
+  // Check if there is a rate-limiter to reset.
   ASSIGN_OR_RETURN(const EncryptedUss* encrypted_uss,
                    uss_manager_->LoadEncrypted(obfuscated_username_),
                    _.As(false));
-  if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
-    return false;
-  }
-
-  // If reset expiration is supported, we should always reset.
-  if (capability ==
-      AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration) {
-    return true;
-  }
-  return crypto_->GetWrongAuthAttempts(
-             *encrypted_uss->fingerprint_rate_limiter_id()) != 0;
+  return encrypted_uss->fingerprint_rate_limiter_id().has_value();
 }
 
 std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
