@@ -95,11 +95,11 @@ class P2PDevice : public LocalDevice,
   mockable bool Connect(std::unique_ptr<P2PService> service);
 
   // Removes the current P2P group. Functionality is stubbed.
-  bool RemoveGroup();
+  mockable bool RemoveGroup();
 
   // Disconnect a P2P connection with a device |peer_address|.
   // Functionality is stubbed.
-  bool Disconnect();
+  mockable bool Disconnect();
 
   // Set device link_name;
   void SetLinkName(std::string link_name) { link_name_ = link_name; }
@@ -112,6 +112,9 @@ class P2PDevice : public LocalDevice,
 
   // Get shill_id_.
   uint32_t shill_id() const { return shill_id_; }
+
+  // Get state_.
+  mockable P2PDeviceState state() const { return state_; }
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -277,6 +280,7 @@ class P2PDevice : public LocalDevice,
   KeyValueStore PeerProperties(const dbus::ObjectPath& peer);
 
   // These methods handle p2p group start/stop timers.
+  // TODO(b/323064949): Move all timeout handling logic into P2PManager.
   void StartingTimerExpired();
   void StoppingTimerExpired();
   void ResetTimersOnStateChange(P2PDeviceState new_state);

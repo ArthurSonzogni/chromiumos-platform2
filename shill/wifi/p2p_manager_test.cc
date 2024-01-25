@@ -123,6 +123,10 @@ class P2PManagerTest : public testing::Test {
         .WillByDefault(Return(p2p_device));
     ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
     p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+    EXPECT_CALL(cb, Run(_)).Times(1);
+    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                   p2p_device);
+    DispatchPendingEvents();
   }
 
   std::string DefaultInterfaceName(int shill_id) {
@@ -317,9 +321,13 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
 
   EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
       .WillOnce(Return(p2p_device));
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+
   EXPECT_CALL(*p2p_device, Connect(_)).WillOnce(Return(true));
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
+
+  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                 p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultSuccess);
@@ -332,9 +340,14 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
             expected_shill_id);
   EXPECT_EQ(info_result[0].Get<String>(kP2PClientInfoStateProperty),
             kP2PClientInfoStateConnected);
-
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  EXPECT_CALL(*p2p_device, Disconnect()).WillOnce(Return(true));
   p2p_manager_->DisconnectFromP2PGroup(cb.Get(), expected_shill_id);
+
+  EXPECT_CALL(*p2p_device, state())
+      .WillRepeatedly(Return(P2PDevice::P2PDeviceState::kReady));
+  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kLinkDown,
+                                 p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDisconnectFromP2PGroupResultSuccess);
@@ -367,9 +380,12 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
 
   EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
       .WillOnce(Return(p2p_device));
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+
+  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                 p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
@@ -383,8 +399,14 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   EXPECT_EQ(info_result[0].Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateActive);
 
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  EXPECT_CALL(*p2p_device, RemoveGroup()).WillOnce(Return(true));
   p2p_manager_->DestroyP2PGroup(cb.Get(), expected_shill_id);
+
+  EXPECT_CALL(*p2p_device, state())
+      .WillRepeatedly(Return(P2PDevice::P2PDeviceState::kReady));
+  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kLinkDown,
+                                 p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDestroyP2PGroupResultSuccess);
@@ -439,6 +461,8 @@ TEST_F(P2PManagerTest, ShillIDs) {
     p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
     EXPECT_EQ(p2p_manager_->p2p_clients_[current_id], p2p_device);
     PostGroupStarted(current_id);
+    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                   p2p_device);
     current_id++;
   }
 
@@ -455,6 +479,8 @@ TEST_F(P2PManagerTest, ShillIDs) {
     p2p_manager_->CreateP2PGroup(cb.Get(), properties);
     EXPECT_EQ(p2p_manager_->p2p_group_owners_[current_id], p2p_device);
     PostGroupStarted(current_id);
+    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                   p2p_device);
     current_id++;
   }
 }
@@ -470,9 +496,11 @@ TEST_F(P2PManagerTest, MissingArgs_CreateGroup) {
 
   EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
       .WillOnce(Return(p2p_device));
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                 p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);

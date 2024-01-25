@@ -151,11 +151,21 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   KeyValueStores GetGroupInfos(Error* error);
   KeyValueStores GetClientInfos(Error* error);
 
-  // Stubbed P2P device event handler.
+  // P2P device event handler.
   void OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
-                        const LocalDevice* device) {
-    return;
-  }
+                        const LocalDevice* device);
+
+  // Stubbed method for handling creation of a Group Owner device.
+  void OnP2PDeviceEnabled(P2PDeviceRefPtr device) { return; }
+
+  // Method for handling of the creation of an L3 network for a P2P Group.
+  void P2PNetworkStarted(P2PDeviceRefPtr device);
+
+  // Stubbed method for handling a peer associating to the P2PGroup.
+  void OnPeerAssoc(P2PDeviceRefPtr device) { return; }
+
+  // Stubbed method for handling a peer disassociating from the P2PGroup.
+  void OnPeerDisassoc(P2PDeviceRefPtr device) { return; }
 
   void PostResult(std::string result_code,
                   std::optional<uint32_t> shill_id,
