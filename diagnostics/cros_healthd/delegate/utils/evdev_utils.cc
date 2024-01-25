@@ -165,38 +165,6 @@ void EvdevUtil::OnEvdevEvent(LibevdevWrapper* dev) {
            rc == LIBEVDEV_READ_STATUS_SYNC);
 }
 
-PowerButtonEvdevDelegate::PowerButtonEvdevDelegate(
-    mojo::PendingRemote<mojom::PowerButtonObserver> observer)
-    : observer_(std::move(observer)) {}
-
-bool PowerButtonEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
-  // Only internal power button is desired. Filter out USB devices to exclude
-  // external power buttons.
-  return dev->HasEventCode(EV_KEY, KEY_POWER) && dev->GetIdBustype() != BUS_USB;
-}
-
-void PowerButtonEvdevDelegate::FireEvent(const input_event& ev,
-                                         LibevdevWrapper* dev) {
-  if (ev.type == EV_KEY && ev.code == KEY_POWER) {
-    if (ev.value == 0) {
-      observer_->OnEvent(mojom::PowerButtonObserver::ButtonState::kUp);
-    } else if (ev.value == 1) {
-      observer_->OnEvent(mojom::PowerButtonObserver::ButtonState::kDown);
-    } else if (ev.value == 2) {
-      observer_->OnEvent(mojom::PowerButtonObserver::ButtonState::kRepeat);
-    }
-  }
-}
-
-void PowerButtonEvdevDelegate::InitializationFail(
-    uint32_t custom_reason, const std::string& description) {
-  observer_.ResetWithReason(custom_reason, description);
-}
-
-void PowerButtonEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
-  observer_->OnConnectedToEventNode();
-}
-
 VolumeButtonEvdevDelegate::VolumeButtonEvdevDelegate(
     mojo::PendingRemote<mojom::VolumeButtonObserver> observer)
     : observer_(std::move(observer)) {}

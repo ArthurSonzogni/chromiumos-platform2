@@ -98,23 +98,6 @@ class EvdevUtil {
 std::vector<ash::cros_healthd::mojom::TouchPointInfoPtr> FetchTouchPoints(
     LibevdevWrapper* dev);
 
-class PowerButtonEvdevDelegate final : public EvdevUtil::Delegate {
- public:
-  explicit PowerButtonEvdevDelegate(
-      mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
-          observer);
-
-  // EvdevUtil::Delegate overrides.
-  bool IsTarget(LibevdevWrapper* dev) override;
-  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
-  void InitializationFail(uint32_t custom_reason,
-                          const std::string& description) override;
-  void ReportProperties(LibevdevWrapper* dev) override;
-
- private:
-  mojo::Remote<ash::cros_healthd::mojom::PowerButtonObserver> observer_;
-};
-
 class VolumeButtonEvdevDelegate final : public EvdevUtil::Delegate {
  public:
   explicit VolumeButtonEvdevDelegate(
