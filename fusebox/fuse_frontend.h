@@ -73,18 +73,21 @@ class FuseFrontend {
   ~FuseFrontend() {
     read_watcher_.reset();
     stop_callback_.Reset();
-    if (session_)
+    if (session_) {
       fuse_session_exit(session_);
+    }
   }
 
   bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops) {
     struct fuse_args args = {0};
 
     CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
-    if (fuse_->debug)
+    if (fuse_->debug) {
       CHECK_EQ(0, fuse_opt_add_arg(&args, "-d"));
-    if (!fuse_->opts.empty())
+    }
+    if (!fuse_->opts.empty()) {
       CHECK_EQ(0, fuse_opt_add_arg(&args, ("-o" + fuse_->opts).c_str()));
+    }
 
     CHECK(!session_);
     session_ = fuse_lowlevel_new(&args, &fops, sizeof(fops), userdata);
@@ -130,8 +133,9 @@ class FuseFrontend {
 
     fuse_chan* chan = fuse_->chan;
     int read_size = fuse_session_receive_buf(session_, &buf, &chan);
-    if (read_size == -EINTR)
+    if (read_size == -EINTR) {
       return;
+    }
 
     if (read_size == 0) {
       LOG(INFO) << "Kernel FUSE : umount(8) " << *fuse_->mountpoint;

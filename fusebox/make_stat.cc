@@ -19,22 +19,27 @@ mode_t MakeStatModeBits(mode_t mode, bool read_only) {
   CHECK(IsAllowedStatMode(mode));
 
   // Set read-only user bits.
-  if (read_only)
+  if (read_only) {
     mode &= ~S_IWUSR;
+  }
 
   // Setup user execute bits.
   mode &= ~S_IXUSR;
-  if (S_ISDIR(mode))
+  if (S_ISDIR(mode)) {
     mode |= S_IXUSR;
+  }
 
   // Dup user bits in group bits.
   mode &= ~S_IRWXG;
-  if (mode & S_IRUSR)
+  if (mode & S_IRUSR) {
     mode |= S_IRGRP;
-  if (mode & S_IWUSR)
+  }
+  if (mode & S_IWUSR) {
     mode |= S_IWGRP;
-  if (mode & S_IXUSR)
+  }
+  if (mode & S_IXUSR) {
     mode |= S_IXGRP;
+  }
 
   // Clear other permission bits.
   mode &= ~S_IRWXO;
@@ -103,20 +108,21 @@ struct stat MakeStatFromProto(ino_t ino, const DirEntryProto& proto) {
 std::string StatModeToString(mode_t mode) {
   std::string mode_string("?");
 
-  if (S_ISSOCK(mode))
+  if (S_ISSOCK(mode)) {
     mode_string.at(0) = 's';
-  else if (S_ISLNK(mode))
+  } else if (S_ISLNK(mode)) {
     mode_string.at(0) = 'l';
-  else if (S_ISFIFO(mode))
+  } else if (S_ISFIFO(mode)) {
     mode_string.at(0) = 'p';
-  else if (S_ISBLK(mode))
+  } else if (S_ISBLK(mode)) {
     mode_string.at(0) = 'b';
-  else if (S_ISCHR(mode))
+  } else if (S_ISCHR(mode)) {
     mode_string.at(0) = 'c';
-  else if (S_ISDIR(mode))
+  } else if (S_ISDIR(mode)) {
     mode_string.at(0) = 'd';
-  else if (S_ISREG(mode))
+  } else if (S_ISREG(mode)) {
     mode_string.at(0) = '-';
+  }
 
   mode_string.append((mode & S_IRUSR) ? "r" : "-");
   mode_string.append((mode & S_IWUSR) ? "w" : "-");

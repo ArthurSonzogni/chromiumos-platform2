@@ -21,8 +21,9 @@ bool FuseRequest::IsInterrupted() const {  // Kernel FUSE interrupt
 }
 
 FuseRequest::~FuseRequest() {
-  if (!replied_)
+  if (!replied_) {
     fuse_reply_err(req_, EINTR);  // User-space FUSE interrupt
+  }
 }
 
 int FuseRequest::ReplyError(int error) {
@@ -133,8 +134,9 @@ bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t dir_offset) {
   char* data = buf_.get() + buf_offset_;
   const size_t size = buf_size_ - buf_offset_;
   size_t used = fuse_add_direntry(req_, data, size, name, &stat, dir_offset);
-  if (used > size)
+  if (used > size) {
     return false;  // no |buf_| space.
+  }
 
   buf_offset_ += used;
   CHECK_LE(buf_offset_, buf_size_);
@@ -172,8 +174,9 @@ void DirEntryBuffer::Respond() {
   constexpr size_t kFlushAddedEntries = 25;
 
   const auto process_next_request = [&](auto& request) {
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return true;
+    }
 
     if (error_) {
       request->ReplyError(error_);
@@ -189,22 +192,25 @@ void DirEntryBuffer::Respond() {
     size_t added;
     for (added = 0; dir_offset < entry_.size(); ++added) {
       const off_t next = 1 + dir_offset;
-      if (request->AddEntry(entry_[dir_offset++], next))
+      if (request->AddEntry(entry_[dir_offset++], next)) {
         continue;  // add next entry
+      }
       request->ReplyDone();
       return true;
     }
 
     DCHECK_GE(dir_offset, entry_.size());
     bool done = end_ || added >= kFlushAddedEntries;
-    if (done)
+    if (done) {
       request->ReplyDone();
+    }
     return done;
   };
 
   while (!request_.empty()) {
-    if (!process_next_request(*request_.begin()))
+    if (!process_next_request(*request_.begin())) {
       break;
+    }
     request_.erase(request_.begin());
   }
 }

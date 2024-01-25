@@ -39,21 +39,24 @@ template <size_t N>
 std::string FlagsToString(const FlagDef (&defs)[N], int flags) {
   std::string flags_string;
 
-  if (!flags)
+  if (!flags) {
     return "0";
+  }
 
   for (const auto& d : defs) {
     if (flags & d.flag) {
-      if (!flags_string.empty())
+      if (!flags_string.empty()) {
         flags_string.append("|");
+      }
       flags_string.append(d.name);
       flags &= ~d.flag;
     }
   }
 
   if (flags) {
-    if (!flags_string.empty())
+    if (!flags_string.empty()) {
       flags_string.append("|");
+    }
     flags_string.append(base::StringPrintf("0x%x", flags));
   }
 

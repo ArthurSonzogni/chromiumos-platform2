@@ -36,12 +36,15 @@ std::string GetChildNodeName(const char* name) {
   std::string_view entry(name ? name : "");
 
   // Verify entry name is POSIX conformant: return "" if not.
-  if (entry == "." || entry == "..")
+  if (entry == "." || entry == "..") {
     return {};  // path traversals not allowed
-  if (entry.find('/') != std::string_view::npos)
+  }
+  if (entry.find('/') != std::string_view::npos) {
     return {};  // path components not allowed
-  if (entry.empty())
+  }
+  if (entry.empty()) {
     return {};  // trivial cases "" or nullptr
+  }
 
   return std::string("/").append(entry.data(), entry.size());
 }
@@ -70,16 +73,19 @@ ino_t InodeTable::CreateIno() {
 
 Node* InodeTable::Create(ino_t parent, const char* name, ino_t ino) {
   std::string child = GetChildNodeName(name);
-  if (child.empty() || !parent)
+  if (child.empty() || !parent) {
     return NodeError(EINVAL);
+  }
 
   auto parent_it = node_map_.find(parent);
-  if (parent_it == node_map_.end())
+  if (parent_it == node_map_.end()) {
     return NodeError(EINVAL);
+  }
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
-  if (p != parent_map_.end())
+  if (p != parent_map_.end()) {
     return NodeError(EEXIST);
+  }
 
   Node* node = InsertNode(CreateNode(parent, child, ino ? ino : CreateIno()));
   node->device = parent_it->second->device;
@@ -88,32 +94,37 @@ Node* InodeTable::Create(ino_t parent, const char* name, ino_t ino) {
 
 Node* InodeTable::Lookup(ino_t ino) {
   auto n = node_map_.find(ino);
-  if (n == node_map_.end())
+  if (n == node_map_.end()) {
     return NodeError(ENOENT);
+  }
 
   return n->second.get();
 }
 
 Node* InodeTable::Lookup(ino_t parent, const char* name) {
   std::string child = GetChildNodeName(name);
-  if (child.empty())
+  if (child.empty()) {
     return NodeError(EINVAL);
+  }
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
-  if (p == parent_map_.end())
+  if (p == parent_map_.end()) {
     return NodeError(ENOENT);
+  }
 
   return p->second;
 }
 
 Node* InodeTable::Ensure(ino_t parent, const char* name, ino_t ino) {
   std::string child = GetChildNodeName(name);
-  if (child.empty() || !parent)
+  if (child.empty() || !parent) {
     return NodeError(EINVAL);
+  }
 
   auto parent_it = node_map_.find(parent);
-  if (parent_it == node_map_.end())
+  if (parent_it == node_map_.end()) {
     return NodeError(EINVAL);
+  }
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
   if (p != parent_map_.end()) {
@@ -129,22 +140,27 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   CHECK_NE(node, root_node_);
 
   auto parent_it = node_map_.find(parent);
-  if (parent_it == node_map_.end())
+  if (parent_it == node_map_.end()) {
     return NodeError(EINVAL);
+  }
 
   std::string child = GetChildNodeName(name);
-  if (child.empty() || !node || node->ino == parent)
+  if (child.empty() || !node || node->ino == parent) {
     return NodeError(EINVAL);
+  }
 
-  if (parent_it->second->device != node->device)
+  if (parent_it->second->device != node->device) {
     return NodeError(ENOTSUP);  // cross-device move
+  }
 
-  if ((node->parent == parent) && (node->name == child))
+  if ((node->parent == parent) && (node->name == child)) {
     return node;
+  }
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
-  if (p != parent_map_.end())
+  if (p != parent_map_.end()) {
     RemoveAndDeleteNodeAndDescendents(p->second);
+  }
 
   RemoveNode(node);
   node->parent = parent;
@@ -153,12 +169,14 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
 }
 
 bool InodeTable::Forget(ino_t ino) {
-  if (!ino || ino == root_node_->ino)
+  if (!ino || ino == root_node_->ino) {
     return false;  // Ignore root node.
+  }
 
   Node* node = Lookup(ino);
-  if (!node)
+  if (!node) {
     return false;
+  }
 
   delete RemoveNode(node);
   ForgetStat(ino);
@@ -166,8 +184,9 @@ bool InodeTable::Forget(ino_t ino) {
 }
 
 std::string InodeTable::GetName(ino_t ino) {
-  if (Node* node = Lookup(ino))
+  if (Node* node = Lookup(ino)) {
     return node->name;
+  }
   return {};
 }
 
@@ -181,10 +200,12 @@ std::string InodeTable::GetPath(Node* node) {
   }
 
   std::string path;
-  for (const auto& name : names)
+  for (const auto& name : names) {
     path.append(name);
-  if (path.empty())
+  }
+  if (path.empty()) {
     path.push_back('/');
+  }
 
   return path;
 }
@@ -204,8 +225,9 @@ bool InodeTable::GetStat(ino_t ino, struct stat* stat) {
   DCHECK(stat);
 
   auto it = stat_cache_.Get(ino);
-  if (it == stat_cache_.end())
+  if (it == stat_cache_.end()) {
     return false;
+  }
 
   const auto& item = it->second;
   if (item.time && item.time < std::time(nullptr)) {
@@ -219,8 +241,9 @@ bool InodeTable::GetStat(ino_t ino, struct stat* stat) {
 
 void InodeTable::ForgetStat(ino_t ino) {
   auto it = stat_cache_.Peek(ino);
-  if (it != stat_cache_.end())
+  if (it != stat_cache_.end()) {
     stat_cache_.Erase(it);
+  }
 }
 
 Node* InodeTable::InsertNode(Node* node) {
@@ -288,15 +311,18 @@ Device InodeTable::MakeFromName(const std::string& name) const {
   std::vector<std::string> parts =
       base::SplitString(name, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (parts.size() >= 1)
+  if (parts.size() >= 1) {
     device.name = parts.at(0);
-  if (parts.size() >= 2)
+  }
+  if (parts.size() >= 2) {
     device.path = parts.at(1);
-  else
+  } else {
     device.path = device.name;
+  }
   device.mode = "rw";
-  if (parts.size() >= 3)
+  if (parts.size() >= 3) {
     device.mode = parts.at(2);
+  }
 
   return device;
 }
@@ -324,8 +350,9 @@ Node* InodeTable::AttachDevice(ino_t parent, struct Device& device, ino_t ino) {
   }
 
   device.device = 0;
-  if (node != root_node_)
+  if (node != root_node_) {
     device.device = node->device = CreateDev();
+  }
   device.ino = node->ino;
 
   device_map_[device.device] = device;
@@ -334,15 +361,18 @@ Node* InodeTable::AttachDevice(ino_t parent, struct Device& device, ino_t ino) {
 
 bool InodeTable::DetachDevice(ino_t ino) {
   dev_t device = 0;
-  if (Node* node = Lookup(ino))
+  if (Node* node = Lookup(ino)) {
     device = node->device;
+  }
 
   auto it = device_map_.find(device);
-  if (!device || it == device_map_.end())
+  if (!device || it == device_map_.end()) {
     return errno = EINVAL, false;
+  }
 
-  for (Node* node : GetDeviceNodes(device))
+  for (Node* node : GetDeviceNodes(device)) {
     Forget(node->ino);
+  }
 
   device_map_.erase(it);
   return true;
@@ -353,8 +383,9 @@ std::deque<Node*> InodeTable::GetDeviceNodes(dev_t device) const {
 
   for (const auto& it : node_map_) {
     Node* node = it.second.get();
-    if (device == node->device)
+    if (device == node->device) {
       nodes.push_front(node);
+    }
   }
 
   return nodes;
@@ -365,14 +396,17 @@ std::string InodeTable::GetDevicePath(Node* node) {
 
   // Remove the device.name from the path.
   std::string path = GetPath(node);
-  if (device.device && !device.name.empty())
+  if (device.device && !device.name.empty()) {
     path = path.substr(1 + device.name.size());
+  }
 
   // Add the device.path prefix if needed.
-  if (path != "/")
+  if (path != "/") {
     return path.insert(0, device.path);
-  if (!device.path.empty())
+  }
+  if (!device.path.empty()) {
     return device.path;
+  }
 
   return path;
 }
@@ -381,8 +415,9 @@ Device InodeTable::GetDevice(Node* node) const {
   DCHECK(node);
 
   auto it = device_map_.find(node->device);
-  if (it != device_map_.end())
+  if (it != device_map_.end()) {
     return it->second;
+  }
 
   return {};
 }

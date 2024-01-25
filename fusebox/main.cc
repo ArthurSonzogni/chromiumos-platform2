@@ -108,8 +108,9 @@ class FuseBoxClient : public FileSystem {
     CHECK(stop_callback);
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
-    if (!fuse_frontend_->CreateFuseSession(this, FileSystem::FuseOps()))
+    if (!fuse_frontend_->CreateFuseSession(this, FileSystem::FuseOps())) {
       return EX_SOFTWARE;
+    }
 
     dbus_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
         &FuseBoxClient::ServiceOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -207,8 +208,9 @@ class FuseBoxClient : public FileSystem {
   void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) override {
     VLOG(1) << "getattr " << ino;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
@@ -269,8 +271,9 @@ class FuseBoxClient : public FileSystem {
               const char* name) override {
     VLOG(1) << "lookup " << parent << "/" << name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     if (parent <= FUSE_ROOT_ID) {
       RootLookup(std::move(request), name);
@@ -408,8 +411,9 @@ class FuseBoxClient : public FileSystem {
                int to_set) override {
     VLOG(1) << "SetAttr ino " << ino << " fh " << request->fh();
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
@@ -502,8 +506,9 @@ class FuseBoxClient : public FileSystem {
               const char* name) override {
     VLOG(1) << "unlink " << parent << "/" << name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     errno = 0;
     Node* parent_node = GetInodeTable().Lookup(parent);
@@ -554,8 +559,9 @@ class FuseBoxClient : public FileSystem {
   void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "opendir " << ino;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     if ((request->flags() & O_ACCMODE) != O_RDONLY) {
       errno = request->ReplyError(EACCES);
@@ -585,8 +591,9 @@ class FuseBoxClient : public FileSystem {
                off_t off) override {
     VLOG(1) << "readdir fh " << request->fh() << " off " << off;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
@@ -712,8 +719,9 @@ class FuseBoxClient : public FileSystem {
   void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "releasedir fh " << request->fh();
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     dir_entry_buffers_.erase(request->fh());
     request->ReplyOk();
@@ -725,8 +733,9 @@ class FuseBoxClient : public FileSystem {
              mode_t mode) override {
     VLOG(1) << "mkdir " << parent << "/" << name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     errno = 0;
     Node* parent_node = GetInodeTable().Lookup(parent);
@@ -789,8 +798,9 @@ class FuseBoxClient : public FileSystem {
              const char* name) override {
     VLOG(1) << "rmdir " << parent << "/" << name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     errno = 0;
     Node* parent_node = GetInodeTable().Lookup(parent);
@@ -846,8 +856,9 @@ class FuseBoxClient : public FileSystem {
     VLOG(1) << "rename " << old_parent << "/" << old_name << " " << new_parent
             << "/" << new_name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     errno = 0;
     Node* old_parent_node = GetInodeTable().Lookup(old_parent);
@@ -905,8 +916,9 @@ class FuseBoxClient : public FileSystem {
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
@@ -968,8 +980,9 @@ class FuseBoxClient : public FileSystem {
     VLOG(1) << "read fh " << request->fh() << " off " << off << " size "
             << size;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     if (size > SSIZE_MAX) {
       errno = request->ReplyError(EINVAL);
@@ -1070,8 +1083,9 @@ class FuseBoxClient : public FileSystem {
              off_t off) override {
     VLOG(1) << "write ino " << ino << " off " << off << " size " << size;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     if (size > SSIZE_MAX) {
       errno = request->ReplyError(EINVAL);
@@ -1130,8 +1144,9 @@ class FuseBoxClient : public FileSystem {
              int datasync) override {
     VLOG(1) << "fsync " << ino;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     if (ino < FIRST_UNRESERVED_INO) {
       errno = request->ReplyError(errno ? errno : EACCES);
@@ -1166,8 +1181,9 @@ class FuseBoxClient : public FileSystem {
                      dbus::Response* response) {
     VLOG(1) << "fsync-resp";
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     FlushResponseProto response_proto;
     if (errno = ReadDBusProto(response, &response_proto); errno) {
@@ -1182,8 +1198,9 @@ class FuseBoxClient : public FileSystem {
   void Release(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "release fh " << request->fh();
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     uint64_t fuse_handle = request->fh();
     if (fuse_handle == 0) {
@@ -1231,8 +1248,9 @@ class FuseBoxClient : public FileSystem {
               mode_t mode) override {
     VLOG(1) << "create " << parent << "/" << name;
 
-    if (request->IsInterrupted())
+    if (request->IsInterrupted()) {
       return;
+    }
 
     errno = 0;
     if (!S_ISREG(mode)) {
@@ -1315,8 +1333,9 @@ class FuseBoxClient : public FileSystem {
 
     Device device = GetInodeTable().MakeFromName(name);
     Node* node = GetInodeTable().AttachDevice(FUSE_ROOT_ID, device, ino);
-    if (!node)
+    if (!node) {
       return errno;
+    }
 
     struct stat stat = MakeTimeStat(S_IFDIR | 0770);
     stat = MakeStat(node->ino, stat, device.mode == "ro");
@@ -1335,8 +1354,9 @@ class FuseBoxClient : public FileSystem {
     VLOG(1) << "detach-storage " << subdir;
 
     auto it = device_dir_entry_.find(subdir);
-    if (it == device_dir_entry_.end())
+    if (it == device_dir_entry_.end()) {
       return;
+    }
     GetInodeTable().DetachDevice(it->second.ino);
     device_dir_entry_.erase(it);
   }
@@ -1389,8 +1409,9 @@ class FuseBoxDaemon : public brillo::DBusDaemon {
 
   int OnInit() override {
     int ret = DBusDaemon::OnInit();
-    if (ret != EX_OK)
+    if (ret != EX_OK) {
       return ret;
+    }
 
     bus_->AssertOnDBusThread();
 
@@ -1403,8 +1424,9 @@ class FuseBoxDaemon : public brillo::DBusDaemon {
     bus_->AssertOnDBusThread();
 
     int ret = brillo::DBusDaemon::OnEventLoopStarted();
-    if (ret != EX_OK)
+    if (ret != EX_OK) {
       return ret;
+    }
 
     auto quit = base::BindOnce(&Daemon::Quit, weak_ptr_factory_.GetWeakPtr());
     return client_->StartFuseSession(std::move(quit));
@@ -1436,8 +1458,9 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
   fuse.opts = commandline_options->GetSwitchValueASCII("ll");
   fuse.debug = commandline_options->HasSwitch("debug");
 
-  if (!foreground)
+  if (!foreground) {
     LOG(INFO) << "fusebox fuse_daemonizing";
+  }
   fuse_daemonize(foreground);
 
   auto daemon = FuseBoxDaemon(&fuse);
