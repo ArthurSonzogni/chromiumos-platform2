@@ -25,8 +25,7 @@ proto_library("hardware_verifier-protos") {
 }
 
 goproto_library("hardware_verifier-goprotos") {
-  import_mapping =
-      [ "runtime_probe.proto=chromiumos/system_api/runtime_probe_proto" ]
+  import_mapping = [ "runtime_probe.proto=go.chromium.org/chromiumos/system_api/runtime_probe_proto" ]
   proto_in_dir = "./"
   proto_out_dir = "go/src/"
   proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/runtime_probe" ]
