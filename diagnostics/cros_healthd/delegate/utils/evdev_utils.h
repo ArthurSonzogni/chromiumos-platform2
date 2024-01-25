@@ -94,23 +94,6 @@ class EvdevUtil {
   std::unique_ptr<Delegate> delegate_;
 };
 
-class AudioJackEvdevDelegate final : public EvdevUtil::Delegate {
- public:
-  explicit AudioJackEvdevDelegate(
-      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver>
-          observer);
-
-  // EvdevUtil::Delegate overrides.
-  bool IsTarget(LibevdevWrapper* dev) override;
-  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
-  void InitializationFail(uint32_t custom_reason,
-                          const std::string& description) override;
-  void ReportProperties(LibevdevWrapper* dev) override;
-
- private:
-  mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
-};
-
 class TouchpadEvdevDelegate final : public EvdevUtil::Delegate {
  public:
   explicit TouchpadEvdevDelegate(

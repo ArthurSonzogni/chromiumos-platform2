@@ -45,6 +45,7 @@
 #include <libec/thermal/thermal_auto_fan_ctrl_command.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
+#include "diagnostics/cros_healthd/delegate/events/audio_jack_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"

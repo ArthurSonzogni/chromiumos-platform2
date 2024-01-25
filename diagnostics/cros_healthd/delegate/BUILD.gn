@@ -16,6 +16,7 @@ source_set("libexecutor_delegate") {
   sources = [ "delegate_impl.cc" ]
   configs += [ ":libexecutor_delegate_pkg_deps" ]
   deps = [
+    "//diagnostics/cros_healthd/delegate/events",
     "//diagnostics/cros_healthd/delegate/fetchers",
     "//diagnostics/cros_healthd/delegate/routines",
     "//diagnostics/cros_healthd/delegate/utils",
