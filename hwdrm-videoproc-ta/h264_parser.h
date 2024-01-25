@@ -55,9 +55,9 @@ struct StreamDataForSliceHeader {
   uint8_t padding[3];
 };
 
-bool ParseSliceHeader(uint8_t* slice_header,
+bool ParseSliceHeader(const uint8_t* slice_header,
                       uint32_t header_size,
-                      struct StreamDataForSliceHeader* stream_data,
+                      const struct StreamDataForSliceHeader* stream_data,
                       struct H264SliceHeaderData* hdr_out);
 
 #endif  // HWDRM_VIDEOPROC_TA_H264_PARSER_H_

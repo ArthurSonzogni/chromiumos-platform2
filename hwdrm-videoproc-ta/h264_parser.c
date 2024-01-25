@@ -8,7 +8,7 @@
 
 struct H264Bitstream {
   // Pointer to the next unread (not in curr_byte) byte in the stream.
-  uint8_t* data;
+  const uint8_t* data;
   // Bytes left in the stream (without the curr_byte).
   uint32_t bytes_left;
   // Contents of the current byte; first unread bit starting at position
@@ -24,7 +24,7 @@ struct H264Bitstream {
 };
 
 static void InitBitReader(struct H264Bitstream* br,
-                          uint8_t* data,
+                          const uint8_t* data,
                           uint32_t size) {
   br->data = data;
   br->bytes_left = size;
@@ -235,9 +235,9 @@ static bool SkipWeightingFactors(struct H264Bitstream* br,
   return true;
 }
 
-bool ParseSliceHeader(uint8_t* slice_header,
+bool ParseSliceHeader(const uint8_t* slice_header,
                       uint32_t header_size,
-                      struct StreamDataForSliceHeader* stream_data,
+                      const struct StreamDataForSliceHeader* stream_data,
                       struct H264SliceHeaderData* hdr_out) {
   // Be very strict about bitstream conformance, we don't want this used as a
   // tool to extract data from anything else.
