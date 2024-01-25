@@ -444,7 +444,7 @@ TEST_F(DatapathTest, Start) {
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
        "-w"},
       // Asserts for AddForwardEstablishedRule
-      {IpFamily::kIPv4,
+      {IpFamily::kDual,
        "filter -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT -w"},
       // Asserts for AddSourceIPv4DropRule() calls.
       {IpFamily::kIPv4, "filter -N drop_guest_ipv4_prefix -w"},

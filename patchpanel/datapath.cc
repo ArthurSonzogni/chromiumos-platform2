@@ -360,6 +360,13 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to install forwarding rule for established"
                << " connections.";
   }
+  if (process_runner_->ip6tables(
+          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
+          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
+           "-w"}) != 0) {
+    LOG(ERROR) << "Failed to install forwarding rule for established"
+               << " connections.";
+  }
 
   // Add all static jump commands from builtin chains to chains created by
   // patchpanel.
@@ -2748,10 +2755,10 @@ bool Datapath::ModifyIsolatedGuestDropRule(Iptables::Command command,
                                            std::string_view ifname) {
   bool success = true;
   success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
-                            kDropOutputToBruschettaChain,
+                            kDropForwardToBruschettaChain,
                             {"-o", std::string(ifname), "-j", "DROP", "-w"});
   success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
-                            kDropForwardToBruschettaChain,
+                            kDropOutputToBruschettaChain,
                             {"-m", "state", "--state", "NEW", "-o",
                              std::string(ifname), "-j", "DROP", "-w"});
   return success;
