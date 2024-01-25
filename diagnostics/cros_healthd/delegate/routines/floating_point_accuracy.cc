@@ -54,18 +54,16 @@ bool FloatingPointAccuracyDelegate::Run() {
   } while (--x);
 
   // Check the result of accuracy in the end.
-  if (fabs(a - 976.5625f) > FLT_EPSILON || fabs(i - 976.5625f) > FLT_EPSILON ||
+  bool has_error =
+      fabs(a - 976.5625f) > FLT_EPSILON || fabs(i - 976.5625f) > FLT_EPSILON ||
       fabs(b - 976.5625f) > FLT_EPSILON || fabs(j - 976.5625f) > FLT_EPSILON ||
       fabs(c - 976.5625f) > FLT_EPSILON || fabs(k - 976.5625f) > FLT_EPSILON ||
       fabs(d - 976.5625f) > FLT_EPSILON || fabs(l - 976.5625f) > FLT_EPSILON ||
       fabs(e - 976.5625f) > FLT_EPSILON || fabs(m - 976.5625f) > FLT_EPSILON ||
       fabs(f - 976.5625f) > FLT_EPSILON || fabs(n - 976.5625f) > FLT_EPSILON ||
       fabs(g - 976.5625f) > FLT_EPSILON || fabs(o - 976.5625f) > FLT_EPSILON ||
-      fabs(h - 976.5625f) > FLT_EPSILON || fabs(p - 976.5625f) > FLT_EPSILON) {
-    return false;
-  }
-
-  return true;
+      fabs(h - 976.5625f) > FLT_EPSILON || fabs(p - 976.5625f) > FLT_EPSILON;
+  return !has_error;
 }
 
 }  // namespace diagnostics
