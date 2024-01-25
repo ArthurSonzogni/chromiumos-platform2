@@ -47,6 +47,7 @@ class DlcBase : public DlcInterface {
   const DlcId& GetId() const override;
   const std::string& GetName() const override;
   const std::string& GetDescription() const override;
+  void UpdateState() override;
   DlcState GetState() const override;
   base::FilePath GetRoot() const override;
   bool IsInstalling() const override;

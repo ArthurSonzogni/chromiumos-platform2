@@ -8,7 +8,6 @@
 #include <cinttypes>
 #include <memory>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -118,6 +117,13 @@ const std::string& DlcBase::GetName() const {
 
 const std::string& DlcBase::GetDescription() const {
   return manifest_->description();
+}
+
+void DlcBase::UpdateState() {
+  state_.clear_image_path();
+  if (IsInstalled())
+    state_.set_image_path(
+        GetImagePath(SystemState::Get()->active_boot_slot()).value());
 }
 
 DlcState DlcBase::GetState() const {

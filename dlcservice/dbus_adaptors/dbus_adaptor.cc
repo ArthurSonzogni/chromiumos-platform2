@@ -82,10 +82,11 @@ bool DBusService::GetDlcsToUpdate(brillo::ErrorPtr* err,
 bool DBusService::GetDlcState(brillo::ErrorPtr* err,
                               const string& id_in,
                               DlcState* dlc_state_out) {
-  const auto* dlc = dlc_service_->GetDlc(id_in, err);
+  auto* dlc = dlc_service_->GetDlc(id_in, err);
   if (dlc == nullptr) {
     return false;
   }
+  dlc->UpdateState();
   *dlc_state_out = dlc->GetState();
   return true;
 }

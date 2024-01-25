@@ -38,6 +38,9 @@ class DlcInterface {
   // Returns the description of the DLC.
   virtual const std::string& GetDescription() const = 0;
 
+  // Update the current state of the DLC.
+  virtual void UpdateState() = 0;
+
   // Returns the current state of the DLC.
   virtual DlcState GetState() const = 0;
 

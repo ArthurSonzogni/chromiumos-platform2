@@ -27,6 +27,7 @@ class MockDlc : public DlcInterface {
   MOCK_METHOD(const DlcId&, GetId, (), (const, override));
   MOCK_METHOD(const std::string&, GetName, (), (const, override));
   MOCK_METHOD(const std::string&, GetDescription, (), (const, override));
+  MOCK_METHOD(void, UpdateState, (), (override));
   MOCK_METHOD(DlcState, GetState, (), (const, override));
   MOCK_METHOD(base::FilePath, GetRoot, (), (const, override));
   MOCK_METHOD(bool, IsInstalling, (), (const, override));

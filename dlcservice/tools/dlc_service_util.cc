@@ -5,11 +5,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <fstream>
 #include <iostream>
 #include <set>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <base/check.h>
@@ -388,6 +386,7 @@ class DlcServiceUtil : public brillo::Daemon {
     dict.Set("root_path", state.root_path());
     dict.Set("state", state.state());
     dict.Set("is_verified", state.is_verified());
+    dict.Set("image_path", state.image_path());
     PrintToFileOrStdout(dump, Value(std::move(dict)));
   }
 

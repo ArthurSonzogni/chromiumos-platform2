@@ -72,4 +72,7 @@ message DlcState {
   // Indicates whether DLC is marked verified. Can be used to determine
   // whether DLC is available on disk and can be mounted immediately.
   bool is_verified = 6;
+
+  // The location where the active DLC image is stored (if installed).
+  string image_path = 7;
 }
