@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -115,8 +116,6 @@ const char CellularCapability3gpp::kErrorThresholdProperty[] =
     "error-rate-threshold";
 const uint32_t CellularCapability3gpp::kRssiThreshold = 3;
 const bool CellularCapability3gpp::kErrorThreshold = false;
-
-const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
 

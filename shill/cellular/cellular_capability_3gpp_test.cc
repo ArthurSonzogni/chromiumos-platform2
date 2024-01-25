@@ -16,6 +16,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular.h"
@@ -2329,7 +2330,7 @@ TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
   CellularCapability3gpp::LockRetryData data;
 
   capability_->OnLockRetriesChanged(data);
-  EXPECT_EQ(CellularCapability3gpp::kUnknownLockRetriesLeft,
+  EXPECT_EQ(kUnknownLockRetriesLeft,
             capability_->sim_lock_status_.retries_left);
 
   data[MM_MODEM_LOCK_SIM_PIN] = 3;
@@ -2360,7 +2361,7 @@ TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
 
   data.clear();
   capability_->OnLockRetriesChanged(data);
-  EXPECT_EQ(CellularCapability3gpp::kUnknownLockRetriesLeft,
+  EXPECT_EQ(kUnknownLockRetriesLeft,
             capability_->sim_lock_status_.retries_left);
 }
 
@@ -2422,7 +2423,7 @@ TEST_F(CellularCapability3gppTest, OnSimLockPropertiesChanged) {
   changed.SetVariant(MM_MODEM_PROPERTY_UNLOCKRETRIES, brillo::Any(retry_data));
   capability_->OnModemPropertiesChanged(changed);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
-  EXPECT_EQ(CellularCapability3gpp::kUnknownLockRetriesLeft,
+  EXPECT_EQ(kUnknownLockRetriesLeft,
             capability_->sim_lock_status_.retries_left);
 }
 

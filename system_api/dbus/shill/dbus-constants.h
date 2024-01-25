@@ -551,6 +551,7 @@ constexpr char kNetworkIdProperty[] = "network_id";
 constexpr char kSIMLockPin[] = "sim-pin";
 constexpr char kSIMLockPuk[] = "sim-puk";
 constexpr char kSIMLockNetworkPin[] = "network-pin";
+constexpr int kUnknownLockRetriesLeft = 999;
 
 // APN info property names.
 constexpr char kApnProperty[] = "apn";
