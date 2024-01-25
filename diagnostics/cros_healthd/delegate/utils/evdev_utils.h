@@ -98,25 +98,6 @@ class EvdevUtil {
 std::vector<ash::cros_healthd::mojom::TouchPointInfoPtr> FetchTouchPoints(
     LibevdevWrapper* dev);
 
-class StylusEvdevDelegate final : public EvdevUtil::Delegate {
- public:
-  explicit StylusEvdevDelegate(
-      mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer);
-
-  // EvdevUtil::Delegate overrides.
-  bool IsTarget(LibevdevWrapper* dev) override;
-  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
-  void InitializationFail(uint32_t custom_reason,
-                          const std::string& description) override;
-  void ReportProperties(LibevdevWrapper* dev) override;
-
- private:
-  // Whether the previous emitted event has a touch point. This is used to
-  // emit an event when the stylus is no longer in contact.
-  bool last_event_has_touch_point_{false};
-  mojo::Remote<ash::cros_healthd::mojom::StylusObserver> observer_;
-};
-
 class PowerButtonEvdevDelegate final : public EvdevUtil::Delegate {
  public:
   explicit PowerButtonEvdevDelegate(
