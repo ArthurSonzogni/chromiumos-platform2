@@ -149,6 +149,92 @@ TEST_F(FirewallManagerTest, RequestUdpPortAccess) {
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 }
 
+// Test that if the same port is requested multiple times, it won't get released
+// until all the port tokens are destroyed.
+TEST_F(FirewallManagerTest, RequestSamePort) {
+  InitFirewallManager();
+
+  // Even though the same port is requested twice, this should only be called
+  // once since the second request just increments the reference count.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kCanonBjnpPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+  // The other UDP port is only requested once.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kFirstUpdPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+
+  PortToken pixma_token = firewall_manager()->RequestPixmaPortAccess();
+  {
+    // Request this same port again.  When the returned port token goes out of
+    // scope, the port should not be released since there is an existing port
+    // token still in scope.
+    PortToken pixma_token_2 = firewall_manager()->RequestPixmaPortAccess();
+
+    // Now, request a different port, which will go out of scope and get
+    // released while the first port is still open.  This checks that the count
+    // for each port is calculated separately.
+    EXPECT_CALL(*permission_broker_proxy_mock(),
+                ReleaseUdpPort(kFirstUpdPort, kTestInterface, _, _,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+        .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+
+    // This port will get requested and released.
+    PortToken udp_token =
+        firewall_manager()->RequestUdpPortAccess(kFirstUpdPort);
+  }
+
+  // FirewallManager should request to release the associated port once all
+  // tokens are destroyed.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kCanonBjnpPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+}
+
+// Test that if the same port is requested multiple times (before
+// FirewallManager is initialized), it won't get released until all the port
+// tokens are destroyed.
+TEST_F(FirewallManagerTest, RequestSamePortBeforeInitialization) {
+  PortToken first_token =
+      firewall_manager()->RequestUdpPortAccess(kCanonBjnpPort);
+  PortToken second_token =
+      firewall_manager()->RequestUdpPortAccess(kCanonBjnpPort);
+  PortToken third_token =
+      firewall_manager()->RequestUdpPortAccess(kFirstUpdPort);
+
+  InitFirewallManager();
+
+  // FirewallManager should have queued the requested ports, and upon connecting
+  // to PermissionBroker FirewallManager should immediately request access for
+  // the ports.  The kCanonBjnpPort should only be requested once since the
+  // second time it just increments the counter.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kCanonBjnpPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kFirstUpdPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+
+  RunWaitForServiceToBeAvailableCallback(/*service_available=*/true);
+
+  // FirewallManager should request to release the associated ports when the
+  // tokens are destroyed.  Note that there should only be one request for
+  // kCanonBjnpPort because of the reference counting.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kCanonBjnpPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kFirstUpdPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+}
+
 // Test that FirewallManager handles PermissionBroker denying a port access
 // request.
 TEST_F(FirewallManagerTest, PortAccessRequestDenied) {

@@ -118,20 +118,33 @@ void FirewallManager::OnServiceNameChanged(const string& old_owner,
 }
 
 void FirewallManager::RequestAllPortsAccess() {
-  std::set<uint16_t> attempted_ports;
+  std::map<uint16_t, size_t> attempted_ports;
   attempted_ports.swap(requested_ports_);
-  for (const auto& port : attempted_ports) {
+  for (const auto& [port, count] : attempted_ports) {
+    // Just perform the actual request once and then manually set the count to
+    // what it should be.
     SendPortAccessRequest(port);
+    requested_ports_[port] = count;
   }
 }
 
 void FirewallManager::SendPortAccessRequest(uint16_t port) {
   LOG(INFO) << "Received port access request for UDP port " << port;
 
+  // If this port is already open just increment the count.
+  auto it = requested_ports_.find(port);
+  if (it != requested_ports_.end()) {
+    it->second++;
+    LOG(INFO) << "Port " << port
+              << " already requested.  Incrementing count to " << it->second;
+    return;
+  }
+
   if (!permission_broker_proxy_) {
+    requested_ports_[port]++;
     LOG(INFO) << "Permission broker does not exist (yet); adding request for "
-              << "port " << port << " to queue.";
-    requested_ports_.insert(port);
+              << "port " << port << " to queue.  Count is "
+              << requested_ports_[port] << ".";
     return;
   }
 
@@ -151,9 +164,9 @@ void FirewallManager::SendPortAccessRequest(uint16_t port) {
                << interface_ << " is denied";
     return;
   }
+  requested_ports_[port]++;
   LOG(INFO) << "Access granted for UDP port " << port << " on interface "
-            << interface_;
-  requested_ports_.insert(port);
+            << interface_ << ".  Count is " << requested_ports_[port];
 }
 
 PortToken FirewallManager::RequestUdpPortAccess(uint16_t port) {
@@ -168,8 +181,22 @@ void FirewallManager::ReleaseUdpPortAccess(uint16_t port) {
     LOG(ERROR) << "UDP access has not been requested for port: " << port;
     return;
   }
-  if (!permission_broker_proxy_) {
+
+  requested_ports_[port]--;
+  size_t count = requested_ports_[port];
+  if (count == 0) {
     requested_ports_.erase(port);
+  }
+
+  // This port will not actually get released until all clients have requested
+  // it to be released.
+  if (count > 0) {
+    LOG(INFO) << "Requested to release port " << port << ".  Count is " << count
+              << ".";
+    return;
+  }
+
+  if (!permission_broker_proxy_) {
     return;
   }
 
@@ -185,8 +212,7 @@ void FirewallManager::ReleaseUdpPortAccess(uint16_t port) {
     return;
   }
   LOG(INFO) << "Access released for UDP port " << port << " on interface "
-            << interface_;
-  requested_ports_.erase(port);
+            << interface_ << ".  Count is 0.";
 }
 
 }  // namespace lorgnette

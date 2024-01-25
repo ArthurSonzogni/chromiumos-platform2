@@ -5,8 +5,8 @@
 #ifndef LORGNETTE_FIREWALL_MANAGER_H_
 #define LORGNETTE_FIREWALL_MANAGER_H_
 
+#include <map>
 #include <memory>
-#include <set>
 #include <string>
 
 #include <base/files/scoped_file.h>
@@ -85,8 +85,10 @@ class FirewallManager {
   // The interface on which to request network access.
   std::string interface_;
 
-  // The set of ports for which access has been requested.
-  std::set<uint16_t> requested_ports_;
+  // A map from the requested port to the number of times that port has been
+  // requested.  Used to reference count the port - the port will only get
+  // closed once all requestors are done with the port.
+  std::map<uint16_t, size_t> requested_ports_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<FirewallManager> weak_factory_{this};
