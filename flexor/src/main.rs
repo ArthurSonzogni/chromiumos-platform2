@@ -29,17 +29,17 @@ const FLEX_DEPLOY_PART_NUM: u32 = 13;
 const STATEFUL_PARTITION_LABEL: &str = "STATE";
 const STATEFUL_PARTITION_NUM: u32 = 1;
 
-const DATA_PART_TYPE: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
+const INSTALL_PART_TYPE: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
 /// the image size is about 2.5GB, we assume that much free space in RAM.
 fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
-    // We expect our data on a partition with [`DATA_PART_GUID`], with a vFAT filesystem.
-    let data_partition_path =
-        disk::get_data_partition(disk_path).context("Unable to find correct partition path")?;
-    let mount = mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)
-        .context("Unable to mount data partition")?;
+    // We expect our data on a partition with [`INSTALL_PART_GUID`], with a vFAT filesystem.
+    let install_partition_path =
+        disk::get_install_partition(disk_path).context("Unable to find correct partition path")?;
+    let mount = mount::Mount::mount_by_path(&install_partition_path, mount::FsType::Vfat)
+        .context("Unable to mount the install partition")?;
 
     // Copy the image to rootfs.
     std::fs::copy(
@@ -143,13 +143,13 @@ fn run(disk_path: &Path) -> Result<()> {
 ///    in that case we write the logs to that partition (may need to create a filesystem on that
 ///    partition though).
 fn try_safe_logs(disk_path: &Path) -> Result<()> {
-    // Case 1: The data partition still exists, so we write the logs to it.
-    if let Ok(data_partition_path) = disk::get_data_partition(disk_path) {
-        if matches!(data_partition_path.try_exists(), Ok(true)) {
-            let data_mount =
-                mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
-            std::fs::copy(FLEXOR_LOG_FILE, data_mount.mount_path())
-                .context("Unable to copy the logfile to the data partition")?;
+    // Case 1: The install partition still exists, so we write the logs to it.
+    if let Ok(install_partition_path) = disk::get_install_partition(disk_path) {
+        if matches!(install_partition_path.try_exists(), Ok(true)) {
+            let install_mount =
+                mount::Mount::mount_by_path(&install_partition_path, mount::FsType::Vfat)?;
+            std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
+                .context("Unable to copy the logfile to the install partition")?;
             return Ok(());
         }
     }

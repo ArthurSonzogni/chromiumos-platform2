@@ -32,8 +32,8 @@ pub fn get_target_device() -> Result<PathBuf> {
     bail!("Unable to locate payload on any disk");
 }
 
-/// Gets the data partition on a device, which is identified by [`DATA_PART_GUID`].
-pub fn get_data_partition(disk_path: &Path) -> Result<PathBuf> {
+/// Gets the install partition on a device, which is identified by [`INSTALL_PART_GUID`].
+pub fn get_install_partition(disk_path: &Path) -> Result<PathBuf> {
     let file = File::open(disk_path)?;
     let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512).with_context(|| {
         format!(
@@ -43,10 +43,10 @@ pub fn get_data_partition(disk_path: &Path) -> Result<PathBuf> {
     })?;
 
     let (_, index) = gpt
-        .get_entry_and_index_for_partition_with_type_guid(crate::DATA_PART_TYPE)
+        .get_entry_and_index_for_partition_with_type_guid(crate::INSTALL_PART_TYPE)
         .with_context(|| {
             format!(
-                "Unable to find a partition with the data guid on {}",
+                "Unable to find a partition with the install GUID on {}",
                 disk_path.display()
             )
         })?;
@@ -272,15 +272,15 @@ fn get_disks() -> Result<Vec<PathBuf>> {
 }
 
 fn check_disk_contains_flexor(path: &Path) -> bool {
-    let Ok(data_partition) = get_data_partition(path) else {
+    let Ok(install_partition) = get_install_partition(path) else {
         return false;
     };
 
-    if !matches!(data_partition.try_exists(), Ok(true)) {
+    if !matches!(install_partition.try_exists(), Ok(true)) {
         return false;
     };
 
-    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&data_partition, mount::FsType::Vfat)
+    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&install_partition, mount::FsType::Vfat)
     else {
         return false;
     };
