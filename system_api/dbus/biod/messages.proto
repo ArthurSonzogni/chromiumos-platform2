@@ -8,7 +8,7 @@ option optimize_for = LITE_RUNTIME;
 
 package biod;
 
-option go_package = "chromiumos/system_api/biod_messages_proto";
+option go_package = "go.chromium.org/chromiumos/system_api/biod_messages_proto";
 
 import "constants.proto";
 

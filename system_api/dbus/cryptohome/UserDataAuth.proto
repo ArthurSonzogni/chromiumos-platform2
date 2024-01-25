@@ -22,7 +22,7 @@ syntax = "proto3";
 option optimize_for = LITE_RUNTIME;
 
 package user_data_auth;
-option go_package = "chromiumos/system_api/user_data_auth_proto";
+option go_package = "go.chromium.org/chromiumos/system_api/user_data_auth_proto";
 
 import "auth_factor.proto";
 import "fido.proto";

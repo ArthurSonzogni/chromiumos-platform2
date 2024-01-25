@@ -7,7 +7,7 @@ option optimize_for = LITE_RUNTIME;
 
 // This file defines messages used for starting, stopping, and managing VMs.
 package vm_tools.concierge;
-option go_package = "chromiumos/system_api/vm_concierge_proto";
+option go_package = "go.chromium.org/chromiumos/system_api/vm_concierge_proto";
 
 import "arc/arc.proto";
 
