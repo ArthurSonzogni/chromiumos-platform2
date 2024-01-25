@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/mock_process_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_config.h>
@@ -2067,19 +2068,15 @@ TEST_F(CellularTest, EstablishLinkMultiplexStatic) {
 }
 
 TEST_F(CellularTest, DefaultLinkUpStatic) {
-  auto kAddressFamily = net_base::IPFamily::kIPv4;
-  const char kAddress[] = "10.0.0.1";
-  const char kGateway[] = "10.0.0.254";
-  const int32_t kSubnetPrefix = 16;
-  const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
-
-  IPConfig::Properties ipconfig_properties;
-  ipconfig_properties.address_family = kAddressFamily;
-  ipconfig_properties.address = kAddress;
-  ipconfig_properties.gateway = kGateway;
-  ipconfig_properties.subnet_prefix = kSubnetPrefix;
-  ipconfig_properties.dns_servers =
-      std::vector<std::string>{kDNS[0], kDNS[1], kDNS[2]};
+  net_base::NetworkConfig network_config;
+  network_config.ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString("10.0.0.1/16");
+  network_config.ipv4_gateway =
+      net_base::IPv4Address::CreateFromString("10.0.0.254");
+  network_config.dns_servers = std::vector<net_base::IPAddress>{
+      *net_base::IPAddress::CreateFromString("10.0.0.2"),
+      *net_base::IPAddress::CreateFromString("8.8.4.4"),
+      *net_base::IPAddress::CreateFromString("8.8.8.8")};
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  kTestBearerDBusPath, "");
@@ -2087,8 +2084,8 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   bearer->set_data_interface_for_testing(kTestInterfaceName);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kStatic);
-  bearer->set_ipv4_config_properties_for_testing(
-      std::make_unique<IPConfig::Properties>(ipconfig_properties));
+  bearer->set_ipv4_config_for_testing(
+      std::make_unique<net_base::NetworkConfig>(network_config));
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
@@ -2107,9 +2104,8 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
 
-  EXPECT_CALL(*default_pdn_, set_link_protocol_network_config(Pointee(
-                                 Eq(IPConfig::Properties::ToNetworkConfig(
-                                     &ipconfig_properties, nullptr)))));
+  EXPECT_CALL(*default_pdn_,
+              set_link_protocol_network_config(Pointee(Eq(network_config))));
 
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
@@ -2120,19 +2116,15 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
 }
 
 TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
-  auto kAddressFamily = net_base::IPFamily::kIPv4;
-  const char kAddress[] = "10.0.0.1";
-  const char kGateway[] = "10.0.0.254";
-  const int32_t kSubnetPrefix = 16;
-  const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
-
-  IPConfig::Properties ipconfig_properties;
-  ipconfig_properties.address_family = kAddressFamily;
-  ipconfig_properties.address = kAddress;
-  ipconfig_properties.gateway = kGateway;
-  ipconfig_properties.subnet_prefix = kSubnetPrefix;
-  ipconfig_properties.dns_servers =
-      std::vector<std::string>{kDNS[0], kDNS[1], kDNS[2]};
+  net_base::NetworkConfig network_config;
+  network_config.ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString("10.0.0.1/16");
+  network_config.ipv4_gateway =
+      net_base::IPv4Address::CreateFromString("10.0.0.254");
+  network_config.dns_servers = std::vector<net_base::IPAddress>{
+      *net_base::IPAddress::CreateFromString("10.0.0.2"),
+      *net_base::IPAddress::CreateFromString("8.8.4.4"),
+      *net_base::IPAddress::CreateFromString("8.8.8.8")};
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  kTestBearerDBusPath, "");
@@ -2140,8 +2132,8 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kStatic);
-  bearer->set_ipv4_config_properties_for_testing(
-      std::make_unique<IPConfig::Properties>(ipconfig_properties));
+  bearer->set_ipv4_config_for_testing(
+      std::make_unique<net_base::NetworkConfig>(network_config));
   SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
@@ -2161,9 +2153,8 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
 
-  EXPECT_CALL(*default_pdn_, set_link_protocol_network_config(Pointee(
-                                 Eq(IPConfig::Properties::ToNetworkConfig(
-                                     &ipconfig_properties, nullptr)))));
+  EXPECT_CALL(*default_pdn_,
+              set_link_protocol_network_config(Pointee(Eq(network_config))));
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
 

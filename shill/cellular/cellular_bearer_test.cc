@@ -4,15 +4,18 @@
 
 #include "shill/cellular/cellular_bearer.h"
 
-#include <ModemManager/ModemManager.h>
-
 #include <memory>
 #include <string>
+#include <vector>
+
+#include <ModemManager/ModemManager.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
 #include "shill/mock_control.h"
-#include "shill/testing.h"
 
 using testing::_;
 using testing::ByMove;
@@ -56,10 +59,10 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ("", bearer_.data_interface());
     EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
               bearer_.ipv4_config_method());
-    EXPECT_EQ(nullptr, bearer_.ipv4_config_properties());
+    EXPECT_EQ(nullptr, bearer_.ipv4_config());
     EXPECT_EQ(CellularBearer::IPConfigMethod::kUnknown,
               bearer_.ipv6_config_method());
-    EXPECT_EQ(nullptr, bearer_.ipv6_config_properties());
+    EXPECT_EQ(nullptr, bearer_.ipv6_config());
   }
 
   static KeyValueStore ConstructIPv4ConfigProperties(
@@ -117,37 +120,38 @@ class CellularBearerTest : public testing::Test {
   void VerifyStaticIPv4ConfigMethodAndProperties() {
     EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
               bearer_.ipv4_config_method());
-    const IPConfig::Properties* ipv4_config_properties =
-        bearer_.ipv4_config_properties();
-    ASSERT_NE(nullptr, ipv4_config_properties);
-    EXPECT_EQ(net_base::IPFamily::kIPv4,
-              ipv4_config_properties->address_family);
-    EXPECT_EQ(kIPv4Address, ipv4_config_properties->address);
-    EXPECT_EQ(kIPv4Gateway, ipv4_config_properties->gateway);
-    EXPECT_EQ(kIPv4SubnetPrefix, ipv4_config_properties->subnet_prefix);
-    ASSERT_EQ(3, ipv4_config_properties->dns_servers.size());
-    EXPECT_EQ(kIPv4DNS[0], ipv4_config_properties->dns_servers[0]);
-    EXPECT_EQ(kIPv4DNS[1], ipv4_config_properties->dns_servers[1]);
-    EXPECT_EQ(kIPv4DNS[2], ipv4_config_properties->dns_servers[2]);
-    EXPECT_EQ(kIPv4Mtu, ipv4_config_properties->mtu);
+    const net_base::NetworkConfig* ipv4_config = bearer_.ipv4_config();
+    ASSERT_NE(nullptr, ipv4_config);
+    EXPECT_EQ(net_base::IPv4CIDR::CreateFromStringAndPrefix(kIPv4Address,
+                                                            kIPv4SubnetPrefix),
+              ipv4_config->ipv4_address);
+    EXPECT_EQ(net_base::IPv4Address::CreateFromString(kIPv4Gateway),
+              ipv4_config->ipv4_gateway);
+    EXPECT_EQ((std::vector<net_base::IPAddress>{
+                  *net_base::IPAddress::CreateFromString(kIPv4DNS[0]),
+                  *net_base::IPAddress::CreateFromString(kIPv4DNS[1]),
+                  *net_base::IPAddress::CreateFromString(kIPv4DNS[2])}),
+              ipv4_config->dns_servers);
+    EXPECT_EQ(kIPv4Mtu, ipv4_config->mtu);
   }
 
   void VerifyStaticIPv6ConfigMethodAndProperties() {
     EXPECT_EQ(CellularBearer::IPConfigMethod::kStatic,
               bearer_.ipv6_config_method());
-    const IPConfig::Properties* ipv6_config_properties =
-        bearer_.ipv6_config_properties();
-    ASSERT_NE(nullptr, ipv6_config_properties);
-    EXPECT_EQ(net_base::IPFamily::kIPv6,
-              ipv6_config_properties->address_family);
-    EXPECT_EQ(kIPv6Address, ipv6_config_properties->address);
-    EXPECT_EQ(kIPv6Gateway, ipv6_config_properties->gateway);
-    EXPECT_EQ(kIPv6SubnetPrefix, ipv6_config_properties->subnet_prefix);
-    ASSERT_EQ(3, ipv6_config_properties->dns_servers.size());
-    EXPECT_EQ(kIPv6DNS[0], ipv6_config_properties->dns_servers[0]);
-    EXPECT_EQ(kIPv6DNS[1], ipv6_config_properties->dns_servers[1]);
-    EXPECT_EQ(kIPv6DNS[2], ipv6_config_properties->dns_servers[2]);
-    EXPECT_EQ(kIPv6Mtu, ipv6_config_properties->mtu);
+    const net_base::NetworkConfig* ipv6_config = bearer_.ipv6_config();
+    ASSERT_NE(nullptr, ipv6_config);
+    ASSERT_EQ(1, ipv6_config->ipv6_addresses.size());
+    EXPECT_EQ(*net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address,
+                                                             kIPv6SubnetPrefix),
+              ipv6_config->ipv6_addresses[0]);
+    EXPECT_EQ(net_base::IPv6Address::CreateFromString(kIPv6Gateway),
+              ipv6_config->ipv6_gateway);
+    EXPECT_EQ((std::vector<net_base::IPAddress>{
+                  *net_base::IPAddress::CreateFromString(kIPv6DNS[0]),
+                  *net_base::IPAddress::CreateFromString(kIPv6DNS[1]),
+                  *net_base::IPAddress::CreateFromString(kIPv6DNS[2])}),
+              ipv6_config->dns_servers);
+    EXPECT_EQ(kIPv6Mtu, ipv6_config->mtu);
   }
 
   std::unique_ptr<MockControl> control_;

@@ -12,6 +12,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/network_config.h>
 
 #include "shill/cellular/apn_list.h"
 #include "shill/ipconfig.h"
@@ -70,12 +71,12 @@ class CellularBearer {
   bool connected() const { return connected_; }
   const std::string& data_interface() const { return data_interface_; }
   IPConfigMethod ipv4_config_method() const { return ipv4_config_method_; }
-  const IPConfig::Properties* ipv4_config_properties() const {
-    return ipv4_config_properties_.get();
+  const net_base::NetworkConfig* ipv4_config() const {
+    return ipv4_config_.get();
   }
   IPConfigMethod ipv6_config_method() const { return ipv6_config_method_; }
-  const IPConfig::Properties* ipv6_config_properties() const {
-    return ipv6_config_properties_.get();
+  const net_base::NetworkConfig* ipv6_config() const {
+    return ipv6_config_.get();
   }
 
   const std::string& apn() const { return apn_; }
@@ -89,31 +90,26 @@ class CellularBearer {
   void set_ipv4_config_method_for_testing(IPConfigMethod ipv4_config_method) {
     ipv4_config_method_ = ipv4_config_method;
   }
-  void set_ipv4_config_properties_for_testing(
-      std::unique_ptr<IPConfig::Properties> ipv4_config_properties) {
-    ipv4_config_properties_ = std::move(ipv4_config_properties);
+  void set_ipv4_config_for_testing(
+      std::unique_ptr<net_base::NetworkConfig> ipv4_config) {
+    ipv4_config_ = std::move(ipv4_config);
   }
   void set_ipv6_config_method_for_testing(IPConfigMethod ipv6_config_method) {
     ipv6_config_method_ = ipv6_config_method;
   }
-  void set_ipv6_config_properties_for_testing(
-      std::unique_ptr<IPConfig::Properties> ipv6_config_properties) {
-    ipv6_config_properties_ = std::move(ipv6_config_properties);
+  void set_ipv6_config_for_testing(
+      std::unique_ptr<net_base::NetworkConfig> ipv6_config) {
+    ipv6_config_ = std::move(ipv6_config);
   }
   void set_apn_type_for_testing(ApnList::ApnType apn_type) {
     apn_types_.push_back(apn_type);
   }
 
  private:
-  // Gets the IP configuration method and properties from |properties|.
-  // |address_family| specifies the IP address family of the configuration.
-  // |ipconfig_method| and |ipconfig_properties| are used to return the IP
-  // configuration method and properties and should be non-NULL.
-  void GetIPConfigMethodAndProperties(
-      const KeyValueStore& properties,
-      net_base::IPFamily address_family,
-      IPConfigMethod* ipconfig_method,
-      std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const;
+  // Sets |ipv4_config_method_| and |ipv4_config_| using |properties|.
+  void SetIPv4MethodAndConfig(const KeyValueStore& properties);
+  // Sets |ipv6_config_method_| and |ipv6_config_| using |properties|.
+  void SetIPv6MethodAndConfig(const KeyValueStore& properties);
 
   // Resets bearer properties.
   void ResetProperties();
@@ -130,13 +126,13 @@ class CellularBearer {
   std::string data_interface_;
 
   // If |ipv4_config_method_| is set to |IPConfigMethod::kStatic|,
-  // |ipv4_config_properties_| is guaranteed to contain valid IP configuration
-  // properties. Otherwise, |ipv4_config_properties_| is set to nullptr.
-  // |ipv6_config_properties_| is handled similarly.
+  // |ipv4_config_| is guaranteed to contain valid IP configuration properties.
+  // Otherwise, |ipv4_config_| is set to nullptr. |ipv6_config_| is handled
+  // similarly.
   IPConfigMethod ipv4_config_method_ = IPConfigMethod::kUnknown;
-  std::unique_ptr<IPConfig::Properties> ipv4_config_properties_;
+  std::unique_ptr<net_base::NetworkConfig> ipv4_config_;
   IPConfigMethod ipv6_config_method_ = IPConfigMethod::kUnknown;
-  std::unique_ptr<IPConfig::Properties> ipv6_config_properties_;
+  std::unique_ptr<net_base::NetworkConfig> ipv6_config_;
 
   // Properties that were used to create the bearer, just the ones we need
   // in the already created bearer

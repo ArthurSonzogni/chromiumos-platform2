@@ -17,6 +17,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/network_config.h>
 #include <net-base/netlink_sock_diag.h>
 #include <net-base/process_manager.h>
 #include <net-base/rtnl_listener.h>
@@ -846,11 +847,10 @@ class Cellular : public Device,
     RpcIdentifier bearer_path_;
     std::unique_ptr<Network> network_;
     LinkState link_state_ = LinkState::kUnknown;
-    // Start options and IP config properties only set after a successful
+    // Start options and network config only set after a successful
     // Configure() operation.
     Network::StartOptions start_opts_;
-    std::optional<IPConfig::Properties> ipv4_props_;
-    std::optional<IPConfig::Properties> ipv6_props_;
+    std::optional<net_base::NetworkConfig> network_config_;
   };
 
   // Connection associated to the PDN with APN type "default". In Cellular

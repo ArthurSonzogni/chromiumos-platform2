@@ -4,16 +4,24 @@
 
 #include "shill/cellular/cellular_bearer.h"
 
-#include <ModemManager/ModemManager.h>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <ModemManager/ModemManager.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/logging.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 
@@ -92,14 +100,26 @@ bool CellularBearer::Init() {
   return true;
 }
 
-void CellularBearer::GetIPConfigMethodAndProperties(
-    const KeyValueStore& properties,
-    net_base::IPFamily address_family,
-    IPConfigMethod* ipconfig_method,
-    std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const {
-  DCHECK(ipconfig_method);
-  DCHECK(ipconfig_properties);
+namespace {
+// Gets DNS servers from |properties|, and stores them in |dns_servers|.
+void GetDNSFromProperties(const KeyValueStore& properties,
+                          std::vector<net_base::IPAddress>& dns_servers) {
+  for (const char* key : {kPropertyDNS1, kPropertyDNS2, kPropertyDNS3}) {
+    if (properties.Contains<std::string>(key)) {
+      const std::string& value = properties.Get<std::string>(key);
+      const auto dns = net_base::IPAddress::CreateFromString(value);
+      if (!dns.has_value()) {
+        LOG(WARNING) << "Failed to get DNS from value: " << value
+                     << ", ignoring key: " << key;
+        continue;
+      }
+      dns_servers.push_back(*dns);
+    }
+  }
+}
+}  // namespace
 
+void CellularBearer::SetIPv4MethodAndConfig(const KeyValueStore& properties) {
   uint32_t method = MM_BEARER_IP_METHOD_UNKNOWN;
   if (properties.Contains<uint32_t>(kPropertyMethod)) {
     method = properties.Get<uint32_t>(kPropertyMethod);
@@ -108,43 +128,90 @@ void CellularBearer::GetIPConfigMethodAndProperties(
             << "' does not specify an IP configuration method.";
   }
 
-  *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
+  ipv4_config_method_ = ConvertMMBearerIPConfigMethod(method);
 
   // Additional settings are only expected in either static or dynamic IP
   // addressing, so we can bail out early otherwise.
-  if (*ipconfig_method != IPConfigMethod::kStatic &&
-      *ipconfig_method != IPConfigMethod::kDHCP) {
-    ipconfig_properties->reset();
+  if (ipv4_config_method_ != IPConfigMethod::kStatic &&
+      ipv4_config_method_ != IPConfigMethod::kDHCP) {
+    ipv4_config_.reset();
     return;
   }
 
-  ipconfig_properties->reset(new IPConfig::Properties);
-
-  // Set address family and method associated to these IP config right away, as
-  // we already know them.
-  (*ipconfig_properties)->address_family = address_family;
-  if (address_family == net_base::IPFamily::kIPv4) {
-    (*ipconfig_properties)->method = kTypeIPv4;
-  } else if (address_family == net_base::IPFamily::kIPv6) {
-    (*ipconfig_properties)->method = kTypeIPv6;
-  }
+  ipv4_config_ = std::make_unique<net_base::NetworkConfig>();
 
   // DNS servers and MTU are reported by the network via PCOs, so we may have
   // them both when using static or dynamic IP addressing.
-  if (properties.Contains<std::string>(kPropertyDNS1)) {
-    (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS1));
-  }
-  if (properties.Contains<std::string>(kPropertyDNS2)) {
-    (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS2));
-  }
-  if (properties.Contains<std::string>(kPropertyDNS3)) {
-    (*ipconfig_properties)
-        ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS3));
-  }
+  GetDNSFromProperties(properties, ipv4_config_->dns_servers);
   if (properties.Contains<uint32_t>(kPropertyMtu)) {
-    (*ipconfig_properties)->mtu = properties.Get<uint32_t>(kPropertyMtu);
+    ipv4_config_->mtu = properties.Get<uint32_t>(kPropertyMtu);
+    if (ipv4_config_->mtu < net_base::NetworkConfig::kMinIPv4MTU) {
+      LOG(WARNING) << "MTU " << *ipv4_config_->mtu
+                   << " for IPv4 config is too small, adjusting up to "
+                   << net_base::NetworkConfig::kMinIPv4MTU;
+      ipv4_config_->mtu = net_base::NetworkConfig::kMinIPv4MTU;
+    }
+  }
+
+  // Try to get an IP address.
+  if (!properties.Contains<std::string>(kPropertyAddress)) {
+    return;
+  }
+  const auto& addr = properties.Get<std::string>(kPropertyAddress);
+
+  uint32_t prefix = properties.Lookup<uint32_t>(
+      kPropertyPrefix, net_base::IPv4CIDR::kMaxPrefixLength);
+
+  ipv4_config_->ipv4_address =
+      net_base::IPv4CIDR::CreateFromStringAndPrefix(addr, prefix);
+  if (!ipv4_config_->ipv4_address.has_value()) {
+    LOG(WARNING) << "Failed to parse IPv4 address from " << addr << "/"
+                 << prefix;
+  }
+
+  // If we have an IP address, we may also have a gateway.
+  if (properties.Contains<std::string>(kPropertyGateway)) {
+    const auto& gateway = properties.Get<std::string>(kPropertyGateway);
+    ipv4_config_->ipv4_gateway =
+        net_base::IPv4Address::CreateFromString(gateway);
+    if (!ipv4_config_->ipv4_gateway.has_value()) {
+      LOG(WARNING) << "Failed to parse IPv4 gateway from " << gateway;
+    }
+  }
+}
+
+void CellularBearer::SetIPv6MethodAndConfig(const KeyValueStore& properties) {
+  uint32_t method = MM_BEARER_IP_METHOD_UNKNOWN;
+  if (properties.Contains<uint32_t>(kPropertyMethod)) {
+    method = properties.Get<uint32_t>(kPropertyMethod);
+  } else {
+    SLOG(2) << "Bearer '" << dbus_path_.value()
+            << "' does not specify an IP configuration method.";
+  }
+
+  ipv6_config_method_ = ConvertMMBearerIPConfigMethod(method);
+
+  // Additional settings are only expected in either static or dynamic IP
+  // addressing, so we can bail out early otherwise.
+  if (ipv6_config_method_ != IPConfigMethod::kStatic &&
+      ipv6_config_method_ != IPConfigMethod::kDHCP) {
+    ipv6_config_.reset();
+    return;
+  }
+
+  ipv6_config_ = std::make_unique<net_base::NetworkConfig>();
+
+  // DNS servers and MTU are reported by the network via PCOs, so we may have
+  // them both when using static or dynamic IP addressing.
+  GetDNSFromProperties(properties, ipv6_config_->dns_servers);
+  if (properties.Contains<uint32_t>(kPropertyMtu)) {
+    ipv6_config_->mtu = properties.Get<uint32_t>(kPropertyMtu);
+    if (ipv6_config_->mtu < net_base::NetworkConfig::kMinIPv6MTU) {
+      LOG(WARNING) << "MTU " << *ipv6_config_->mtu
+                   << " for IPv6 config is too small, adjusting up to "
+                   << net_base::NetworkConfig::kMinIPv6MTU;
+      ipv6_config_->mtu = net_base::NetworkConfig::kMinIPv6MTU;
+    }
   }
 
   // If the modem didn't do its own IPv6 SLAAC, it may still report a link-local
@@ -155,22 +222,32 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (!properties.Contains<std::string>(kPropertyAddress)) {
     return;
   }
-  (*ipconfig_properties)->address =
-      properties.Get<std::string>(kPropertyAddress);
+  const auto& addr = properties.Get<std::string>(kPropertyAddress);
 
-  // Set network prefix.
   uint32_t prefix;
   if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
-    prefix = net_base::IPCIDR::GetMaxPrefixLength(address_family);
+    prefix = net_base::IPv6CIDR::kMaxPrefixLength;
   } else {
     prefix = properties.Get<uint32_t>(kPropertyPrefix);
   }
-  (*ipconfig_properties)->subnet_prefix = prefix;
+
+  const auto& cidr =
+      net_base::IPv6CIDR::CreateFromStringAndPrefix(addr, prefix);
+  if (!cidr.has_value()) {
+    LOG(WARNING) << "Failed to parse IPv6 address from " << addr << "/"
+                 << prefix;
+  } else {
+    ipv6_config_->ipv6_addresses.push_back(*cidr);
+  }
 
   // If we have an IP address, we may also have a gateway.
   if (properties.Contains<std::string>(kPropertyGateway)) {
-    (*ipconfig_properties)->gateway =
-        properties.Get<std::string>(kPropertyGateway);
+    const auto& gateway = properties.Get<std::string>(kPropertyGateway);
+    ipv6_config_->ipv6_gateway =
+        net_base::IPv6Address::CreateFromString(gateway);
+    if (!ipv6_config_->ipv6_gateway.has_value()) {
+      LOG(WARNING) << "Failed to parse IPv6 gateway from " << gateway;
+    }
   }
 }
 
@@ -180,9 +257,9 @@ void CellularBearer::ResetProperties() {
   apn_types_.clear();
   data_interface_.clear();
   ipv4_config_method_ = IPConfigMethod::kUnknown;
-  ipv4_config_properties_.reset();
+  ipv4_config_.reset();
   ipv6_config_method_ = IPConfigMethod::kUnknown;
-  ipv6_config_properties_.reset();
+  ipv6_config_.reset();
 }
 
 void CellularBearer::UpdateProperties() {
@@ -234,17 +311,13 @@ void CellularBearer::OnPropertiesChanged(
           MM_BEARER_PROPERTY_IP4CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP4CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig, net_base::IPFamily::kIPv4,
-                                   &ipv4_config_method_,
-                                   &ipv4_config_properties_);
+    SetIPv4MethodAndConfig(ipconfig);
   }
   if (changed_properties.Contains<KeyValueStore>(
           MM_BEARER_PROPERTY_IP6CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP6CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig, net_base::IPFamily::kIPv6,
-                                   &ipv6_config_method_,
-                                   &ipv6_config_properties_);
+    SetIPv6MethodAndConfig(ipconfig);
   }
 }
 

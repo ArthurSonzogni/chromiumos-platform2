@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
+#include <algorithm>
 #include <ios>
 #include <memory>
 #include <optional>
@@ -4283,6 +4284,8 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
 
   bool ipv6_configured = false;
   bool ipv4_configured = false;
+  std::unique_ptr<net_base::NetworkConfig> ipv6_config;
+  std::unique_ptr<net_base::NetworkConfig> ipv4_config;
 
   // If the modem has done its own SLAAC and it was able to retrieve a correct
   // address and gateway it will report kMethodStatic. If the modem didn't do
@@ -4290,12 +4293,13 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   // link-local address to configure before running host SLAAC. In both those
   // cases, the modem will receive DNS information via PCOs from the network,
   // which should be considered in the setup.
-  if (bearer->ipv6_config_method() !=
-      CellularBearer::IPConfigMethod::kUnknown) {
+  if (bearer->ipv6_config_method() == CellularBearer::IPConfigMethod::kStatic ||
+      bearer->ipv6_config_method() == CellularBearer::IPConfigMethod::kDHCP) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv6 configuration from bearer.";
-    const auto& props = *bearer->ipv6_config_properties();
-    ipv6_props_ = props;
+    CHECK(bearer->ipv6_config());
+    ipv6_config =
+        std::make_unique<net_base::NetworkConfig>(*bearer->ipv6_config());
     start_opts_.accept_ra = true;
 
     // TODO(b/285205946): Currently IPv6 method is always set to static so we
@@ -4305,16 +4309,16 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     // simply check IPv6 method here instead.
     const auto link_local_mask =
         *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
-    const auto local = net_base::IPv6Address::CreateFromString(props.address);
-    if (!local) {
-      LOG(ERROR) << LoggingTag()
-                 << ": IPv6 address is not valid: " << props.address;
-    } else if (link_local_mask.InSameSubnetWith(*local)) {
-      ipv6_props_->address.clear();
-      ipv6_props_->subnet_prefix = 0;
-      start_opts_.link_local_address = local;
+    if (ipv6_config->ipv6_addresses.empty()) {
+      LOG(ERROR) << LoggingTag() << ": IPv6 address is not set";
     } else {
-      start_opts_.accept_ra = false;
+      const auto& local = ipv6_config->ipv6_addresses[0].address();
+      if (link_local_mask.InSameSubnetWith(local)) {
+        ipv6_config->ipv6_addresses.clear();
+        start_opts_.link_local_address = local;
+      } else {
+        start_opts_.accept_ra = false;
+      }
     }
     ipv6_configured = true;
   }
@@ -4323,7 +4327,9 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv4 configuration from bearer.";
-    ipv4_props_ = *bearer->ipv4_config_properties();
+    CHECK(bearer->ipv4_config());
+    ipv4_config =
+        std::make_unique<net_base::NetworkConfig>(*bearer->ipv4_config());
     ipv4_configured = true;
   } else if (bearer->ipv4_config_method() ==
              CellularBearer::IPConfigMethod::kDHCP) {
@@ -4349,19 +4355,24 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   // Override the MTU with a given limit for a specific serving operator
   // if the network doesn't report something lower. The setting is applied both
   // in IPv4 and IPv6 settings.
-  if (cellular_->mobile_operator_info_ &&
-      cellular_->mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU) {
-    if (ipv4_props_ &&
-        (ipv4_props_->mtu == IPConfig::kUndefinedMTU ||
-         cellular_->mobile_operator_info_->mtu() < ipv4_props_->mtu)) {
-      ipv4_props_->mtu = cellular_->mobile_operator_info_->mtu();
-    }
-    if (ipv6_props_ &&
-        (ipv6_props_->mtu == IPConfig::kUndefinedMTU ||
-         cellular_->mobile_operator_info_->mtu() < ipv6_props_->mtu)) {
-      ipv6_props_->mtu = cellular_->mobile_operator_info_->mtu();
+  if (cellular_->mobile_operator_info_) {
+    if (const int32_t mtu = cellular_->mobile_operator_info_->mtu();
+        mtu != IPConfig::kUndefinedMTU) {
+      if (ipv4_config &&
+          (!ipv4_config->mtu.has_value() || mtu < ipv4_config->mtu)) {
+        CHECK(mtu >= net_base::NetworkConfig::kMinIPv4MTU);
+        ipv4_config->mtu = mtu;
+      }
+      if (ipv6_config &&
+          (!ipv6_config->mtu.has_value() || mtu < ipv6_config->mtu)) {
+        CHECK(mtu >= net_base::NetworkConfig::kMinIPv6MTU);
+        ipv6_config->mtu = mtu;
+      }
     }
   }
+
+  network_config_ =
+      net_base::NetworkConfig::Merge(ipv4_config.get(), ipv6_config.get());
 
   start_opts_.dhcp = dhcp_opts;
   // TODO(b/234300343#comment43): Read probe URL override configuration
@@ -4373,14 +4384,9 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
 }
 
 void Cellular::NetworkInfo::Start() {
-  // TODO(b/269401899): Use net_base::NetworkConfig in NetworkInfo instead of
-  // ipv6_props_ and ipv4_props_.
-  if (ipv6_props_ || ipv4_props_) {
-    IPConfig::Properties* ipv6 = ipv6_props_ ? &*ipv6_props_ : nullptr;
-    IPConfig::Properties* ipv4 = ipv4_props_ ? &*ipv4_props_ : nullptr;
-    auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
+  if (network_config_.has_value()) {
     network_->set_link_protocol_network_config(
-        std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
+        std::make_unique<net_base::NetworkConfig>(*network_config_));
   }
   network_->Start(start_opts_);
 }
