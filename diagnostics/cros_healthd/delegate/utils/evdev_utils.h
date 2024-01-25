@@ -94,21 +94,9 @@ class EvdevUtil {
   std::unique_ptr<Delegate> delegate_;
 };
 
-class TouchpadEvdevDelegate final : public EvdevUtil::Delegate {
- public:
-  explicit TouchpadEvdevDelegate(
-      mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer);
-
-  // EvdevUtil::Delegate overrides.
-  bool IsTarget(LibevdevWrapper* dev) override;
-  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
-  void InitializationFail(uint32_t custom_reason,
-                          const std::string& description) override;
-  void ReportProperties(LibevdevWrapper* dev) override;
-
- private:
-  mojo::Remote<ash::cros_healthd::mojom::TouchpadObserver> observer_;
-};
+// Returns touch points of the evdev device.
+std::vector<ash::cros_healthd::mojom::TouchPointInfoPtr> FetchTouchPoints(
+    LibevdevWrapper* dev);
 
 class TouchscreenEvdevDelegate final : public EvdevUtil::Delegate {
  public:

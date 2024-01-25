@@ -12,7 +12,10 @@ pkg_config("target_default") {
 }
 
 source_set("events") {
-  sources = [ "audio_jack_evdev_delegate.cc" ]
+  sources = [
+    "audio_jack_evdev_delegate.cc",
+    "touchpad_evdev_delegate.cc",
+  ]
   configs += [ ":target_default" ]
   deps = [
     "//diagnostics/base",
