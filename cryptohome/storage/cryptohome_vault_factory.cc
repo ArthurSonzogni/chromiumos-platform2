@@ -13,12 +13,12 @@
 
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/cryptohome_vault.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/mount_constants.h"
 
 namespace {
@@ -65,31 +65,32 @@ namespace cryptohome {
 
 CryptohomeVaultFactory::CryptohomeVaultFactory(
     libstorage::Platform* platform,
-    std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory)
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory)
     : platform_(platform),
-      encrypted_container_factory_(std::move(encrypted_container_factory)) {}
+      storage_container_factory_(std::move(storage_container_factory)) {}
 
 CryptohomeVaultFactory::~CryptohomeVaultFactory() {}
 
-std::unique_ptr<EncryptedContainer>
-CryptohomeVaultFactory::GenerateEncryptedContainer(
-    EncryptedContainerType type,
+std::unique_ptr<libstorage::StorageContainer>
+CryptohomeVaultFactory::GenerateStorageContainer(
+    libstorage::StorageContainerType type,
     const ObfuscatedUsername& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
+    const libstorage::FileSystemKeyReference& key_reference,
     const std::string& container_identifier,
     const DmOptions& dm_options) {
-  EncryptedContainerConfig config;
+  libstorage::StorageContainerConfig config;
   base::FilePath stateful_device;
   uint64_t stateful_size;
 
   switch (type) {
-    case EncryptedContainerType::kEcryptfs:
+    case libstorage::StorageContainerType::kEcryptfs:
       config.backing_dir = GetEcryptfsUserVaultPath(obfuscated_username);
       break;
-    case EncryptedContainerType::kFscrypt:
+    case libstorage::StorageContainerType::kFscrypt:
       config.backing_dir = GetUserMountDirectory(obfuscated_username);
       break;
-    case EncryptedContainerType::kDmcrypt: {
+    case libstorage::StorageContainerType::kDmcrypt: {
       if (!vg_ || !vg_->IsValid() || !thinpool_ || !thinpool_->IsValid())
         return nullptr;
 
@@ -118,18 +119,19 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       base::FilePath snapshot_path =
           LogicalVolumeSnapshotPath(obfuscated_username, container_identifier);
 
-      BackingDeviceConfig backing_config;
+      libstorage::BackingDeviceConfig backing_config;
 
       if (platform_->FileExists(snapshot_path)) {
-        backing_config = {.type = BackingDeviceType::kLoopbackDevice,
-                          .name = backing_name,
-                          .size = backing_size,
-                          .loopback = {.backing_file_path = snapshot_path,
-                                       .fixed_backing = true}};
+        backing_config = {
+            .type = libstorage::BackingDeviceType::kLoopbackDevice,
+            .name = backing_name,
+            .size = backing_size,
+            .loopback = {.backing_file_path = snapshot_path,
+                         .fixed_backing = true}};
 
       } else {
         backing_config = {
-            .type = BackingDeviceType::kLogicalVolumeBackingDevice,
+            .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
             .name = backing_name,
             .size = backing_size,
             .logical_volume = {.vg = vg_, .thinpool = thinpool_}};
@@ -154,13 +156,14 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
             .tune2fs_opts = {"-O", "verity,quota,project", "-Q",
                              "usrquota,grpquota,prjquota"},
             .backend_type = type,
-            .recovery = dm_options.is_cache_device ? RecoveryType::kPurge
-                                                   : RecoveryType::kDoNothing};
-        type = EncryptedContainerType::kExt4;
+            .recovery = dm_options.is_cache_device
+                            ? libstorage::RecoveryType::kPurge
+                            : libstorage::RecoveryType::kDoNothing};
+        type = libstorage::StorageContainerType::kExt4;
       }
       break;
     }
-    case EncryptedContainerType::kEphemeral:
+    case libstorage::StorageContainerType::kEphemeral:
       // Configure an ext4 filesystem that will use the backing device:
       config.filesystem_config = {
           // features once dm-crypt cryptohomes are stable.
@@ -180,44 +183,47 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
           .backend_type = type,
           // No need to specify recovery, the device is purge at destruction.
       };
-      type = EncryptedContainerType::kExt4;
+      type = libstorage::StorageContainerType::kExt4;
       config.backing_file_path = base::FilePath(kEphemeralCryptohomeDir)
                                      .Append(kSparseFileDir)
                                      .Append(*obfuscated_username);
       break;
-    case EncryptedContainerType::kExt4:
+    case libstorage::StorageContainerType::kExt4:
       // Not given directly, passed with the raw block device.
-    case EncryptedContainerType::kEcryptfsToFscrypt:
-    case EncryptedContainerType::kEcryptfsToDmcrypt:
-    case EncryptedContainerType::kFscryptToDmcrypt:
+    case libstorage::StorageContainerType::kEcryptfsToFscrypt:
+    case libstorage::StorageContainerType::kEcryptfsToDmcrypt:
+    case libstorage::StorageContainerType::kFscryptToDmcrypt:
       // The migrating type is handled by the higher level abstraction.
       // FALLTHROUGH
-    case EncryptedContainerType::kUnknown:
+    case libstorage::StorageContainerType::kUnknown:
       LOG(ERROR) << "Incorrect container type: " << static_cast<int>(type);
       return nullptr;
   }
 
-  return encrypted_container_factory_->Generate(config, type, key_reference);
+  return storage_container_factory_->Generate(config, type, key_reference);
 }
 
 std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     const ObfuscatedUsername& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
-    EncryptedContainerType vault_type,
+    const libstorage::FileSystemKeyReference& key_reference,
+    libstorage::StorageContainerType vault_type,
     bool keylocker_enabled) {
-  EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
-  EncryptedContainerType migrating_container_type =
-      EncryptedContainerType::kUnknown;
+  libstorage::StorageContainerType container_type =
+      libstorage::StorageContainerType::kUnknown;
+  libstorage::StorageContainerType migrating_container_type =
+      libstorage::StorageContainerType::kUnknown;
 
-  if (vault_type == EncryptedContainerType::kEcryptfsToFscrypt) {
-    container_type = EncryptedContainerType::kEcryptfs;
-    migrating_container_type = EncryptedContainerType::kFscrypt;
-  } else if (vault_type == EncryptedContainerType::kEcryptfsToDmcrypt) {
-    container_type = EncryptedContainerType::kEcryptfs;
-    migrating_container_type = EncryptedContainerType::kDmcrypt;
-  } else if (vault_type == EncryptedContainerType::kFscryptToDmcrypt) {
-    container_type = EncryptedContainerType::kFscrypt;
-    migrating_container_type = EncryptedContainerType::kDmcrypt;
+  if (vault_type == libstorage::StorageContainerType::kEcryptfsToFscrypt) {
+    container_type = libstorage::StorageContainerType::kEcryptfs;
+    migrating_container_type = libstorage::StorageContainerType::kFscrypt;
+  } else if (vault_type ==
+             libstorage::StorageContainerType::kEcryptfsToDmcrypt) {
+    container_type = libstorage::StorageContainerType::kEcryptfs;
+    migrating_container_type = libstorage::StorageContainerType::kDmcrypt;
+  } else if (vault_type ==
+             libstorage::StorageContainerType::kFscryptToDmcrypt) {
+    container_type = libstorage::StorageContainerType::kFscrypt;
+    migrating_container_type = libstorage::StorageContainerType::kDmcrypt;
   } else {
     container_type = vault_type;
   }
@@ -235,17 +241,18 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
       .is_raw_device = true,
   };
 
-  std::unique_ptr<EncryptedContainer> container = GenerateEncryptedContainer(
-      container_type, obfuscated_username, key_reference,
-      kDmcryptDataContainerSuffix, vault_dm_options);
+  std::unique_ptr<libstorage::StorageContainer> container =
+      GenerateStorageContainer(container_type, obfuscated_username,
+                               key_reference, kDmcryptDataContainerSuffix,
+                               vault_dm_options);
   if (!container) {
     LOG(ERROR) << "Could not create vault container";
     return nullptr;
   }
 
-  std::unique_ptr<EncryptedContainer> migrating_container;
-  if (migrating_container_type != EncryptedContainerType::kUnknown) {
-    migrating_container = GenerateEncryptedContainer(
+  std::unique_ptr<libstorage::StorageContainer> migrating_container;
+  if (migrating_container_type != libstorage::StorageContainerType::kUnknown) {
+    migrating_container = GenerateStorageContainer(
         migrating_container_type, obfuscated_username, key_reference,
         kDmcryptDataContainerSuffix, vault_dm_options);
     if (!migrating_container) {
@@ -254,14 +261,14 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     }
   }
 
-  std::unique_ptr<EncryptedContainer> cache_container;
-  std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+  std::unique_ptr<libstorage::StorageContainer> cache_container;
+  std::unordered_map<std::string, std::unique_ptr<libstorage::StorageContainer>>
       application_containers;
-  if (container_type == EncryptedContainerType::kDmcrypt ||
-      migrating_container_type == EncryptedContainerType::kDmcrypt) {
-    cache_container = GenerateEncryptedContainer(
-        EncryptedContainerType::kDmcrypt, obfuscated_username, key_reference,
-        kDmcryptCacheContainerSuffix, cache_dm_options);
+  if (container_type == libstorage::StorageContainerType::kDmcrypt ||
+      migrating_container_type == libstorage::StorageContainerType::kDmcrypt) {
+    cache_container = GenerateStorageContainer(
+        libstorage::StorageContainerType::kDmcrypt, obfuscated_username,
+        key_reference, kDmcryptCacheContainerSuffix, cache_dm_options);
     if (!cache_container) {
       LOG(ERROR) << "Could not create vault container for cache";
       return nullptr;
@@ -269,10 +276,10 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     if (enable_application_containers_) {
       for (const auto& app : std::vector<std::string>{"arcvm"}) {
         app_dm_options.iv_offset = GetContainerIVOffset(app);
-        std::unique_ptr<EncryptedContainer> tmp_container =
-            GenerateEncryptedContainer(EncryptedContainerType::kDmcrypt,
-                                       obfuscated_username, key_reference, app,
-                                       app_dm_options);
+        std::unique_ptr<libstorage::StorageContainer> tmp_container =
+            GenerateStorageContainer(libstorage::StorageContainerType::kDmcrypt,
+                                     obfuscated_username, key_reference, app,
+                                     app_dm_options);
         if (!tmp_container) {
           LOG(ERROR) << "Could not create vault container for app: " << app;
           return nullptr;

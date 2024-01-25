@@ -25,12 +25,12 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/backing_device.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
-#include "cryptohome/storage/encrypted_container/backing_device.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 namespace mount_encrypted {
 
@@ -107,7 +107,7 @@ EncryptedFs::EncryptedFs(
     const base::FilePath& rootdir,
     uint64_t fs_size,
     const std::string& dmcrypt_name,
-    std::unique_ptr<cryptohome::EncryptedContainer> container,
+    std::unique_ptr<libstorage::StorageContainer> container,
     libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper)
     : rootdir_(rootdir),
@@ -135,7 +135,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper,
     brillo::LogicalVolumeManager* lvm,
-    cryptohome::EncryptedContainerFactory* encrypted_container_factory) {
+    libstorage::StorageContainerFactory* storage_container_factory) {
   // Calculate the maximum size of the encrypted stateful partition.
   // truncate()/ftruncate() use int64_t for file size.
   struct statvfs stateful_statbuf;
@@ -157,7 +157,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   }
 
   // Initialize the encrypted container.
-  cryptohome::BackingDeviceConfig backing_device_config;
+  libstorage::BackingDeviceConfig backing_device_config;
 
   base::FilePath sparse_backing_file =
       rootdir.Append(STATEFUL_MNT "/encrypted.block");
@@ -184,7 +184,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                         : rootdir.Append(STATEFUL_MNT "/encrypted.block");
 
     backing_device_config = {
-        .type = cryptohome::BackingDeviceType::kLoopbackDevice,
+        .type = libstorage::BackingDeviceType::kLoopbackDevice,
         .name = dmcrypt_name,
         .size = fs_bytes_max,
         .loopback = {.backing_file_path = backing_file,
@@ -207,7 +207,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     }
 
     backing_device_config = {
-        .type = cryptohome::BackingDeviceType::kLogicalVolumeBackingDevice,
+        .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
         .name = dmcrypt_name,
         .size = fs_bytes_max / (1024 * 1024),
         .logical_volume = {
@@ -215,25 +215,25 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
             .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}};
   }
 
-  cryptohome::EncryptedContainerConfig container_config(
+  libstorage::StorageContainerConfig container_config(
       {.filesystem_config =
            {.mkfs_opts = {"-T", "default", "-b", std::to_string(kExt4BlockSize),
                           "-m", "0", "-O", "^huge_file,^flex_bg", "-E",
                           kExt4ExtendedOptions},
             .tune2fs_opts = {},
-            .backend_type = cryptohome::EncryptedContainerType::kDmcrypt,
-            .recovery = cryptohome::RecoveryType::kEnforceCleaning},
+            .backend_type = libstorage::StorageContainerType::kDmcrypt,
+            .recovery = libstorage::RecoveryType::kEnforceCleaning},
        .dmcrypt_config = {
            .backing_device_config = backing_device_config,
            .dmcrypt_device_name = dmcrypt_name,
            .dmcrypt_cipher = std::string(kDmCryptDefaultCipher)}});
 
-  cryptohome::FileSystemKeyReference key_reference;
+  libstorage::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob("encstateful");
 
-  std::unique_ptr<cryptohome::EncryptedContainer> container =
-      encrypted_container_factory->Generate(
-          container_config, cryptohome::EncryptedContainerType::kExt4,
+  std::unique_ptr<libstorage::StorageContainer> container =
+      storage_container_factory->Generate(
+          container_config, libstorage::StorageContainerType::kExt4,
           key_reference);
 
   return std::make_unique<EncryptedFs>(rootdir, fs_bytes_max, dmcrypt_name,
@@ -247,7 +247,7 @@ bool EncryptedFs::Purge() {
 }
 
 // Do all the work needed to actually set up the encrypted partition.
-result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
+result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
                                bool rebuild) {
   // Get stateful partition statistics. This acts as an indicator of how large
   // we want the encrypted stateful partition to be.

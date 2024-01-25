@@ -28,11 +28,11 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libstorage/platform/dircrypto_util.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/ephemeral_policy_util.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -334,25 +334,25 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
   return true;
 }
 
-EncryptedContainerType HomeDirs::ChooseVaultType() {
+libstorage::StorageContainerType HomeDirs::ChooseVaultType() {
   // Validate stateful partition logical volume support.
   if (platform_->IsStatefulLogicalVolumeSupported())
-    return EncryptedContainerType::kDmcrypt;
+    return libstorage::StorageContainerType::kDmcrypt;
 
   dircrypto::KeyState state = platform_->GetDirCryptoKeyState(ShadowRoot());
   switch (state) {
     case dircrypto::KeyState::NOT_SUPPORTED:
-      return EncryptedContainerType::kEcryptfs;
+      return libstorage::StorageContainerType::kEcryptfs;
     case dircrypto::KeyState::NO_KEY:
-      return EncryptedContainerType::kFscrypt;
+      return libstorage::StorageContainerType::kFscrypt;
     case dircrypto::KeyState::UNKNOWN:
     case dircrypto::KeyState::ENCRYPTED:
       LOG(ERROR) << "Unexpected state " << static_cast<int>(state);
-      return EncryptedContainerType::kUnknown;
+      return libstorage::StorageContainerType::kUnknown;
   }
 }
 
-StorageStatusOr<EncryptedContainerType> HomeDirs::GetVaultType(
+StorageStatusOr<libstorage::StorageContainerType> HomeDirs::GetVaultType(
     const ObfuscatedUsername& obfuscated_username) {
   ASSIGN_OR_RETURN(bool dircrypto_exists,
                    DircryptoCryptohomeExists(obfuscated_username),
@@ -360,21 +360,21 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::GetVaultType(
 
   if (EcryptfsCryptohomeExists(obfuscated_username)) {
     if (dircrypto_exists) {
-      return EncryptedContainerType::kEcryptfsToFscrypt;
+      return libstorage::StorageContainerType::kEcryptfsToFscrypt;
     }
     if (DmcryptCryptohomeExists(obfuscated_username)) {
-      return EncryptedContainerType::kEcryptfsToDmcrypt;
+      return libstorage::StorageContainerType::kEcryptfsToDmcrypt;
     }
-    return EncryptedContainerType::kEcryptfs;
+    return libstorage::StorageContainerType::kEcryptfs;
   } else if (dircrypto_exists) {
     if (DmcryptCryptohomeExists(obfuscated_username)) {
-      return EncryptedContainerType::kFscryptToDmcrypt;
+      return libstorage::StorageContainerType::kFscryptToDmcrypt;
     }
-    return EncryptedContainerType::kFscrypt;
+    return libstorage::StorageContainerType::kFscrypt;
   } else if (DmcryptCryptohomeExists(obfuscated_username)) {
-    return EncryptedContainerType::kDmcrypt;
+    return libstorage::StorageContainerType::kDmcrypt;
   }
-  return EncryptedContainerType::kUnknown;
+  return libstorage::StorageContainerType::kUnknown;
 }
 
 bool HomeDirs::enterprise_owned() const {
@@ -383,32 +383,35 @@ bool HomeDirs::enterprise_owned() const {
   return device_management_client_->IsEnterpriseOwned();
 }
 
-StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
+StorageStatusOr<libstorage::StorageContainerType> HomeDirs::PickVaultType(
     const ObfuscatedUsername& obfuscated_username,
     const CryptohomeVault::Options& options) {
   // See if the vault exists.
-  ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
+  ASSIGN_OR_RETURN(libstorage::StorageContainerType vault_type,
                    GetVaultType(obfuscated_username));
   // If existing vault is ecryptfs and migrate == true - make migrating vault.
-  if (vault_type == EncryptedContainerType::kEcryptfs && options.migrate) {
+  if (vault_type == libstorage::StorageContainerType::kEcryptfs &&
+      options.migrate) {
     if (lvm_migration_enabled_) {
-      vault_type = EncryptedContainerType::kEcryptfsToDmcrypt;
+      vault_type = libstorage::StorageContainerType::kEcryptfsToDmcrypt;
     } else {
-      vault_type = EncryptedContainerType::kEcryptfsToFscrypt;
+      vault_type = libstorage::StorageContainerType::kEcryptfsToFscrypt;
     }
   }
-  if (vault_type == EncryptedContainerType::kFscrypt && options.migrate) {
-    vault_type = EncryptedContainerType::kFscryptToDmcrypt;
+  if (vault_type == libstorage::StorageContainerType::kFscrypt &&
+      options.migrate) {
+    vault_type = libstorage::StorageContainerType::kFscryptToDmcrypt;
   }
 
-  if (vault_type == EncryptedContainerType::kEcryptfs &&
+  if (vault_type == libstorage::StorageContainerType::kEcryptfs &&
       options.block_ecryptfs) {
     return StorageStatus::Make(FROM_HERE,
                                "Mount attempt with block_ecryptfs on eCryptfs.",
                                MOUNT_ERROR_OLD_ENCRYPTION);
   }
 
-  if (EncryptedContainer::IsMigratingType(vault_type) && !options.migrate) {
+  if (libstorage::StorageContainer::IsMigratingType(vault_type) &&
+      !options.migrate) {
     return StorageStatus::Make(
         FROM_HERE,
         "Mount failed because both eCryptfs and dircrypto home"
@@ -417,14 +420,15 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
         MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE);
   }
 
-  if (!EncryptedContainer::IsMigratingType(vault_type) && options.migrate) {
+  if (!libstorage::StorageContainer::IsMigratingType(vault_type) &&
+      options.migrate) {
     return StorageStatus::Make(
         FROM_HERE, "Mount attempt with migration on non-eCryptfs mount",
         MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE);
   }
 
   // Vault exists, so we return its type.
-  if (vault_type != EncryptedContainerType::kUnknown) {
+  if (vault_type != libstorage::StorageContainerType::kUnknown) {
     return vault_type;
   }
 
@@ -440,7 +444,7 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
 
   // If there is no existing vault, see if we are asked for a specific type.
   // Otherwise choose the best type based on configuration.
-  return options.force_type != EncryptedContainerType::kUnknown
+  return options.force_type != libstorage::StorageContainerType::kUnknown
              ? options.force_type
              : ChooseVaultType();
 }
@@ -507,8 +511,9 @@ bool HomeDirs::Remove(const ObfuscatedUsername& obfuscated) {
   bool ret = true;
 
   if (DmcryptCryptohomeExists(obfuscated)) {
-    auto vault = vault_factory_->Generate(obfuscated, FileSystemKeyReference(),
-                                          EncryptedContainerType::kDmcrypt);
+    auto vault = vault_factory_->Generate(
+        obfuscated, libstorage::FileSystemKeyReference(),
+        libstorage::StorageContainerType::kDmcrypt);
     ret = vault->Purge();
   }
 
@@ -522,12 +527,14 @@ bool HomeDirs::RemoveDmcryptCacheContainer(
   if (!DmcryptCacheContainerExists(obfuscated))
     return false;
 
-  auto vault = vault_factory_->Generate(obfuscated, FileSystemKeyReference(),
-                                        EncryptedContainerType::kDmcrypt);
+  auto vault =
+      vault_factory_->Generate(obfuscated, libstorage::FileSystemKeyReference(),
+                               libstorage::StorageContainerType::kDmcrypt);
   if (!vault)
     return false;
 
-  if (vault->GetCacheContainerType() != EncryptedContainerType::kDmcrypt)
+  if (vault->GetCacheContainerType() !=
+      libstorage::StorageContainerType::kDmcrypt)
     return false;
 
   return vault->PurgeCacheContainer();

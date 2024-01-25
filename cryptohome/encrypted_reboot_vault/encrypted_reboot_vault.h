@@ -10,9 +10,10 @@
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
-#include <cryptohome/storage/encrypted_container/encrypted_container.h>
-#include <cryptohome/storage/keyring/keyring.h>
+#include <libstorage/platform/dircrypto_util.h>
+#include <libstorage/platform/keyring/keyring.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container.h>
 
 class EncryptedRebootVault {
  public:
@@ -30,8 +31,8 @@ class EncryptedRebootVault {
  private:
   base::FilePath vault_path_;
   libstorage::Platform platform_;
-  std::unique_ptr<cryptohome::Keyring> keyring_;
-  std::unique_ptr<cryptohome::EncryptedContainer> encrypted_container_;
+  std::unique_ptr<libstorage::Keyring> keyring_;
+  std::unique_ptr<libstorage::StorageContainer> encrypted_container_;
 };
 
 #endif  // CRYPTOHOME_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_

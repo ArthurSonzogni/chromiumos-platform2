@@ -12,18 +12,18 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/mock_platform.h>
+#include <libstorage/storage_container/backing_device.h>
+#include <libstorage/storage_container/backing_device_factory.h>
+#include <libstorage/storage_container/fake_backing_device.h>
+#include <libstorage/storage_container/fake_storage_container_factory.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/storage/encrypted_container/backing_device.h"
-#include "cryptohome/storage/encrypted_container/backing_device_factory.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
-#include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/error_test_helpers.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
 using ::cryptohome::storage::testing::IsError;
@@ -37,16 +37,16 @@ namespace cryptohome {
 
 namespace {
 struct CryptohomeVaultTestParams {
-  CryptohomeVaultTestParams(EncryptedContainerType type,
-                            EncryptedContainerType migrating_type,
-                            EncryptedContainerType cache_type)
+  CryptohomeVaultTestParams(libstorage::StorageContainerType type,
+                            libstorage::StorageContainerType migrating_type,
+                            libstorage::StorageContainerType cache_type)
       : container_type(type),
         migrating_container_type(migrating_type),
         cache_container_type(cache_type) {}
 
-  EncryptedContainerType container_type;
-  EncryptedContainerType migrating_container_type;
-  EncryptedContainerType cache_container_type;
+  libstorage::StorageContainerType container_type;
+  libstorage::StorageContainerType migrating_container_type;
+  libstorage::StorageContainerType cache_container_type;
 };
 }  // namespace
 
@@ -58,44 +58,47 @@ class CryptohomeVaultTest
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}),
         key_({.fek = brillo::SecureBlob("random key")}),
         backing_dir_(UserPath(obfuscated_username_)),
-        keyring_(new FakeKeyring()),
-        encrypted_container_factory_(&platform_,
-                                     std::unique_ptr<FakeKeyring>(keyring_)) {
+        keyring_(new libstorage::FakeKeyring()),
+        storage_container_factory_(
+            &platform_, std::unique_ptr<libstorage::FakeKeyring>(keyring_)) {
     ON_CALL(platform_, SetDirCryptoKey(_, _)).WillByDefault(Return(true));
   }
   ~CryptohomeVaultTest() override = default;
 
-  EncryptedContainerType ContainerType() { return GetParam().container_type; }
+  libstorage::StorageContainerType ContainerType() {
+    return GetParam().container_type;
+  }
 
-  EncryptedContainerType MigratingContainerType() {
+  libstorage::StorageContainerType MigratingContainerType() {
     return GetParam().migrating_container_type;
   }
 
-  EncryptedContainerType CacheContainerType() {
+  libstorage::StorageContainerType CacheContainerType() {
     return GetParam().cache_container_type;
   }
 
-  EncryptedContainerConfig ConfigFromType(EncryptedContainerType type,
-                                          const std::string& name) {
-    EncryptedContainerConfig config;
+  libstorage::StorageContainerConfig ConfigFromType(
+      libstorage::StorageContainerType type, const std::string& name) {
+    libstorage::StorageContainerConfig config;
     switch (type) {
-      case EncryptedContainerType::kEcryptfs:
+      case libstorage::StorageContainerType::kEcryptfs:
         config.backing_dir = backing_dir_.Append(kEcryptfsVaultDir);
         break;
-      case EncryptedContainerType::kFscrypt:
+      case libstorage::StorageContainerType::kFscrypt:
         config.backing_dir = backing_dir_.Append(kMountDir);
         break;
-      case EncryptedContainerType::kExt4:
+      case libstorage::StorageContainerType::kExt4:
         config.filesystem_config = {
             .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
                           "discard,assume_storage_prezeroed=1"},
             .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"},
-            .backend_type = EncryptedContainerType::kDmcrypt};
+            .backend_type = libstorage::StorageContainerType::kDmcrypt};
         ABSL_FALLTHROUGH_INTENDED;
-      case EncryptedContainerType::kDmcrypt:
+      case libstorage::StorageContainerType::kDmcrypt:
         config.dmcrypt_config = {
             .backing_device_config =
-                {.type = BackingDeviceType::kLogicalVolumeBackingDevice,
+                {.type =
+                     libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
                  .name = name,
                  .size = 100 * 1024 * 1024,
                  .logical_volume = {.vg = std::make_shared<brillo::VolumeGroup>(
@@ -129,9 +132,9 @@ class CryptohomeVaultTest
     }
   }
 
-  void ExpectContainerSetup(EncryptedContainerType type) {
+  void ExpectContainerSetup(libstorage::StorageContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kExt4:
+      case libstorage::StorageContainerType::kExt4:
         ExpectDmcryptSetup("data", /*is_raw_device=*/false);
         break;
       default:
@@ -139,9 +142,9 @@ class CryptohomeVaultTest
     }
   }
 
-  void ExpectCacheContainerSetup(EncryptedContainerType type) {
+  void ExpectCacheContainerSetup(libstorage::StorageContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kExt4:
+      case libstorage::StorageContainerType::kExt4:
         ExpectDmcryptSetup("cache", /*is_raw_device=*/false);
         break;
       default:
@@ -149,9 +152,9 @@ class CryptohomeVaultTest
     }
   }
 
-  void ExpectApplicationContainerSetup(EncryptedContainerType type) {
+  void ExpectApplicationContainerSetup(libstorage::StorageContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kDmcrypt:
+      case libstorage::StorageContainerType::kDmcrypt:
         ExpectDmcryptSetup("arcvm", /*is_raw_device=*/true);
         ExpectDmcryptSetup("crostini", /*is_raw_device=*/true);
         break;
@@ -160,9 +163,9 @@ class CryptohomeVaultTest
     }
   }
 
-  void ExpectApplicationContainerReset(EncryptedContainerType type) {
+  void ExpectApplicationContainerReset(libstorage::StorageContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kDmcrypt:
+      case libstorage::StorageContainerType::kDmcrypt:
         EXPECT_CALL(platform_,
                     DiscardDevice(base::FilePath("/dev/mapper/dmcrypt-arcvm")))
             .WillOnce(Return(true));
@@ -176,12 +179,12 @@ class CryptohomeVaultTest
     }
   }
 
-  void CreateExistingContainer(EncryptedContainerType type) {
+  void CreateExistingContainer(libstorage::StorageContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kEcryptfs:
+      case libstorage::StorageContainerType::kEcryptfs:
         platform_.CreateDirectory(backing_dir_.Append(kEcryptfsVaultDir));
         break;
-      case EncryptedContainerType::kFscrypt:
+      case libstorage::StorageContainerType::kFscrypt:
         platform_.CreateDirectory(backing_dir_.Append(kMountDir));
         break;
       default:
@@ -192,10 +195,11 @@ class CryptohomeVaultTest
   void CheckContainersExist() {
     // For newly created fscrypt containers, add the expectation that fetching
     // the key state returns encrypted.
-    if (vault_->container_->GetType() == EncryptedContainerType::kFscrypt ||
+    if (vault_->container_->GetType() ==
+            libstorage::StorageContainerType::kFscrypt ||
         (vault_->migrating_container_ &&
          vault_->migrating_container_->GetType() ==
-             EncryptedContainerType::kFscrypt)) {
+             libstorage::StorageContainerType::kFscrypt)) {
       EXPECT_CALL(platform_,
                   GetDirCryptoKeyState(backing_dir_.Append(kMountDir)))
           .WillOnce(Return(dircrypto::KeyState::ENCRYPTED));
@@ -208,7 +212,8 @@ class CryptohomeVaultTest
       EXPECT_TRUE(vault_->cache_container_->Exists());
     }
 
-    if (vault_->container_->GetType() == EncryptedContainerType::kDmcrypt) {
+    if (vault_->container_->GetType() ==
+        libstorage::StorageContainerType::kDmcrypt) {
       for (auto& [_, container] : vault_->application_containers_) {
         EXPECT_TRUE(container->Exists());
       }
@@ -224,42 +229,42 @@ class CryptohomeVaultTest
                      bool create_migrating_container,
                      bool create_cache_container,
                      bool create_app_container) {
-    std::unique_ptr<EncryptedContainer> container =
-        encrypted_container_factory_.Generate(
+    std::unique_ptr<libstorage::StorageContainer> container =
+        storage_container_factory_.Generate(
             ConfigFromType(ContainerType(), "data"), ContainerType(),
             key_reference_, create_container);
     if (create_container)
       CreateExistingContainer(ContainerType());
 
-    std::unique_ptr<EncryptedContainer> migrating_container =
-        encrypted_container_factory_.Generate(
+    std::unique_ptr<libstorage::StorageContainer> migrating_container =
+        storage_container_factory_.Generate(
             ConfigFromType(MigratingContainerType(), "data"),
             MigratingContainerType(), key_reference_,
             create_migrating_container);
     if (create_migrating_container)
       CreateExistingContainer(MigratingContainerType());
 
-    std::unique_ptr<EncryptedContainer> cache_container =
-        encrypted_container_factory_.Generate(
+    std::unique_ptr<libstorage::StorageContainer> cache_container =
+        storage_container_factory_.Generate(
             ConfigFromType(CacheContainerType(), "cache"), CacheContainerType(),
             key_reference_, create_cache_container);
     if (create_cache_container)
       CreateExistingContainer(CacheContainerType());
 
-    std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+    std::unordered_map<std::string,
+                       std::unique_ptr<libstorage::StorageContainer>>
         application_containers;
 
-    if (ContainerType() == EncryptedContainerType::kDmcrypt) {
-      application_containers["arcvm"] = encrypted_container_factory_.Generate(
+    if (ContainerType() == libstorage::StorageContainerType::kDmcrypt) {
+      application_containers["arcvm"] = storage_container_factory_.Generate(
           ConfigFromType(CacheContainerType(), "arcvm"),
-          EncryptedContainerType::kDmcrypt, key_reference_,
+          libstorage::StorageContainerType::kDmcrypt, key_reference_,
           create_app_container);
 
-      application_containers["crostini"] =
-          encrypted_container_factory_.Generate(
-              ConfigFromType(CacheContainerType(), "crostini"),
-              EncryptedContainerType::kDmcrypt, key_reference_,
-              create_app_container);
+      application_containers["crostini"] = storage_container_factory_.Generate(
+          ConfigFromType(CacheContainerType(), "crostini"),
+          libstorage::StorageContainerType::kDmcrypt, key_reference_,
+          create_app_container);
     }
 
     vault_ = std::make_unique<CryptohomeVault>(
@@ -269,50 +274,50 @@ class CryptohomeVaultTest
   }
 
   bool ResetApplicationContainer(const std::string& app) {
-    if (ContainerType() != EncryptedContainerType::kDmcrypt)
+    if (ContainerType() != libstorage::StorageContainerType::kDmcrypt)
       return true;
     return vault_->ResetApplicationContainer(app);
   }
 
  protected:
   const ObfuscatedUsername obfuscated_username_;
-  const FileSystemKeyReference key_reference_;
-  const FileSystemKey key_;
+  const libstorage::FileSystemKeyReference key_reference_;
+  const libstorage::FileSystemKey key_;
   const base::FilePath backing_dir_;
 
   MockHomeDirs homedirs_;
   libstorage::MockPlatform platform_;
-  FakeKeyring* keyring_;
-  FakeEncryptedContainerFactory encrypted_container_factory_;
+  libstorage::FakeKeyring* keyring_;
+  libstorage::FakeStorageContainerFactory storage_container_factory_;
   std::unique_ptr<CryptohomeVault> vault_;
 };
 
 INSTANTIATE_TEST_SUITE_P(WithEcryptfs,
                          CryptohomeVaultTest,
                          ::testing::Values(CryptohomeVaultTestParams(
-                             EncryptedContainerType::kEcryptfs,
-                             EncryptedContainerType::kUnknown,
-                             EncryptedContainerType::kUnknown)));
+                             libstorage::StorageContainerType::kEcryptfs,
+                             libstorage::StorageContainerType::kUnknown,
+                             libstorage::StorageContainerType::kUnknown)));
 INSTANTIATE_TEST_SUITE_P(WithFscrypt,
                          CryptohomeVaultTest,
                          ::testing::Values(CryptohomeVaultTestParams(
-                             EncryptedContainerType::kFscrypt,
-                             EncryptedContainerType::kUnknown,
-                             EncryptedContainerType::kUnknown)));
+                             libstorage::StorageContainerType::kFscrypt,
+                             libstorage::StorageContainerType::kUnknown,
+                             libstorage::StorageContainerType::kUnknown)));
 INSTANTIATE_TEST_SUITE_P(WithFscryptMigration,
                          CryptohomeVaultTest,
                          ::testing::Values(CryptohomeVaultTestParams(
-                             EncryptedContainerType::kEcryptfs,
-                             EncryptedContainerType::kFscrypt,
-                             EncryptedContainerType::kUnknown)));
+                             libstorage::StorageContainerType::kEcryptfs,
+                             libstorage::StorageContainerType::kFscrypt,
+                             libstorage::StorageContainerType::kUnknown)));
 
 INSTANTIATE_TEST_SUITE_P(
     WithDmcrypt,
     CryptohomeVaultTest,
     ::testing::Values(CryptohomeVaultTestParams(
-        EncryptedContainerType::kExt4, /* dmcrypt backing */
-        EncryptedContainerType::kUnknown,
-        EncryptedContainerType::kExt4))); /* dmcrypt backing */
+        libstorage::StorageContainerType::kExt4, /* dmcrypt backing */
+        libstorage::StorageContainerType::kUnknown,
+        libstorage::StorageContainerType::kExt4))); /* dmcrypt backing */
 
 // Tests failure path on failure to setup process keyring for eCryptfs and
 // fscrypt.
@@ -350,14 +355,15 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
 
   // In absence of a migrating container, the vault setup should succeed.
   int good_key_calls = 1;
-  if (ContainerType() == EncryptedContainerType::kExt4) {
+  if (ContainerType() == libstorage::StorageContainerType::kExt4) {
     good_key_calls = 8;
-  } else if (CacheContainerType() != EncryptedContainerType::kUnknown) {
+  } else if (CacheContainerType() !=
+             libstorage::StorageContainerType::kUnknown) {
     good_key_calls = 2;
   }
   keyring_->SetShouldFailAfter(good_key_calls);
 
-  if (MigratingContainerType() != EncryptedContainerType::kUnknown) {
+  if (MigratingContainerType() != libstorage::StorageContainerType::kUnknown) {
     EXPECT_THAT(vault_->Setup(key_), IsError(MOUNT_ERROR_KEYRING_FAILED));
   } else {
     EXPECT_THAT(vault_->Setup(key_), IsOk());
@@ -485,7 +491,7 @@ TEST_P(CryptohomeVaultTest, EvictKeyContainer) {
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   switch (ContainerType()) {
-    case EncryptedContainerType::kExt4:
+    case libstorage::StorageContainerType::kExt4:
       EXPECT_THAT(vault_->EvictKey(), IsOk());
       break;
     default:
@@ -510,7 +516,7 @@ TEST_P(CryptohomeVaultTest, RestoreKeyContainer) {
   EXPECT_THAT(vault_->Setup(key_), IsOk());
 
   switch (ContainerType()) {
-    case EncryptedContainerType::kExt4:
+    case libstorage::StorageContainerType::kExt4:
       EXPECT_THAT(vault_->EvictKey(), IsOk());
       EXPECT_THAT(vault_->RestoreKey(key_), IsOk());
       break;

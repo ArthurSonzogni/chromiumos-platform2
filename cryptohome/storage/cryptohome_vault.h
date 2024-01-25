@@ -11,9 +11,9 @@
 
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
 
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
@@ -28,7 +28,8 @@ class CryptohomeVault {
  public:
   struct Options {
     // Forces the type of new encrypted containers set up.
-    EncryptedContainerType force_type = EncryptedContainerType::kUnknown;
+    libstorage::StorageContainerType force_type =
+        libstorage::StorageContainerType::kUnknown;
     // Checks if migration should be allowed for the current vault. Currently,
     // this is only used for ecryptfs.
     bool migrate = false;
@@ -38,16 +39,17 @@ class CryptohomeVault {
   };
   CryptohomeVault(
       const ObfuscatedUsername& obfuscated_username,
-      std::unique_ptr<EncryptedContainer> container,
-      std::unique_ptr<EncryptedContainer> migrating_container,
-      std::unique_ptr<EncryptedContainer> cache_container,
-      std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+      std::unique_ptr<libstorage::StorageContainer> container,
+      std::unique_ptr<libstorage::StorageContainer> migrating_container,
+      std::unique_ptr<libstorage::StorageContainer> cache_container,
+      std::unordered_map<std::string,
+                         std::unique_ptr<libstorage::StorageContainer>>
           application_containers,
       libstorage::Platform* platform);
   ~CryptohomeVault();
 
   // Sets up the cryptohome vault for mounting.
-  StorageStatus Setup(const FileSystemKey& filesystem_key);
+  StorageStatus Setup(const libstorage::FileSystemKey& filesystem_key);
 
   // Evict the cryptohome filesystem key from memory. Currently only
   // Dmcrypt container based vault supports this operation.
@@ -55,7 +57,7 @@ class CryptohomeVault {
 
   // Restore the in-memory cryptohome filesystem key. Currently only
   // dmcrypt container based vault supports this operation.
-  StorageStatus RestoreKey(const FileSystemKey& filesystem_key);
+  StorageStatus RestoreKey(const libstorage::FileSystemKey& filesystem_key);
 
   // Removes the vault.
   bool Purge();
@@ -72,20 +74,20 @@ class CryptohomeVault {
 
   void ReportVaultEncryptionType();
 
-  EncryptedContainerType GetContainerType() {
+  libstorage::StorageContainerType GetContainerType() {
     return container_ ? container_->GetType()
-                      : EncryptedContainerType::kUnknown;
+                      : libstorage::StorageContainerType::kUnknown;
   }
   base::FilePath GetContainerBackingLocation() {
     return container_ ? container_->GetBackingLocation() : base::FilePath();
   }
-  EncryptedContainerType GetMigratingContainerType() {
+  libstorage::StorageContainerType GetMigratingContainerType() {
     return migrating_container_ ? migrating_container_->GetType()
-                                : EncryptedContainerType::kUnknown;
+                                : libstorage::StorageContainerType::kUnknown;
   }
-  EncryptedContainerType GetCacheContainerType() {
+  libstorage::StorageContainerType GetCacheContainerType() {
     return cache_container_ ? cache_container_->GetType()
-                            : EncryptedContainerType::kUnknown;
+                            : libstorage::StorageContainerType::kUnknown;
   }
 
   bool ResetApplicationContainer(const std::string& app);
@@ -98,15 +100,15 @@ class CryptohomeVault {
   const ObfuscatedUsername obfuscated_username_;
 
   // Represents the active encrypted container for the vault.
-  std::unique_ptr<EncryptedContainer> container_;
+  std::unique_ptr<libstorage::StorageContainer> container_;
   // During migration, we set up the target migration container as
   // |migrating_container_|.
-  std::unique_ptr<EncryptedContainer> migrating_container_;
+  std::unique_ptr<libstorage::StorageContainer> migrating_container_;
   // For dm-crypt based vaults, we set up an additional cache container that
   // serves as the backing store for temporary data.
-  std::unique_ptr<EncryptedContainer> cache_container_;
+  std::unique_ptr<libstorage::StorageContainer> cache_container_;
   // Containers that store application info.
-  std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+  std::unordered_map<std::string, std::unique_ptr<libstorage::StorageContainer>>
       application_containers_;
 
   libstorage::Platform* platform_;

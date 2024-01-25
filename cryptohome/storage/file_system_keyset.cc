@@ -15,14 +15,14 @@ using hwsec_foundation::CreateSecureRandomBlob;
 namespace cryptohome {
 
 FileSystemKeyset FileSystemKeyset::CreateRandom() {
-  const FileSystemKey key = {
+  const libstorage::FileSystemKey key = {
       .fek = CreateSecureRandomBlob(kCryptohomeDefaultKeySize),
       .fnek = CreateSecureRandomBlob(kCryptohomeDefaultKeySize),
       .fek_salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize),
       .fnek_salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize),
   };
 
-  const FileSystemKeyReference key_reference = {
+  const libstorage::FileSystemKeyReference key_reference = {
       .fek_sig = CreateSecureRandomBlob(kCryptohomeDefaultKeySignatureSize),
       .fnek_sig = CreateSecureRandomBlob(kCryptohomeDefaultKeySignatureSize),
   };
@@ -48,16 +48,18 @@ FileSystemKeyset::FileSystemKeyset(const VaultKeyset& vault_keyset) {
   chaps_key_ = vault_keyset.GetChapsKey();
 }
 
-FileSystemKeyset::FileSystemKeyset(FileSystemKey key,
-                                   FileSystemKeyReference key_reference,
-                                   brillo::SecureBlob chaps_key)
+FileSystemKeyset::FileSystemKeyset(
+    libstorage::FileSystemKey key,
+    libstorage::FileSystemKeyReference key_reference,
+    brillo::SecureBlob chaps_key)
     : key_(key), key_reference_(key_reference), chaps_key_(chaps_key) {}
 
-const FileSystemKey& FileSystemKeyset::Key() const {
+const libstorage::FileSystemKey& FileSystemKeyset::Key() const {
   return key_;
 }
 
-const FileSystemKeyReference& FileSystemKeyset::KeyReference() const {
+const libstorage::FileSystemKeyReference& FileSystemKeyset::KeyReference()
+    const {
   return key_reference_;
 }
 

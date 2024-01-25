@@ -14,11 +14,10 @@
 #include <brillo/key_value_store.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libstorage/platform/dircrypto_util.h>
+#include <libstorage/platform/keyring/real_keyring.h>
 #include <libstorage/platform/platform.h>
-
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
-#include "cryptohome/storage/encrypted_container/fscrypt_container.h"
-#include "cryptohome/storage/keyring/real_keyring.h"
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/fscrypt_container.h>
 
 namespace {
 // Pstore-pmsg path.
@@ -49,7 +48,7 @@ bool IsSupported() {
   return true;
 }
 
-bool SaveKey(const cryptohome::FileSystemKey& key) {
+bool SaveKey(const libstorage::FileSystemKey& key) {
   // Do not use store.Save() since it uses WriteFileAtomically() which will
   // fail on /dev/pmsg0.
   brillo::KeyValueStore store;
@@ -65,8 +64,8 @@ bool SaveKey(const cryptohome::FileSystemKey& key) {
   return true;
 }
 
-cryptohome::FileSystemKey RetrieveKey() {
-  cryptohome::FileSystemKey key;
+libstorage::FileSystemKey RetrieveKey() {
+  libstorage::FileSystemKey key;
   base::FileEnumerator pmsg_ramoops_enumerator(
       base::FilePath(kPstorePath), true /* recursive */,
       base::FileEnumerator::FILES, kPmsgKeystoreRamoopsPathDesc);
@@ -98,13 +97,13 @@ cryptohome::FileSystemKey RetrieveKey() {
 
 EncryptedRebootVault::EncryptedRebootVault()
     : vault_path_(base::FilePath(kEncryptedRebootVaultPath)),
-      keyring_(std::make_unique<cryptohome::RealKeyring>()) {
-  cryptohome::FileSystemKeyReference key_reference;
+      keyring_(std::make_unique<libstorage::RealKeyring>()) {
+  libstorage::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob(kEncryptionKeyTag);
 
   // TODO(dlunev): change the allow_v2 to true once all the boards are on
   // 5.4+
-  encrypted_container_ = std::make_unique<cryptohome::FscryptContainer>(
+  encrypted_container_ = std::make_unique<libstorage::FscryptContainer>(
       vault_path_, key_reference, /*allow_v2=*/false, &platform_,
       keyring_.get());
 }
@@ -121,7 +120,7 @@ bool EncryptedRebootVault::CreateVault() {
   PurgeVault();
 
   // Generate encryption key.
-  cryptohome::FileSystemKey transient_encryption_key;
+  libstorage::FileSystemKey transient_encryption_key;
   transient_encryption_key.fek =
       hwsec_foundation::CreateSecureRandomBlob(kEncryptionKeySize);
 
@@ -170,7 +169,7 @@ bool EncryptedRebootVault::UnlockVault() {
   }
 
   // Retrieve key.
-  cryptohome::FileSystemKey transient_encryption_key = RetrieveKey();
+  libstorage::FileSystemKey transient_encryption_key = RetrieveKey();
   if (transient_encryption_key.fek.empty()) {
     LOG(INFO) << "No valid key found: the device might have booted up from a "
                  "shutdown.";

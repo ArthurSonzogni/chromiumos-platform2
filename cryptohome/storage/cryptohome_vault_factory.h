@@ -12,26 +12,26 @@
 
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
 class CryptohomeVaultFactory {
  public:
-  CryptohomeVaultFactory(
-      libstorage::Platform* platform,
-      std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory);
+  CryptohomeVaultFactory(libstorage::Platform* platform,
+                         std::unique_ptr<libstorage::StorageContainerFactory>
+                             storage_container_factory);
 
   virtual ~CryptohomeVaultFactory();
 
   virtual std::unique_ptr<CryptohomeVault> Generate(
       const ObfuscatedUsername& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
-      EncryptedContainerType vault_type,
+      const libstorage::FileSystemKeyReference& key_reference,
+      libstorage::StorageContainerType vault_type,
       bool keylocker_enabled = false);
 
   void set_enable_application_containers(bool value) {
@@ -52,15 +52,17 @@ class CryptohomeVaultFactory {
     uint32_t iv_offset = 0;
   };
 
-  virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(
-      EncryptedContainerType type,
+  virtual std::unique_ptr<libstorage::StorageContainer>
+  GenerateStorageContainer(
+      libstorage::StorageContainerType type,
       const ObfuscatedUsername& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
+      const libstorage::FileSystemKeyReference& key_reference,
       const std::string& container_identifier,
       const DmOptions& dm_options);
 
   libstorage::Platform* platform_;
-  std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory_;
+  std::unique_ptr<libstorage::StorageContainerFactory>
+      storage_container_factory_;
   bool enable_application_containers_;
   std::shared_ptr<brillo::VolumeGroup> vg_;
   std::shared_ptr<brillo::Thinpool> thinpool_;

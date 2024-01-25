@@ -1,0 +1,105 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file defines library targets and other auxiliary definitions that
+# are used for the resulting executable targets.
+
+import("//common-mk/flatbuffer.gni")
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("storage_container") {
+  deps = [
+    ":install_libstorage_container_headers",
+    ":libstorage_storage_container",
+  ]
+  if (use.test) {
+    deps += [ ":storage_container_testrunner" ]
+  }
+}
+
+shared_library("libstorage_storage_container") {
+  output_name = "libstorage_storage_container"
+  sources = [
+    "backing_device_factory.cc",
+    "dmcrypt_container.cc",
+    "ecryptfs_container.cc",
+    "ephemeral_container.cc",
+    "ext4_container.cc",
+    "fscrypt_container.cc",
+    "logical_volume_backing_device.cc",
+    "loopback_device.cc",
+    "ramdisk_device.cc",
+    "storage_container_factory.cc",
+  ]
+  include_dirs = [ "//libstorage/platform" ]
+  libs = [
+    "ext2fs",
+    "secure_erase_file",
+  ]
+  deps = [
+    ":libstorage_storage_container_pc",
+    "//libstorage/platform:libstorage_platform",
+  ]
+  install_path = "lib"
+}
+
+generate_pkg_config("libstorage_storage_container_pc") {
+  name = "libstorage_storage_container"
+  description = "libstorage Encrypted Container library"
+  version = "1.0"
+  requires_private = [ "libstorage_storage_container" ]
+  requires = []
+  cflags = [ "-I/usr/include/libstorage" ]
+  libs = [ "-lstorage_storage_container" ]
+  install = true
+}
+
+install_config("install_libstorage_container_headers") {
+  sources = [
+    "backing_device.h",
+    "backing_device_factory.h",
+    "dmcrypt_container.h",
+    "ecryptfs_container.h",
+    "ephemeral_container.h",
+    "ext4_container.h",
+    "fake_backing_device.h",
+    "fake_storage_container.h",
+    "fake_storage_container_factory.h",
+    "filesystem_key.h",
+    "fscrypt_container.h",
+    "logical_volume_backing_device.h",
+    "loopback_device.h",
+    "ramdisk_device.h",
+    "storage_container.h",
+    "storage_container_factory.h",
+  ]
+  install_path = "/usr/include/libstorage/storage_container"
+}
+
+if (use.test) {
+  executable("storage_container_testrunner") {
+    sources = [
+      "dmcrypt_container_test.cc",
+      "ecryptfs_container_test.cc",
+      "ephemeral_container_test.cc",
+      "ext4_container_test.cc",
+      "fscrypt_container_test.cc",
+      "logical_volume_backing_device_test.cc",
+      "loopback_device_test.cc",
+      "ramdisk_device_test.cc",
+    ]
+    pkg_deps = [ "libbrillo-test" ]
+    configs += [ "//common-mk:test" ]
+    include_dirs = [ "//libstorage/platform" ]
+    deps = [
+      ":libstorage_storage_container",
+      "//common-mk/testrunner",
+      "//libstorage/platform:libstorage_fake_platform",
+      "//libstorage/platform:libstorage_platform",
+    ]
+    run_test = true
+  }
+}

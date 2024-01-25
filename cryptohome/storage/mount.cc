@@ -91,15 +91,16 @@ StorageStatus Mount::MountEphemeralCryptohome(const Username& username) {
   CHECK(active_mounter_->CanPerformEphemeralMount());
 
   user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
-      obfuscated_username, FileSystemKeyReference(),
-      EncryptedContainerType::kEphemeral);
+      obfuscated_username, libstorage::FileSystemKeyReference(),
+      libstorage::StorageContainerType::kEphemeral);
 
   if (!user_cryptohome_vault_) {
     return StorageStatus::Make(FROM_HERE, "Failed to generate ephemeral vault.",
                                MOUNT_ERROR_FATAL);
   }
 
-  RETURN_IF_ERROR(user_cryptohome_vault_->Setup(FileSystemKey())).LogError()
+  RETURN_IF_ERROR(user_cryptohome_vault_->Setup(libstorage::FileSystemKey()))
+          .LogError()
       << "Failed to setup ephemeral vault";
 
   RETURN_IF_ERROR(
@@ -121,7 +122,7 @@ StorageStatus Mount::MountCryptohome(
 
   ReportTimerStart(kVaultSetupTimer);
 
-  ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
+  ASSIGN_OR_RETURN(libstorage::StorageContainerType vault_type,
                    homedirs_->PickVaultType(obfuscated_username, vault_options),
                    (_.LogError() << "Could't pick vault type"));
 

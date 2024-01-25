@@ -15,11 +15,11 @@
 #include <base/notreached.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 
@@ -27,10 +27,11 @@ namespace cryptohome {
 
 CryptohomeVault::CryptohomeVault(
     const ObfuscatedUsername& obfuscated_username,
-    std::unique_ptr<EncryptedContainer> container,
-    std::unique_ptr<EncryptedContainer> migrating_container,
-    std::unique_ptr<EncryptedContainer> cache_container,
-    std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
+    std::unique_ptr<libstorage::StorageContainer> container,
+    std::unique_ptr<libstorage::StorageContainer> migrating_container,
+    std::unique_ptr<libstorage::StorageContainer> cache_container,
+    std::unordered_map<std::string,
+                       std::unique_ptr<libstorage::StorageContainer>>
         application_containers,
     libstorage::Platform* platform)
     : obfuscated_username_(obfuscated_username),
@@ -45,7 +46,8 @@ CryptohomeVault::~CryptohomeVault() {
   std::ignore = Teardown();
 }
 
-StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
+StorageStatus CryptohomeVault::Setup(
+    const libstorage::FileSystemKey& filesystem_key) {
   if (!platform_->ClearUserKeyring()) {
     LOG(ERROR) << "Failed to clear user keyring";
   }
@@ -93,7 +95,7 @@ StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
     }
   }
 
-  if (container_->GetType() == EncryptedContainerType::kEphemeral) {
+  if (container_->GetType() == libstorage::StorageContainerType::kEphemeral) {
     // Do not create /home/.shadow/<hash>/mount for ephemeral.
     return StorageStatus::Ok();
   }
@@ -136,7 +138,7 @@ StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
 }
 
 StorageStatus CryptohomeVault::EvictKey() {
-  if (container_->GetType() != EncryptedContainerType::kDmcrypt) {
+  if (container_->GetType() != libstorage::StorageContainerType::kDmcrypt) {
     return StorageStatus::Make(FROM_HERE,
                                "Not supported: container type is not dm-crypt.",
                                MOUNT_ERROR_INVALID_ARGS);
@@ -163,8 +165,9 @@ StorageStatus CryptohomeVault::EvictKey() {
   return StorageStatus::Ok();
 }
 
-StorageStatus CryptohomeVault::RestoreKey(const FileSystemKey& filesystem_key) {
-  if (container_->GetType() != EncryptedContainerType::kDmcrypt) {
+StorageStatus CryptohomeVault::RestoreKey(
+    const libstorage::FileSystemKey& filesystem_key) {
+  if (container_->GetType() != libstorage::StorageContainerType::kDmcrypt) {
     return StorageStatus::Make(FROM_HERE,
                                "Not supported: container type is not dm-crypt.",
                                MOUNT_ERROR_INVALID_ARGS);
@@ -191,20 +194,20 @@ StorageStatus CryptohomeVault::RestoreKey(const FileSystemKey& filesystem_key) {
 }
 
 void CryptohomeVault::ReportVaultEncryptionType() {
-  EncryptedContainerType type = migrating_container_
-                                    ? migrating_container_->GetType()
-                                    : container_->GetType();
+  libstorage::StorageContainerType type = migrating_container_
+                                              ? migrating_container_->GetType()
+                                              : container_->GetType();
   switch (type) {
-    case EncryptedContainerType::kDmcrypt:
+    case libstorage::StorageContainerType::kDmcrypt:
       ReportHomedirEncryptionType(HomedirEncryptionType::kDmcrypt);
       break;
-    case EncryptedContainerType::kEcryptfs:
+    case libstorage::StorageContainerType::kEcryptfs:
       ReportHomedirEncryptionType(HomedirEncryptionType::kEcryptfs);
       break;
-    case EncryptedContainerType::kFscrypt:
+    case libstorage::StorageContainerType::kFscrypt:
       ReportHomedirEncryptionType(HomedirEncryptionType::kDircrypto);
       break;
-    case EncryptedContainerType::kEphemeral:
+    case libstorage::StorageContainerType::kEphemeral:
       // Not an encrypted vault
       break;
     default:
@@ -216,26 +219,28 @@ void CryptohomeVault::ReportVaultEncryptionType() {
 }
 
 MountType CryptohomeVault::GetMountType() {
-  EncryptedContainerType type = container_->GetType();
+  libstorage::StorageContainerType type = container_->GetType();
   switch (type) {
-    case EncryptedContainerType::kEcryptfs:
+    case libstorage::StorageContainerType::kEcryptfs:
       if (migrating_container_ &&
-          migrating_container_->GetType() == EncryptedContainerType::kFscrypt) {
+          migrating_container_->GetType() ==
+              libstorage::StorageContainerType::kFscrypt) {
         return MountType::ECRYPTFS_TO_DIR_CRYPTO;
       }
       if (migrating_container_ &&
-          migrating_container_->GetType() == EncryptedContainerType::kDmcrypt) {
+          migrating_container_->GetType() ==
+              libstorage::StorageContainerType::kDmcrypt) {
         return MountType::ECRYPTFS_TO_DMCRYPT;
       }
       return MountType::ECRYPTFS;
-    case EncryptedContainerType::kFscrypt:
+    case libstorage::StorageContainerType::kFscrypt:
       if (migrating_container_) {
         return MountType::DIR_CRYPTO_TO_DMCRYPT;
       }
       return MountType::DIR_CRYPTO;
-    case EncryptedContainerType::kDmcrypt:
+    case libstorage::StorageContainerType::kDmcrypt:
       return MountType::DMCRYPT;
-    case EncryptedContainerType::kEphemeral:
+    case libstorage::StorageContainerType::kEphemeral:
       return MountType::EPHEMERAL;
     default:
       return MountType::NONE;

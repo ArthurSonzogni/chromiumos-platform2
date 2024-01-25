@@ -5,5 +5,8 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ "platform" ]
+  deps = [
+    "platform",
+    "storage_container",
+  ]
 }

@@ -16,16 +16,15 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
+#include <libstorage/platform/keyring/fake_keyring.h>
+#include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/mock_platform.h>
-
-#include "cryptohome/storage/encrypted_container/backing_device.h"
-#include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/ext4_container.h"
-#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
-#include "cryptohome/storage/keyring/utils.h"
+#include <libstorage/storage_container/backing_device.h>
+#include <libstorage/storage_container/dmcrypt_container.h>
+#include <libstorage/storage_container/ext4_container.h>
+#include <libstorage/storage_container/fake_backing_device.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -46,13 +45,12 @@ class EncryptedFsTest : public ::testing::Test {
                  {
                      .mkfs_opts = {"-O", "encrypt,verity"},
                      .tune2fs_opts = {"-Q", "project"},
-                     .backend_type =
-                         cryptohome::EncryptedContainerType::kDmcrypt,
-                     .recovery = cryptohome::RecoveryType::kEnforceCleaning,
+                     .backend_type = libstorage::StorageContainerType::kDmcrypt,
+                     .recovery = libstorage::RecoveryType::kEnforceCleaning,
                  },
              .dmcrypt_config =
                  {.backing_device_config =
-                      {.type = cryptohome::BackingDeviceType::kLoopbackDevice,
+                      {.type = libstorage::BackingDeviceType::kLoopbackDevice,
                        .name = "encstateful"},
                   .dmcrypt_device_name = dmcrypt_name_,
                   .dmcrypt_cipher = "aes-cbc-essiv:sha256"}}),
@@ -69,16 +67,16 @@ class EncryptedFsTest : public ::testing::Test {
     key_.fek = secret;
     key_reference_ = {.fek_sig = brillo::SecureBlob("some_ref")};
     auto keyring_key_reference =
-        cryptohome::dmcrypt::GenerateKeyringDescription(key_reference_.fek_sig);
-    key_descriptor_ = cryptohome::dmcrypt::GenerateDmcryptKeyDescriptor(
+        libstorage::dmcrypt::GenerateKeyringDescription(key_reference_.fek_sig);
+    key_descriptor_ = libstorage::dmcrypt::GenerateDmcryptKeyDescriptor(
         keyring_key_reference.fek_sig, key_.fek.size());
 
-    auto dmcrypt_container = std::make_unique<cryptohome::DmcryptContainer>(
+    auto dmcrypt_container = std::make_unique<libstorage::DmcryptContainer>(
         config_.dmcrypt_config, std::move(fake_backing_device), key_reference_,
         &platform_, &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
-    auto ext4_container = std::make_unique<cryptohome::Ext4Container>(
+    auto ext4_container = std::make_unique<libstorage::Ext4Container>(
         config_.filesystem_config, std::move(dmcrypt_container), &platform_,
         /* metrics */ nullptr);
 
@@ -120,16 +118,16 @@ class EncryptedFsTest : public ::testing::Test {
   const std::string dmcrypt_name_;
   const base::FilePath dmcrypt_device_;
   const base::FilePath mount_point_;
-  cryptohome::EncryptedContainerConfig config_;
+  libstorage::StorageContainerConfig config_;
 
   NiceMock<libstorage::MockPlatform> platform_;
-  cryptohome::FakeKeyring keyring_;
+  libstorage::FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
-  cryptohome::FakeBackingDeviceFactory fake_backing_device_factory_;
-  cryptohome::FileSystemKey key_;
-  cryptohome::FileSystemKeyReference key_reference_;
+  libstorage::FakeBackingDeviceFactory fake_backing_device_factory_;
+  libstorage::FileSystemKey key_;
+  libstorage::FileSystemKeyReference key_reference_;
   brillo::SecureBlob key_descriptor_;
-  cryptohome::BackingDevice* backing_device_;
+  libstorage::BackingDevice* backing_device_;
   std::unique_ptr<EncryptedFs> encrypted_fs_;
 };
 

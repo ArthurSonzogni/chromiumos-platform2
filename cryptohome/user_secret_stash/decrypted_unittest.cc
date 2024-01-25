@@ -15,11 +15,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/storage_container/filesystem_key.h>
 
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
@@ -44,13 +44,13 @@ using ::testing::UnorderedElementsAre;
 // that went into the USS is what came back out.
 FileSystemKeyset CreateTestFsk() {
   return FileSystemKeyset(
-      FileSystemKey{
+      libstorage::FileSystemKey{
           .fek = brillo::SecureBlob("fek"),
           .fnek = brillo::SecureBlob("fnek"),
           .fek_salt = brillo::SecureBlob("fek-salt"),
           .fnek_salt = brillo::SecureBlob("fnek-salt"),
       },
-      FileSystemKeyReference{
+      libstorage::FileSystemKeyReference{
           .fek_sig = brillo::SecureBlob("fek-sig"),
           .fnek_sig = brillo::SecureBlob("fnek-sig"),
       },

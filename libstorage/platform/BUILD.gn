@@ -9,6 +9,7 @@ group("platform") {
     ":install_fuzzer_headers",
     ":install_platform_fake_headers",
     ":install_platform_headers",
+    ":install_platform_keyring_headers",
     ":libstorage_fake_platform",
     ":libstorage_fuzzer",
     ":libstorage_platform",
@@ -56,6 +57,8 @@ generate_pkg_config("libstorage_platform_pc") {
 source_set("libstorage_sources") {
   sources = [
     "dircrypto_util.cc",
+    "keyring/real_keyring.cc",
+    "keyring/utils.cc",
     "platform.cc",
   ]
   defines = [ "USE_SELINUX=${use.selinux}" ]
@@ -83,6 +86,16 @@ install_config("install_platform_headers") {
     "platform.h",
   ]
   install_path = "/usr/include/libstorage/platform"
+}
+
+install_config("install_platform_keyring_headers") {
+  sources = [
+    "keyring/fake_keyring.h",
+    "keyring/keyring.h",
+    "keyring/real_keyring.h",
+    "keyring/utils.h",
+  ]
+  install_path = "/usr/include/libstorage/platform/keyring"
 }
 
 install_config("install_platform_fake_headers") {

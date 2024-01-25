@@ -866,7 +866,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   if (!vault_factory_) {
     auto container_factory =
-        std::make_unique<EncryptedContainerFactory>(platform_, GetMetrics());
+        std::make_unique<libstorage::StorageContainerFactory>(platform_,
+                                                              GetMetrics());
     container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
     default_vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         platform_, std::move(container_factory));
@@ -2840,23 +2841,24 @@ CryptohomeStatus UserDataAuth::TerminateAuthSessionsAndClearLoadedState() {
   return OkStatus<CryptohomeError>();
 }
 
-EncryptedContainerType UserDataAuth::DbusEncryptionTypeToContainerType(
+libstorage::StorageContainerType
+UserDataAuth::DbusEncryptionTypeToContainerType(
     user_data_auth::VaultEncryptionType type) {
   switch (type) {
     case user_data_auth::VaultEncryptionType::CRYPTOHOME_VAULT_ENCRYPTION_ANY:
-      return EncryptedContainerType::kUnknown;
+      return libstorage::StorageContainerType::kUnknown;
     case user_data_auth::VaultEncryptionType::
         CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS:
-      return EncryptedContainerType::kEcryptfs;
+      return libstorage::StorageContainerType::kEcryptfs;
     case user_data_auth::VaultEncryptionType::
         CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT:
-      return EncryptedContainerType::kFscrypt;
+      return libstorage::StorageContainerType::kFscrypt;
     case user_data_auth::VaultEncryptionType::
         CRYPTOHOME_VAULT_ENCRYPTION_DMCRYPT:
-      return EncryptedContainerType::kDmcrypt;
+      return libstorage::StorageContainerType::kDmcrypt;
     default:
       // Default cuz proto3 enum sentinels, that's why -_-
-      return EncryptedContainerType::kUnknown;
+      return libstorage::StorageContainerType::kUnknown;
   }
 }
 

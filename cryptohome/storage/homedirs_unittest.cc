@@ -18,7 +18,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/mock_platform.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/fake_platform.h"
@@ -26,10 +29,7 @@
 #include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/error_test_helpers.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
 
@@ -103,10 +103,11 @@ class HomeDirsTest
   void SetUp() override {
     PreparePolicy(true, kOwner, "");
 
-    std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<EncryptedContainerFactory>(
-            &platform_, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
-            std::make_unique<BackingDeviceFactory>(&platform_));
+    std::unique_ptr<libstorage::StorageContainerFactory> container_factory =
+        std::make_unique<libstorage::StorageContainerFactory>(
+            &platform_, /* metrics */ nullptr,
+            std::make_unique<libstorage::FakeKeyring>(),
+            std::make_unique<libstorage::BackingDeviceFactory>(&platform_));
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));
     HomeDirs::RemoveCallback remove_callback =
@@ -623,15 +624,15 @@ class HomeDirsVaultTest : public ::testing::Test {
     std::string name;
     bool lvm_supported;
     bool fscrypt_supported;
-    EncryptedContainerType existing_container_type;
+    libstorage::StorageContainerType existing_container_type;
     CryptohomeVault::Options options;
 
-    EncryptedContainerType expected_type;
+    libstorage::StorageContainerType expected_type;
     MountError expected_error;
   };
 
   const UserInfo user_;
-  const FileSystemKeyReference key_reference_;
+  const libstorage::FileSystemKeyReference key_reference_;
 
   void PrepareTestCase(const HomedirsTestCase& test_case,
                        libstorage::MockPlatform* platform,
@@ -639,9 +640,9 @@ class HomeDirsVaultTest : public ::testing::Test {
     if (test_case.lvm_supported) {
       auto type = test_case.existing_container_type;
       bool expect_dmcrypt_partition =
-          type == EncryptedContainerType::kDmcrypt ||
-          type == EncryptedContainerType::kEcryptfsToDmcrypt ||
-          type == EncryptedContainerType::kFscryptToDmcrypt;
+          type == libstorage::StorageContainerType::kDmcrypt ||
+          type == libstorage::StorageContainerType::kEcryptfsToDmcrypt ||
+          type == libstorage::StorageContainerType::kFscryptToDmcrypt;
       ExpectLogicalVolumeStatefulPartition(platform, homedirs, user_.obfuscated,
                                            expect_dmcrypt_partition);
       homedirs->set_lvm_migration_enabled(true);
@@ -654,20 +655,20 @@ class HomeDirsVaultTest : public ::testing::Test {
         .WillByDefault(Return(root_keystate));
 
     switch (test_case.existing_container_type) {
-      case EncryptedContainerType::kEcryptfs:
+      case libstorage::StorageContainerType::kEcryptfs:
         ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
         ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         break;
-      case EncryptedContainerType::kFscrypt:
+      case libstorage::StorageContainerType::kFscrypt:
         ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         ON_CALL(*platform,
                 GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
             .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
         break;
-      case EncryptedContainerType::kEcryptfsToFscrypt:
+      case libstorage::StorageContainerType::kEcryptfsToFscrypt:
         ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
         ASSERT_TRUE(
@@ -676,13 +677,13 @@ class HomeDirsVaultTest : public ::testing::Test {
                 GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
             .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
         break;
-      case EncryptedContainerType::kEcryptfsToDmcrypt:
+      case libstorage::StorageContainerType::kEcryptfsToDmcrypt:
         ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
         ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         break;
-      case EncryptedContainerType::kFscryptToDmcrypt:
+      case libstorage::StorageContainerType::kFscryptToDmcrypt:
         ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         ON_CALL(*platform,
@@ -704,180 +705,192 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
           .name = "new_ecryptfs_allowed",
           .lvm_supported = false,
           .fscrypt_supported = false,
-          .existing_container_type = EncryptedContainerType::kUnknown,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
           .options = {},
-          .expected_type = EncryptedContainerType::kEcryptfs,
+          .expected_type = libstorage::StorageContainerType::kEcryptfs,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "new_ecryptfs_block_no_effect",
           .lvm_supported = false,
           .fscrypt_supported = false,
-          .existing_container_type = EncryptedContainerType::kUnknown,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
           .options = {.block_ecryptfs = true},
-          .expected_type = EncryptedContainerType::kEcryptfs,
+          .expected_type = libstorage::StorageContainerType::kEcryptfs,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "new_ecryptfs_cant_migrate",
           .lvm_supported = false,
           .fscrypt_supported = false,
-          .existing_container_type = EncryptedContainerType::kUnknown,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
           .options = {.migrate = true},
-          .expected_type = EncryptedContainerType::kUnknown,
+          .expected_type = libstorage::StorageContainerType::kUnknown,
           .expected_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE,
       },
       {
           .name = "new_ecryptfs_forced",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kUnknown,
-          .options = {.force_type = EncryptedContainerType::kEcryptfs},
-          .expected_type = EncryptedContainerType::kEcryptfs,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
+          .options = {.force_type =
+                          libstorage::StorageContainerType::kEcryptfs},
+          .expected_type = libstorage::StorageContainerType::kEcryptfs,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "new_fscrypt",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kUnknown,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
           .options = {},
-          .expected_type = EncryptedContainerType::kFscrypt,
+          .expected_type = libstorage::StorageContainerType::kFscrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_ecryptfs_allowed",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfs,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfs,
           .options = {},
-          .expected_type = EncryptedContainerType::kEcryptfs,
+          .expected_type = libstorage::StorageContainerType::kEcryptfs,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_ecryptfs_not_allowed",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfs,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfs,
           .options = {.block_ecryptfs = true},
-          .expected_type = EncryptedContainerType::kUnknown,
+          .expected_type = libstorage::StorageContainerType::kUnknown,
           .expected_error = MOUNT_ERROR_OLD_ENCRYPTION,
       },
       {
           .name = "existing_ecryptfs_migrate_to_fscrypt",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfs,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfs,
           .options = {.migrate = true},
-          .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .expected_type = libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_fscrypt",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kFscrypt,
+          .existing_container_type = libstorage::StorageContainerType::kFscrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kFscrypt,
+          .expected_type = libstorage::StorageContainerType::kFscrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_fscrypt_force_ignored",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kFscrypt,
-          .options = {.force_type = EncryptedContainerType::kEcryptfs},
-          .expected_type = EncryptedContainerType::kFscrypt,
+          .existing_container_type = libstorage::StorageContainerType::kFscrypt,
+          .options = {.force_type =
+                          libstorage::StorageContainerType::kEcryptfs},
+          .expected_type = libstorage::StorageContainerType::kFscrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_migration",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .options = {.migrate = true},
-          .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .expected_type = libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_migration_without_flag",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kUnknown,
+          .expected_type = libstorage::StorageContainerType::kUnknown,
           .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
       },
       {
           .name = "existing_fscrypt_migrate",
           .lvm_supported = true,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kFscrypt,
+          .existing_container_type = libstorage::StorageContainerType::kFscrypt,
           .options = {.migrate = true},
-          .expected_type = EncryptedContainerType::kFscryptToDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kFscryptToDmcrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_ecryptfs_migrate_to_dmcrypt",
           .lvm_supported = true,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfs,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfs,
           .options = {.migrate = true},
-          .expected_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kEcryptfsToDmcrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "new_lvm",
           .lvm_supported = true,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kUnknown,
+          .existing_container_type = libstorage::StorageContainerType::kUnknown,
           .options = {},
-          .expected_type = EncryptedContainerType::kDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kDmcrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_lvm",
           .lvm_supported = true,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kDmcrypt,
+          .existing_container_type = libstorage::StorageContainerType::kDmcrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kDmcrypt,
           .expected_error = MOUNT_ERROR_NONE,
       },
       {
           .name = "existing_in_process_migration_ecryptfs_to_fscrypt",
           .lvm_supported = false,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+          .expected_type = libstorage::StorageContainerType::kEcryptfsToFscrypt,
           .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
       },
       {
           .name = "existing_in_process_migration_ecryptfs_to_dmcrypt",
           .lvm_supported = true,
           .fscrypt_supported = false,
-          .existing_container_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+          .existing_container_type =
+              libstorage::StorageContainerType::kEcryptfsToDmcrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kEcryptfsToDmcrypt,
           .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
       },
       {
           .name = "existing_in_process_migration_fscrypt_to_dmcrypt",
           .lvm_supported = true,
           .fscrypt_supported = true,
-          .existing_container_type = EncryptedContainerType::kFscryptToDmcrypt,
+          .existing_container_type =
+              libstorage::StorageContainerType::kFscryptToDmcrypt,
           .options = {},
-          .expected_type = EncryptedContainerType::kFscryptToDmcrypt,
+          .expected_type = libstorage::StorageContainerType::kFscryptToDmcrypt,
           .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
       }};
 
   for (const auto& test_case : test_cases) {
     NiceMock<libstorage::MockPlatform> platform;
-    std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<EncryptedContainerFactory>(
-            &platform, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
-            std::make_unique<BackingDeviceFactory>(&platform));
+    std::unique_ptr<libstorage::StorageContainerFactory> container_factory =
+        std::make_unique<libstorage::StorageContainerFactory>(
+            &platform, /* metrics */ nullptr,
+            std::make_unique<libstorage::FakeKeyring>(),
+            std::make_unique<libstorage::BackingDeviceFactory>(&platform));
 
     std::unique_ptr<CryptohomeVaultFactory> vault_factory =
         std::make_unique<CryptohomeVaultFactory>(&platform,

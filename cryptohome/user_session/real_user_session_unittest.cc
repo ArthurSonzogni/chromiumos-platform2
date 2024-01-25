@@ -183,7 +183,7 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // Test with ecryptfs since it has a simpler existence check.
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
 
   // Set the credentials with |users_[0].credentials| so that
@@ -359,7 +359,7 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   // SETUP
   // Test with ecryptfs since it has a simpler existence check.
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
 
   FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
@@ -413,7 +413,7 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
 
   // Test with ecryptfs since it has a simpler existence check.
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
 
   EXPECT_CALL(*mount_,

@@ -3,5 +3,5 @@
 libstorage contains ChromeOS specific storage primitives:
 
 *  platform: mockable functions to access low level storage: mount/...
-*  vault_container: object to describe filesystems, encrypted devices
+*  storage_container: object to describe filesystems, encrypted devices
    and their backend.

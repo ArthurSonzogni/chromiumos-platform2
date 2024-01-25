@@ -42,16 +42,16 @@
 #include <gmock/gmock.h>
 #include <libhwsec/factory/fuzzed_factory.h>
 #include <libstorage/platform/fuzzers/fuzzed_platform.h>
+#include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/backing_device_factory.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
-#include "cryptohome/storage/encrypted_container/backing_device_factory.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/system_apis.h"
@@ -137,9 +137,11 @@ std::unique_ptr<CryptohomeVaultFactory> CreateVaultFactory(
     libstorage::Platform& platform, FuzzedDataProvider& provider) {
   // Only stub out `Keyring`, because unlike other classes its real
   // implementation does platform operations that don't go through `Platform`.
-  auto container_factory = std::make_unique<EncryptedContainerFactory>(
-      &platform, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
-      std::make_unique<BackingDeviceFactory>(&platform));
+  auto container_factory =
+      std::make_unique<libstorage::StorageContainerFactory>(
+          &platform, /* metrics */ nullptr,
+          std::make_unique<libstorage::FakeKeyring>(),
+          std::make_unique<libstorage::BackingDeviceFactory>(&platform));
   container_factory->set_allow_fscrypt_v2(provider.ConsumeBool());
   auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
       &platform, std::move(container_factory));

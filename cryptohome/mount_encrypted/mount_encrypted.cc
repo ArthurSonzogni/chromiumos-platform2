@@ -25,6 +25,8 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
@@ -33,9 +35,6 @@
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 #include "cryptohome/mount_encrypted/tpm.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 #define PROP_SIZE 64
 
@@ -371,7 +370,7 @@ static result_code mount_encrypted_partition(
                   "get a TPM seed.";
   }
 
-  cryptohome::FileSystemKey encryption_key;
+  libstorage::FileSystemKey encryption_key;
   encryption_key.fek = key.encryption_key();
   rc = encrypted_fs->Setup(encryption_key, key.is_fresh());
   if (rc == RESULT_SUCCESS) {
@@ -419,12 +418,12 @@ int main(int argc, const char* argv[]) {
   mount_encrypted::ScopedMountEncryptedMetricsSingleton scoped_metrics(
       kMountEncryptedMetricsPath);
 
-  cryptohome::EncryptedContainerFactory encrypted_container_factory(
+  libstorage::StorageContainerFactory storage_container_factory(
       &platform, mount_encrypted::MountEncryptedMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
   brillo::LogicalVolumeManager lvm;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, &platform, &device_mapper, &lvm, &encrypted_container_factory);
+      rootdir, &platform, &device_mapper, &lvm, &storage_container_factory);
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";

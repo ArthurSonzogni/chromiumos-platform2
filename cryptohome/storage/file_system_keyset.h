@@ -8,8 +8,8 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <libstorage/storage_container/filesystem_key.h>
 
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -20,14 +20,14 @@ class FileSystemKeyset final {
  public:
   FileSystemKeyset();
   explicit FileSystemKeyset(const VaultKeyset& vault_keyset);
-  FileSystemKeyset(FileSystemKey key,
-                   FileSystemKeyReference key_reference,
+  FileSystemKeyset(libstorage::FileSystemKey key,
+                   libstorage::FileSystemKeyReference key_reference,
                    brillo::SecureBlob chaps_key);
   ~FileSystemKeyset();
 
   // Getters for the associated key data
-  const FileSystemKey& Key() const;
-  const FileSystemKeyReference& KeyReference() const;
+  const libstorage::FileSystemKey& Key() const;
+  const libstorage::FileSystemKeyReference& KeyReference() const;
   const brillo::SecureBlob& chaps_key() const;
 
   // TODO(dlunev): make vault keyset to use this CreateRandom instead
@@ -38,8 +38,8 @@ class FileSystemKeyset final {
   // Keys for file encryption. Currently we would need file_encryption_key(fek)
   // file_name_encryption_key (fnek), fek_salt, fnek_salt, fek_sig, fnek_sig.
   // The fnek keys are used only in the older Ecryptfs operations.
-  FileSystemKey key_;
-  FileSystemKeyReference key_reference_;
+  libstorage::FileSystemKey key_;
+  libstorage::FileSystemKeyReference key_reference_;
 
   // Chaps keys are stored in keysets right now and are used as part of mount
   // operations.

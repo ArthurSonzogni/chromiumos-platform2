@@ -27,6 +27,8 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gtest/gtest_prod.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -34,8 +36,6 @@
 #include "cryptohome/device_management_client_proxy.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/username.h"
 
@@ -187,7 +187,7 @@ class HomeDirs {
   }
 
   // Pick the most appropriate vault type for the user.
-  virtual StorageStatusOr<EncryptedContainerType> PickVaultType(
+  virtual StorageStatusOr<libstorage::StorageContainerType> PickVaultType(
       const ObfuscatedUsername& obfuscated_username,
       const CryptohomeVault::Options& options);
 
@@ -204,10 +204,10 @@ class HomeDirs {
 
  private:
   // Choose the vault type for new vaults.
-  EncryptedContainerType ChooseVaultType();
+  libstorage::StorageContainerType ChooseVaultType();
 
   // Get the type of an existing vault.
-  StorageStatusOr<EncryptedContainerType> GetVaultType(
+  StorageStatusOr<libstorage::StorageContainerType> GetVaultType(
       const ObfuscatedUsername& obfuscated_username);
 
   base::TimeDelta GetUserInactivityThresholdForRemoval();

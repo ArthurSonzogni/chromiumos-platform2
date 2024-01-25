@@ -27,7 +27,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/mock_platform.h>
+#include <libstorage/storage_container/fake_backing_device.h>
+#include <libstorage/storage_container/fake_storage_container_factory.h>
+#include <libstorage/storage_container/storage_container.h>
 #include <linux/magic.h>
 #include <policy/libpolicy.h>
 #include <sys/statfs.h>
@@ -35,13 +39,9 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
-#include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_helper_interface.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
@@ -194,9 +194,9 @@ class PersistentSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<FakeEncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeKeyring>());
+    std::unique_ptr<libstorage::StorageContainerFactory> container_factory =
+        std::make_unique<libstorage::FakeStorageContainerFactory>(
+            &platform_, std::make_unique<libstorage::FakeKeyring>());
 
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));
@@ -288,7 +288,7 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
   // Verify force_dircrypto flag prohibits ecryptfs mounts.
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
 
   // Essentially, EcryptFS type should be called for mount.
@@ -316,7 +316,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
 
   // Create ecryptfs
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
   MockPreclearKeyring(/*success=*/true);
   EXPECT_CALL(*mock_mount_interface_,
@@ -373,7 +373,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
 
   // Now we should be able to mount with dircrypto.
   options = {
-      .force_type = EncryptedContainerType::kFscrypt,
+      .force_type = libstorage::StorageContainerType::kFscrypt,
   };
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
@@ -399,7 +399,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
 
   // Create ecryptfs
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
+      .force_type = libstorage::StorageContainerType::kEcryptfs,
   };
   MockPreclearKeyring(/*success=*/true);
   EXPECT_CALL(*mock_mount_interface_,
@@ -452,7 +452,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
 
   // Now we should be able to mount with dircrypto.
   options = {
-      .force_type = EncryptedContainerType::kDmcrypt,
+      .force_type = libstorage::StorageContainerType::kDmcrypt,
   };
   MockPreclearKeyring(/*success=*/true);
   EXPECT_CALL(*mock_mount_interface_,
@@ -477,7 +477,7 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
 
   // Create ecryptfs
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kFscrypt,
+      .force_type = libstorage::StorageContainerType::kFscrypt,
   };
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
@@ -532,7 +532,7 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
 
   // Now we should be able to mount with dircrypto.
   options = {
-      .force_type = EncryptedContainerType::kDmcrypt,
+      .force_type = libstorage::StorageContainerType::kDmcrypt,
   };
   MockPreclearKeyring(/*success=*/true);
   EXPECT_CALL(*mock_mount_interface_,
@@ -554,7 +554,7 @@ TEST_F(PersistentSystemTest, MountRestoreSelinux) {
 
   // Create ecryptfs
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kFscrypt,
+      .force_type = libstorage::StorageContainerType::kFscrypt,
   };
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
@@ -577,7 +577,7 @@ TEST_F(PersistentSystemTest, MountRestoreSelinux) {
 TEST_F(PersistentSystemTest, MountEvictKeyRestoreKey) {
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
   CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kDmcrypt,
+      .force_type = libstorage::StorageContainerType::kDmcrypt,
   };
 
   MockPreclearKeyring(/*success=*/true);
@@ -612,10 +612,11 @@ class EphemeralSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<EncryptedContainerFactory>(
-            &platform_, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),
-            std::make_unique<FakeBackingDeviceFactory>(&platform_));
+    std::unique_ptr<libstorage::StorageContainerFactory> container_factory =
+        std::make_unique<libstorage::StorageContainerFactory>(
+            &platform_, /* metrics */ nullptr,
+            std::make_unique<libstorage::FakeKeyring>(),
+            std::make_unique<libstorage::FakeBackingDeviceFactory>(&platform_));
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));
     homedirs_ = std::make_unique<HomeDirs>(

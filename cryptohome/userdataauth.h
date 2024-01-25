@@ -821,7 +821,7 @@ class UserDataAuth {
   CryptohomeStatus TerminateAuthSessionsAndClearLoadedState();
 
   // Converts the Dbus value for encryption type into internal representation.
-  EncryptedContainerType DbusEncryptionTypeToContainerType(
+  libstorage::StorageContainerType DbusEncryptionTypeToContainerType(
       user_data_auth::VaultEncryptionType type);
 
   // The following methods are implementations for the DBus endpoints of the

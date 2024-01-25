@@ -17,11 +17,11 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/filesystem_key.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
@@ -56,7 +56,7 @@ class EncryptedFs {
   EncryptedFs(const base::FilePath& rootdir,
               uint64_t fs_size,
               const std::string& dmcrypt_name,
-              std::unique_ptr<cryptohome::EncryptedContainer> container,
+              std::unique_ptr<libstorage::StorageContainer> container,
               libstorage::Platform* platform,
               brillo::DeviceMapper* device_mapper);
   ~EncryptedFs() = default;
@@ -66,7 +66,7 @@ class EncryptedFs {
       libstorage::Platform* platform,
       brillo::DeviceMapper* device_mapper,
       brillo::LogicalVolumeManager* lvm,
-      cryptohome::EncryptedContainerFactory* encrypted_container_factory);
+      libstorage::StorageContainerFactory* storage_container_factory);
 
   // Setup mounts the encrypted mount by:
   // 1. Create a sparse file at <rootdir>/STATEFUL_MNT/encrypted.block
@@ -81,7 +81,7 @@ class EncryptedFs {
   // Parameters
   //   encryption_key - dmcrypt encryption key.
   //   rebuild - cleanup and recreate the encrypted mount.
-  result_code Setup(const cryptohome::FileSystemKey& encryption_key,
+  result_code Setup(const libstorage::FileSystemKey& encryption_key,
                     bool rebuild);
   // Purge - obliterate the sparse file. This should be called only
   // when the encrypted fs is not mounted.
@@ -126,7 +126,7 @@ class EncryptedFs {
   brillo::DeviceMapper* device_mapper_;
 
   // Encrypted container that will be mounted as the encrypted filesystem.
-  std::unique_ptr<cryptohome::EncryptedContainer> container_;
+  std::unique_ptr<libstorage::StorageContainer> container_;
 
   std::vector<BindMount> bind_mounts_;
 };

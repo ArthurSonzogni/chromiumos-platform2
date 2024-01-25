@@ -109,13 +109,13 @@ CryptohomeStatusOr<FileSystemKeyset> GetFileSystemKeysetFromPayload(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  FileSystemKey file_system_key = {
+  libstorage::FileSystemKey file_system_key = {
       .fek = payload.fek,
       .fnek = payload.fnek,
       .fek_salt = payload.fek_salt,
       .fnek_salt = payload.fnek_salt,
   };
-  FileSystemKeyReference file_system_key_reference = {
+  libstorage::FileSystemKeyReference file_system_key_reference = {
       .fek_sig = payload.fek_sig,
       .fnek_sig = payload.fnek_sig,
   };
