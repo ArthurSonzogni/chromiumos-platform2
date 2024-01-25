@@ -16,8 +16,6 @@ inline constexpr char kNvmeToolPath[] = "/usr/sbin/nvme";
 inline constexpr char kDevicePath[] = "/dev";
 // Smartctl utility program path.
 inline constexpr char kSmartctlToolPath[] = "/usr/sbin/smartctl";
-// Mmc utility program path.
-inline constexpr char kMmcToolPath[] = "/usr/bin/mmc";
 
 // Returns a list of wilco board names.
 inline const std::list<std::string> GetWilcoBoardNames() {

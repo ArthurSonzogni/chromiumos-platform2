@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -345,6 +346,21 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineCameraAvailability() const {
     return MakeUnsupported("Doesn't support device with no camera.");
   }
   return MakeSupported();
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineEmmcLifetime() const {
+  // TODO(b/307882873): Remove the empty field fallback after storage-type for
+  // existing devices are filled.
+  auto storage_type = cros_config()->Get(cros_config_property::kStorageType);
+  return base::PathExists(paths::usr::kMmc.ToFull()) &&
+                 (!storage_type.has_value() ||
+                  storage_type.value() == cros_config_value::kStorageTypeEmmc ||
+                  storage_type.value() ==
+                      cros_config_value::kStorageTypeUnknown)
+             ? MakeSupported()
+             : MakeUnsupported(
+                   "Not supported on a device without eMMC drive or mmc "
+                   "utility");
 }
 
 void GroundTruth::PrepareRoutineBluetoothFloss(

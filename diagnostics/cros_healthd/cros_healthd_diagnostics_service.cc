@@ -783,7 +783,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kPrivacyScreen);
   }
 
-  if (context_->system_config()->MmcSupported()) {
+  if (ground_truth_->PrepareRoutineEmmcLifetime()->is_supported()) {
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kEmmcLifetime);
   }
 

@@ -194,15 +194,6 @@ TEST_F(SystemConfigTest, SmartCtlSupportedFalse) {
   ASSERT_FALSE(system_config()->SmartCtlSupported());
 }
 
-TEST_F(SystemConfigTest, MmcSupportedTrue) {
-  SetFile(kMmcToolPath, "");
-  ASSERT_TRUE(system_config()->MmcSupported());
-}
-
-TEST_F(SystemConfigTest, MmcSupportedFalse) {
-  ASSERT_FALSE(system_config()->MmcSupported());
-}
-
 TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedTrue) {
   SetFakeCrosConfig(paths::fingerprint::kRoutineEnable, "true");
   EXPECT_TRUE(system_config()->FingerprintDiagnosticSupported());

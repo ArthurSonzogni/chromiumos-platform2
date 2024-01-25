@@ -56,9 +56,6 @@ class SystemConfigInterface {
   // Returns if the device has support for smartctl.
   virtual bool SmartCtlSupported() = 0;
 
-  // Returns if the device has support for mmc.
-  virtual bool MmcSupported() = 0;
-
   // Returns if the device supports fingerprint diagnostics.
   virtual bool FingerprintDiagnosticSupported() = 0;
 

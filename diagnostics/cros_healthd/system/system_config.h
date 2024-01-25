@@ -37,7 +37,6 @@ class SystemConfig final : public SystemConfigInterface {
   bool NvmeSupported() override;
   void NvmeSelfTestSupported(NvmeSelfTestSupportedCallback callback) override;
   bool SmartCtlSupported() override;
-  bool MmcSupported() override;
   bool FingerprintDiagnosticSupported() override;
   bool IsWilcoDevice() override;
   std::optional<std::string> GetMarketingName() override;

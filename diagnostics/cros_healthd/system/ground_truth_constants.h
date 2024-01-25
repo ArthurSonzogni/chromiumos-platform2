@@ -24,6 +24,11 @@ inline constexpr char kStylusCategoryNone[] = "none";
 inline constexpr char kStylusCategoryInternal[] = "internal";
 inline constexpr char kStylusCategoryExternal[] = "external";
 
+// Possible values of /hardware-properties/storage-type.
+// Other unused possible values: NVME, SATA, BRIDGED_EMMC, UFS.
+inline constexpr char kStorageTypeUnknown[] = "STORAGE_TYPE_UNKNOWN";
+inline constexpr char kStorageTypeEmmc[] = "EMMC";
+
 }  // namespace cros_config_value
 
 }  // namespace diagnostics

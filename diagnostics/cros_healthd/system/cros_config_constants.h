@@ -7,6 +7,8 @@
 
 namespace diagnostics {
 
+// TODO(b/322958644): Merge into `ground_truth_constants.h` and remove the file.
+
 namespace cros_config_value {
 
 inline constexpr char kTrue[] = "true";

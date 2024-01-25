@@ -45,10 +45,6 @@ bool FakeSystemConfig::SmartCtlSupported() {
   return smart_ctrl_supported_;
 }
 
-bool FakeSystemConfig::MmcSupported() {
-  return mmc_supported_;
-}
-
 bool FakeSystemConfig::FingerprintDiagnosticSupported() {
   return fingerprint_diagnostic_supported_;
 }
@@ -103,10 +99,6 @@ void FakeSystemConfig::SetNvmeSelfTestSupported(bool value) {
 
 void FakeSystemConfig::SetSmartCtrlSupported(bool value) {
   smart_ctrl_supported_ = value;
-}
-
-void FakeSystemConfig::SetMmcSupported(bool value) {
-  mmc_supported_ = value;
 }
 
 void FakeSystemConfig::SetFingerprintDiagnosticSupported(bool value) {

@@ -53,6 +53,20 @@ Always supported.
 
 Always supported.
 
+### eMMC lifetime
+
+Supported only when `mmc` utility is present and `storage-type` is explicitly
+configured as "EMMC".  (temporarily workaround: also supported if the
+`storage-type` is missing or "STORAGE_TYPE_UNKNOWN")
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties storage-type` This is helpful to understand
+   what the value of `storage-type` is.
+
+To configure `storage-type` in Boxster, you can use the
+`create_non_volatile_storage` function defined in [hw_topology.star] to set it
+up.
+
 ### Ufs lifetime
 
 Supported only when `storage-type` is explicitly configured as "UFS".

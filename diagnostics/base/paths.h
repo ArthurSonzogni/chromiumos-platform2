@@ -22,6 +22,13 @@ VAR_(PATH_("sys", "class", "chromeos", "cros_ec"), kCrosEc);
 
 }  // namespace sysfs
 
+namespace usr {
+
+// Used to determine whether mmc utility program exists.
+VAR_(PATH_("usr", "bin", "mmc"), kMmc);
+
+}  // namespace usr
+
 namespace cros_config {
 
 VAR_(PATH_("run", "chromeos-config", "v1"), kRoot);

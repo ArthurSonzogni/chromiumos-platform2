@@ -92,14 +92,12 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kFingerprint,
       mojom::DiagnosticRoutineEnum::kFingerprintAlive,
       mojom::DiagnosticRoutineEnum::kPrivacyScreen,
-      mojom::DiagnosticRoutineEnum::kEmmcLifetime,
       mojom::DiagnosticRoutineEnum::kBluetoothPower,
       mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
       mojom::DiagnosticRoutineEnum::kBluetoothScanning,
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
-      mojom::DiagnosticRoutineEnum::kUfsLifetime,
       mojom::DiagnosticRoutineEnum::kFan,
   };
 }
@@ -152,9 +150,7 @@ class CrosHealthdDiagnosticsServiceTest : public BaseFileTest {
     mock_context_.fake_system_config()->SetNvmeSupported(true);
     mock_context_.fake_system_config()->SetSmartCtrlSupported(true);
     mock_context_.fake_system_config()->SetIsWilcoDevice(true);
-    mock_context_.fake_system_config()->SetMmcSupported(true);
-    SetFakeCrosConfig(paths::cros_config::kStorageType,
-                      cros_config_value::kStorageTypeUfs);
+    SetFakeCrosConfig(paths::cros_config::kStorageType, std::nullopt);
 
     CreateService();
   }
@@ -283,31 +279,32 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoSmartctl) {
 }
 
 // Test that GetAvailableRoutines returns the expected list of routines when
-// mmc routines are not supported.
-TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
-  mock_context()->fake_system_config()->SetMmcSupported(false);
+// storage type is EMMC.
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesWithMmc) {
+  SetFile("usr/bin/mmc", "");
+  SetFakeCrosConfig(paths::cros_config::kStorageType, "EMMC");
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetMmcRoutines())
-    expected_routines.erase(r);
+    expected_routines.insert(r);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
 
 // Test that GetAvailableRoutines returns the expected list of routines when
-// storage type is not UFS.
-TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoUfs) {
-  SetFakeCrosConfig(paths::cros_config::kStorageType, "UnknownType");
+// storage type is UFS.
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesWithUfs) {
+  SetFakeCrosConfig(paths::cros_config::kStorageType, "UFS");
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetUfsRoutines())
-    expected_routines.erase(r);
+    expected_routines.insert(r);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -423,6 +420,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithParam) {
 
 // Test that the eMMC lifetime routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunEmmcLifetimeRoutine) {
+  SetFile("usr/bin/mmc", "");
+  SetFakeCrosConfig(paths::cros_config::kStorageType, "EMMC");
+  CreateService();
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -1367,6 +1367,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioDriverRoutine) {
 
 // Test that the UFS lifetime routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunUfsLifetimeRoutine) {
+  SetFakeCrosConfig(paths::cros_config::kStorageType, "UFS");
+  CreateService();
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(

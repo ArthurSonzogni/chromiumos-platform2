@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -402,6 +403,46 @@ TEST_F(GroundTruthTest, PrepareRoutineFingerprint) {
   EXPECT_EQ(param.detect_zones[0].y1, 2);
   EXPECT_EQ(param.detect_zones[0].x2, 3);
   EXPECT_EQ(param.detect_zones[0].y2, 4);
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetime) {
+  SetFakeCrosConfig(cros_config_property::kStorageType,
+                    cros_config_value::kStorageTypeEmmc);
+  SetFile(paths::usr::kMmc, "");
+
+  EXPECT_EQ(ground_truth()->PrepareRoutineEmmcLifetime(), MakeSupported());
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetimeCrosConfigMissingFallback) {
+  SetFakeCrosConfig(cros_config_property::kStorageType, std::nullopt);
+  SetFile(paths::usr::kMmc, "");
+
+  EXPECT_EQ(ground_truth()->PrepareRoutineEmmcLifetime(), MakeSupported());
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetimeCrosConfigUnknownFallback) {
+  SetFakeCrosConfig(cros_config_property::kStorageType, "STORAGE_TYPE_UNKNOWN");
+  SetFile(paths::usr::kMmc, "");
+
+  EXPECT_EQ(ground_truth()->PrepareRoutineEmmcLifetime(), MakeSupported());
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetimeUnsupportedNoMmc) {
+  SetFakeCrosConfig(cros_config_property::kStorageType,
+                    cros_config_value::kStorageTypeEmmc);
+
+  EXPECT_EQ(ground_truth()->PrepareRoutineEmmcLifetime(),
+            MakeUnsupported(
+                "Not supported on a device without eMMC drive or mmc utility"));
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetimeUnsupportedOtherStorageType) {
+  SetFakeCrosConfig(cros_config_property::kStorageType, "UFS");
+  SetFile(paths::usr::kMmc, "");
+
+  EXPECT_EQ(ground_truth()->PrepareRoutineEmmcLifetime(),
+            MakeUnsupported(
+                "Not supported on a device without eMMC drive or mmc utility"));
 }
 
 TEST_F(GroundTruthTest, BluetoothRoutineFlossEnabled) {

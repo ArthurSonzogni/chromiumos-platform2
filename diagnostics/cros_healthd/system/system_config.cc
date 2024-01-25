@@ -184,10 +184,6 @@ bool SystemConfig::SmartCtlSupported() {
   return base::PathExists(GetRootedPath(kSmartctlToolPath));
 }
 
-bool SystemConfig::MmcSupported() {
-  return base::PathExists(GetRootedPath(kMmcToolPath));
-}
-
 bool SystemConfig::FingerprintDiagnosticSupported() {
   auto enable =
       cros_config_->Get(paths::cros_config::fingerprint::kRoutineEnable);
