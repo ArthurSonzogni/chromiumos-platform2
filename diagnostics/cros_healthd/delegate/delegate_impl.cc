@@ -51,6 +51,7 @@
 #include "diagnostics/cros_healthd/delegate/events/stylus_garage_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/events/touchpad_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/events/touchscreen_evdev_delegate.h"
+#include "diagnostics/cros_healthd/delegate/events/volume_button_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
