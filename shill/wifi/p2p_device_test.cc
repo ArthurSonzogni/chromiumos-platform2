@@ -1578,7 +1578,7 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping) {
   FastForwardBy(kStopTimeout);
   EXPECT_TRUE(device->start_timer_callback_.IsCancelled());
   EXPECT_TRUE(device->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   // Stop device
   device->Stop();
@@ -1742,7 +1742,7 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting) {
   FastForwardBy(kStopTimeout);
   EXPECT_TRUE(device->start_timer_callback_.IsCancelled());
   EXPECT_TRUE(device->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
 
   // Stop device
   device->Stop();

@@ -638,6 +638,8 @@ void P2PDevice::TeardownGroup(const KeyValueStore& properties) {
 }
 
 void P2PDevice::TeardownGroup() {
+  // TODO(b/322557062): Ensure that the underlying kernel interface is properly
+  // torn down.
   group_ssid_ = "";
   group_bssid_ = "";
   group_frequency_ = 0;
@@ -997,7 +999,6 @@ void P2PDevice::StoppingTimerExpired() {
           << ": Forcing Client to disconnect, timer expired while in state "
           << P2PDeviceStateName(state_);
       TeardownGroup();
-      SetState(P2PDeviceState::kReady);
       PostDeviceEvent(DeviceEvent::kLinkDown);
       break;
     // P2P GO failure states for StoppingTimerExpired event
@@ -1006,7 +1007,6 @@ void P2PDevice::StoppingTimerExpired() {
                    << ": Forcing GO to stop, timer expired while in state "
                    << P2PDeviceStateName(state_);
       TeardownGroup();
-      SetState(P2PDeviceState::kReady);
       PostDeviceEvent(DeviceEvent::kLinkDown);
       break;
     // Common states for all roles.
