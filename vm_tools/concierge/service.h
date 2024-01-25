@@ -392,7 +392,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(TerminaVm* vm,
-                    bool allow_privileged_containers,
                     const google::protobuf::RepeatedField<int>& features,
                     std::string* failure_reason,
                     vm_tools::StartTerminaResponse::MountResult* result,

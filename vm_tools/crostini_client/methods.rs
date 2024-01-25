@@ -278,7 +278,6 @@ pub struct VmFeatures {
     pub virtgpu_native_context: bool,
     pub vtpm_proxy: bool,
     pub audio_capture: bool,
-    pub run_as_untrusted: bool,
     pub dlc: Option<String>,
     pub kernel_params: Vec<String>,
     pub tools_dlc_id: Option<String>,
@@ -1348,7 +1347,6 @@ impl Methods {
         request.enable_virtgpu_native_context = features.virtgpu_native_context;
         request.vtpm_proxy = features.vtpm_proxy;
         request.enable_audio_capture = features.audio_capture;
-        request.run_as_untrusted = features.run_as_untrusted;
         request.name = vm_name.to_owned();
         request.kernel_params = features.kernel_params;
         request.timeout = features.timeout;

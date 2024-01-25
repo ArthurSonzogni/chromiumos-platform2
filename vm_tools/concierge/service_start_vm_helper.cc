@@ -118,18 +118,9 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                          std::string& failure_reason) {
   DCHECK(failure_reason.empty());
   DCHECK_CALLED_ON_VALID_SEQUENCE(base::SequenceChecker);
-  // A VM image is trusted when both:
-  // 1) This daemon (or a trusted daemon) chooses the kernel and rootfs path.
-  // 2) The chosen VM is a first-party VM.
-  // In practical terms this is true iff we are booting termina without
-  // specifying kernel and rootfs image.
-  bool is_trusted_image = is_termina;
 
   base::FilePath kernel, rootfs, initrd, bios, pflash;
   if (kernel_fd.has_value()) {
-    // User-chosen kernel is untrusted.
-    is_trusted_image = false;
-
     int raw_fd = kernel_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty())
@@ -141,9 +132,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
   }
 
   if (rootfs_fd.has_value()) {
-    // User-chosen rootfs is untrusted.
-    is_trusted_image = false;
-
     int raw_fd = rootfs_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty())
@@ -155,9 +143,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
   }
 
   if (initrd_fd.has_value()) {
-    // User-chosen initrd is untrusted.
-    is_trusted_image = false;
-
     int raw_fd = initrd_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty())
@@ -169,9 +154,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
   }
 
   if (bios_fd.has_value()) {
-    // User-chosen bios is untrusted.
-    is_trusted_image = false;
-
     int raw_fd = bios_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty())
@@ -184,9 +166,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
   }
 
   if (pflash_fd.has_value()) {
-    // User-chosen pflash is untrusted.
-    is_trusted_image = false;
-
     int raw_fd = pflash_fd.value().get();
     failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty())
@@ -231,7 +210,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
       .bios = std::move(bios),
       .pflash = std::move(pflash),
       .tools_disk = std::move(tools_disk),
-      .is_trusted_image = is_trusted_image,
   };
 }
 

@@ -657,9 +657,6 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
                                        StartTerminaResponse* response) {
   LOG(INFO) << "Received StartTermina request";
 
-  if (!request->allow_privileged_containers())
-    lxd_env_.emplace("LXD_UNPRIVILEGED_ONLY", "true");
-
   response->set_mount_result(StartTerminaResponse::UNKNOWN);
 
   if (!init_) {

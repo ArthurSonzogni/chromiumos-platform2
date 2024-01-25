@@ -521,7 +521,6 @@ bool TerminaVm::Mount(std::string source,
 
 bool TerminaVm::StartTermina(
     std::string lxd_subnet,
-    bool allow_privileged_containers,
     const google::protobuf::RepeatedField<int>& features,
     std::string* out_error,
     vm_tools::StartTerminaResponse* response) {
@@ -537,7 +536,7 @@ bool TerminaVm::StartTermina(
   request.set_tremplin_ipv4_address(GatewayAddress().ToInAddr().s_addr);
   request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
   request.set_stateful_device(StatefulDevice());
-  request.set_allow_privileged_containers(allow_privileged_containers);
+  request.set_allow_privileged_containers(true);
   for (const auto feature : kEnabledTerminaFeatures) {
     request.add_feature(feature);
   }

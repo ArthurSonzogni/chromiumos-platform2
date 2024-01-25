@@ -227,17 +227,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "enable-audio-capture",
             "when starting the vm, enable audio capture support",
         );
-        opts.optflag(
-            "",
-            "untrusted",
-            "treat this VM as untrusted, only valid in developer mode",
-        );
-        opts.optopt(
-            "",
-            "extra-disk",
-            "path to an extra disk image. Only valid on untrusted VMs.",
-            "PATH",
-        );
+        opts.optopt("", "extra-disk", "path to an extra disk image.", "PATH");
         opts.optopt(
             "",
             "dlc-id",
@@ -250,24 +240,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Identifier for the DLC from which guest tools should be pulled.",
             "ID",
         );
-        opts.optopt(
-            "",
-            "kernel",
-            "path to a custom kernel image. Only valid on untrusted VMs.",
-            "PATH",
-        );
-        opts.optopt(
-            "",
-            "initrd",
-            "path to a custom initrd. Only valid on untrusted VMs.",
-            "PATH",
-        );
-        opts.optopt(
-            "",
-            "rootfs",
-            "path to a custom rootfs image. Only valid on untrusted VMs.",
-            "PATH",
-        );
+        opts.optopt("", "kernel", "path to a custom kernel image.", "PATH");
+        opts.optopt("", "initrd", "path to a custom initrd.", "PATH");
+        opts.optopt("", "rootfs", "path to a custom rootfs image.", "PATH");
         opts.optopt(
             "",
             "vm-type",
@@ -283,7 +258,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optmulti(
             "",
             "kernel-param",
-            "Additional kernel cmdline parameter for the host. Only valid on untrusted VMs.",
+            "Additional kernel cmdline parameter for the host.",
             "PARAM",
         );
         opts.optmulti(
@@ -292,18 +267,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "Type 11 SMBIOS DMI OEM string to pass to the host.",
             "STRING",
         );
-        opts.optopt(
-            "",
-            "bios",
-            "path to a custom bios image. Only valid on untrusted VMs.",
-            "PATH",
-        );
-        opts.optopt(
-            "",
-            "pflash",
-            "path to a r/w bios flash image. Only valid on untrusted VMs.",
-            "PATH",
-        );
+        opts.optopt("", "bios", "path to a custom bios image.", "PATH");
+        opts.optopt("", "pflash", "path to a r/w bios flash image.", "PATH");
         opts.optopt(
             "",
             "bios-dlc",
@@ -342,7 +307,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             virtgpu_native_context,
             vtpm_proxy: matches.opt_present("vtpm-proxy"),
             audio_capture: matches.opt_present("enable-audio-capture"),
-            run_as_untrusted: matches.opt_present("untrusted"),
             dlc: matches.opt_str("dlc-id"),
             kernel_params: matches.opt_strs("kernel-param"),
             tools_dlc_id: matches.opt_str("tools-dlc"),
@@ -1002,7 +966,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
+   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters] |
@@ -1183,7 +1147,6 @@ mod tests {
             ],
             &["vmc", "start", "termina", "--vtpm-proxy"],
             &["vmc", "start", "termina", "--enable-audio-capture"],
-            &["vmc", "start", "termina", "--untrusted"],
             &[
                 "vmc",
                 "start",

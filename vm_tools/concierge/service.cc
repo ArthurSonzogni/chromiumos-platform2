@@ -1606,16 +1606,11 @@ StartVmResponse Service::StartVmInternal(
   // user.
   base::FilePath pflash = pflash_result.value();
 
-  const bool is_untrusted_vm = untrusted_vm_utils_.IsUntrustedVM(
-      request.run_as_untrusted(), image_spec.is_trusted_image,
-      !request.kernel_params().empty());
-  if (is_untrusted_vm) {
-    std::string reason;
-    if (!untrusted_vm_utils_.IsUntrustedVMAllowed(&reason)) {
-      LOG(ERROR) << reason;
-      response.set_failure_reason(reason);
-      return response;
-    }
+  std::string reason;
+  if (!untrusted_vm_utils_.IsUntrustedVMAllowed(&reason)) {
+    LOG(ERROR) << reason;
+    response.set_failure_reason(reason);
+    return response;
   }
 
   // Track the next available virtio-blk device name.
@@ -1699,14 +1694,6 @@ StartVmResponse Service::StartVmInternal(
 
   // Check if an opened storage image was passed over D-BUS.
   if (vm_start_image_fds->storage_fd.has_value()) {
-    // We only allow untrusted VMs to mount extra storage.
-    if (!is_untrusted_vm) {
-      LOG(ERROR) << "storage fd passed for a trusted VM";
-
-      response.set_failure_reason("storage fd is passed for a trusted VM");
-      return response;
-    }
-
     int raw_fd = vm_start_image_fds->storage_fd.value().get();
     std::string failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty()) {
@@ -2048,11 +2035,9 @@ StartVmResponse Service::StartVmInternal(
   vm_tools::StartTerminaResponse::MountResult mount_result =
       vm_tools::StartTerminaResponse::UNKNOWN;
   int64_t free_bytes = -1;
-  // Allow untrusted VMs to have privileged containers.
   if (request.start_termina() &&
-      !StartTermina(vm.get(), is_untrusted_vm /* allow_privileged_containers */,
-                    request.features(), &failure_reason, &mount_result,
-                    &free_bytes)) {
+      !StartTermina(vm.get(), request.features(), &failure_reason,
+                    &mount_result, &free_bytes)) {
     response.set_failure_reason(std::move(failure_reason));
     response.set_mount_result((StartVmResponse::MountResult)mount_result);
     return response;
@@ -2561,7 +2546,6 @@ void Service::SyncVmTimes(
 }
 
 bool Service::StartTermina(TerminaVm* vm,
-                           bool allow_privileged_containers,
                            const google::protobuf::RepeatedField<int>& features,
                            std::string* failure_reason,
                            vm_tools::StartTerminaResponse::MountResult* result,
@@ -2572,8 +2556,7 @@ bool Service::StartTermina(TerminaVm* vm,
 
   std::string error;
   vm_tools::StartTerminaResponse response;
-  if (!vm->StartTermina(vm->ContainerCIDRAddress().ToString(),
-                        allow_privileged_containers, features, &error,
+  if (!vm->StartTermina(vm->ContainerCIDRAddress().ToString(), features, &error,
                         &response)) {
     failure_reason->assign(error);
     return false;
@@ -4499,14 +4482,8 @@ void Service::GetVmLaunchAllowed(
     const GetVmLaunchAllowedRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  bool allowed = true;
   std::string reason;
-  bool is_untrusted = untrusted_vm_utils_.IsUntrustedVM(
-      request.run_as_untrusted(), request.is_trusted_image(),
-      request.has_custom_kernel_params());
-  if (is_untrusted) {
-    allowed = untrusted_vm_utils_.IsUntrustedVMAllowed(&reason);
-  }
+  bool allowed = untrusted_vm_utils_.IsUntrustedVMAllowed(&reason);
 
   GetVmLaunchAllowedResponse response;
   response.set_allowed(allowed);

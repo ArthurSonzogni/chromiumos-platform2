@@ -139,7 +139,6 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
                                  "/proc/self/fd/%d", bios_fd->get())));
   EXPECT_EQ(image_spec.pflash, base::FilePath(base::StringPrintf(
                                    "/proc/self/fd/%d", pflash_fd->get())));
-  EXPECT_EQ(image_spec.is_trusted_image, false);
 
   VirtualMachineSpec vm_spec;
   vm_spec.set_kernel("kernel");
@@ -161,7 +160,6 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   EXPECT_EQ(image_spec.initrd, base::FilePath("initrd"));
   EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
   EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
-  EXPECT_EQ(image_spec.is_trusted_image, true);
 
   // Create a fake pre-defined vm spec but using container
   image_spec = internal::GetImageSpec(vm_spec, {}, {}, {}, {}, {}, biosDlcPath,
@@ -171,7 +169,6 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   EXPECT_EQ(image_spec.initrd, base::FilePath("initrd"));
   EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
   EXPECT_EQ(image_spec.tools_disk, base::FilePath("vm/vm_tools.img"));
-  EXPECT_EQ(image_spec.is_trusted_image, true);
 }
 
 TEST(StartVMHelperTest, TestRemoveCloseOnExec) {
