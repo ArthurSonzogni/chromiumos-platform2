@@ -15,6 +15,7 @@ source_set("events") {
   sources = [
     "audio_jack_evdev_delegate.cc",
     "touchpad_evdev_delegate.cc",
+    "touchscreen_evdev_delegate.cc",
   ]
   configs += [ ":target_default" ]
   deps = [

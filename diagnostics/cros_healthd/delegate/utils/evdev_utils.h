@@ -98,23 +98,6 @@ class EvdevUtil {
 std::vector<ash::cros_healthd::mojom::TouchPointInfoPtr> FetchTouchPoints(
     LibevdevWrapper* dev);
 
-class TouchscreenEvdevDelegate final : public EvdevUtil::Delegate {
- public:
-  explicit TouchscreenEvdevDelegate(
-      mojo::PendingRemote<ash::cros_healthd::mojom::TouchscreenObserver>
-          observer);
-
-  // EvdevUtil::Delegate overrides.
-  bool IsTarget(LibevdevWrapper* dev) override;
-  void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
-  void InitializationFail(uint32_t custom_reason,
-                          const std::string& description) override;
-  void ReportProperties(LibevdevWrapper* dev) override;
-
- private:
-  mojo::Remote<ash::cros_healthd::mojom::TouchscreenObserver> observer_;
-};
-
 class StylusGarageEvdevDelegate final : public EvdevUtil::Delegate {
  public:
   explicit StylusGarageEvdevDelegate(

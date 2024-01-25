@@ -165,41 +165,6 @@ void EvdevUtil::OnEvdevEvent(LibevdevWrapper* dev) {
            rc == LIBEVDEV_READ_STATUS_SYNC);
 }
 
-TouchscreenEvdevDelegate::TouchscreenEvdevDelegate(
-    mojo::PendingRemote<mojom::TouchscreenObserver> observer)
-    : observer_(std::move(observer)) {}
-
-bool TouchscreenEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
-  // - Typical non-pointer devices: touchscreens.
-  // - Typical direct devices: touchscreens, drawing tablets.
-  // - Use ABS_MT_TRACKING_ID to filter out stylus.
-  return !dev->HasProperty(INPUT_PROP_POINTER) &&
-         dev->HasProperty(INPUT_PROP_DIRECT) &&
-         dev->HasEventCode(EV_ABS, ABS_MT_TRACKING_ID);
-}
-
-void TouchscreenEvdevDelegate::FireEvent(const input_event& ev,
-                                         LibevdevWrapper* dev) {
-  if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
-    observer_->OnTouch(
-        mojom::TouchscreenTouchEvent::New(FetchTouchPoints(dev)));
-  }
-}
-
-void TouchscreenEvdevDelegate::InitializationFail(
-    uint32_t custom_reason, const std::string& description) {
-  observer_.ResetWithReason(custom_reason, description);
-}
-
-void TouchscreenEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
-  auto connected_event = mojom::TouchscreenConnectedEvent::New();
-  connected_event->max_x = std::max(dev->GetAbsMaximum(ABS_X), 0);
-  connected_event->max_y = std::max(dev->GetAbsMaximum(ABS_Y), 0);
-  connected_event->max_pressure =
-      std::max(dev->GetAbsMaximum(ABS_MT_PRESSURE), 0);
-  observer_->OnConnected(std::move(connected_event));
-}
-
 StylusGarageEvdevDelegate::StylusGarageEvdevDelegate(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer)
     : observer_(std::move(observer)) {}
