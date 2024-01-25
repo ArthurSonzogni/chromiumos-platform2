@@ -1154,7 +1154,11 @@ int main(int argc, char** argv) {
     std::string key_blob;
 
     if (cl->HasSwitch("rsa")) {
-      int modulus_bits = std::stoi(cl->GetSwitchValueASCII("rsa"), nullptr, 0);
+      uint32_t modulus_bits;
+      if (!base::StringToUint(cl->GetSwitchValueASCII("rsa"), &modulus_bits)) {
+        LOG(ERROR) << "Incorrect RSA key length";
+        return -1;
+      }
       if (CallTpmUtility(print_time, factory, "CreateRSAKeyPair",
                          &trunks::TpmUtility::CreateRSAKeyPair, key_usage,
                          modulus_bits, 0x10001 /* exponent */,
@@ -1204,10 +1208,14 @@ int main(int argc, char** argv) {
     return 0;
   }
   if (cl->HasSwitch("key_unload") && cl->HasSwitch("handle")) {
-    const trunks::TPM_HANDLE handle = static_cast<trunks::TPM_HANDLE>(
-        std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0));
+    uint32_t handle;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("handle"), &handle)) {
+      LOG(ERROR) << "Incorrect hex handle number";
+      return -1;
+    }
 
-    trunks::TPM_RC result = factory.GetTpm()->FlushContextSync(handle, nullptr);
+    trunks::TPM_RC result = factory.GetTpm()->FlushContextSync(
+        static_cast<trunks::TPM_HANDLE>(handle), nullptr);
     if (result) {
       LOG(ERROR) << "Error closing handle: " << handle << " : "
                  << trunks::GetErrorString(result);
@@ -1217,7 +1225,11 @@ int main(int argc, char** argv) {
   }
   if (cl->HasSwitch("key_sign") && cl->HasSwitch("handle") &&
       cl->HasSwitch("data") && cl->HasSwitch("signature")) {
-    uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    uint32_t handle;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("handle"), &handle)) {
+      LOG(ERROR) << "Incorrect hex handle number";
+      return -1;
+    }
     std::string data;
     if (InputFromFile(cl->GetSwitchValueASCII("data"), &data)) {
       return -1;
@@ -1273,7 +1285,11 @@ int main(int argc, char** argv) {
     return OutputToFile(cl->GetSwitchValueASCII("signature"), signature);
   }
   if (cl->HasSwitch("key_info") && cl->HasSwitch("handle")) {
-    uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    uint32_t handle;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("handle"), &handle)) {
+      LOG(ERROR) << "Incorrect hex handle number";
+      return -1;
+    }
     return KeyInfo(print_time, factory, handle);
   }
   if (cl->HasSwitch("persistent_keys")) {
@@ -1283,17 +1299,27 @@ int main(int argc, char** argv) {
     return TransientKeys(factory);
   }
   if (cl->HasSwitch("key_test_short_ecc") && cl->HasSwitch("handle")) {
-    uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    uint32_t handle;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("handle"), &handle)) {
+      LOG(ERROR) << "Incorrect hex handle number";
+      return -1;
+    }
     return KeyTestShortEcc(factory, handle);
   }
   if (cl->HasSwitch("index_name") && cl->HasSwitch("index")) {
-    uint32_t nv_index =
-        std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
+    uint32_t nv_index;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("index"), &nv_index)) {
+      LOG(ERROR) << "Incorrect hex nv_index format";
+      return -1;
+    }
     return PrintIndexNameInHex(factory, nv_index);
   }
   if (cl->HasSwitch("index_data") && cl->HasSwitch("index")) {
-    uint32_t nv_index =
-        std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
+    uint32_t nv_index;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("index"), &nv_index)) {
+      LOG(ERROR) << "Incorrect hex nv_index format";
+      return -1;
+    }
     return PrintIndexDataInHex(factory, nv_index);
   }
 
@@ -1364,8 +1390,16 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch("uds_create") && cl->HasSwitch("index") &&
       cl->HasSwitch("size") && cl->HasSwitch("digest")) {
-    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
-    uint32_t size = std::stoul(cl->GetSwitchValueASCII("size"), nullptr, 0);
+    uint32_t index;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("index"), &index)) {
+      LOG(ERROR) << "Incorrect hex index number";
+      return -1;
+    }
+    uint32_t size;
+    if (!base::StringToUint(cl->GetSwitchValueASCII("size"), &size)) {
+      LOG(ERROR) << "Incorrect buffer size";
+      return -1;
+    }
     if (size > MAX_NV_BUFFER_SIZE) {
       LOG(ERROR) << "Size too big";
       return -1;
@@ -1434,7 +1468,11 @@ int main(int argc, char** argv) {
   }
 
   if (cl->HasSwitch("uds_delete") && cl->HasSwitch("index")) {
-    uint32_t index = std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 0);
+    uint32_t index;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("index"), &index)) {
+      LOG(ERROR) << "Incorrect hex index number";
+      return -1;
+    }
     auto hexdigests = BreakByDelim(cl->GetSwitchValueASCII("or"), ",");
     auto empty_password_authorization =
         factory.GetPasswordAuthorization(std::string());
@@ -1501,8 +1539,12 @@ int main(int argc, char** argv) {
   }
   if (cl->HasSwitch("test_credential_command") && cl->HasSwitch("password") &&
       cl->HasSwitch("handle")) {
-    uint32_t endorsement_key_handle =
-        std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    uint32_t endorsement_key_handle;
+    if (!base::HexStringToUInt(cl->GetSwitchValueASCII("handle"),
+                               &endorsement_key_handle)) {
+      LOG(ERROR) << "Incorrect hex handle number";
+      return -1;
+    }
     const std::string hex_password = cl->GetSwitchValueASCII("password");
     std::string endorsement_password;
     if (!hex_password.empty() &&
