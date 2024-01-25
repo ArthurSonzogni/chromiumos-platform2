@@ -256,6 +256,11 @@ void AuthenticationPlugin::HandleRegistrationResult(
 void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
     const user_data_auth::AuthenticateAuthFactorCompleted& completed) {
   if (completed.user_creation()) {
+    // If the proto contains an error indicating that creating the user failed,
+    // ignore the error because no user was signed in.
+    if (completed.has_error_info()) {
+      return;
+    }
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_NEW_USER;
     return;
