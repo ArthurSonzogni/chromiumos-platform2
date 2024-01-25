@@ -123,6 +123,11 @@ btadapterd.
 
 Logs from the Borealis VM's output (kernel logs to serial, in-VM services).
 
+## borealis_fossilize_wrap_log
+
+Logs from Borealis attempts to install shader cache DLCs when fossilize is
+called within the VM.
+
 ## borealis_frames
 
 Frame timings from apps running in the Borealis VM. 16 KiB.
@@ -130,6 +135,11 @@ Frame timings from apps running in the Borealis VM. 16 KiB.
 ## borealis_frames_summary
 
 Summarization of borealis frame timings. 2 KiB.
+
+## borealis_launch_log
+
+Logs from Borealis game launches, including command line and compat tools used
+for the game launch.
 
 ## borealis_proton_crash_reports
 
@@ -149,10 +159,11 @@ the position of its windows on-screen.
 Contains MD5 digests for paths in the Borealis read-only rootfs.
 This report may inform if the Borealis rootfs has become corrupted. ~44 KiB.
 
-## borealis_steam_compat_logs
+## borealis_steam_log
 
-Contains versions of Steam compatibility tools used per game in the last 5 min.
-Only one line (less than 100 chars) printed per game.
+Contains the stdout and stderr of the Steam client and any games run since
+Borealis boot. ~8 KiB for start up and login of the Steam client. Each game
+launch adds ~8 KiB.
 
 ## borealis_xwindump
 

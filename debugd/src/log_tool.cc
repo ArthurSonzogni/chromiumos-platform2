@@ -495,14 +495,22 @@ const std::array kFeedbackLogs {
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/mm_stat'", kRoot, kRoot},
   Log{kCommand, "arcvm_zram_stat", "/usr/bin/nsenter -t1 -m "
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/stat'", kRoot, kRoot},
+  Log{kCommand, "borealis_fossilize_wrap_log", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get_feedback_file.sh "
+    "/tmp/fossilize-wrap-log.txt",
+    kRoot, kRoot},
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   Log{kCommand, "borealis_frames_summary", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get-frame-summary.sh", kRoot, kRoot},
   Log{kCommand, "borealis_frames_stats", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- cat /tmp/sommelier-stats", kRoot, kRoot},
+  Log{kCommand, "borealis_launch_log", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get_feedback_file.sh /tmp/launch-log.txt",
+    kRoot, kRoot},
   Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
-    "/usr/bin/borealis-sh -- /usr/bin/get_proton_crash_reports.sh",
+    "/usr/bin/borealis-sh -- /usr/bin/get_feedback_file.sh "
+    "/tmp/proton_crashreports/",
     kRoot, kRoot},
   Log{kCommand, "borealis_quirks", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/print_quirks_configs.sh"
@@ -510,8 +518,8 @@ const std::array kFeedbackLogs {
     kRoot, kRoot},
   Log{kCommand, "borealis_rootfs_reports", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get_rootfs_report.sh", kRoot, kRoot},
-  Log{kCommand, "borealis_steam_compat_logs", "timeout -s KILL 5s "
-    "/usr/bin/borealis-sh -- /usr/bin/get_compat_tool_versions.py",
+  Log{kCommand, "borealis_steam_log", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get_feedback_file.sh /tmp/steam-log.txt",
     kRoot, kRoot},
   Log{kCommand, "borealis_xwindump", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/xwindump.py", kRoot, kRoot},
