@@ -207,7 +207,6 @@ Service::Service(Manager* manager, Technology technology)
       crypto_algorithm_(kCryptoNone),
       key_rotation_(false),
       endpoint_auth_(false),
-      portal_detection_failure_status_code_(0),
       strength_(0),
       save_credentials_(true),
       technology_(technology),
@@ -304,8 +303,6 @@ Service::Service(Manager* manager, Technology technology)
                           nullptr, nullptr);
 
   store_.RegisterConstString(kProbeUrlProperty, &probe_url_string_);
-  store_.RegisterConstInt32(kPortalDetectionFailedStatusCodeProperty,
-                            &portal_detection_failure_status_code_);
 
   HelpRegisterDerivedString(kONCSourceProperty, &Service::GetONCSource,
                             &Service::SetONCSource);

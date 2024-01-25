@@ -739,9 +739,6 @@ class Service : public base::RefCounted<Service> {
   }
 
   const std::string& probe_url_string() const { return probe_url_string_; }
-  int portal_detection_failure_status_code() {
-    return portal_detection_failure_status_code_;
-  }
 
   NetworkEventHandler* network_event_handler() const {
     return network_event_handler_.get();
@@ -1122,10 +1119,6 @@ class Service : public base::RefCounted<Service> {
   bool key_rotation_;
   bool endpoint_auth_;
   std::string probe_url_string_;
-
-  // TODO(b/319547018): Remove this field after the
-  // kPortalDetectionFailedStatusCodeProperty is removed from system_api.
-  int portal_detection_failure_status_code_;
 
   uint8_t strength_;
   std::string proxy_config_;

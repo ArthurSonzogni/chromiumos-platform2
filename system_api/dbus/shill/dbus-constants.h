@@ -164,8 +164,6 @@ constexpr char kManagedCredentialsProperty[] = "ManagedCredentials";
 constexpr char kMeteredProperty[] = "Metered";
 constexpr char kNameProperty[] = "Name";  // Also used for Device and Profile.
 constexpr char kPassphraseRequiredProperty[] = "PassphraseRequired";
-constexpr char kPortalDetectionFailedStatusCodeProperty[] =
-    "PortalDetectionFailedStatusCode";
 constexpr char kPreviousErrorProperty[] = "PreviousError";
 constexpr char kPreviousErrorSerialNumberProperty[] =
     "PreviousErrorSerialNumber";
