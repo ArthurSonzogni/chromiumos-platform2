@@ -39,7 +39,7 @@ This is installed by default on all ChromeOS test images.
 
 Example usage:
 
-`inference_diff_eval  --graph=${tflite_file} <delegate options>`
+`inference_diff_eval  --model_file=${tflite_file} <delegate options>`
 
 ## Use Cases
 
