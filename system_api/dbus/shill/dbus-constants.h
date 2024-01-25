@@ -97,6 +97,7 @@ constexpr char kUpdateConnectionStateFunction[] = "UpdateConnectionState";
 constexpr char kActiveProfileProperty[] = "ActiveProfile";
 constexpr char kAlwaysOnVpnPackageProperty[] = "AlwaysOnVpnPackage";
 constexpr char kAvailableTechnologiesProperty[] = "AvailableTechnologies";
+constexpr char kBlockedDevicesProperty[] = "BlockedDevices";
 constexpr char kClaimedDevicesProperty[] = "ClaimedDevices";
 constexpr char kConnectedTechnologiesProperty[] = "ConnectedTechnologies";
 constexpr char kConnectionStateProperty[] = "ConnectionState";

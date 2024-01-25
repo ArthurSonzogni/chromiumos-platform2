@@ -783,6 +783,10 @@ class Manager {
   // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
+  // Returns the names of all the devices blocked through --devices-blocked
+  // command line switch.
+  std::vector<std::string> BlockedDevices(Error* error);
+
   // Notifies Metrics when the default logical Service has changed.
   void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
 

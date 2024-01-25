@@ -267,6 +267,8 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
+  HelpRegisterConstDerivedStrings(kBlockedDevicesProperty,
+                                  &Manager::BlockedDevices);
   HelpRegisterDerivedKeyValueStore(kDNSProxyDOHProvidersProperty,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);
@@ -1247,6 +1249,10 @@ void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {
   // set to vector conversion.
   return {claimed_devices_.begin(), claimed_devices_.end()};
+}
+
+std::vector<std::string> Manager::BlockedDevices(Error* error) {
+  return blocked_devices_;
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {

@@ -627,6 +627,12 @@ Properties	object ActiveProfile [readonly]
 			the caveat in Devices). Order carries no meaning and is not
 			guaranteed to be consistent.
 
+		array{string} BlockedDevices [readonly]
+
+			The list of the names of devices that have been blocked with the
+			--devices-blocked command line switch. These devices are ignored
+			when they appear or disappear.
+
 		string CheckPortalList [readwrite]
 
 			The list of technologies for which "captive portal checking"--really
