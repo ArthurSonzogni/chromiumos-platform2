@@ -165,36 +165,6 @@ void EvdevUtil::OnEvdevEvent(LibevdevWrapper* dev) {
            rc == LIBEVDEV_READ_STATUS_SYNC);
 }
 
-StylusGarageEvdevDelegate::StylusGarageEvdevDelegate(
-    mojo::PendingRemote<mojom::StylusGarageObserver> observer)
-    : observer_(std::move(observer)) {}
-
-bool StylusGarageEvdevDelegate::IsTarget(LibevdevWrapper* dev) {
-  return dev->HasEventCode(EV_SW, SW_PEN_INSERTED);
-}
-
-void StylusGarageEvdevDelegate::FireEvent(const input_event& ev,
-                                          LibevdevWrapper* dev) {
-  if (ev.type != EV_SW) {
-    return;
-  }
-
-  if (ev.code == SW_PEN_INSERTED) {
-    if (ev.value == 1) {
-      observer_->OnInsert();
-    } else {
-      observer_->OnRemove();
-    }
-  }
-}
-
-void StylusGarageEvdevDelegate::InitializationFail(
-    uint32_t custom_reason, const std::string& description) {
-  observer_.ResetWithReason(custom_reason, description);
-}
-
-void StylusGarageEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {}
-
 StylusEvdevDelegate::StylusEvdevDelegate(
     mojo::PendingRemote<mojom::StylusObserver> observer)
     : observer_(std::move(observer)) {}
