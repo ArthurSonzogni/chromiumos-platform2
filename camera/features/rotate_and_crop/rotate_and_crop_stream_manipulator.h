@@ -96,7 +96,6 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
     bool has_pending_blob = false;
     std::optional<CameraBufferPool::Buffer> yuv_buffer;
     bool yuv_stream_appended = false;
-    bool rc_tag_updated = false;
   };
 
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
