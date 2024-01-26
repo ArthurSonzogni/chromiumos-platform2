@@ -62,10 +62,19 @@ std::optional<__u32> V4lMcRemap::LookupRemappedId(__u32 source_id,
   if (!entry)
     return std::nullopt;
 
-  V4lMcEntity* te = mc_target.EntityByName(entry->target_name_);
+  if (!entry->target_name_.empty()) {
+    V4lMcEntity* te = mc_target.EntityByName(entry->target_name_);
 
-  if (te)
-    return te->desc_.id;
+    if (te)
+      return te->desc_.id;
+  }
+
+  if (!entry->target_name_regex_.empty()) {
+    V4lMcEntity* te = mc_target.EntityByNameRegex(entry->target_name_regex_);
+
+    if (te)
+      return te->desc_.id;
+  }
 
   /* We tried to look up an entity with a name that doesn't exist
    * in the target media controller.

@@ -50,5 +50,8 @@ executable("mctk") {
   ]
   configs += [ "//camera/build:cros_camera_common" ]
   install_path = "bin"
-  pkg_deps = [ "yaml-0.1" ]
+  pkg_deps = [
+    "re2",
+    "yaml-0.1",
+  ]
 }

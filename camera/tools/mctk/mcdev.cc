@@ -6,6 +6,7 @@
 // NOLINTNEXTLINE(build/include)
 #include "tools/mctk/mcdev.h"
 
+#include <re2/re2.h>
 #include <unistd.h>
 
 #include <optional>
@@ -49,6 +50,19 @@ V4lMcEntity* V4lMcDev::EntityById(__u32 id) {
 V4lMcEntity* V4lMcDev::EntityByName(std::string name) {
   for (auto& entity : entities_) {
     if (std::string(entity->desc_.name) == name)
+      return entity.get();
+  }
+
+  return nullptr;
+}
+
+V4lMcEntity* V4lMcDev::EntityByNameRegex(std::string regex) {
+  RE2 re(regex);
+  if (!re.ok())
+    MCTK_PANIC("Invalid regex: " + regex);
+
+  for (auto& entity : entities_) {
+    if (RE2::FullMatch(entity->desc_.name, re))
       return entity.get();
   }
 

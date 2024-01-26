@@ -32,12 +32,17 @@
 
 class V4lMcRemapEntry {
  public:
-  explicit V4lMcRemapEntry(__u32 source_id, std::string target_name)
-      : source_id_(source_id), target_name_(target_name) {}
+  explicit V4lMcRemapEntry(__u32 source_id,
+                           std::string target_name,
+                           std::string target_name_regex)
+      : source_id_(source_id),
+        target_name_(target_name),
+        target_name_regex_(target_name_regex) {}
 
   __u32 source_id_;
 
   std::string target_name_;
+  std::string target_name_regex_;
 };
 
 class V4lMcRemap {

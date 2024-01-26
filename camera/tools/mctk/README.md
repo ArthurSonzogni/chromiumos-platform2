@@ -147,6 +147,57 @@ camera's configuration to the other.
 It is ultimately up to the user to ensure that the intended semantics of
 a configuration file match the device being configured.
 
+##### Remapping
+
+In addition to the `media_ctl` node, configuration files to be merged may
+contain a `remap_entity_by_name` node.
+
+This node lists tuples of numerical entity IDs, and for each an associated
+entity name, and/or a regular expression to match an entity name.
+
+For example:
+
+```
+remap_entity_by_name:
+- id: 8
+  name: Extension 3
+- id: 11
+  name: Processing 2
+- id: 14
+  name: Camera 1
+```
+
+When merging, configuration changes mentioning any entity ID that is listed
+in `remap_entity_by_name` will instead apply to an entity with the name
+mentioned in `remap_entity_by_name`. In the above example, any mention of
+entity ID 8, be it in V4L properties or in links, will be replaced with the
+ID of an entity in the target that has the name `Extension 3`.
+
+In some media-ctl targets, entity names may change slightly between reboots
+or kernel updates. In this case, config files may be manually extended by a
+regular expression to match the entity name:
+
+```
+remap_entity_by_name:
+- id: 11
+  name_regex: Processing [0-9]
+```
+
+In this case, a target node called "Processing X", where X is a single
+digit, will be used as a substitute for ID 11.
+
+If a remap entry contains both a `name` and a `name_regex`, `mctk` will
+attempt to match by exact `name` first, and by `name_regex` second.
+
+A remap entry with neither a `name` or a `name_regex` is invalid and `mctk`
+will abort.
+
+If an entity ID is mentioned in the remap table, then the remapping must
+succeed. For example, if ID 11 is remapped to the name `Processing 2`, then
+the target media-ctl MUST contain an entity named `Processing 2`. There is
+no fall-back to applying the changes to entity 11, that is, matching by ID,
+once an entity is listed in the remap table.
+
 ##### Examples
 
 If e.g. a control being configured is absent, then the tool may

@@ -39,6 +39,7 @@ class V4lMcDev {
   bool ResetLinks();
   V4lMcEntity* EntityById(__u32 id);
   V4lMcEntity* EntityByName(std::string name);
+  V4lMcEntity* EntityByNameRegex(std::string regex);
 
   static std::unique_ptr<V4lMcDev> CreateFromKernel(int fd_mc);
   static std::unique_ptr<V4lMcDev> CreateFromYamlNode(YamlNode& node_mc);
