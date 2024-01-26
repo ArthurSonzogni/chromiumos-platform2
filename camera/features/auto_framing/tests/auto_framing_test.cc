@@ -6,6 +6,7 @@
 
 #include "camera/features/auto_framing/tests/auto_framing_test_fixture.h"
 
+#include <base/test/test_timeouts.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/flag_helper.h>
 
@@ -433,6 +434,7 @@ TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
 
   logging::LoggingSettings settings;
   logging::InitLogging(settings);
