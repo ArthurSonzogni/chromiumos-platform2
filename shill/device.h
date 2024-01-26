@@ -137,22 +137,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // call up to the parent.
   virtual void OnSelectedServiceChanged(const ServiceRefPtr& old_service);
 
-  // Initiate or restart network validation if all the following conditions are
-  // met:
-  //   - There is currently a |selected_service_| for this Device.
-  //   - The Device has an active Network connection and |selected_service_| is
-  //   in a connected state.
-  //   - Network validation is not disabled (Service::IsPortalDetectioDisabled):
-  //      - The network is not a network defined by policies.
-  //      - Network validation is enabled for the |selected_service_| itself or
-  //      for its link technology.
-  //   - Network validation was not already running. If |reason| requires that
-  //   network validation should be restarted, this check is ignored. For
-  //   details see Network::StartPortalDetection.
-  // If the Service is connected and network validation should not be running,
-  // it is stopped and the connection state of the Service is set to "online".
-  mockable bool UpdatePortalDetector(NetworkMonitor::ValidationReason reason);
-
   const RpcIdentifier& GetRpcIdentifier() const;
   std::string GetStorageIdentifier() const;
 
@@ -264,6 +248,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
+
+  // Updates the state of the current selected service and request network
+  // validation if the Service's current configuration does not disable network
+  // validation. If network validation is currently disabled, the Service's
+  // connection state is set immediately to 'online'.
   void OnConnectionUpdated(int interface_index) override;
   void OnNetworkStopped(int interface_index, bool is_failure) override;
   // Emit a property change signal for the "IPConfigs" property of this device.

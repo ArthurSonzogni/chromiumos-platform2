@@ -786,6 +786,18 @@ void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
   }
 }
 
+void Network::RequestNetworkValidation(
+    NetworkMonitor::ValidationReason reason) {
+  // TODO(b/314693271): Merge with StartPortalDetection
+  if (!network_monitor_ || network_monitor_->GetValidationMode() ==
+                               NetworkMonitor::ValidationMode::kDisabled) {
+    LOG(INFO) << *this << ": " << __func__
+              << ": network validation is disabled";
+    return;
+  }
+  StartPortalDetection(reason);
+}
+
 bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
     LOG(INFO) << *this << ": " << __func__ << "(" << reason

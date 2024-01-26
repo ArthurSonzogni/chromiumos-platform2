@@ -2521,16 +2521,9 @@ TEST_F(ServiceTest, RequestPortalDetection) {
   auto network =
       std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
-  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*network, UpdateNetworkValidationMode(
-                            NetworkMonitor::ValidationMode::kFullValidation));
-  EXPECT_CALL(*network, StartPortalDetection(
-                            NetworkMonitor::ValidationReason::kDBusRequest))
-      .WillOnce(Return(true));
-  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-  EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
-            service_->GetNetworkValidationMode());
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled).Times(0);
+  EXPECT_CALL(*network, RequestNetworkValidation(
+                            NetworkMonitor::ValidationReason::kDBusRequest));
 
   Error error;
   service_->RequestPortalDetection(&error);

@@ -3061,7 +3061,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
                   Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
   // Portal detection is supported.
-  ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
+  ON_CALL(*service, GetNetworkValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
 
   // Last good APN should NOT be updated because we're connecting a DUN APN.
   EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
@@ -3134,7 +3135,9 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection).WillOnce(Return(true));
+  EXPECT_CALL(*default_pdn_,
+              RequestNetworkValidation(
+                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);
@@ -3405,7 +3408,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
                   Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
   // Portal detection is supported.
-  ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
+  ON_CALL(*service, GetNetworkValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
 
   // Last good APN should NOT be updated because we're connecting a DUN APN.
   EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
@@ -3680,7 +3684,8 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
           Metrics::DetailedCellularConnectionResult::APNType::kDefault));
 
   // Portal detection is supported.
-  ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
+  ON_CALL(*service, GetNetworkValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
 
   // Last good APN should be updated because we're connecting a DEFAULT APN.
   EXPECT_CALL(*service, SetLastGoodApn(_));
@@ -3750,7 +3755,9 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection).WillOnce(Return(true));
+  EXPECT_CALL(*default_pdn_,
+              RequestNetworkValidation(
+                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);

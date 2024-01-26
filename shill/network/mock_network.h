@@ -86,6 +86,10 @@ class MockNetwork : public Network {
               UpdateNetworkValidationMode,
               (NetworkMonitor::ValidationMode mode),
               (override));
+  MOCK_METHOD(void,
+              RequestNetworkValidation,
+              (NetworkMonitor::ValidationReason),
+              (override));
   MOCK_METHOD(bool,
               StartPortalDetection,
               (NetworkMonitor::ValidationReason),

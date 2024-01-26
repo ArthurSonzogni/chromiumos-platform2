@@ -43,6 +43,7 @@
 #include "shill/mock_service.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
@@ -144,6 +145,14 @@ class EthernetTest : public testing::Test {
     ethernet_->eap_listener_.reset();
     ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(nullptr);
     Mock::VerifyAndClearExpectations(&manager_);
+  }
+
+  MockNetwork* SetMockNetwork() {
+    auto network = std::make_unique<NiceMock<MockNetwork>>(
+        ifindex_, ifname_, Technology::kEthernet);
+    MockNetwork* network_p = network.get();
+    ethernet_->set_network_for_testing(std::move(network));
+    return network_p;
   }
 
   MOCK_METHOD(void, ErrorCallback, (const Error& error));
@@ -725,91 +734,87 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
 
-  ethernet_->set_selected_service_for_testing(mock_service_);
-  SetService(mock_service_);
-  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  // Network is connect with verified Internet access.
+  auto mock_network = SetMockNetwork();
+  ON_CALL(*mock_network, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(*mock_network, HasInternetConnectivity()).WillByDefault(Return(true));
 
-  // Service state is 'online', REACHABLE neighbor events are ignored.
-  EXPECT_CALL(*mock_service_, UpdateNetworkValidation).Times(0);
+  // REACHABLE neighbor events are ignored.
+  EXPECT_CALL(*mock_network, RequestNetworkValidation).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kReachable);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 
-  // Service state is 'online', FAILED gateway neighbor events triggers network
-  // validation.
+  // FAILED gateway neighbor events triggers network validation.
   EXPECT_CALL(
-      *mock_service_,
-      UpdateNetworkValidation(
+      *mock_network,
+      RequestNetworkValidation(
           NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable));
   ethernet_->OnNeighborReachabilityEvent(
       ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 
   EXPECT_CALL(
-      *mock_service_,
-      UpdateNetworkValidation(
+      *mock_network,
+      RequestNetworkValidation(
           NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kFailed);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 }
 
 TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
 
-  ethernet_->set_selected_service_for_testing(mock_service_);
-  SetService(mock_service_);
-  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  // Network is connected but with no Internet access.
+  auto mock_network = SetMockNetwork();
+  ON_CALL(*mock_network, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(*mock_network, HasInternetConnectivity())
+      .WillByDefault(Return(false));
 
-  // Service state is connected but not 'online', FAILED neighbor events are
-  // ignored.
-  ON_CALL(*mock_service_, state())
-      .WillByDefault(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*mock_service_, UpdateNetworkValidation).Times(0);
+  // FAILED neighbor events are ignored.
+  EXPECT_CALL(*mock_network, RequestNetworkValidation).Times(0);
   ethernet_->OnNeighborReachabilityEvent(
       ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kFailed);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 
-  // Service state is connected but not 'online', REACHABLE neighbor events
-  // triggers network validation.
-  EXPECT_CALL(*mock_service_,
-              UpdateNetworkValidation(
+  // REACHABLE neighbor events triggers network validation.
+  EXPECT_CALL(*mock_network,
+              RequestNetworkValidation(
                   NetworkMonitor::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 
-  EXPECT_CALL(*mock_service_,
-              UpdateNetworkValidation(
+  EXPECT_CALL(*mock_network,
+              RequestNetworkValidation(
                   NetworkMonitor::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kReachable);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 }
 
 TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
 
-  ethernet_->set_selected_service_for_testing(mock_service_);
-  SetService(mock_service_);
-  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  auto mock_network = SetMockNetwork();
+  ON_CALL(*mock_network, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(*mock_network, HasInternetConnectivity()).WillByDefault(Return(true));
 
   // DNS neighbor events are always ignored.
-  EXPECT_CALL(*mock_service_, UpdateNetworkValidation).Times(0);
-  ON_CALL(*mock_service_, state())
-      .WillByDefault(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_network, RequestNetworkValidation).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kDnsServer,
                                          Status::kFailed);
@@ -822,8 +827,11 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kDnsServer,
                                          Status::kReachable);
-  ON_CALL(*mock_service_, state())
-      .WillByDefault(Return(Service::kStateConnected));
+  Mock::VerifyAndClearExpectations(mock_network);
+
+  EXPECT_CALL(*mock_network, RequestNetworkValidation).Times(0);
+  ON_CALL(*mock_network, HasInternetConnectivity())
+      .WillByDefault(Return(false));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kDnsServer,
                                          Status::kFailed);
@@ -836,7 +844,7 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kDnsServer,
                                          Status::kReachable);
-  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_network);
 }
 
 }  // namespace shill

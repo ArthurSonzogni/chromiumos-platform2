@@ -88,6 +88,11 @@ class MockService : public Service {
               UpdateNetworkValidation,
               (NetworkMonitor::ValidationReason),
               (override));
+  MOCK_METHOD(void, RequestPortalDetection, (Error * error), (override));
+  MOCK_METHOD(NetworkMonitor::ValidationMode,
+              GetNetworkValidationMode,
+              (),
+              (override));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

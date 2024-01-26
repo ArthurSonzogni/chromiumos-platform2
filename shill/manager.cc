@@ -1849,18 +1849,17 @@ void Manager::SortServicesTask() {
           .is_primary_for_dns = use_dns,
           .ranking_order = ranking_order};
       network->SetPriority(network_priority);
-      ++ranking_order;
-    }
-  }
 
-  if (new_logical) {
-    // b/230030692: Whenever the primary logical Service is not in the 'online'
-    // state, ensure that network validation is rescheduled immediately whether
-    // the Service state has changed or not.
-    if (IsPrimaryConnectivityTechnology(new_logical->technology()) &&
-        !new_logical->IsOnline()) {
-      new_logical->UpdateNetworkValidation(
-          NetworkMonitor::ValidationReason::kServiceReorder);
+      // b/230030692: Whenever Internet connectivity is not confirmed on the
+      // primary physical Network, ensure that network validation is rescheduled
+      // immediately.
+      if (network_priority.is_primary_physical &&
+          !network->HasInternetConnectivity()) {
+        network->RequestNetworkValidation(
+            NetworkMonitor::ValidationReason::kServiceReorder);
+      }
+
+      ++ranking_order;
     }
   }
 
@@ -2789,12 +2788,11 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
   device->UpdateGeolocationObjects(&device_geolocation_info_[device]);
 }
 
-void Manager::RecheckPortal(Error* /*error*/) {
+void Manager::RecheckPortal(Error* error) {
   SLOG(2) << __func__;
   for (const auto& service : services_) {
     if (service->IsConnected()) {
-      service->UpdateNetworkValidation(
-          NetworkMonitor::ValidationReason::kDBusRequest);
+      service->RequestPortalDetection(error);
     }
   }
 }

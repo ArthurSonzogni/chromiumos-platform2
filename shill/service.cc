@@ -1274,13 +1274,14 @@ std::string Service::GetEapPassphrase(Error* error) {
 }
 
 void Service::RequestPortalDetection(Error* error) {
-  LOG(INFO) << log_name() << ": " << __func__;
-  if (!UpdateNetworkValidation(
-          NetworkMonitor::ValidationReason::kDBusRequest)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kOperationFailed,
-        "Failed to restart network validation for Service " + log_name());
+  if (!IsConnected() || !attached_network_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          log_name() + " was not connected.");
+    return;
   }
+  LOG(INFO) << log_name() << ": " << __func__;
+  attached_network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kDBusRequest);
 }
 
 void Service::SetAutoConnect(bool connect) {

@@ -43,10 +43,6 @@ class MockDevice : public Device {
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));
   MOCK_METHOD(bool, Save, (StoreInterface*), (override));
   MOCK_METHOD(bool,
-              UpdatePortalDetector,
-              (NetworkMonitor::ValidationReason),
-              (override));
-  MOCK_METHOD(bool,
               IsConnectedToService,
               (const ServiceRefPtr&),
               (const, override));

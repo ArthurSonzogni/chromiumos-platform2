@@ -50,11 +50,6 @@ class MockEthernetService : public EthernetService {
               (uint32_t downlink_speed_kbps),
               (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
-  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
-  MOCK_METHOD(bool,
-              UpdateNetworkValidation,
-              (NetworkMonitor::ValidationReason),
-              (override));
 };
 
 }  // namespace shill

@@ -2555,16 +2555,13 @@ TEST_F(ManagerTest, RecheckPortal) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
   manager()->RegisterService(mock_service2);
+  ON_CALL(*mock_service0, IsConnected(_)).WillByDefault(Return(false));
   ON_CALL(*mock_service1, IsConnected(_)).WillByDefault(Return(true));
   ON_CALL(*mock_service2, IsConnected(_)).WillByDefault(Return(true));
 
-  EXPECT_CALL(*mock_service0, UpdateNetworkValidation).Times(0);
-  EXPECT_CALL(
-      *mock_service1,
-      UpdateNetworkValidation(NetworkMonitor::ValidationReason::kDBusRequest));
-  EXPECT_CALL(
-      *mock_service2,
-      UpdateNetworkValidation(NetworkMonitor::ValidationReason::kDBusRequest));
+  EXPECT_CALL(*mock_service0, RequestPortalDetection).Times(0);
+  EXPECT_CALL(*mock_service1, RequestPortalDetection);
+  EXPECT_CALL(*mock_service2, RequestPortalDetection);
 
   manager()->RecheckPortal(nullptr);
 }

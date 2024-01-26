@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/cellular/cellular_service.h"
+#include "shill/network/network_monitor.h"
 
 namespace shill {
 
@@ -32,7 +33,6 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
   MOCK_METHOD(void, AttachNetwork, (base::WeakPtr<Network>), (override));
-  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(void, SetStrength, (uint8_t), (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
@@ -44,6 +44,10 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(void,
               SetDownlinkSpeedKbps,
               (uint32_t downlink_speed_kbps),
+              (override));
+  MOCK_METHOD(NetworkMonitor::ValidationMode,
+              GetNetworkValidationMode,
+              (),
               (override));
 
  private:

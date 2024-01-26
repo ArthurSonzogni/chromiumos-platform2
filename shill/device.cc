@@ -418,6 +418,19 @@ void Device::OnConnectionUpdated(int interface_index) {
   }
   OnConnected();
 
+  // When already connected, a Network must exist.
+  DCHECK(GetPrimaryNetwork());
+
+  // If portal detection is disabled for this technology, immediately set
+  // the service state to "Online".
+  if (selected_service_->GetNetworkValidationMode() ==
+      NetworkMonitor::ValidationMode::kDisabled) {
+    LOG(INFO) << LoggingTag()
+              << ": Portal detection is disabled for this service";
+    SetServiceState(Service::kStateOnline);
+    return;
+  }
+
   // Subtle: Start portal detection after transitioning the service to the
   // Connected state because this call may immediately transition to the Online
   // state. Always ignore any on-going portal detection such that the latest
@@ -426,7 +439,9 @@ void Device::OnConnectionUpdated(int interface_index) {
   // when IPv4 provisioning completes after IPv6 provisioning. Note that
   // currently SetupConnection() is never called a second time if IPv6
   // provisioning completes after IPv4 provisioning.
-  UpdatePortalDetector(
+  // TODO(b/314693271): Automatically start network validation in Network
+  // if the validation mode is not disabled.
+  GetPrimaryNetwork()->RequestNetworkValidation(
       NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
 }
 
@@ -549,39 +564,6 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   if (selected_service_) {
     selected_service_->SetFailureSilent(failure_state);
   }
-}
-
-bool Device::UpdatePortalDetector(NetworkMonitor::ValidationReason reason) {
-  SLOG(this, 1) << LoggingTag() << ": " << __func__ << " reason=" << reason;
-
-  if (!selected_service_) {
-    LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Service";
-    return false;
-  }
-
-  // Do not run portal detection unless in a connected state (i.e. connected,
-  // online, or portalled).
-  if (!selected_service_->IsConnected()) {
-    LOG(INFO) << LoggingTag()
-              << ": Skipping portal detection: Service is not connected";
-    return false;
-  }
-
-  // When already connected, a Network must exist.
-  DCHECK(GetPrimaryNetwork());
-
-  // If portal detection is disabled for this technology, immediately set
-  // the service state to "Online" and stop portal detection if it was
-  // running.
-  if (selected_service_->IsPortalDetectionDisabled()) {
-    LOG(INFO) << LoggingTag()
-              << ": Portal detection is disabled for this service";
-    GetPrimaryNetwork()->StopPortalDetection();
-    SetServiceState(Service::kStateOnline);
-    return false;
-  }
-
-  return GetPrimaryNetwork()->StartPortalDetection(reason);
 }
 
 void Device::EmitMACAddress(std::optional<net_base::MacAddress> mac_address) {

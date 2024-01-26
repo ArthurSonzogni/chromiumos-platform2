@@ -416,6 +416,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns whether portal detection is disabled by configuration on this
   // service. This is the case if any of the following conditions is met:
+  //   - The Service is a managed Service.
   //   - Property "CheckPortal" is set to "false".
   //   - Property "CheckPortal" is set to "auto" and portal detection is
   //     disabled for the link technology of this Service.
@@ -545,7 +546,7 @@ class Service : public base::RefCounted<Service> {
   std::string GetEapPassphrase(Error* error);
 
   //  Implements Service.RequestPortalDetection.
-  void RequestPortalDetection(Error* error);
+  mockable void RequestPortalDetection(Error* error);
 
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }

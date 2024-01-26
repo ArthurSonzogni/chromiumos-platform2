@@ -877,6 +877,8 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
   return socket->Ioctl(SIOCETHTOOL, interface_command).has_value();
 }
 
+// TODO(b/265607618): Integrate this functionality inside Network or
+// NetworkMonitor as a configurable option in Network::StartOptions
 void Ethernet::OnNeighborReachabilityEvent(
     int net_interface_index,
     const net_base::IPAddress& ip_address,
@@ -890,9 +892,10 @@ void Ethernet::OnNeighborReachabilityEvent(
     return;
   }
 
-  if (!selected_service()) {
-    LOG(INFO) << LoggingTag()
-              << ": No selected service, ignoring neighbor reachability event";
+  if (!GetPrimaryNetwork()->IsConnected()) {
+    LOG(INFO)
+        << LoggingTag()
+        << ": Network was disconnected, ignoring neighbor reachability event";
     return;
   }
 
@@ -900,26 +903,27 @@ void Ethernet::OnNeighborReachabilityEvent(
   // to be healthy, make sure that network validation runs to confirm if there
   // is no link connectivity anymore.
   if (status == Status::kFailed &&
-      selected_service()->state() == Service::kStateOnline) {
-    LOG(INFO) << LoggingTag()
-              << ": gateway reachability failure in 'online' state.";
+      GetPrimaryNetwork()->HasInternetConnectivity()) {
+    LOG(INFO)
+        << LoggingTag()
+        << ": gateway reachability failure in 'Internet-connectivity' state.";
     // Network validation is expected to time out, do not force a restart in
     // case some other mechanism has already triggered a revalidation which
     // would otherwise get cancelled.
-    selected_service()->UpdateNetworkValidation(
+    GetPrimaryNetwork()->RequestNetworkValidation(
         NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable);
   }
 
-  // When a reachability success event is received and the connection is thought
-  // to be unhealthy, make sure that network validation runs to confirm if link
-  // connectivity has been recovered.
+  // When a reachability success event is received and the connection was
+  // thought to be unhealthy, make sure that network validation runs to confirm
+  // if link connectivity has been recovered.
   if (status == Status::kReachable &&
-      selected_service()->state() == Service::kStateNoConnectivity) {
+      !GetPrimaryNetwork()->HasInternetConnectivity()) {
     LOG(INFO) << LoggingTag()
               << ": gateway reachability event in 'no-connectivity' state.";
     // Validation should be confirmed as soon as possible. If Internet is
     // validation is expected to be short so a restart is always forced.
-    selected_service()->UpdateNetworkValidation(
+    GetPrimaryNetwork()->RequestNetworkValidation(
         NetworkMonitor::ValidationReason::kEthernetGatewayReachable);
   }
 }
