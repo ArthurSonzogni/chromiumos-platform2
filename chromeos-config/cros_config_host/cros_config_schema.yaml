@@ -916,6 +916,16 @@ properties:
                   type: string
                   build-only-element: true
                 main-ro-image: *bcs_file_name
+                main-rw-a-hash:
+                  description: Hash digest associated with the payload (FW_MAIN_A) for optional verification.
+                  type: string
+                  build-only-element: true
+                main-rw-a-hash-algorithm:
+                  description: Hash algorithm in use.
+                  build-only-element: true
+                  type: string
+                  enum:
+                  - md5sum
                 main-rw-image: *bcs_file_name
                 name:
                   description: This is a human-recognizable name used to refer to the firmware.

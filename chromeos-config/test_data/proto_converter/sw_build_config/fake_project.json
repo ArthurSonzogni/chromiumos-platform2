@@ -180,6 +180,8 @@
           "has-splash-screen": true,
           "image-name": "fake_ref_design",
           "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
+          "main-rw-a-hash": "b9392520207df3c79d1c5dd98171387f",
+          "main-rw-a-hash-algorithm": "md5sum",
           "main-rw-image": "bcs://Fake.11111.2.3.tbz2",
           "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
         },

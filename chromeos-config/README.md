@@ -786,6 +786,8 @@ In the tables below,
 | image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
+| main-rw-a-hash | string |  | False |  | True | Hash digest associated with the payload (FW_MAIN_A) for optional verification. |
+| main-rw-a-hash-algorithm | string |  | False |  | True | Hash algorithm in use. |
 | main-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | name | string |  | False |  | True | This is a human-recognizable name used to refer to the firmware. It will be used when generating the shellball via firmware packer. Mainly, this is only for compatibility testing with device tree (since DT allowed firmwares to be named). |
 | no-firmware | boolean |  | False |  | True | Set this flag to True to indicate the sku has no firmware bundle (bios+ec) and should be included in the firmware section even if `build-targets` is not specified. |

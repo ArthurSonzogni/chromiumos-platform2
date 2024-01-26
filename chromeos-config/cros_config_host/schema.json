@@ -925,6 +925,19 @@
                     "description": "Name of the file located in BCS under the respective bcs-overlay.",
                     "type": "string"
                   },
+                  "main-rw-a-hash": {
+                    "build-only-element": true,
+                    "description": "Hash digest associated with the payload (FW_MAIN_A) for optional verification.",
+                    "type": "string"
+                  },
+                  "main-rw-a-hash-algorithm": {
+                    "build-only-element": true,
+                    "description": "Hash algorithm in use.",
+                    "enum": [
+                      "md5sum"
+                    ],
+                    "type": "string"
+                  },
                   "main-rw-image": {
                     "build-only-element": true,
                     "description": "Name of the file located in BCS under the respective bcs-overlay.",

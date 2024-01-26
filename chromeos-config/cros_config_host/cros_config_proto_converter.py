@@ -22,6 +22,7 @@ import re
 import sys
 
 # pylint: disable=import-error
+from chromiumos.build.api import firmware_config_pb2
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_id_pb2
 from chromiumos.config.api import device_brand_pb2
@@ -2100,6 +2101,16 @@ def _build_firmware(config):
     fw_build_config = config.sw_config.firmware_build_config
     main_ro = fw_payload_config.main_ro_payload
     main_rw = fw_payload_config.main_rw_payload
+    main_rw_a_hash = fw_payload_config.main_rw_a_hash
+    hash_names = {
+        firmware_config_pb2.FirmwarePayloadHash.MD5SUM: "md5sum",
+    }
+    if main_rw_a_hash.digest:
+        main_rw_a_digest = main_rw_a_hash.digest
+        main_rw_a_digest_algorithm = hash_names[main_rw_a_hash.algorithm]
+    else:
+        main_rw_a_digest = None
+        main_rw_a_digest_algorithm = None
     ec_ro = fw_payload_config.ec_ro_payload
     ec_rw = fw_payload_config.ec_rw_payload
     pd_ro = fw_payload_config.pd_ro_payload
@@ -2168,6 +2179,8 @@ def _build_firmware(config):
 
     _upsert(_fw_bcs_path(main_ro, ap_fw_suffix), result, "main-ro-image")
     _upsert(_fw_bcs_path(main_rw, ap_fw_suffix), result, "main-rw-image")
+    _upsert(main_rw_a_digest, result, "main-rw-a-hash")
+    _upsert(main_rw_a_digest_algorithm, result, "main-rw-a-hash-algorithm")
     _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
     _upsert(_fw_bcs_path(ec_rw), result, "ec-rw-image")
     _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
