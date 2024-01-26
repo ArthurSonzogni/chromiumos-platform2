@@ -266,11 +266,6 @@ class AuthSession final {
   // removing a user, like preparing each auth factor for removal.
   void PrepareUserForRemoval(base::OnceClosure on_finish);
 
-  // UpdateAuthFactorMetadata updates the auth factor without new credentials.
-  void UpdateAuthFactorMetadata(
-      const user_data_auth::UpdateAuthFactorMetadataRequest request,
-      StatusCallback on_done);
-
   // PrepareAuthFactor prepares an auth factor, e.g. fingerprint auth factor
   // which is not directly associated with a knowledge factor.
   void PrepareAuthFactor(
@@ -309,6 +304,12 @@ class AuthSession final {
     // Update an existing auth factor from the given request.
     void UpdateAuthFactor(
         const user_data_auth::UpdateAuthFactorRequest& request,
+        StatusCallback on_done);
+
+    // Update only the metadata for an auth factor without changing the
+    // credentials themselves.
+    void UpdateAuthFactorMetadata(
+        const user_data_auth::UpdateAuthFactorMetadataRequest request,
         StatusCallback on_done);
 
     // Relabel an auth factor as specified by the given request.

@@ -3669,7 +3669,18 @@ void UserDataAuth::UpdateAuthFactorMetadataWithSession(
     return;
   }
   AuthSession* auth_session_ptr = auth_session.Get();
-  auth_session_ptr->UpdateAuthFactorMetadata(
+  auto* session_decrypt = auth_session_ptr->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUnauthedInUpdateAuthFactorMetadata),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+  session_decrypt->UpdateAuthFactorMetadata(
       request,
       base::BindOnce(&ReplyWithAuthFactorStatus<
                          user_data_auth::UpdateAuthFactorMetadataReply>,

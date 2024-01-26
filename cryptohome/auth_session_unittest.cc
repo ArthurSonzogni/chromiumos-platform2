@@ -1101,7 +1101,8 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     *request.mutable_auth_factor() = std::move(auth_factor_proto);
 
     TestFuture<CryptohomeStatus> update_future;
-    auth_session.UpdateAuthFactorMetadata(request, update_future.GetCallback());
+    auth_session.GetAuthForDecrypt()->UpdateAuthFactorMetadata(
+        request, update_future.GetCallback());
 
     if (update_future.Get().ok() ||
         !update_future.Get().status()->local_legacy_error().has_value()) {

@@ -1949,7 +1949,7 @@ void AuthSession::ResaveUssWithFactorUpdated(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
-void AuthSession::UpdateAuthFactorMetadata(
+void AuthSession::AuthForDecrypt::UpdateAuthFactorMetadata(
     const user_data_auth::UpdateAuthFactorMetadataRequest request,
     StatusCallback on_done) {
   if (request.auth_factor_label().empty()) {
@@ -1963,7 +1963,7 @@ void AuthSession::UpdateAuthFactorMetadata(
   }
 
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      GetAuthFactorMap().Find(request.auth_factor_label());
+      session_->GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: UpdateAuthFactorMetadata's to-be-updated auth "
                   "factor not found, label: "
@@ -1980,9 +1980,9 @@ void AuthSession::UpdateAuthFactorMetadata(
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
   AuthFactorMetadata auth_factor_metadata;
-  if (!AuthFactorPropertiesFromProto(request.auth_factor(), *features_,
-                                     auth_factor_type, auth_factor_label,
-                                     auth_factor_metadata)) {
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(),
+                                     *session_->features_, auth_factor_type,
+                                     auth_factor_label, auth_factor_metadata)) {
     LOG(ERROR)
         << "AuthSession: Failed to parse updated auth factor parameters.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2028,8 +2028,8 @@ void AuthSession::UpdateAuthFactorMetadata(
       auth_factor_type, auth_factor_label, auth_factor_metadata,
       stored_auth_factor.value().auth_factor().auth_block_state());
   // Update/persist the factor.
-  auto status = auth_factor_manager_->SaveAuthFactorFile(obfuscated_username_,
-                                                         *auth_factor);
+  auto status = session_->auth_factor_manager_->SaveAuthFactorFile(
+      session_->obfuscated_username_, *auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to save updated auth factor: " << status;
     std::move(on_done).Run(
