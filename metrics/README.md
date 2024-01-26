@@ -117,6 +117,19 @@ misbehave. As such, we are documenting the needed paths:
 *   `EnableMetrics` needs everything `AreMetricsEnabled` needs access to, plus
     write access to `/home/chronos/`.
 *   `DisableMetrics` needs write access to `/home/chronos/`.
+*   All `Send..ToUMA` functions must be able to access `/var/lib/metrics` and
+    `/var/lib/metrics/uma-events.d`. Specifically, they need to be able to:
+      * Create `/var/lib/metrics/uma-events`.
+      * Write to `/var/lib/metrics/uma-events`, regardless of whether or not
+        they created it.
+      * Create and write to files in `/var/lib/metrics/uma-events.d`.
+      * Exception: If a `MetricsWriter` is passed into
+        the `MetricsLibrary` constructor, and `MetricsWriter::SetOutputFile()`
+        was called, then the `MetricsLibrary` needs the ability to create and
+        write to that output file instead.
+
+In all cases, these need to be the "real" files, not a namespaced shadow copy,
+if the functions are expected to work correctly.
 
 ## The Metrics Client: metrics_client
 

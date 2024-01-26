@@ -225,6 +225,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // The new metric must be documented in
   // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
   // repository.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendToUMA(const std::string& name,
                  int sample,
                  int min,
@@ -258,6 +262,11 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // The new metric must be documented in
   // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
   // repository.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
+  //
   // Sample usage:
   //   // These values are logged to UMA. Entries should not be renumbered and
   //   // numeric values should never be reused. Please keep in sync with
@@ -300,6 +309,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // The new metric must be documented in
   // //tools/metrics/histograms/metadata/platform/histograms.xml in the Chromium
   // repository.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendLinearToUMA(const std::string& name,
                        int sample,
                        int exclusive_max) override;
@@ -346,6 +359,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // The new metric must be added to AddChromeOSActions() in
   // //tools/metrics/actions/extract_actions.py in the Chromium repository,
   // which should then be run to generate a hash for the new action.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendUserActionToUMA(const std::string& action) override;
   // Same, but sends |num_samples| samples with the same value to chrome.
   // NOTE that this operation will result in a loop within chrome to call
@@ -356,6 +373,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends a signal to UMA that a crash of the given |crash_kind|
   // has occurred.  Used by UMA to generate stability statistics.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendCrashToUMA(const char* crash_kind) override;
   // Same, but sends |num_samples| samples with the same value to chrome.
   bool SendRepeatedCrashToUMA(const char* crash_kind, int num_samples) override;
@@ -364,6 +385,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // that is translated into an enumerated histogram entry.  Event names
   // must first be registered in metrics_library.cc.  See that file for
   // more details.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendCrosEventToUMA(const std::string& event) override;
   // Same, but sends |num_samples| samples with the same value to chrome.
   bool SendRepeatedCrosEventToUMA(const std::string& event,
@@ -371,6 +396,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends timing data in milliseconds to UMA. Uses `SendToUMA()` under the hood
   // and converts the timedeltas to milliseconds before handing it off.
+  //
+  // NOTE: If sandboxing, please also check that the necessary paths have the
+  // proper permissions:
+  // https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/README.md#required-paths-and-permissions-for-sandboxing.
   bool SendTimeToUMA(std::string_view name,
                      base::TimeDelta sample,
                      base::TimeDelta min,
