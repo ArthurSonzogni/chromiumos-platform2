@@ -25,6 +25,7 @@ protoc-rust = "2.24.1"
 
 [dependencies]
 async-trait = "0.1.32"
+clap = "4.1.14"
 dbus = "0.9.3"
 dbus-crossroads = "0.5.0"
 futures = "0.3.13"
