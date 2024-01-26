@@ -63,8 +63,9 @@ const char* kBadMacs[] = {"00:00:00:00:00:00"};
 
 std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   std::string out;
-  if (!base::ReadFileToString(file_path, &out))
+  if (!base::ReadFileToString(file_path, &out)) {
     return std::nullopt;
+  }
 
   base::TrimWhitespaceASCII(out, base::TRIM_ALL, &out);
 
@@ -79,13 +80,15 @@ bool InterfaceIsInteresting(const std::string& name,
   // compare the interface name with the list of bad names by prefix.
   for (std::size_t i = 0; i < std::size(kBadInterfacePrefixes); i++) {
     if (base::StartsWith(name, kBadInterfacePrefixes[i],
-                         base::CompareCase::INSENSITIVE_ASCII))
+                         base::CompareCase::INSENSITIVE_ASCII)) {
       return false;
+    }
   }
 
   // compare the interface address with the list of bad addresses.
-  if (base::Contains(kBadMacs, address))
+  if (base::Contains(kBadMacs, address)) {
     return false;
+  }
 
   return true;
 }
@@ -95,13 +98,15 @@ bool InterfaceIsUsb(const base::FilePath& modalias_path) {
   // the bus is determined by reading the modalias for a given interface name.
   const auto modalias = ReadAndTrimFile(modalias_path);
   // if we can't read the interface, ignore it.
-  if (!modalias)
+  if (!modalias) {
     return true;
+  }
 
   // check for usb prefix in the modalias.
   if (base::StartsWith(modalias.value(), kInterfaceUsbPrefix,
-                       base::CompareCase::INSENSITIVE_ASCII))
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     return true;
+  }
 
   return false;
 }
@@ -138,10 +143,12 @@ std::optional<std::string> FlexIdGenerator::TryPreservedFlexId() {
   const base::FilePath preserved_flex_id_path =
       base_path_.Append(kPreservedFlexIdFile);
 
-  if (!(preserved_flex_id = ReadAndTrimFile(preserved_flex_id_path)))
+  if (!(preserved_flex_id = ReadAndTrimFile(preserved_flex_id_path))) {
     return std::nullopt;
-  if (preserved_flex_id.value().empty())
+  }
+  if (preserved_flex_id.value().empty()) {
     return std::nullopt;
+  }
 
   return preserved_flex_id;
 }
@@ -150,10 +157,12 @@ std::optional<std::string> FlexIdGenerator::TryClientId() {
   std::optional<std::string> client_id;
   const base::FilePath client_id_path = base_path_.Append(kClientIdFile);
 
-  if (!(client_id = ReadAndTrimFile(client_id_path)))
+  if (!(client_id = ReadAndTrimFile(client_id_path))) {
     return std::nullopt;
-  if (client_id.value().empty())
+  }
+  if (client_id.value().empty()) {
     return std::nullopt;
+  }
 
   return client_id;
 }
@@ -162,10 +171,12 @@ std::optional<std::string> FlexIdGenerator::TryLegacy() {
   std::optional<std::string> legacy;
   const base::FilePath legacy_path = base_path_.Append(kLegacyClientIdFile);
 
-  if (!(legacy = ReadAndTrimFile(legacy_path)))
+  if (!(legacy = ReadAndTrimFile(legacy_path))) {
     return std::nullopt;
-  if (legacy.value().empty())
+  }
+  if (legacy.value().empty()) {
     return std::nullopt;
+  }
 
   return legacy;
 }
@@ -175,22 +186,26 @@ std::optional<std::string> FlexIdGenerator::TrySerial() {
   const base::FilePath serial_path = base_path_.Append(kDmiSerialPath);
 
   // check if serial is present.
-  if (!(serial = ReadAndTrimFile(serial_path)))
+  if (!(serial = ReadAndTrimFile(serial_path))) {
     return std::nullopt;
+  }
 
   // check if the serial is long enough.
-  if (serial.value().length() < kMinSerialLength)
+  if (serial.value().length() < kMinSerialLength) {
     return std::nullopt;
+  }
 
   // check if the serial is not made up of a single repeated character.
   std::size_t found = serial.value().find_first_not_of(serial.value()[0]);
-  if (found == std::string::npos)
+  if (found == std::string::npos) {
     return std::nullopt;
+  }
 
   // check if the serial is in the bad serials list.
   for (const auto* badSerial : kBadSerials) {
-    if (base::EqualsCaseInsensitiveASCII(badSerial, serial.value()))
+    if (base::EqualsCaseInsensitiveASCII(badSerial, serial.value())) {
       return std::nullopt;
+    }
   }
 
   return serial;
@@ -233,8 +248,9 @@ std::optional<std::string> FlexIdGenerator::TryMac() {
     std::optional<std::string> address;
 
     // skip the interface if it has no address
-    if (!(address = ReadAndTrimFile(address_file_path)))
+    if (!(address = ReadAndTrimFile(address_file_path))) {
       continue;
+    }
 
     // check if the interface qualifies as interesting
     if (InterfaceIsInteresting(name, address.value())) {
@@ -256,8 +272,9 @@ std::optional<std::string> FlexIdGenerator::TryMac() {
     base::FilePath modalias_path = base_path_.Append(kNetworkInterfacesPath)
                                        .Append(interface.first)
                                        .Append(kInterfaceModAliasFile);
-    if (InterfaceIsUsb(modalias_path))
+    if (InterfaceIsUsb(modalias_path)) {
       continue;
+    }
 
     return interface.second;
   }
