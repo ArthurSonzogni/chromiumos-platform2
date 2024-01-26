@@ -198,14 +198,6 @@ message StartVmRequest {
   // contain a virtio TPM driver.
   bool software_tpm = 9 [deprecated = true];
 
-  // This flag is only respected in developer mode and offers two things -
-  // - It can treat a trusted VM as untrusted and run it on insecure host
-  // kernels.
-  // - It can run an untrusted VM on insecure host kernels.
-  // TODO: b/322252713: |run_as_untrusted| is no longer used and will be
-  // removed.
-  bool run_as_untrusted = 10 [deprecated = true];
-
   // Enable audio capture in the started Vm.
   bool enable_audio_capture = 11;
 
@@ -1413,20 +1405,7 @@ message AddGroupPermissionMesaRequest {
   string owner_id = 2;
 }
 
-message GetVmLaunchAllowedRequest {
-  // TODO: b/322252713: |run_as_untrusted|, |is_trusted_image|, and
-  // |has_custom_kernel_params| are unused and will be removed once Chrome no
-  // longer sets them.
-
-  // Request untrusted VM regardless of other arguments.
-  bool run_as_untrusted = 1 [deprecated = true];
-
-  // The VM disk image is considered trusted.
-  bool is_trusted_image = 2 [deprecated = true];
-
-  // The VM kernel is started with custom kernel parameters.
-  bool has_custom_kernel_params = 3 [deprecated = true];
-}
+message GetVmLaunchAllowedRequest {}
 
 message GetVmLaunchAllowedResponse {
   // Whether the launch would be allowed.
