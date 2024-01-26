@@ -80,6 +80,8 @@ const DevicePolicy::UsbDeviceId kWebHIDAllowedIds[] = {
     {0x0c27, 0x3b1e},  // rf IDEAS reader
     {0x0c27, 0xccda},  // rf IDEAS reader
     {0x0c27, 0xccdb},  // rf IDEAS reader
+    {0x18fb, 0x0245},  // Scriptel ST1571
+    {0x18fb, 0x01cb},  // Scriptel ST1571
 };
 
 }  // namespace permission_broker
