@@ -1618,9 +1618,7 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
   };
 
   for (const auto& [tap, arcvm_ifname] : arcvm_guest_ifnames) {
-    auto it = svc->arcvm_guest_ifnames_.find(tap);
-    EXPECT_TRUE(it != svc->arcvm_guest_ifnames_.end());
-    EXPECT_EQ(it->second, arcvm_ifname);
+    EXPECT_EQ(arcvm_ifname, *svc->guest_if_manager_->GetGuestIfName(tap));
   }
 }
 

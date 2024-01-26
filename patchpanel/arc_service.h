@@ -215,6 +215,27 @@ class ArcService {
   };
 
   // Manages the lifetime and mapping of guest interface name of host interfaces
+  // bridged into an ARCVM guest without hotplug support.
+  class StaticGuestIfManager : public GuestIfManager {
+   public:
+    // For a VM without hotplug support, guest interfaces and tap devices are
+    // fixed at construction.
+    explicit StaticGuestIfManager(const std::vector<std::string>& tap_ifnames);
+    // Guest interfaces cannot be added for a VM without hotplug support.
+    std::optional<std::string> AddInterface(
+        const std::string& tap_ifname) override;
+    // Interface cannot be removed for VM without hotplug support.
+    bool RemoveInterface(const std::string& tap_ifname) override;
+    std::optional<std::string> GetGuestIfName(
+        const std::string& tap_ifname) const override;
+    std::vector<std::string> GetStaticTapDevices() const override;
+
+   private:
+    // Guest network interface name, keyed by host tap interface name.
+    std::map<std::string, std::string> guest_if_names_;
+  };
+
+  // Manages the lifetime and mapping of guest interface name of host interfaces
   // bridged into an ARCVM guest with hotplug support.
   class HotplugGuestIfManager : public GuestIfManager {
    public:
@@ -391,9 +412,8 @@ class ArcService {
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
   std::map<std::string, ArcDevice> devices_;
-  // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
-  // mapping of its TAP interface name to the interface name inside ARCVM.
-  std::map<std::string, std::string> arcvm_guest_ifnames_;
+  // Guest interface manager for ARCVM. Not used for ARC container.
+  std::unique_ptr<GuestIfManager> guest_if_manager_;
   // The static IPv4 configuration for the "arc0" management ArcDevice. This
   // configuration is always assigned if ARC is running.
   std::unique_ptr<ArcConfig> arc0_config_;
