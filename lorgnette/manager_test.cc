@@ -1135,9 +1135,15 @@ TEST_F(ManagerTest, UnusableScannerInfo) {
   usb_scanner_variant.set_manufacturer("CANON");
   usb_scanner_variant.set_model("MF 260 II Series");
 
+  ScannerInfo xp7100_scanner_variant;
+  xp7100_scanner_variant.set_name("epsonds:libusb:001:006");
+  xp7100_scanner_variant.set_manufacturer("EPSON");
+  xp7100_scanner_variant.set_model("XP-7100 Series");
+
   EXPECT_FALSE(Manager::ScannerCanBeUsed(net_scanner));
   EXPECT_FALSE(Manager::ScannerCanBeUsed(usb_scanner));
   EXPECT_FALSE(Manager::ScannerCanBeUsed(usb_scanner_variant));
+  EXPECT_FALSE(Manager::ScannerCanBeUsed(xp7100_scanner_variant));
 }
 
 TEST(BackendFromDeviceName, IppUsbAndAirscan) {

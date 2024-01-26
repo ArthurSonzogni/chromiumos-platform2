@@ -633,6 +633,11 @@ bool Manager::ScannerCanBeUsed(const ScannerInfo& scanner) {
         scanner.model().find("MF 260") != std::string::npos) {
       return false;
     }
+  } else if (base::StartsWith(scanner.name(), "epsonds:")) {
+    // Prefer eSCL for XP-7100 (b/288301496).
+    if (scanner.model().find("XP-7100") != std::string::npos) {
+      return false;
+    }
   }
 
   return true;
