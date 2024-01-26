@@ -7,6 +7,8 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":heartd",
+    ":install_dbus_activation",
+    ":install_dbus_config",
     ":install_init_config",
     ":install_mojo_service_manager_policy_config",
     ":install_seccomp_policy",
@@ -30,6 +32,16 @@ executable("heartd") {
     "//heartd/daemon:libheartd",
     "//heartd/minijail:libminijail",
   ]
+}
+
+install_config("install_dbus_activation") {
+  sources = [ "dbus/org.chromium.Heartd.service" ]
+  install_path = "dbus_system_services"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.Heartd.conf" ]
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init_config") {

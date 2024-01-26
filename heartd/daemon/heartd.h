@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include <brillo/daemons/daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "heartd/daemon/action_runner.h"
@@ -19,7 +20,7 @@
 
 namespace heartd {
 
-class HeartdDaemon final : public brillo::Daemon {
+class HeartdDaemon final : public brillo::DBusServiceDaemon {
  public:
   explicit HeartdDaemon(int sysrq_fd);
   HeartdDaemon(const HeartdDaemon&) = delete;
@@ -27,7 +28,7 @@ class HeartdDaemon final : public brillo::Daemon {
   ~HeartdDaemon() override;
 
  protected:
-  // brillo::Daemon overrides:
+  // brillo::DBusServiceDaemon overrides:
   int OnEventLoopStarted() override;
 
  private:
@@ -43,6 +44,8 @@ class HeartdDaemon final : public brillo::Daemon {
   std::unique_ptr<HeartbeatManager> heartbeat_manager_ = nullptr;
   // Used to provide mojo interface to mojo service manager.
   std::unique_ptr<HeartdMojoService> mojo_service_ = nullptr;
+  // /proc/sysrq-trigger fd, this will be used in ActionRunner.
+  int sysrq_fd_ = -1;
 };
 
 }  // namespace heartd

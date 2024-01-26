@@ -10,16 +10,30 @@
 #include <base/files/file_path.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <dbus/heartd/dbus-constants.h>
 
 #include "heartd/daemon/dbus_connector_impl.h"
 #include "heartd/daemon/utils/boot_record_recorder.h"
 
 namespace heartd {
 
-HeartdDaemon::HeartdDaemon(int sysrq_fd) {
+using brillo::dbus_utils::AsyncEventSequencer;
+
+HeartdDaemon::HeartdDaemon(int sysrq_fd)
+    : brillo::DBusServiceDaemon(kHeartdServiceName), sysrq_fd_(sysrq_fd) {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+}
+
+HeartdDaemon::~HeartdDaemon() = default;
+
+int HeartdDaemon::OnEventLoopStarted() {
+  const int exit_code = DBusServiceDaemon::OnEventLoopStarted();
+  if (exit_code != EX_OK) {
+    return exit_code;
+  }
+
   database_ = std::make_unique<Database>();
   database_->Init();
   dbus_connector_ = std::make_unique<DbusConnectorImpl>();
@@ -28,12 +42,8 @@ HeartdDaemon::HeartdDaemon(int sysrq_fd) {
   mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
                                                       action_runner_.get());
 
-  action_runner_->SetupSysrq(sysrq_fd);
-}
+  action_runner_->SetupSysrq(sysrq_fd_);
 
-HeartdDaemon::~HeartdDaemon() = default;
-
-int HeartdDaemon::OnEventLoopStarted() {
   RecordBootMetrics(base::FilePath("/"), database_.get());
   database_->RemoveOutdatedData(kBootRecordTable);
   // We have to cache the boot record when start up, because when we need to
