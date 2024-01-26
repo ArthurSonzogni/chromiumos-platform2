@@ -11,8 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace diagnostics {
-namespace psr {
+namespace diagnostics::psr {
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -160,5 +159,4 @@ TEST_F(PsrCmdTest, GetPlatformServiceRecord) {
             psr_heci_resp.psr_record.events_count);  // Success.
 }
 
-}  // namespace psr
-}  // namespace diagnostics
+}  // namespace diagnostics::psr

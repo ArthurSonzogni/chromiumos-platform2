@@ -7,17 +7,13 @@
 
 #include <linux/mei.h>
 #include <linux/uuid.h>
+#include <sys/types.h>
+
 #include <optional>
 #include <string>
-#include <sys/types.h>
 #include <vector>
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-
-namespace diagnostics {
-namespace psr {
-
-namespace mojom = ::ash::cros_healthd::mojom;
+namespace diagnostics::psr {
 
 // PSR version major
 static constexpr uint8_t kPsrVersionMajor = 2;
@@ -263,7 +259,6 @@ class PsrCmd : public PsrCmdVirt {
   struct mei_connect_client_data* mei_connect_data_;
 };
 
-}  // namespace psr
-}  // namespace diagnostics
+}  // namespace diagnostics::psr
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_PSR_CMD_H_

@@ -4,19 +4,20 @@
 
 #include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
 
-#include <ctime>
-#include <fcntl.h>
 #include <errno.h>
-#include <iomanip>
+#include <fcntl.h>
 #include <linux/mei.h>
-#include <optional>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <ctime>
+#include <iomanip>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include <base/check.h>
@@ -24,12 +25,9 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 
-namespace diagnostics {
-namespace psr {
+namespace diagnostics::psr {
 
-PsrCmd::PsrCmd(const char* mei_fp) {
-  mei_fp_ = mei_fp;
-}
+PsrCmd::PsrCmd(const char* mei_fp) : mei_fp_(mei_fp) {}
 
 bool PsrCmd::MeiConnect() {
   if (ioctl(mei_fd_, IOCTL_MEI_CONNECT_CLIENT, mei_connect_data_) == -1) {
@@ -235,5 +233,4 @@ std::string PsrCmd::IdToHexString(uint8_t uid[], int id_len) {
   return id.str();
 }
 
-}  // namespace psr
-}  // namespace diagnostics
+}  // namespace diagnostics::psr
