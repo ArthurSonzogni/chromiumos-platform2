@@ -284,6 +284,11 @@ if (use.test) {
   executable("disks_testrunner") {
     run_test = true
     gtest_filter_qemu = "-*RunAsRoot*"
+    if (!use.x86 && !use.amd64) {
+      # If qemu-user ever implements PR_SET_CHILD_SUBREAPER, we can enable
+      # these unittests.
+      gtest_filter_qemu += ":SandboxedInitTest.*"
+    }
 
     test_config = {
       run_as_root = false
