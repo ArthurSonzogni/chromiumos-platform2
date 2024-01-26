@@ -59,12 +59,12 @@ pkg_config("libbluetooth_devcd_parser_config") {
     "libbrillo",
     "libchrome",
   ]
+  defines = shared_defines
 }
 
 static_library("libbluetooth_devcd_parser") {
   sources = [ "bluetooth_devcd_parser_util.cc" ]
   all_dependent_configs = [ ":libbluetooth_devcd_parser_config" ]
-  defines = shared_defines
   deps = [
     ":libcrash",
     ":libcrash_reporter",
@@ -86,6 +86,7 @@ pkg_config("libcrash_config") {
     "vboot_host",
     "zlib",
   ]
+  defines = shared_defines
 }
 
 static_library("libcrash") {
@@ -96,7 +97,6 @@ static_library("libcrash") {
     "vm_support.cc",
   ]
   all_dependent_configs = [ ":libcrash_config" ]
-  defines = shared_defines
 
   if (use.direncryption) {
     libs = [ "keyutils" ]
@@ -111,6 +111,7 @@ pkg_config("libcrash_reporter_config") {
     "libec",
     "libsession_manager-client",
   ]
+  defines = shared_defines
 }
 
 generate_dbus_adaptors("crash-reporter-adaptors") {
@@ -148,7 +149,6 @@ static_library("libcrash_reporter") {
     "vm_collector.cc",
   ]
   all_dependent_configs = [ ":libcrash_reporter_config" ]
-  defines = shared_defines
   include_dirs = [ "${sysroot}/usr/include/redaction_tool" ]
   libs = [
     "policy",
@@ -197,6 +197,7 @@ pkg_config("crash_reporter_config") {
   if (use.kvm_guest) {
     pkg_deps += [ "grpc++" ]
   }
+  defines = shared_defines
 }
 
 proto_library("crash_reporter_proto") {
@@ -208,7 +209,6 @@ proto_library("crash_reporter_proto") {
 executable("crash_reporter") {
   sources = [ "crash_reporter.cc" ]
   configs += [ ":crash_reporter_config" ]
-  defines = shared_defines
   deps = [
     ":bluetooth_devcd_parser",
     ":crash_reporter_proto",
@@ -231,6 +231,7 @@ pkg_config("libcrash_sender_config") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+  defines = shared_defines
 }
 
 proto_library("crash_sender_proto") {
@@ -246,7 +247,6 @@ static_library("libcrash_sender") {
     "crash_sender_util.cc",
   ]
   all_dependent_configs = [ ":libcrash_sender_config" ]
-  defines = shared_defines
   deps = [ ":crash_sender_proto" ]
 }
 
@@ -265,6 +265,7 @@ pkg_config("crash_serializer_config") {
     "libsession_manager-client",
     "protobuf",
   ]
+  defines = shared_defines
 }
 
 static_library("libcrash_serializer") {
@@ -308,6 +309,7 @@ pkg_config("anomaly_detector_config") {
 
     "protobuf",
   ]
+  defines = shared_defines
 }
 
 executable("anomaly_detector") {
@@ -332,11 +334,12 @@ pkg_config("crash_fd_logger_config") {
     "libbrillo",
     "libchrome",
   ]
+  defines = shared_defines
 }
 
 static_library("crash_fd_logger_lib") {
   sources = [ "fd-logger/crash_fd_logger.cc" ]
-  configs += [ ":crash_fd_logger_config" ]
+  all_dependent_configs = [ ":crash_fd_logger_config" ]
 }
 
 executable("crash_fd_logger") {
@@ -352,6 +355,7 @@ executable("crash_fd_logger") {
 if (use.arcpp) {
   pkg_config("core_collector_config") {
     pkg_deps = [ "breakpad-client" ]
+    defines = shared_defines
   }
 
   executable("core_collector") {
@@ -381,6 +385,7 @@ if (use.arcpp) {
       configs -= [ "//common-mk:pie" ]
     }
     configs += [ ":core_collector_config" ]
+    defines = shared_defines
   }
 }
 
@@ -401,6 +406,7 @@ if (use.test || use.fuzzer) {
     if (use.kvm_guest) {
       pkg_deps += [ "grpc++" ]
     }
+    defines = shared_defines
   }
 
   static_library("libcrash_test_util") {
@@ -424,6 +430,7 @@ if (use.test) {
       "libchrome",
       "libchrome-test",
     ]
+    defines = shared_defines
   }
 
   executable("lock_file_tester") {
@@ -496,7 +503,6 @@ if (use.test) {
       "//common-mk:test",
       ":crash_reporter_test_config",
     ]
-    defines = shared_defines
     deps = [
       ":bluetooth_devcd_parser",
       ":crash_reporter_proto",
