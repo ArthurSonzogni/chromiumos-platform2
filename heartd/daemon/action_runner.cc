@@ -38,47 +38,62 @@ void ActionRunner::SetupSysrq(int sysrq_fd) {
   sysrq_fd_ = sysrq_fd;
 }
 
-void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
+mojom::HeartbeatResponse ActionRunner::DryRun(mojom::ServiceName name,
+                                              mojom::ActionType action) {
   switch (action) {
     case mojom::ActionType::kUnmappedEnumField:
-      break;
+      return mojom::HeartbeatResponse::kNotAllowed;
     case mojom::ActionType::kNoOperation:
-      break;
+      return mojom::HeartbeatResponse::kSuccess;
     case mojom::ActionType::kNormalReboot:
       if (!allow_normal_reboot_) {
         LOG(WARNING) << "Heartd is not allowed to normal reboot the device.";
-        break;
+        return mojom::HeartbeatResponse::kNotAllowed;
       }
       if (IsNormalRebootTooManyTimes()) {
-        LOG(WARNING) << "There are too many reboots, skip the action.";
-        break;
+        return mojom::HeartbeatResponse::kRateLimit;
       }
-
-      LOG(WARNING) << "Heartd starts to reboot the device.";
-      // There is nothing to do for heartd when it's success or error. When
-      // failure, power manager should understand why it fails. We just need to
-      // check the log.
-      dbus_connector_->power_manager_proxy()->RequestRestartAsync(
-          /*in_reason = REQUEST_RESTART_HEARTD */ 6,
-          /*in_description = */ "heartd reset",
-          /*success_callback = */ base::DoNothing(),
-          /*error_callback = */ base::DoNothing());
       break;
     case mojom::ActionType::kForceReboot:
       if (!allow_force_reboot_) {
         LOG(WARNING) << "Heartd is not allowed to force reboot the device.";
-        break;
+        return mojom::HeartbeatResponse::kNotAllowed;
       }
       if (IsForceRebootTooManyTimes()) {
-        LOG(WARNING) << "There are too many reboots, skip the action.";
-        break;
-      }
-
-      sync();
-      if (!write(sysrq_fd_, "c", 1)) {
-        LOG(ERROR) << "Heartd failed to force reboot the device";
+        return mojom::HeartbeatResponse::kRateLimit;
       }
       break;
+  }
+  return mojom::HeartbeatResponse::kSuccess;
+}
+
+void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
+  if (DryRun(name, action) == mojom::HeartbeatResponse::kSuccess) {
+    switch (action) {
+      case mojom::ActionType::kUnmappedEnumField:
+      case mojom::ActionType::kNoOperation:
+        break;
+      case mojom::ActionType::kNormalReboot:
+        LOG(WARNING) << "Heartd starts to reboot the device.";
+        // There is nothing to do for heartd when it's success or error. When
+        // failure, power manager should understand why it fails. We just need
+        // to check the log.
+        dbus_connector_->power_manager_proxy()->RequestRestartAsync(
+            /*in_reason = REQUEST_RESTART_HEARTD */ 6,
+            /*in_description = */ "heartd reset",
+            /*success_callback = */ base::DoNothing(),
+            /*error_callback = */ base::DoNothing());
+        break;
+      case mojom::ActionType::kForceReboot:
+        LOG(WARNING) << "Heartd starts to force reboot the device.";
+        // TODO(b/324023559): move sync call to background otherwise it blocks
+        // the reboot in case of IO freezes.
+        sync();
+        if (!write(sysrq_fd_, "c", 1)) {
+          LOG(ERROR) << "Heartd failed to force reboot the device";
+        }
+        break;
+    }
   }
 }
 

@@ -47,6 +47,9 @@ void HeartbeatManager::EstablishHeartbeatTracker(
     LOG(INFO) << "Brand new registration: " << ToStr(name);
     auto tracker =
         std::make_unique<HeartbeatTracker>(name, std::move(receiver));
+    // Sync on last_update_response.
+    DryRun(name, tracker.get());
+
     heartbeat_trackers_.emplace(name, std::move(tracker));
   } else if (!heartbeat_trackers_[name]->IsPacemakerBound()) {
     // This means that the pacemaker disconnected before. Clients respawn and
@@ -84,13 +87,37 @@ void HeartbeatManager::VerifyHeartbeatAndTakeAction() {
 
   auto current_time = base::Time().Now();
   for (const auto& [name, heartbeat_tracker] : heartbeat_trackers_) {
+    DryRun(name, heartbeat_tracker.get());
+
+    // nothing todo if we are in time.
     if (heartbeat_tracker->VerifyTimeGap(current_time)) {
       continue;
     }
 
-    auto actions = heartbeat_tracker->GetFailureCountAction();
+    // action required if we are out of heartbeat time.
+    auto actions = heartbeat_tracker->GetFailureCountActions();
     for (const auto& action : actions) {
+      // Produce proper log message to make sure admins can understand why the
+      // reboot happened.
+      LOG(ERROR) << ToStr(name) << " app caused a " << ToStr(action)
+                 << " because of missing pings for "
+                 << heartbeat_tracker->GetVerificationWindow() << " for "
+                 << heartbeat_tracker->GetFailureCount() << " times.";
       action_runner_->Run(name, action);
+    }
+  }
+}
+
+void HeartbeatManager::DryRun(ash::heartd::mojom::ServiceName name,
+                              HeartbeatTracker* heartbeat_tracker) {
+  // DryRun only for the two relevant ActionTypes to expose response if needed.
+  for (const auto& action : heartbeat_tracker->GetActions()) {
+    auto response = action_runner_->DryRun(name, action);
+    heartbeat_tracker->SetLastDryRunResponse(response);
+    // Exit loop if response is not success because the next action is not
+    // important.
+    if (response != mojom::HeartbeatResponse::kSuccess) {
+      break;
     }
   }
 }

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/functional/callback_forward.h"
 #include <base/notreached.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -32,13 +33,13 @@ class HeartbeatTrackerTest : public testing::Test {
   }
   ~HeartbeatTrackerTest() override = default;
 
-  void SendHeartbeatSync() {
-    base::test::TestFuture<void> test_future;
+  mojom::HeartbeatResponse SendHeartbeatSync() {
+    base::test::TestFuture<mojom::HeartbeatResponse> test_future;
     pacemaker_->SendHeartbeat(test_future.GetCallback());
     if (!test_future.Wait()) {
       NOTREACHED_NORETURN();
     }
-    return;
+    return test_future.Get();
   }
 
  protected:
@@ -83,7 +84,8 @@ TEST_F(HeartbeatTrackerTest, RebindPacemaker) {
 }
 
 TEST_F(HeartbeatTrackerTest, VerifyTimeGap) {
-  SendHeartbeatSync();
+  mojom::HeartbeatResponse resp = SendHeartbeatSync();
+  EXPECT_EQ(resp, mojom::HeartbeatResponse::kSuccess);
   task_environment_.FastForwardBy(base::Seconds(10));
   EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
 
@@ -98,7 +100,8 @@ TEST_F(HeartbeatTrackerTest, SetVerificationWindowArgument) {
   argument->verification_window_seconds = verification_window_seconds;
 
   heartbeat_tracker_->SetupArgument(std::move(argument));
-  SendHeartbeatSync();
+  mojom::HeartbeatResponse resp = SendHeartbeatSync();
+  EXPECT_EQ(resp, mojom::HeartbeatResponse::kSuccess);
   task_environment_.FastForwardBy(base::Seconds(verification_window_seconds));
   EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
 
@@ -118,43 +121,46 @@ TEST_F(HeartbeatTrackerTest, SetFailureCountActionArgument) {
   argument->actions.push_back(std::move(action_reboot));
 
   heartbeat_tracker_->SetupArgument(std::move(argument));
-  SendHeartbeatSync();
+  mojom::HeartbeatResponse resp = SendHeartbeatSync();
+  EXPECT_EQ(resp, mojom::HeartbeatResponse::kSuccess);
   task_environment_.FastForwardBy(kMinVerificationWindow + base::Seconds(1));
 
   // VerifyTimeGap increases the failure count to 1.
   EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
-  auto actions = heartbeat_tracker_->GetFailureCountAction();
+  auto actions = heartbeat_tracker_->GetFailureCountActions();
   std::vector<mojom::ActionType> expected_actions;
   EXPECT_EQ(actions, expected_actions);
 
   // VerifyTimeGap increases the failure count to 2.
   EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
-  actions = heartbeat_tracker_->GetFailureCountAction();
+  actions = heartbeat_tracker_->GetFailureCountActions();
   expected_actions = {mojom::ActionType::kNoOperation,
                       mojom::ActionType::kNoOperation};
   EXPECT_EQ(actions, expected_actions);
 
   // VerifyTimeGap increases the failure count to 3.
   EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
-  actions = heartbeat_tracker_->GetFailureCountAction();
+  actions = heartbeat_tracker_->GetFailureCountActions();
   expected_actions = {mojom::ActionType::kNormalReboot};
   EXPECT_EQ(actions, expected_actions);
 
   // VerifyTimeGap increases the failure count to 4.
   // We should still get the reboot action.
   EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
-  actions = heartbeat_tracker_->GetFailureCountAction();
+  actions = heartbeat_tracker_->GetFailureCountActions();
   expected_actions = {mojom::ActionType::kNormalReboot};
   EXPECT_EQ(actions, expected_actions);
 }
 
 TEST_F(HeartbeatTrackerTest, ResetFailureCount) {
-  SendHeartbeatSync();
+  mojom::HeartbeatResponse resp = SendHeartbeatSync();
+  EXPECT_EQ(resp, mojom::HeartbeatResponse::kSuccess);
   task_environment_.FastForwardBy(kMinVerificationWindow + base::Seconds(1));
   EXPECT_FALSE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
   EXPECT_EQ(static_cast<int>(heartbeat_tracker_->GetFailureCount()), 1);
 
-  SendHeartbeatSync();
+  resp = SendHeartbeatSync();
+  EXPECT_EQ(resp, mojom::HeartbeatResponse::kSuccess);
   EXPECT_TRUE(heartbeat_tracker_->VerifyTimeGap(base::Time().Now()));
   EXPECT_EQ(static_cast<int>(heartbeat_tracker_->GetFailureCount()), 0);
 }

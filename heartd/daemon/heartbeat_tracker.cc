@@ -23,7 +23,9 @@ namespace mojom = ::ash::heartd::mojom;
 
 HeartbeatTracker::HeartbeatTracker(
     mojom::ServiceName name, mojo::PendingReceiver<mojom::Pacemaker> receiver)
-    : name_(name), receiver_(this, std::move(receiver)) {
+    : name_(name),
+      receiver_(this, std::move(receiver)),
+      last_dryrun_response_(mojom::HeartbeatResponse::kSuccess) {
   receiver_.set_disconnect_handler(base::BindOnce(
       &HeartbeatTracker::OnPacemakerDisconnect, base::Unretained(this)));
   last_touch_time_ = base::Time().Now();
@@ -33,7 +35,7 @@ HeartbeatTracker::~HeartbeatTracker() = default;
 
 void HeartbeatTracker::SendHeartbeat(SendHeartbeatCallback callback) {
   last_touch_time_ = base::Time().Now();
-  std::move(callback).Run();
+  std::move(callback).Run(last_dryrun_response_);
 }
 
 void HeartbeatTracker::StopMonitor(StopMonitorCallback callback) {
@@ -79,6 +81,15 @@ uint8_t HeartbeatTracker::GetFailureCount() {
   return failure_count_;
 }
 
+base::TimeDelta HeartbeatTracker::GetVerificationWindow() {
+  return verification_window_;
+}
+
+void HeartbeatTracker::SetLastDryRunResponse(
+    mojom::HeartbeatResponse response) {
+  last_dryrun_response_ = response;
+}
+
 bool HeartbeatTracker::VerifyTimeGap(const base::Time& current_time) {
   auto gap = current_time - last_touch_time_;
   // The `verification_window_` is always larger than the heartbeat frequency,
@@ -97,7 +108,15 @@ bool HeartbeatTracker::VerifyTimeGap(const base::Time& current_time) {
   return true;
 }
 
-std::vector<mojom::ActionType> HeartbeatTracker::GetFailureCountAction() {
+std::vector<mojom::ActionType> HeartbeatTracker::GetActions() {
+  std::vector<mojom::ActionType> result;
+  for (const auto& action : actions_) {
+    result.push_back(action->action);
+  }
+  return result;
+}
+
+std::vector<mojom::ActionType> HeartbeatTracker::GetFailureCountActions() {
   std::vector<mojom::ActionType> result;
   for (const auto& action : actions_) {
     if (failure_count_ == action->failure_count) {

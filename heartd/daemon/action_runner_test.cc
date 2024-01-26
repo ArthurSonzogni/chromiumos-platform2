@@ -234,6 +234,33 @@ TEST_F(ActionRunnerTest, NormalReboot12HoursThreshold) {
   EXPECT_FALSE(action_runner_.IsNormalRebootTooManyTimes());
 }
 
+TEST_F(ActionRunnerTest, DryRunSuccess) {
+  action_runner_.EnableNormalRebootAction();
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kSuccess);
+}
+
+TEST_F(ActionRunnerTest, DryRunFailure) {
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kNotAllowed);
+}
+
+TEST_F(ActionRunnerTest, DryRunRateLimit) {
+  std::vector<BootRecord> boot_records;
+  auto start_time = base::Time().Now();
+
+  action_runner_.EnableNormalRebootAction();
+  task_environment_.FastForwardBy(base::Days(7));
+  InsertNormalRebootRecords(boot_records, 10, start_time);
+  action_runner_.CacheBootRecord(boot_records);
+
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kRateLimit);
+}
+
 TEST_F(ActionRunnerTest, NormalReboot7DaysThreshold) {
   std::vector<BootRecord> boot_records;
   auto start_time = base::Time().Now();
@@ -243,16 +270,26 @@ TEST_F(ActionRunnerTest, NormalReboot7DaysThreshold) {
   InsertNormalRebootRecords(boot_records, 9, start_time);
   action_runner_.CacheBootRecord(boot_records);
   EXPECT_FALSE(action_runner_.IsNormalRebootTooManyTimes());
+  action_runner_.EnableNormalRebootAction();
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kSuccess);
 
   // 10 normal reboot records within 7 days window.
   InsertNormalRebootRecords(boot_records, 1, start_time);
   action_runner_.CacheBootRecord(boot_records);
   EXPECT_TRUE(action_runner_.IsNormalRebootTooManyTimes());
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kRateLimit);
 
   // If we move forward 1 second, we should be able to call the reboot action
   // again.
   task_environment_.FastForwardBy(base::Seconds(1));
   EXPECT_FALSE(action_runner_.IsNormalRebootTooManyTimes());
+  EXPECT_EQ(action_runner_.DryRun(mojom::ServiceName::kKiosk,
+                                  mojom::ActionType::kNormalReboot),
+            mojom::HeartbeatResponse::kSuccess);
 }
 
 TEST_F(ActionRunnerTest, ForceReboot12HoursThreshold) {

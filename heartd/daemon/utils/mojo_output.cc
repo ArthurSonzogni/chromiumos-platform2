@@ -19,22 +19,22 @@ namespace mojom = ::ash::heartd::mojom;
 std::string ToStr(mojom::ServiceName name) {
   switch (name) {
     case mojom::ServiceName::kKiosk:
-      return "kKiosk";
+      return "Kiosk";
     case mojom::ServiceName::kUnmappedEnumField:
-      return "kUnmappedEnumField";
+      return "Unmapped Enum Field";
   }
 }
 
 std::string ToStr(mojom::ActionType action) {
   switch (action) {
     case mojom::ActionType::kNoOperation:
-      return "kNoOperation";
+      return "No Operation";
     case mojom::ActionType::kNormalReboot:
-      return "kNormalReboot";
+      return "Normal Reboot";
     case mojom::ActionType::kForceReboot:
-      return "kForceReboot";
+      return "Forced Reboot";
     case mojom::ActionType::kUnmappedEnumField:
-      return "kUnmappedEnumField";
+      return "Unmapped Enum Field";
   }
 }
 

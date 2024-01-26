@@ -24,9 +24,15 @@ class ActionRunner {
 
   void SetupSysrq(int sysrq_fd);
 
+  // DryRuns the |action| for service |name|. Will be used by ping to give
+  // feedback to requester about rate limits and other errors.
+  ::ash::heartd::mojom::HeartbeatResponse DryRun(
+      ::ash::heartd::mojom::ServiceName name,
+      ::ash::heartd::mojom::ActionType action);
+
   // Run the |action| for service |name|.
-  void Run(ash::heartd::mojom::ServiceName name,
-           ash::heartd::mojom::ActionType action);
+  void Run(::ash::heartd::mojom::ServiceName name,
+           ::ash::heartd::mojom::ActionType action);
 
   // Enables the normal reboot action.
   void EnableNormalRebootAction();

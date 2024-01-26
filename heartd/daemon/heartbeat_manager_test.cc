@@ -46,15 +46,6 @@ class HeartbeatManagerTest : public testing::Test {
         std::move(argument));
   }
 
-  void SendHeartbeatSync() {
-    base::test::TestFuture<void> test_future;
-    pacemaker_->SendHeartbeat(test_future.GetCallback());
-    if (!test_future.Wait()) {
-      NOTREACHED_NORETURN();
-    }
-    return;
-  }
-
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};

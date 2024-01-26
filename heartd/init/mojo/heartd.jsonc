@@ -20,5 +20,12 @@
       "HeartdControl",
       "HeartdHeartbeatService"
     ]
+  },
+  {
+    "identity": "u:r:cros_ssh_session:s0",
+    "request": [
+      "HeartdControl",
+      "HeartdHeartbeatService"
+    ]
   }
 ]

@@ -48,6 +48,9 @@ class HeartbeatManager {
   // Runs the periodic verifier.
   void StartVerifier();
 
+  void DryRun(ash::heartd::mojom::ServiceName name,
+              HeartbeatTracker* heartbeat_tracker);
+
  private:
   // Unowned pointer. Should outlive this instance.
   // Used to run actions.

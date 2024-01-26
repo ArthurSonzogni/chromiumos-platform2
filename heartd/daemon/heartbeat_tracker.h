@@ -50,12 +50,20 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   // zero every time when receiving a heartbeat.
   uint8_t GetFailureCount();
 
+  // Returns the time to wait for pings before we declare one failure.
+  base::TimeDelta GetVerificationWindow();
+
   // Verifies if the time gap between the |current_time| and the
   // |last_touch_time_| is within the |verification_window_|.
   bool VerifyTimeGap(const base::Time& current_time);
 
+  void SetLastDryRunResponse(ash::heartd::mojom::HeartbeatResponse response);
+
   // Returns the actions that need to be taken at current |failure_count_|.
-  std::vector<ash::heartd::mojom::ActionType> GetFailureCountAction();
+  std::vector<ash::heartd::mojom::ActionType> GetFailureCountActions();
+
+  // Returns all valid actions to be executed
+  std::vector<ash::heartd::mojom::ActionType> GetActions();
 
  private:
   // Handler when pacemaker mojo disconnects.
@@ -73,6 +81,8 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   uint8_t failure_count_ = 0;
   // The time when receiving the last heartbeat.
   base::Time last_touch_time_;
+  // What was the response of last dryrun from action to return back when asked.
+  ::ash::heartd::mojom::HeartbeatResponse last_dryrun_response_;
   // For every verification, we check if there is at least one heartbeat in the
   // past |verification_window_seconds|. The minimum value of this is 70.
   base::TimeDelta verification_window_ = kMinVerificationWindow;

@@ -23,11 +23,11 @@ TEST_F(MojoOutputTest, ServiceNameToStr) {
   auto name = mojom::ServiceName::kKiosk;
   switch (name) {
     case mojom::ServiceName::kKiosk:
-      EXPECT_EQ(ToStr(mojom::ServiceName::kKiosk), "kKiosk");
+      EXPECT_EQ(ToStr(mojom::ServiceName::kKiosk), "Kiosk");
       [[fallthrough]];
     case mojom::ServiceName::kUnmappedEnumField:
       EXPECT_EQ(ToStr(mojom::ServiceName::kUnmappedEnumField),
-                "kUnmappedEnumField");
+                "Unmapped Enum Field");
       break;
   }
 }
@@ -36,17 +36,17 @@ TEST_F(MojoOutputTest, ActionTypeToStr) {
   auto action = mojom::ActionType::kNoOperation;
   switch (action) {
     case mojom::ActionType::kNoOperation:
-      EXPECT_EQ(ToStr(mojom::ActionType::kNoOperation), "kNoOperation");
+      EXPECT_EQ(ToStr(mojom::ActionType::kNoOperation), "No Operation");
       [[fallthrough]];
     case mojom::ActionType::kNormalReboot:
-      EXPECT_EQ(ToStr(mojom::ActionType::kNormalReboot), "kNormalReboot");
+      EXPECT_EQ(ToStr(mojom::ActionType::kNormalReboot), "Normal Reboot");
       [[fallthrough]];
     case mojom::ActionType::kForceReboot:
-      EXPECT_EQ(ToStr(mojom::ActionType::kForceReboot), "kForceReboot");
+      EXPECT_EQ(ToStr(mojom::ActionType::kForceReboot), "Forced Reboot");
       [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       EXPECT_EQ(ToStr(mojom::ActionType::kUnmappedEnumField),
-                "kUnmappedEnumField");
+                "Unmapped Enum Field");
       return;
   }
 }
