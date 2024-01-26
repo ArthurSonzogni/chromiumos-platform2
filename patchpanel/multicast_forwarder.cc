@@ -86,9 +86,7 @@ void SetSockaddr(struct sockaddr_storage* saddr_storage,
 namespace patchpanel {
 
 MulticastForwarder::SocketWithError MulticastForwarder::CreateSocket(
-    base::ScopedFD fd, sa_family_t sa_family) {
-  std::unique_ptr<net_base::Socket> socket =
-      net_base::Socket::CreateFromFd(std::move(fd));
+    std::unique_ptr<net_base::Socket> socket, sa_family_t sa_family) {
   socket->SetReadableCallback(
       base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
                           base::Unretained(this), socket->Get(), sa_family));
@@ -106,33 +104,35 @@ MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
       mcast_addr6_(mcast_addr6) {}
 
 void MulticastForwarder::Init() {
-  base::ScopedFD lan_fd(Bind(AF_INET, lan_ifname_));
-  if (lan_fd.is_valid()) {
-    lan_socket_.emplace(AF_INET, CreateSocket(std::move(lan_fd), AF_INET));
+  std::unique_ptr<net_base::Socket> lan_socket = Bind(AF_INET, lan_ifname_);
+  if (lan_socket) {
+    lan_socket_.emplace(AF_INET, CreateSocket(std::move(lan_socket), AF_INET));
   } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr_ << ":" << port_;
   }
 
-  base::ScopedFD lan_fd6(Bind(AF_INET6, lan_ifname_));
-  if (lan_fd6.is_valid()) {
-    lan_socket_.emplace(AF_INET6, CreateSocket(std::move(lan_fd6), AF_INET6));
+  std::unique_ptr<net_base::Socket> lan_socket6 = Bind(AF_INET6, lan_ifname_);
+  if (lan_socket6) {
+    lan_socket_.emplace(AF_INET6,
+                        CreateSocket(std::move(lan_socket6), AF_INET6));
   } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr6_ << ":" << port_;
   }
 }
 
-base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
-                                        const std::string& ifname) {
+std::unique_ptr<net_base::Socket> MulticastForwarder::Bind(
+    sa_family_t sa_family, const std::string& ifname) {
   const std::string mcast_addr =
       (sa_family == AF_INET) ? mcast_addr_.ToString() : mcast_addr6_.ToString();
 
-  base::ScopedFD fd(socket(sa_family, SOCK_DGRAM, 0));
-  if (!fd.is_valid()) {
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::Socket::Create(sa_family, SOCK_DGRAM, 0);
+  if (!socket) {
     PLOG(ERROR) << "socket() failed on " << ifname << " for " << mcast_addr
                 << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   // The socket needs to be bound to INADDR_ANY rather than a specific
@@ -142,10 +142,11 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                          net_base::byte_utils::AsBytes(ifr))) {
     PLOG(ERROR) << "setsockopt(SO_BINDTODEVICE) failed on " << ifname << " for "
                 << mcast_addr << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   System system;
@@ -153,7 +154,7 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
   if (ifindex == 0) {
     PLOG(ERROR) << "Could not obtain interface index of " << ifname << " for "
                 << mcast_addr << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   int level, optname;
@@ -163,11 +164,11 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
     mreqn.imr_multiaddr = mcast_addr_.ToInAddr();
     mreqn.imr_address.s_addr = htonl(INADDR_ANY);
     mreqn.imr_ifindex = ifindex;
-    if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreqn,
-                   sizeof(mreqn)) < 0) {
+    if (!socket->SetSockOpt(IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                            net_base::byte_utils::AsBytes(mreqn))) {
       PLOG(ERROR) << "Can't add IPv4 multicast membership for on " << ifname
                   << " for " << mcast_addr_ << ":" << port_;
-      return base::ScopedFD();
+      return nullptr;
     }
 
     level = IPPROTO_IP;
@@ -177,44 +178,45 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
     memset(&mreqn, 0, sizeof(mreqn));
     mreqn.ipv6mr_multiaddr = mcast_addr6_.ToIn6Addr();
     mreqn.ipv6mr_interface = static_cast<uint32_t>(ifindex);
-    if (setsockopt(fd.get(), IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreqn,
-                   sizeof(mreqn)) < 0) {
+    if (!socket->SetSockOpt(IPPROTO_IPV6, IPV6_JOIN_GROUP,
+                            net_base::byte_utils::AsBytes(mreqn))) {
       PLOG(ERROR) << "Can't add IPv6 multicast membership on " << ifname
                   << " for " << mcast_addr6_ << ":" << port_;
-      return base::ScopedFD();
+      return nullptr;
     }
 
     level = IPPROTO_IPV6;
     optname = IPV6_MULTICAST_LOOP;
   } else {
-    return base::ScopedFD();
+    return nullptr;
   }
 
   int off = 0;
-  if (setsockopt(fd.get(), level, optname, &off, sizeof(off))) {
+  if (!socket->SetSockOpt(level, optname, net_base::byte_utils::AsBytes(off))) {
     PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed on " << ifname
                 << " for " << mcast_addr << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   int on = 1;
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                          net_base::byte_utils::AsBytes(on))) {
     PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed on " << ifname << " for "
                 << mcast_addr << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   struct sockaddr_storage bind_addr = {0};
   SetSockaddr(&bind_addr, sa_family, port_, nullptr);
 
-  if (bind(fd.get(), (const struct sockaddr*)&bind_addr,
-           sizeof(struct sockaddr_storage)) < 0) {
+  if (!socket->Bind(reinterpret_cast<const struct sockaddr*>(&bind_addr),
+                    sizeof(bind_addr))) {
     PLOG(ERROR) << "bind(" << port_ << ") failed for on " << ifname << " for "
                 << mcast_addr << ":" << port_;
-    return base::ScopedFD();
+    return nullptr;
   }
 
-  return fd;
+  return socket;
 }
 
 bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
@@ -230,12 +232,12 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   bool success = false;
 
   // Set up IPv4 multicast forwarder.
-  base::ScopedFD int_fd4(Bind(AF_INET, int_ifname));
-  if (int_fd4.is_valid()) {
-    int_fds_.emplace(std::make_pair(AF_INET, int_fd4.get()));
+  std::unique_ptr<net_base::Socket> int_socket4 = Bind(AF_INET, int_ifname);
+  if (int_socket4) {
+    int_fds_.emplace(std::make_pair(AF_INET, int_socket4->Get()));
 
     int_sockets_.emplace(std::make_pair(AF_INET, int_ifname),
-                         CreateSocket(std::move(int_fd4), AF_INET));
+                         CreateSocket(std::move(int_socket4), AF_INET));
 
     success = true;
     LOG(INFO) << "Started IPv4 forwarding between " << lan_ifname_ << " and "
@@ -246,11 +248,11 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   }
 
   // Set up IPv6 multicast forwarder.
-  base::ScopedFD int_fd6(Bind(AF_INET6, int_ifname));
-  if (int_fd6.is_valid()) {
-    int_fds_.emplace(std::make_pair(AF_INET6, int_fd6.get()));
+  std::unique_ptr<net_base::Socket> int_socket6 = Bind(AF_INET6, int_ifname);
+  if (int_socket6) {
+    int_fds_.emplace(std::make_pair(AF_INET6, int_socket6->Get()));
     int_sockets_.emplace(std::make_pair(AF_INET6, int_ifname),
-                         CreateSocket(std::move(int_fd6), AF_INET6));
+                         CreateSocket(std::move(int_socket6), AF_INET6));
 
     success = true;
     LOG(INFO) << "Started IPv6 forwarding between " << lan_ifname_ << " and "

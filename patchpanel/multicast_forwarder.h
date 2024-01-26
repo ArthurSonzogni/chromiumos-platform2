@@ -80,8 +80,9 @@ class MulticastForwarder {
     int last_errno = 0;
   };
 
-  // Bind will create a multicast socket and return its fd.
-  virtual base::ScopedFD Bind(sa_family_t sa_family, const std::string& ifname);
+  // Creates a multicast socket.
+  virtual std::unique_ptr<net_base::Socket> Bind(sa_family_t sa_family,
+                                                 const std::string& ifname);
 
   // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
   // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
@@ -108,7 +109,8 @@ class MulticastForwarder {
                           struct sockaddr* src_addr,
                           socklen_t* addrlen);
 
-  SocketWithError CreateSocket(base::ScopedFD fd, sa_family_t family);
+  SocketWithError CreateSocket(std::unique_ptr<net_base::Socket> socket,
+                               sa_family_t family);
 
  private:
   // Name of the physical interface that this forwarder is bound to.

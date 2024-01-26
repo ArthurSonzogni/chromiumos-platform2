@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/socket.h>
 
 namespace patchpanel {
 
@@ -40,12 +42,12 @@ class TestMulticastForwarder : public MulticastForwarder {
   TestMulticastForwarder& operator=(const TestMulticastForwarder&) = delete;
   ~TestMulticastForwarder() override = default;
 
-  base::ScopedFD Bind(sa_family_t sa_family,
-                      const std::string& ifname) override {
-    // Make a real socket to satisfy ScopedFD's checks.
-    int fd = socket(sa_family, SOCK_DGRAM, 0);
-    fds.push_back(fd);
-    return base::ScopedFD(fd);
+  std::unique_ptr<net_base::Socket> Bind(sa_family_t sa_family,
+                                         const std::string& ifname) override {
+    std::unique_ptr<net_base::Socket> socket =
+        net_base::Socket::Create(sa_family, SOCK_DGRAM);
+    fds.push_back(socket->Get());
+    return socket;
   }
 
   bool SendTo(uint16_t src_port,
