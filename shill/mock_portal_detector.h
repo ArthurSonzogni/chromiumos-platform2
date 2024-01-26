@@ -31,7 +31,6 @@ class MockPortalDetector : public PortalDetector {
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsInProgress, (), (const, override));
-  MOCK_METHOD(void, ResetAttemptDelays, (), (override));
 };
 
 class MockPortalDetectorFactory : public PortalDetectorFactory {

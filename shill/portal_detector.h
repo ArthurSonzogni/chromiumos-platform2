@@ -44,27 +44,6 @@ class EventDispatcher;
 // expecting a specific response.  Any result that deviates from this result
 // (DNS or HTTP errors, as well as deviations from the expected content) are
 // considered failures.
-//
-// In case of an inclusive attempt (the network was not validated and a portal
-// was not found), the retry logic is controlled by the class owning the
-// instance of PortalDetector. To avoid unnecessary network activity, retries
-// should be separated from each other by a delay that progressively increases,
-// starting with fast retries. PortalDetector provides the GetNextAttemptDelay()
-// function which computes a delay to reinject into Start() and implements the
-// following exponential backoff strategy:
-//   - the first attempt is started immediately when Start() is called if the
-//   default value for |delay| is used (0 second).
-//   - to obtain the next value of |delay|, GetNextAttemptDelay() should be
-//   called just before the next call to Start(). This is because
-//   GetNextAttemptDelay() takes into account the total elapsed time since the
-//   beginning of the previous attempt.
-//   - the value returned by GetNextAttemptDelay() is guaranteed to be bound
-//   within [|kMinPortalCheckDelay|,|kMaxPortalCheckInterval|] (see
-//   implementation file).
-//   - the value returned by GetNextAttemptDelay() will grow exponentially based
-//   on the number of previous attempts, until it saturates at
-//   kMaxPortalCheckInterval. The growth factor is controlled by the
-//   |kPortalCheckInterval| parameter.
 class PortalDetector {
  public:
   // Default URL used for the first HTTP probe sent by PortalDetector on a new
@@ -203,8 +182,8 @@ class PortalDetector {
     // Total HTTP and HTTPS probe durations, recorded if the respective probe
     // successfully started. The todal duration of the network validation
     // attempt is the longest of the two durations.
-    base::TimeDelta http_duration = base::TimeDelta();
-    base::TimeDelta https_duration = base::TimeDelta();
+    base::TimeDelta http_duration;
+    base::TimeDelta https_duration;
 
     // Returns true if the HTTP has completed, successfully or not.
     bool IsHTTPProbeComplete() const;
@@ -264,19 +243,8 @@ class PortalDetector {
   // the callback.
   mockable void Stop();
 
-  // Resets the delay calculation for scheduling retries requested with
-  // Restart(). This has no impact on probe rotation logic.
-  mockable void ResetAttemptDelays();
-
-  // Returns the time delay for scheduling the next portal detection attempt
-  // with Restart().
-  base::TimeDelta GetNextAttemptDelay() const;
-
   // Returns whether portal request is "in progress".
   mockable bool IsInProgress() const;
-
-  // Returns true if a new trial is scheduled to run but has not started yet.
-  bool IsTrialScheduled() const;
 
   // Return |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
@@ -305,13 +273,7 @@ class PortalDetector {
  private:
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart);
-  FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts);
-  FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
-  FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
-  FRIEND_TEST(PortalDetectorTest, MultipleRestarts);
   FRIEND_TEST(PortalDetectorTest, PickProbeURLs);
   FRIEND_TEST(PortalDetectorTest, Request200WithContent);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
@@ -319,8 +281,6 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, RequestRedirect);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestTempRedirect);
-  FRIEND_TEST(PortalDetectorTest, ResetAttemptDelays);
-  FRIEND_TEST(PortalDetectorTest, ResetAttemptDelaysAndRestart);
   FRIEND_TEST(PortalDetectorTest, Restart);
   FRIEND_TEST(PortalDetectorTest, RestartAfterRedirect);
   FRIEND_TEST(PortalDetectorTest, RestartAfterSuspectedRedirect);
@@ -331,10 +291,6 @@ class PortalDetector {
   const net_base::HttpUrl& PickProbeUrl(
       const net_base::HttpUrl& default_url,
       const std::vector<net_base::HttpUrl>& fallback_urls) const;
-
-  // Internal method used to start the actual connectivity trial, called after
-  // the start delay completes.
-  void StartTrialTask();
 
   // Process the HttpRequest Result of the HTTP probe.
   void ProcessHTTPProbeResult(HttpRequest::Result result);
@@ -361,12 +317,9 @@ class PortalDetector {
   // for debugging purposes, and for selecting the URL of detection and
   // validation probes.
   int attempt_count_ = 0;
-  // The power-of-two exponent used for computing exponentially increasing
-  // delays between portal detection attempts.
-  int delay_backoff_exponent_ = 0;
   // Timestamp updated when StartTrialTask runs and used to determine when to
   // schedule the next portal detection attempt after this one.
-  base::TimeTicks last_attempt_start_time_ = base::TimeTicks();
+  base::TimeTicks last_attempt_start_time_;
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
@@ -380,7 +333,6 @@ class PortalDetector {
   net_base::HttpUrl http_url_;
   net_base::HttpUrl https_url_;
   ProbingConfiguration probing_configuration_;
-  base::CancelableOnceClosure trial_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 

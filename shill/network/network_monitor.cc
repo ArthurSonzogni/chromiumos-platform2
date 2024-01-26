@@ -11,9 +11,13 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <net-base/network_config.h>
+#include <net-base/ip_address.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/trial_scheduler.h"
 #include "shill/network/validation_log.h"
 
 namespace shill {
@@ -89,6 +93,7 @@ NetworkMonitor::NetworkMonitor(
       interface_(std::string(interface)),
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
+      trial_scheduler_(dispatcher),
       portal_detector_factory_(std::move(portal_detector_factory)),
       validation_log_(std::move(network_validation_log)),
       connection_diagnostics_factory_(
@@ -99,6 +104,9 @@ NetworkMonitor::~NetworkMonitor() {
 }
 
 bool NetworkMonitor::Start(ValidationReason reason) {
+  // TODO(b/305129516): Network properties should be obtained exactly at the
+  // time that the trial starts (i.e. in StartValidationTask() method).
+  // To achieve that, we should handle the failure asynchronously.
   const net_base::NetworkConfig& config = client_->GetCurrentConfig();
   const std::optional<net_base::IPFamily> ip_family =
       GetNetworkValidationIPFamily(config);
@@ -115,8 +123,26 @@ bool NetworkMonitor::Start(ValidationReason reason) {
     return false;
   }
 
-  // Create a new PortalDetector instance and start the first trial if portal
-  // detection:
+  // If the validation reason requires an immediate restart, reset the interval
+  // scheduled between attempts.
+  if (ShouldScheduleNetworkValidationImmediately(reason)) {
+    trial_scheduler_.ResetInterval();
+  }
+  // Cancel the pending trial if exists.
+  if (trial_scheduler_.IsTrialScheduled()) {
+    trial_scheduler_.CancelTrial();
+  }
+  trial_scheduler_.ScheduleTrial(base::BindOnce(
+      &NetworkMonitor::StartValidationTask, base::Unretained(this), reason,
+      *ip_family, std::move(dns_list)));
+  return true;
+}
+
+void NetworkMonitor::StartValidationTask(
+    ValidationReason reason,
+    net_base::IPFamily ip_family,
+    const std::vector<net_base::IPAddress>& dns_list) {
+  // Create a new PortalDetector instance and start the portal detection if:
   //   - has not been initialized yet,
   //   - or has stopped,
   //   - or should be reset immediately entirely.
@@ -127,23 +153,9 @@ bool NetworkMonitor::Start(ValidationReason reason) {
                             weak_ptr_factory_.GetWeakPtr()));
   }
 
-  // Otherwise, if the validation reason requires an immediate restart, reset
-  // the delay scheduled between attempts.
-  if (ShouldScheduleNetworkValidationImmediately(reason)) {
-    portal_detector_->ResetAttemptDelays();
-  }
-
-  // If portal detection is not running, reschedule the next a trial.
-  if (portal_detector_->IsInProgress()) {
-    LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
-              << "): Portal detection is already running.";
-    return true;
-  }
-
-  portal_detector_->Start(interface_, *ip_family, dns_list, logging_tag_);
+  portal_detector_->Start(interface_, ip_family, dns_list, logging_tag_);
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
-  return true;
 }
 
 bool NetworkMonitor::Stop() {

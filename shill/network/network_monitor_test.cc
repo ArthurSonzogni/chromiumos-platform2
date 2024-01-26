@@ -10,6 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
@@ -109,22 +110,18 @@ class NetworkMonitorTest : public ::testing::Test {
       const PortalDetector::Result& result) {
     EXPECT_CALL(*mock_portal_detector_factory_,
                 Create(&dispatcher_, probing_configuration_, _))
-        .WillRepeatedly(WithArg<2>(
-            [&](base::RepeatingCallback<void(const PortalDetector::Result&)>
-                    callback) {
-              auto portal_detector = std::make_unique<MockPortalDetector>();
-              EXPECT_CALL(*portal_detector, IsInProgress)
-                  .WillOnce(Return(false));
-              EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(1);
-              EXPECT_CALL(*portal_detector,
-                          Start(Eq(kInterface), net_base::IPFamily::kIPv4,
-                                kDnsList, Eq(kLoggingTag)))
-                  .WillOnce([&, callback = std::move(callback)]() {
-                    dispatcher_.PostTask(FROM_HERE,
-                                         base::BindOnce(callback, result));
-                  });
-              return portal_detector;
-            }));
+        .WillOnce(WithArg<2>([&](base::RepeatingCallback<void(
+                                     const PortalDetector::Result&)> callback) {
+          auto portal_detector = std::make_unique<MockPortalDetector>();
+          EXPECT_CALL(*portal_detector,
+                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                            Eq(kLoggingTag)))
+              .WillOnce([&, callback = std::move(callback)]() {
+                dispatcher_.PostTask(FROM_HERE,
+                                     base::BindOnce(callback, result));
+              });
+          return portal_detector;
+        }));
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
     EXPECT_CALL(client_,
                 OnNetworkMonitorResult(
@@ -137,7 +134,8 @@ class NetworkMonitorTest : public ::testing::Test {
   }
 
  protected:
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   EventDispatcher dispatcher_;
   StrictMock<MockMetrics> metrics_;
@@ -162,21 +160,20 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
       NetworkMonitor::ValidationReason::kServiceReorder,
   };
 
-  EXPECT_CALL(*mock_portal_detector_factory_,
-              Create(&dispatcher_, probing_configuration_, _))
-      .WillRepeatedly([]() {
-        auto portal_detector = std::make_unique<MockPortalDetector>();
-        EXPECT_CALL(*portal_detector, IsInProgress).WillOnce(Return(false));
-        EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(1);
-        EXPECT_CALL(*portal_detector,
-                    Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                          Eq(kLoggingTag)))
-            .Times(1);
-        return portal_detector;
-      });
-
   for (const auto reason : reasons) {
+    EXPECT_CALL(*mock_portal_detector_factory_,
+                Create(&dispatcher_, probing_configuration_, _))
+        .WillOnce([]() {
+          auto portal_detector = std::make_unique<MockPortalDetector>();
+          EXPECT_CALL(*portal_detector,
+                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                            Eq(kLoggingTag)))
+              .Times(1);
+          return portal_detector;
+        });
+
     EXPECT_TRUE(network_monitor_->Start(reason));
+    task_environment_.RunUntilIdle();
     network_monitor_->Stop();
   }
 }
@@ -188,25 +185,6 @@ TEST_F(NetworkMonitorTest, StartWithoutDNS) {
       network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
-TEST_F(NetworkMonitorTest, StartWithoutResetPortalDetector) {
-  // When the previous probing is running, these reasons don't trigger the
-  // probing again.
-  const NetworkMonitor::ValidationReason reasons[] = {
-      NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable,
-      NetworkMonitor::ValidationReason::kManagerPropertyUpdate,
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate};
-
-  auto portal_detector = std::make_unique<MockPortalDetector>();
-  EXPECT_CALL(*portal_detector, IsInProgress).WillRepeatedly(Return(true));
-  EXPECT_CALL(*portal_detector, Start).Times(0);
-  EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(0);
-  network_monitor_->set_portal_detector_for_testing(std::move(portal_detector));
-
-  for (const auto reason : reasons) {
-    EXPECT_TRUE(network_monitor_->Start(reason));
-  }
-}
-
 TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
   // These reasons reset the running portal detector.
   const NetworkMonitor::ValidationReason reasons[] = {
@@ -215,21 +193,20 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
   auto portal_detector = std::make_unique<MockPortalDetector>();
   network_monitor_->set_portal_detector_for_testing(std::move(portal_detector));
 
-  EXPECT_CALL(*mock_portal_detector_factory_,
-              Create(&dispatcher_, probing_configuration_, _))
-      .WillRepeatedly([]() {
-        auto portal_detector = std::make_unique<MockPortalDetector>();
-        EXPECT_CALL(*portal_detector, IsInProgress).WillOnce(Return(false));
-        EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(1);
-        EXPECT_CALL(*portal_detector,
-                    Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                          Eq(kLoggingTag)))
-            .Times(1);
-        return portal_detector;
-      });
-
   for (const auto reason : reasons) {
+    EXPECT_CALL(*mock_portal_detector_factory_,
+                Create(&dispatcher_, probing_configuration_, _))
+        .WillOnce([]() {
+          auto portal_detector = std::make_unique<MockPortalDetector>();
+          EXPECT_CALL(*portal_detector,
+                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                            Eq(kLoggingTag)))
+              .Times(1);
+          return portal_detector;
+        });
+
     EXPECT_TRUE(network_monitor_->Start(reason));
+    task_environment_.RunUntilIdle();
   }
 }
 

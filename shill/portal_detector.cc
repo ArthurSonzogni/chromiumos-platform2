@@ -32,14 +32,6 @@ const brillo::http::HeaderList kHeaders{
     {brillo::http::request_header::kUserAgent, kLinuxUserAgent},
 };
 
-// Base time interval between two portal detection attempts. Should be doubled
-// at every new attempt.
-constexpr base::TimeDelta kPortalCheckInterval = base::Seconds(3);
-// Min time delay between two portal detection attempts.
-constexpr base::TimeDelta kMinPortalCheckDelay = base::Seconds(0);
-// Max time interval between two portal detection attempts.
-constexpr base::TimeDelta kMaxPortalCheckInterval = base::Minutes(1);
-
 bool IsRedirectResponse(int status_code) {
   return status_code == brillo::http::status_code::Redirect ||
          status_code == brillo::http::status_code::RedirectKeepVerb;
@@ -134,19 +126,6 @@ void PortalDetector::Start(const std::string& ifname,
   https_url_ = PickProbeUrl(probing_configuration_.portal_https_url,
                             probing_configuration_.portal_fallback_https_urls);
 
-  if (!trial_.IsCancelled()) {
-    LOG(INFO) << LoggingTag() << ": Cancelling next scheduled trial";
-    trial_.Cancel();
-  }
-
-  const auto delay = GetNextAttemptDelay();
-  if (delay.is_positive()) {
-    LOG(INFO) << logging_tag_ << ": Retrying in " << delay;
-  }
-
-  // TODO(hugobenichi) Network properties like src address and DNS should be
-  // obtained exactly at the time that the trial starts if |GetNextAttemptDelay|
-  // > 0.
   http_request_ = CreateHTTPRequest(ifname, ip_family, dns_list,
                                     /*allow_non_google_https=*/false);
   // For non-default URLs, allow for secure communication with both Google and
@@ -154,16 +133,8 @@ void PortalDetector::Start(const std::string& ifname,
   bool allow_non_google_https = https_url_.ToString() != kDefaultHttpsUrl;
   https_request_ =
       CreateHTTPRequest(ifname, ip_family, dns_list, allow_non_google_https);
-  trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
-                              weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
-}
 
-void PortalDetector::StartTrialTask() {
   attempt_count_++;
-  // Ensure that every trial increases the delay backoff exponent to prevent a
-  // systematic failure from creating a hot loop.
-  delay_backoff_exponent_++;
   result_ = Result();
   result_->num_attempts = attempt_count_;
   is_active_ = true;
@@ -190,7 +161,6 @@ void PortalDetector::StopTrialIfComplete(Result result) {
 }
 
 void PortalDetector::CleanupTrial() {
-  trial_.Cancel();
   result_ = std::nullopt;
   http_request_.reset();
   https_request_.reset();
@@ -200,7 +170,6 @@ void PortalDetector::CleanupTrial() {
 void PortalDetector::Stop() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
-  delay_backoff_exponent_ = 0;
   previous_result_ = std::nullopt;
   CleanupTrial();
 }
@@ -265,32 +234,6 @@ void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
 
 bool PortalDetector::IsInProgress() const {
   return is_active_;
-}
-
-bool PortalDetector::IsTrialScheduled() const {
-  return !is_active_ && !trial_.IsCancelled();
-}
-
-void PortalDetector::ResetAttemptDelays() {
-  delay_backoff_exponent_ = 0;
-}
-
-base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
-  if (delay_backoff_exponent_ == 0) {
-    return base::TimeDelta();
-  }
-  base::TimeDelta next_interval =
-      kPortalCheckInterval * (1 << (delay_backoff_exponent_ - 1));
-  if (next_interval > kMaxPortalCheckInterval) {
-    next_interval = kMaxPortalCheckInterval;
-  }
-  const auto next_attempt = last_attempt_start_time_ + next_interval;
-  const auto now = base::TimeTicks::Now();
-  auto next_delay = next_attempt - now;
-  if (next_delay < kMinPortalCheckDelay) {
-    next_delay = kMinPortalCheckDelay;
-  }
-  return next_delay;
 }
 
 std::optional<size_t> PortalDetector::GetContentLength(

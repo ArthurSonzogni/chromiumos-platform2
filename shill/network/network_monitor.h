@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -17,6 +18,7 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/trial_scheduler.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 
@@ -159,6 +161,10 @@ class NetworkMonitor {
       std::unique_ptr<PortalDetector> portal_detector);
 
  private:
+  void StartValidationTask(ValidationReason reason,
+                           net_base::IPFamily ip_family,
+                           const std::vector<net_base::IPAddress>& dns_list);
+
   // Callback when |portal_detector_| returns the result.
   void OnPortalDetectorResult(const PortalDetector::Result& result);
 
@@ -179,6 +185,7 @@ class NetworkMonitor {
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
 
+  TrialScheduler trial_scheduler_;
   std::unique_ptr<PortalDetectorFactory> portal_detector_factory_;
   std::unique_ptr<PortalDetector> portal_detector_;
 
