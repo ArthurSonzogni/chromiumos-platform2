@@ -70,8 +70,9 @@ int main() {
     const std::string sys_path = list_entry->GetName() ?: "";
     const std::unique_ptr<brillo::UdevDevice> device =
         udev->CreateDeviceFromSysPath(sys_path.c_str());
-    if (!device)
+    if (!device) {
       continue;
+    }
 
     const std::string vendor =
         device->GetSysAttributeValue(kAttributeIdVendor) ?: "";
