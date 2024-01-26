@@ -92,8 +92,9 @@ bool ReadDevicePolicy(const policy::DevicePolicy& policy,
 
 std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   std::string out;
-  if (!base::ReadFileToString(file_path, &out))
+  if (!base::ReadFileToString(file_path, &out)) {
     return std::nullopt;
+  }
 
   base::TrimWhitespaceASCII(out, base::TRIM_ALL, &out);
   return out;
