@@ -35,47 +35,58 @@
 /* Look up a remapped entity ID's name.
  *
  * Returns:
- *  - An entity name if there is a remap entry for this ID.
+ *  - A remap entry if there is one for this ID.
  *  - std::nullopt if there is no remap entry.
  */
-std::optional<std::string> V4lMcRemap::LookupEntityName(__u32 in_entity) {
-  for (std::pair<__u32, std::string> entry : remap_list_)
-    if (entry.first == in_entity)
-      return std::optional<std::string>(entry.second);
+std::optional<V4lMcRemapEntry> V4lMcRemap::LookupEntry(__u32 source_id) {
+  for (V4lMcRemapEntry& entry : remap_list_)
+    if (entry.source_id_ == source_id)
+      return entry;
 
   return std::nullopt;
 }
 
-/* Look up a remapped entity ID, with a fallback to the input ID.
+/* Look up a remapped entity ID, or nullopt if something fails.
  *
  * This checks if the input ID is mentioned in the remapping table.
  * If yes, it looks for an entity with the mapped name in the target graph.
  *
  * Returns:
  *  - The found target entity's ID, if both lookups succeed.
- *  - The input ID if any step fails.
+ *  - std::nullopt if any step fails.
+ */
+std::optional<__u32> V4lMcRemap::LookupRemappedId(__u32 source_id,
+                                                  V4lMcDev& mc_target) {
+  std::optional<V4lMcRemapEntry> entry = this->LookupEntry(source_id);
+
+  if (!entry)
+    return std::nullopt;
+
+  V4lMcEntity* te = mc_target.EntityByName(entry->target_name_);
+
+  if (te)
+    return te->desc_.id;
+
+  /* We tried to look up an entity with a name that doesn't exist
+   * in the target media controller.
+   * Maybe this remapping is not meant to apply to this target?
+   */
+  return std::nullopt;
+}
+
+/* Look up a remapped entity ID, with a fallback to the input ID.
+ *
+ * Same as LookupRemappedId(), but with a fallback in case it returns nullopt.
  *
  * This allows using this function safely everywhere, covering both remapped
  * and not remapped entities.
  */
-__u32 V4lMcRemap::LookupEntityId(__u32 in_entity, V4lMcDev& mc_target) {
-  for (std::pair<__u32, std::string> entry : remap_list_) {
-    if (entry.first == in_entity) {
-      auto te = mc_target.EntityByName(entry.second);
+__u32 V4lMcRemap::LookupRemappedIdOrFallback(__u32 source_id,
+                                             V4lMcDev& mc_target) {
+  std::optional<__u32> target_id = this->LookupRemappedId(source_id, mc_target);
 
-      if (!te) {
-        /* We tried to look up an entity that doesn't exist.
-         * This is indicative of a mismatch between the remapping
-         * and the target media-ctl.
-         */
-        MCTK_ERR("Entity named " + entry.second +
-                 " not found. Proceeding without remapping.");
-        return in_entity;
-      }
+  if (target_id)
+    return *target_id;
 
-      return te->desc_.id;
-    }
-  }
-
-  return in_entity;
+  return source_id;
 }

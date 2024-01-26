@@ -18,7 +18,7 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility> /* std::pair */
+#include <utility> /* std::move */
 #include <vector>
 
 #include "tools/mctk/debug.h"
@@ -37,7 +37,8 @@ std::unique_ptr<V4lMcRemap> V4lMcRemap::CreateFromYamlNode(
     if (!id || !name)
       continue;
 
-    remap->remap_list_.push_back(std::pair<__u32, std::string>(*id, *name));
+    V4lMcRemapEntry new_entry = V4lMcRemapEntry(*id, *name);
+    remap->remap_list_.push_back(std::move(new_entry));
   }
 
   return remap;

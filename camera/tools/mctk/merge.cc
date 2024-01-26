@@ -85,7 +85,8 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     if (remap) {
       /* Check if the entity ID is remapped to a name, at all. */
-      std::optional<std::string> name = remap->LookupEntityName(se->desc_.id);
+      std::optional<V4lMcRemapEntry> remap_entry =
+          remap->LookupEntry(se->desc_.id);
 
       /* If a remapping entry exists, then insist that the target has an
        * entry with the remapped name.
@@ -96,15 +97,14 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
        * to be remapped by ID. Tests should catch remappings that should
        * happen, but don't.
        */
-      if (name) {
-        auto entity = target.EntityByName(*name);
+      if (remap_entry) {
+        auto target_id = remap->LookupRemappedId(se->desc_.id, target);
 
-        if (!entity)
-          MCTK_PANIC(
-              "Merge: Encountered an entity that should be remapped "
-              "according to remap table, but the target does not "
-              "contain an entity with the name: " +
-              *name);
+        if (!target_id)
+          MCTK_PANIC("Merge: According to the remap table, entity " +
+                     std::to_string(se->desc_.id) +
+                     " should be remapped, "
+                     "but the target does not contain a matching entity.");
 
         /* Remapped entity found - continue checking next entity. */
         continue;
@@ -125,7 +125,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -140,7 +140,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -150,7 +150,8 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
       for (auto* sl : sp->links_) {
         __u32 sink_entity_id = sl->desc_.sink.entity;
         if (remap)
-          sink_entity_id = remap->LookupEntityId(sink_entity_id, target);
+          sink_entity_id =
+              remap->LookupRemappedIdOrFallback(sink_entity_id, target);
 
         auto tl = tp->LinkBySinkIds(sink_entity_id, sl->desc_.sink.index);
         if (!tl) {
@@ -164,7 +165,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -256,7 +257,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -273,7 +274,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -311,7 +312,7 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     __u32 te_id = se->desc_.id;
     if (remap)
-      te_id = remap->LookupEntityId(te_id, target);
+      te_id = remap->LookupRemappedIdOrFallback(te_id, target);
 
     auto te = target.EntityById(te_id);
 
@@ -562,7 +563,8 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
       for (auto* sl : sp->links_) {
         __u32 sink_entity_id = sl->desc_.sink.entity;
         if (remap)
-          sink_entity_id = remap->LookupEntityId(sink_entity_id, target);
+          sink_entity_id =
+              remap->LookupRemappedIdOrFallback(sink_entity_id, target);
 
         auto tl = tp->LinkBySinkIds(sink_entity_id, sl->desc_.sink.index);
         if (!tl) {

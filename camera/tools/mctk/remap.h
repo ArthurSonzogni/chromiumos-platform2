@@ -24,26 +24,36 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility> /* std::pair */
 #include <vector>
 
 #include "tools/mctk/mcdev.h"
 #include "tools/mctk/remap.h"
 #include "tools/mctk/yaml_tree.h"
 
+class V4lMcRemapEntry {
+ public:
+  explicit V4lMcRemapEntry(__u32 source_id, std::string target_name)
+      : source_id_(source_id), target_name_(target_name) {}
+
+  __u32 source_id_;
+
+  std::string target_name_;
+};
+
 class V4lMcRemap {
  public:
   /* Public functions */
 
-  std::optional<std::string> LookupEntityName(__u32 in_entity);
-  __u32 LookupEntityId(__u32 in_entity, V4lMcDev& mc_target);
-
   static std::unique_ptr<V4lMcRemap> CreateFromYamlNode(YamlNode& node_remap);
+
+  std::optional<V4lMcRemapEntry> LookupEntry(__u32 source_id);
+  std::optional<__u32> LookupRemappedId(__u32 source_id, V4lMcDev& mc_target);
+  __u32 LookupRemappedIdOrFallback(__u32 source_id, V4lMcDev& mc_target);
 
  private:
   /* Private variables */
 
-  std::vector<std::pair<__u32, std::string>> remap_list_;
+  std::vector<V4lMcRemapEntry> remap_list_;
 };
 
 #endif /* CAMERA_TOOLS_MCTK_REMAP_H_ */
