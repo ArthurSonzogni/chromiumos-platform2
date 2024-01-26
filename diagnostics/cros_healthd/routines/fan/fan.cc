@@ -47,6 +47,9 @@ constexpr auto kUnsupportedModels = base::MakeFixedFlatSet<std::string_view>({
     "yavilla",
     "yavilly",
     "yaviks",
+    "pujjo1e",
+    "faffy",
+    "skyrim6w",
 });
 
 }  // namespace

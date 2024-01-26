@@ -791,7 +791,10 @@ INSTANTIATE_TEST_SUITE_P(,
                                          "yavijo",
                                          "yavilla",
                                          "yavilly",
-                                         "yaviks"));
+                                         "yaviks",
+                                         "pujjo1e",
+                                         "faffy",
+                                         "skyrim6w"));
 
 // Test that the routine is unsupported with denylisted models.
 TEST_P(FanRoutineUnsupportedModelsTest,
