@@ -57,15 +57,15 @@ class BroadcastForwarder {
     net_base::IPv4Address netmask;
   };
 
-  // Bind will create a broadcast socket and return its fd.
-  // This is used for sending broadcasts.
-  virtual base::ScopedFD Bind(const std::string& ifname, uint16_t port);
+  // Creates a broadcast socket which is used for sending broadcasts.
+  virtual std::unique_ptr<net_base::Socket> Bind(const std::string& ifname,
+                                                 uint16_t port);
 
-  // BindRaw will create a broadcast socket that listens to all IP packets.
+  // Creates a broadcast socket that listens to all IP packets.
   // It filters the packets to only broadcast packets that is sent by
   // applications.
   // This is used to listen on broadcasts.
-  virtual base::ScopedFD BindRaw(const std::string& ifname);
+  virtual std::unique_ptr<net_base::Socket> BindRaw(const std::string& ifname);
 
   // SendToNetwork sends |data| using a socket bound to |src_port| and
   // |dev_ifname_| using a temporary socket.
@@ -90,7 +90,7 @@ class BroadcastForwarder {
                          const struct sockaddr_in* dst_addr);
 
   virtual std::unique_ptr<SocketWithIPv4Addr> CreateSocket(
-      base::ScopedFD fd,
+      std::unique_ptr<net_base::Socket> socket,
       const net_base::IPv4Address& addr,
       const net_base::IPv4Address& broadaddr,
       const net_base::IPv4Address& netmask);

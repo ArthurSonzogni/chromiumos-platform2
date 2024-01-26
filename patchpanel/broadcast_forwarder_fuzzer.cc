@@ -33,25 +33,24 @@ class TestBroadcastForwarder : public BroadcastForwarder {
   TestBroadcastForwarder& operator=(const TestBroadcastForwarder&) = delete;
   ~TestBroadcastForwarder() override = default;
 
-  base::ScopedFD Bind(const std::string& ifname, uint16_t port) override {
-    // Make a real socket to satisfy ScopedFD's checks.
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    fds.push_back(fd);
-    return base::ScopedFD(fd);
+  std::unique_ptr<net_base::Socket> Bind(const std::string& ifname,
+                                         uint16_t port) override {
+    std::unique_ptr<net_base::Socket> socket =
+        net_base::Socket::Create(AF_INET, SOCK_DGRAM);
+    fds.push_back(socket->Get());
+    return socket;
   }
 
-  base::ScopedFD BindRaw(const std::string& ifname) override {
-    // Make a real socket to satisfy ScopedFD's checks.
+  std::unique_ptr<net_base::Socket> BindRaw(
+      const std::string& ifname) override {
     return Bind(ifname, 0);
   }
 
   std::unique_ptr<SocketWithIPv4Addr> CreateSocket(
-      base::ScopedFD fd,
+      std::unique_ptr<net_base::Socket> socket,
       const net_base::IPv4Address& addr,
       const net_base::IPv4Address& broadaddr,
       const net_base::IPv4Address& netmask) override {
-    std::unique_ptr<net_base::Socket> socket =
-        net_base::Socket::CreateFromFd(std::move(fd));
     return std::make_unique<SocketWithIPv4Addr>(std::move(socket), addr,
                                                 broadaddr, netmask);
   }

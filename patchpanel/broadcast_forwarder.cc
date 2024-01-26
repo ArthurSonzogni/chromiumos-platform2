@@ -124,12 +124,10 @@ net_base::IPv4Address GetIfreqNetmask(const struct ifreq& ifr) {
 namespace patchpanel {
 
 std::unique_ptr<BroadcastForwarder::SocketWithIPv4Addr>
-BroadcastForwarder::CreateSocket(base::ScopedFD fd,
+BroadcastForwarder::CreateSocket(std::unique_ptr<net_base::Socket> socket,
                                  const net_base::IPv4Address& addr,
                                  const net_base::IPv4Address& broadaddr,
                                  const net_base::IPv4Address& netmask) {
-  std::unique_ptr<net_base::Socket> socket =
-      net_base::Socket::CreateFromFd(std::move(fd));
   socket->SetReadableCallback(
       base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
                           base::Unretained(this), socket->Get()));
@@ -185,45 +183,49 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
     }
     dev_socket_->broadaddr = *broadaddr;
 
-    base::ScopedFD dev_fd(BindRaw(dev_ifname_));
-    if (!dev_fd.is_valid()) {
+    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(dev_ifname_);
+    if (!dev_socket) {
       LOG(WARNING) << "Could not bind socket on " << dev_ifname_;
       return;
     }
-    dev_socket_ = CreateSocket(std::move(dev_fd), dev_socket_->addr,
+    dev_socket_ = CreateSocket(std::move(dev_socket), dev_socket_->addr,
                                dev_socket_->broadaddr, /*netmask=*/{});
   }
 }
 
-base::ScopedFD BroadcastForwarder::Bind(const std::string& ifname,
-                                        uint16_t port) {
-  base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
-  if (!fd.is_valid()) {
+std::unique_ptr<net_base::Socket> BroadcastForwarder::Bind(
+    const std::string& ifname, uint16_t port) {
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::Socket::Create(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  if (!socket) {
     PLOG(ERROR) << "socket() failed for broadcast forwarder on " << ifname
                 << " for port: " << port;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                          net_base::byte_utils::AsBytes(ifr))) {
     PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for broadcast forwarder on "
                 << ifname << " for port: " << port;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   int on = 1;
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_BROADCAST,
+                          net_base::byte_utils::AsBytes(on))) {
     PLOG(ERROR) << "setsockopt(SO_BROADCAST) failed for broadcast forwarder on "
                 << ifname << " for: " << port;
-    return base::ScopedFD();
+    return nullptr;
   }
 
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                          net_base::byte_utils::AsBytes(on))) {
     PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed for broadcast forwarder on "
                 << ifname << " for: " << port;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   struct sockaddr_in bind_addr;
@@ -232,30 +234,31 @@ base::ScopedFD BroadcastForwarder::Bind(const std::string& ifname,
   bind_addr.sin_family = AF_INET;
   bind_addr.sin_port = htons(port);
 
-  if (bind(fd.get(), (const struct sockaddr*)&bind_addr, sizeof(bind_addr)) <
-      0) {
+  if (!socket->Bind(reinterpret_cast<const struct sockaddr*>(&bind_addr),
+                    sizeof(bind_addr))) {
     PLOG(ERROR) << "bind(" << port << ") failed for broadcast forwarder on "
                 << ifname << " for: " << port;
-    return base::ScopedFD();
+    return nullptr;
   }
 
-  return fd;
+  return socket;
 }
 
-base::ScopedFD BroadcastForwarder::BindRaw(const std::string& ifname) {
-  base::ScopedFD fd(
-      socket(AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP)));
-  if (!fd.is_valid()) {
+std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
+    const std::string& ifname) {
+  std::unique_ptr<net_base::Socket> socket = net_base::Socket::Create(
+      AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
+  if (!socket) {
     PLOG(ERROR) << "socket() failed for raw socket";
-    return base::ScopedFD();
+    return nullptr;
   }
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-  if (ioctl(fd.get(), SIOCGIFINDEX, &ifr) < 0) {
+  if (ioctl(socket->Get(), SIOCGIFINDEX, &ifr) < 0) {
     PLOG(ERROR) << "SIOCGIFINDEX failed for " << ifname;
-    return base::ScopedFD();
+    return nullptr;
   }
 
   struct sockaddr_ll bindaddr;
@@ -264,19 +267,20 @@ base::ScopedFD BroadcastForwarder::BindRaw(const std::string& ifname) {
   bindaddr.sll_protocol = htons(ETH_P_IP);
   bindaddr.sll_ifindex = ifr.ifr_ifindex;
 
-  if (bind(fd.get(), (const struct sockaddr*)&bindaddr, sizeof(bindaddr)) < 0) {
+  if (!socket->Bind(reinterpret_cast<const struct sockaddr*>(&bindaddr),
+                    sizeof(bindaddr))) {
     PLOG(ERROR) << "bind() failed for broadcast forwarder on " << ifname;
-    return base::ScopedFD();
+    return nullptr;
   }
 
-  Ioctl(fd.get(), ifname, SIOCGIFBRDADDR, &ifr);
+  Ioctl(socket->Get(), ifname, SIOCGIFBRDADDR, &ifr);
   const auto bcast_addr = GetIfreqBroadaddr(ifr);
 
-  if (!SetBcastSockFilter(fd.get(), bcast_addr)) {
-    return base::ScopedFD();
+  if (!SetBcastSockFilter(socket->Get(), bcast_addr)) {
+    return nullptr;
   }
 
-  return fd;
+  return socket;
 }
 
 bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
@@ -286,40 +290,39 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
     return false;
   }
 
-  base::ScopedFD br_fd(BindRaw(br_ifname));
-  if (!br_fd.is_valid()) {
+  std::unique_ptr<net_base::Socket> socket = BindRaw(br_ifname);
+  if (!socket) {
     LOG(WARNING) << "Could not bind socket on " << br_ifname;
     return false;
   }
 
   struct ifreq ifr;
-  Ioctl(br_fd.get(), br_ifname, SIOCGIFADDR, &ifr);
+  Ioctl(socket->Get(), br_ifname, SIOCGIFADDR, &ifr);
   const auto br_addr = GetIfreqAddr(ifr);
-  Ioctl(br_fd.get(), br_ifname, SIOCGIFBRDADDR, &ifr);
+  Ioctl(socket->Get(), br_ifname, SIOCGIFBRDADDR, &ifr);
   const auto br_broadaddr = GetIfreqBroadaddr(ifr);
-  Ioctl(br_fd.get(), br_ifname, SIOCGIFNETMASK, &ifr);
+  Ioctl(socket->Get(), br_ifname, SIOCGIFNETMASK, &ifr);
   const auto br_netmask = GetIfreqNetmask(ifr);
 
   std::unique_ptr<SocketWithIPv4Addr> br_socket =
-      CreateSocket(std::move(br_fd), br_addr, br_broadaddr, br_netmask);
-
+      CreateSocket(std::move(socket), br_addr, br_broadaddr, br_netmask);
   br_sockets_.emplace(br_ifname, std::move(br_socket));
 
   // Broadcast forwarder is not started yet.
   if (dev_socket_ == nullptr) {
-    base::ScopedFD dev_fd(BindRaw(dev_ifname_));
-    if (!dev_fd.is_valid()) {
+    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(dev_ifname_);
+    if (!dev_socket) {
       LOG(WARNING) << "Could not bind socket on " << dev_ifname_;
       br_sockets_.clear();
       return false;
     }
 
-    Ioctl(dev_fd.get(), dev_ifname_, SIOCGIFADDR, &ifr);
+    Ioctl(dev_socket->Get(), dev_ifname_, SIOCGIFADDR, &ifr);
     const auto dev_addr = GetIfreqAddr(ifr);
-    Ioctl(dev_fd.get(), dev_ifname_, SIOCGIFBRDADDR, &ifr);
+    Ioctl(dev_socket->Get(), dev_ifname_, SIOCGIFBRDADDR, &ifr);
     const auto dev_broadaddr = GetIfreqBroadaddr(ifr);
 
-    dev_socket_ = CreateSocket(std::move(dev_fd), dev_addr, dev_broadaddr,
+    dev_socket_ = CreateSocket(std::move(dev_socket), dev_addr, dev_broadaddr,
                                /*netmask=*/{});
   }
   return true;
@@ -431,8 +434,8 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
                                        const void* data,
                                        size_t len,
                                        const struct sockaddr_in& dst) {
-  base::ScopedFD temp_fd(Bind(dev_ifname_, src_port));
-  if (!temp_fd.is_valid()) {
+  std::unique_ptr<net_base::Socket> temp_socket = Bind(dev_ifname_, src_port);
+  if (!temp_socket) {
     LOG(WARNING) << "Could not bind socket on " << dev_ifname_ << " for port "
                  << src_port;
     return false;
@@ -444,7 +447,7 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
   if (net_base::IPv4Address(dev_dst.sin_addr) != kBcastAddr)
     dev_dst.sin_addr = dev_socket_->broadaddr.ToInAddr();
 
-  if (SendTo(temp_fd.get(), data, len, &dev_dst) < 0) {
+  if (SendTo(temp_socket->Get(), data, len, &dev_dst) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured.
     if (errno != ENETDOWN) {
       PLOG(WARNING) << "sendto() failed";
