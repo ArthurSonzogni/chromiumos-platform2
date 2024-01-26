@@ -19,6 +19,7 @@ use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
+use log::debug;
 use log::info;
 use log::warn;
 
@@ -200,12 +201,14 @@ fn run_lvm_command_output(command: &mut std::process::Command) -> Result<std::pr
             Err(e) => {
                 if let Some(HibernateError::SpawnedProcessError(code)) = e.downcast_ref() {
                     if *code != ECMD_FAILED || start.elapsed() >= timeout {
+                        debug!("execution of '{:?}' failed with code {}", command, *code);
                         return Err(e);
                     }
 
                     // The error might be transient, try again after a short delay.
                     thread::sleep(Duration::from_millis(10));
                 } else {
+                    debug!("execution of '{:?}' failed: {:?}", command, e);
                     return Err(e);
                 }
             }
