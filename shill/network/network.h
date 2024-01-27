@@ -320,7 +320,14 @@ class Network : public NetworkMonitor::ClientNetwork {
   mockable void OnNeighborReachabilityEvent(
       const patchpanel::Client::NeighborReachabilityEvent& event);
 
-  // Updates the network validation mode.
+  // Changes the network validation mode for the current network connection,
+  // and starts or stops network validation accordingly:
+  //   - if validation was disabled and is now enabled, network validation is
+  //   restarted.
+  //   - if validation was currently active and is now disabled, network
+  //   validation is stopped.
+  // Any ValidationMode set for a given network connection does not carry over
+  // to the next network connection.
   mockable void UpdateNetworkValidationMode(
       NetworkMonitor::ValidationMode mode);
   // Starts a new network validation attempt if network validation is enabled.

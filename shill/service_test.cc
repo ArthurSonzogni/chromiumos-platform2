@@ -1420,7 +1420,6 @@ TEST_F(ServiceTest, SetCheckPortal) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kDisabled));
-    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1433,9 +1432,6 @@ TEST_F(ServiceTest, SetCheckPortal) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
-    EXPECT_CALL(*network,
-                StartPortalDetection(
-                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1448,9 +1444,6 @@ TEST_F(ServiceTest, SetCheckPortal) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
-    EXPECT_CALL(*network,
-                StartPortalDetection(
-                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1462,7 +1455,6 @@ TEST_F(ServiceTest, SetCheckPortal) {
   }
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode).Times(0);
-    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetCheckPortal("xxx", &error);
     EXPECT_FALSE(error.IsSuccess());
@@ -1495,7 +1487,6 @@ TEST_F(ServiceTest, SetProxyConfig) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kDisabled));
-    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetProxyConfig("{\"mode\":\"auto_detect\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1508,9 +1499,6 @@ TEST_F(ServiceTest, SetProxyConfig) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
-    EXPECT_CALL(*network,
-                StartPortalDetection(
-                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("{\"mode\":\"direct\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1523,9 +1511,6 @@ TEST_F(ServiceTest, SetProxyConfig) {
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
-    EXPECT_CALL(*network,
-                StartPortalDetection(
-                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -3109,102 +3094,69 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_EQ("", service_->probe_url_string());
 }
 
-TEST_F(ServiceTest, UpdateNetworkValidationWhenServiceNotConnected) {
-  SetStateField(Service::kStateIdle);
-  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillByDefault(Return(true));
-
-  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-  EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
-            service_->GetNetworkValidationMode());
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_EQ(Service::kStateIdle, service_->state());
-}
-
-TEST_F(ServiceTest, UpdateNetworkValidationWhenNoAttachedNetwork) {
-  SetStateField(Service::kStateConnected);
-  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillByDefault(Return(true));
-
-  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-  EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
-            service_->GetNetworkValidationMode());
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_EQ(Service::kStateConnected, service_->state());
-}
-
-TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByTechnology) {
-  SetStateField(Service::kStateConnected);
-  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillByDefault(Return(false));
+TEST_F(ServiceTest, UpdateNetworkValidationMode) {
   auto network =
-      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+      std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+
+  EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
+            service_->GetNetworkValidationMode());
+  EXPECT_CALL(*network, UpdateNetworkValidationMode(
+                            NetworkMonitor::ValidationMode::kFullValidation));
+  service_->UpdateNetworkValidationMode();
+}
+
+TEST_F(ServiceTest, GetNetworkValidationModeWhenDisabledByTechnology) {
+  auto network =
+      std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled).WillByDefault(Return(false));
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
                             NetworkMonitor::ValidationMode::kDisabled));
-  EXPECT_CALL(*network, StopPortalDetection);
-  EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
             service_->GetNetworkValidationMode());
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 
-  service_->network_event_handler()->OnNetworkValidationStop(
-      1, /*is_failure=*/false);
+  service_->UpdateNetworkValidationMode();
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
-TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy) {
+TEST_F(ServiceTest, GetNetworkValidationModeWhenDisabledByProxy) {
   Error error;
   service_->SetProxyConfig("proxyconfiguration", &error);
-  SetStateField(Service::kStateConnected);
-  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillByDefault(Return(true));
   auto network =
-      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+      std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled).WillByDefault(Return(true));
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
                             NetworkMonitor::ValidationMode::kDisabled));
-  EXPECT_CALL(*network, StopPortalDetection);
-  EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
             service_->GetNetworkValidationMode());
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 
-  service_->network_event_handler()->OnNetworkValidationStop(
-      1, /*is_failure=*/false);
+  service_->UpdateNetworkValidationMode();
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
-TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal) {
+TEST_F(ServiceTest, GetNetworkValidationModeWhenDisabledByCheckPortal) {
   Error error;
   service_->SetCheckPortal("false", &error);
-  SetStateField(Service::kStateConnected);
-  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillByDefault(Return(true));
   auto network =
-      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+      std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
   service_->AttachNetwork(network->AsWeakPtr());
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled).WillByDefault(Return(true));
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
                             NetworkMonitor::ValidationMode::kDisabled));
-  EXPECT_CALL(*network, StopPortalDetection);
-  EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
             service_->GetNetworkValidationMode());
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 
-  service_->network_event_handler()->OnNetworkValidationStop(
-      1, /*is_failure=*/false);
+  service_->UpdateNetworkValidationMode();
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3218,16 +3170,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationSucceeds) {
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
                             NetworkMonitor::ValidationMode::kFullValidation));
-  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
-  EXPECT_TRUE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  Mock::VerifyAndClearExpectations(network.get());
-
-  EXPECT_CALL(*network, UpdateNetworkValidationMode(
-                            NetworkMonitor::ValidationMode::kFullValidation));
-  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
-  EXPECT_TRUE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
+  service_->UpdateNetworkValidationMode();
   EXPECT_EQ(Service::kStateConnected, service_->state());
 }
 
@@ -3241,10 +3184,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationFails) {
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
                             NetworkMonitor::ValidationMode::kFullValidation));
-  EXPECT_CALL(*network, StopPortalDetection).Times(0);
-  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(false));
-  EXPECT_FALSE(service_->UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
+  service_->UpdateNetworkValidationMode();
   EXPECT_EQ(Service::kStateConnected, service_->state());
 
   service_->network_event_handler()->OnNetworkValidationStart(

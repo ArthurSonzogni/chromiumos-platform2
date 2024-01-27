@@ -695,25 +695,12 @@ class Service : public base::RefCounted<Service> {
       ResultVariantDictionariesCallback callback);
   // Resets traffic counters for |this|.
   mockable void ResetTrafficCounters(Error* error);
-  // Initiate or reschedule network validation and portal detection if the
-  // following conditions are met:
-  //  - The Service is associated with a connected Network. For Cellular
-  //  Services,
-  //    the default PDN is considered.
-  //  - Network validation is enabled:
-  //    - The Service is not a managed Service.
-  //    - There is no effective proxy configuration defined for this Service (a
-  //      "Direct" configuration is considered as no configuration).
-  //    - The Service's "CheckPortal" property is enabled for the Service, or
-  //    set
-  //      to "auto" and the Manager's "CheckPortalList" property contains the
-  //      link technology of this Service.
-  // When network validation is not enabled and the Service is connected, the
-  // connection state transitions to 'online' immediately. When
-  // network validation is enabled and Network::StartPortalDetection fails, the
-  // connection state transitions to 'no-connectivity'.
-  mockable bool UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason reason);
+
+  // Updates the validation mode of the Network currently attached to this
+  // Service. If the validation mode has changed and the Network is connected,
+  // network validation will restart or stop accordingly. See
+  // Network::RequestNetworkValidation for details.
+  mockable void UpdateNetworkValidationMode();
 
   // Returns the network validation mode for the given Service configuration.
   // This returns kDisabled if any of the following conditions is true:
@@ -972,8 +959,8 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, TrafficCounters);
   FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
-  FRIEND_TEST(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal);
-  FRIEND_TEST(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy);
+  FRIEND_TEST(ServiceTest, GetNetworkValidationModeWhenDisabledByCheckPortal);
+  FRIEND_TEST(ServiceTest, GetNetworkValidationModeWhenDisabledByProxy);
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
   FRIEND_TEST(WiFiProviderTest, GetHiddenSSIDList);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);

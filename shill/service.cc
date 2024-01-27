@@ -2242,8 +2242,7 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
   LOG(INFO) << log_name() << ": " << __func__ << ": " << check_portal_ << " -> "
             << check_portal;
   check_portal_ = check_portal;
-  UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate);
+  UpdateNetworkValidationMode();
   return true;
 }
 
@@ -2342,8 +2341,7 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   LOG(INFO)
       << log_name()
       << ": Restarting network validation after proxy configuration change";
-  UpdateNetworkValidation(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate);
+  UpdateNetworkValidationMode();
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }
@@ -2631,36 +2629,20 @@ void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
   service_metrics_->timers.push_back(std::move(timer));
 }
 
-bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
-  if (!IsConnected()) {
-    LOG(INFO) << log_name() << ": " << __func__
-              << ": Service was not connected.";
-    return false;
-  }
-
+void Service::UpdateNetworkValidationMode() {
   if (!attached_network_) {
-    LOG(ERROR) << log_name() << ": " << __func__
-               << ": Service connected without a Network attached";
-    return false;
+    return;
   }
-
-  attached_network_->UpdateNetworkValidationMode(GetNetworkValidationMode());
-
-  // TODO(b/314693271) Remove logic below once network validation stops or
-  // starts by itself when the validation mode changes.
-
-  // If network validation is disabled for this technology, immediately set
-  // the service state to "Online" and stop network validation if it was
-  // running.
-  if (IsPortalDetectionDisabled()) {
+  const NetworkMonitor::ValidationMode validation_mode =
+      GetNetworkValidationMode();
+  if (validation_mode == NetworkMonitor::ValidationMode::kDisabled) {
+    // If network validation is disabled for this technology, immediately set
+    // the service state to "Online".
     LOG(INFO) << log_name() << ": " << __func__
               << ": Network validation is disabled for this Service";
     SetState(Service::kStateOnline);
-    attached_network_->StopPortalDetection();
-    return false;
   }
-
-  return attached_network_->StartPortalDetection(reason);
+  attached_network_->UpdateNetworkValidationMode(validation_mode);
 }
 
 void Service::NetworkEventHandler::OnNetworkValidationStart(int interface_index,

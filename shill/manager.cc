@@ -2398,8 +2398,7 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
   props_.check_portal_list = portal_list;
   for (const auto& service : services_) {
     if (service->IsConnected()) {
-      service->UpdateNetworkValidation(
-          NetworkMonitor::ValidationReason::kManagerPropertyUpdate);
+      service->UpdateNetworkValidationMode();
     }
   }
   return true;

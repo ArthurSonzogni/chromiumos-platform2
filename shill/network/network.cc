@@ -781,8 +781,24 @@ void Network::OnNeighborReachabilityEvent(
 }
 
 void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
-  if (network_monitor_) {
-    network_monitor_->SetValidationMode(mode);
+  if (!IsConnected()) {
+    LOG(INFO) << *this << ": " << __func__ << ": not possible to set to "
+              << mode << " if the network is not connected";
+    return;
+  }
+  // TODO(b/314693271): Define OnValidationStopped and move this logic inside
+  // NetworkMonitor.
+  const NetworkMonitor::ValidationMode previous_mode =
+      network_monitor_->GetValidationMode();
+  if (previous_mode == mode) {
+    return;
+  }
+  network_monitor_->SetValidationMode(mode);
+  if (previous_mode == NetworkMonitor::ValidationMode::kDisabled) {
+    StartPortalDetection(
+        NetworkMonitor::ValidationReason::kServicePropertyUpdate);
+  } else if (mode == NetworkMonitor::ValidationMode::kDisabled) {
+    StopPortalDetection(/*is_failure=*/false);
   }
 }
 

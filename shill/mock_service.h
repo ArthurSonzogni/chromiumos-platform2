@@ -84,10 +84,7 @@ class MockService : public Service {
               (const ServiceRefPtr&),
               (override));
   MOCK_METHOD(TetheringState, GetTethering, (), (const, override));
-  MOCK_METHOD(bool,
-              UpdateNetworkValidation,
-              (NetworkMonitor::ValidationReason),
-              (override));
+  MOCK_METHOD(void, UpdateNetworkValidationMode, (), (override));
   MOCK_METHOD(void, RequestPortalDetection, (Error * error), (override));
   MOCK_METHOD(NetworkMonitor::ValidationMode,
               GetNetworkValidationMode,

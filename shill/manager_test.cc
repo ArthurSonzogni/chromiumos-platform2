@@ -2536,13 +2536,9 @@ TEST_F(ManagerTest, SetCheckPortalList) {
   ON_CALL(*mock_service0, IsConnected(_)).WillByDefault(Return(true));
   ON_CALL(*mock_service1, IsConnected(_)).WillByDefault(Return(true));
 
-  EXPECT_CALL(*mock_service0,
-              UpdateNetworkValidation(
-                  NetworkMonitor::ValidationReason::kManagerPropertyUpdate));
-  EXPECT_CALL(*mock_service1,
-              UpdateNetworkValidation(
-                  NetworkMonitor::ValidationReason::kManagerPropertyUpdate));
-  EXPECT_CALL(*mock_service2, UpdateNetworkValidation).Times(0);
+  EXPECT_CALL(*mock_service0, UpdateNetworkValidationMode);
+  EXPECT_CALL(*mock_service1, UpdateNetworkValidationMode);
+  EXPECT_CALL(*mock_service2, UpdateNetworkValidationMode).Times(0);
 
   Error error;
   SetCheckPortalList("ethernet,cellular", &error);
