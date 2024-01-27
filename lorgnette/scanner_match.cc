@@ -55,13 +55,18 @@ bool DuplicateScannerExists(const std::string& scanner_name,
 }
 
 lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner) {
-  if (base::StartsWith(scanner.name(), "epson2:net:") ||
-      base::StartsWith(scanner.name(), "epsonds:net:")) {
+  return ConnectionTypeForScanner(scanner.name());
+}
+
+lorgnette::ConnectionType ConnectionTypeForScanner(
+    const std::string& connection_string) {
+  if (base::StartsWith(connection_string, "epson2:net:") ||
+      base::StartsWith(connection_string, "epsonds:net:")) {
     return lorgnette::CONNECTION_NETWORK;
   }
 
-  if (base::StartsWith(scanner.name(), "pixma:") &&
-      !RE2::PartialMatch(scanner.name(), "^pixma:(?i)04A9[0-9A-F]{4}")) {
+  if (base::StartsWith(connection_string, "pixma:") &&
+      !RE2::PartialMatch(connection_string, "^pixma:(?i)04A9[0-9A-F]{4}")) {
     return lorgnette::CONNECTION_NETWORK;
   }
 

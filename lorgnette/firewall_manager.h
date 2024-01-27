@@ -50,6 +50,14 @@ class FirewallManager {
   // Request UDP port access for the specified port.
   virtual PortToken RequestUdpPortAccess(uint16_t port);
 
+  // Request port access if |device_name| corresponds to a SANE backend that
+  // needs the access when connecting to a device. The caller should keep the
+  // returned object alive as long as port access is needed.
+  std::unique_ptr<PortToken> RequestPortAccessIfNeeded(
+      const std::string& device_name);
+
+  base::WeakPtr<FirewallManager> GetWeakPtrForTesting();
+
  private:
   // ReleaseUdpPortAccess() should be private so that users don't free ports
   // they didn't request, but PortToken's destructor needs access to it.
@@ -71,7 +79,7 @@ class FirewallManager {
   // requests, re-issue those requests to permission_broker to get in sync.
   void RequestAllPortsAccess();
 
-  void ReleaseUdpPortAccess(uint16_t port);
+  virtual void ReleaseUdpPortAccess(uint16_t port);
 
   // DBus proxy for permission_broker.
   std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>

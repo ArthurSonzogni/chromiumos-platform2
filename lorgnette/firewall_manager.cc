@@ -15,6 +15,9 @@
 #include <base/functional/bind.h>
 #include <brillo/errors/error.h>
 
+#include "lorgnette/enums.h"
+#include "lorgnette/scanner_match.h"
+
 using std::string;
 
 namespace lorgnette {
@@ -167,6 +170,23 @@ void FirewallManager::SendPortAccessRequest(uint16_t port) {
   requested_ports_[port]++;
   LOG(INFO) << "Access granted for UDP port " << port << " on interface "
             << interface_ << ".  Count is " << requested_ports_[port];
+}
+
+std::unique_ptr<PortToken> FirewallManager::RequestPortAccessIfNeeded(
+    const std::string& device_name) {
+  if (BackendFromDeviceName(device_name) != kPixma) {
+    return std::unique_ptr<PortToken>();
+  }
+
+  if (ConnectionTypeForScanner(device_name) != lorgnette::CONNECTION_NETWORK) {
+    return std::unique_ptr<PortToken>();
+  }
+
+  return std::make_unique<PortToken>(RequestPixmaPortAccess());
+}
+
+base::WeakPtr<FirewallManager> FirewallManager::GetWeakPtrForTesting() {
+  return weak_factory_.GetWeakPtr();
 }
 
 PortToken FirewallManager::RequestUdpPortAccess(uint16_t port) {

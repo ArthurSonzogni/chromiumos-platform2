@@ -84,18 +84,6 @@ base::ScopedFILE SetupOutputFile(brillo::ErrorPtr* error,
   return file;
 }
 
-// Uses |firewall_manager| to request port access if |device_name| corresponds
-// to a SANE backend that needs the access when connecting to a device. The
-// caller should keep the returned object alive as long as port access is
-// needed.
-std::optional<PortToken> RequestPortAccessIfNeeded(
-    const std::string& device_name, FirewallManager* firewall_manager) {
-  if (BackendFromDeviceName(device_name) != kPixma)
-    return std::nullopt;
-
-  return firewall_manager->RequestPixmaPortAccess();
-}
-
 // Converts the |status| to a ScanFailureMode.
 ScanFailureMode GetScanFailureMode(const SANE_Status& status) {
   switch (status) {
@@ -351,8 +339,8 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
     return false;
   }
 
-  std::optional<PortToken> token =
-      RequestPortAccessIfNeeded(device_name, firewall_manager_);
+  std::unique_ptr<PortToken> token =
+      firewall_manager_->RequestPortAccessIfNeeded(device_name);
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, nullptr, device_name);
   if (!device)
@@ -667,8 +655,8 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     return false;
   }
 
-  std::optional<PortToken> token =
-      RequestPortAccessIfNeeded(request.device_name(), firewall_manager_);
+  std::unique_ptr<PortToken> token =
+      firewall_manager_->RequestPortAccessIfNeeded(request.device_name());
 
   // If ConnectToDevice() fails without updating |status|, |status| will be
   // converted to an unknown failure mode.

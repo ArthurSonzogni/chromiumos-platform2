@@ -34,6 +34,8 @@ bool DuplicateScannerExists(const std::string& scanner_name,
 // Detect whether `scanner` represents a USB or network connection based on the
 // SANE connection string.
 lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner);
+lorgnette::ConnectionType ConnectionTypeForScanner(
+    const std::string& connection_string);
 
 // Create a human-readable display name from the info in `scanner`.
 std::string DisplayNameForScanner(const ScannerInfo& scanner);

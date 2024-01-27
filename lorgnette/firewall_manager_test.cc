@@ -461,4 +461,37 @@ TEST_F(FirewallManagerTest, PortTokenMoveConstructor) {
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 }
 
+TEST_F(FirewallManagerTest, RequestPortAccessIfNeeded) {
+  InitFirewallManager();
+
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kCanonBjnpPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+
+  // A pixma scanner requires a port to be opened.  This should return a valid
+  // port.
+  std::unique_ptr<PortToken> token =
+      firewall_manager()->RequestPortAccessIfNeeded("pixma:MF2600_1.2.3.4");
+
+  EXPECT_TRUE(token);
+
+  // FirewallManager should request to release the associated port when `token`
+  // is destroyed.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kCanonBjnpPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+}
+
+TEST_F(FirewallManagerTest, RequestPortAccessNotNeeded) {
+  InitFirewallManager();
+
+  // This should not require a port to be opened.
+  std::unique_ptr<PortToken> token =
+      firewall_manager()->RequestPortAccessIfNeeded("pixma:04A91234_5555");
+
+  EXPECT_FALSE(token);
+}
+
 }  // namespace lorgnette

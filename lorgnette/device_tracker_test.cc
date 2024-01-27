@@ -122,6 +122,7 @@ class MockFirewallManager : public FirewallManager {
       : FirewallManager(interface) {}
 
   MOCK_METHOD(PortToken, RequestUdpPortAccess, (uint16_t), (override));
+  MOCK_METHOD(void, ReleaseUdpPortAccess, (uint16_t), (override));
 };
 
 class DeviceTrackerTest : public testing::Test {
@@ -1046,6 +1047,58 @@ TEST_F(DeviceTrackerTest, OpenScannerSecondClientFails) {
   EXPECT_THAT(response2.config().scanner(), EqualsProto(ScannerHandle()));
 
   EXPECT_EQ(tracker_->NumOpenScanners(), 1);
+}
+
+TEST_F(DeviceTrackerTest, OpenScannerThatRequresFirewall) {
+  const std::string connection_string = "pixma:MF2600_1.2.3.4";
+  CreateFakeScanner(connection_string, "GoogleTest", "Unique VIDPID Scanner",
+                    "USB");
+
+  // Since this is a pixma scanner, the port should get requested when the
+  // scanner is opened.
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillOnce(testing::Return(
+          PortToken(firewall_manager_->GetWeakPtrForTesting(), /*port=*/8612)));
+
+  OpenScannerRequest request1;
+  request1.mutable_scanner_id()->set_connection_string(connection_string);
+  request1.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker_->OpenScanner(request1);
+
+  EXPECT_EQ(tracker_->NumOpenScanners(), 1);
+
+  // The request to close the port should happen when the scanner is closed.
+  EXPECT_CALL(*firewall_manager_, ReleaseUdpPortAccess(8612))
+      .WillOnce(testing::Return());
+
+  CloseScannerRequest request2;
+  *request2.mutable_scanner() = response1.config().scanner();
+  CloseScannerResponse response2 = tracker_->CloseScanner(request2);
+
+  EXPECT_THAT(request2.scanner(), EqualsProto(response2.scanner()));
+  EXPECT_EQ(response2.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_EQ(tracker_->NumOpenScanners(), 0);
+}
+
+TEST_F(DeviceTrackerTest, OpenScannerThatRequresFirewallFails) {
+  // Test the case where the scanner to be opened requires an open firewall
+  // port, but connecting to the scanner fails.  Make sure the port gets
+  // released even though CloseScanner is not called.
+  const std::string connection_string = "pixma:MF2600_1.2.3.4";
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillOnce(testing::Return(
+          PortToken(firewall_manager_->GetWeakPtrForTesting(), /*port=*/8612)));
+
+  EXPECT_CALL(*firewall_manager_, ReleaseUdpPortAccess(8612))
+      .WillOnce(testing::Return());
+
+  OpenScannerRequest request1;
+  request1.mutable_scanner_id()->set_connection_string(connection_string);
+  request1.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse response1 = tracker_->OpenScanner(request1);
+
+  EXPECT_EQ(tracker_->NumOpenScanners(), 0);
 }
 
 TEST_F(DeviceTrackerTest, CloseScannerMissingHandle) {

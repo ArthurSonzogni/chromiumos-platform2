@@ -639,7 +639,9 @@ OpenScannerResponse DeviceTracker::OpenScanner(
   state.start_time = base::Time::Now();
   state.completed_lines = 0;
   state.expected_lines = 0;
-  // TODO(bmgordon): Request the PortToken from the firewall if needed.
+  state.port_token =
+      firewall_manager_->RequestPortAccessIfNeeded(connection_string);
+
   brillo::ErrorPtr error;
   SANE_Status status;
   auto device =
