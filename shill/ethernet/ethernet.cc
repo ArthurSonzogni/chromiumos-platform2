@@ -269,6 +269,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
       .ignore_link_monitoring = service->link_monitor_disabled(),
       .probing_configuration =
           manager()->GetPortalDetectorProbingConfiguration(),
+      .validation_mode = service->GetNetworkValidationMode(),
   };
   GetPrimaryNetwork()->Start(opts);
   SetServiceState(Service::kStateConfiguring);

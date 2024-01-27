@@ -4379,6 +4379,8 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   // from shill APN dB.
   start_opts_.probing_configuration =
       cellular_->manager()->GetPortalDetectorProbingConfiguration();
+  start_opts_.validation_mode =
+      cellular_->service()->GetNetworkValidationMode();
 
   return true;
 }

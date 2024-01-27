@@ -2053,6 +2053,12 @@ bool Service::IsPortalDetectionDisabled() const {
           !manager_->IsPortalDetectionEnabled(technology()));
 }
 
+NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
+  return IsPortalDetectionDisabled()
+             ? NetworkMonitor::ValidationMode::kDisabled
+             : NetworkMonitor::ValidationMode::kFullValidation;
+}
+
 void Service::HelpRegisterDerivedBool(std::string_view name,
                                       bool (Service::*get)(Error* error),
                                       bool (Service::*set)(const bool&, Error*),
@@ -2620,6 +2626,11 @@ bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
                << ": Service connected without a Network attached";
     return false;
   }
+
+  attached_network_->UpdateNetworkValidationMode(GetNetworkValidationMode());
+
+  // TODO(b/314693271) Remove logic below once network validation stops or
+  // starts by itself when the validation mode changes.
 
   // If network validation is disabled for this technology, immediately set
   // the service state to "Online" and stop network validation if it was

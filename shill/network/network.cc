@@ -778,6 +778,12 @@ void Network::OnNeighborReachabilityEvent(
   }
 }
 
+void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
+  if (network_monitor_) {
+    network_monitor_->SetValidationMode(mode);
+  }
+}
+
 bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
     LOG(INFO) << *this << ": " << __func__ << "(" << reason

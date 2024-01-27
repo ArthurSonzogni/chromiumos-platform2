@@ -714,6 +714,16 @@ class Service : public base::RefCounted<Service> {
   mockable bool UpdateNetworkValidation(
       NetworkMonitor::ValidationReason reason);
 
+  // Returns the network validation mode for the given Service configuration.
+  // This returns kDisabled if any of the following conditions is true:
+  //  - The Service is a managed Service.
+  //  - There is a PAC URl or Manual proxy configuration.
+  //  - The Service's "CheckPortal" property is disabled for the Service
+  //  - The Service's "CheckPortal" property is set to "auto" and the Manager's
+  //    "CheckPortalList" property does not contains the link technology of this
+  //    Service.
+  mockable NetworkMonitor::ValidationMode GetNetworkValidationMode();
+
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }
 

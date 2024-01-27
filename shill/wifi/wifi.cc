@@ -2587,6 +2587,7 @@ void WiFi::StateChanged(const std::string& new_state) {
           .ignore_link_monitoring = affected_service->link_monitor_disabled(),
           .probing_configuration =
               manager()->GetPortalDetectorProbingConfiguration(),
+          .validation_mode = affected_service->GetNetworkValidationMode(),
       };
       GetPrimaryNetwork()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
