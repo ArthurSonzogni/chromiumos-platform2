@@ -38,7 +38,6 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_features.h"
@@ -159,6 +158,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_pinweaver_manager(&hwsec_pw_manager_);
+    userdataauth_.set_uss_manager_for_testing(&uss_manager_);
   }
 
   void SetUpHWSecExpectations() {
@@ -1083,6 +1083,46 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   EXPECT_THAT(status, NotOk());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+}
+
+TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenUnmount) {
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  std::string serialized_token =
+      StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
+
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
+
+  // Arrange the vault operations.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, IsActive())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
+      .WillOnce(ReturnError<CryptohomeMountError>());
+  EXPECT_CALL(*user_session, Unmount()).WillOnce(Return(true));
+  EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))));
+  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
+      .WillRepeatedly(Return(true));
+
+  // User authed and exists.
+  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
+      .WillRepeatedly(Return(true));
+  EXPECT_THAT(PreparePersistentVaultImpl(serialized_token).has_error_info(),
+              IsFalse());
+
+  // Ensures that the authsession moves to expiring soon.
+  task_environment_.FastForwardBy(kDefaultTimeAfterAuthenticate -
+                                  base::Seconds(50));
+
+  // Unmount will be successful.
+  auto reply = userdataauth_.Unmount();
+  EXPECT_THAT(reply.has_error_info(), IsFalse());
+  // Ensure that ll times are clear.
+  task_environment_.FastForwardBy(base::Seconds(59));
 }
 
 // Test that RemoveAuthFactor successfully removes the password factor with the

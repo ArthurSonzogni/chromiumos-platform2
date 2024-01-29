@@ -398,6 +398,40 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
+TEST_F(AuthSessionManagerTest, AddRemoveExpringSoon) {
+  base::UnguessableToken token;
+
+  // Create an auth session.
+  token = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                  AuthIntent::kDecrypt);
+
+  // Authenticate the session. It should now have finite timeout.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session->authorized_intents(),
+        UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  }
+
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+  }
+
+  // Ensure that the authsession moves to expiring soon map.
+  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout -
+                                  base::Seconds(59));
+
+  EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
+  // Ensure that expiring soon map's callbacks are called.
+  task_environment_.FastForwardBy(base::Seconds(60));
+}
+
 TEST_F(AuthSessionManagerTest, AddRemoveUser) {
   base::UnguessableToken u1_token = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername,

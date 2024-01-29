@@ -70,15 +70,41 @@ bool AuthSessionManager::RemoveAuthSession(
     const base::UnguessableToken& token) {
   // Remove the session from the expiration map. If we don't find an entry we
   // ignore this and still try to remove the underlying session.
-  for (auto iter = expiration_map_.begin(); iter != expiration_map_.end();
-       ++iter) {
-    if (iter->second == token) {
-      expiration_map_.erase(iter);
-      break;
+  bool auth_session_removed = false;
+  {
+    auto iter = expiration_map_.begin();
+    while (iter != expiration_map_.end()) {
+      if (iter->second == token) {
+        auth_session_removed = true;
+        break;
+      }
+      ++iter;
     }
   }
-  // Find entries for the token in the token and user maps. If any of the
-  // lookups fail we report an error.
+
+  // If the entry wasn't in the expiration map it might be in the expiring soon
+  // map, so check it as well.
+  if (!auth_session_removed) {
+    auto expiring_iter = auth_session_expiring_soon_map_.begin();
+    while (expiring_iter != auth_session_expiring_soon_map_.end()) {
+      if (expiring_iter->second == token) {
+        auth_session_expiring_soon_map_.erase(expiring_iter);
+        auth_session_removed = true;
+        break;
+      }
+      ++expiring_iter;
+    }
+  }
+
+  if (!auth_session_removed) {
+    return false;
+  }
+
+  // In case anything is removed, reset the timer. If nothing is removed, it'll
+  // just reset the timer and would essentially be a no-op.
+  ResetExpirationTimer();
+  // Find entries for the token in the token and user
+  // maps. If any of the lookups fail we report an error.
   auto token_iter = token_to_user_.find(token);
   if (token_iter == token_to_user_.end()) {
     return false;
@@ -136,6 +162,15 @@ void AuthSessionManager::RemoveUserAuthSessions(
       ++iter;
     }
   }
+
+  for (auto iter = auth_session_expiring_soon_map_.begin();
+       iter != auth_session_expiring_soon_map_.end();) {
+    if (tokens_being_removed.contains(iter->second)) {
+      iter = auth_session_expiring_soon_map_.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
   ResetExpirationTimer();
 }
 
@@ -143,6 +178,7 @@ void AuthSessionManager::RemoveAllAuthSessions() {
   token_to_user_.clear();
   user_auth_sessions_.clear();
   expiration_map_.clear();
+  auth_session_expiring_soon_map_.clear();
   ResetExpirationTimer();
 }
 
@@ -359,15 +395,18 @@ void AuthSessionManager::ExpireAuthSessions() {
          (first_entry || iter->first <= now)) {
     auto token_iter = token_to_user_.find(iter->second);
     if (token_iter == token_to_user_.end()) {
-      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+      LOG(FATAL) << "token_iter: AuthSessionManager expired a session it is "
+                    "not managing";
     }
     auto user_iter = user_auth_sessions_.find(token_iter->second);
     if (user_iter == user_auth_sessions_.end()) {
-      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+      LOG(FATAL) << "user_iter:AuthSessionManager expired a session it "
+                    "is not managing";
     }
     auto session_iter = user_iter->second.auth_sessions.find(iter->second);
     if (session_iter == user_iter->second.auth_sessions.end()) {
-      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+      LOG(FATAL) << "session_iter:AuthSessionManager expired a session it is "
+                    "not managing";
     }
     if (session_iter->second == nullptr) {
       user_iter->second.zombie_session = iter->second;

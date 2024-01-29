@@ -433,38 +433,41 @@ class UserDataAuth {
     return auth_factor_manager_;
   }
 
-  // Override |crypto_| for testing purpose
+  // Override |crypto_| for testing purpose.
   void set_crypto(Crypto* crypto) { crypto_ = crypto; }
 
-  // Override |keyset_management_| for testing purpose
+  // Override |keyset_management_| for testing purpose.
   void set_keyset_management(KeysetManagement* value) {
     keyset_management_ = value;
   }
 
-  // Override |keyset_management_| for testing purpose
+  // Override |keyset_management_| for testing purpose.
   void set_auth_block_utility(AuthBlockUtility* value) {
     auth_block_utility_ = value;
   }
 
-  // Override |auth_factor_driver_manager_| for testing purpose
+  // Override |auth_factor_driver_manager_| for testing purpose.
   void set_auth_factor_driver_manager_for_testing(
       AuthFactorDriverManager* value) {
     auth_factor_driver_manager_ = value;
   }
 
-  // Override |auth_factor_manager_| for testing purpose
+  // Override |auth_factor_manager_| for testing purpose.
   void set_auth_factor_manager_for_testing(AuthFactorManager* value) {
     auth_factor_manager_ = value;
   }
 
-  // Override |uss_storage_| for testing purpose
+  // Override |uss_storage_| for testing purpose.
   void set_uss_storage_for_testing(UssStorage* value) { uss_storage_ = value; }
+
+  // Override |uss_manager_| for testing purpose.
+  void set_uss_manager_for_testing(UssManager* value) { uss_manager_ = value; }
 
   void set_user_session_map_for_testing(UserSessionMap* user_session_map) {
     sessions_ = user_session_map;
   }
 
-  // Override |auth_session_manager_| for testing purpose
+  // Override |auth_session_manager_| for testing purpose.
   void set_auth_session_manager(AuthSessionManager* value) {
     auth_session_manager_ = value;
   }
@@ -474,132 +477,132 @@ class UserDataAuth {
     user_activity_timestamp_manager_ = user_activity_timestamp_manager;
   }
 
-  // Override |vault_factory_| for testing purpose
+  // Override |vault_factory_| for testing purpose.
   void set_vault_factory_for_testing(CryptohomeVaultFactory* vault_factory) {
     vault_factory_ = vault_factory;
   }
 
-  // Override |homedirs_| for testing purpose
+  // Override |homedirs_| for testing purpose.
   void set_homedirs(HomeDirs* homedirs) { homedirs_ = homedirs; }
 
-  // Override |hwsec_factory_| for testing purpose
+  // Override |hwsec_factory_| for testing purpose.
   void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
     hwsec_factory_ = hwsec_factory;
   }
 
-  // Override |hwsec_| for testing purpose
+  // Override |hwsec_| for testing purpose.
   void set_hwsec(const hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
 
-  // Override |hwsec_pw_manager| for testing purpose
+  // Override |hwsec_pw_manager| for testing purpose.
   void set_pinweaver_manager(
       const hwsec::PinWeaverManagerFrontend* pw_manager) {
     hwsec_pw_manager_ = pw_manager;
   }
 
-  // Override |recovery_crypto| for testing purpose
+  // Override |recovery_crypto| for testing purpose.
   void set_recovery_crypto(
       const hwsec::RecoveryCryptoFrontend* recovery_crypto) {
     recovery_crypto_ = recovery_crypto;
   }
 
-  // Override |cryptohome_keys_manager_| for testing purpose
+  // Override |cryptohome_keys_manager_| for testing purpose.
   void set_cryptohome_keys_manager(
       CryptohomeKeysManager* cryptohome_keys_manager) {
     cryptohome_keys_manager_ = cryptohome_keys_manager;
   }
 
-  // Override |platform_| for testing purpose
+  // Override |platform_| for testing purpose.
   void set_platform(Platform* platform) { platform_ = platform; }
 
-  // override |chaps_client_| for testing purpose
+  // override |chaps_client_| for testing purpose.
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
     chaps_client_ = chaps_client;
   }
 
-  // Override |install_attrs_| for testing purpose
+  // Override |install_attrs_| for testing purpose.
   void set_install_attrs(InstallAttributesInterface* install_attrs) {
     install_attrs_ = install_attrs;
   }
 
-  // Override |pkcs11_init_| for testing purpose
+  // Override |pkcs11_init_| for testing purpose.
   void set_pkcs11_init(Pkcs11Init* pkcs11_init) { pkcs11_init_ = pkcs11_init; }
 
-  // Override |pkcs11_token_factory_| for testing purpose
+  // Override |pkcs11_token_factory_| for testing purpose.
   void set_pkcs11_token_factory(Pkcs11TokenFactory* pkcs11_token_factory) {
     pkcs11_token_factory_ = pkcs11_token_factory;
   }
 
-  // Override |firmware_management_parameters_| for testing purpose
+  // Override |firmware_management_parameters_| for testing purpose.
   void set_firmware_management_parameters(
       FirmwareManagementParametersInterface* fwmp) {
     firmware_management_parameters_ = fwmp;
   }
 
-  // Override |fingerprint_manager_| for testing purpose
+  // Override |fingerprint_manager_| for testing purpose.
   void set_fingerprint_manager(FingerprintManager* fingerprint_manager) {
     fingerprint_manager_ = fingerprint_manager;
   }
 
-  // Override |biometrics_service_| for testing purpose
+  // Override |biometrics_service_| for testing purpose.
   void set_biometrics_service(BiometricsAuthBlockService* biometrics_service) {
     biometrics_service_ = biometrics_service;
   }
 
-  // Override |key_store_cert_provider_| for testing purpose
+  // Override |key_store_cert_provider_| for testing purpose.
   void set_key_store_cert_provider(
       RecoverableKeyStoreBackendCertProvider* key_store_cert_provider) {
     key_store_cert_provider_ = key_store_cert_provider;
   }
 
-  // Override |mount_factory_| for testing purpose
+  // Override |mount_factory_| for testing purpose.
   void set_mount_factory_for_testing(MountFactory* mount_factory) {
     mount_factory_ = mount_factory;
   }
 
-  // Override |user_session_factory_| for testing purpose
+  // Override |user_session_factory_| for testing purpose.
   void set_user_session_factory(UserSessionFactory* user_session_factory) {
     user_session_factory_ = user_session_factory;
   }
 
-  // Override |challenge_credentials_helper_| for testing purpose
+  // Override |challenge_credentials_helper_| for testing purpose.
   void set_challenge_credentials_helper(
       ChallengeCredentialsHelper* challenge_credentials_helper) {
     challenge_credentials_helper_ = challenge_credentials_helper;
   }
 
-  // Override |key_challenge_service_factory_| for testing purpose
+  // Override |key_challenge_service_factory_| for testing purpose.
   void set_key_challenge_service_factory(
       KeyChallengeServiceFactory* key_challenge_service_factory) {
     key_challenge_service_factory_ = key_challenge_service_factory;
   }
 
-  // Override |origin_task_runner_| for testing purpose
+  // Override |origin_task_runner_| for testing purpose.
   void set_origin_task_runner(
       scoped_refptr<base::SingleThreadTaskRunner> origin_task_runner) {
     origin_task_runner_ = origin_task_runner;
   }
 
-  // Override |mount_task_runner_| for testing purpose
+  // Override |mount_task_runner_| for testing purpose.
   void set_mount_task_runner(
       scoped_refptr<base::SingleThreadTaskRunner> mount_task_runner) {
     mount_task_runner_ = mount_task_runner;
   }
 
-  // Override |low_disk_space_handler_| for testing purpose
+  // Override |low_disk_space_handler_| for testing purpose.
   void set_low_disk_space_handler(LowDiskSpaceHandler* low_disk_space_handler) {
     low_disk_space_handler_ = low_disk_space_handler;
   }
 
   void set_features(Features* features) { features_ = features; }
 
-  // Retrieve the session associated with the given user, for testing purpose
+  // Retrieve the session associated with the given user, for testing purpose.
   // only.
   UserSession* FindUserSessionForTest(const Username& username) {
     return sessions_->Find(username);
   }
 
   // Associate a particular session object |session| with the username
-  // |username| for testing purpose
+  // |username| for testing purpose.
   bool AddUserSessionForTest(const Username& username,
                              std::unique_ptr<UserSession> session) {
     return sessions_->Add(username, std::move(session));
@@ -1208,7 +1211,10 @@ class UserDataAuth {
   // for tests.
   UssStorage* uss_storage_ = nullptr;
   // Manages all of the loaded USS objects.
-  std::unique_ptr<UssManager> uss_manager_;
+  std::unique_ptr<UssManager> default_uss_manager_;
+  // Usually set to |default_uss_manager_|, but can be overridden
+  // for tests.
+  UssManager* uss_manager_ = nullptr;
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.

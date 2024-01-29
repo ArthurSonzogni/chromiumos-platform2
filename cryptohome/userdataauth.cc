@@ -844,19 +844,20 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     uss_storage_ = default_uss_storage_.get();
   }
   if (!uss_manager_) {
-    uss_manager_ = std::make_unique<UssManager>(*uss_storage_);
+    default_uss_manager_ = std::make_unique<UssManager>(*uss_storage_);
+    uss_manager_ = default_uss_manager_.get();
   }
 
   if (!auth_factor_manager_) {
     default_auth_factor_manager_ = std::make_unique<AuthFactorManager>(
-        platform_, keyset_management_, uss_manager_.get());
+        platform_, keyset_management_, uss_manager_);
     auth_factor_manager_ = default_auth_factor_manager_.get();
   }
 
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
-            platform_, crypto_, uss_manager_.get(), async_cc_helper,
+            platform_, crypto_, uss_manager_, async_cc_helper,
             key_challenge_service_factory_, fingerprint_service_.get(),
             async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
@@ -867,7 +868,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, uss_storage_, uss_manager_.get(),
+            auth_factor_manager_, uss_storage_, uss_manager_,
             &async_init_features_, async_signalling,
             async_key_store_cert_provider});
     auth_session_manager_ = default_auth_session_manager_.get();
