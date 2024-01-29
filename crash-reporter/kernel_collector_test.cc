@@ -10,14 +10,17 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
+using base::StrCat;
 using base::StringPrintf;
 using brillo::FindLog;
 using brillo::GetLog;
@@ -45,6 +48,7 @@ class KernelCollectorTest : public ::testing::Test {
   const FilePath& eventlog_file() const { return test_eventlog_; }
   const FilePath& bios_log_file() const { return test_bios_log_; }
   const FilePath& kcrash_file() const { return test_kcrash_; }
+  const FilePath& corrupt_kcrash_file() const { return test_corrupt_kcrash_; }
   const FilePath& efikcrash_file(int part) const {
     return test_efikcrash_[part];
   }
@@ -74,6 +78,8 @@ class KernelCollectorTest : public ::testing::Test {
                            1));
       ASSERT_FALSE(base::PathExists(test_efikcrash_[i]));
     }
+    test_corrupt_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0.enc.z");
+    ASSERT_FALSE(base::PathExists(test_corrupt_kcrash_));
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_kcrash_));
 
@@ -104,6 +110,7 @@ class KernelCollectorTest : public ::testing::Test {
   FilePath test_eventlog_;
   FilePath test_bios_log_;
   FilePath test_kcrash_;
+  FilePath test_corrupt_kcrash_;
   FilePath test_efikcrash_[kMaxEfiParts];
   FilePath test_crash_directory_;
   FilePath test_bootstatus_;
@@ -194,6 +201,23 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   ASSERT_TRUE(test_util::CreateFile(kcrash_file(), large));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
+}
+
+TEST_F(KernelCollectorTest, LoadCorruptDump) {
+  ASSERT_FALSE(base::PathExists(corrupt_kcrash_file()));
+  std::string dump;
+  dump.clear();
+
+  ASSERT_TRUE(test_util::CreateFile(corrupt_kcrash_file(),
+                                    "A bunch of binary \x1\x2\x3\x4 ..."));
+  ASSERT_TRUE(collector_.LoadParameters());
+  ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
+
+  ASSERT_EQ(StrCat({constants::kCorruptRamoops,
+                    "A bunch of binary \x1\x2\x3\x4 ..."}),
+            dump);
+
+  ASSERT_FALSE(base::PathExists(corrupt_kcrash_file()));
 }
 
 TEST_F(KernelCollectorTest, LoadBiosLog) {

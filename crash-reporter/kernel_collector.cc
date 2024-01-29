@@ -50,6 +50,9 @@ constexpr char kDumpDriverEfiName[] = "efi";
 // The files take the form <record type>-<driver name>-<record id>.
 // e.g. console-ramoops-0 or dmesg-ramoops-0.
 constexpr char kDumpNameFormat[] = "%s-%s-%zu";
+// If the kernel had trouble decoding the record then it will be raw
+// (compressed) and end in ".enc.z"
+constexpr char kCorruptDumpNameFormat[] = "%s-%s-%zu.enc.z";
 
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 constexpr char kEventNameBoot[] = "System boot";
@@ -133,7 +136,15 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
   }
 
   *record_found = false;
-  if (RE2::FullMatch(record, record_re, &captured)) {
+  if (record_path.value().ends_with("enc.z")) {
+    // The kernel identified this as a compressed dump but was unable to
+    // decompress. We'll still upload this in case someone can figure something
+    // useful out of it. We'll prepend a warning, though.
+    LOG(WARNING) << "Kernel couldn't decode ramoops at " << record_path.value();
+    contents->append(constants::kCorruptRamoops);
+    contents->append(record);
+    *record_found = true;
+  } else if (RE2::FullMatch(record, record_re, &captured)) {
     // Found a ramoops header, so strip the header and append the rest.
     contents->append(captured);
     *record_found = true;
@@ -160,7 +171,21 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
 FilePath KernelCollector::GetDumpRecordPath(const char* type,
                                             const char* driver,
                                             size_t record) {
-  return dump_path_.Append(StringPrintf(kDumpNameFormat, type, driver, record));
+  FilePath record_path =
+      dump_path_.Append(StringPrintf(kDumpNameFormat, type, driver, record));
+
+  if (!base::PathExists(record_path)) {
+    // If the path wasn't found, check to see if the kernel exported it raw
+    // to us because it couldn't decode it. We'll still read/upload it, but
+    // code that runs later in the collection process will warn about it.
+    FilePath corrupt_record_path = dump_path_.Append(
+        StringPrintf(kCorruptDumpNameFormat, type, driver, record));
+    if (base::PathExists(corrupt_record_path)) {
+      return corrupt_record_path;
+    }
+  }
+
+  return record_path;
 }
 
 bool KernelCollector::LoadParameters() {

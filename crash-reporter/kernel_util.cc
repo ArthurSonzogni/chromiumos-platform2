@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 using base::StringPrintf;
@@ -360,6 +361,10 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
   unsigned stack_hash = 0;
   std::string crash_tag;
   std::string human_string;
+
+  if (kernel_dump.starts_with(constants::kCorruptRamoops)) {
+    return "kernel-CorruptDump";
+  }
 
   if (!ProcessStackTrace(kernel_dump, arch, &stack_hash, &human_string,
                          &crash_tag)) {

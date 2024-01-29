@@ -5,9 +5,13 @@
 #include "crash-reporter/kernel_util.h"
 
 #include <base/files/file_util.h>
+#include <base/strings/strcat.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/test_util.h"
+
+using base::StrCat;
 
 namespace {
 
@@ -37,6 +41,13 @@ void ComputeKernelStackSignatureCommon(kernel_util::ArchKind arch) {
       "01234567890123456789X\n";
   EXPECT_EQ("kernel-0123456789012345678901234567890123456789-00000000",
             kernel_util::ComputeKernelStackSignature(kTruncatedMessage, arch));
+
+  // Corrupt dump.
+  std::string kCorruptDump =
+      StrCat({constants::kCorruptRamoops,
+              "Some other stuff, maybe with binary data \x1\x2\x3\x4"});
+  EXPECT_EQ("kernel-CorruptDump",
+            kernel_util::ComputeKernelStackSignature(kCorruptDump, arch));
 }
 
 }  // namespace
