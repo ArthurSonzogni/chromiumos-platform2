@@ -32,7 +32,6 @@ class PoliciesFeaturesBrokerInterface
     kCrOSLateBootSecagentdCoalesceTerminates,
     kCrOSLateBootSecagentdXDRNetworkEvents,
     kCrOSLateBootSecagentdXDRAuthenticateEvents,
-    kCrOSLateBootSecagentdXDRAuthenticateEventsControl,
     kCrosLateBootSecagentdXDRStopReportingForUnaffiliated,
   };
 
