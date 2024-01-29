@@ -1708,6 +1708,11 @@ message MountCompleted {
   // Unique ID associated with the mount operation. Will match the ID of the
   // corresponding start signal.
   uint64 operation_id = 1;
+
+  // Populated with error information in the case that the mount operation
+  // fails. On success these fields will be left unset.
+  CryptohomeErrorCode error = 2;
+  CryptohomeErrorInfo error_info = 3;
 }
 
 // The message sent in signal EvictedKeyRestoreSignal
