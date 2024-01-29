@@ -40,6 +40,14 @@ class ReclaimBrokerTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(base::CreateTemporaryFile(&local_mglru_));
 
+    // Setup some simple local MGLRU stats so Local context initialization is
+    // handled properly.
+    MglruStats host_stats;
+    MglruMemcg* cg = AddMemcg(&host_stats, 1);
+    MglruNode* node = AddNode(cg, 1);
+    AddGeneration(node, 1, 17, 0, 10);
+    SetupLocalMglruStats(host_stats);
+
     std::unique_ptr<FakeReclaimServer> reclaim_server =
         std::make_unique<FakeReclaimServer>();
 
@@ -130,13 +138,14 @@ TEST_F(ReclaimBrokerTest, TestAdjacentGenProportion) {
   AddGeneration(node, 1, 20, 20, 20);
   AddGeneration(node, 2, 5, 20, 20);
 
-  client_connection_handler_.Run(guest_1);
-
   reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
+
+  client_connection_handler_.Run(guest_1);
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
+  // One request during initialization and then one for the event.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 2);
   ASSERT_EQ(reclaim_server_->stats_requests_.back(), guest_1.cid);
 
   // The host's oldest generation is 10, so none of the guest's 2nd
@@ -162,13 +171,14 @@ TEST_F(ReclaimBrokerTest, TestHostGenOneClient) {
   node = AddNode(cg, 1);
   AddGeneration(node, 1, 20, 10, 10);
 
-  client_connection_handler_.Run(guest_1);
-
   reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
+
+  client_connection_handler_.Run(guest_1);
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
+  // One request during initialization and then one for the event.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 2);
   ASSERT_EQ(reclaim_server_->stats_requests_.back(), guest_1.cid);
 
   // The host's oldest generation is age 13, which means that all generations
@@ -203,6 +213,7 @@ TEST_F(ReclaimBrokerTest, TestMultipleCgsAndNodes) {
   node = AddNode(cg, 2);
   AddGeneration(node, 2, 17, 0, 30);
 
+  reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
   client_connection_handler_.Run(guest_1);
 
   // Local stats should be read from the MGLRU file directly
@@ -246,6 +257,7 @@ TEST_F(ReclaimBrokerTest, TestMultipleGenerations) {
   AddGeneration(node, 8, 8, 10, 10);
   AddGeneration(node, 9, 6, 10, 10);
 
+  reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
   client_connection_handler_.Run(guest_1);
 
   // Local stats should be read from the MGLRU file directly
@@ -254,8 +266,9 @@ TEST_F(ReclaimBrokerTest, TestMultipleGenerations) {
   new_generation_notification_.Run(guest_1.cid, guest_stats);
 
   // Since there is only one guest and it is the one sending the new generation
-  // event no other stats should be requested
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 0);
+  // event no other stats should be requested besides the first request during
+  // connection.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
 
   // The host's oldest generation is 13, and the guest has 50kb + 4kb file
   // older than 13
@@ -279,6 +292,7 @@ TEST_F(ReclaimBrokerTest, TestGuestGenOneGuest) {
   AddGeneration(node, 1, 5, 10, 10);
   AddGeneration(node, 2, 1, 10, 10);
 
+  reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
   client_connection_handler_.Run(guest_1);
 
   // Local stats should be read from the MGLRU file directly
@@ -287,8 +301,9 @@ TEST_F(ReclaimBrokerTest, TestGuestGenOneGuest) {
   new_generation_notification_.Run(guest_1.cid, guest_stats);
 
   // Since there is only one guest and it is the one sending the new generation
-  // event no other stats should be requested
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 0);
+  // event no other stats should be requested besides the first request during
+  // connection.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
 
   // Only file should be counted for both the host and guest, and since the
   // oldest gen of the guest is age 5: (13 - 5) / 13 * (100) = 61
@@ -318,17 +333,17 @@ TEST_F(ReclaimBrokerTest, TestHostGenMultipleGuests) {
   AddGeneration(node, 1, 10, 0, 10);
   AddGeneration(node, 2, 1, 0, 10);
 
-  client_connection_handler_.Run(guest_1);
-  client_connection_handler_.Run(guest_2);
-
   reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
   reclaim_server_->mglru_stats_[guest_2.cid] = guest2_stats;
+  client_connection_handler_.Run(guest_1);
+  client_connection_handler_.Run(guest_2);
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
   // Since a new generation event was received from the host, the reclaim broker
-  // should have requested stats from each of the guests.
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 2);
+  // should have requested stats from each of the guests, plus each of the stats
+  // requests during the clients' connections.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 4);
 
   // Check that stats from both VM CIDs were requested.
   ASSERT_EQ(reclaim_server_->stats_requests_.front(), guest_1.cid);
@@ -370,20 +385,21 @@ TEST_F(ReclaimBrokerTest, TestGuestGenMultipleGuests) {
   AddGeneration(node, 1, 10, 10, 10);
   AddGeneration(node, 2, 1, 10, 10);
 
+  reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
+  reclaim_server_->mglru_stats_[guest_2.cid] = guest2_stats;
+
   client_connection_handler_.Run(guest_1);
   client_connection_handler_.Run(guest_2);
 
   // Local stats should be read from the MGLRU file directly
   SetupLocalMglruStats(host_stats);
 
-  reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
-  reclaim_server_->mglru_stats_[guest_2.cid] = guest2_stats;
-
   new_generation_notification_.Run(guest_2.cid, guest2_stats);
 
   // Since the event was triggered by a guest generation, only the other guest's
-  // stats should be requested
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
+  // stats should be requested plus each of the stats requests during the
+  // clients' connections.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 3);
   ASSERT_EQ(reclaim_server_->stats_requests_.front(), guest_1.cid);
 
   ASSERT_EQ(reclaim_events_.size(), 1);
@@ -396,6 +412,9 @@ TEST_F(ReclaimBrokerTest, TestGuestGenMultipleGuests) {
 }
 
 TEST_F(ReclaimBrokerTest, TestRemoveVm) {
+  reclaim_server_->mglru_stats_[guest_1.cid] = {};
+  reclaim_server_->mglru_stats_[guest_2.cid] = {};
+
   client_connection_handler_.Run(guest_1);
   client_connection_handler_.Run(guest_2);
 
@@ -419,9 +438,9 @@ TEST_F(ReclaimBrokerTest, TestRemoveVm) {
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
   // Since guest_1 is disconnected, only stats from guest 2 should have been
-  // requested.
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
-  ASSERT_EQ(reclaim_server_->stats_requests_.front(), guest_2.cid);
+  // requested in addition to the two requests during their initial connections.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 3);
+  ASSERT_EQ(reclaim_server_->stats_requests_[2], guest_2.cid);
 
   ASSERT_EQ(reclaim_events_.size(), 1);
   BalloonBroker::ReclaimOperation& reclaim_event = reclaim_events_.back();
@@ -478,6 +497,7 @@ TEST_F(ReclaimBrokerTest, TestReclaimThreshold) {
 }
 
 TEST_F(ReclaimBrokerTest, TestAllBalloonsBlockedDoesNotReclaim) {
+  reclaim_server_->mglru_stats_[guest_1.cid] = {};
   client_connection_handler_.Run(guest_1);
 
   // Set the lowest blocked priority to cached app. At this priority, nothing
@@ -486,7 +506,8 @@ TEST_F(ReclaimBrokerTest, TestAllBalloonsBlockedDoesNotReclaim) {
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, {});
 
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 0);
+  // Only stats request should be the one made during the client's connection.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
   ASSERT_EQ(reclaim_events_.size(), 0);
 }
 
@@ -502,13 +523,15 @@ TEST_F(ReclaimBrokerTest, TestReclaimIntervalRespected) {
   node = AddNode(cg, 1);
   AddGeneration(node, 1, 20, 10, 10);
 
-  client_connection_handler_.Run(guest_1);
-
   reclaim_server_->mglru_stats_[guest_1.cid] = guest_stats;
+
+  client_connection_handler_.Run(guest_1);
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
-  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 1);
+  // One stats request during connection, and another on the new generation
+  // event.
+  ASSERT_EQ(reclaim_server_->stats_requests_.size(), 2);
   ASSERT_EQ(reclaim_server_->stats_requests_.back(), guest_1.cid);
 
   ASSERT_EQ(reclaim_events_.size(), 1);

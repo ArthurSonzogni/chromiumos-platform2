@@ -336,6 +336,14 @@ void ReclaimBroker::OnNewLocalMglruGeneration(bool success) {
 void ReclaimBroker::RegisterNewContext(int cid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (contexts_.find(cid) == contexts_.end()) {
+    // First check that the client can supply valid stats.
+    std::optional<MglruStats> stats = GetMglruStats(cid);
+
+    if (!stats) {
+      LOG(ERROR) << "Failed to get valid stats for new context: " << cid;
+      return;
+    }
+
     LOG(INFO) << "ReclaimBroker new Context: " << cid;
     contexts_.emplace(cid);
   }
