@@ -276,6 +276,9 @@ const std::array kCommandLogs {
   Log{kCommand, "folder_size_dump",
     "/usr/libexec/debugd/helpers/folder_size_dump --system",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
+  Log{kCommand, "folder_size_dump_user",
+    "/usr/libexec/debugd/helpers/folder_size_dump --user",
+    kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
   Log{kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
   Log{kGlob, "framebuffer", "/sys/kernel/debug/dri/?/framebuffer",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -464,10 +467,6 @@ const std::array kExtraLogs {
     "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
   Log{kCommand, "network-devices", "/usr/bin/connectivity show devices"},
   Log{kCommand, "network-services", "/usr/bin/connectivity show services"},
-  // This includes unfiltered user PII, so do not include in feedback reports.
-  Log{kCommand, "user_folder_size_dump",
-    "/usr/libexec/debugd/helpers/folder_size_dump --user",
-    kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
 };
 // clang-format on
 

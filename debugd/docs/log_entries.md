@@ -302,6 +302,13 @@ The output of the `df` command is available separately for comparison.
 0 sized entries are filtered out to reduce the size of the report, this does not
 provide a complete folder contents listing.
 
+## folder_size_dump_user
+
+The folder_size_dump helper dumps the actual disk usage (in bytes) of top level
+user directories
+`du --human-readable --total --summarize --one-file-system`.
+The output of the `df` command is available separately for comparison.
+
 ## font_info
 
 ## framebuffer

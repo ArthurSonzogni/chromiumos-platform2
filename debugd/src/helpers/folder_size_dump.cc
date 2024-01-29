@@ -108,7 +108,9 @@ bool FilterNone(const std::string&) {
   return true;
 }
 
-bool DumpDirectory(const DirAdder& entry, bool one_filesystem) {
+bool DumpDirectory(const DirAdder& entry,
+                   bool one_filesystem,
+                   bool skip_errors = false) {
   std::vector<std::string> du_argv{"du", "--human-readable", "--total",
                                    "--summarize"};
 
@@ -129,7 +131,16 @@ bool DumpDirectory(const DirAdder& entry, bool one_filesystem) {
 
   // Get the output of du.
   std::string output;
-  if (!base::GetAppOutputAndError(base::CommandLine(du_argv), &output)) {
+  bool dump_success;
+
+  if (skip_errors) {
+    dump_success = base::GetAppOutput(base::CommandLine(du_argv), &output);
+  } else {
+    dump_success =
+        base::GetAppOutputAndError(base::CommandLine(du_argv), &output);
+  }
+
+  if (!dump_success) {
     DLOG(ERROR) << "Failed to generate directory dump for: " << entry.GetPath();
     return false;
   }
@@ -185,7 +196,8 @@ bool DumpDaemonStore() {
   for (const auto& entry : daemon_paths) {
     // Ignore errors for unmounted users.
     DumpDirectory(DirAdder(entry.c_str(), FilterNone, true),
-                  /* one_filesystem=*/false);
+                  /* one_filesystem=*/false,
+                  /* skip_errors=*/true);
   }
 
   return result;
@@ -296,7 +308,8 @@ bool DumpUserDirectories() {
   }
 
   std::cout << "--- User directory ---" << std::endl;
-  if (!DumpDirectory(kUserDir, /* one_filesystem=*/false)) {
+  if (!DumpDirectory(kUserDir, /* one_filesystem=*/false,
+                     /* skip_errors=*/true)) {
     result = false;
   }
 
