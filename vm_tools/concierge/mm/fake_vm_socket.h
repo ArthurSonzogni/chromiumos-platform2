@@ -20,6 +20,7 @@ class FakeVmSocket : public VmSocket {
   bool Listen(int port, size_t backlog_size) override;
   bool Connect(int port) override;
   base::ScopedFD Accept(int& connected_cid) override;
+  bool WaitForReadable(base::TimeDelta timeout) override;
   bool OnReadable(const base::RepeatingClosure& callback) override;
   bool ReadPacket(VmMemoryManagementPacket& packet) override;
   bool WritePacket(const VmMemoryManagementPacket& packet) override;

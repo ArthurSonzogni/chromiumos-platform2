@@ -35,6 +35,11 @@ std::optional<MglruStats> ReclaimServer::GetMglruStats(int cid) {
     return std::nullopt;
   }
 
+  if (!connection->socket->WaitForReadable(kMglruResponseTimeout)) {
+    LOG(WARNING) << "Timed out waiting for MGLRU response.";
+    return std::nullopt;
+  }
+
   VmMemoryManagementPacket response;
 
   if (!connection->socket->ReadPacket(response)) {

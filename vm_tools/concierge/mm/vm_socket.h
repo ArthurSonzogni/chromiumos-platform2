@@ -42,6 +42,11 @@ class VmSocket {
   // be set to the origin cid of the incoming connection.
   virtual base::ScopedFD Accept(int& connected_cid);
 
+  // Blocking call that waits for up to |timeout| for the connection to be
+  // readable. Returns true iff the socket was readable before |timeout|
+  // expired.
+  virtual bool WaitForReadable(base::TimeDelta timeout);
+
   // Registers |callback| to be run when the socket is readable. Returns true
   // iff watching the socket is successful.
   virtual bool OnReadable(const base::RepeatingClosure& callback);

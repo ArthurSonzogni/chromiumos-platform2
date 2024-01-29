@@ -5,11 +5,13 @@
 #include "vm_tools/concierge/mm/vm_socket.h"
 
 #include <arpa/inet.h>
+#include <poll.h>
 #include <sys/socket.h>
 
 // Needs to be included after sys/socket.h.
 #include <linux/vm_sockets.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -117,6 +119,31 @@ base::ScopedFD VmSocket::Accept(int& connected_cid) {
   connected_cid = client_addr.svm_cid;
 
   return connection;
+}
+
+bool VmSocket::WaitForReadable(base::TimeDelta timeout) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  struct pollfd pfd {
+    .fd = fd_.get(), .events = POLLIN, .revents = 0
+  };
+
+  base::TimeTicks poll_end = base::TimeTicks::Now() + timeout;
+
+  // HANDLE_EINTR simply repeats the same call when the errno is EINTR so a new
+  // timeout value is needed each time poll() is called to avoid potentially
+  // blocking forever. Additionally use max() to ensure poll() is never called
+  // with a negative timeout which would block indefinitely.
+  int ret = HANDLE_EINTR(
+      ::poll(&pfd, 1,
+             std::max((poll_end - base::TimeTicks::Now()).InMilliseconds(),
+                      static_cast<int64_t>(0))));
+
+  if (ret < 0) {
+    PLOG(ERROR) << "Failed to wait for readable.";
+  }
+
+  // ret will be positive iff data is available before tv expires.
+  return ret > 0;
 }
 
 bool VmSocket::OnReadable(const base::RepeatingClosure& callback) {

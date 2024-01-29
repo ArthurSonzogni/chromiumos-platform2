@@ -50,6 +50,9 @@ class ReclaimServer : public Server {
   void HandleMglruResponse(const Connection& connection,
                            const VmMemoryManagementPacket& packet) const;
 
+  // How long to wait on an MGLRU response from a client before aborting.
+  static constexpr base::TimeDelta kMglruResponseTimeout = base::Seconds(1);
+
   // Event Callbacks.
   NewGenerationNotification new_generation_callback_
       GUARDED_BY_CONTEXT(sequence_checker_) = base::DoNothing();

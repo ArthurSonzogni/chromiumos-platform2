@@ -41,6 +41,10 @@ base::ScopedFD FakeVmSocket::Accept(int& connected_cid) {
   return std::move(accept_fd_);
 }
 
+bool FakeVmSocket::WaitForReadable(base::TimeDelta timeout) {
+  return true;
+}
+
 bool FakeVmSocket::OnReadable(const base::RepeatingClosure& callback) {
   on_readable_call_count_++;
   on_readable_ = std::move(callback);
