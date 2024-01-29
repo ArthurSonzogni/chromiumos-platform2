@@ -172,8 +172,8 @@ static_library("libpatchpanel") {
   # Workaround for b/266863330: disable PCH when the user generates
   # compilation database for an editor.
   if (!use.compdb_only && !use.compilation_database) {
-    precompiled_header = "pch.h"
-    precompiled_source = "pch.h"
+    precompiled_header = "pch/pch.h"
+    precompiled_source = "pch/pch.h"
   }
   all_dependent_pkg_deps = [
     "protobuf",
@@ -352,8 +352,8 @@ if (use.test) {
     # Workaround for b/266863330: disable PCH when the user generates
     # compilation database for an editor.
     if (!use.compdb_only && !use.compilation_database) {
-      precompiled_header = "pch_test.h"
-      precompiled_source = "pch_test.h"
+      precompiled_header = "pch/pch_test.h"
+      precompiled_source = "pch/pch_test.h"
     }
     defines = [ "UNIT_TEST" ]
     deps = [
