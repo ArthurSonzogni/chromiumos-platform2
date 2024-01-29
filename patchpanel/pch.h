@@ -54,3 +54,4 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/time/time.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
