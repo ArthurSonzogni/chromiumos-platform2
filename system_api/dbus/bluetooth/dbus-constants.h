@@ -613,7 +613,10 @@ constexpr char kSetAdvertisingIntervals[] = "SetAdvertisingIntervals";
 constexpr char kResetAdvertising[] = "ResetAdvertising";
 
 // Bluetooth LE Advertising Manager properties.
-constexpr char kIsTXPowerSupportedProperty[] = "IsTXPowerSupported";
+constexpr char kSupportedFeatures[] = "SupportedFeatures";
+
+// Possible values for the "SupportedFeatures" property.
+constexpr char kSupportedFeaturesHardwareOffload[] = "HardwareOffload";
 
 // Bluetooth LE Advertising Manager errors.
 constexpr char kErrorAlreadyExists[] = "org.bluez.Error.AlreadyExists";
