@@ -75,10 +75,6 @@ namespace {
 constexpr size_t kRetries = 5u;
 constexpr base::TimeDelta kBackOff = base::Seconds(1);
 
-// Storage queue generation id reset UMA metric name.
-constexpr char kStorageQueueGenerationIdResetUma[] =
-    "Platform.Missive.StorageQueueGenerationIdReset";
-
 // Storage queue parsing failure UMA metric name.
 constexpr char kStorageQueueParsingFailureUma[] =
     "Platform.Missive.StorageQueueParsingFailure";
@@ -318,8 +314,6 @@ Status StorageQueue::DoInit() {
       // earlier.
       if (generation_id_ <= 0) {
         LOG(ERROR) << "Unable to retrieve generation id, performing full reset";
-        analytics::Metrics::SendBoolToUMA(kStorageQueueGenerationIdResetUma,
-                                          true);
         next_sequencing_id_ = 0;
         first_sequencing_id_ = 0;
         first_unconfirmed_sequencing_id_ = std::nullopt;
