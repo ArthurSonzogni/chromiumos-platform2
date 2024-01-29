@@ -169,11 +169,13 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
       .ifname = "wlan1",
   };
 
-  StrictMock<MockDatapath> datapath;
+  MockDatapath datapath;
   MockConntrackMonitor conntrack_monitor;
   QoSService qos_svc(&datapath, &conntrack_monitor);
 
   // No interaction with Datapath before feature is enabled.
+  EXPECT_CALL(datapath, EnableQoSDetection).Times(0);
+  EXPECT_CALL(datapath, EnableQoSApplyingDSCP).Times(0);
   qos_svc.OnPhysicalDeviceAdded(kEth0);
   qos_svc.OnPhysicalDeviceAdded(kWlan0);
   qos_svc.OnPhysicalDeviceRemoved(kWlan0);
@@ -189,6 +191,8 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
 
   // No interaction with Datapath on uninteresting or already-tracked
   // interfaces.
+  EXPECT_CALL(datapath, EnableQoSDetection).Times(0);
+  EXPECT_CALL(datapath, EnableQoSApplyingDSCP).Times(0);
   qos_svc.OnPhysicalDeviceAdded(kEth1);
   qos_svc.OnPhysicalDeviceAdded(kWlan0);
   Mock::VerifyAndClearExpectations(&datapath);
