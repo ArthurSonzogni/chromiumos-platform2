@@ -60,10 +60,13 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 getxattr: 1
+inotify_add_watch: 1
 inotify_init1: 1
+inotify_rm_watch: 1
 ioctl: 1
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lgetxattr: 1
+link: 1
 lseek: 1
 lstat: 1
 madvise: 1
