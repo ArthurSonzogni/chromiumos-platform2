@@ -521,6 +521,9 @@ TEST_F(AuthSessionInterfaceTest,
   ASSERT_EQ(PreparePersistentVaultImpl(serialized_token).error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   AssertMountSignalCount(1);
+  EXPECT_THAT(mount_completed_signals_[0].has_error_info(), IsTrue());
+  EXPECT_THAT(mount_completed_signals_[0].error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 // Test to check if PreparePersistentVaultImpl will succeed if user is not
@@ -548,6 +551,9 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   AssertMountSignalCount(1);
+  EXPECT_THAT(mount_completed_signals_[0].has_error_info(), IsTrue());
+  EXPECT_THAT(mount_completed_signals_[0].error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
 }
 
 // Test CreatePersistentUserImpl with invalid auth_session.

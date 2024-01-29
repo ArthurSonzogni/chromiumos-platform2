@@ -188,6 +188,10 @@ void SignalMountCompletedThenDone(
     const ReplyType& reply) {
   user_data_auth::MountCompleted signal;
   signal.set_operation_id(start_signal.operation_id());
+  if (reply.has_error_info()) {
+    signal.set_error(reply.error());
+    *signal.mutable_error_info() = reply.error_info();
+  }
   signalling->SendMountCompleted(signal);
   std::move(on_done).Run(reply);
 }
@@ -2928,16 +2932,16 @@ void UserDataAuth::PrepareGuestVault(
   user_data_auth::MountStarted start_signal;
   start_signal.set_operation_id(base::RandUint64());
   signalling_intf_->SendMountStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalMountCompletedThenDone<user_data_auth::PrepareGuestVaultReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
 
   CryptohomeStatus status = PrepareGuestVaultImpl();
 
   // Send the mount completed signal and then the RPC reply.
-  user_data_auth::MountCompleted completed_signal;
-  completed_signal.set_operation_id(start_signal.operation_id());
-  signalling_intf_->SendMountCompleted(completed_signal);
   user_data_auth::PrepareGuestVaultReply reply;
   reply.set_sanitized_username(*SanitizeUserName(guest_user_));
-  ReplyWithError(std::move(on_done), reply, status);
+  ReplyWithError(std::move(on_done_with_signal), reply, status);
   return;
 }
 
@@ -3072,6 +3076,10 @@ void UserDataAuth::PreparePersistentVaultWithSession(
   user_data_auth::MountStarted start_signal;
   start_signal.set_operation_id(base::RandUint64());
   signalling_intf_->SendMountStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalMountCompletedThenDone<
+          user_data_auth::PreparePersistentVaultReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
 
   CryptohomeVault::Options options = {
       .force_type =
@@ -3087,12 +3095,9 @@ void UserDataAuth::PreparePersistentVaultWithSession(
   }
 
   // Send the mount completed signal and then the RPC reply.
-  user_data_auth::MountCompleted completed_signal;
-  completed_signal.set_operation_id(start_signal.operation_id());
-  signalling_intf_->SendMountCompleted(completed_signal);
   user_data_auth::PreparePersistentVaultReply reply;
   reply.set_sanitized_username(*auth_session->obfuscated_username());
-  ReplyWithError(std::move(on_done), reply, status);
+  ReplyWithError(std::move(on_done_with_signal), reply, status);
 }
 
 void UserDataAuth::PrepareVaultForMigration(
@@ -3121,6 +3126,10 @@ void UserDataAuth::PrepareVaultForMigrationWithSession(
   user_data_auth::MountStarted start_signal;
   start_signal.set_operation_id(base::RandUint64());
   signalling_intf_->SendMountStarted(start_signal);
+  auto on_done_with_signal = base::BindOnce(
+      &SignalMountCompletedThenDone<
+          user_data_auth::PrepareVaultForMigrationReply>,
+      signalling_intf_, std::move(start_signal), std::move(on_done));
 
   CryptohomeVault::Options options = {
       .migrate = true,
@@ -3128,12 +3137,9 @@ void UserDataAuth::PrepareVaultForMigrationWithSession(
   CryptohomeStatus status = PreparePersistentVaultImpl(auth_session, options);
 
   // Send the mount completed signal and then the RPC reply.
-  user_data_auth::MountCompleted completed_signal;
-  completed_signal.set_operation_id(start_signal.operation_id());
-  signalling_intf_->SendMountCompleted(completed_signal);
   user_data_auth::PrepareVaultForMigrationReply reply;
   reply.set_sanitized_username(*auth_session->obfuscated_username());
-  ReplyWithError(std::move(on_done), reply, status);
+  ReplyWithError(std::move(on_done_with_signal), reply, status);
 }
 
 void UserDataAuth::CreatePersistentUser(
