@@ -45,7 +45,7 @@ newfstatat: 1
 openat: 1
 pipe2: 1
 poll: 1
-prctl: arg0 == PR_CAPBSET_READ
+prctl: arg0 == PR_CAPBSET_READ || arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
 read: 1
@@ -61,3 +61,10 @@ signalfd4: 1
 socket: arg0 == AF_UNIX
 sysinfo: 1
 write: 1
+
+# For emitting perfetto trace events.
+clone: arg0 & CLONE_THREAD
+eventfd2: 1
+ppoll: 1
+rt_sigaction: 1
+shutdown: 1

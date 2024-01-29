@@ -46,7 +46,7 @@ munmap: 1
 openat: 1
 pipe2: 1
 poll: 1
-prctl: arg0 == PR_CAPBSET_READ
+prctl: arg0 == PR_CAPBSET_READ || arg0 == PR_SET_NAME
 read: 1
 recvmsg: 1
 restart_syscall: 1
@@ -63,3 +63,9 @@ statx: 1
 ugetrlimit: 1
 uname: 1
 write: 1
+
+# For emitting perfetto trace events.
+clone: arg0 & CLONE_THREAD
+eventfd2: 1
+ppoll: 1
+shutdown: 1
