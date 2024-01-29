@@ -42,9 +42,6 @@ class KernelCollectorTest : public ::testing::Test {
   void WatchdogOnlyLastBootHelper(const FilePath&);
 
   const FilePath& console_ramoops_file() const { return test_console_ramoops_; }
-  const FilePath& console_ramoops_file_old() const {
-    return test_console_ramoops_old_;
-  }
   const FilePath& eventlog_file() const { return test_eventlog_; }
   const FilePath& bios_log_file() const { return test_bios_log_; }
   const FilePath& kcrash_file() const { return test_kcrash_; }
@@ -69,8 +66,6 @@ class KernelCollectorTest : public ::testing::Test {
 
     test_console_ramoops_ = test_kcrash_.Append("console-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_));
-    test_console_ramoops_old_ = test_kcrash_.Append("console-ramoops");
-    ASSERT_FALSE(base::PathExists(test_console_ramoops_old_));
     for (int i = 0; i < kMaxEfiParts; i++) {
       test_efikcrash_[i] = test_kcrash_.Append(
           StringPrintf("dmesg-efi-%" PRIu64,
@@ -106,7 +101,6 @@ class KernelCollectorTest : public ::testing::Test {
   }
 
   FilePath test_console_ramoops_;
-  FilePath test_console_ramoops_old_;
   FilePath test_eventlog_;
   FilePath test_bios_log_;
   FilePath test_kcrash_;
@@ -567,10 +561,6 @@ TEST_F(KernelCollectorTest, WatchdogOK) {
   WatchdogOKHelper(console_ramoops_file());
 }
 
-TEST_F(KernelCollectorTest, WatchdogOKOld) {
-  WatchdogOKHelper(console_ramoops_file_old());
-}
-
 void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
   SetUpSuccessfulWatchdog(path);
@@ -580,10 +570,6 @@ void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
 
 TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
   WatchdogOnlyLastBootHelper(console_ramoops_file());
-}
-
-TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
-  WatchdogOnlyLastBootHelper(console_ramoops_file_old());
 }
 
 TEST_F(KernelCollectorTest, ComputeSeverity) {

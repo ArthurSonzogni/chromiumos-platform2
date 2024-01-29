@@ -50,8 +50,6 @@ constexpr char kDumpDriverEfiName[] = "efi";
 // The files take the form <record type>-<driver name>-<record id>.
 // e.g. console-ramoops-0 or dmesg-ramoops-0.
 constexpr char kDumpNameFormat[] = "%s-%s-%zu";
-// Like above, but for older systems when the kernel didn't add the record id.
-constexpr char kDumpNameFormatOld[] = "%s-%s";
 
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 constexpr char kEventNameBoot[] = "System boot";
@@ -163,11 +161,6 @@ FilePath KernelCollector::GetDumpRecordPath(const char* type,
                                             const char* driver,
                                             size_t record) {
   return dump_path_.Append(StringPrintf(kDumpNameFormat, type, driver, record));
-}
-
-FilePath KernelCollector::GetDumpRecordOldPath(const char* type,
-                                               const char* driver) {
-  return dump_path_.Append(StringPrintf(kDumpNameFormatOld, type, driver));
 }
 
 bool KernelCollector::LoadParameters() {
@@ -400,16 +393,9 @@ bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
   record_path =
       GetDumpRecordPath(kDumpRecordConsoleName, kDumpDriverRamoopsName, 0);
 
-  // Deal with the filename change starting with linux-3.19+.
   if (!base::PathExists(record_path)) {
-    // If the file doesn't exist, we might be running on an older system which
-    // uses the older file name format (<linux-3.19).
-    record_path =
-        GetDumpRecordOldPath(kDumpRecordConsoleName, kDumpDriverRamoopsName);
-    if (!base::PathExists(record_path)) {
-      LOG(WARNING) << "No console-ramoops file found after watchdog reset";
-      return false;
-    }
+    LOG(WARNING) << "No console-ramoops file found after watchdog reset";
+    return false;
   }
 
   if (!base::ReadFileToString(record_path, contents)) {

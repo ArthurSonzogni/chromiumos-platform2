@@ -154,7 +154,6 @@ class KernelCollector : public CrashCollector {
   base::FilePath GetDumpRecordPath(const char* type,
                                    const char* driver,
                                    size_t record);
-  base::FilePath GetDumpRecordOldPath(const char* type, const char* driver);
 
   bool LoadParameters();
   bool HasMoreRecords();
