@@ -9,10 +9,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+#include <constants/imageloader.h>
 #include <dbus/dlcservice/dbus-constants.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/error.h"
@@ -71,6 +74,22 @@ bool DBusService::GetExistingDlcs(brillo::ErrorPtr* err,
     dlc_info->set_is_removable(id != "pita");
   }
   return true;
+}
+
+bool DBusService::Unload(brillo::ErrorPtr* err,
+                         const dlcservice::UnloadRequest& in_unload_request) {
+  switch (in_unload_request.DlcInfo_case()) {
+    case UnloadRequest::kId:
+      return dlc_service_->Unload(in_unload_request.id(), err);
+    case UnloadRequest::kAnyOf:
+      return dlc_service_->Unload(
+          in_unload_request.any_of(),
+          base::FilePath(imageloader::kImageloaderMountBase), err);
+    default:
+      *err =
+          Error::Create(FROM_HERE, kErrorInvalidDlc, "Invalid DLC specifier.");
+      return false;
+  }
 }
 
 bool DBusService::GetDlcsToUpdate(brillo::ErrorPtr* err,

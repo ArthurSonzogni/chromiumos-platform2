@@ -8,9 +8,11 @@
 #include <memory>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -21,10 +23,14 @@
 #include <brillo/files/file_util.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+#include <constants/imageloader.h>
 #include <dbus/dlcservice/dbus-constants.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <lvmd/proto_bindings/lvmd.pb.h>
 
 #include "dlcservice/error.h"
+#include "dlcservice/system_state.h"
+#include "dlcservice/types.h"
 #include "dlcservice/utils.h"
 #include "dlcservice/utils/utils_interface.h"
 
@@ -711,6 +717,44 @@ void DlcService::OnStatusUpdateAdvancedSignalConnected(
     LOG(ERROR) << AlertLogTag(kCategoryInit)
                << "Failed to connect to update_engine's StatusUpdate signal.";
   }
+}
+
+bool DlcService::Unload(const std::string& id, brillo::ErrorPtr* err) {
+  auto* dlc = GetDlc(id, err);
+  return dlc && dlc->Unload(err);
+}
+
+bool DlcService::Unload(const dlcservice::UnloadRequest::SelectDlc& select,
+                        const base::FilePath& mount_base,
+                        brillo::ErrorPtr* err) {
+  if (!select.user_tied() && !select.scaled()) {
+    LOG(WARNING) << "DLC selection is empty.";
+    return true;
+  }
+
+  const auto& mounted = ScanDirectory(base::FilePath(mount_base));
+
+  DlcIdList failed_ids;
+  for (const auto& id : mounted) {
+    auto* dlc = GetDlc(id, err);
+    if (!dlc || !((select.user_tied() && dlc->IsUserTied()) ||
+                  (select.scaled() && dlc->IsScaled()))) {
+      continue;
+    }
+
+    ErrorPtr tmp_err;
+    if (!dlc->Unload(&tmp_err)) {
+      failed_ids.push_back(id);
+    }
+  }
+
+  if (failed_ids.size()) {
+    *err = Error::Create(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Failed to unload DLCs: %s",
+                           base::JoinString(failed_ids, ",").c_str()));
+  }
+  return failed_ids.empty();
 }
 
 }  // namespace dlcservice

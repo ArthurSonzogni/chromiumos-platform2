@@ -82,6 +82,12 @@ class DlcServiceInterface {
   // Returns the list of DLCs with installed content.
   virtual DlcIdList GetExistingDlcs() = 0;
 
+  // Unmount DLCs and change their states to `NOT_INSTALLED`.
+  virtual bool Unload(const std::string& id, brillo::ErrorPtr* err) = 0;
+  virtual bool Unload(const UnloadRequest::SelectDlc& select,
+                      const base::FilePath& mount_base,
+                      brillo::ErrorPtr* err) = 0;
+
   // Returns the list of DLCs that need to be updated.
   virtual DlcIdList GetDlcsToUpdate() = 0;
 
@@ -111,6 +117,10 @@ class DlcService : public DlcServiceInterface {
   bool Deploy(const DlcId& id, brillo::ErrorPtr* err) override;
   DlcIdList GetInstalled() override;
   DlcIdList GetExistingDlcs() override;
+  bool Unload(const std::string& id, brillo::ErrorPtr* err) override;
+  bool Unload(const UnloadRequest::SelectDlc& select,
+              const base::FilePath& mount_base,
+              brillo::ErrorPtr* err) override;
   DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
   DlcIdList GetDlcsToUpdate() override;
   bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;

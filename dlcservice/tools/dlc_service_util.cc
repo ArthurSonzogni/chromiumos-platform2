@@ -114,7 +114,12 @@ class DlcServiceUtil : public brillo::Daemon {
     // "--deploy" related flags.
     DEFINE_bool(deploy, false, "Load a deployed DLC.");
 
-    // "--install", "--purge", and "--uninstall" related flags.
+    // "--unload" related flags.
+    DEFINE_bool(unload, false, "Unmount DLCs and mark them NOT_INSTALLED.");
+    DEFINE_bool(user_tied, false, "Perform the action on user-tied DLCs.");
+    DEFINE_bool(scaled, false, "Perform the action on scaled DLCs.");
+
+    // "--install", "--purge", "--uninstall" and "--unload" related flags.
     DEFINE_string(id, "", "The ID of the DLC.");
 
     // "--dlc_state" related flags.
@@ -133,11 +138,12 @@ class DlcServiceUtil : public brillo::Daemon {
 
     // Enforce mutually exclusive flags.
     vector<bool> exclusive_flags = {
-        FLAGS_install, FLAGS_uninstall, FLAGS_purge,       FLAGS_deploy,
-        FLAGS_list,    FLAGS_dlc_state, FLAGS_get_existing};
+        FLAGS_install, FLAGS_uninstall, FLAGS_purge,        FLAGS_deploy,
+        FLAGS_list,    FLAGS_dlc_state, FLAGS_get_existing, FLAGS_unload};
     if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
-      LOG(ERROR) << "Only one of --install, --uninstall, --purge, --list, "
-                    "--deploy, --get_existing, --dlc_state must be set.";
+      LOG(ERROR)
+          << "Only one of --install, --uninstall, --purge, --list, --deploy, "
+             "--get_existing, --dlc_state, --unload must be set.";
       QuitWithExitCode(EX_SOFTWARE);
       return;
     }
@@ -162,6 +168,24 @@ class DlcServiceUtil : public brillo::Daemon {
         return;
       }
       PrintDlcsWithContent(FLAGS_dump, dlcs_with_content);
+      Quit();
+      return;
+    }
+
+    // Called with "--unload".
+    if (FLAGS_unload) {
+      dlcservice::UnloadRequest request;
+      if (FLAGS_id.size()) {
+        request.set_id(FLAGS_id);
+      } else {
+        auto* dlc_any_of = request.mutable_any_of();
+        dlc_any_of->set_user_tied(FLAGS_user_tied);
+        dlc_any_of->set_scaled(FLAGS_scaled);
+      }
+      if (!Unload(request)) {
+        QuitWithExitCode(EX_SOFTWARE);
+        return;
+      }
       Quit();
       return;
     }
@@ -363,6 +387,17 @@ class DlcServiceUtil : public brillo::Daemon {
       return false;
     }
     LOG(INFO) << "Successfully loaded deployed DLC: " << dlc_id_;
+    return true;
+  }
+
+  bool Unload(dlcservice::UnloadRequest request) {
+    brillo::ErrorPtr err;
+    LOG(INFO) << "Attempting to unload DLCs";
+    if (!dlc_service_proxy_->Unload(request, &err)) {
+      LOG(ERROR) << "Failed to unload DLCs: " << ErrorPtrStr(err);
+      return false;
+    }
+    LOG(INFO) << "Successfully unloaded DLCs";
     return true;
   }
 

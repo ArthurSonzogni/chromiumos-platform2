@@ -47,6 +47,16 @@ class MockDlcService : public DlcServiceInterface {
               UpdateCompleted,
               (const DlcIdList& ids, brillo::ErrorPtr* err),
               (override));
+  MOCK_METHOD(bool,
+              Unload,
+              (const std::string& id, brillo::ErrorPtr* err),
+              (override));
+  MOCK_METHOD(bool,
+              Unload,
+              (const UnloadRequest::SelectDlc& select,
+               const base::FilePath& mount_base,
+               brillo::ErrorPtr* err),
+              (override));
 
  private:
   MockDlcService(const MockDlcService&) = delete;

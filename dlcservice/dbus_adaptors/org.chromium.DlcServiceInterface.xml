@@ -52,6 +52,20 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="Unload">
+    <tp:docstring>
+      Unmount DLCs and change their states to `NOT_INSTALLED`.
+    </tp:docstring>
+    <arg name="unload_request" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (UnloadRequest,
+        platform2/system_api/dbus/dlcservice/dlcservice.proto) of
+        arguments that can specify which DLCs to unload.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::UnloadRequest"/>
+    </arg>
+  </method>
   <method name="GetInstalled">
     <tp:docstring>
       Returns a list of installed Downloadable Content (DLC) IDs that are

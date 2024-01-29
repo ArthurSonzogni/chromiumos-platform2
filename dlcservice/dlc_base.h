@@ -23,7 +23,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/dlc_base.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils/utils.h"
 #include "dlcservice/utils/utils_interface.h"
@@ -134,6 +133,9 @@ class DlcInterface {
 
   // Create DLC slots and load deployed DLC image into the slots.
   virtual bool Deploy(brillo::ErrorPtr* err) = 0;
+
+  // Unmount the DLC image and set the status to `NOT_INSTALLED`.
+  virtual bool Unload(brillo::ErrorPtr* err) = 0;
 };
 
 // TODO(kimjae): Make `DlcBase` a true base class by only holding and
@@ -177,6 +179,7 @@ class DlcBase : public DlcInterface {
   void ChangeProgress(double progress) override;
   bool SetReserve(std::optional<bool> reserve) override;
   bool Deploy(brillo::ErrorPtr* err) override;
+  bool Unload(brillo::ErrorPtr* err) override;
 
  protected:
   friend class DBusServiceTest;

@@ -1047,4 +1047,22 @@ bool DlcBase::Deploy(ErrorPtr* err) {
   }
 }
 
+bool DlcBase::Unload(ErrorPtr* err) {
+  if (state_.state() == DlcState::INSTALLING) {
+    // We cannot unload the image while it is being installed by the
+    // update_engine.
+    // TODO(b/193183264): Handle cancel install.
+    state_.set_last_error_code(kErrorBusy);
+    *err = Error::Create(
+        FROM_HERE, state_.last_error_code(),
+        base::StringPrintf("Trying to unload an installing DLC=%s",
+                           id_.c_str()));
+    return false;
+  }
+
+  ChangeState(DlcState::NOT_INSTALLED);
+  SetActiveValue(false);
+  return Unmount(err);
+}
+
 }  // namespace dlcservice

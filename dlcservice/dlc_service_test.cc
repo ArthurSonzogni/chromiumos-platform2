@@ -13,6 +13,7 @@
 #include <base/test/mock_log.h>
 #include <base/test/simple_test_clock.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <brillo/errors/error.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -32,6 +33,7 @@
 #include "dlcservice/mock_dlc_creator.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/proto_utils.h"
+#include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils.h"
@@ -850,6 +852,29 @@ TEST_F(DlcServiceTest, OnUpdateEngineInstallAsyncErrorNoInstallation) {
                                             "(msg)", nullptr);
   dlc_service_->OnUpdateEngineInstallAsyncError(base::BindOnce(assert_cb),
                                                 err_ptr.get());
+}
+
+TEST_F(DlcServiceTest, UnloadDlcs) {
+  auto mock_dlc_1 = std::make_unique<StrictMock<MockDlc>>();
+  EXPECT_CALL(*mock_dlc_1, IsUserTied).WillOnce(Return(false));
+
+  auto mock_dlc_user = std::make_unique<StrictMock<MockDlc>>();
+  EXPECT_CALL(*mock_dlc_user, IsUserTied).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_user, Unload).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace(kFirstDlc, std::move(mock_dlc_1));
+  supported.emplace(kUserTiedDlc, std::move(mock_dlc_user));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  CreateDir(JoinPaths(mount_path_, kFirstDlc));
+  CreateDir(JoinPaths(mount_path_, kUserTiedDlc));
+  CreateDir(JoinPaths(mount_path_, "not-a-dlc"));
+
+  UnloadRequest::SelectDlc select;
+  select.set_user_tied(true);
+  brillo::ErrorPtr tmp_err;
+  EXPECT_TRUE(dlc_service_->Unload(select, mount_path_, &tmp_err));
 }
 
 // NOTE: Do not add new code below this line.

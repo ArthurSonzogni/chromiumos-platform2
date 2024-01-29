@@ -16,6 +16,7 @@
 using base::FilePath;
 using brillo::ErrorPtr;
 using testing::_;
+using testing::A;
 using testing::ElementsAre;
 using testing::Return;
 
@@ -69,6 +70,21 @@ TEST_F(DBusServiceTest, GetExistingDlcs) {
   EXPECT_EQ(second_dlc_info.used_bytes_on_disk(),
             second_dlc.GetUsedBytesOnDisk());
   EXPECT_TRUE(second_dlc_info.is_removable());
+}
+
+TEST_F(DBusServiceTest, UnloadDlCs) {
+  UnloadRequest request;
+  request.set_id(kFirstDlc);
+  EXPECT_CALL(*dlc_service_, Unload(std::string(kFirstDlc), _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(dbus_service_->Unload(&err_, request));
+
+  auto* select = request.mutable_any_of();
+  select->set_user_tied(true);
+  select->set_scaled(false);
+  EXPECT_CALL(*dlc_service_, Unload(A<const UnloadRequest::SelectDlc&>(), _, _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(dbus_service_->Unload(&err_, request));
 }
 
 }  // namespace dlcservice

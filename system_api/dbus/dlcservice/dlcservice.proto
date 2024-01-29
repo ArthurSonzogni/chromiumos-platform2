@@ -29,6 +29,23 @@ message InstallRequest {
   bool force_ota = 2047;
 }
 
+// This is the message that is passed into unload.
+message UnloadRequest {
+  // DLCs that have the selected manifest fields set to true.
+  message SelectDlc {
+    bool user_tied = 1;
+    bool scaled = 2;
+  }
+
+  oneof DlcInfo {
+    // Specify a DLC by ID.
+    string id = 1;
+
+    // Select DLCs that have any of the given manifest fields.
+    SelectDlc any_of = 2;
+  }
+}
+
 // This message is used to query the DLCs that have data on disk. This allows
 // Chrome UI to show this list to the users and users can decide whether to
 // delete unused DLCs or not.

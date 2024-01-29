@@ -32,6 +32,8 @@ class DBusService : public org::chromium::DlcServiceInterfaceInterface {
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool Purge(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool Deploy(brillo::ErrorPtr* err, const std::string& id_in) override;
+  bool Unload(brillo::ErrorPtr* err,
+              const dlcservice::UnloadRequest& in_unload_request) override;
   bool GetDlcState(brillo::ErrorPtr* err,
                    const std::string& id_in,
                    DlcState* dlc_state_out) override;

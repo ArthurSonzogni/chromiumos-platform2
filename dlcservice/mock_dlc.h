@@ -58,6 +58,7 @@ class MockDlc : public DlcInterface {
   MOCK_METHOD(void, ChangeProgress, (double progress), (override));
   MOCK_METHOD(bool, SetReserve, (std::optional<bool> reserve), (override));
   MOCK_METHOD(bool, Deploy, (brillo::ErrorPtr * err), (override));
+  MOCK_METHOD(bool, Unload, (brillo::ErrorPtr * err), (override));
 };
 
 }  // namespace dlcservice
