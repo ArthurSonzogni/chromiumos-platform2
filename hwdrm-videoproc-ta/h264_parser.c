@@ -127,6 +127,13 @@ static bool IsSISlice(struct H264SliceHeaderData* hdr) {
     }                     \
   } while (0)
 
+#define IN_RANGE_OR_RETURN(val, min, max) \
+  do {                                    \
+    if ((val) < (min) || (val) > (max)) { \
+      return false;                       \
+    }                                     \
+  } while (0)
+
 // Exp-Golomb code parsing as specified in H.26x specifications.
 // Read one unsigned exp-Golomb code from the stream and return in |*out|.
 #define READ_UE_OR_RETURN(out)                          \
@@ -335,6 +342,8 @@ bool ParseSliceHeader(const uint8_t* slice_header,
       }
     }
   }
+  IN_RANGE_OR_RETURN(num_ref_idx_l0_active_minus1, 0, 31);
+  IN_RANGE_OR_RETURN(num_ref_idx_l1_active_minus1, 0, 31);
 
   if (!IsISlice(hdr_out) && !IsSISlice(hdr_out)) {
     uint32_t ref_pic_list_modification_flag_l0;
