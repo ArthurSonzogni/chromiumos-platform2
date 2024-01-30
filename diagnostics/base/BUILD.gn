@@ -28,7 +28,6 @@ shared_library("libdiagnostics_base") {
     "//diagnostics/cros_health_tool/*",
     "//diagnostics/cros_healthd/*",
     "//diagnostics/mojom/*",
-    "//diagnostics/wilco_dtc_supportd/*",
   ]
   install_path = "lib"
   pkg_deps = [

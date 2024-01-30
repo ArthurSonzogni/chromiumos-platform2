@@ -14,14 +14,9 @@ group("all") {
     "//diagnostics/cros_healthd/seccomp",
     "//diagnostics/dbus_bindings",
     "//diagnostics/mojom",
-    "//diagnostics/wilco_dtc_supportd:wilco_dtc_supportd",
-    "//diagnostics/wilco_dtc_supportd/seccomp",
   ]
   if (use.test) {
-    deps += [
-      "//diagnostics/cros_healthd:cros_healthd_test",
-      "//diagnostics/wilco_dtc_supportd:wilco_dtc_supportd_test",
-    ]
+    deps += [ "//diagnostics/cros_healthd:cros_healthd_test" ]
   }
   if (use.fuzzer) {
     deps += [
@@ -34,24 +29,11 @@ group("all") {
 install_config("install_dbus_config") {
   sources = [ "dbus/org.chromium.CrosHealthd.conf" ]
   install_path = "dbus_system_d"
-  if (use.wilco) {
-    sources += [
-      "dbus/WilcoDtcUpstart.conf",
-      "dbus/org.chromium.WilcoDtcSupportd.conf",
-    ]
-  }
 }
 
 install_config("install_init_config") {
   sources = [ "init/cros_healthd.conf" ]
   install_path = "upstart"
-  if (use.wilco) {
-    sources += [
-      "init/wilco_dtc.conf",
-      "init/wilco_dtc_dispatcher.conf",
-      "init/wilco_dtc_supportd.conf",
-    ]
-  }
 }
 
 install_config("install_tmpfiles_config") {
