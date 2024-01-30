@@ -73,9 +73,7 @@ class FileHandlerTest : public ::testing::Test {
       "enterprise-rollback-metrics-data";
   static constexpr char kTestPreserveData[] =
       "mnt/stateful_partition/unencrypted/preserve/test";
-  static constexpr char kExpectedFlexConfigPath[] =
-      "mnt/stateful_partition/unencrypted/flex_config";
-  static constexpr char kExpectedFlexConfigData[] =
+  static constexpr char kExpectedFlexConfigFilePath[] =
       "mnt/stateful_partition/unencrypted/flex_config/config.json";
 
   void VerifyHasFunction(const std::string& path,
@@ -592,14 +590,14 @@ TEST_F(FileHandlerTest, LockAndTruncateFile) {
   ASSERT_TRUE(base::DeleteFile(path));
 }
 
-TEST_F(FileHandlerTest, HasFlexConfigPath) {
-  VerifyHasFunction(FileHandlerTest::kExpectedFlexConfigPath,
-                    base::BindRepeating(&FileHandler::HasFlexConfigPath,
+TEST_F(FileHandlerTest, HasFlexConfigFile) {
+  VerifyHasFunction(FileHandlerTest::kExpectedFlexConfigFilePath,
+                    base::BindRepeating(&FileHandler::HasFlexConfigFile,
                                         base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, ReadFlexConfig) {
-  VerifyReadFunction(FileHandlerTest::kExpectedFlexConfigData,
+  VerifyReadFunction(FileHandlerTest::kExpectedFlexConfigFilePath,
                      base::BindRepeating(&FileHandler::ReadFlexConfig,
                                          base::Unretained(&file_handler_)));
 }

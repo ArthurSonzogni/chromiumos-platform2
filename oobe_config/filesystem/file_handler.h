@@ -135,7 +135,7 @@ class FileHandler {
   void UnlockFile(base::File& file) const;
 
   // Checks if the config containing the Flex Auto-Enrollment token exists.
-  bool HasFlexConfigPath() const;
+  bool HasFlexConfigFile() const;
   // Reads the config.json from the directory at `kFlexConfigPath`.
   bool ReadFlexConfig(std::string* config);
 
@@ -167,10 +167,8 @@ class FileHandler {
   static constexpr char kRollbackMetricsDataFileName[] =
       "enterprise-rollback-metrics-data";
 
-  static constexpr char kFlexConfigPath[] =
-      "mnt/stateful_partition/unencrypted/flex_config";
-
-  static constexpr char kFlexConfigFileName[] = "config.json";
+  static constexpr char kFlexConfigFilePath[] =
+      "mnt/stateful_partition/unencrypted/flex_config/config.json";
 
   virtual base::FilePath GetFullPath(
       const std::string& path_without_root) const;

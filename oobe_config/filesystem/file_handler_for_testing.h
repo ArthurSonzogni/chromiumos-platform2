@@ -86,8 +86,8 @@ class FileHandlerForTesting : public FileHandler {
   // Creates the flex_config directory for testing at `kFlexConfigPath`.
   bool CreateFlexConfigDirectory() const;
 
-  // Creates writes `config` to a config.json file at the location previously
-  // created by `CreateFlexConfigDirectory()`.
+  // Creates config.json with contents specified by `config`, at the location
+  // specified by `kFlexConfigFilePath`.
   bool WriteFlexConfigData(const std::string& config) const;
 
   base::FilePath GetFullPath(
@@ -95,6 +95,8 @@ class FileHandlerForTesting : public FileHandler {
 
  private:
   static inline constexpr char kRamoops0FileName[] = "pmsg-ramoops-0";
+  static inline constexpr char kFlexConfigDirPath[] =
+      "mnt/stateful_partition/unencrypted/flex_config";
 
   base::ScopedTempDir fake_root_dir_;
 };

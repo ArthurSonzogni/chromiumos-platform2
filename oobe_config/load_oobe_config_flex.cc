@@ -16,7 +16,7 @@ LoadOobeConfigFlex::LoadOobeConfigFlex(FileHandler file_handler)
 
 bool LoadOobeConfigFlex::GetOobeConfigJson(std::string* config) {
   *config = "";
-  if (file_handler_.HasFlexConfigPath()) {
+  if (file_handler_.HasFlexConfigFile()) {
     if (file_handler_.ReadFlexConfig(config)) {
       return true;
     } else {

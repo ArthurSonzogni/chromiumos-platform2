@@ -147,13 +147,12 @@ FileHandlerForTesting::StartLockMetricsFileProcess(
 }
 
 bool FileHandlerForTesting::CreateFlexConfigDirectory() const {
-  return base::CreateDirectory(GetFullPath(kFlexConfigPath));
+  return base::CreateDirectory(GetFullPath(kFlexConfigDirPath));
 }
 
 bool FileHandlerForTesting::WriteFlexConfigData(
     const std::string& config) const {
-  return base::WriteFile(
-      GetFullPath(kFlexConfigPath).Append(kFlexConfigFileName), config);
+  return base::WriteFile(GetFullPath(kFlexConfigFilePath), config);
 }
 
 base::FilePath FileHandlerForTesting::GetFullPath(
