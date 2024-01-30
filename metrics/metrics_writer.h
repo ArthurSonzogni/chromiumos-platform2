@@ -15,7 +15,8 @@
 
 #include "metrics/serialization/metric_sample.h"
 
-constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
+inline constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
+inline constexpr char kUMAEventsDir[] = "/var/lib/metrics/uma-events.d";
 
 // Logs UMA metrics to metrics file.
 class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
@@ -38,9 +39,12 @@ class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
 // the caller thread.
 //
 // It acquires a file lock to write logs so that this may block the thread for
-// non-trivial time. This writer can use a nonblocking file lock by setting
-// `use_nonblocking_lock` to true. Note that using a nonblocking lock will
-// result in dropped metrics if the lock could not be grabbed.
+// non-trivial time. This writer can use a special per-PID file by setting
+// `avoid_blocking` to true.
+//
+// Note that if chrome (or the metrics uploader) does not process metrics for
+// too long, and some metrics may be dropped by limits in chrome (or the
+// uploader).
 //
 // This class is not thread safe: `SetOutputFile` modifies `uma_events_file_`
 // which is read by `WriteMetrics`. However, if `SetOutputFile` is never called,
@@ -49,8 +53,9 @@ class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
 class SynchronousMetricsWriter : public MetricsWriter {
  public:
   explicit SynchronousMetricsWriter(
-      bool use_nonblocking_lock = false,
-      base::FilePath uma_events_file = base::FilePath(kUMAEventsPath));
+      bool avoid_blocking = false,
+      base::FilePath uma_events_file = base::FilePath(kUMAEventsPath),
+      base::FilePath uma_events_dir = base::FilePath(kUMAEventsDir));
 
   // Write metrics to `uma_events_file_`.
   bool WriteMetrics(std::vector<metrics::MetricSample> samples) override;
@@ -61,9 +66,10 @@ class SynchronousMetricsWriter : public MetricsWriter {
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
 
-  // Whether or not to use a nonblocking lock when calling `WriteMetrics()`.
-  bool use_nonblocking_lock_;
+  // Whether to use a per-PID file when calling `WriteMetrics()`.
+  bool avoid_blocking_;
   base::FilePath uma_events_file_;
+  base::FilePath uma_events_dir_;
 };
 
 // Write UMA metrics using `metrics::SerializationUtils::WriteMetricsToFile` on

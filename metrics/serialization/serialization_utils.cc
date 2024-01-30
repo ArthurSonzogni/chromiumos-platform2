@@ -5,6 +5,7 @@
 #include "metrics/serialization/serialization_utils.h"
 
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #include <memory>
 #include <string>
@@ -30,10 +31,6 @@
 
 namespace metrics {
 namespace {
-
-// Timeout used to wait if the lock to write the metrics file is unavailable.
-constexpr base::TimeDelta kWaitForLockAvailableSleepTime =
-    base::Milliseconds(20);
 
 // Magic string that gets written at the beginning of the message file
 // when the file has been partially uploaded.
@@ -162,32 +159,9 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
 
 // Attempts to acquire the lock to |file_descriptor|.
 //
-// If |use_nonblocking_lock| is set to true, this function does at most five
-// nonblocking attempts to acquire the lock. If the first through fourth
-// attempts fails, |sleep_function| will run before trying again, giving time
-// for the lock to become available.
-//
-// If |use_nonblocking_lock| is set to false, this function blocks if unable to
-// acquire the file lock.
-bool AcquireLock(
-    const base::ScopedFD& file_descriptor,
-    bool use_nonblocking_lock,
-    base::RepeatingCallback<void(base::TimeDelta)> sleep_function) {
-  int flags = LOCK_EX;
-  if (use_nonblocking_lock) {
-    flags |= LOCK_NB;
-    size_t acquire_lock_attempts = 1;
-    while (acquire_lock_attempts < 5) {
-      if (HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0) {
-        return true;
-      }
-      sleep_function.Run(kWaitForLockAvailableSleepTime);
-      ++acquire_lock_attempts;
-    }
-  }
-
-  // Fifth attempt to grab the lock.
-  return HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0;
+// This function blocks if unable to acquire the file lock.
+bool AcquireLock(const base::ScopedFD& file_descriptor) {
+  return HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) == 0;
 }
 
 }  // namespace
@@ -305,18 +279,7 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
 }
 
 bool SerializationUtils::WriteMetricsToFile(
-    const std::vector<MetricSample>& samples,
-    const std::string& filename,
-    bool use_nonblocking_lock) {
-  return WriteMetricsToFile(samples, filename, use_nonblocking_lock,
-                            base::BindRepeating(&base::PlatformThread::Sleep));
-}
-
-bool SerializationUtils::WriteMetricsToFile(
-    const std::vector<MetricSample>& samples,
-    const std::string& filename,
-    bool use_nonblocking_lock,
-    base::RepeatingCallback<void(base::TimeDelta)> sleep_function) {
+    const std::vector<MetricSample>& samples, const std::string& filename) {
   std::string output;
   for (const auto& sample : samples) {
     if (!sample.IsValid()) {
@@ -332,26 +295,50 @@ bool SerializationUtils::WriteMetricsToFile(
     output.append(msg);
   }
 
-  base::ScopedFD file_descriptor(open(filename.c_str(),
-                                      O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
-                                      READ_WRITE_ALL_FILE_FLAGS));
+  ino_t fd_inode = -1;
+  ino_t on_disk_inode = -1;
 
-  if (file_descriptor.get() < 0) {
-    PLOG(ERROR) << filename << ": cannot open";
-    return false;
-  }
+  base::ScopedFD file_descriptor;
+  do {
+    file_descriptor.reset(open(filename.c_str(),
+                               O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
+                               READ_WRITE_ALL_FILE_FLAGS));
 
-  // Grab a lock to avoid chrome truncating the file underneath us. Keep the
-  // file locked as briefly as possible. Freeing file_descriptor will close the
-  // file and remove the lock IFF the process was not forked in the meantime,
-  // which will leave the flock hanging and deadlock the reporting until the
-  // forked process is killed otherwise. Thus we have to explicitly unlock the
-  // file below.
-  if (!AcquireLock(file_descriptor, use_nonblocking_lock,
-                   std::move(sleep_function))) {
-    PLOG(ERROR) << filename << ": cannot lock";
-    return false;
-  }
+    if (file_descriptor.get() < 0) {
+      PLOG(ERROR) << filename << ": cannot open";
+      return false;
+    }
+
+    // Check inodes to make sure chrome doesn't delete file out from under us
+    // while we are acquiring the lock.
+    struct stat stat_buf;
+    if (fstat(file_descriptor.get(), &stat_buf) < 0) {
+      PLOG(ERROR) << "fstat: Could not get " << filename << "inode";
+      return false;
+    }
+    fd_inode = stat_buf.st_ino;
+
+    // Grab a lock to avoid chrome truncating the file underneath us. Keep the
+    // file locked as briefly as possible. Freeing file_descriptor will close
+    // the file and remove the lock IFF the process was not forked in the
+    // meantime, which will leave the flock hanging and deadlock the reporting
+    // until the forked process is killed otherwise. Thus we have to explicitly
+    // unlock the file below.
+    if (!AcquireLock(file_descriptor)) {
+      PLOG(ERROR) << filename << ": cannot lock";
+      return false;
+    }
+
+    if (stat(filename.c_str(), &stat_buf) < 0) {
+      PLOG(ERROR) << "stat: Could not get " << filename << "inode";
+      if (errno == ENOENT) {
+        // File was removed by Chrome. Restart loop to create the file.
+        continue;
+      }
+      return false;
+    }
+    on_disk_inode = stat_buf.st_ino;
+  } while (fd_inode != on_disk_inode);
 
   if (!base::WriteFileDescriptor(file_descriptor.get(), output)) {
     PLOG(ERROR) << "error writing output";

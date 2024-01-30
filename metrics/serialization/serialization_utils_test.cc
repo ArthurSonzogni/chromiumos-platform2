@@ -8,14 +8,22 @@
 #include <unistd.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
 #include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <base/threading/platform_thread.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
@@ -97,6 +105,8 @@ class SerializationUtilsTest : public testing::Test {
     return lock_process;
   }
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MULTIPLE_THREADS};
   std::string filename_;
   base::ScopedTempDir temporary_dir_;
   base::FilePath filepath_;
@@ -411,6 +421,106 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
   ASSERT_EQ(0, size);
 }
 
+// Check that WriteMetricsToFile doesn't write to a dangling (deleted) file.
+TEST_F(SerializationUtilsTest, LockDeleteRace) {
+  int fd =
+      open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0777);
+  ASSERT_GE(fd, 0);
+  ASSERT_EQ(HANDLE_EINTR(flock(fd, LOCK_EX)), 0);
+  scoped_refptr<base::SequencedTaskRunner> task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
+
+  base::RunLoop loop;
+  // Post a thread that waits with file locked (to make race more likely) then
+  // deletes the file, as chrome would, and unlocks the file.
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](int fd, const std::string& filename, base::OnceClosure cb) {
+            base::PlatformThread::Sleep(base::Seconds(5));
+            ASSERT_EQ(unlink(filename.c_str()), 0);
+            ASSERT_EQ(HANDLE_EINTR(flock(fd, LOCK_UN)), 0);
+            ASSERT_EQ(close(fd), 0);
+            std::move(cb).Run();
+          },
+          fd, filename_, loop.QuitClosure()));
+
+  std::vector<MetricSample> output_samples = {
+      MetricSample::HistogramSample("myhist", 3, 1, 10, 5, /*num_samples=*/1),
+  };
+  EXPECT_TRUE(
+      SerializationUtils::WriteMetricsToFile(output_samples, filename_));
+
+  // Ensure thread is done to make sure that it's not about to delete the file
+  // (e.g. if ReadAndTruncateMetricsFromFile didn't wait for the lock).
+  loop.Run();
+
+  std::vector<MetricSample> samples;
+  SerializationUtils::ReadAndTruncateMetricsFromFile(
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+
+  ASSERT_EQ(output_samples.size(), samples.size());
+  for (size_t i = 0; i < output_samples.size(); ++i) {
+    EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
+  }
+
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  ASSERT_EQ(0, size);
+}
+
+// Same as above, but re-create the file to make sure that inode checking works.
+TEST_F(SerializationUtilsTest, LockDeleteRecreateRace) {
+  int fd =
+      open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0777);
+  ASSERT_GE(fd, 0);
+  ASSERT_EQ(HANDLE_EINTR(flock(fd, LOCK_EX)), 0);
+  scoped_refptr<base::SequencedTaskRunner> task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
+
+  base::RunLoop loop;
+  // Post a thread that waits with file locked (to make race more likely) then
+  // deletes the file, as chrome would, and unlocks the file.
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](int fd, const std::string& filename, base::OnceClosure cb) {
+            base::PlatformThread::Sleep(base::Seconds(5));
+            ASSERT_EQ(unlink(filename.c_str()), 0);
+
+            // Recreate the file to make sure inode checking works.
+            ASSERT_TRUE(base::WriteFile(base::FilePath(filename), ""));
+
+            ASSERT_EQ(HANDLE_EINTR(flock(fd, LOCK_UN)), 0);
+            ASSERT_EQ(close(fd), 0);
+            std::move(cb).Run();
+          },
+          fd, filename_, loop.QuitClosure()));
+
+  std::vector<MetricSample> output_samples = {
+      MetricSample::HistogramSample("myhist", 3, 1, 10, 5, /*num_samples=*/1),
+  };
+  EXPECT_TRUE(
+      SerializationUtils::WriteMetricsToFile(output_samples, filename_));
+
+  // Ensure thread is done to make sure that it's not about to delete the file
+  // (e.g. if ReadAndTruncateMetricsFromFile didn't wait for the lock).
+  loop.Run();
+
+  std::vector<MetricSample> samples;
+  SerializationUtils::ReadAndTruncateMetricsFromFile(
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+
+  ASSERT_EQ(output_samples.size(), samples.size());
+  for (size_t i = 0; i < output_samples.size(); ++i) {
+    EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
+  }
+
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  ASSERT_EQ(0, size);
+}
+
 // Test of batched upload.  Creates a metrics log with enough samples to
 // trigger two uploads.
 TEST_F(SerializationUtilsTest, BatchedUploadTest) {
@@ -457,81 +567,6 @@ TEST_F(SerializationUtilsTest, BatchedUploadTest) {
   ASSERT_EQ(stat_buf.st_size, 0);
   // Check that we read all samples.
   ASSERT_EQ(samples.size(), sample_count);
-}
-
-// Tests that WriteMetricsToFile() writes the sample metric to file on the first
-// attempt.
-TEST_F(SerializationUtilsTest,
-       WriteMetricsToFile_UseNonBlockingLock_GetLockOnFirstAttempt) {
-  bool cb_run = false;
-  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
-      /*use_nonblocking_lock=*/true,
-      base::BindLambdaForTesting(
-          [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
-  EXPECT_FALSE(cb_run);
-
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  // 4 bytes for the size
-  // 5 bytes for crash
-  // 7 bytes for mycrash
-  // 2 bytes for the \0
-  // -> total of 18
-  EXPECT_EQ(size, 18);
-}
-
-// Tests that WriteMetricsToFile() writes the sample metric to file on the
-// fifth attempt. Another process is created at the start of the test to grab
-// the file lock, causing the first through fourth attempts to fail. The process
-// is then killed, freeing the lock for the fifth attempt.
-TEST_F(SerializationUtilsTest,
-       WriteMetricsToFile_UseNonBlockingLock_GetLockOnFifthAttempt) {
-  auto lock_process = LockFile(filepath_);
-  bool cb_run = false;
-  size_t acquire_lock_attempts = 0;
-  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
-      /*use_nonblocking_lock=*/true,
-      base::BindLambdaForTesting(
-          [&lock_process, &cb_run,
-           &acquire_lock_attempts](base::TimeDelta sleep_time) {
-            cb_run = true;
-            ++acquire_lock_attempts;
-            if (acquire_lock_attempts == 4) {
-              lock_process->Kill(SIGKILL, /*timeout=*/5);
-              lock_process->Wait();
-            }
-          })));
-  EXPECT_TRUE(cb_run);
-
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  // 4 bytes for the size
-  // 5 bytes for crash
-  // 7 bytes for mycrash
-  // 2 bytes for the \0
-  // -> total of 18
-  EXPECT_EQ(size, 18);
-}
-
-// Tests that WriteMetricsToFile() does not write the sample metric since the
-// lock is never available. Another process is created at the start of the test
-// to grab the file lock, causing the first and second attempts to fail.
-TEST_F(SerializationUtilsTest,
-       WriteMetricsToFile_UseNonBlockingLock_NeverGetLock) {
-  auto lock_file = LockFile(filepath_);
-  bool cb_run = false;
-  EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
-      /*use_nonblocking_lock=*/true,
-      base::BindLambdaForTesting(
-          [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
-  EXPECT_TRUE(cb_run);
-
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  EXPECT_EQ(size, 0);
 }
 
 TEST_F(SerializationUtilsTest, ParseInvalidType) {

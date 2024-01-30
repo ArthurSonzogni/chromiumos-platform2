@@ -5,26 +5,34 @@
 #include "metrics/metrics_writer.h"
 
 #include <string>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/location.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
 
 #include "metrics/serialization/serialization_utils.h"
 
 SynchronousMetricsWriter::SynchronousMetricsWriter(
-    bool use_nonblocking_lock, base::FilePath uma_events_file)
-    : use_nonblocking_lock_(use_nonblocking_lock),
-      uma_events_file_(std::move(uma_events_file)) {}
+    bool avoid_blocking,
+    base::FilePath uma_events_file,
+    base::FilePath uma_events_dir)
+    : avoid_blocking_(avoid_blocking),
+      uma_events_file_(std::move(uma_events_file)),
+      uma_events_dir_(std::move(uma_events_dir)) {}
 
 bool SynchronousMetricsWriter::WriteMetrics(
     std::vector<metrics::MetricSample> samples) {
+  base::FilePath uma_events_file = uma_events_file_;
+  if (avoid_blocking_) {
+    uma_events_file = uma_events_dir_.Append(base::NumberToString(getpid()));
+  }
   return metrics::SerializationUtils::WriteMetricsToFile(
-      samples, uma_events_file_.value(),
-      /*use_nonblocking_lock=*/use_nonblocking_lock_);
+      samples, uma_events_file.value());
 }
 
 bool SynchronousMetricsWriter::SetOutputFile(const std::string& output_file) {
@@ -78,8 +86,7 @@ void AsynchronousMetricsWriter::WaitUntilFlushed() {
 void AsynchronousMetricsWriter::WriteMetricsOnThread(
     std::vector<metrics::MetricSample> samples) {
   if (!metrics::SerializationUtils::WriteMetricsToFile(
-          samples, uma_events_file_.value(),
-          /*use_nonblocking_lock=*/false)) {
+          samples, uma_events_file_.value())) {
     LOG(ERROR) << "Failed to write metrics";
   }
 }

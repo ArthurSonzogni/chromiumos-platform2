@@ -480,6 +480,7 @@ type cros_boot_log, file_type, cros_log_type, cros_file_type, cros_var_file_type
 type cros_hammerd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_metrics_file, file_type, cros_file_type, cros_var_file_type;
 type cros_metrics_uma_events_file, file_type, cros_file_type, cros_var_file_type;
+type cros_metrics_uma_events_dir, file_type, cros_file_type, cros_var_file_type;
 type cros_net_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_powerd_log, file_type, cros_file_type, cros_var_file_type;
 type cros_secure_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;

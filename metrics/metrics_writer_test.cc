@@ -4,9 +4,12 @@
 
 #include "metrics/metrics_writer.h"
 
+#include <unistd.h>
+
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
@@ -18,7 +21,7 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file_path = temp_dir.GetPath().Append("metrics");
   auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
-      /*use_nonblocking_lock=*/false, file_path);
+      /*avoid_blocking=*/false, file_path);
 
   auto sample1 = metrics::MetricSample::LinearHistogramSample(
       "Test1", 1, 2, /*num_samples=*/1);
@@ -35,13 +38,36 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics) {
   EXPECT_EQ(samples[1].name(), sample2.name());
 }
 
+TEST(SynchronousMetricsWriterTest, WriteMetrics_AvoidBlocking) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto normal_path = temp_dir.GetPath().Append("metrics");
+  auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
+      /*avoid_blocking=*/true, normal_path, temp_dir.GetPath());
+
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
+  EXPECT_TRUE(writer->WriteMetrics({sample1}));
+  EXPECT_TRUE(writer->WriteMetrics({sample2}));
+  std::vector<metrics::MetricSample> samples;
+  auto file_path = temp_dir.GetPath().Append(base::NumberToString(getpid()));
+  ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
+      file_path.value(), &samples,
+      metrics::SerializationUtils::kSampleBatchMaxLength));
+  EXPECT_EQ(samples.size(), 2);
+  EXPECT_EQ(samples[0].name(), sample1.name());
+  EXPECT_EQ(samples[1].name(), sample2.name());
+}
+
 TEST(SynchronousMetricsWriterTest, SetOutputFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file_path = temp_dir.GetPath().Append("metrics");
   auto file_path2 = temp_dir.GetPath().Append("metrics2");
   auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
-      /*use_nonblocking_lock=*/false, file_path);
+      /*avoid_blocking=*/false, file_path);
 
   auto sample1 = metrics::MetricSample::LinearHistogramSample(
       "Test1", 1, 2, /*num_samples=*/1);
