@@ -280,15 +280,7 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
     VLOGF(1) << "HAL available rotate-and-crop modes: ["
              << base::JoinString(mode_strs, ", ") << "]";
   }
-
-  std::optional<int32_t> partial_result_count =
-      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
-  if (!partial_result_count.has_value()) {
-    LOGF(WARNING)
-        << "ANDROID_REQUEST_PARTIAL_RESULT_COUNT not found in static metadata";
-    return false;
-  }
-  partial_result_count_ = base::checked_cast<uint32_t>(*partial_result_count);
+  partial_result_count_ = GetPartialResultCount(static_info);
   VLOGF(1) << "Partial result count: " << partial_result_count_;
 
   return true;

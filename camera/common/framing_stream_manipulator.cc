@@ -400,9 +400,7 @@ bool FramingStreamManipulator::InitializeOnThread(
   callbacks_ = std::move(callbacks);
   setup_failed_ = false;
 
-  std::optional<int32_t> partial_result_count =
-      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
-  partial_result_count_ = partial_result_count.value_or(1);
+  partial_result_count_ = GetPartialResultCount(static_info);
 
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);

@@ -52,9 +52,7 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
     return true;
   }
 
-  std::optional<int32_t> partial_result_count =
-      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
-  partial_result_count_ = partial_result_count.value_or(1);
+  partial_result_count_ = GetPartialResultCount(static_info);
   zsl_helper_ = std::make_unique<ZslHelper>(static_info);
   return true;
 }

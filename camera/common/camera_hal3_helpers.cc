@@ -20,6 +20,7 @@
 
 #include "common/camera_buffer_handle.h"
 #include "common/common_tracing.h"
+#include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/tracing.h"
 
 namespace cros {
@@ -123,6 +124,12 @@ bool WaitOnAndClearReleaseFence(camera3_stream_buffer_t& buffer,
   close(buffer.release_fence);
   buffer.release_fence = -1;
   return true;
+}
+
+int32_t GetPartialResultCount(const camera_metadata_t* metadata) {
+  std::optional<int32_t> partial_result_count =
+      GetRoMetadata<int32_t>(metadata, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
+  return partial_result_count.value_or(1);
 }
 
 //

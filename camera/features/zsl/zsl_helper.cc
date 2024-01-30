@@ -226,14 +226,7 @@ ZslHelper::ZslHelper(const camera_metadata_t* static_info)
   if (!fence_sync_thread_.Start()) {
     LOGF(ERROR) << "Fence sync thread failed to start";
   }
-  partial_result_count_ = [&]() {
-    camera_metadata_ro_entry entry;
-    if (find_camera_metadata_ro_entry(
-            static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &entry) != 0) {
-      return 1;
-    }
-    return entry.data.i32[0];
-  }();
+  partial_result_count_ = GetPartialResultCount(static_info);
   max_num_input_streams_ = [&]() {
     camera_metadata_ro_entry_t entry;
     if (find_camera_metadata_ro_entry(
@@ -672,10 +665,8 @@ bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
     const int32_t& height = entry.data.i32[i + STREAM_CONFIG_HEIGHT_INDEX];
     const int32_t& direction =
         entry.data.i32[i + STREAM_CONFIG_DIRECTION_INDEX];
-    VLOGF(1) << "format = " << format << ", "
-             << "width = " << width << ", "
-             << "height = " << height << ", "
-             << "direction = " << direction;
+    VLOGF(1) << "format = " << format << ", " << "width = " << width << ", "
+             << "height = " << height << ", " << "direction = " << direction;
     if (direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_INPUT) {
       if (width * height > (*bi_width) * (*bi_height)) {
         *bi_width = width;

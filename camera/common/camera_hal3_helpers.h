@@ -133,6 +133,11 @@ inline void SetStillCaptureUsage(camera3_stream* stream) {
 #endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 }
 
+// Returns ANDROID_REQUEST_PARTIAL_RESULT_COUNT value if exists.
+// Returns 1 (default) otherwise.
+CROS_CAMERA_EXPORT int32_t
+GetPartialResultCount(const camera_metadata_t* metadata);
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {

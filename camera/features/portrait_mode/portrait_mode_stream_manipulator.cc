@@ -160,9 +160,7 @@ bool PortraitModeStreamManipulator::InitializeOnThread(
 
   callbacks_ = std::move(callbacks);
 
-  std::optional<int32_t> partial_result_count =
-      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
-  partial_result_count_ = partial_result_count.value_or(1);
+  partial_result_count_ = GetPartialResultCount(static_info);
   VLOGF(1) << "Partial result count: " << partial_result_count_;
 
   // Initialize Portrait Mode effect.
