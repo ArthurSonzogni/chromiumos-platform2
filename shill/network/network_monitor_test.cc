@@ -56,6 +56,7 @@ class MockClient : public NetworkMonitor::ClientNetwork {
               OnNetworkMonitorResult,
               (const NetworkMonitor::Result&),
               (override));
+  MOCK_METHOD(void, OnValidationStarted, (bool), (override));
 };
 
 class NetworkMonitorTest : public ::testing::Test {
@@ -105,6 +106,16 @@ class NetworkMonitorTest : public ::testing::Test {
         .WillByDefault(testing::ReturnRef(config_));
   }
 
+  // Runs the NetworkMonitor::Start() method and wait until the trial scheduled
+  // by the method has been executed, then checks the callback with the expected
+  // result |is_success| is called.
+  void StartAndExpectResult(NetworkMonitor::ValidationReason reason,
+                            bool is_success) {
+    EXPECT_CALL(client_, OnValidationStarted(is_success)).Times(1);
+    network_monitor_->Start(reason);
+    task_environment_.RunUntilIdle();
+  }
+
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
       const PortalDetector::Result& result) {
@@ -128,9 +139,7 @@ class NetworkMonitorTest : public ::testing::Test {
                     NetworkMonitor::Result::FromPortalDetectorResult(result)))
         .Times(1);
 
-    EXPECT_TRUE(network_monitor_->Start(
-        NetworkMonitor::ValidationReason::kDBusRequest));
-    task_environment_.RunUntilIdle();
+    StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, true);
   }
 
  protected:
@@ -172,8 +181,7 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
           return portal_detector;
         });
 
-    EXPECT_TRUE(network_monitor_->Start(reason));
-    task_environment_.RunUntilIdle();
+    StartAndExpectResult(reason, true);
     network_monitor_->Stop();
   }
 }
@@ -181,8 +189,7 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
 TEST_F(NetworkMonitorTest, StartWithoutDNS) {
   SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, {});
 
-  EXPECT_FALSE(
-      network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest));
+  StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, false);
 }
 
 TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
@@ -205,8 +212,7 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
           return portal_detector;
         });
 
-    EXPECT_TRUE(network_monitor_->Start(reason));
-    task_environment_.RunUntilIdle();
+    StartAndExpectResult(reason, true);
   }
 }
 

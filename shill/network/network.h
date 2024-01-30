@@ -412,6 +412,7 @@ class Network : public NetworkMonitor::ClientNetwork {
     return GetNetworkConfig();
   }
   void OnNetworkMonitorResult(const NetworkMonitor::Result& result) override;
+  void OnValidationStarted(bool is_success) override;
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
@@ -553,6 +554,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Validates the network connectivity and detect the captive portal.
   // The instance exists when the state is not at kIdle.
   std::unique_ptr<NetworkMonitor> network_monitor_;
+  // Records whether |network_monitor_| was running or not when starting it.
+  bool network_monitor_was_running_ = false;
   // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
   std::optional<NetworkMonitor::Result> network_validation_result_;

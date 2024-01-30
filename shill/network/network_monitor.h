@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -95,6 +94,9 @@ class NetworkMonitor {
     // Called whenever a new network validation result or captive portal
     // detection result becomes available.
     virtual void OnNetworkMonitorResult(const Result& result) = 0;
+    // Called when the validation trial triggered by NetworkMonitor::Start()
+    // has been finished.
+    virtual void OnValidationStarted(bool is_success) = 0;
   };
 
   NetworkMonitor(
@@ -141,9 +143,9 @@ class NetworkMonitor {
   //   c) reschedule another network validation attempt immediately after the
   //      current one if the result is not conclusive (the result was not
   //      kInternetConnectivity or kPortalRedirect).
-  //   e) do nothing, wait for the network validation attempt scheduled next to
+  //   d) do nothing, wait for the network validation attempt scheduled next to
   //      run.
-  mockable bool Start(ValidationReason reason);
+  mockable void Start(ValidationReason reason);
 
   // Stops the current attempt. No-op and returns false if no attempt is
   // running.
@@ -161,9 +163,9 @@ class NetworkMonitor {
       std::unique_ptr<PortalDetector> portal_detector);
 
  private:
-  void StartValidationTask(ValidationReason reason,
-                           net_base::IPFamily ip_family,
-                           const std::vector<net_base::IPAddress>& dns_list);
+  // Starts the validation. Returns true is the validation has been successfully
+  // started.
+  bool StartValidationTask(ValidationReason reason);
 
   // Callback when |portal_detector_| returns the result.
   void OnPortalDetectorResult(const PortalDetector::Result& result);

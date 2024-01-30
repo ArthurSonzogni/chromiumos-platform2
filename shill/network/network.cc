@@ -287,6 +287,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   network_validation_result_.reset();
   StopPortalDetection(/*is_failure=*/false);
   network_monitor_.reset();
+  network_monitor_was_running_ = false;
 
   const bool should_trigger_callback =
       state_ != State::kIdle && trigger_callback;
@@ -784,22 +785,22 @@ bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
     return false;
   }
 
-  bool was_running = network_monitor_->IsRunning();
-  bool is_success = network_monitor_->Start(reason);
+  network_monitor_was_running_ = network_monitor_->IsRunning();
+  network_monitor_->Start(reason);
+  return true;
+}
+
+void Network::OnValidationStarted(bool is_success) {
   // b/211000413: If network validation could not start, the network is either
   // misconfigured (no DNS) or not provisioned correctly. In either case,
   // notify listeners to assume that the network has no Internet connectivity.
-  if (!was_running) {
+  if (!network_monitor_was_running_) {
     for (auto& ev : event_handlers_) {
       ev.OnNetworkValidationStart(interface_index_, /*is_failure=*/!is_success);
     }
-  } else {
-    if (!is_success) {
-      StopPortalDetection(/*is_failure=*/true);
-    }
+  } else if (!is_success) {
+    StopPortalDetection(/*is_failure=*/true);
   }
-
-  return is_success;
 }
 
 void Network::StopPortalDetection(bool is_failure) {
