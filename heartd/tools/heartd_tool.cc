@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/functional/bind.h>
@@ -125,9 +127,11 @@ int main(int argc, char* argv[]) {
                       base::BindOnce(
                           [](base::OnceClosure quit_closure, bool success) {
                             if (success) {
-                              LOG(INFO) << "Registration success.";
+                              LOG(INFO) << "Registration success";
+                              std::cout << "Registration success" << std::endl;
                             } else {
                               LOG(FATAL) << "Registration fail";
+                              std::cout << "Registration fail" << std::endl;
                             }
                             std::move(quit_closure).Run();
                           },
