@@ -281,6 +281,19 @@
       </arg>
     </method>
 
+    <method name="TagSocket">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::TagSocketRequest" />
+      </arg>
+      <arg name="socket_fd" type="h" direction="in" />
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::TagSocketResponse" />
+      </arg>
+    </method>
+
     <method name="TerminaVmShutdown">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">

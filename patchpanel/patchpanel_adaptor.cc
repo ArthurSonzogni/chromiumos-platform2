@@ -398,6 +398,12 @@ SetVpnLockdownResponse PatchpanelAdaptor::SetVpnLockdown(
   return {};
 }
 
+TagSocketResponse PatchpanelAdaptor::TagSocket(
+    const TagSocketRequest& request, const base::ScopedFD& socket_fd) {
+  // TODO(b/322083502): Implement the method.
+  return {};
+}
+
 TerminaVmShutdownResponse PatchpanelAdaptor::TerminaVmShutdown(
     const TerminaVmShutdownRequest& request) {
   LOG(INFO) << "Termina VM shutting down";

@@ -93,6 +93,8 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
                                     const base::ScopedFD& socket_fd) override;
   SetVpnLockdownResponse SetVpnLockdown(
       const SetVpnLockdownRequest& request) override;
+  TagSocketResponse TagSocket(const TagSocketRequest& request,
+                              const base::ScopedFD& socket_fd) override;
   TerminaVmShutdownResponse TerminaVmShutdown(
       const TerminaVmShutdownRequest& request) override;
   TerminaVmStartupResponse TerminaVmStartup(

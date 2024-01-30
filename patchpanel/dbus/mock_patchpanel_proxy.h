@@ -360,6 +360,24 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
+              TagSocket,
+              (const TagSocketRequest&,
+               const base::ScopedFD& in_socket_fd,
+               TagSocketResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              TagSocketAsync,
+              (const TagSocketRequest&,
+               const base::ScopedFD& in_socket_fd,
+               base::OnceCallback<void(const TagSocketResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
               TerminaVmShutdown,
               (const TerminaVmShutdownRequest&,
                TerminaVmShutdownResponse*,
