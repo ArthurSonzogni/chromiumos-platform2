@@ -31,9 +31,11 @@ class BRILLO_EXPORT FileHasher {
       : source_(std::move(source)),
         destination_(std::move(destination)),
         block_limit_(blocks),
-        alg_(alg),
-        initialized_(false) {}
+        alg_(alg) {}
   virtual ~FileHasher();
+
+  FileHasher(const FileHasher&) = delete;
+  FileHasher& operator=(const FileHasher&) = delete;
 
   virtual bool Initialize();
   virtual bool Hash();
@@ -44,7 +46,7 @@ class BRILLO_EXPORT FileHasher {
 
   virtual const char* RandomSalt();
   virtual void set_salt(const char* salt);
-  virtual const char* salt(void) { return salt_; }
+  virtual const char* salt() { return salt_; }
 
  private:
   std::unique_ptr<base::File> source_;
@@ -56,10 +58,7 @@ class BRILLO_EXPORT FileHasher {
   std::vector<char> hash_data_;
   struct dm_bht tree_;
   sector_t sectors_;
-  bool initialized_;
-
-  FileHasher(const FileHasher&) = delete;
-  FileHasher& operator=(const FileHasher&) = delete;
+  bool initialized_ = false;
 };
 
 }  // namespace verity
