@@ -19,13 +19,13 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  public:
   UserDataAuthDaemon()
       : DBusServiceDaemon(::user_data_auth::kUserDataAuthServiceName),
-        service_(new cryptohome::UserDataAuth()) {}
+        service_(UserDataAuth::BackingApis::FromSystemApis(system_apis_)) {}
   UserDataAuthDaemon(const UserDataAuthDaemon&) = delete;
   UserDataAuthDaemon& operator=(const UserDataAuthDaemon&) = delete;
 
   // Retrieve the UserDataAuth object, it holds the service's state and provides
   // a good chunk of functionality.
-  UserDataAuth* GetUserDataAuth() { return service_.get(); }
+  UserDataAuth* GetUserDataAuth() { return &service_; }
 
  protected:
   void OnShutdown(int* exit_code) override {
@@ -36,7 +36,7 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     // Initialize the UserDataAuth service.
     // Note that the initialization should be done after setting the options.
-    CHECK(service_->Initialize(nullptr));
+    CHECK(service_.Initialize(nullptr));
 
     CHECK(!dbus_object_);
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
@@ -44,19 +44,19 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
         dbus::ObjectPath(::user_data_auth::kUserDataAuthServicePath));
 
     userdataauth_adaptor_ = std::make_unique<UserDataAuthAdaptor>(
-        bus_, dbus_object_.get(), service_.get());
+        bus_, dbus_object_.get(), &service_);
     userdataauth_adaptor_->RegisterAsync();
 
-    pkcs11_adaptor_ = std::make_unique<Pkcs11Adaptor>(bus_, dbus_object_.get(),
-                                                      service_.get());
+    pkcs11_adaptor_ =
+        std::make_unique<Pkcs11Adaptor>(bus_, dbus_object_.get(), &service_);
     pkcs11_adaptor_->RegisterAsync();
 
     install_attributes_adaptor_ = std::make_unique<InstallAttributesAdaptor>(
-        bus_, dbus_object_.get(), service_.get());
+        bus_, dbus_object_.get(), &service_);
     install_attributes_adaptor_->RegisterAsync();
 
     misc_adaptor_ = std::make_unique<CryptohomeMiscAdaptor>(
-        bus_, dbus_object_.get(), service_.get());
+        bus_, dbus_object_.get(), &service_);
     misc_adaptor_->RegisterAsync();
 
     dbus_object_->RegisterAsync(
@@ -69,7 +69,8 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<InstallAttributesAdaptor> install_attributes_adaptor_;
   std::unique_ptr<CryptohomeMiscAdaptor> misc_adaptor_;
 
-  std::unique_ptr<UserDataAuth> service_;
+  SystemApis system_apis_;
+  UserDataAuth service_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };

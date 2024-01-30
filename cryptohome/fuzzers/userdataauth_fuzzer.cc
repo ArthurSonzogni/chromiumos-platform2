@@ -353,18 +353,24 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
+  auto hwsec = hwsec_factory.GetCryptohomeFrontend();
+  auto hwsec_pw_manager = hwsec_factory.GetPinWeaverManagerFrontend();
+  auto recovery_crypto = hwsec_factory.GetRecoveryCryptoFrontend();
+
   MockDbusWithProxies bus, mount_thread_bus;
   NiceMock<MockRecoverableKeyStoreBackendCertProvider> key_store_cert_provider;
 
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
-  auto userdataauth = std::make_unique<UserDataAuth>();
+  auto userdataauth = std::make_unique<UserDataAuth>(
+      UserDataAuth::BackingApis{.platform = &platform,
+                                .hwsec = hwsec.get(),
+                                .hwsec_pw_manager = hwsec_pw_manager.get(),
+                                .recovery_crypto = recovery_crypto.get()});
   userdataauth->set_mount_task_runner(
       base::SingleThreadTaskRunner::GetCurrentDefault());
-  userdataauth->set_platform(&platform);
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
-  userdataauth->set_hwsec_factory(&hwsec_factory);
   userdataauth->set_key_store_cert_provider(&key_store_cert_provider);
   if (!userdataauth->Initialize(mount_thread_bus.refptr)) {
     // This should be a rare case (e.g., the mocked system salt writing failed).

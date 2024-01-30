@@ -23,6 +23,7 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -69,6 +70,19 @@
 
 namespace cryptohome {
 
+// Collection of APIs for accessing various aspects of the system. Used to
+// populate the BackingApis parameter on non-test constructions of UserDataAuth.
+struct SystemApis {
+  Platform platform;
+  hwsec::FactoryImpl hwsec_factory;
+  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec =
+      hwsec_factory.GetCryptohomeFrontend();
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager =
+      hwsec_factory.GetPinWeaverManagerFrontend();
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto =
+      hwsec_factory.GetRecoveryCryptoFrontend();
+};
+
 class UserDataAuth {
  public:
   struct MountArgs {
@@ -98,7 +112,20 @@ class UserDataAuth {
   using HandlerWithSessionCallback = base::OnceCallback<void(
       RequestType, OnDoneCallback<ReplyType>, InUseAuthSession)>;
 
-  UserDataAuth();
+  // Parameter struct used to supply all of the backing APIs that AuthSession
+  // depends on. All of these pointers must be valid for the entire lifetime of
+  // the UserDataAuth object and are all required to be non null.
+  struct BackingApis {
+    // Construct a BackingApis from SystemApis.
+    static BackingApis FromSystemApis(SystemApis& apis);
+
+    Platform* platform;
+    const hwsec::CryptohomeFrontend* hwsec;
+    const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager;
+    const hwsec::RecoveryCryptoFrontend* recovery_crypto;
+  };
+
+  explicit UserDataAuth(BackingApis apis);
   ~UserDataAuth();
 
   // Note that this function must be called from the thread that created this
@@ -485,34 +512,11 @@ class UserDataAuth {
   // Override |homedirs_| for testing purpose.
   void set_homedirs(HomeDirs* homedirs) { homedirs_ = homedirs; }
 
-  // Override |hwsec_factory_| for testing purpose.
-  void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
-    hwsec_factory_ = hwsec_factory;
-  }
-
-  // Override |hwsec_| for testing purpose.
-  void set_hwsec(const hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
-
-  // Override |hwsec_pw_manager| for testing purpose.
-  void set_pinweaver_manager(
-      const hwsec::PinWeaverManagerFrontend* pw_manager) {
-    hwsec_pw_manager_ = pw_manager;
-  }
-
-  // Override |recovery_crypto| for testing purpose.
-  void set_recovery_crypto(
-      const hwsec::RecoveryCryptoFrontend* recovery_crypto) {
-    recovery_crypto_ = recovery_crypto;
-  }
-
   // Override |cryptohome_keys_manager_| for testing purpose.
   void set_cryptohome_keys_manager(
       CryptohomeKeysManager* cryptohome_keys_manager) {
     cryptohome_keys_manager_ = cryptohome_keys_manager;
   }
-
-  // Override |platform_| for testing purpose.
-  void set_platform(Platform* platform) { platform_ = platform; }
 
   // override |chaps_client_| for testing purpose.
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
@@ -1004,29 +1008,13 @@ class UserDataAuth {
   // The system salt that is used for obfuscating the username
   brillo::SecureBlob system_salt_;
 
-  // The default hwsec factory object.
-  std::unique_ptr<hwsec::Factory> default_hwsec_factory_;
-
-  // The object to generate the other frontends.
-  hwsec::Factory* hwsec_factory_;
-
-  // The default object for accessing the HWSec related functions.
-  std::unique_ptr<const hwsec::CryptohomeFrontend> default_hwsec_;
-
-  // The object for accessing the HWSec related functions.
+  // Object for accessing platform related functionalities.
+  Platform* platform_;
+  // Object for accessing the HWSec related functions.
   const hwsec::CryptohomeFrontend* hwsec_;
-
-  // The default object for accessing the pinweaver managerrelated functions.
-  std::unique_ptr<const hwsec::PinWeaverManagerFrontend>
-      default_hwsec_pw_manager_;
-
-  // The object for accessing the pinweaver manager related functions.
+  // Object for accessing the pinweaver manager related functions.
   const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager_;
-
-  // The default object for accessing the recovery crypto related functions.
-  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> default_recovery_crypto_;
-
-  // The object for accessing the recovery crypto related functions.
+  // Object for accessing the recovery crypto related functions.
   const hwsec::RecoveryCryptoFrontend* recovery_crypto_;
 
   // The default cryptohome key loader object
@@ -1034,13 +1022,6 @@ class UserDataAuth {
 
   // The cryptohome key loader object
   CryptohomeKeysManager* cryptohome_keys_manager_;
-
-  // The default platform object for accessing platform related functionalities
-  std::unique_ptr<Platform> default_platform_;
-
-  // The actual platform object used by this class, usually set to
-  // default_platform_, but can be overridden for testing
-  Platform* platform_;
 
   // The default crypto object for performing cryptographic operations
   std::unique_ptr<Crypto> default_crypto_;

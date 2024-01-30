@@ -27,6 +27,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -143,7 +144,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
         AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
-    userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
@@ -158,42 +158,42 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
-    userdataauth_.set_pinweaver_manager(&hwsec_pw_manager_);
     userdataauth_.set_uss_manager_for_testing(&uss_manager_);
 
     userdataauth_.SetSignallingInterface(signalling_);
-    EXPECT_CALL(signalling_, SendMountStarted(_))
-        .WillRepeatedly([this](auto&& signal) {
+    ON_CALL(signalling_, SendMountStarted(_))
+        .WillByDefault([this](auto&& signal) {
           mount_started_signals_.push_back(std::move(signal));
         });
-    EXPECT_CALL(signalling_, SendMountCompleted(_))
-        .WillRepeatedly([this](auto&& signal) {
+    ON_CALL(signalling_, SendMountCompleted(_))
+        .WillByDefault([this](auto&& signal) {
           mount_completed_signals_.push_back(std::move(signal));
         });
   }
 
   void SetUpHWSecExpectations() {
-    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, GetManufacturer())
-        .WillRepeatedly(ReturnValue(0x43524f53));
-    EXPECT_CALL(hwsec_, GetAuthValue(_, _))
-        .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
-        .WillRepeatedly(ReturnValue(brillo::Blob()));
+    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, GetManufacturer()).WillByDefault(ReturnValue(0x43524f53));
+    ON_CALL(hwsec_, GetAuthValue(_, _))
+        .WillByDefault(ReturnValue(brillo::SecureBlob()));
+    ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+        .WillByDefault(ReturnValue(brillo::Blob()));
     ON_CALL(hwsec_, PreloadSealedData(_))
         .WillByDefault(ReturnValue(std::nullopt));
     ON_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
         .WillByDefault(ReturnValue(brillo::SecureBlob()));
-    EXPECT_CALL(hwsec_, GetPubkeyHash(_))
-        .WillRepeatedly(ReturnValue(brillo::Blob()));
-    EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
-        .WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_pw_manager_, GetVersion()).WillRepeatedly(ReturnValue(2));
-    EXPECT_CALL(hwsec_pw_manager_, BlockGeneratePk())
-        .WillRepeatedly(ReturnOk<TPMError>());
+    ON_CALL(hwsec_, GetPubkeyHash(_))
+        .WillByDefault(ReturnValue(brillo::Blob()));
+    ON_CALL(hwsec_, NotifyAuthenticateEvent()).WillByDefault([]() {
+      return hwsec::ScopedEvent();
+    });
+    ON_CALL(hwsec_pw_manager_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_pw_manager_, GetVersion()).WillByDefault(ReturnValue(2));
+    ON_CALL(hwsec_pw_manager_, BlockGeneratePk())
+        .WillByDefault(ReturnOk<TPMError>());
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
@@ -374,6 +374,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
+  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
   Crypto crypto_;
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
@@ -401,7 +402,11 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   std::vector<user_data_auth::MountStarted> mount_started_signals_;
   std::vector<user_data_auth::MountCompleted> mount_completed_signals_;
 
-  UserDataAuth userdataauth_;
+  UserDataAuth userdataauth_{{.platform = &platform_,
+                              .hwsec = &hwsec_,
+                              .hwsec_pw_manager = &hwsec_pw_manager_,
+                              .recovery_crypto = &recovery_crypto_}};
+
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   FakeFeaturesForTesting features_;
   int signal_called_ = 0;

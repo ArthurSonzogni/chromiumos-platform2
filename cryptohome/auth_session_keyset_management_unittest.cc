@@ -27,6 +27,7 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
@@ -166,7 +167,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
             &auth_factor_manager_, &uss_storage_, &uss_manager_,
             &features_.async});
     // Initializing UserData class.
-    userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
@@ -547,6 +547,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
+  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
@@ -602,7 +603,10 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   NiceMock<MockUserOldestActivityTimestampManager>
       user_activity_timestamp_manager_;
   NiceMock<MockInstallAttributes> install_attrs_;
-  UserDataAuth userdataauth_;
+  UserDataAuth userdataauth_{{.platform = &platform_,
+                              .hwsec = &hwsec_,
+                              .hwsec_pw_manager = &hwsec_pw_manager_,
+                              .recovery_crypto = &recovery_crypto_}};
 
   // Store user info for users that will be setup.
   std::vector<UserInfo> users_;

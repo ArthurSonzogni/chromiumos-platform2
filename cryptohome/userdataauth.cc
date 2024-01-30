@@ -707,17 +707,25 @@ void RunWithDecryptAuthSessionWhenAvailable(
 
 }  // namespace
 
-UserDataAuth::UserDataAuth()
+UserDataAuth::BackingApis UserDataAuth::BackingApis::FromSystemApis(
+    SystemApis& apis) {
+  return {
+      .platform = &apis.platform,
+      .hwsec = apis.hwsec.get(),
+      .hwsec_pw_manager = apis.hwsec_pw_manager.get(),
+      .recovery_crypto = apis.recovery_crypto.get(),
+  };
+}
+
+UserDataAuth::UserDataAuth(BackingApis apis)
     : origin_thread_id_(base::PlatformThread::CurrentId()),
       mount_thread_(nullptr),
-      hwsec_factory_(nullptr),
-      hwsec_(nullptr),
-      hwsec_pw_manager_(nullptr),
-      recovery_crypto_(nullptr),
+      platform_(apis.platform),
+      hwsec_(apis.hwsec),
+      hwsec_pw_manager_(apis.hwsec_pw_manager),
+      recovery_crypto_(apis.recovery_crypto),
       default_cryptohome_keys_manager_(nullptr),
       cryptohome_keys_manager_(nullptr),
-      default_platform_(new Platform()),
-      platform_(default_platform_.get()),
       default_crypto_(nullptr),
       crypto_(nullptr),
       default_chaps_client_(new chaps::TokenManagerClient()),
@@ -784,26 +792,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
   if (!mount_task_runner_) {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
-  }
-
-  if (!hwsec_factory_) {
-    default_hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
-    hwsec_factory_ = default_hwsec_factory_.get();
-  }
-
-  if (!hwsec_) {
-    default_hwsec_ = hwsec_factory_->GetCryptohomeFrontend();
-    hwsec_ = default_hwsec_.get();
-  }
-
-  if (!hwsec_pw_manager_) {
-    default_hwsec_pw_manager_ = hwsec_factory_->GetPinWeaverManagerFrontend();
-    hwsec_pw_manager_ = default_hwsec_pw_manager_.get();
-  }
-
-  if (!recovery_crypto_) {
-    default_recovery_crypto_ = hwsec_factory_->GetRecoveryCryptoFrontend();
-    recovery_crypto_ = default_recovery_crypto_.get();
   }
 
   // Note that we check to see if |cryptohome_keys_manager_| is available here

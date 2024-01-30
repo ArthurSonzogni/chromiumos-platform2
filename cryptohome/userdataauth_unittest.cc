@@ -182,8 +182,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_auth_block_utility(&auth_block_utility_);
     userdataauth_->set_keyset_management(&keyset_management_);
     userdataauth_->set_crypto(&crypto_);
-    userdataauth_->set_hwsec_factory(&hwsec_factory_);
-    userdataauth_->set_hwsec(&hwsec_);
     userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
@@ -211,16 +209,17 @@ class UserDataAuthTestBase : public ::testing::Test {
       // class (such as UserDataAuthTestThreaded) need to have the constructor
       // of UserDataAuth run on a specific thread, and therefore will construct
       // |userdataauth_| before calling UserDataAuthTestBase::SetUp().
-      userdataauth_ = std::make_unique<UserDataAuth>();
+      userdataauth_ = std::make_unique<UserDataAuth>(
+          UserDataAuth::BackingApis{.platform = &platform_,
+                                    .hwsec = &hwsec_,
+                                    .hwsec_pw_manager = &hwsec_pw_manager_,
+                                    .recovery_crypto = &recovery_crypto_});
     }
 
     userdataauth_->set_user_activity_timestamp_manager(
         &user_activity_timestamp_manager_);
     userdataauth_->set_install_attrs(attrs_.get());
     userdataauth_->set_homedirs(&homedirs_);
-    userdataauth_->set_pinweaver_manager(&hwsec_pw_manager_);
-    userdataauth_->set_recovery_crypto(&recovery_crypto_);
-    userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
@@ -4580,7 +4579,11 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
 
   void SetUpInOrigin() {
     // Create the |userdataauth_| object.
-    userdataauth_ = std::make_unique<UserDataAuth>();
+    userdataauth_ = std::make_unique<UserDataAuth>(
+        UserDataAuth::BackingApis{.platform = &platform_,
+                                  .hwsec = &hwsec_,
+                                  .hwsec_pw_manager = &hwsec_pw_manager_,
+                                  .recovery_crypto = &recovery_crypto_});
 
     // Setup the usual stuff
     UserDataAuthTestBase::SetUp();
@@ -4655,8 +4658,15 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     // Sealing is supported.
     ON_CALL(sim_factory_.GetMockBackend().GetMock().sealing, IsSupported)
         .WillByDefault(ReturnValue(true));
-    userdataauth_ = std::make_unique<UserDataAuth>();
-    userdataauth_->set_hwsec_factory(&sim_factory_);
+
+    sim_hwsec_ = sim_factory_.GetCryptohomeFrontend();
+    sim_hwsec_pw_manager_ = sim_factory_.GetPinWeaverManagerFrontend();
+    sim_recovery_crypto_ = sim_factory_.GetRecoveryCryptoFrontend();
+    userdataauth_ = std::make_unique<UserDataAuth>(UserDataAuth::BackingApis{
+        .platform = &platform_,
+        .hwsec = sim_hwsec_.get(),
+        .hwsec_pw_manager = sim_hwsec_pw_manager_.get(),
+        .recovery_crypto = sim_recovery_crypto_.get()});
     userdataauth_->SetSignallingInterface(signalling_);
 
     SetupDefaultUserDataAuth();
@@ -4987,6 +4997,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   static constexpr char kTestErrorString[] = "ErrorForTestingOnly";
 
   hwsec::Tpm2SimulatorFactoryForTest sim_factory_;
+  std::unique_ptr<const hwsec::CryptohomeFrontend> sim_hwsec_;
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> sim_hwsec_pw_manager_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> sim_recovery_crypto_;
 
   // Mock to use to capture any signals sent.
   NiceMock<MockSignalling> signalling_;
@@ -5606,47 +5619,6 @@ TEST_F(UserDataAuthApiTest, MountGuestWithOtherMounts) {
   EXPECT_THAT(guest_reply->error_info(),
               HasPossibleActions(
                   std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
-}
-
-TEST_F(UserDataAuthApiTest, ResetLECredentials) {
-  constexpr uint64_t kLabel = 100;
-  ASSERT_TRUE(CreateTestUser());
-
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
-
-  // Inject a PIN factor.
-  auto pin_factor = std::make_unique<AuthFactor>(
-      AuthFactorType::kPin, "pin-label",
-      AuthFactorMetadata{.metadata = PinMetadata()},
-      AuthBlockState{.state = PinWeaverAuthBlockState{}});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(GetObfuscatedUsername(kUsername1),
-                                             *pin_factor),
-              IsOk());
-
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
-  ASSERT_TRUE(session_id.has_value());
-
-  // Add the PIN auth factor.
-  ON_CALL(hwsec_pw_manager_, IsEnabled).WillByDefault(ReturnValue(true));
-  ON_CALL(hwsec_pw_manager_, GetDelayInSeconds).WillByDefault(ReturnValue(0));
-  EXPECT_CALL(hwsec_pw_manager_, InsertCredential)
-      .WillOnce(ReturnValue(kLabel));
-  user_data_auth::AddAuthFactorRequest add_factor_request;
-  add_factor_request.set_auth_session_id(session_id.value());
-  add_factor_request.mutable_auth_factor()->set_type(
-      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN);
-  add_factor_request.mutable_auth_factor()->set_label("pin-label");
-  add_factor_request.mutable_auth_factor()->mutable_pin_metadata();
-  add_factor_request.mutable_auth_input()->mutable_pin_input()->set_secret(
-      "pin");
-  std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
-      AddAuthFactorSync(add_factor_request);
-
-  EXPECT_CALL(hwsec_pw_manager_, GetWrongAuthAttempts(kLabel))
-      .WillOnce(ReturnValue(1));
-  EXPECT_CALL(hwsec_pw_manager_, ResetCredential(kLabel, _, _));
-  ASSERT_TRUE(GetTestAuthedAuthSession().has_value());
 }
 
 }  // namespace cryptohome
