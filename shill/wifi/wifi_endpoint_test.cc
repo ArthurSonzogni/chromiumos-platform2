@@ -279,7 +279,11 @@ TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNSAE) {
+  EXPECT_EQ(WiFiSecurity::kWpa3,
+            ParseSecurity(MakeSecurityArgs("RSN", "sae ft-sae")));
   EXPECT_EQ(WiFiSecurity::kWpa3, ParseSecurity(MakeSecurityArgs("RSN", "sae")));
+  EXPECT_EQ(WiFiSecurity::kWpa3,
+            ParseSecurity(MakeSecurityArgs("RSN", "ft-sae")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNOWE) {
@@ -319,6 +323,18 @@ TEST_F(WiFiEndpointTest, ParseSecurityMixedModes) {
 
   args.Clear();
   AddSecurityArgs(args, "RSN", {"wpa-psk", "wpa-ft-psk", "sae"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"ft-sae"});
+  EXPECT_EQ(WiFiSecurity::kWpa3, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"wpa-psk", "wpa-ft-psk", "ft-sae"});
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, ParseSecurity(args));
+
+  args.Clear();
+  AddSecurityArgs(args, "RSN", {"wpa-psk", "wpa-ft-psk", "sae", "ft-sae"});
   EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, ParseSecurity(args));
 }
 
