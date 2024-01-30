@@ -17,7 +17,7 @@
 #include "libhwsec/status.h"
 
 namespace {
-constexpr char kHwsecMetricsPrefix[] = "Platform.Libhwsec.RetryAction.";
+constexpr char kHwsecMetricsPrefix[] = "Platform.Libhwsec.RetryAction";
 constexpr size_t kHwsecMetricsPrefixLength = sizeof(kHwsecMetricsPrefix) - 1;
 constexpr char kPinWeaverSyncMetricsPrefix[] =
     "Platform.Libhwsec.PinWeaverManager.SyncHashTree.";
@@ -62,15 +62,20 @@ bool Metrics::SendFuncResultToUMA(const std::string& func_name,
     action = status->ToTPMRetryAction();
   }
 
-  std::string current_uma = kHwsecMetricsPrefix + func_name;
+  std::string current_uma = kHwsecMetricsPrefix;
+  current_uma += ".";
+  current_uma += func_name;
 
   bool result = true;
 
-  while (current_uma.size() > kHwsecMetricsPrefixLength) {
+  while (current_uma.size() >= kHwsecMetricsPrefixLength) {
     result &= metrics_->SendEnumToUMA(current_uma, action);
 
     size_t pos = current_uma.find_last_of('.');
-    CHECK_NE(pos, std::string::npos);
+    if (pos == std::string::npos) {
+      break;
+    }
+
     current_uma.resize(pos);
   }
 

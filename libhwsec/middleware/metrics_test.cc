@@ -45,6 +45,10 @@ TEST_F(MetricsTest, SimplifyFuncName) {
                             exclusive_max))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(mock_metrics_, SendEnumToUMA("Platform.Libhwsec.RetryAction",
+                                           later_int, exclusive_max))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(metrics_.SendFuncResultToUMA(
       SimplifyFuncName(GetFuncName<&State::IsReady>()),
       MakeStatus<TPMError>("Test error", TPMRetryAction::kLater)));
