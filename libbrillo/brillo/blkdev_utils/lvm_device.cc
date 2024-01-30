@@ -10,7 +10,9 @@
 
 #include <linux/dm-ioctl.h>
 
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <utility>
 
 // lvm2 has multiple options for managing LVM objects:
@@ -188,6 +190,33 @@ base::FilePath LogicalVolume::GetPath() {
       .Append(logical_volume_name_);
 }
 
+std::optional<int64_t> LogicalVolume::GetSize() {
+  if (logical_volume_name_.empty() || !lvm_)
+    return std::nullopt;
+
+  std::string output;
+  if (!lvm_->RunProcess({"/sbin/lvs", "-o", "lv_size", "--reportformat", "json",
+                         "--unit", "m", "--nosuffix", GetPath().value()},
+                        &output)) {
+    return std::nullopt;
+  }
+  return ParseReportedSize(output, "lv_size");
+}
+
+std::optional<int64_t> LogicalVolume::GetBlockSize() {
+  if (logical_volume_name_.empty() || !lvm_)
+    return std::nullopt;
+
+  std::string output;
+  if (!lvm_->RunProcess(
+          {"/sbin/lvs", "-o", "vg_extent_size", "--reportformat", "json",
+           "--unit", "m", "--nosuffix", GetPath().value()},
+          &output)) {
+    return std::nullopt;
+  }
+  return ParseReportedSize(output, "vg_extent_size");
+}
+
 bool LogicalVolume::Activate() {
   if (logical_volume_name_.empty() || !lvm_)
     return false;
@@ -207,6 +236,35 @@ bool LogicalVolume::Remove() {
   logical_volume_name_ = "";
   volume_group_name_ = "";
   return ret;
+}
+
+bool LogicalVolume::Resize(int64_t size) {
+  if (logical_volume_name_.empty() || !lvm_)
+    return false;
+  const auto& size_str = base::StringPrintf("-L%" PRId64 "m", size);
+  return lvm_->RunCommand({"lvresize", "--force", size_str, GetName()});
+}
+
+std::optional<int64_t> LogicalVolume::ParseReportedSize(
+    const std::string& report_json, const std::string& key) {
+  std::optional<base::Value> lv_value =
+      lvm_->UnwrapReportContents(report_json, "lv");
+
+  if (!lv_value || !lv_value->is_dict()) {
+    LOG(ERROR) << "Failed to get report contents";
+    return std::nullopt;
+  }
+  const std::string* output_lv_size = lv_value->GetDict().FindString(key);
+  if (!output_lv_size) {
+    LOG(ERROR) << "Missing value=" << key;
+    return std::nullopt;
+  }
+  double size;
+  if (!base::StringToDouble(*output_lv_size, &size)) {
+    LOG(ERROR) << "Failed to parse size, str:  " << *output_lv_size;
+    return std::nullopt;
+  }
+  return size;
 }
 
 Thinpool::Thinpool(const std::string& thinpool_name,

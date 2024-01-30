@@ -221,5 +221,23 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="ResizeLogicalVolume">
+    <tp:docstring>
+      Resize the logical volume to the given size.
+    </tp:docstring>
+    <arg name="logical_volume" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (LogicalVolume,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::LogicalVolume"/>
+    </arg>
+    <arg name="size" type="x" direction="in">
+      <tp:docstring>
+        The target size in MiB.
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

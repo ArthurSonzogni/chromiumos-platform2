@@ -7,6 +7,7 @@
 
 #include <linux/dm-ioctl.h>
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -118,8 +119,11 @@ class BRILLO_EXPORT LogicalVolume {
   bool Activate();
   bool Deactivate();
   bool Remove();
+  bool Resize(int64_t size);
   bool IsValid() { return !logical_volume_name_.empty(); }
   base::FilePath GetPath();
+  std::optional<int64_t> GetSize();
+  std::optional<int64_t> GetBlockSize();
   std::string GetName() const {
     return logical_volume_name_.empty()
                ? ""
@@ -132,6 +136,9 @@ class BRILLO_EXPORT LogicalVolume {
   std::string logical_volume_name_;
   std::string volume_group_name_;
   std::shared_ptr<LvmCommandRunner> lvm_;
+
+  std::optional<int64_t> ParseReportedSize(const std::string& report_json,
+                                           const std::string& key);
 };
 
 }  // namespace brillo

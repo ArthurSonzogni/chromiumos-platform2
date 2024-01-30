@@ -4,6 +4,7 @@
 
 #include "lvmd/lvmd.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -307,6 +308,46 @@ bool Lvmd::ToggleLogicalVolumeActivation(
     return false;
   }
 
+  return true;
+}
+
+bool Lvmd::ResizeLogicalVolume(brillo::ErrorPtr* error,
+                               const lvmd::LogicalVolume& in_logical_volume,
+                               int64_t size) {
+  auto vg_name = in_logical_volume.volume_group().name();
+  auto vg = brillo::VolumeGroup(vg_name, {});
+
+  std::string lv_name = in_logical_volume.name();
+  auto opt_lv = lvm_->GetLogicalVolume(vg, lv_name);
+
+  if (!opt_lv) {
+    *error = CreateError(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Failed to GetLogicalVolume for lv (%s) in vg (%s)",
+                           lv_name.c_str(), vg_name.c_str()));
+    return false;
+  }
+
+  auto current_size = opt_lv->GetSize();
+  auto blk_size = opt_lv->GetBlockSize();
+  if (!current_size || !blk_size) {
+    LOG(WARNING) << "Unable to check existing size, resizing regardless.";
+  } else {
+    // No need to resize if the size difference is less than one block since the
+    // LVM tool automatically rounds up to the same size.
+    if (auto size_delta = *current_size - size;
+        size_delta >= 0 && size_delta < *blk_size) {
+      LOG(WARNING) << "The size would not change, skip resizing.";
+      return true;
+    }
+  }
+  if (!opt_lv->Resize(size)) {
+    *error = CreateError(FROM_HERE, kErrorInternal,
+                         base::StringPrintf("Failed to resize lv "
+                                            "name (%s) in vg (%s)",
+                                            lv_name.c_str(), vg_name.c_str()));
+    return false;
+  }
   return true;
 }
 

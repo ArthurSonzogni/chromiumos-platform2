@@ -5,6 +5,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 
@@ -152,6 +153,10 @@ class LvmdClient : public brillo::Daemon {
                                     const std::string& lv_name,
                                     bool activate);
 
+  int ResizeLogicalVolume(const std::string& vg_name,
+                          const std::string& lv_name,
+                          int64_t size);
+
   // argc and argv passed to main().
   int argc_;
   const char** argv_;
@@ -185,6 +190,7 @@ int LvmdClient::ProcessFlags() {
   DEFINE_bool(remove, false, "Remove action.");
   DEFINE_bool(activate, false, "Activate action.");
   DEFINE_bool(deactivate, false, "Deactivation action.");
+  DEFINE_bool(resize, false, "Resize action.");
 
   // Exclusive top level lvm devices.
   DEFINE_bool(pv, false, "Get PhysicalVolume.");
@@ -225,8 +231,12 @@ int LvmdClient::ProcessFlags() {
   //   `--lv`
   // Used in `--deactivate`:
   //   `--lv`
+  // Used in `--resize`:
+  //   `--lv`
   DEFINE_string(lv_name, "", "Logical Volume name.");
   // Used in `--create`:
+  //   `--lv`
+  // Used in `--resize`:
   //   `--lv`
   DEFINE_int64(size, -1, "Size in MiB.");
   // Used in `--create`:
@@ -246,6 +256,7 @@ int LvmdClient::ProcessFlags() {
           FLAGS_remove,
           FLAGS_activate,
           FLAGS_deactivate,
+          FLAGS_resize,
       })) {
     LOG(ERROR) << "Please provide only one of "
                   "`--show`"
@@ -335,6 +346,14 @@ int LvmdClient::ProcessFlags() {
                                            /*activate=*/false);
 
     LOG(ERROR) << "`--deactivate` is not support for this LVM device.";
+    return EX_USAGE;
+  }
+
+  if (FLAGS_resize) {
+    if (FLAGS_lv)
+      return ResizeLogicalVolume(FLAGS_vg_name, FLAGS_lv_name, FLAGS_size);
+
+    LOG(ERROR) << "`--resize` is not support for this LVM device.";
     return EX_USAGE;
   }
 
@@ -658,6 +677,40 @@ int LvmdClient::ToggleLogicalVolumeActivation(const std::string& vg_name,
   if (!lvmd_proxy_->ToggleLogicalVolumeActivation(lv, activate, &err)) {
     LOG(ERROR) << "Failed to toggle activation for logical volume, "
                << ErrorPtrToStr(err);
+    return EX_SOFTWARE;
+  }
+
+  return EX_OK;
+}
+
+int LvmdClient::ResizeLogicalVolume(const std::string& vg_name,
+                                    const std::string& lv_name,
+                                    int64_t size) {
+  if (vg_name.empty()) {
+    LOG(ERROR) << "`--vg_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (lv_name.empty()) {
+    LOG(ERROR) << "`--lv_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (size < 0) {
+    LOG(ERROR) << "`--size` must be positive.";
+    return EX_USAGE;
+  }
+
+  lvmd::VolumeGroup vg;
+  vg.set_name(vg_name);
+
+  lvmd::LogicalVolume lv;
+  *lv.mutable_volume_group() = vg;
+  lv.set_name(lv_name);
+
+  brillo::ErrorPtr err;
+  if (!lvmd_proxy_->ResizeLogicalVolume(lv, size, &err)) {
+    LOG(ERROR) << "Failed to resize logical volume, " << ErrorPtrToStr(err);
     return EX_SOFTWARE;
   }
 

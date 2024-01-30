@@ -97,6 +97,12 @@ class Lvmd : public brillo::DBusServiceDaemon,
       const lvmd::LogicalVolume& in_logical_volume,
       bool activate) override;
 
+  // Resize the logical volume to the given `size`. If the `size` is less than
+  // one block smaller than current size, the resizing will be skipped.
+  bool ResizeLogicalVolume(brillo::ErrorPtr* error,
+                           const lvmd::LogicalVolume& in_logical_volume,
+                           int64_t size) override;
+
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(
