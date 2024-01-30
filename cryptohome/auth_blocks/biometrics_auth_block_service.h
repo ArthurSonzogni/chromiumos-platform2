@@ -31,6 +31,8 @@ class BiometricsAuthBlockService {
   using OperationOutput = BiometricsCommandProcessor::OperationOutput;
   using OperationCallback = BiometricsCommandProcessor::OperationCallback;
   using DeleteResult = BiometricsCommandProcessor::DeleteResult;
+  using LegacyRecordsCallback =
+      BiometricsCommandProcessor::LegacyRecordsCallback;
 
   BiometricsAuthBlockService(
       std::unique_ptr<BiometricsCommandProcessor> processor,
@@ -86,6 +88,18 @@ class BiometricsAuthBlockService {
                         const std::string& record_id,
                         base::OnceCallback<void(DeleteResult)> on_done);
 
+  // EnrollLegacyTemplate initiates a biometrics enrollment session and loads
+  // the legacy template as the enrollment result. If successful, the session
+  // is ready to accept a subsequent CreateCredential call.
+  void EnrollLegacyTemplate(AuthFactorType auth_factor_type,
+                            const std::string& template_id,
+                            OperationInput payload,
+                            StatusCallback on_done);
+
+  // Calls BiometricsCommandProcessor::ListLegacyRecords. It returns a list of
+  // legacy fingerprint records from biod's daemon store.
+  void ListLegacyRecords(LegacyRecordsCallback on_done);
+
  private:
   class Token : public PreparedAuthFactorToken {
    public:
@@ -124,6 +138,11 @@ class BiometricsAuthBlockService {
   // designed to be used as a callback with BiometricsCommandProcessor.
   void CheckSessionStartResult(PreparedAuthFactorToken::Consumer on_done,
                                bool success);
+
+  // Depending on the result of success, this will pass either ok or error
+  // status. This function is intended as a callback with
+  // BiometricsCommandProcessor::EnrollLegacyTemplate.
+  void CheckEnrollLegacyResult(StatusCallback on_done, bool success);
 
   void OnEnrollScanDone(user_data_auth::AuthEnrollmentProgress signal);
 

@@ -2165,6 +2165,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthGetSessionFailedInRestoreDeviceKey = 3546,
   /* ./userdataauth.cc */
   kLocUserDataAuthRestoreDeviceKeyFailed = 3547,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceMigrateFpConcurrentSession = 3548,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorListLegacyRecordsNoResp = 3549,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceEnrollLegacyTemplateFailure = 3550,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

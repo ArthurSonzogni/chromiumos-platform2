@@ -14,12 +14,11 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
+#include <biod/proto_bindings/messages.pb.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
-
-#include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {
 
@@ -46,6 +45,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       base::OnceCallback<void(std::optional<brillo::Blob>)> callback) override;
   void StartEnrollSession(OperationInput payload,
                           base::OnceCallback<void(bool)> on_done) override;
+  void EnrollLegacyTemplate(const std::string& legacy_record_id,
+                            OperationInput payload,
+                            base::OnceCallback<void(bool)> on_done) override;
   void StartAuthenticateSession(
       ObfuscatedUsername obfuscated_username,
       OperationInput payload,
@@ -58,6 +60,7 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       ObfuscatedUsername obfuscated_username,
       const std::string& record_id,
       base::OnceCallback<void(DeleteResult)> on_done) override;
+  void ListLegacyRecords(LegacyRecordsCallback on_done) override;
 
  private:
   // If signal is successfully connected, decrement the
@@ -92,6 +95,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   void OnDeleteCredentialReply(
       base::OnceCallback<void(DeleteResult)> on_done,
       std::optional<biod::DeleteCredentialReply> reply);
+  void OnListLegacyRecordsReply(
+      LegacyRecordsCallback on_done,
+      std::optional<biod::ListLegacyRecordsReply> reply);
 
   base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
       on_enroll_scan_done_;

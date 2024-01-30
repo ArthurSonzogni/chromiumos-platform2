@@ -7,12 +7,14 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/fp_migration/legacy_record.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -41,6 +43,9 @@ class BiometricsCommandProcessor {
 
   using OperationCallback =
       base::OnceCallback<void(CryptohomeStatusOr<OperationOutput>)>;
+
+  using LegacyRecordsCallback =
+      base::OnceCallback<void(CryptohomeStatusOr<std::vector<LegacyRecord>>)>;
 
   virtual ~BiometricsCommandProcessor() = default;
 
@@ -116,6 +121,16 @@ class BiometricsCommandProcessor {
       ObfuscatedUsername obfuscated_username,
       const std::string& record_id,
       base::OnceCallback<void(DeleteResult)> on_done) = 0;
+
+  // Starts an enroll session with a legacy template loaded as the enrolled
+  // template. |on_done| is invoked with whether the session is started
+  // successfully.
+  virtual void EnrollLegacyTemplate(const std::string& legacy_record_id,
+                                    OperationInput payload,
+                                    base::OnceCallback<void(bool)> on_done) = 0;
+
+  // Fetch a list of legacy fingerprint records.
+  virtual void ListLegacyRecords(LegacyRecordsCallback on_done) = 0;
 };
 
 }  // namespace cryptohome

@@ -16,6 +16,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "libhwsec-foundation/status/status_chain.h"
 
 namespace cryptohome {
 
@@ -167,6 +168,33 @@ void BiometricsAuthBlockService::DeleteCredential(
                                std::move(on_done));
 }
 
+void BiometricsAuthBlockService::EnrollLegacyTemplate(
+    AuthFactorType auth_factor_type,
+    const std::string& template_id,
+    OperationInput payload,
+    StatusCallback on_done) {
+  // Not allowed to enroll legacy template when the service is having an active
+  // session.
+  if (active_token_ || pending_token_) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceMigrateFpConcurrentSession),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  processor_->EnrollLegacyTemplate(
+      template_id, std::move(payload),
+      base::BindOnce(&BiometricsAuthBlockService::CheckEnrollLegacyResult,
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
+}
+
+void BiometricsAuthBlockService::ListLegacyRecords(
+    LegacyRecordsCallback on_done) {
+  processor_->ListLegacyRecords(std::move(on_done));
+}
+
 BiometricsAuthBlockService::Token::Token(AuthFactorType auth_factor_type,
                                          TokenType token_type)
     : PreparedAuthFactorToken(auth_factor_type),
@@ -223,6 +251,20 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
   }
   active_token_ = token.get();
   std::move(on_done).Run(std::move(token));
+}
+
+void BiometricsAuthBlockService::CheckEnrollLegacyResult(StatusCallback on_done,
+                                                         bool success) {
+  if (!success) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceEnrollLegacyTemplateFailure),
+        ErrorActionSet({PossibleAction::kRetry}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 void BiometricsAuthBlockService::OnEnrollScanDone(

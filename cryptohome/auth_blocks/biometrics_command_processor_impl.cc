@@ -7,9 +7,11 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
+#include <biod/proto_bindings/messages.pb.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -417,6 +419,19 @@ void BiometricsCommandProcessorImpl::StartEnrollSession(
   proxy_->StartEnrollSession(request, std::move(on_done));
 }
 
+void BiometricsCommandProcessorImpl::EnrollLegacyTemplate(
+    const std::string& legacy_record_id,
+    OperationInput payload,
+    base::OnceCallback<void(bool)> on_done) {
+  biod::EnrollLegacyTemplateRequest request;
+  request.set_legacy_record_id(legacy_record_id);
+  request.set_gsc_nonce(brillo::BlobToString(payload.nonce));
+  request.set_encrypted_label_seed(
+      brillo::BlobToString(payload.encrypted_label_seed));
+  request.set_iv(brillo::BlobToString(payload.iv));
+  proxy_->EnrollLegacyTemplate(request, std::move(on_done));
+}
+
 void BiometricsCommandProcessorImpl::StartAuthenticateSession(
     ObfuscatedUsername obfuscated_username,
     OperationInput payload,
@@ -511,6 +526,13 @@ void BiometricsCommandProcessorImpl::DeleteCredential(
   proxy_->DeleteCredential(
       request,
       base::BindOnce(&BiometricsCommandProcessorImpl::OnDeleteCredentialReply,
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
+}
+
+void BiometricsCommandProcessorImpl::ListLegacyRecords(
+    LegacyRecordsCallback on_done) {
+  proxy_->ListLegacyRecords(
+      base::BindOnce(&BiometricsCommandProcessorImpl::OnListLegacyRecordsReply,
                      weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
@@ -646,6 +668,28 @@ void BiometricsCommandProcessorImpl::OnDeleteCredentialReply(
       result = BiometricsCommandProcessor::DeleteResult::kFailed;
   }
   std::move(on_done).Run(result);
+}
+
+void BiometricsCommandProcessorImpl::OnListLegacyRecordsReply(
+    LegacyRecordsCallback on_done,
+    std::optional<biod::ListLegacyRecordsReply> reply) {
+  if (!reply.has_value()) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorListLegacyRecordsNoResp),
+        ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+    return;
+  }
+
+  auto records = reply->legacy_records();
+  std::vector<LegacyRecord> results;
+  for (auto record : records) {
+    results.emplace_back(LegacyRecord{
+        .legacy_record_id = record.legacy_record_id(),
+        .user_specified_name = record.label(),
+    });
+  }
+  std::move(on_done).Run(std::move(results));
 }
 
 }  // namespace cryptohome

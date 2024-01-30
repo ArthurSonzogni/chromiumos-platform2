@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
@@ -16,13 +17,16 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <biod/biod_proxy/mock_auth_stack_manager_proxy_base.h>
+#include <biod/proto_bindings/messages.pb.h>
 #include <brillo/secure_blob.h>
+#include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/auth_blocks/biometrics_command_processor.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "gmock/gmock.h"
 
 namespace cryptohome {
 namespace {
@@ -36,6 +40,7 @@ using ::testing::Field;
 using ::testing::Optional;
 using ::testing::SaveArg;
 using ::testing::SizeIs;
+using ::testing::UnorderedElementsAre;
 
 // As the point needs to be valid, the point is pre-generated.
 constexpr char kPubPointXHex[] =
@@ -44,6 +49,12 @@ constexpr char kPubPointYHex[] =
     "4E411B61F1B48601ED3A218E4EE6075A3053130E6F25BBFF7FE08BB6D3EC6BF6";
 
 constexpr char kFakeRecordId[] = "fake_record_id";
+
+// Compares LegacyRecord structs.
+MATCHER_P(LegacyRecordEq, expected, "") {
+  return arg.legacy_record_id == expected.legacy_record_id &&
+         arg.user_specified_name == expected.user_specified_name;
+}
 
 biod::EnrollScanDone ConstructEnrollScanDone(biod::ScanResult scan_result,
                                              int percent_complete) {
@@ -466,6 +477,45 @@ TEST_F(BiometricsCommandProcessorImplTest, DeleteCredentialFailed) {
   TestFuture<BiometricsCommandProcessor::DeleteResult> result;
   processor_->DeleteCredential(kFakeUserId, kRecordId, result.GetCallback());
   EXPECT_EQ(result.Get(), BiometricsCommandProcessor::DeleteResult::kFailed);
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, EnrollLegacyTemplateSuccess) {
+  const BiometricsCommandProcessor::OperationInput kFakeInput{
+      .nonce = brillo::Blob(32, 1),
+      .encrypted_label_seed = brillo::Blob(32, 2),
+      .iv = brillo::Blob(16, 3),
+  };
+  EXPECT_CALL(*mock_proxy_, EnrollLegacyTemplate(_, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+  TestFuture<bool> result;
+  processor_->EnrollLegacyTemplate(kFakeRecordId, kFakeInput,
+                                   result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  EXPECT_TRUE(result.Get());
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, ListLegacyRecordsSuccess) {
+  biod::ListLegacyRecordsReply reply;
+  auto record1 = reply.add_legacy_records();
+  auto record2 = reply.add_legacy_records();
+  record1->set_legacy_record_id("record 1");
+  record1->set_label("finger 1");
+  record2->set_legacy_record_id("record2");
+  record2->set_label("finger 2");
+
+  EXPECT_CALL(*mock_proxy_, ListLegacyRecords)
+      .WillOnce([&reply](auto&& callback) { std::move(callback).Run(reply); });
+  TestFuture<CryptohomeStatusOr<std::vector<LegacyRecord>>> result;
+  processor_->ListLegacyRecords(result.GetCallback());
+
+  LegacyRecord lr1{.legacy_record_id = record1->legacy_record_id(),
+                   .user_specified_name = record1->label()};
+  LegacyRecord lr2{.legacy_record_id = record2->legacy_record_id(),
+                   .user_specified_name = record2->label()};
+  ASSERT_TRUE(result.IsReady());
+  ASSERT_THAT(result.Get(), IsOkAnd(UnorderedElementsAre(LegacyRecordEq(lr1),
+                                                         LegacyRecordEq(lr2))));
 }
 
 }  // namespace

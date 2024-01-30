@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/task/sequenced_task_runner.h>
@@ -16,6 +17,8 @@
 
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/type.h"
+#include "cryptohome/fp_migration/legacy_record.h"
+#include "gmock/gmock.h"
 
 namespace cryptohome {
 namespace {
@@ -28,6 +31,7 @@ using hwsec_foundation::error::testing::IsOkAnd;
 using ::testing::_;
 using ::testing::InSequence;
 using ::testing::SaveArg;
+using ::testing::UnorderedElementsAre;
 
 using user_data_auth::AuthEnrollmentProgress;
 using user_data_auth::FingerprintScanResult;
@@ -53,11 +57,26 @@ MATCHER_P(OperationOutputEq, output, "") {
          arg.auth_pin == output.auth_pin;
 }
 
+// Compares LegacyRecord structs.
+MATCHER_P(LegacyRecordEq, expected, "") {
+  return arg.legacy_record_id == expected.legacy_record_id &&
+         arg.user_specified_name == expected.user_specified_name;
+}
+
 // Functors for saving on_done callbacks of biometrics command processor methods
 // into a given argument. Useful for mocking out the biometrics command
 // processor methods.
 struct SaveStartEnrollSessionCallback {
   void operator()(BiometricsCommandProcessor::OperationInput input,
+                  base::OnceCallback<void(bool)> callback) {
+    *captured_callback = std::move(callback);
+  }
+  base::OnceCallback<void(bool)>* captured_callback;
+};
+
+struct SaveEnrollLegacyTemplateCallback {
+  void operator()(const std::string& legacy_record_id,
+                  BiometricsCommandProcessor::OperationInput input,
                   base::OnceCallback<void(bool)> callback) {
     *captured_callback = std::move(callback);
   }
@@ -820,6 +839,91 @@ TEST_F(BiometricsAuthBlockServiceTest, DeleteCredential) {
   service_->DeleteCredential(kFakeUserId, kRecordId,
                              delete_result.GetCallback());
   EXPECT_EQ(delete_result.Get(), kResult);
+}
+
+// Test that EnrollLegacyTemplate succeeds with underlying biometrics processor
+// returning true.
+TEST_F(BiometricsAuthBlockServiceTest, EnrollLegacyTemplateSuccess) {
+  std::string fake_legacy_record_id = "fake_record_id";
+  base::OnceCallback<void(bool)> enroll_done_callback;
+  EXPECT_CALL(*mock_processor_, EnrollLegacyTemplate(_, _, _))
+      .WillOnce(SaveEnrollLegacyTemplateCallback{&enroll_done_callback});
+
+  TestFuture<CryptohomeStatus> enroll_result;
+  service_->EnrollLegacyTemplate(AuthFactorType::kFingerprint,
+                                 fake_legacy_record_id, GetFakeInput(),
+                                 enroll_result.GetCallback());
+
+  ASSERT_FALSE(enroll_result.IsReady());
+  std::move(enroll_done_callback).Run(true);
+  ASSERT_TRUE(enroll_result.IsReady());
+  EXPECT_THAT(enroll_result.Get(), IsOk());
+}
+
+// Test that EnrollLegacyTemplate fails with underlying biometrics processor
+// returning false.
+TEST_F(BiometricsAuthBlockServiceTest, EnrollLegacyTemplateFailure) {
+  std::string fake_legacy_record_id = "fake_record_id";
+  base::OnceCallback<void(bool)> enroll_done_callback;
+  EXPECT_CALL(*mock_processor_, EnrollLegacyTemplate(_, _, _))
+      .WillOnce(SaveEnrollLegacyTemplateCallback{&enroll_done_callback});
+
+  TestFuture<CryptohomeStatus> enroll_result;
+  service_->EnrollLegacyTemplate(AuthFactorType::kFingerprint,
+                                 fake_legacy_record_id, GetFakeInput(),
+                                 enroll_result.GetCallback());
+
+  ASSERT_FALSE(enroll_result.IsReady());
+  std::move(enroll_done_callback).Run(false);
+  ASSERT_TRUE(enroll_result.IsReady());
+  EXPECT_EQ(enroll_result.Get().status()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+}
+
+// Test that EnrollLegacyTemplate can't be called when there is an active enroll
+// session.
+TEST_F(BiometricsAuthBlockServiceTest, ConcurrentEnrollLegacyTemplateFailure) {
+  std::string fake_legacy_record_id = "fake_record_id";
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
+      .WillOnce(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+  // Kick off the 1st start.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
+                               start_result.GetCallback());
+  ASSERT_TRUE(start_result.IsReady());
+  EXPECT_THAT(start_result.Get(), IsOk());
+
+  // Kick off the concurrent start of enroll legacy.
+  TestFuture<CryptohomeStatus> second_enroll_result;
+  service_->EnrollLegacyTemplate(AuthFactorType::kFingerprint,
+                                 fake_legacy_record_id, GetFakeInput(),
+                                 second_enroll_result.GetCallback());
+  ASSERT_TRUE(second_enroll_result.IsReady());
+  EXPECT_EQ(second_enroll_result.Get().status()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
+
+  EXPECT_CALL(*mock_processor_, EndEnrollSession);
+}
+
+// Test that ListLegacyRecords simply proxies the call to command processor.
+TEST_F(BiometricsAuthBlockServiceTest, ListLegacyRecords) {
+  LegacyRecord lr1{.legacy_record_id = "record 1",
+                   .user_specified_name = "finger 1"};
+  LegacyRecord lr2{.legacy_record_id = "record 2",
+                   .user_specified_name = "finger 2"};
+  std::vector<LegacyRecord> records = {lr1, lr2};
+  EXPECT_CALL(*mock_processor_, ListLegacyRecords(_))
+      .WillOnce(
+          [records](auto&& callback) { std::move(callback).Run(records); });
+
+  TestFuture<CryptohomeStatusOr<std::vector<LegacyRecord>>> result;
+  service_->ListLegacyRecords(result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  ASSERT_THAT(result.Get(), IsOkAnd(UnorderedElementsAre(LegacyRecordEq(lr1),
+                                                         LegacyRecordEq(lr2))));
 }
 
 }  // namespace

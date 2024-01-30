@@ -40,6 +40,12 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
               (OperationInput payload, base::OnceCallback<void(bool)>),
               (override));
   MOCK_METHOD(void,
+              EnrollLegacyTemplate,
+              (const std::string&,
+               OperationInput payload,
+               base::OnceCallback<void(bool)>),
+              (override));
+  MOCK_METHOD(void,
               StartAuthenticateSession,
               (ObfuscatedUsername,
                OperationInput payload,
@@ -55,6 +61,7 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
                const std::string&,
                base::OnceCallback<void(DeleteResult)>),
               (override));
+  MOCK_METHOD(void, ListLegacyRecords, (LegacyRecordsCallback), (override));
 };
 
 }  // namespace cryptohome
