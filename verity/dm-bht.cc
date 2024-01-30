@@ -19,8 +19,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <crypto/secure_hash.h>
-#include <crypto/sha2.h>
+#include <openssl/evp.h>
 
 #include <asm-generic/bitops/fls.h>
 #include <linux/errno.h>
@@ -102,6 +101,33 @@ void dm_bht_log_mismatch(struct dm_bht* bht,
   DLOG(ERROR) << given_hex << " != " << computed_hex;
 }
 
+static bool set_digest_params(struct dm_bht* bht, const char* alg_name) {
+  // Transfer alg name into what openssl understands.
+  if (!strcasecmp(alg_name, "blake2b-512")) {
+    bht->digest_alg = EVP_get_digestbyname("blake2b512");
+  } else if (!strcasecmp(alg_name, "blake2b-256")) {
+    bht->digest_alg = EVP_get_digestbyname("blake2b512");
+  } else if (!strcasecmp(alg_name, "blake2s-256")) {
+    bht->digest_alg = EVP_get_digestbyname("blake2s256");
+  } else {
+    bht->digest_alg = EVP_get_digestbyname(alg_name);
+  }
+
+  if (!bht->digest_alg) {
+    return false;
+  }
+
+  bht->digest_size = EVP_MD_size(bht->digest_alg);
+  if (!strcasecmp(alg_name, "blake2b-256")) {
+    // OpenSSL doesn't have direct blake2b256 calls, but 256 bit digest is just
+    // a truncation of full length digest, so tell our code to only use first
+    // half of it.
+    bht->digest_size /= 2;
+  }
+
+  return true;
+}
+
 /*-----------------------------------------------
  * Implementation functions
  *-----------------------------------------------*/
@@ -121,13 +147,12 @@ int dm_bht_read_callback_stub(void* ctx,
 int dm_bht_compute_hash(struct dm_bht* bht,
                         const uint8_t* buffer,
                         uint8_t* digest) {
-  std::unique_ptr<crypto::SecureHash> hash(
-      crypto::SecureHash::Create(crypto::SecureHash::SHA256));
-  hash->Update(buffer, PAGE_SIZE);
+  EVP_DigestInit(bht->digest_ctx.get(), bht->digest_alg);
+  EVP_DigestUpdate(bht->digest_ctx.get(), buffer, PAGE_SIZE);
   if (bht->have_salt) {
-    hash->Update(bht->salt, sizeof(bht->salt));
+    EVP_DigestUpdate(bht->digest_ctx.get(), bht->salt, sizeof(bht->salt));
   }
-  hash->Finish(digest, DM_BHT_MAX_DIGEST_SIZE);
+  EVP_DigestFinal_ex(bht->digest_ctx.get(), digest, NULL);
   return 0;
 }
 
@@ -150,17 +175,21 @@ int dm_bht_create(struct dm_bht* bht,
                   const char* alg_name) {
   int status = 0;
 
-  if (std::string(alg_name) != kSha256HashName) {
+  if (!bht->digest_ctx) {
+    status = -ENOMEM;
+    LOG(ERROR) << "Could not allocate context";
+    goto bad_hash_alg;
+  }
+
+  if (!set_digest_params(bht, alg_name)) {
     status = -EINVAL;
-    LOG(ERROR) << "Unsupported hashing algorithm: " << alg_name << "; only "
-               << kSha256HashName << " is supported";
+    LOG(ERROR) << "Unsupported hashing algorithm: " << alg_name;
     goto bad_hash_alg;
   }
 
   bht->have_salt = false;
   bht->externally_allocated = false;
 
-  bht->digest_size = crypto::kSHA256Length;
   /* We expect to be able to pack >=2 hashes into a page */
   if (PAGE_SIZE / bht->digest_size < 2) {
     DLOG(ERROR) << "too few hashes fit in a page";

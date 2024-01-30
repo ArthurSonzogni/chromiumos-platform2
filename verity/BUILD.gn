@@ -24,6 +24,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "openssl",
   ]
   include_dirs = [ "include" ]
 }
