@@ -269,7 +269,7 @@ const char kBatterySaverUserBrightenedSec[] =
     "Power.BatterySaver.UserBrightenedSec";
 
 const char kDisplayAfterResumeDurationMsName[] =
-    "Power.DisplayAfrerResumeDurationMs";
+    "Power.DisplayAfterResumeDurationMs";
 const int kDisplayAfterResumeDurationMsMin = 0;
 const int kDisplayAfterResumeDurationMsMax = 60 * 1000;
 
