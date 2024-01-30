@@ -27,7 +27,8 @@ int verity_create(const std::string& alg,
                   const std::string& image_path,
                   unsigned int image_blocks,
                   const std::string& hash_path,
-                  const std::string& salt) {
+                  const std::string& salt,
+                  bool vanilla) {
   auto source = std::make_unique<base::File>(
       base::FilePath(image_path),
       base::File::FLAG_OPEN | base::File::FLAG_READ);
@@ -47,7 +48,10 @@ int verity_create(const std::string& alg,
     hasher.set_salt(salt.c_str());
   LOG_IF(FATAL, !hasher.Hash()) << "Failed to hash hasher";
   LOG_IF(FATAL, !hasher.Store()) << "Failed to store hasher";
-  hasher.PrintTable(true);
+  hasher.PrintTable({
+      .colocated = true,
+      .vanilla = vanilla,
+  });
   return 0;
 }
 
@@ -57,6 +61,7 @@ int main(int argc, char** argv) {
   verity_mode_t mode = VERITY_CREATE;
   std::string alg = "sha256", payload = "", hashtree = "", salt = "";
   unsigned int payload_blocks = 0;
+  bool vanilla = false;
 
   // TODO(b/269707854): Drop the old code after adding the proper cmdline
   // options and migrating consumers by Jan 2025.
@@ -85,6 +90,8 @@ int main(int argc, char** argv) {
       // Silently drop the mode for now...
     } else if (key == "salt") {
       salt = val;
+    } else if (key == "vanilla") {
+      vanilla = true;
     } else if (!base::StartsWith(key, "--")) {
       LOG(ERROR) << "bogus key: '" << key << "'";
       return -1;
@@ -105,6 +112,8 @@ int main(int argc, char** argv) {
   DEFINE_string(root_hexdigest, "",
                 "Digest of the root node (in hex) for verification");
   DEFINE_string(salt, salt, "Salt (in hex)");
+  DEFINE_bool(vanilla, vanilla,
+              "Table will be printed to match vanilla upstream kernel");
 
   brillo::FlagHelper::Init(argc, argv, "verity userspace tool");
 
@@ -117,7 +126,7 @@ int main(int argc, char** argv) {
 
   if (mode == VERITY_CREATE) {
     return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
-                         FLAGS_hashtree, FLAGS_salt);
+                         FLAGS_hashtree, FLAGS_salt, FLAGS_vanilla);
   } else {
     LOG(FATAL) << "Verification not done yet";
   }

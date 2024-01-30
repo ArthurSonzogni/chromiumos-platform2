@@ -55,12 +55,54 @@ TEST_F(FileHasherTest, EndToEnd) {
   EXPECT_TRUE(hasher.Hash());
   EXPECT_TRUE(hasher.Store());
 
-  hasher.PrintTable(true);
-  EXPECT_EQ(hasher.GetTable(true),
+  const verity::FileHasher::PrintArgs kArgs{
+      .colocated = true,
+      .vanilla = false,
+  };
+  hasher.PrintTable(kArgs);
+  EXPECT_EQ(hasher.GetTable(kArgs),
             "0 16 verity payload=ROOT_DEV hashtree=HASH_DEV hashstart=16 "
             "alg=sha256 root_hexdigest=21f0268f4a293d8110074c678a651c638d"
             "56a610dd2662975a35d451d3258018 salt=abcdef0123456789abcdef01"
             "23456789abcdef0123456789abcdef0123456789");
+}
+
+TEST_F(FileHasherTest, EndToEndVanilla) {
+  verity::FileHasher hasher(std::move(small_file_), std::move(target_file_), 0,
+                            kSha256HashName);
+  EXPECT_TRUE(hasher.Initialize());
+  hasher.set_salt(reinterpret_cast<const char*>(kSalt));
+  EXPECT_TRUE(hasher.Hash());
+  EXPECT_TRUE(hasher.Store());
+
+  const verity::FileHasher::PrintArgs kArgs{
+      .colocated = true,
+      .vanilla = true,
+  };
+  hasher.PrintTable(kArgs);
+  EXPECT_EQ(hasher.GetTable(kArgs),
+            "0 16 verity 0 ROOT_DEV HASH_DEV 4096 4096 "
+            "2 2 sha256 21f0268f4a293d8110074c678a651c638d"
+            "56a610dd2662975a35d451d3258018 abcdef0123456789abcdef01"
+            "23456789abcdef0123456789abcdef0123456789");
+}
+
+TEST_F(FileHasherTest, EndToEndVanillaNoSalt) {
+  verity::FileHasher hasher(std::move(small_file_), std::move(target_file_), 0,
+                            kSha256HashName);
+  EXPECT_TRUE(hasher.Initialize());
+  EXPECT_TRUE(hasher.Hash());
+  EXPECT_TRUE(hasher.Store());
+
+  const verity::FileHasher::PrintArgs kArgs{
+      .colocated = true,
+      .vanilla = true,
+  };
+  hasher.PrintTable(kArgs);
+  EXPECT_EQ(hasher.GetTable(kArgs),
+            "0 16 verity 0 ROOT_DEV HASH_DEV 4096 4096 "
+            "2 2 sha256 3aa8e165eb9959febe7485b2651f22360c"
+            "65a03175addedaa826f776d7699262 -");
 }
 
 TEST_F(FileHasherTest, BadSourceFile) {

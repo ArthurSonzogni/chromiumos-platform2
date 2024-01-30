@@ -24,6 +24,12 @@ namespace verity {
 // This class may not be used by multiple threads at once.
 class BRILLO_EXPORT FileHasher {
  public:
+  struct PrintArgs {
+    // Hashtree and data are colocated.
+    bool colocated = false;
+    // Print in vanilla verity format.
+    bool vanilla = false;
+  };
   FileHasher(std::unique_ptr<base::File> source,
              std::unique_ptr<base::File> destination,
              uint64_t blocks,
@@ -41,8 +47,8 @@ class BRILLO_EXPORT FileHasher {
   virtual bool Hash();
   virtual bool Store();
   // Print a table to stdout which contains a dmsetup compatible format
-  virtual void PrintTable(bool colocated);
-  virtual std::string GetTable(bool colocated);
+  virtual void PrintTable(const PrintArgs& args);
+  virtual std::string GetTable(const PrintArgs& args);
 
   virtual const char* RandomSalt();
   virtual void set_salt(const char* salt);

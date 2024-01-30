@@ -7,8 +7,6 @@
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
 
-#include <errno.h>
-#include <inttypes.h>
 #include <linux/fs.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -24,9 +22,12 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include "verity/dm-bht.h"
 #include "verity/file_hasher.h"
 
 namespace verity {
+
+using std::string;
 
 namespace {
 // |base::File| doesn't have a good way of getting block device's size. So we
@@ -147,7 +148,7 @@ const char* FileHasher::RandomSalt() {
   return random_salt_;
 }
 
-std::string FileHasher::GetTable(bool colocated) {
+std::string FileHasher::GetTable(const PrintArgs& args) {
   // Grab the digest (up to 1kbit supported)
   uint8_t digest[128];
   char hexsalt[DM_BHT_SALT_SIZE * 2 + 1];
@@ -158,27 +159,58 @@ std::string FileHasher::GetTable(bool colocated) {
 
   uint64_t hash_start = 0;
   uint64_t root_end = to_sector(block_limit_ << PAGE_SHIFT);
-  if (colocated)
+  if (args.colocated)
     hash_start = root_end;
 
-  std::vector<std::string> parts = {
-      "0",
-      base::NumberToString(root_end),
-      "verity",
-      "payload=ROOT_DEV",
-      "hashtree=HASH_DEV",
-      "hashstart=" + base::NumberToString(hash_start),
-      "alg=" + std::string(alg_),
-      "root_hexdigest=" + std::string(reinterpret_cast<char*>(digest)),
-  };
-  if (have_salt)
-    parts.push_back("salt=" + std::string(hexsalt));
+  std::vector<string> parts;
+  if (args.vanilla) {
+    const auto& num_data_blocks = base::NumberToString(root_end);
+    const auto& data_dev_sector_end = base::NumberToString(block_limit_);
+    const auto& hash_dev_sector_start = data_dev_sector_end;
+
+    const string kStartBlock{"0"};
+    const string kVerityTarget{"verity"};
+    const string kVersion{"0"};
+    const string kDev{"ROOT_DEV"};
+    const string kHashDev{"HASH_DEV"};
+    const auto& kDataBlockSize = base::NumberToString(PAGE_SIZE);
+    const auto& kHashBlockSize = kDataBlockSize;
+    const string kNoSalt{"-"};
+    parts = {
+        kStartBlock,
+        num_data_blocks,
+        kVerityTarget,
+        kVersion,
+        kDev,
+        kHashDev,
+        kDataBlockSize,
+        kHashBlockSize,
+        data_dev_sector_end,
+        hash_dev_sector_start,
+        std::string(alg_),
+        std::string(reinterpret_cast<char*>(digest)),
+        have_salt ? std::string(hexsalt) : kNoSalt,
+    };
+  } else {
+    parts = {
+        "0",
+        base::NumberToString(root_end),
+        "verity",
+        "payload=ROOT_DEV",
+        "hashtree=HASH_DEV",
+        "hashstart=" + base::NumberToString(hash_start),
+        "alg=" + std::string(alg_),
+        "root_hexdigest=" + std::string(reinterpret_cast<char*>(digest)),
+    };
+    if (have_salt)
+      parts.push_back("salt=" + std::string(hexsalt));
+  }
 
   return base::JoinString(parts, " ");
 }
 
-void FileHasher::PrintTable(bool colocated) {
-  printf("%s\n", GetTable(colocated).c_str());
+void FileHasher::PrintTable(const PrintArgs& args) {
+  printf("%s\n", GetTable(args).c_str());
 }
 
 }  // namespace verity
