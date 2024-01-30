@@ -835,6 +835,17 @@ compatibility, legacy entries need to stay in the same order because they used
 to have numeric mappings.
 """
 
+NOTES_USE_419 = (
+    "Use this if there are separate SKUs for Spanish-speaking countries "
+    "in Latin America countries, or the device is only shipping to this "
+    "region. Otherwise (or if there is a single unified SKU), use "
+    "'latam-es-419' region code instead."
+)
+NOTES_USE_NORDIC = (
+    "Use this if there are separate SKUs for Nordic countries (Sweden, "
+    "Norway, and Denmark), or the device is only shipping to this region. "
+    "Otherwise (or if there is a single unified SKU), use 'nordic' instead."
+)
 
 UNCONFIRMED_REGIONS_LIST = [
     Region(
@@ -903,6 +914,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419", "qu"],
         KML.ANSI,
         "Bolivia",
+        NOTES_USE_419,
     ),
     Region(
         "bh",
@@ -1033,6 +1045,7 @@ UNCONFIRMED_REGIONS_LIST = [
         "es-419",
         KML.ANSI,
         "Guatemala",
+        NOTES_USE_419,
     ),
     Region(
         "gs",
@@ -1049,6 +1062,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419", "fr"],
         KML.ANSI,
         "Equatorial Guinea",
+        NOTES_USE_419,
     ),
     Region(
         "gp",
@@ -1089,6 +1103,7 @@ UNCONFIRMED_REGIONS_LIST = [
         "es-419",
         KML.ANSI,
         "El Salvador",
+        NOTES_USE_419,
     ),
     Region("gn", "xkb:gn::fra", "Africa/Conakry", "fr-GN", KML.ANSI, "Guinea"),
     Region(
@@ -1166,6 +1181,7 @@ UNCONFIRMED_REGIONS_LIST = [
         "es-419",
         KML.ANSI,
         "Venezuela",
+        NOTES_USE_419,
     ),
     Region(
         "pr",
@@ -1206,6 +1222,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419", "gn"],
         KML.ANSI,
         "Paraguay",
+        NOTES_USE_419,
     ),
     Region(
         "iq",
@@ -1222,6 +1239,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419", "en"],
         KML.ANSI,
         "Panama",
+        NOTES_USE_419,
     ),
     Region(
         "pf",
@@ -1289,6 +1307,7 @@ UNCONFIRMED_REGIONS_LIST = [
         "es-419",
         KML.ANSI,
         "Ecuador",
+        NOTES_USE_419,
     ),
     Region(
         "sb",
@@ -1552,6 +1571,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419", "en"],
         KML.ANSI,
         "Nicaragua",
+        NOTES_USE_419,
     ),
     Region(
         "no",
@@ -1560,6 +1580,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["no", "nb", "nn", "se"],
         KML.ISO,
         "Norway",
+        NOTES_USE_NORDIC,
     ),
     Region(
         "na",
@@ -1685,6 +1706,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["es-419"],
         KML.ANSI,
         "Costa Rica",
+        NOTES_USE_419,
     ),
     Region("cw", "xkb:cw::nld", "America/Curacao", ["nl"], KML.ANSI, "Curacao"),
     Region(
@@ -1696,7 +1718,13 @@ UNCONFIRMED_REGIONS_LIST = [
         "Cape Verde",
     ),
     Region(
-        "cu", "xkb:latam::spa", "America/Havana", "es-419", KML.ANSI, "Cuba"
+        "cu",
+        "xkb:latam::spa",
+        "America/Havana",
+        "es-419",
+        KML.ANSI,
+        "Cuba",
+        NOTES_USE_419,
     ),
     Region(
         "sz",
@@ -1853,6 +1881,7 @@ UNCONFIRMED_REGIONS_LIST = [
         "es-419",
         KML.ANSI,
         "Dominican Republic",
+        NOTES_USE_419,
     ),
     Region(
         "dm", "xkb:dm::eng", "America/Dominica", "en-DM", KML.ANSI, "Dominica"
@@ -1872,6 +1901,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ["da-DK", "en", "fo", "de-DK"],
         KML.ISO,
         "Denmark",
+        NOTES_USE_NORDIC,
     ),
     Region(
         "vg",
