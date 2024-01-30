@@ -36,7 +36,6 @@ constexpr char kNotifyARCVPNSocketConnectionEventMethod[] =
     "NotifyARCVPNSocketConnectionEvent";
 constexpr char kSetDnsRedirectionRuleMethod[] = "SetDnsRedirectionRule";
 constexpr char kSetFeatureFlagMethod[] = "SetFeatureFlag";
-constexpr char kSetVpnIntentMethod[] = "SetVpnIntent";
 constexpr char kSetVpnLockdown[] = "SetVpnLockdown";
 constexpr char kTagSocketMethod[] = "TagSocket";
 constexpr char kTerminaVmShutdownMethod[] = "TerminaVmShutdown";

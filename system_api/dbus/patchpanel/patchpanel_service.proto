@@ -320,35 +320,6 @@ message BorealisVmShutdownRequest {
 // Intentionally empty response.
 message BorealisVmShutdownResponse {}
 
-// Request to set the VPN routing policy for a socket. The socket file
-// descriptor must be immediately appended to the DBUS message after the
-// serialized SetVpnIntentRequest message. The request must be sent before
-// the socket is connected.
-message SetVpnIntentRequest {
-  // Possible policies for VPN routing available to system processes.
-  // The enum values defined here are not meaningful with respect to the actual
-  // bits used inside the socket fwmark for encoding the VPN routing intent.
-  enum VpnRoutingPolicy {
-    // Let the routing layer apply the default policy for that process uid.
-    // This is the default policy for newly created sockets. It is in general
-    // incorrect to use this policy for the purpose of clearing any other VPN
-    // policy after the socket became connected. Instead a new socket should
-    // be made.
-    DEFAULT_ROUTING = 0;
-    // The socket traffic is always routed through the VPN if there is one.
-    ROUTE_ON_VPN = 1;
-    // The socket traffic is always routed through the physical network.
-    BYPASS_VPN = 2;
-  }
-
-  VpnRoutingPolicy policy = 1;
-}
-
-// Response to a SetVpnIntentRequest.
-message SetVpnIntentResponse {
-  bool success = 1;
-}
-
 // Request for connecting and routing a network namespace. The client must
 // append a valid file descriptor immediately after the serialized
 // ConnectNamespaceRequest proto. This file descriptor must remain valid for as
@@ -569,7 +540,7 @@ message SetVpnLockdownRequest {
   bool enable_vpn_lockdown = 1;
 }
 
-// Intentionally empty response to a SetVpnIntentRequest.
+// Intentionally empty response to a SetVpnLockdownRequest.
 message SetVpnLockdownResponse {}
 
 // Signal that is emitted when a device managed by patchpanel is added or

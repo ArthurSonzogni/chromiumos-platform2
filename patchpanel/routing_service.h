@@ -145,8 +145,8 @@ union Fwmark {
     uint8_t qos_category : 3;
     // The 3rd byte is used to store the intent and policy to be applied to the
     // traffic. The first 2 bits are used for host processes to select a VPN
-    // routing intent via patchpanel SetVpnIntent API. The next 6 bits of are
-    // used for tagging the traffic with a source.
+    // routing intent via patchpanel TagSocket API. The next 6 bits of are used
+    // for tagging the traffic with a source.
     uint8_t policy;
     // The 2 upper bytes corresponds to the routing table id associated with
     // a shill device or a VPN.
@@ -317,7 +317,7 @@ class RoutingService {
   // Sets the VPN bits of the fwmark for the given socket according to the
   // given policy. Preserves any other bits of the fwmark already set.
   bool SetVpnFwmark(int sockfd,
-                    patchpanel::SetVpnIntentRequest::VpnRoutingPolicy policy);
+                    patchpanel::TagSocketRequest::VpnRoutingPolicy policy);
 
   // Sets the fwmark on the given socket with the given mask.
   // Preserves any other bits of the fwmark already set.

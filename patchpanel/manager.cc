@@ -604,11 +604,6 @@ void Manager::BorealisVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, CrostiniService::VMType::kBorealis);
 }
 
-bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
-                           const base::ScopedFD& sockfd) {
-  return routing_svc_->SetVpnFwmark(sockfd.get(), policy);
-}
-
 std::map<CountersService::CounterKey, CountersService::Counter>
 Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) const {
   return counters_svc_->GetCounters(shill_devices);

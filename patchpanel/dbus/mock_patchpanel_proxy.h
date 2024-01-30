@@ -326,24 +326,6 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
-              SetVpnIntent,
-              (const SetVpnIntentRequest&,
-               const base::ScopedFD& in_socket_fd,
-               SetVpnIntentResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              SetVpnIntentAsync,
-              (const SetVpnIntentRequest&,
-               const base::ScopedFD& in_socket_fd,
-               base::OnceCallback<void(const SetVpnIntentResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
               SetVpnLockdown,
               (const SetVpnLockdownRequest&,
                SetVpnLockdownResponse*,

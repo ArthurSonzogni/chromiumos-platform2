@@ -256,19 +256,6 @@
       </arg>
     </method>
 
-    <method name="SetVpnIntent">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetVpnIntentRequest" />
-      </arg>
-      <arg name="socket_fd" type="h" direction="in" />
-      <arg name="response" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetVpnIntentResponse" />
-      </arg>
-    </method>
-
     <method name="SetVpnLockdown">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">

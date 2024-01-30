@@ -372,22 +372,6 @@ SetDnsRedirectionRuleResponse PatchpanelAdaptor::SetDnsRedirectionRule(
   return response;
 }
 
-SetVpnIntentResponse PatchpanelAdaptor::SetVpnIntent(
-    const SetVpnIntentRequest& request, const base::ScopedFD& socket_fd) {
-  RecordDbusEvent(DbusUmaEvent::kSetVpnIntent);
-
-  const bool success = manager_->SetVpnIntent(request.policy(), socket_fd);
-  if (!success) {
-    LOG(ERROR) << "Failed to set VpnIntent: " << request.policy();
-    return {};
-  }
-
-  RecordDbusEvent(DbusUmaEvent::kSetVpnIntentSuccess);
-  SetVpnIntentResponse response;
-  response.set_success(true);
-  return response;
-}
-
 SetVpnLockdownResponse PatchpanelAdaptor::SetVpnLockdown(
     const SetVpnLockdownRequest& request) {
   RecordDbusEvent(DbusUmaEvent::kSetVpnLockdown);

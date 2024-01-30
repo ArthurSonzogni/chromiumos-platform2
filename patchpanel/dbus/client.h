@@ -379,19 +379,6 @@ class BRILLO_EXPORT Client {
       uint32_t vm_id) = 0;
   virtual bool NotifyBorealisVmShutdown(uint32_t vm_id) = 0;
 
-  // Reset the VPN routing intent mark on a socket to the default policy for
-  // the current uid. This is in general incorrect to call this method for
-  // a socket that is already connected.
-  virtual bool DefaultVpnRouting(const base::ScopedFD& socket) = 0;
-
-  // Mark a socket to be always routed through a VPN if there is one.
-  // Must be called before the socket is connected.
-  virtual bool RouteOnVpn(const base::ScopedFD& socket) = 0;
-
-  // Mark a socket to be always routed through the physical network.
-  // Must be called before the socket is connected.
-  virtual bool BypassVpn(const base::ScopedFD& socket) = 0;
-
   // Sends a ConnectNamespaceRequest for the given namespace pid. Returns a
   // pair with a valid ScopedFD and the ConnectedNamespace response
   // received if the request succeeded. Closing the ScopedFD will teardown the

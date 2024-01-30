@@ -67,18 +67,6 @@ bool FakeClient::NotifyBorealisVmShutdown(uint32_t vm_id) {
   return true;
 }
 
-bool FakeClient::DefaultVpnRouting(const base::ScopedFD& socket) {
-  return true;
-}
-
-bool FakeClient::RouteOnVpn(const base::ScopedFD& socket) {
-  return true;
-}
-
-bool FakeClient::BypassVpn(const base::ScopedFD& socket) {
-  return true;
-}
-
 std::pair<base::ScopedFD, Client::ConnectedNamespace>
 FakeClient::ConnectNamespace(pid_t pid,
                              const std::string& outbound_ifname,

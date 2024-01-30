@@ -52,19 +52,19 @@ bool RoutingService::SetFwmark(int sockfd, Fwmark mark, Fwmark mask) {
 }
 
 bool RoutingService::SetVpnFwmark(
-    int sockfd, patchpanel::SetVpnIntentRequest::VpnRoutingPolicy policy) {
+    int sockfd, patchpanel::TagSocketRequest::VpnRoutingPolicy policy) {
   Fwmark mark = {};
   switch (policy) {
-    case patchpanel::SetVpnIntentRequest::DEFAULT_ROUTING:
+    case patchpanel::TagSocketRequest::DEFAULT_ROUTING:
       break;
-    case patchpanel::SetVpnIntentRequest::ROUTE_ON_VPN:
+    case patchpanel::TagSocketRequest::ROUTE_ON_VPN:
       mark = kFwmarkRouteOnVpn;
       break;
-    case patchpanel::SetVpnIntentRequest::BYPASS_VPN:
+    case patchpanel::TagSocketRequest::BYPASS_VPN:
       mark = kFwmarkBypassVpn;
       break;
     default:
-      LOG(ERROR) << "Incorrect SetVpnIntent policy value " << policy;
+      LOG(ERROR) << "Incorrect vpn policy value " << policy;
       return false;
   }
   LOG(INFO) << "SetFwmark mark=" << mark.ToString()

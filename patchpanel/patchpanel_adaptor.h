@@ -89,8 +89,6 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   SetDnsRedirectionRuleResponse SetDnsRedirectionRule(
       const SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd) override;
-  SetVpnIntentResponse SetVpnIntent(const SetVpnIntentRequest& request,
-                                    const base::ScopedFD& socket_fd) override;
   SetVpnLockdownResponse SetVpnLockdown(
       const SetVpnLockdownRequest& request) override;
   TagSocketResponse TagSocket(const TagSocketRequest& request,

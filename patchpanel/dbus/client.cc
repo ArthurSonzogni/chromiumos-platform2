@@ -792,12 +792,6 @@ class ClientImpl : public Client {
       uint32_t vm_id) override;
   bool NotifyBorealisVmShutdown(uint32_t vm_id) override;
 
-  bool DefaultVpnRouting(const base::ScopedFD& socket) override;
-
-  bool RouteOnVpn(const base::ScopedFD& socket) override;
-
-  bool BypassVpn(const base::ScopedFD& socket) override;
-
   std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
       pid_t pid,
       const std::string& outbound_ifname,
@@ -907,9 +901,6 @@ class ClientImpl : public Client {
 
   void OnOwnerChanged(const std::string& old_owner,
                       const std::string& new_owner);
-
-  bool SendSetVpnIntentRequest(const base::ScopedFD& socket,
-                               SetVpnIntentRequest::VpnRoutingPolicy policy);
 
   base::WeakPtrFactory<ClientImpl> weak_factory_{this};
 };
@@ -1244,51 +1235,6 @@ bool ClientImpl::NotifyBorealisVmShutdown(uint32_t vm_id) {
   if (!result) {
     LOG(ERROR) << "Borealis VM network shutdown failed: "
                << error->GetMessage();
-    return false;
-  }
-  return true;
-}
-
-bool ClientImpl::DefaultVpnRouting(const base::ScopedFD& socket) {
-  return SendSetVpnIntentRequest(socket, SetVpnIntentRequest::DEFAULT_ROUTING);
-}
-
-bool ClientImpl::RouteOnVpn(const base::ScopedFD& socket) {
-  return SendSetVpnIntentRequest(socket, SetVpnIntentRequest::ROUTE_ON_VPN);
-}
-
-bool ClientImpl::BypassVpn(const base::ScopedFD& socket) {
-  return SendSetVpnIntentRequest(socket, SetVpnIntentRequest::BYPASS_VPN);
-}
-
-bool ClientImpl::SendSetVpnIntentRequest(
-    const base::ScopedFD& socket,
-    SetVpnIntentRequest::VpnRoutingPolicy policy) {
-  SetVpnIntentRequest request;
-  request.set_policy(policy);
-
-  base::ScopedFD dup_socket(dup(socket.get()));
-  if (!dup_socket.is_valid()) {
-    LOG(ERROR) << "Failed to duplicate the socket fd";
-    return false;
-  }
-
-  SetVpnIntentResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy, const SetVpnIntentRequest& request,
-         base::ScopedFD socket, SetVpnIntentResponse* response,
-         brillo::ErrorPtr* error) {
-        return proxy->SetVpnIntent(request, socket, response, error);
-      },
-      proxy_.get(), request, std::move(dup_socket), &response, &error));
-  if (!result) {
-    LOG(ERROR) << "SetVpnIntent failed: " << error->GetMessage();
-    return false;
-  }
-
-  if (!response.success()) {
-    LOG(ERROR) << "SetVpnIntentRequest failed";
     return false;
   }
   return true;

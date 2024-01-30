@@ -52,12 +52,6 @@ class BRILLO_EXPORT FakeClient : public Client {
       uint32_t vm_id) override;
   bool NotifyBorealisVmShutdown(uint32_t vm_id) override;
 
-  bool DefaultVpnRouting(const base::ScopedFD& socket) override;
-
-  bool RouteOnVpn(const base::ScopedFD& socket) override;
-
-  bool BypassVpn(const base::ScopedFD& socket) override;
-
   std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
       pid_t pid,
       const std::string& outbound_ifname,

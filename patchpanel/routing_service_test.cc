@@ -15,9 +15,9 @@
 namespace patchpanel {
 namespace {
 
-auto& BYPASS_VPN = patchpanel::SetVpnIntentRequest::BYPASS_VPN;
-auto& DEFAULT_ROUTING = patchpanel::SetVpnIntentRequest::DEFAULT_ROUTING;
-auto& ROUTE_ON_VPN = patchpanel::SetVpnIntentRequest::ROUTE_ON_VPN;
+auto& BYPASS_VPN = patchpanel::TagSocketRequest::BYPASS_VPN;
+auto& DEFAULT_ROUTING = patchpanel::TagSocketRequest::DEFAULT_ROUTING;
+auto& ROUTE_ON_VPN = patchpanel::TagSocketRequest::ROUTE_ON_VPN;
 
 std::string hex(uint32_t val) {
   return base::StringPrintf("0x%08x", val);
@@ -202,7 +202,7 @@ TEST_F(RoutingServiceTest, SetVpnFwmark) {
   svc->setsockopt_ret = 0;
 
   struct {
-    patchpanel::SetVpnIntentRequest::VpnRoutingPolicy policy;
+    patchpanel::TagSocketRequest::VpnRoutingPolicy policy;
     uint32_t initial_fwmark;
     uint32_t expected_fwmark;
   } testcases[] = {
@@ -239,8 +239,8 @@ TEST_F(RoutingServiceTest, SetVpnFwmark) {
 
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = 0;
-  EXPECT_FALSE(svc->SetVpnFwmark(
-      4, (patchpanel::SetVpnIntentRequest::VpnRoutingPolicy)-1));
+  EXPECT_FALSE(
+      svc->SetVpnFwmark(4, (patchpanel::TagSocketRequest::VpnRoutingPolicy)-1));
 }
 
 TEST_F(RoutingServiceTest, SetFwmark) {
