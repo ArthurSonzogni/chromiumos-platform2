@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2015 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,8 +7,6 @@
 
 Run this module to display all known regions (use --help to see options).
 """
-
-from __future__ import print_function
 
 import argparse
 import collections.abc
@@ -35,6 +32,7 @@ class Enum(frozenset):
     """An enumeration type.
 
     Examples:
+
       To create a enum object:
         dummy_enum = Enum(['A', 'B', 'C'])
 
@@ -67,7 +65,7 @@ def MakeList(value):
     return [value]
 
 
-class Region(object):
+class Region:
     """Comprehensive, standard locale configuration per country/region.
 
     See :ref:`regions-values` for detailed information on how to set
@@ -822,7 +820,7 @@ REGIONS_LIST = [
         "Asia/Calcutta",
         ["en-IN", "en-US"],
         KML.ANSI,
-        "India with Indian keyboard"
+        "India with Indian keyboard",
     ),
 ]
 
@@ -2183,7 +2181,7 @@ def ConsolidateRegions(regions):
 
 
 def BuildRegionsDict(include_all=False, include_pseudolocales=False):
-    """Builds a dictionary mapping from code to :py:class:`regions.Region` object.
+    """Builds a mapping from code to :py:class:`regions.Region` object.
 
     ``include_pseudolocales`` should never be true for production builds.
 
@@ -2255,12 +2253,12 @@ def main(args=None, out=None):
     args = parser.parse_args(args)
 
     if args.overlay is not None:
-        with open(args.overlay) as f:
+        with open(args.overlay, encoding="utf-8") as f:
             exec(f.read())  # pylint: disable=exec-used
 
     if args.all:
-        # Add an additional 'confirmed' property to help identifying region status,
-        # for autotests, unit tests and factory module.
+        # Add an additional 'confirmed' property to help identifying region
+        # status for autotests, unit tests and factory module.
         Region.FIELDS.insert(1, "confirmed")
         for r in REGIONS_LIST:
             r.confirmed = True
@@ -2273,13 +2271,15 @@ def main(args=None, out=None):
         if args.output is None:
             out = sys.stdout
         else:
-            out = open(args.output, "w")  # pylint: disable=consider-using-with
+            out = open(
+                args.output, "w", encoding="utf-8"
+            )  # pylint: disable=consider-using-with
 
     if args.notes or args.format == "csv":
         Region.FIELDS += ["notes"]
 
     # Handle YAML and JSON output.
-    if args.format == "yaml" or args.format == "json":
+    if args.format in ("yaml", "json"):
         data = {}
         for region in regions_dict.values():
             item = {}
