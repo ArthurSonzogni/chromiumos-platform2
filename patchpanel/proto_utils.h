@@ -15,6 +15,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/arc_service.h"
+#include "patchpanel/connmark_updater.h"
 #include "patchpanel/crostini_service.h"
 
 namespace patchpanel {
@@ -62,6 +63,9 @@ void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
 
 net_base::NetworkConfig DeserializeNetworkConfig(
     const patchpanel::NetworkConfig& in);
+
+std::optional<ConnmarkUpdater::Conntrack5Tuple> GetConntrack5Tuple(
+    const SocketConnectionEvent& msg);
 
 }  // namespace patchpanel
 #endif  // PATCHPANEL_PROTO_UTILS_H_

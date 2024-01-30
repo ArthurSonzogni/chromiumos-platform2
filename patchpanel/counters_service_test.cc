@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/iptables.h"
+#include "patchpanel/mock_connmark_updater.h"
+#include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
 
 namespace patchpanel {
@@ -26,13 +28,20 @@ using ::testing::AnyNumber;
 using ::testing::Contains;
 using ::testing::Each;
 using ::testing::ElementsAreArray;
+using ::testing::Eq;
 using ::testing::Lt;
+using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SizeIs;
 using ::testing::StrEq;
 
 using Counter = CountersService::Counter;
 using CounterKey = CountersService::CounterKey;
+
+constexpr char kIPAddress1[] = "8.8.8.8";
+constexpr char kIPAddress2[] = "8.8.8.4";
+constexpr int kPort1 = 10000;
+constexpr int kPort2 = 20000;
 
 // The following four functions should be put outside the anonymous namespace
 // otherwise they could not be found in the tests.
@@ -263,7 +272,9 @@ class CountersServiceTest : public testing::Test {
  protected:
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
-    counters_svc_ = std::make_unique<CountersService>(datapath_.get());
+    conntrack_monitor_ = std::make_unique<MockConntrackMonitor>();
+    counters_svc_ = std::make_unique<CountersService>(datapath_.get(),
+                                                      conntrack_monitor_.get());
   }
 
   // Makes `iptables` and `ip6tables` returning |ipv4_output| and
@@ -283,6 +294,7 @@ class CountersServiceTest : public testing::Test {
   }
 
   std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<MockConntrackMonitor> conntrack_monitor_;
   std::unique_ptr<CountersService> counters_svc_;
 };
 
@@ -824,6 +836,57 @@ Chain tx_wlan0 (1 references)
     pkts      bytes target     prot opt in     out     source               destination    pkts      bytes target     prot opt in     out     source               destination
        0     )";
   TestBadIptablesOutput(kBadOutput, kIp6tablesOutput);
+}
+
+TEST_F(CountersServiceTest, HandleARCVPNSocketConnectionEvent) {
+  auto updater =
+      std::make_unique<MockConnmarkUpdater>(conntrack_monitor_.get());
+  auto updater_ptr = updater.get();
+  counters_svc_->SetConnmarkUpdaterForTesting(std::move(updater));
+
+  std::unique_ptr<patchpanel::SocketConnectionEvent> msg =
+      std::make_unique<patchpanel::SocketConnectionEvent>();
+  net_base::IPv4Address src_addr =
+      *net_base::IPv4Address::CreateFromString(kIPAddress1);
+  msg->set_saddr(src_addr.ToByteString());
+  msg->set_sport(kPort1);
+  msg->set_dport(kPort2);
+  msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
+                     SocketConnectionEvent_IpProtocol_TCP);
+
+  // Test that when destination address is not set in the
+  // SocketConnectionEvent, ConnmarkUpdater is not called.
+  EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
+  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  Mock::VerifyAndClearExpectations(updater_ptr);
+
+  // Test that when IP protocol of the SocketConnectionEvent is not TCP or UDP,
+  // ConnmarkUpdater is not called.
+  net_base::IPv4Address dst_addr =
+      *net_base::IPv4Address::CreateFromString(kIPAddress2);
+  msg->set_daddr(dst_addr.ToByteString());
+  msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
+                     SocketConnectionEvent_IpProtocol_UNKNOWN_PROTO);
+  EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
+  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  Mock::VerifyAndClearExpectations(updater_ptr);
+
+  // Test that ConnmarkUpdater is called with correct args when valid
+  // SocketConnectionEvent is passed in.
+  auto tcp_conn = ConnmarkUpdater::Conntrack5Tuple{
+      .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
+      .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = static_cast<uint16_t>(kPort1),
+      .dport = static_cast<uint16_t>(kPort2),
+      .proto = ConnmarkUpdater::IPProtocol::kTCP};
+  msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
+                     SocketConnectionEvent_IpProtocol_TCP);
+  EXPECT_CALL(
+      *updater_ptr,
+      UpdateConnmark(Eq(tcp_conn), Fwmark::FromSource(TrafficSource::kArcVpn),
+                     kFwmarkAllSourcesMask));
+  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  Mock::VerifyAndClearExpectations(updater_ptr);
 }
 
 }  // namespace

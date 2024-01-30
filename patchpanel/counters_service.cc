@@ -5,6 +5,7 @@
 #include "patchpanel/counters_service.h"
 
 #include <compare>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -18,6 +19,7 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
+#include "patchpanel/proto_utils.h"
 
 namespace patchpanel {
 
@@ -164,7 +166,10 @@ bool ParseOutput(const std::string& output,
 
 }  // namespace
 
-CountersService::CountersService(Datapath* datapath) : datapath_(datapath) {}
+CountersService::CountersService(Datapath* datapath, ConntrackMonitor* monitor)
+    : datapath_(datapath) {
+  connmark_updater_ = std::make_unique<ConnmarkUpdater>(monitor);
+}
 
 std::map<CounterKey, Counter> CountersService::GetCounters(
     const std::set<std::string>& devices) {
@@ -200,7 +205,18 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
 
 void CountersService::HandleARCVPNSocketConnectionEvent(
     const SocketConnectionEvent& msg) {
-  // TODO(b/177389948): Add implementation.
+  const auto conn = GetConntrack5Tuple(msg);
+  if (!conn) {
+    LOG(ERROR) << __func__ << ": failed to get conntrack 5 tuple";
+    return;
+  }
+  connmark_updater_->UpdateConnmark(
+      *conn, Fwmark::FromSource(TrafficSource::kArcVpn), kFwmarkAllSourcesMask);
+}
+
+void CountersService::SetConnmarkUpdaterForTesting(
+    std::unique_ptr<ConnmarkUpdater> updater) {
+  connmark_updater_ = std::move(updater);
 }
 
 void CountersService::OnPhysicalDeviceAdded(const std::string& ifname) {

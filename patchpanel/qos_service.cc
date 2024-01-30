@@ -18,6 +18,7 @@
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/proto_utils.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -264,27 +265,9 @@ void QoSService::ProcessSocketConnectionEvent(
     return;
   }
 
-  const auto src_addr = net_base::IPAddress::CreateFromBytes(msg.saddr());
-  if (!src_addr.has_value()) {
-    LOG(ERROR) << __func__ << ": failed to convert source IP address.";
-    return;
-  }
-
-  const auto dst_addr = net_base::IPAddress::CreateFromBytes(msg.daddr());
-  if (!dst_addr.has_value()) {
-    LOG(ERROR) << __func__ << ": failed to convert destination IP address.";
-    return;
-  }
-
-  ConnmarkUpdater::IPProtocol proto;
-  if (msg.proto() == patchpanel::SocketConnectionEvent::IpProtocol::
-                         SocketConnectionEvent_IpProtocol_TCP) {
-    proto = ConnmarkUpdater::IPProtocol::kTCP;
-  } else if (msg.proto() == patchpanel::SocketConnectionEvent::IpProtocol::
-                                SocketConnectionEvent_IpProtocol_UDP) {
-    proto = ConnmarkUpdater::IPProtocol::kUDP;
-  } else {
-    LOG(ERROR) << __func__ << ": invalid protocol: " << msg.proto();
+  const auto conn = GetConntrack5Tuple(msg);
+  if (!conn) {
+    LOG(ERROR) << __func__ << ": failed to get conntrack 5 tuple";
     return;
   }
 
@@ -316,13 +299,7 @@ void QoSService::ProcessSocketConnectionEvent(
   // For TCP connection connmark updater will try updating connmark only once.
   // More details can be found in comment of ConnmarkUpdater class.
   connmark_updater_->UpdateConnmark(
-      ConnmarkUpdater::Conntrack5Tuple{
-          .src_addr = *src_addr,
-          .dst_addr = *dst_addr,
-          .sport = static_cast<uint16_t>(msg.sport()),
-          .dport = static_cast<uint16_t>(msg.dport()),
-          .proto = proto},
-      Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
+      *conn, Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
 }
 
 void QoSService::UpdateDoHProviders(

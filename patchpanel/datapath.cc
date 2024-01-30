@@ -194,6 +194,7 @@ std::ostream& operator<<(std::ostream& stream, const DeviceMode tun_tap) {
 
 // Returns the conventional name for the PREROUTING mangle subchain
 // pertaining to the downstream interface |int_ifname|.
+// TODO(b/177389948): Cleanup to use std::string_view for argument.
 std::string PreroutingSubChainName(const std::string& int_ifname) {
   return "PREROUTING_" + int_ifname;
 }

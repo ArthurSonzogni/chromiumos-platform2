@@ -188,4 +188,38 @@ net_base::NetworkConfig DeserializeNetworkConfig(
   return out;
 }
 
+std::optional<ConnmarkUpdater::Conntrack5Tuple> GetConntrack5Tuple(
+    const SocketConnectionEvent& msg) {
+  const auto src_addr = net_base::IPAddress::CreateFromBytes(msg.saddr());
+  if (!src_addr.has_value()) {
+    LOG(ERROR) << __func__ << ": failed to convert source IP address.";
+    return std::nullopt;
+  }
+  const auto dst_addr = net_base::IPAddress::CreateFromBytes(msg.daddr());
+  if (!dst_addr.has_value()) {
+    LOG(ERROR) << __func__ << ": failed to convert destination IP address.";
+    return std::nullopt;
+  }
+  ConnmarkUpdater::IPProtocol proto;
+  switch (msg.proto()) {
+    case patchpanel::SocketConnectionEvent::IpProtocol::
+        SocketConnectionEvent_IpProtocol_TCP:
+      proto = ConnmarkUpdater::IPProtocol::kTCP;
+      break;
+    case patchpanel::SocketConnectionEvent::IpProtocol::
+        SocketConnectionEvent_IpProtocol_UDP:
+      proto = ConnmarkUpdater::IPProtocol::kUDP;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": invalid protocol: " << msg.proto();
+      return std::nullopt;
+  }
+  return ConnmarkUpdater::Conntrack5Tuple{
+      .src_addr = *src_addr,
+      .dst_addr = *dst_addr,
+      .sport = static_cast<uint16_t>(msg.sport()),
+      .dport = static_cast<uint16_t>(msg.dport()),
+      .proto = proto};
+}
+
 }  // namespace patchpanel

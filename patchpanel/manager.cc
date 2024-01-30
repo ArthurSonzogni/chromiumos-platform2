@@ -70,7 +70,8 @@ Manager::Manager(const base::FilePath& cmd_path,
   nd_proxy_->Start();
 
   routing_svc_ = std::make_unique<RoutingService>();
-  counters_svc_ = std::make_unique<CountersService>(datapath_.get());
+  counters_svc_ =
+      std::make_unique<CountersService>(datapath_.get(), conntrack_monitor);
   multicast_counters_svc_ =
       std::make_unique<MulticastCountersService>(datapath_.get());
   multicast_metrics_ = std::make_unique<MulticastMetrics>(

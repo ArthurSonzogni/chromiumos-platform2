@@ -7,6 +7,7 @@
 #include <base/at_exit.h>
 #include <base/logging.h>
 
+#include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/counters_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
@@ -39,11 +40,26 @@ class FakeDatapath : public Datapath {
   std::string data_;
 };
 
+class FakeConntrackMonitor : public ConntrackMonitor {
+ public:
+  FakeConntrackMonitor() = default;
+  ~FakeConntrackMonitor() = default;
+
+  void Start(base::span<const EventType> events) override{};
+
+  std::unique_ptr<Listener> AddListener(
+      base::span<const EventType> events,
+      const ConntrackEventHandler& callback) override {
+    return nullptr;
+  };
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   FakeDatapath datapath(reinterpret_cast<const char*>(data), size);
-  CountersService counters_svc(&datapath);
+  FakeConntrackMonitor monitor;
+  CountersService counters_svc(&datapath, &monitor);
   counters_svc.GetCounters({});
 
   return 0;

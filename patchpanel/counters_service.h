@@ -7,6 +7,7 @@
 
 #include <compare>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -14,6 +15,7 @@
 
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/routing_service.h"
@@ -70,7 +72,7 @@ class CountersService {
     friend bool operator==(const Counter&, const Counter&);
   };
 
-  explicit CountersService(Datapath* datapath);
+  explicit CountersService(Datapath* datapath, ConntrackMonitor* monitor);
   ~CountersService() = default;
 
   // Adds accounting rules and jump rules for a new physical device if this is
@@ -94,6 +96,9 @@ class CountersService {
   // tunneling or non-tunneling.
   void HandleARCVPNSocketConnectionEvent(const SocketConnectionEvent& msg);
 
+  // Sets ConnmarkUpdater, only used for testing.
+  void SetConnmarkUpdaterForTesting(std::unique_ptr<ConnmarkUpdater> updater);
+
  private:
   bool AddAccountingRule(const std::string& chain_name, TrafficSource source);
   // Installs the required source accounting rules for the accounting chain
@@ -108,6 +113,9 @@ class CountersService {
                       const std::string& tx_chain);
 
   Datapath* datapath_;
+
+  // Manages connmark update requests for TCP and UDP connections.
+  std::unique_ptr<ConnmarkUpdater> connmark_updater_;
 };
 
 TrafficCounter::Source TrafficSourceToProto(TrafficSource source);
