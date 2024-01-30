@@ -170,18 +170,12 @@ create_squashfs_image() {
   mksquashfs "${DIR_NAME}" "${DLC_IMG_FILE}" -4k-align -noappend ${args}
 }
 
-# Gets the size of a file in bytes.
-get_file_size() {
-  local file="$1"
-  stat -c%s "${file}"
-}
-
-# Gets the number of blocks ceiling to nearest integer.
+# Gets the file size in number of blocks rounded up to the nearest integer.
 get_num_blocks() {
   local file="$1"
   local bs="$2"
-  local size=$(get_file_size "${file}")
-  echo "(${size} + ${bs} - 1) / ${bs}" | bc
+  local size="$(stat -c%s "${file}")"
+  echo $(( (size + bs - 1) / bs ))
 }
 
 # Generates the verity (hashtree and table) for the DLC image.
