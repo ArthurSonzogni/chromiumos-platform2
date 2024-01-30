@@ -51,26 +51,44 @@ bool RoutingService::SetFwmark(int sockfd, Fwmark mark, Fwmark mask) {
   return true;
 }
 
-bool RoutingService::SetVpnFwmark(
-    int sockfd, patchpanel::TagSocketRequest::VpnRoutingPolicy policy) {
-  Fwmark mark = {};
-  switch (policy) {
-    case patchpanel::TagSocketRequest::DEFAULT_ROUTING:
-      break;
-    case patchpanel::TagSocketRequest::ROUTE_ON_VPN:
-      mark = kFwmarkRouteOnVpn;
-      break;
-    case patchpanel::TagSocketRequest::BYPASS_VPN:
-      mark = kFwmarkBypassVpn;
-      break;
-    default:
-      LOG(ERROR) << "Incorrect vpn policy value " << policy;
-      return false;
+bool RoutingService::TagSocket(int sockfd,
+                               std::optional<int> network_id,
+                               VPNRoutingPolicy vpn_policy) {
+  if (vpn_policy == VPNRoutingPolicy::kRouteOnVPN && network_id.has_value()) {
+    LOG(ERROR) << __func__
+               << ": route_on_vpn policy and network_id should not be set at "
+                  "the same time";
+    return false;
   }
+
+  // TODO(b/322083502): Do some basic verification that this socket is not
+  // connected.
+
+  Fwmark mark = {.fwmark = 0};
+
+  if (network_id.has_value()) {
+    // TODO(b/322083502): Assume network_id is interface_id now so that we can
+    // test this function. Change this to the real implementation after
+    // network_id is ready.
+    mark.rt_table_id =
+        kInterfaceTableIdIncrement + static_cast<uint16_t>(*network_id);
+  }
+
+  switch (vpn_policy) {
+    case VPNRoutingPolicy::kDefault:
+      break;
+    case VPNRoutingPolicy::kRouteOnVPN:
+      mark = mark | kFwmarkRouteOnVpn;
+      break;
+    case VPNRoutingPolicy::kBypassVPN:
+      mark = mark | kFwmarkBypassVpn;
+      break;
+  }
+
+  const auto mask = kFwmarkRoutingMask | kFwmarkVpnMask;
   LOG(INFO) << "SetFwmark mark=" << mark.ToString()
-            << " mask=" << kFwmarkVpnMask.ToString()
-            << " getsockopt SOL_SOCKET SO_MARK";
-  return SetFwmark(sockfd, mark, kFwmarkVpnMask);
+            << " mask=" << mask.ToString();
+  return SetFwmark(sockfd, mark, mask);
 }
 
 std::string QoSFwmarkWithMask(QoSCategory category) {

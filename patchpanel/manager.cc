@@ -618,6 +618,33 @@ void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
   datapath_->SetVpnLockdown(enable_vpn_lockdown);
 }
 
+bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
+                        const base::ScopedFD& socket_fd) {
+  std::optional<int> network_id = std::nullopt;
+  if (request.has_network_id()) {
+    network_id = request.network_id();
+  }
+
+  auto policy = VPNRoutingPolicy::kDefault;
+  switch (request.vpn_policy()) {
+    case TagSocketRequest::DEFAULT_ROUTING:
+      policy = VPNRoutingPolicy::kDefault;
+      break;
+    case TagSocketRequest::ROUTE_ON_VPN:
+      policy = VPNRoutingPolicy::kRouteOnVPN;
+      break;
+    case TagSocketRequest::BYPASS_VPN:
+      policy = VPNRoutingPolicy::kBypassVPN;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Invalid vpn policy value"
+                 << request.vpn_policy();
+      return false;
+  }
+
+  return routing_svc_->TagSocket(socket_fd.get(), network_id, policy);
+}
+
 patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   // b/273741099, b/293964582: patchpanel must support callers using either the

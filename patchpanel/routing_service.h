@@ -19,8 +19,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/types/cxx23_to_underlying.h>
 
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-
 namespace patchpanel {
 
 // Constant used for establishing a stable mapping between routing table ids
@@ -76,6 +74,20 @@ enum TrafficSource {
   kWiFiDirect = 0x27,
   // WiFi local only hotspot network.
   kWiFiLOHS = 0x28,
+};
+
+// Possible policies for VPN routing available to a socket.
+enum class VPNRoutingPolicy : uint8_t {
+  // Let the routing layer apply the default policy for that process uid. This
+  // is the default policy for newly created sockets.
+  kDefault = 0,
+  // The socket traffic is always routed through the VPN if there is one. Note
+  // that the traffic will still be routed through physical network if the
+  // destination is not included in VPN routes.
+  kRouteOnVPN = 1,
+  // The socket traffic is always routed through the physical network. Setting
+  // this will also make the socket  this will bypass VPN lockdown mode.
+  kBypassVPN = 2,
 };
 
 // QoSCategory in fwmark indicates the inferred result from each QoS detector
@@ -314,10 +326,12 @@ class RoutingService {
   RoutingService& operator=(const RoutingService&) = delete;
   virtual ~RoutingService() = default;
 
-  // Sets the VPN bits of the fwmark for the given socket according to the
-  // given policy. Preserves any other bits of the fwmark already set.
-  bool SetVpnFwmark(int sockfd,
-                    patchpanel::TagSocketRequest::VpnRoutingPolicy policy);
+  // Sets the routing tag and VPN bits of the fwmark for the given socket
+  // according to the input parameters. Preserves any other bits of the fwmark
+  // already set.
+  bool TagSocket(int sockfd,
+                 std::optional<int> network_id,
+                 VPNRoutingPolicy vpn_policy);
 
   // Sets the fwmark on the given socket with the given mask.
   // Preserves any other bits of the fwmark already set.

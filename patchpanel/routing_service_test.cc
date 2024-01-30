@@ -15,10 +15,6 @@
 namespace patchpanel {
 namespace {
 
-auto& BYPASS_VPN = patchpanel::TagSocketRequest::BYPASS_VPN;
-auto& DEFAULT_ROUTING = patchpanel::TagSocketRequest::DEFAULT_ROUTING;
-auto& ROUTE_ON_VPN = patchpanel::TagSocketRequest::ROUTE_ON_VPN;
-
 std::string hex(uint32_t val) {
   return base::StringPrintf("0x%08x", val);
 }
@@ -196,51 +192,54 @@ TEST_F(RoutingServiceTest, FwmarkQoSCategories) {
   }
 }
 
-TEST_F(RoutingServiceTest, SetVpnFwmark) {
+TEST_F(RoutingServiceTest, TagSocket) {
   auto svc = std::make_unique<TestableRoutingService>();
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = 0;
 
+  using Policy = VPNRoutingPolicy;
   struct {
-    patchpanel::TagSocketRequest::VpnRoutingPolicy policy;
+    // TODO(b/322083502): This is interface index now.
+    std::optional<int> network_id;
+    Policy policy;
     uint32_t initial_fwmark;
     uint32_t expected_fwmark;
   } testcases[] = {
-      {ROUTE_ON_VPN, 0x0, 0x00008000},
-      {BYPASS_VPN, 0x0, 0x00004000},
-      {ROUTE_ON_VPN, 0x1, 0x00008001},
-      {BYPASS_VPN, 0xabcd00ef, 0xabcd40ef},
-      {ROUTE_ON_VPN, 0x11223344, 0x1122b344},
-      {BYPASS_VPN, 0x11223344, 0x11227344},
-      {ROUTE_ON_VPN, 0x00008000, 0x00008000},
-      {BYPASS_VPN, 0x00004000, 0x00004000},
-      {BYPASS_VPN, 0x00008000, 0x00004000},
-      {ROUTE_ON_VPN, 0x00004000, 0x00008000},
-      {DEFAULT_ROUTING, 0x00008000, 0x00000000},
-      {DEFAULT_ROUTING, 0x00004000, 0x00000000},
+      {std::nullopt, Policy::kRouteOnVPN, 0x0, 0x00008000},
+      {std::nullopt, Policy::kBypassVPN, 0x0, 0x00004000},
+      {std::nullopt, Policy::kRouteOnVPN, 0x1, 0x00008001},
+      {1, Policy::kBypassVPN, 0xabcd00ef, 0x03e940ef},
+      {std::nullopt, Policy::kRouteOnVPN, 0x11223344, 0x0000b344},
+      {34567, Policy::kBypassVPN, 0x11223344, 0x8aef7344},
+      {std::nullopt, Policy::kRouteOnVPN, 0x00008000, 0x00008000},
+      {std::nullopt, Policy::kBypassVPN, 0x00004000, 0x00004000},
+      {std::nullopt, Policy::kBypassVPN, 0x00008000, 0x00004000},
+      {std::nullopt, Policy::kRouteOnVPN, 0x00004000, 0x00008000},
+      {1, Policy::kDefault, 0x00008000, 0x03e90000},
+      {12, Policy::kDefault, 0x00004000, 0x03f40000},
   };
 
   for (const auto& tt : testcases) {
     SetOptval(&svc->sockopt, tt.initial_fwmark);
-    EXPECT_TRUE(svc->SetVpnFwmark(4, tt.policy));
+    EXPECT_TRUE(svc->TagSocket(4, tt.network_id, tt.policy));
     EXPECT_EQ(4, svc->sockopt.sockfd);
     EXPECT_EQ(SOL_SOCKET, svc->sockopt.level);
     EXPECT_EQ(SO_MARK, svc->sockopt.optname);
     EXPECT_EQ(hex(tt.expected_fwmark), hex(GetOptval(svc->sockopt)));
   }
 
+  // ROUTE_ON_VPN should not be set with network_id at the same time.
+  EXPECT_FALSE(svc->TagSocket(4, /*network_id=*/123, Policy::kRouteOnVPN));
+
+  // getsockopt() returns failure.
   svc->getsockopt_ret = -1;
   svc->setsockopt_ret = 0;
-  EXPECT_FALSE(svc->SetVpnFwmark(4, ROUTE_ON_VPN));
+  EXPECT_FALSE(svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN));
 
+  // setsockopt() returns failure.
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = -1;
-  EXPECT_FALSE(svc->SetVpnFwmark(4, ROUTE_ON_VPN));
-
-  svc->getsockopt_ret = 0;
-  svc->setsockopt_ret = 0;
-  EXPECT_FALSE(
-      svc->SetVpnFwmark(4, (patchpanel::TagSocketRequest::VpnRoutingPolicy)-1));
+  EXPECT_FALSE(svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN));
 }
 
 TEST_F(RoutingServiceTest, SetFwmark) {

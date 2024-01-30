@@ -121,6 +121,10 @@ class Manager : public ForwardingService {
       const patchpanel::SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd);
 
+  // Tags the socket pointed by |sock_fd| for routing and other purposes.
+  bool TagSocket(const patchpanel::TagSocketRequest& request,
+                 const base::ScopedFD& sock_fd);
+
   // Creates an L3 network on a network interface and tethered to an upstream
   // network.
   DownstreamNetworkResult CreateTetheredNetwork(

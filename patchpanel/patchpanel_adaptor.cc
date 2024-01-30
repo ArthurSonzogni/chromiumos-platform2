@@ -384,8 +384,16 @@ SetVpnLockdownResponse PatchpanelAdaptor::SetVpnLockdown(
 
 TagSocketResponse PatchpanelAdaptor::TagSocket(
     const TagSocketRequest& request, const base::ScopedFD& socket_fd) {
-  // TODO(b/322083502): Implement the method.
-  return {};
+  RecordDbusEvent(DbusUmaEvent::kTagSocket);
+
+  const bool success = manager_->TagSocket(request, socket_fd);
+  if (success) {
+    RecordDbusEvent(DbusUmaEvent::kTagSocketSuccess);
+  }
+
+  TagSocketResponse response;
+  response.set_success(success);
+  return response;
 }
 
 TerminaVmShutdownResponse PatchpanelAdaptor::TerminaVmShutdown(
