@@ -48,6 +48,7 @@ base::Process SetUpRemoteAndGetChild() {
 
   mojo::OutgoingInvitation::Send(std::move(invitation), child_process.Handle(),
                                  channel.TakeLocalEndpoint());
+  LOG(INFO) << "OutgoingInvitation sent";
   g_perf_test = mojo::Remote<MojoPerfTest>(
       mojo::PendingRemote<MojoPerfTest>(std::move(pipe), 0));
   return child_process;
@@ -81,6 +82,10 @@ static void BM_CallWithBuffer(benchmark::State& state) {
   std::vector<uint8_t> buf(state.range(0));
   for (auto _ : state) {
     base::RunLoop run_loop;
+    base::OneShotTimer timer;
+    timer.Start(FROM_HERE, base::Seconds(1), base::BindOnce([] {
+                  LOG(FATAL) << "CallWithBuffer timed out";
+                }));
     g_perf_test->CallWithBuffer(buf, run_loop.QuitClosure());
     run_loop.Run();
   }
@@ -116,21 +121,28 @@ int main(int argc, char** argv) {
   if (mojo::PlatformChannel::CommandLineHasPassedEndpoint(
           *base::CommandLine::ForCurrentProcess())) {
     auto receiver = GetPendingReceiver();
+    LOG(INFO) << "Child - Got receiver";
 
     base::RunLoop run_loop;
     auto test_impl = cros::tests::MojoPerfTestImpl(std::move(receiver),
                                                    run_loop.QuitClosure());
     run_loop.Run();
+    LOG(INFO) << "Child - Finished receiver jobs";
     return 0;
   }
 
   base::Process child = SetUpRemoteAndGetChild();
+  LOG(INFO) << "Trying to connect to the child process";
   g_perf_test.FlushForTesting();
   CHECK(g_perf_test.is_connected()) << "Cannot connect to child process";
+  LOG(INFO) << "Child process connected";
 
+  LOG(INFO) << "Start running benchmarks";
   benchmark::RunSpecifiedBenchmarks();
+  LOG(INFO) << "Finished running benchmarks";
   benchmark::Shutdown();
   g_perf_test.reset();
+  LOG(INFO) << "Waiting the child process to exit";
   CHECK(child.WaitForExit(nullptr));
   return 0;
 }
