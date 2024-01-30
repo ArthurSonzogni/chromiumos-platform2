@@ -42,6 +42,9 @@ extern const char kCategoryCleanup[];
 
 constexpr char kAlertComponent[] = "CoreServicesAlert";
 
+// The DLC preallocated size setting that resizes based on the image size.
+const int kMagicDevSize = -1;
+
 template <typename Arg>
 base::FilePath JoinPaths(Arg&& path) {
   return base::FilePath(path);

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
@@ -46,21 +47,26 @@ bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
 }
 
 bool DlcLvm::CreateDlcLogicalVolumes() {
-  lvmd::LogicalVolumeConfiguration lv_config_a, lv_config_b;
-  lv_config_a.set_name(utils_->LogicalVolumeName(id_, PartitionSlot::A));
-  lv_config_b.set_name(utils_->LogicalVolumeName(id_, PartitionSlot::B));
-  auto size = manifest_->preallocated_size();
-  // Convert to MiB from bytes.
-  size /= 1024 * 1024;
+  std::vector<lvmd::LogicalVolumeConfiguration> lv_configs(2);
+  lv_configs[0].set_name(utils_->LogicalVolumeName(id_, PartitionSlot::A));
+  lv_configs[1].set_name(utils_->LogicalVolumeName(id_, PartitionSlot::B));
+  auto prealloc_size = manifest_->preallocated_size();
+  // Use the actual image size when preallocated_size set to `DEV_SIZE`.
+  auto size =
+      prealloc_size == kMagicDevSize ? manifest_->size() : prealloc_size;
+  // Convert to MiB from bytes (round up).
+  size = 1 + (size - 1) / (1024 * 1024);
   // Cannot pass in a value of 0, so set the lower bound to 1MiB.
   size = std::max<int64_t>(1, size);
-  lv_config_a.set_size(size);
-  lv_config_b.set_size(size);
-  if (!SystemState::Get()->lvmd_wrapper()->CreateLogicalVolumes({
-          lv_config_a,
-          lv_config_b,
-      })) {
+  lv_configs[0].set_size(size);
+  lv_configs[1].set_size(size);
+  if (!SystemState::Get()->lvmd_wrapper()->CreateLogicalVolumes(lv_configs)) {
     LOG(ERROR) << "Failed to create logical volumes for DLC=" << id_;
+    return false;
+  }
+  if (prealloc_size == kMagicDevSize &&
+      !SystemState::Get()->lvmd_wrapper()->ResizeLogicalVolumes(lv_configs)) {
+    LOG(ERROR) << "Failed to resize logical volumes for DLC=" << id_;
     return false;
   }
   return true;

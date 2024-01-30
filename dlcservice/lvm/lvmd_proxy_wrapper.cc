@@ -309,4 +309,44 @@ std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {
   return GetLogicalVolume(lv_name, &lv) ? lv.path() : "";
 }
 
+bool LvmdProxyWrapper::ResizeLogicalVolumes(
+    const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) {
+  auto stateful_path =
+      SystemState::Get()->boot_slot()->GetStatefulPartitionPath();
+
+  if (stateful_path.empty()) {
+    LOG(ERROR) << "Failed to GetStatefulPartitionPath.";
+    return false;
+  }
+
+  lvmd::PhysicalVolume pv;
+  if (!GetPhysicalVolume(stateful_path.value(), &pv)) {
+    LOG(ERROR) << "Failed to GetPhysicalVolume.";
+    return false;
+  }
+
+  lvmd::VolumeGroup vg;
+  if (!GetVolumeGroup(pv, &vg)) {
+    LOG(ERROR) << "Failed to GetVolumeGroup.";
+    return false;
+  }
+
+  lvmd::LogicalVolume lv;
+  for (const auto& lv_config : lv_configs) {
+    auto lv_name = lv_config.name();
+    if (!GetLogicalVolume(vg, lv_name, &lv)) {
+      LOG(ERROR) << "Failed to GetLogicalVolume " << lv_name;
+      return false;
+    }
+
+    brillo::ErrorPtr err;
+    if (!lvmd_proxy_->ResizeLogicalVolume(lv, lv_config.size(), &err)) {
+      LOG(ERROR) << "Failed to ResizeLogicalVolume from lvmd: "
+                   << Error::ToString(err);
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace dlcservice

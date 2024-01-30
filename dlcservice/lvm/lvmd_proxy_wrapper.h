@@ -47,6 +47,10 @@ class LvmdProxyWrapperInterface {
   // Returns the physical volume information.
   virtual bool GetPhysicalVolume(const std::string& device_path,
                                  lvmd::PhysicalVolume* pv) = 0;
+
+  // Resize the logical volumes to the sizes in the configs.
+  virtual bool ResizeLogicalVolumes(
+      const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) = 0;
 };
 
 class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
@@ -72,6 +76,8 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
   std::string GetLogicalVolumePath(const std::string& lv_name) override;
   bool GetPhysicalVolume(const std::string& device_path,
                          lvmd::PhysicalVolume* pv) override;
+  bool ResizeLogicalVolumes(
+      const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) override;
 
  private:
   friend class LvmdProxyWrapperTest;

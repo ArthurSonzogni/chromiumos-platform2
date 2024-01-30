@@ -269,7 +269,10 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
     // For reserve requested/reserved DLCs, must allocate the required full
     // preallocated space, not only the actual bits of the DLC image to not
     // re-sparsify the DLC images.
-    if (!CreateFile(image_path, manifest_->preallocated_size())) {
+    auto dlc_size = manifest_->preallocated_size();
+    if (dlc_size == kMagicDevSize)
+      dlc_size = manifest_->size();
+    if (!CreateFile(image_path, dlc_size)) {
       if (reserve_) {
         state_.set_last_error_code(kErrorAllocation);
         *err = Error::Create(
@@ -285,9 +288,9 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
             base::StringPrintf("Failed to create image file %s for DLC=%s",
                                image_path.value().c_str(), id_.c_str()));
         return false;
-      } else if (!ResizeFile(image_path, manifest_->preallocated_size())) {
+      } else if (!ResizeFile(image_path, dlc_size)) {
         LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                     << manifest_->preallocated_size() << " for DLC=" << id_;
+                     << dlc_size << " for DLC=" << id_;
       }
     }
   }
@@ -312,6 +315,12 @@ bool DlcBase::MakeReadyForUpdate() const {
   // Scaled DLCs will not A/B update with the OS until deltas are supported.
   if (manifest_->scaled()) {
     LOG(WARNING) << "Scaled DLC=" << id_ << " will not update with the OS.";
+    return false;
+  }
+
+  if (manifest_->preallocated_size() == kMagicDevSize) {
+    LOG(WARNING) << "Under development DLC=" << id_
+                 << " will not update with the OS.";
     return false;
   }
 

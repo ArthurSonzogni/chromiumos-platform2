@@ -43,6 +43,10 @@ class MockLvmdProxyWrapper : public LvmdProxyWrapperInterface {
               GetPhysicalVolume,
               (const std::string&, lvmd::PhysicalVolume*),
               (override));
+  MOCK_METHOD(bool,
+              ResizeLogicalVolumes,
+              (const std::vector<lvmd::LogicalVolumeConfiguration>&),
+              (override));
 };
 
 }  // namespace dlcservice
