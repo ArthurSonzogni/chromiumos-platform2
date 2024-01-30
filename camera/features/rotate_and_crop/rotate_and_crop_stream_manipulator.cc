@@ -501,7 +501,29 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
   }
 
   // Bypass the result when we don't need to do rotation.
+  base::span<const uint8_t> rc_mode =
+      result.GetMetadata<uint8_t>(ANDROID_SCALER_ROTATE_AND_CROP);
   if (ctx.client_rc_mode == ctx.hal_rc_mode) {
+    if (result.partial_result() != 0) {
+      if (ctx.rc_tag_updated) {
+        // Delete the tag in case that HAL fills it again.
+        if (!rc_mode.empty() &&
+            !result.DeleteMetadata(ANDROID_SCALER_ROTATE_AND_CROP)) {
+          LOGF(ERROR)
+              << "Failed to remove ANDROID_SCALER_ROTATE_AND_CROP in result "
+              << result.frame_number();
+        }
+      } else {
+        if (!result.UpdateMetadata<uint8_t>(
+                ANDROID_SCALER_ROTATE_AND_CROP,
+                std::array<uint8_t, 1>{ctx.client_rc_mode})) {
+          LOGF(ERROR)
+              << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in result "
+              << result.frame_number();
+        }
+        ctx.rc_tag_updated = true;
+      }
+    }
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
@@ -549,22 +571,29 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
     result.AppendOutputBuffer(std::move(b));
   }
 
-  base::span<const uint8_t> rc_mode =
-      result.GetMetadata<uint8_t>(ANDROID_SCALER_ROTATE_AND_CROP);
-  if (!rc_mode.empty()) {
-    if (rc_mode[0] != ctx.hal_rc_mode) {
-      LOGF(WARNING)
-          << "Incorrect ANDROID_SCALER_ROTATE_AND_CROP received in result "
-          << result.frame_number() << "; expected " << ctx.hal_rc_mode
-          << ", got " << rc_mode[0];
-    }
-    if (ctx.client_rc_mode != rc_mode[0] &&
-        !result.UpdateMetadata<uint8_t>(
-            ANDROID_SCALER_ROTATE_AND_CROP,
-            std::array<uint8_t, 1>{ctx.client_rc_mode})) {
-      LOGF(ERROR)
-          << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in result "
-          << result.frame_number();
+  if (result.partial_result() != 0) {
+    if (!ctx.rc_tag_updated) {
+      if (!rc_mode.empty() && rc_mode[0] != ctx.hal_rc_mode) {
+        LOGF(WARNING)
+            << "Incorrect ANDROID_SCALER_ROTATE_AND_CROP received in result "
+            << result.frame_number() << "; expected " << ctx.hal_rc_mode
+            << ", got " << rc_mode[0];
+      }
+      if (!result.UpdateMetadata<uint8_t>(
+              ANDROID_SCALER_ROTATE_AND_CROP,
+              std::array<uint8_t, 1>{ctx.client_rc_mode})) {
+        LOGF(ERROR)
+            << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in result "
+            << result.frame_number();
+      }
+      ctx.rc_tag_updated = true;
+    } else {
+      if (!rc_mode.empty() &&
+          !result.DeleteMetadata(ANDROID_SCALER_ROTATE_AND_CROP)) {
+        LOGF(ERROR)
+            << "Failed to remove ANDROID_SCALER_ROTATE_AND_CROP in result "
+            << result.frame_number();
+      }
     }
   }
   // TODO(kamesan): Some metadata need to be mapped to the rotated image
