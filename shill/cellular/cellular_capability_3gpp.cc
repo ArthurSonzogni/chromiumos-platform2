@@ -223,10 +223,6 @@ std::set<std::string> MMBearerApnTypeToApnTypes(MMBearerApnType apn_type) {
     apn_types.insert(kApnTypeDefault);
   if (apn_type & MM_BEARER_APN_TYPE_TETHERING)
     apn_types.insert(kApnTypeDun);
-
-  if (apn_types.empty())
-    LOG(WARNING) << "Unknown apn_type mask:" << apn_type;
-
   return apn_types;
 }
 
@@ -2160,6 +2156,8 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   auto old_profiles = std::move(profiles_);
   int n_duplicate = 0;
   int n_wrong_source = 0;
+  int n_no_apn_type = 0;
+  int n_unexpected_apn_type = 0;
 
   // Initialized to empty list. From now on |profiles_| will never be unset.
   profiles_ = std::make_optional<std::vector<MobileAPN>>({});
@@ -2198,7 +2196,29 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
       }
     }
 
+    // Many stored profiles don't have an explicit context type, which means we
+    // cannot know whether it should be used for Internet data, IMS, emergency
+    // services, or any other purpose. Therefore, ignore all profiles unless
+    // they are explicitly flagged with a valid APN type. This type of check was
+    // originally being done by MM, before it started to list profiles without
+    // an explicit APN type.
+    if (!base::Contains(profile, CellularBearer::kMMApnTypeProperty)) {
+      SLOG(this, 3) << __func__ << ": ignoring profile with no type.";
+      n_no_apn_type++;
+      continue;
+    }
+
+    auto apn_types = MMBearerApnTypeToApnTypes(
+        static_cast<MMBearerApnType>(brillo::GetVariantValueOrDefault<uint32_t>(
+            profile, CellularBearer::kMMApnTypeProperty)));
+    if (apn_types.empty()) {
+      SLOG(this, 3) << __func__ << ": ignoring profile with unexpected type.";
+      n_unexpected_apn_type++;
+      continue;
+    }
+
     MobileAPN apn_info;
+    apn_info.apn_types = std::move(apn_types);
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
         profile, CellularBearer::kMMApnProperty);
     apn_info.username = brillo::GetVariantValueOrDefault<std::string>(
@@ -2214,19 +2234,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
           brillo::GetVariantValueOrDefault<uint32_t>(
               profile, CellularBearer::kMMIpTypeProperty)));
     }
-    if (base::Contains(profile, CellularBearer::kMMApnTypeProperty)) {
-      apn_info.apn_types =
-          MMBearerApnTypeToApnTypes(static_cast<MMBearerApnType>(
-              brillo::GetVariantValueOrDefault<uint32_t>(
-                  profile, CellularBearer::kMMApnTypeProperty)));
-    }
     if (base::Contains(profile, CellularBearer::kMMProfileIdProperty)) {
       apn_info.profile_id = brillo::GetVariantValueOrDefault<int32_t>(
           profile, CellularBearer::kMMProfileIdProperty);
     }
-    // If the APN doesn't have an APN type, assume it's a DEFAULT APN.
-    if (apn_info.apn_types.empty())
-      apn_info.apn_types = {kApnTypeDefault};
 
     // In theory the modem should really never report duplicated entries, but it
     // may happen when using the very-limited MBIM 1.0 profile management
@@ -2258,7 +2269,9 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   LOG(INFO) << "Stored profiles " << (old_profiles ? "updated" : "initialized")
             << ": received " << profiles.size() << ", accepted "
             << profiles_->size() << ", duplicates " << n_duplicate
-            << ", wrong source " << n_wrong_source;
+            << ", wrong source " << n_wrong_source << ", no apn type "
+            << n_no_apn_type << ", unexpected apn type "
+            << n_unexpected_apn_type;
 
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();

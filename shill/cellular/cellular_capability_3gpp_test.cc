@@ -1517,6 +1517,8 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   // Set a one element list.
   constexpr char kApn1[] = "internet";
   brillo::VariantDictionary profile1;
+  profile1[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
   profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
   MobileAPN expected_profile1 = {.apn = kApn1, .apn_types = {kApnTypeDefault}};
 
@@ -1538,6 +1540,8 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   // Slightly different element in the list.
   constexpr char kApn2[] = "internet2";
   brillo::VariantDictionary profile2;
+  profile2[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
   profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
   MobileAPN expected_profile2 = {.apn = kApn2, .apn_types = {kApnTypeDefault}};
 
@@ -1564,7 +1568,9 @@ TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreUser) {
   brillo::VariantDictionary profile1;
   profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
   profile1[CellularBearer::kMMProfileSourceProperty] =
-      uint32_t(MM_BEARER_PROFILE_SOURCE_USER);
+      static_cast<uint32_t>(MM_BEARER_PROFILE_SOURCE_USER);
+  profile1[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
   capability_->OnProfilesChanged({profile1});
   EXPECT_EQ(0, capability_->profiles_->size());
 
@@ -1574,8 +1580,11 @@ TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreUser) {
   brillo::VariantDictionary profile2;
   profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
   profile2[CellularBearer::kMMProfileSourceProperty] =
-      uint32_t(MM_BEARER_PROFILE_SOURCE_MODEM);
+      static_cast<uint32_t>(MM_BEARER_PROFILE_SOURCE_MODEM);
+  profile2[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
   MobileAPN expected_profile2 = {.apn = kApn2, .apn_types = {kApnTypeDefault}};
+
   capability_->OnProfilesChanged({profile2});
   EXPECT_EQ(1, capability_->profiles_->size());
   EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
@@ -1585,6 +1594,56 @@ TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreUser) {
   capability_->OnProfilesChanged({profile1, profile2});
   EXPECT_EQ(1, capability_->profiles_->size());
   EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
+}
+
+TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreByType) {
+  // Add a single element in the list without an explicit type, which we should
+  // ignore.
+  constexpr char kApn1[] = "unknown";
+  brillo::VariantDictionary profile1;
+  profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
+  capability_->OnProfilesChanged({profile1});
+  EXPECT_EQ(0, capability_->profiles_->size());
+
+  // Add a single element in the list with IMS type, which we should ignore.
+  constexpr char kApn2[] = "ims";
+  brillo::VariantDictionary profile2;
+  profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
+  profile2[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_IMS);
+  capability_->OnProfilesChanged({profile2});
+  EXPECT_EQ(0, capability_->profiles_->size());
+
+  // Add a single element in the list with DEFAULT type, which we should
+  // process.
+  constexpr char kApn3[] = "internet";
+  brillo::VariantDictionary profile3;
+  profile3[CellularBearer::kMMApnProperty] = std::string(kApn3);
+  profile3[CellularBearer::kMMApnTypeProperty] =
+      static_cast<uint32_t>(MM_BEARER_APN_TYPE_DEFAULT);
+  MobileAPN expected_profile3 = {.apn = kApn3, .apn_types = {kApnTypeDefault}};
+  capability_->OnProfilesChanged({profile3});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile3));
+
+  // Add a single element in the list with DEFAULT+IA type, which we should
+  // process.
+  constexpr char kApn4[] = "internet-ia";
+  brillo::VariantDictionary profile4;
+  profile4[CellularBearer::kMMApnProperty] = std::string(kApn4);
+  profile4[CellularBearer::kMMApnTypeProperty] = static_cast<uint32_t>(
+      MM_BEARER_APN_TYPE_DEFAULT | MM_BEARER_APN_TYPE_INITIAL);
+  MobileAPN expected_profile4 = {.apn = kApn4,
+                                 .apn_types = {kApnTypeDefault, kApnTypeIA}};
+  capability_->OnProfilesChanged({profile4});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile4));
+
+  // Add all elements in the list, both flagged as DEFAULT should be processed.
+  capability_->OnProfilesChanged({profile1, profile2, profile3, profile4});
+  EXPECT_EQ(2, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile3));
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile4));
 }
 
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
