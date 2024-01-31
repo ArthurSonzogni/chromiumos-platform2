@@ -14066,12 +14066,13 @@ mno {
       ip_type: IPV4V6
       type: DEFAULT
     }
-    mobile_apn {
-      apn: "vzwtether"
-      is_required_by_carrier_spec: true
-      ip_type: IPV4V6
-      type: DUN
-    }
+    # TODO(b/317393749): Hide DUN APN until verizon supports hotspot.
+    # mobile_apn {
+    #   apn: "vzwtether"
+    #   is_required_by_carrier_spec: true
+    #   ip_type: IPV4V6
+    #   type: DUN
+    # }
   }
   mvno {
     mvno_filter {
