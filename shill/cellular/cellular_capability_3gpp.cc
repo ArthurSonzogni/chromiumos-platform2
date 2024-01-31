@@ -2201,6 +2201,8 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   SLOG(this, 3) << __func__;
   auto old_profiles = std::move(profiles_);
+  int n_duplicate = 0;
+  int n_wrong_source = 0;
 
   // Initialized to empty list. From now on |profiles_| will never be unset.
   profiles_ = std::make_optional<std::vector<MobileAPN>>({});
@@ -2224,6 +2226,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
           // profiles (e.g. class 3 VZW via OTA) or "modem" provided profiles
           // (e.g. via carrier setting firmware images).
           SLOG(this, 3) << __func__ << ": ignoring user profile.";
+          n_wrong_source++;
           continue;
         case MM_BEARER_PROFILE_SOURCE_OPERATOR:
           SLOG(this, 3) << __func__ << ": processing operator profile.";
@@ -2275,10 +2278,14 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     // update should be processed or not is very limited. This check will become
     // much stricter, and therefore likely obsolete, if we switch to MBIMEx 2.0
     // profile management.
-    if (std::find(profiles_->begin(), profiles_->end(), apn_info) ==
+    if (std::find(profiles_->begin(), profiles_->end(), apn_info) !=
         profiles_->end()) {
-      profiles_->push_back(std::move(apn_info));
+      SLOG(this, 3) << __func__ << ": ignoring duplicate profile.";
+      n_duplicate++;
+      continue;
     }
+
+    profiles_->push_back(std::move(apn_info));
   }
 
   // Ignore if the built profiles are the same as the ones we already had.
@@ -2291,7 +2298,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     return;
   }
 
-  LOG(INFO) << "Stored profiles " << (old_profiles ? "updated" : "initialized");
+  LOG(INFO) << "Stored profiles " << (old_profiles ? "updated" : "initialized")
+            << ": received " << profiles.size() << ", accepted "
+            << profiles_->size() << ", duplicates " << n_duplicate
+            << ", wrong source " << n_wrong_source;
 
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();
