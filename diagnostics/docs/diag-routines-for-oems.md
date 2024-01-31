@@ -1795,3 +1795,82 @@ Output:
 Errors:
 - `Failed to get detected internal card from cras: ${message}`
 - `Failed retrieving node info from cras: ${message}`
+
+## Fingerprint Routines
+
+### Fingerprint
+
+This routine checks whether the fingerprint module is healthy or not. It does
+the following tests:
+- Checkerboard test (CB test)
+- Inverted checkerboard test (ICB test)
+- Reset pixel test
+
+The routine parameters should be configured through the cros config, see
+[this
+doc](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/telemetry_extension/fingerprint_diag.md)
+for more details.
+
+Note: This routine can only be used when write protection is off. So usually,
+this routine won't be shown to normal user, but it could be used in RMA flow.
+
+From crosh:
+```bash
+crosh> diag fingerprint
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag fingerprint
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message:
+```
+
+Errors:
+- `Checkerboard median deviation too large.`
+- `Inverted checkerboard median deviation too large.`
+- `Dead pixel count exceed threshold.`
+- `Dead pixel count in detect zone exceed threshold.`
+- `Failed to get frame result.`
+- `Error reset pixel count exceed threshold.`
+- `Unexpected flow in checkerboard test.`
+- `Unexpected fingerprint diagnostic flow.`
+
+### Fingerprint alive
+
+This routine checks whether the fingerprint module is alive or not. Alive means
+the sensor is responsive and the firmware version is RW.
+
+The routine parameters should be configured through the cros config, see
+[this
+doc](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/telemetry_extension/fingerprint_diag.md)
+for more details.
+
+Note: Unlike the fingerprint routine mentioned above, this routine can be run in
+normal mode when write protection is on.
+
+From crosh:
+```bash
+crosh> diag fingerprint_alive
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag fingerprint_alive
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+Status message:
+```
+
+Errors:
+- `Failed to get fingerprint info.`
+- `Fingerprint does not use a RW firmware copy.`
