@@ -392,7 +392,7 @@ REGIONS_LIST = [
     Region("it", "xkb:it::ita", "Europe/Rome", "it", KML.ISO, "Italy"),
     Region(
         "latam-es-419",
-        "xkb:es::spa",
+        "xkb:latam::spa",
         "America/Mexico_City",
         "es-419",
         KML.ISO,
@@ -400,13 +400,10 @@ REGIONS_LIST = [
         (
             "Spanish-speaking countries in Latin America, using the Iberian "
             "(Spain) Spanish keyboard, which is increasingly dominant in "
-            "Latin America. Known to be correct for "
-            "Chile, Colombia, Mexico, Peru; "
-            "still unconfirmed for other es-419 countries. The old Latin "
-            "American layout (xkb:latam::spa) has not been approved; before "
-            "using that you must seek review through http://goto/vpdsettings. "
-            "See also http://goo.gl/Iffuqh. Note that 419 is the UN M.49 "
-            "region code for Latin America"
+            "Latin America. Known to be correct for at least Chile, Colombia, "
+            "Mexico, Peru; other es-419 countries may need to be reviewed "
+            "through http://goto/vpdsettings. See also http://goo.gl/Iffuqh . "
+            "Note that 419 is the UN M.49 region code for Latin America."
         ),
         "MX",
     ),
