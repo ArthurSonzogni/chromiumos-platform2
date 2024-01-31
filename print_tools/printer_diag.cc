@@ -167,6 +167,11 @@ int main(int argc, char** argv) {
   ipp::Collection& grp = request.Groups(ipp::GroupTag::operation_attributes)[0];
   grp.AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
   std::vector<uint8_t> data = ipp::BuildBinaryFrame(request);
+  // Resolve the IP after setting printer-uri so the printer can see the
+  // original name.
+  if (!ResolveZeroconfHostname(FLAGS_url)) {
+    return EX_DATAERR;
+  }
   auto data_optional = SendIppFrameAndGetResponse(FLAGS_url, data);
   if (!data_optional)
     return -2;
