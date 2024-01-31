@@ -8,7 +8,6 @@ use std::os::fd::FromRawFd;
 use std::os::fd::OwnedFd;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use dbus::MethodErr;
 use log::error;
@@ -22,6 +21,7 @@ use schedqos::ProcessState;
 use schedqos::ThreadState;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::config::ConfigProvider;
@@ -174,7 +174,7 @@ fn validate_pid(process_id: u32, sender_euid: u32) -> Result<()> {
     }
 }
 
-pub fn set_thread_state(
+pub async fn set_thread_state(
     sched_ctx: Arc<Mutex<SchedQosContext>>,
     process_id: u32,
     thread_id: u32,
@@ -185,7 +185,7 @@ pub fn set_thread_state(
 
     validate_pid(process_id, sender_euid)?;
 
-    let mut ctx = sched_ctx.lock().expect("lock schedqos context");
+    let mut ctx = sched_ctx.lock().await;
 
     ctx.set_thread_state(process_id.into(), thread_id.into(), state)?;
 
@@ -193,7 +193,7 @@ pub fn set_thread_state(
 }
 
 /// The returned [JoinHandle] is used for testing purpose.
-pub fn set_process_state(
+pub async fn set_process_state(
     sched_ctx: Arc<Mutex<SchedQosContext>>,
     process_id: u32,
     state: u8,
@@ -203,7 +203,7 @@ pub fn set_process_state(
 
     validate_pid(process_id, sender_euid)?;
 
-    let mut ctx = sched_ctx.lock().expect("lock schedqos context");
+    let mut ctx = sched_ctx.lock().await;
 
     if let Some(process_key) = ctx.set_process_state(process_id.into(), state)? {
         match create_async_pidfd(process_id) {
@@ -248,10 +248,7 @@ fn monitor_process(
                 error!("pidfd readable fails: {:?}", e);
             }
         };
-        sched_ctx
-            .lock()
-            .expect("lock schedqos context")
-            .remove_process(process);
+        sched_ctx.lock().await.remove_process(process);
     })
 }
 
@@ -296,7 +293,8 @@ mod tests {
             process_id,
             ProcessState::Normal as u8,
             uid,
-        );
+        )
+        .await;
         assert!(result.is_ok());
         let result = result.unwrap();
         assert!(result.is_some());
@@ -323,7 +321,7 @@ mod tests {
 
         let uid = load_ruid(process_id).unwrap();
 
-        let result = set_process_state(sched_ctx.clone(), process_id, 255, uid);
+        let result = set_process_state(sched_ctx.clone(), process_id, 255, uid).await;
         assert!(matches!(result.err().unwrap(), Error::InvalidState));
     }
 
@@ -343,7 +341,8 @@ mod tests {
             process_id,
             ProcessState::Normal as u8,
             !uid,
-        );
+        )
+        .await;
         assert!(matches!(result.err().unwrap(), Error::ProcessForbidden));
 
         drop(process);
@@ -353,7 +352,8 @@ mod tests {
             process_id,
             ProcessState::Normal as u8,
             uid,
-        );
+        )
+        .await;
         assert!(matches!(result.err().unwrap(), Error::ProcessNotFound));
     }
 
@@ -374,6 +374,7 @@ mod tests {
             ProcessState::Normal as u8,
             uid,
         )
+        .await
         .unwrap();
 
         let result = set_thread_state(
@@ -382,7 +383,8 @@ mod tests {
             process_id,
             ThreadState::Balanced as u8,
             uid,
-        );
+        )
+        .await;
         result.as_ref().unwrap();
         assert!(result.is_ok());
     }
@@ -398,7 +400,7 @@ mod tests {
 
         let uid = load_ruid(process_id).unwrap();
 
-        let result = set_thread_state(sched_ctx.clone(), process_id, process_id, 255, uid);
+        let result = set_thread_state(sched_ctx.clone(), process_id, process_id, 255, uid).await;
         assert!(matches!(result.err().unwrap(), Error::InvalidState));
     }
 
@@ -419,7 +421,8 @@ mod tests {
             process_id,
             ThreadState::Balanced as u8,
             !uid,
-        );
+        )
+        .await;
         assert!(matches!(result.err().unwrap(), Error::ProcessForbidden));
 
         drop(process);
@@ -430,7 +433,8 @@ mod tests {
             process_id,
             ThreadState::Balanced as u8,
             uid,
-        );
+        )
+        .await;
         assert!(matches!(result.err().unwrap(), Error::ProcessNotFound));
     }
 

@@ -10,7 +10,6 @@ use std::sync::atomic::AtomicI32;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::bail;
@@ -30,6 +29,7 @@ use dbus_tokio::connection;
 use log::error;
 use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
+use tokio::sync::Mutex;
 
 use crate::common;
 use crate::common::read_from_file;
@@ -449,7 +449,8 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         }
                     };
 
-                    match set_process_state(sched_ctx, process_id, process_state, sender_euid) {
+                    match set_process_state(sched_ctx, process_id, process_state, sender_euid).await
+                    {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_process_state failed: {:#}, pid={}", e, process_id);
@@ -489,7 +490,9 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         thread_id,
                         thread_state,
                         sender_euid,
-                    ) {
+                    )
+                    .await
+                    {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_thread_state failed: {:#}, pid={}", e, process_id);
