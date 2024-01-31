@@ -44,8 +44,10 @@ Rule::Result RuleEngine::ProcessPath(const std::string& path) {
   if (device.get()) {
     for (const std::unique_ptr<Rule>& rule : rules_) {
       Rule::Result rule_result = rule->ProcessDevice(device.get());
-      LOG(INFO) << "  " << rule->name() << ": "
-                << Rule::ResultToString(rule_result);
+      if (rule_result != Rule::IGNORE) {
+        LOG(INFO) << "  " << rule->name() << ": "
+                  << Rule::ResultToString(rule_result);
+      }
       if (rule_result == Rule::DENY) {
         result = Rule::DENY;
         break;

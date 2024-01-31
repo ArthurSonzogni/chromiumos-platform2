@@ -97,8 +97,13 @@ bool AllowConformingUsbDeviceRule::IsDeviceDetachableByPolicy(
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(usb_allow_list_.begin(), usb_allow_list_.end(),
-                                 vendor_id, product_id);
+  bool allowed = UsbDeviceListContainsId(
+      usb_allow_list_.begin(), usb_allow_list_.end(), vendor_id, product_id);
+
+  if (allowed)
+    LOG(INFO) << "Found allowable device via policy.";
+
+  return allowed;
 }
 
 // Returns whether a USB interface represents the Android Debug Bridge.
@@ -143,7 +148,12 @@ bool IsInterfaceStorage(udev_device* iface) {
   if (!GetUIntSysattr(iface, "bInterfaceClass", &interface_class))
     return false;
   // This matches USB drives, SD adapters, and so on.
-  return interface_class == USB_CLASS_MASS_STORAGE;
+  bool allowed = interface_class == USB_CLASS_MASS_STORAGE;
+
+  if (allowed)
+    LOG(INFO) << "Found allowable storage interface.";
+
+  return allowed;
 }
 
 bool IsInterfaceSafeToDetach(udev_device* iface) {
@@ -168,9 +178,14 @@ bool IsDeviceAllowedHID(udev_device* device) {
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kHIDAllowedIds),
-                                 std::end(kHIDAllowedIds), vendor_id,
-                                 product_id);
+  bool allowed =
+      UsbDeviceListContainsId(std::begin(kHIDAllowedIds),
+                              std::end(kHIDAllowedIds), vendor_id, product_id);
+
+  if (allowed)
+    LOG(INFO) << "Found allowable HID device, safe to claim.";
+
+  return allowed;
 }
 
 bool IsDeviceAllowedInternal(udev_device* device) {
@@ -179,9 +194,14 @@ bool IsDeviceAllowedInternal(udev_device* device) {
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kInternalAllowedIds),
-                                 std::end(kInternalAllowedIds), vendor_id,
-                                 product_id);
+  bool allowed = UsbDeviceListContainsId(std::begin(kInternalAllowedIds),
+                                         std::end(kInternalAllowedIds),
+                                         vendor_id, product_id);
+
+  if (allowed)
+    LOG(INFO) << "Found allowable internal device, safe to claim.";
+
+  return allowed;
 }
 
 bool IsDeviceAllowedSerial(udev_device* device) {
@@ -190,9 +210,14 @@ bool IsDeviceAllowedSerial(udev_device* device) {
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kSerialAllowedIds),
-                                 std::end(kSerialAllowedIds), vendor_id,
-                                 product_id);
+  bool allowed = UsbDeviceListContainsId(std::begin(kSerialAllowedIds),
+                                         std::end(kSerialAllowedIds), vendor_id,
+                                         product_id);
+
+  if (allowed)
+    LOG(INFO) << "Found allowable serial device, safe to claim.";
+
+  return allowed;
 }
 
 Rule::Result AllowConformingUsbDeviceRule::ProcessLegacyDevice(
