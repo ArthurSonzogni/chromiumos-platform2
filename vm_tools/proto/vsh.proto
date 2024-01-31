@@ -9,7 +9,7 @@ option optimize_for = LITE_RUNTIME;
 
 package vm_tools.vsh;
 
-option go_package = "chromiumos/vm_tools/vsh_proto";
+option go_package = "go.chromium.org/chromiumos/vm_tools/vsh_proto";
 
 // Indicates the status of a connection.
 enum ConnectionStatus {

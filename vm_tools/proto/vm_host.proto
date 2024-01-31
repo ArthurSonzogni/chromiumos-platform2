@@ -9,7 +9,7 @@ option cc_enable_arenas = true;
 // This file defines services that will be running on the host for the VM.
 package vm_tools;
 
-option go_package = "chromiumos/vm_tools/vm_rpc";
+option go_package = "go.chromium.org/chromiumos/vm_tools/vm_rpc";
 
 import "common.proto";
 

@@ -10,7 +10,7 @@ option cc_enable_arenas = true;
 // will be used by the host.
 package vm_tools.container;
 
-option go_package = "chromiumos/vm_tools/container_proto";
+option go_package = "go.chromium.org/chromiumos/vm_tools/container_proto";
 
 enum ContainerFeature {
   UNKNOWN = 0;

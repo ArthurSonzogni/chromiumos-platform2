@@ -4,7 +4,7 @@ option cc_enable_arenas = true;
 
 package vm_tools.container;
 
-option go_package = "chromiumos/vm_tools/container_proto";
+option go_package = "go.chromium.org/chromiumos/vm_tools/container_proto";
 
 import "common.proto";
 import "container_host.proto";

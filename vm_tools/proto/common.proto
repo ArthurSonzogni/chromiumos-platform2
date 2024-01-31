@@ -9,7 +9,7 @@ option cc_enable_arenas = true;
 // Common definitions used by both host and guest messages.
 package vm_tools;
 
-option go_package = "chromiumos/vm_tools/vm_tools_proto";
+option go_package = "go.chromium.org/chromiumos/vm_tools/vm_tools_proto";
 
 // gRPC requires that every RPC has an argument and a return value.  This empty
 // message is used when an argument or return value is not required.
