@@ -24,7 +24,6 @@ generate_mojom_bindings("libcros_healthd_mojo_bindings") {
     "cros_healthd_probe.mojom",
     "cros_healthd_routines.mojom",
     "nullable_primitives.mojom",
-    "wilco_ec.mojom",
   ]
   mojo_extra_args = [
     "--typemap",
