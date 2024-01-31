@@ -83,6 +83,7 @@ class RegionTest(unittest.TestCase):
             os.path.join("/usr/share/zoneinfo", tz)
             for r in all_regions.values()
             for tz in r.time_zones
+            if tz is not regions.TBR
         ]
         missing = [z for z in all_zoneinfos if not os.path.exists(z)]
         self.assertFalse(
@@ -130,7 +131,7 @@ class RegionTest(unittest.TestCase):
                             "Missing time zones: %r; does a new time zone need to be added "
                             "to CrOS, or does testdata need to be updated?" % tz
                         )
-                    else:
+                    elif tz is not regions.TBR:
                         # This is an unconfirmed region; just print a warning.
                         logging.warning(
                             _WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION,
@@ -146,7 +147,7 @@ class RegionTest(unittest.TestCase):
                 if l not in self.locales:
                     if r.region_code in regions.REGIONS:
                         missing.append(l)
-                    else:
+                    elif l is not regions.TBR:
                         logging.warning(
                             _WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION,
                             "locale",
@@ -170,7 +171,7 @@ class RegionTest(unittest.TestCase):
                             "Missing keyboard layout %r (resolved from %r)"
                             % (resolved_method, k)
                         )
-                    else:
+                    elif resolved_method is not regions.TBR:
                         # This is an unconfirmed region; just print a warning.
                         logging.warning(
                             _WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION,
@@ -195,7 +196,11 @@ class RegionTest(unittest.TestCase):
         bmp_locale_dir = os.path.join(bmpblk_dir, "strings", "locale")
         for r in regions.BuildRegionsDict(include_all=True).values():
             checked_paths = []
+            is_tbr = False
             for l in r.locales:
+                if l is regions.TBR:
+                    is_tbr = True
+                    continue
                 paths = [os.path.join(bmp_locale_dir, l)]
                 if "-" in l:
                     paths.append(
@@ -210,7 +215,7 @@ class RegionTest(unittest.TestCase):
                         "For region %r, none of %r exists"
                         % (r.region_code, checked_paths)
                     )
-                else:
+                elif not is_tbr:
                     logging.warning(
                         "For region %r, none of %r exists; "
                         "just a warning since this region is not confirmed",
