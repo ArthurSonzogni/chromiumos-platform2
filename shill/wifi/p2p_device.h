@@ -104,9 +104,6 @@ class P2PDevice : public LocalDevice,
   // Set device link_name;
   void SetLinkName(std::string link_name) { link_name_ = link_name; }
 
-  // Set P2PDeviceState.
-  void SetState(P2PDeviceState state);
-
   // Get log name prefix.
   const std::string& log_name() const { return log_name_; }
 
@@ -201,6 +198,9 @@ class P2PDevice : public LocalDevice,
 
   // Delete service_.
   void DeleteService();
+
+  // Set P2PDeviceState.
+  void SetState(P2PDeviceState state);
 
   // Returns true if the device is in an active GO state.
   bool InGOState() const;
