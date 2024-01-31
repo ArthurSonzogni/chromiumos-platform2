@@ -69,7 +69,7 @@ class SessionMock : public Session {
                CK_RV(CK_MECHANISM_TYPE,
                      const std::string&,
                      const Object*,
-                     const Object*,
+                     const Object&,
                      int*,
                      std::string*));
   MOCK_METHOD7(UnwrapKey,
@@ -83,7 +83,7 @@ class SessionMock : public Session {
   MOCK_METHOD6(DeriveKey,
                CK_RV(CK_MECHANISM_TYPE,
                      const std::string&,
-                     const Object*,
+                     const Object&,
                      const CK_ATTRIBUTE_PTR,
                      int,
                      int*));

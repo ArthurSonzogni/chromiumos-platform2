@@ -136,7 +136,7 @@ class SessionImpl : public Session {
   CK_RV WrapKey(CK_MECHANISM_TYPE mechanism,
                 const std::string& mechanism_parameter,
                 const Object* wrapping_key,
-                const Object* key,
+                const Object& key,
                 int* required_out_length,
                 std::string* wrapped_key) override;
   CK_RV UnwrapKey(CK_MECHANISM_TYPE mechanism,
@@ -148,7 +148,7 @@ class SessionImpl : public Session {
                   int* new_key_handle) override;
   CK_RV DeriveKey(CK_MECHANISM_TYPE mechanism,
                   const std::string& mechanism_parameter,
-                  const Object* base_key,
+                  const Object& base_key,
                   const CK_ATTRIBUTE_PTR attributes,
                   int num_attributes,
                   int* new_key_handle) override;
@@ -193,7 +193,7 @@ class SessionImpl : public Session {
   CK_RV CipherInit(bool is_encrypt,
                    CK_MECHANISM_TYPE mechanism,
                    const std::string& mechanism_parameter,
-                   const Object* key);
+                   const Object& key);
   CK_RV CipherUpdate(OperationContext* context,
                      const std::string& data_in,
                      int* required_out_length,
@@ -252,10 +252,10 @@ class SessionImpl : public Session {
   bool ECCSign(OperationContext* context);
   bool ECCSignHwsec(const std::string& input,
                     CK_MECHANISM_TYPE signing_mechanism,
-                    const Object* key_object,
+                    const Object& key_object,
                     std::string* signature);
   bool ECCSignSoftware(const std::string& input,
-                       const Object* key_object,
+                       const Object& key_object,
                        std::string* signature);
   CK_RV ECCVerify(OperationContext* context,
                   const std::string& signed_data,
@@ -264,31 +264,31 @@ class SessionImpl : public Session {
   // Wraps the given private key using the HWSec and deletes all sensitive
   // attributes. This is called when a private key is imported. On success,
   // the private key can only be accessed by the HWSec.
-  CK_RV WrapPrivateKey(Object* object);
-  CK_RV WrapRSAPrivateKey(Object* object);
-  CK_RV WrapECCPrivateKey(Object* object);
+  CK_RV WrapPrivateKey(Object& object);
+  CK_RV WrapRSAPrivateKey(Object& object);
+  CK_RV WrapECCPrivateKey(Object& object);
 
   // WrapKey/UnwrapKey operations
   CK_RV WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
                         const std::string& mechanism_parameter,
-                        const Object* wrapping_key,
-                        const Object* key,
+                        const Object& wrapping_key,
+                        const Object& key,
                         std::string* wrapped_key);
-  CK_RV WrapKeyRSAOAEP(const Object* wrapping_key,
-                       const Object* key,
+  CK_RV WrapKeyRSAOAEP(const Object& wrapping_key,
+                       const Object& key,
                        std::string* wrapped_key);
   CK_RV WrapKeyWithChaps(const std::string& mechanism_parameter,
-                         const Object* key,
+                         const Object& key,
                          std::string* wrapped_key);
   CK_RV UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
                           const std::string& mechanism_parameter,
-                          const Object* unwrapping_key,
+                          const Object& unwrapping_key,
                           const std::string& wrapped_key,
                           const CK_ATTRIBUTE_PTR attributes,
                           int num_attributes,
                           int* new_key_handle);
-  CK_RV UnwrapKeyRSAOAEP(const Object* unwrapping_key,
-                         Object* object,
+  CK_RV UnwrapKeyRSAOAEP(const Object& unwrapping_key,
+                         Object& object,
                          const std::string& wrapped_key);
   CK_RV UnwrapKeyWithChaps(const std::string& mechanism_parameter,
                            const std::string& wrapped_key,

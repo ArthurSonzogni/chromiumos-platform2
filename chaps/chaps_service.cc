@@ -984,7 +984,7 @@ uint32_t ChapsServiceImpl::WrapKey(const SecureBlob& isolate_credential,
   *actual_out_length = max_out_length;
   return session->WrapKey(
       mechanism_type, ConvertByteVectorToString(mechanism_parameter),
-      wrapping_key, key, PreservedValue<uint64_t, int>(actual_out_length),
+      wrapping_key, *key, PreservedValue<uint64_t, int>(actual_out_length),
       PreservedByteVector(wrapped_key));
 }
 
@@ -1038,7 +1038,7 @@ uint32_t ChapsServiceImpl::DeriveKey(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   return session->DeriveKey(mechanism_type,
                             ConvertByteVectorToString(mechanism_parameter),
-                            base_key, tmp.attributes(), tmp.num_attributes(),
+                            *base_key, tmp.attributes(), tmp.num_attributes(),
                             PreservedValue<uint64_t, int>(key_handle));
 }
 

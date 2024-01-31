@@ -103,23 +103,23 @@ bool ParsePrfDataParamByteArray(const PrfDataParam& prf_param,
   return true;
 }
 
-CK_RV DeriveKeySP800108Software(const Object* base_key,
-                                Object* derived_key,
+CK_RV DeriveKeySP800108Software(const Object& base_key,
+                                Object& derived_key,
                                 const string& mechanism_parameter,
                                 string* key_material) {
   CHECK(key_material);
   // For simplicity, our implementation only support generating AES or general
   // secret keys.
   const int key_type =
-      derived_key->GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION);
+      derived_key.GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION);
   if (key_type != CKK_AES && key_type != CKK_GENERIC_SECRET) {
     return CKR_FUNCTION_NOT_SUPPORTED;
   }
   // For AES and general secret keys we read the key length from the supplied
   // template.
-  if (!derived_key->IsAttributePresent(CKA_VALUE_LEN))
+  if (!derived_key.IsAttributePresent(CKA_VALUE_LEN))
     return CKR_TEMPLATE_INCOMPLETE;
-  CK_ULONG key_length = derived_key->GetAttributeInt(CKA_VALUE_LEN, 0);
+  CK_ULONG key_length = derived_key.GetAttributeInt(CKA_VALUE_LEN, 0);
   if (key_length < 1)
     return CKR_KEY_SIZE_RANGE;
 
@@ -138,7 +138,7 @@ CK_RV DeriveKeySP800108Software(const Object* base_key,
       !ParsePrfDataParamByteArray(kdf_params.data_params().at(1), &context),
       CKR_MECHANISM_PARAM_INVALID);
 
-  string base_key_str = base_key->GetAttributeString(CKA_VALUE);
+  string base_key_str = base_key.GetAttributeString(CKA_VALUE);
   switch (kdf_params.prf_type()) {
     case CKK_SHA256_HMAC: {
       LOG_CK_RV_AND_RETURN_IF(
@@ -428,9 +428,9 @@ crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
   return key;
 }
 
-crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
+crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object& key_object) {
   // Parse EC_PARAMS
-  string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
+  string ec_params = key_object.GetAttributeString(CKA_EC_PARAMS);
   crypto::ScopedEC_KEY key = chaps::CreateECCKeyFromEC_PARAMS(ec_params);
   if (key == nullptr)
     return nullptr;
@@ -441,7 +441,7 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
     return nullptr;
   }
 
-  if (!chaps::ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE),
+  if (!chaps::ConvertToBIGNUM(key_object.GetAttributeString(CKA_VALUE),
                               d.get())) {
     LOG(ERROR) << "Failed to convert CKA_VALUE to BIGNUM.";
     return nullptr;
@@ -1102,7 +1102,7 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
       context->is_valid_ = true;
     } else {
       return CipherInit((operation == kEncrypt), mechanism, mechanism_parameter,
-                        key);
+                        *key);
     }
   } else if (operation == kSign || operation == kVerify ||
              operation == kDigest) {
@@ -1570,10 +1570,9 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
 CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
                            const std::string& mechanism_parameter,
                            const Object* wrapping_key,
-                           const Object* key,
+                           const Object& key,
                            int* required_out_length,
                            string* wrapped_key) {
-  CHECK(key);
   CHECK(required_out_length);
   CHECK(wrapped_key);
 
@@ -1584,7 +1583,7 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
   CK_RV result = mechanism == kChapsKeyWrapMechanism
                      ? WrapKeyWithChaps(mechanism_parameter, key, &data)
                      : WrapKeyInternal(mechanism, mechanism_parameter,
-                                       wrapping_key, key, &data);
+                                       *wrapping_key, key, &data);
 
   if (result != CKR_OK) {
     return result;
@@ -1601,21 +1600,21 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
 
 CK_RV SessionImpl::WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
                                    const std::string& mechanism_parameter,
-                                   const Object* wrapping_key,
-                                   const Object* key,
+                                   const Object& wrapping_key,
+                                   const Object& key,
                                    string* wrapped_key) {
-  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_EXTRACTABLE, false),
+  LOG_CK_RV_AND_RETURN_IF(!key.GetAttributeBool(CKA_EXTRACTABLE, false),
                           CKR_KEY_UNEXTRACTABLE);
-  LOG_CK_RV_AND_RETURN_IF(!wrapping_key->GetAttributeBool(CKA_WRAP, false),
+  LOG_CK_RV_AND_RETURN_IF(!wrapping_key.GetAttributeBool(CKA_WRAP, false),
                           CKR_KEY_FUNCTION_NOT_PERMITTED);
   LOG_CK_RV_AND_RETURN_IF(
-      key->GetAttributeBool(CKA_WRAP_WITH_TRUSTED, false) &&
-          !wrapping_key->GetAttributeBool(CKA_TRUSTED, false),
+      key.GetAttributeBool(CKA_WRAP_WITH_TRUSTED, false) &&
+          !wrapping_key.GetAttributeBool(CKA_TRUSTED, false),
       CKR_KEY_NOT_WRAPPABLE);
 
   switch (mechanism) {
     case CKM_RSA_PKCS_OAEP: {
-      LOG_CK_RV_AND_RETURN_IF(key->GetObjectClass() != CKO_SECRET_KEY,
+      LOG_CK_RV_AND_RETURN_IF(key.GetObjectClass() != CKO_SECRET_KEY,
                               CKR_KEY_NOT_WRAPPABLE);
       LOG_CK_RV_AND_RETURN_IF_ERR(
           WrapKeyRSAOAEP(wrapping_key, key, wrapped_key));
@@ -1629,16 +1628,16 @@ CK_RV SessionImpl::WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
   return CKR_OK;
 }
 
-CK_RV SessionImpl::WrapKeyRSAOAEP(const Object* wrapping_key,
-                                  const Object* key,
+CK_RV SessionImpl::WrapKeyRSAOAEP(const Object& wrapping_key,
+                                  const Object& key,
                                   std::string* wrapped_key) {
-  if (wrapping_key->GetObjectClass() != CKO_PUBLIC_KEY ||
-      wrapping_key->GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION) !=
+  if (wrapping_key.GetObjectClass() != CKO_PUBLIC_KEY ||
+      wrapping_key.GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION) !=
           CKK_RSA) {
     LOG(ERROR) << __func__ << "The wrapping key should be a RSA public key.";
     return CKR_WRAPPING_KEY_TYPE_INCONSISTENT;
   }
-  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(wrapping_key);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(&wrapping_key);
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for encryption.";
     return CKR_FUNCTION_FAILED;
@@ -1649,9 +1648,9 @@ CK_RV SessionImpl::WrapKeyRSAOAEP(const Object* wrapping_key,
   }
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_encrypt(
-      key->GetAttributeInt(CKA_VALUE_LEN, 0),
+      key.GetAttributeInt(CKA_VALUE_LEN, 0),
       chaps::ConvertStringToByteBuffer(
-          key->GetAttributeString(CKA_VALUE).data()),
+          key.GetAttributeString(CKA_VALUE).data()),
       buffer, rsa.get(),
       RSA_PKCS1_OAEP_PADDING);  // using EME-OAEP for padding.
   if (length == -1) {
@@ -1665,10 +1664,10 @@ CK_RV SessionImpl::WrapKeyRSAOAEP(const Object* wrapping_key,
 }
 
 CK_RV SessionImpl::WrapKeyWithChaps(const std::string& mechanism_parameter,
-                                    const Object* key,
+                                    const Object& key,
                                     string* wrapped_key) {
   LOG_CK_RV_AND_RETURN_IF(
-      !key->GetAttributeBool(kChapsWrappableAttribute, false),
+      !key.GetAttributeBool(kChapsWrappableAttribute, false),
       CKR_KEY_NOT_WRAPPABLE);
 
   // Generates a temporary random AES key of length=32 (not accessible to the
@@ -1679,7 +1678,7 @@ CK_RV SessionImpl::WrapKeyWithChaps(const std::string& mechanism_parameter,
   string derived_aes_key = HmacSha512(base_aes_key, factory_->GetRandomSeed());
 
   // Wraps the target key with derived_aes_key using CKM_AES_KEY_WRAP_KWP
-  const AttributeMap* attribute_map = key->GetAttributeMap();
+  const AttributeMap* attribute_map = key.GetAttributeMap();
   AttributeMap::const_iterator it;
   AttributeList attribute_list;
   for (const auto& entry : *attribute_map) {
@@ -1725,19 +1724,19 @@ CK_RV SessionImpl::UnwrapKey(CK_MECHANISM_TYPE mechanism,
   return mechanism == kChapsKeyWrapMechanism
              ? UnwrapKeyWithChaps(mechanism_parameter, wrapped_key,
                                   new_key_handle)
-             : UnwrapKeyInternal(mechanism, mechanism_parameter, unwrapping_key,
-                                 wrapped_key, attributes, num_attributes,
-                                 new_key_handle);
+             : UnwrapKeyInternal(mechanism, mechanism_parameter,
+                                 *unwrapping_key, wrapped_key, attributes,
+                                 num_attributes, new_key_handle);
 }
 
 CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
                                      const std::string& mechanism_parameter,
-                                     const Object* unwrapping_key,
+                                     const Object& unwrapping_key,
                                      const string& wrapped_key,
                                      const CK_ATTRIBUTE_PTR attributes,
                                      int num_attributes,
                                      int* new_key_handle) {
-  LOG_CK_RV_AND_RETURN_IF(!unwrapping_key->GetAttributeBool(CKA_UNWRAP, false),
+  LOG_CK_RV_AND_RETURN_IF(!unwrapping_key.GetAttributeBool(CKA_UNWRAP, false),
                           CKR_KEY_FUNCTION_NOT_PERMITTED);
 
   std::unique_ptr<Object> object(factory_->CreateObject());
@@ -1749,7 +1748,7 @@ CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
   switch (mechanism) {
     case CKM_RSA_PKCS_OAEP: {
       LOG_CK_RV_AND_RETURN_IF_ERR(
-          UnwrapKeyRSAOAEP(unwrapping_key, object.get(), wrapped_key));
+          UnwrapKeyRSAOAEP(unwrapping_key, *object.get(), wrapped_key));
       break;
     }
     default: {
@@ -1774,24 +1773,24 @@ CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
   return CKR_OK;
 }
 
-CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object* unwrapping_key,
-                                    Object* object,
+CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object& unwrapping_key,
+                                    Object& object,
                                     const std::string& wrapped_key) {
   brillo::SecureBlob data;
-  if (unwrapping_key->GetObjectClass() != CKO_PRIVATE_KEY ||
-      unwrapping_key->GetAttributeInt(CKA_KEY_TYPE,
-                                      CK_UNAVAILABLE_INFORMATION) != CKK_RSA) {
+  if (unwrapping_key.GetObjectClass() != CKO_PRIVATE_KEY ||
+      unwrapping_key.GetAttributeInt(CKA_KEY_TYPE,
+                                     CK_UNAVAILABLE_INFORMATION) != CKK_RSA) {
     LOG(ERROR) << __func__ << "The unwrapping key should be a RSA private key.";
     return CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT;
   }
-  if (unwrapping_key->IsTokenObject() &&
-      unwrapping_key->IsAttributePresent(kKeyBlobAttribute)) {
+  if (unwrapping_key.IsTokenObject() &&
+      unwrapping_key.IsAttributePresent(kKeyBlobAttribute)) {
     if (!hwsec_) {
       LOG(ERROR) << __func__ << "No HWSec frontend available.";
       return CKR_FUNCTION_FAILED;
     }
 
-    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(unwrapping_key),
+    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(&unwrapping_key),
                      _.LogError().As(CKR_FUNCTION_FAILED));
 
     ASSIGN_OR_RETURN(
@@ -1801,7 +1800,7 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object* unwrapping_key,
             .LogError()
             .As(CKR_FUNCTION_FAILED));
   } else {
-    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(unwrapping_key);
+    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(&unwrapping_key);
     if (!rsa) {
       LOG(ERROR) << __func__ << "Failed to create RSA key for decryption.";
       return CKR_FUNCTION_FAILED;
@@ -1823,9 +1822,9 @@ CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object* unwrapping_key,
     CHECK(length <= std::size(buffer));
     data = SecureBlob(ConvertByteBufferToString(buffer, length));
   }
-  object->SetAttributeInt(CKA_CLASS, CKO_SECRET_KEY);
-  object->SetAttributeString(CKA_VALUE, data.to_string());
-  object->SetAttributeInt(CKA_VALUE_LEN, data.size());
+  object.SetAttributeInt(CKA_CLASS, CKO_SECRET_KEY);
+  object.SetAttributeString(CKA_VALUE, data.to_string());
+  object.SetAttributeInt(CKA_VALUE_LEN, data.size());
   return CKR_OK;
 }
 
@@ -1886,13 +1885,13 @@ CK_RV SessionImpl::UnwrapKeyWithChaps(const std::string& mechanism_parameter,
 }
 CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
                              const std::string& mechanism_parameter,
-                             const Object* base_key,
+                             const Object& base_key,
                              const CK_ATTRIBUTE_PTR attributes,
                              int num_attributes,
                              int* new_key_handle) {
   CHECK(new_key_handle);
 
-  if (!base_key->GetAttributeBool(CKA_DERIVE, false)) {
+  if (!base_key.GetAttributeBool(CKA_DERIVE, false)) {
     LOG(ERROR) << __func__ << ": Base key not permitted to derive anoher key.";
     return CKR_KEY_FUNCTION_NOT_PERMITTED;
   }
@@ -1906,20 +1905,20 @@ CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
   string key_material;
   switch (mechanism) {
     case CKM_SP800_108_COUNTER_KDF: {
-      LOG_CK_RV_AND_RETURN_IF(base_key->GetObjectClass() != CKO_SECRET_KEY,
+      LOG_CK_RV_AND_RETURN_IF(base_key.GetObjectClass() != CKO_SECRET_KEY,
                               CKR_KEY_TYPE_INCONSISTENT);
       LOG_CK_RV_AND_RETURN_IF(object->GetObjectClass() != CKO_SECRET_KEY,
                               CKR_TEMPLATE_INCONSISTENT);
       LOG_CK_RV_AND_RETURN_IF_ERR(DeriveKeySP800108Software(
-          base_key, object.get(), mechanism_parameter, &key_material));
-      if (base_key->GetAttributeBool(CKA_ALWAYS_SENSITIVE, false))
+          base_key, *object.get(), mechanism_parameter, &key_material));
+      if (base_key.GetAttributeBool(CKA_ALWAYS_SENSITIVE, false))
         object->SetAttributeBool(
             CKA_ALWAYS_SENSITIVE,
-            base_key->GetAttributeBool(CKA_SENSITIVE, false));
-      if (base_key->GetAttributeBool(CKA_NEVER_EXTRACTABLE, false))
+            base_key.GetAttributeBool(CKA_SENSITIVE, false));
+      if (base_key.GetAttributeBool(CKA_NEVER_EXTRACTABLE, false))
         object->SetAttributeBool(
             CKA_NEVER_EXTRACTABLE,
-            !base_key->GetAttributeBool(CKA_EXTRACTABLE, false));
+            !base_key.GetAttributeBool(CKA_EXTRACTABLE, false));
       break;
     }
     default: {
@@ -1960,8 +1959,8 @@ bool SessionImpl::IsPrivateLoaded() {
 CK_RV SessionImpl::CipherInit(bool is_encrypt,
                               CK_MECHANISM_TYPE mechanism,
                               const string& mechanism_parameter,
-                              const Object* key) {
-  string key_material = key->GetAttributeString(CKA_VALUE);
+                              const Object& key) {
+  string key_material = key.GetAttributeString(CKA_VALUE);
   const EVP_CIPHER* cipher_type =
       GetOpenSSLCipher(mechanism, key_material.size());
   if (!cipher_type) {
@@ -2062,7 +2061,7 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
 
   bool is_token_object = object->IsTokenObject();
   if (is_token_object) {
-    result = WrapPrivateKey(object.get());
+    result = WrapPrivateKey(*object.get());
     if (result != CKR_OK)
       return result;
   }
@@ -2605,11 +2604,11 @@ bool SessionImpl::ECCSign(OperationContext* context) {
   string signature;
   if (context->key_->IsTokenObject() &&
       context->key_->IsAttributePresent(kKeyBlobAttribute)) {
-    if (!ECCSignHwsec(context->data_, context->mechanism_, context->key_,
+    if (!ECCSignHwsec(context->data_, context->mechanism_, *context->key_,
                       &signature))
       return false;
   } else {
-    if (!ECCSignSoftware(context->data_, context->key_, &signature))
+    if (!ECCSignSoftware(context->data_, *context->key_, &signature))
       return false;
   }
   context->data_ = signature;
@@ -2618,7 +2617,7 @@ bool SessionImpl::ECCSign(OperationContext* context) {
 
 bool SessionImpl::ECCSignHwsec(const std::string& input,
                                CK_MECHANISM_TYPE signing_mechanism,
-                               const Object* key_object,
+                               const Object& key_object,
                                std::string* signature) {
   if (!hwsec_) {
     LOG(ERROR) << "No HWSec frontend available in ECCSignHwsec.";
@@ -2635,7 +2634,7 @@ bool SessionImpl::ECCSignHwsec(const std::string& input,
     return false;
   }
 
-  ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(key_object),
+  ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(&key_object),
                    _.LogError().As(false));
 
   ASSIGN_OR_RETURN(
@@ -2652,7 +2651,7 @@ bool SessionImpl::ECCSignHwsec(const std::string& input,
 }
 
 bool SessionImpl::ECCSignSoftware(const std::string& input,
-                                  const Object* key_object,
+                                  const Object& key_object,
                                   std::string* signature) {
   crypto::ScopedEC_KEY key = CreateECCPrivateKeyFromObject(key_object);
   if (key == nullptr) {
@@ -2727,15 +2726,15 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
   return result ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
-CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
-  if (!object->IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
-      !object->IsAttributePresent(CKA_MODULUS) ||
-      !(object->IsAttributePresent(CKA_PRIME_1) ||
-        object->IsAttributePresent(CKA_PRIME_2)))
+CK_RV SessionImpl::WrapRSAPrivateKey(Object& object) {
+  if (!object.IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
+      !object.IsAttributePresent(CKA_MODULUS) ||
+      !(object.IsAttributePresent(CKA_PRIME_1) ||
+        object.IsAttributePresent(CKA_PRIME_2)))
     return CKR_TEMPLATE_INCOMPLETE;
 
   // If HWSec doesn't support, fall back to software.
-  int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
+  int key_size_bits = object.GetAttributeString(CKA_MODULUS).length() * 8;
   if (!hwsec_ || !hwsec_->IsRSAModulusSupported(key_size_bits).ok()) {
     LOG(WARNING) << "WARNING: " << key_size_bits
                  << "-bit private key cannot be wrapped by the HWSec.";
@@ -2743,21 +2742,21 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   }
 
   // Get prime p or q
-  string prime = object->IsAttributePresent(CKA_PRIME_1)
-                     ? object->GetAttributeString(CKA_PRIME_1)
-                     : object->GetAttributeString(CKA_PRIME_2);
+  string prime = object.IsAttributePresent(CKA_PRIME_1)
+                     ? object.GetAttributeString(CKA_PRIME_1)
+                     : object.GetAttributeString(CKA_PRIME_2);
 
   brillo::Blob exponent =
-      brillo::BlobFromString(object->GetAttributeString(CKA_PUBLIC_EXPONENT));
+      brillo::BlobFromString(object.GetAttributeString(CKA_PUBLIC_EXPONENT));
   brillo::Blob modulus =
-      brillo::BlobFromString(object->GetAttributeString(CKA_MODULUS));
+      brillo::BlobFromString(object.GetAttributeString(CKA_MODULUS));
   brillo::SecureBlob prime_blob(prime);
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*object);
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(object);
 
-  AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
+  AllowSign allow_sign = object.GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow
                              : AllowSign::kNotAllow;
 
@@ -2771,21 +2770,21 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
           .LogError()
           .As(CKR_FUNCTION_FAILED));
 
-  object->SetAttributeString(kAuthDataAttribute, auth_data.to_string());
-  object->SetAttributeString(kKeyBlobAttribute,
-                             brillo::BlobToString(result.key_blob));
-  object->RemoveAttribute(CKA_PRIVATE_EXPONENT);
-  object->RemoveAttribute(CKA_PRIME_1);
-  object->RemoveAttribute(CKA_PRIME_2);
-  object->RemoveAttribute(CKA_EXPONENT_1);
-  object->RemoveAttribute(CKA_EXPONENT_2);
-  object->RemoveAttribute(CKA_COEFFICIENT);
+  object.SetAttributeString(kAuthDataAttribute, auth_data.to_string());
+  object.SetAttributeString(kKeyBlobAttribute,
+                            brillo::BlobToString(result.key_blob));
+  object.RemoveAttribute(CKA_PRIVATE_EXPONENT);
+  object.RemoveAttribute(CKA_PRIME_1);
+  object.RemoveAttribute(CKA_PRIME_2);
+  object.RemoveAttribute(CKA_EXPONENT_1);
+  object.RemoveAttribute(CKA_EXPONENT_2);
+  object.RemoveAttribute(CKA_COEFFICIENT);
   return CKR_OK;
 }
 
-CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
-  if (!object->IsAttributePresent(CKA_EC_PARAMS) ||
-      !object->IsAttributePresent(CKA_VALUE)) {
+CK_RV SessionImpl::WrapECCPrivateKey(Object& object) {
+  if (!object.IsAttributePresent(CKA_EC_PARAMS) ||
+      !object.IsAttributePresent(CKA_VALUE)) {
     return CKR_TEMPLATE_INCOMPLETE;
   }
 
@@ -2819,13 +2818,13 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
 
   brillo::Blob x_point = brillo::BlobFromString(ConvertFromBIGNUM(x.get()));
   brillo::Blob y_point = brillo::BlobFromString(ConvertFromBIGNUM(y.get()));
-  brillo::SecureBlob private_value(object->GetAttributeString(CKA_VALUE));
+  brillo::SecureBlob private_value(object.GetAttributeString(CKA_VALUE));
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*object);
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(object);
 
-  AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
+  AllowSign allow_sign = object.GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow
                              : AllowSign::kNotAllow;
 
@@ -2837,22 +2836,22 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
           .LogError()
           .As(CKR_FUNCTION_FAILED));
 
-  object->SetAttributeString(kAuthDataAttribute, auth_data.to_string());
-  object->SetAttributeString(kKeyBlobAttribute,
-                             brillo::BlobToString(result.key_blob));
+  object.SetAttributeString(kAuthDataAttribute, auth_data.to_string());
+  object.SetAttributeString(kKeyBlobAttribute,
+                            brillo::BlobToString(result.key_blob));
 
-  object->RemoveAttribute(CKA_VALUE);
+  object.RemoveAttribute(CKA_VALUE);
   return CKR_OK;
 }
 
-CK_RV SessionImpl::WrapPrivateKey(Object* object) {
-  if (!hwsec_ || object->GetAttributeBool(kForceSoftwareAttribute, false) ||
-      object->GetObjectClass() != CKO_PRIVATE_KEY ||
-      object->IsAttributePresent(kKeyBlobAttribute)) {
+CK_RV SessionImpl::WrapPrivateKey(Object& object) {
+  if (!hwsec_ || object.GetAttributeBool(kForceSoftwareAttribute, false) ||
+      object.GetObjectClass() != CKO_PRIVATE_KEY ||
+      object.IsAttributePresent(kKeyBlobAttribute)) {
     // This object does not need to be wrapped.
     return CKR_OK;
   }
-  int key_type = object->GetAttributeInt(CKA_KEY_TYPE, 0);
+  int key_type = object.GetAttributeInt(CKA_KEY_TYPE, 0);
   if (key_type == CKK_RSA) {
     return WrapRSAPrivateKey(object);
   } else if (key_type == CKK_EC) {

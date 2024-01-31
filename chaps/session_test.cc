@@ -1999,7 +1999,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108) {
   int handle = 0;
   EXPECT_EQ(CKR_OK, session_->DeriveKey(CKM_SP800_108_COUNTER_KDF,
                                         kdf_params_proto.SerializeAsString(),
-                                        base_key, derived_key_attr,
+                                        *base_key, derived_key_attr,
                                         std::size(derived_key_attr), &handle));
   const Object* derived_key;
   ASSERT_TRUE(session_->GetObject(handle, &derived_key));
@@ -2027,7 +2027,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
   // The mechanism_parameter isn't serialized from a Sp800108KdfParams proto.
   int handle = 0;
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
                                 &handle));
 
@@ -2035,7 +2035,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
   // proto, but it'll fail later when parsing label and context from
   // CK_PRF_DATA_PARAM.
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
                                 &handle));
 
@@ -2052,7 +2052,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
                                         data_params, 0, nullptr};
   Sp800108KdfParams kdf_params_proto = Sp800108KdfParamsToProto(&kdf_params);
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
                                 &handle));
 }
@@ -2075,7 +2075,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
 
   // The base_key doesn't have CKA_DERIVE attribute set to CK_TRUE.
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
                                 &handle));
 
@@ -2090,7 +2090,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
       {CKA_VALUE_LEN, &size, sizeof(size)}};
   // Currently we don't support deriving DES keys using SP800-108.
   EXPECT_EQ(CKR_FUNCTION_NOT_SUPPORTED,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr2, std::size(derived_key_attr2),
                                 &handle));
 
@@ -2100,7 +2100,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
                                      {CKA_VALUE_LEN, &size, sizeof(size)}};
   // We cannot only derive symmetric keys using SP800-108.
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
-            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 rsapriv_key_attr, std::size(rsapriv_key_attr),
                                 &handle));
 }
@@ -2135,9 +2135,9 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPSoftware) {
   int len = 0;
   string wrapped_key;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
-  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey,
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
                                       &len, &wrapped_key));
   CK_KEY_TYPE key_type = CKK_AES;
   CK_ATTRIBUTE attr[] = {{CKA_TOKEN, &no, sizeof(no)},
@@ -2186,9 +2186,9 @@ TEST_F(TestSessionWithTpmSimulator, WrapKeyRSAOAEPWithHWSec) {
   int len = 0;
   string wrapped_key;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
-  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey,
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
                                       &len, &wrapped_key));
   CK_KEY_TYPE key_type = CKK_AES;
   CK_ATTRIBUTE attr[] = {{CKA_TOKEN, &no, sizeof(no)},
@@ -2243,43 +2243,43 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
   // The key being wrapped doesn't have CKA_EXTRACTABLE attribute set to
   // CK_TRUE.
   EXPECT_EQ(CKR_KEY_UNEXTRACTABLE,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
 
   // The wrapping_key doesn't have CKA_WRAP attribute set to CK_TRUE.
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
   const_cast<Object*>(rsapub)->SetAttributeBool(CKA_WRAP, true);
 
   // The wrapping_key should be a rsa public key.
   EXPECT_EQ(CKR_WRAPPING_KEY_TYPE_INCONSISTENT,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", aeskey, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", aeskey, *aeskey, &len,
                               &wrapped_key));
 
   // Cannot wrap private keys using CKM_RSA_PKCS_OAEP.
   EXPECT_EQ(CKR_KEY_NOT_WRAPPABLE,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, rsapriv, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *rsapriv, &len,
                               &wrapped_key));
 
   // WrapKey should now success.
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
-  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey,
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
                                       &len, &wrapped_key));
 
   // Setting CKA_WRAP_WITH_TRUSTED=true for the target should disable WrapKey.
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_WRAP_WITH_TRUSTED, true);
   EXPECT_EQ(CKR_KEY_NOT_WRAPPABLE,
-            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey, &len,
+            session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey, &len,
                               &wrapped_key));
 
   // Setting CKA_TRUSTED=true for the wrapping should enable WrapKey again.
   // (p.s. normally chaps cannot set CKA_TRUSTED=true for any key.)
   const_cast<Object*>(rsapub)->SetAttributeBool(CKA_TRUSTED, true);
-  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, aeskey,
+  EXPECT_EQ(CKR_OK, session_->WrapKey(CKM_RSA_PKCS_OAEP, "", rsapub, *aeskey,
                                       &len, &wrapped_key));
 
   CK_KEY_TYPE key_type = CKK_AES;
@@ -2326,15 +2326,15 @@ TEST_F(TestSessionWithTpmSimulator, WrapKeyWithChaps) {
   int len = 0;
   string wrapped_key;
   EXPECT_EQ(CKR_KEY_NOT_WRAPPABLE,
-            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, rsapriv,
+            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, *rsapriv,
                               &len, &wrapped_key));
   const_cast<Object*>(rsapriv)->SetAttributeBool(kChapsWrappableAttribute,
                                                  true);
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
-            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, rsapriv,
+            session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr, *rsapriv,
                               &len, &wrapped_key));
   EXPECT_EQ(CKR_OK, session_->WrapKey(kChapsKeyWrapMechanism, "", nullptr,
-                                      rsapriv, &len, &wrapped_key));
+                                      *rsapriv, &len, &wrapped_key));
 
   int handle = 0;
   EXPECT_EQ(CKR_OK, session_->UnwrapKey(kChapsKeyWrapMechanism, "", nullptr,
