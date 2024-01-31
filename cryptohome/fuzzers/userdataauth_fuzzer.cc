@@ -357,16 +357,21 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto hwsec_pw_manager = hwsec_factory.GetPinWeaverManagerFrontend();
   auto recovery_crypto = hwsec_factory.GetRecoveryCryptoFrontend();
 
+  // Create a standard set of system API dependencies for UserDataAuth but then
+  // override some of them with our fuzzed versions.
+  SystemApis system_apis;
+  auto backing_apis = UserDataAuth::BackingApis::FromSystemApis(system_apis);
+  backing_apis.platform = &platform;
+  backing_apis.hwsec = hwsec.get();
+  backing_apis.hwsec_pw_manager = hwsec_pw_manager.get();
+  backing_apis.recovery_crypto = recovery_crypto.get();
+
   MockDbusWithProxies bus, mount_thread_bus;
   NiceMock<MockRecoverableKeyStoreBackendCertProvider> key_store_cert_provider;
 
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
-  auto userdataauth = std::make_unique<UserDataAuth>(
-      UserDataAuth::BackingApis{.platform = &platform,
-                                .hwsec = hwsec.get(),
-                                .hwsec_pw_manager = hwsec_pw_manager.get(),
-                                .recovery_crypto = recovery_crypto.get()});
+  auto userdataauth = std::make_unique<UserDataAuth>(backing_apis);
   userdataauth->set_mount_task_runner(
       base::SingleThreadTaskRunner::GetCurrentDefault());
   userdataauth->set_vault_factory_for_testing(vault_factory.get());

@@ -50,6 +50,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -64,6 +65,7 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/userdataauth.h"
+#include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
@@ -146,26 +148,29 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
  public:
   AuthSessionTestWithKeysetManagement() {
     // Setting HWSec Expectations.
-    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(hwsec_, GetManufacturer())
+    EXPECT_CALL(system_apis_.hwsec, IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(system_apis_.hwsec, IsReady())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(system_apis_.hwsec, IsSealingSupported())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(system_apis_.hwsec, GetManufacturer())
         .WillRepeatedly(ReturnValue(0x43524f53));
-    EXPECT_CALL(hwsec_, GetAuthValue(_, _))
+    EXPECT_CALL(system_apis_.hwsec, GetAuthValue(_, _))
         .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+    EXPECT_CALL(system_apis_.hwsec, SealWithCurrentUser(_, _, _))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
-    EXPECT_CALL(hwsec_, GetPubkeyHash(_))
+    EXPECT_CALL(system_apis_.hwsec, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
 
-    crypto_.Init();
+    system_apis_.crypto.Init();
 
     auth_session_manager_ =
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
-            &crypto_, &platform_, &user_session_map_, &keyset_management_,
-            &auth_block_utility_, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &uss_storage_, &uss_manager_,
-            &features_.async});
+            &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
+            &keyset_management_, &auth_block_utility_,
+            &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
+            &uss_manager_, &features_.async});
     // Initializing UserData class.
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
@@ -176,9 +181,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
-    userdataauth_.set_user_activity_timestamp_manager(
-        &user_activity_timestamp_manager_);
-    userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_auth_block_utility(&auth_block_utility_);
@@ -208,12 +210,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   void PrepareDirectoryStructure() {
-    ASSERT_TRUE(platform_.CreateDirectory(ShadowRoot()));
-    ASSERT_TRUE(platform_.CreateDirectory(
+    ASSERT_TRUE(system_apis_.platform.CreateDirectory(ShadowRoot()));
+    ASSERT_TRUE(system_apis_.platform.CreateDirectory(
         brillo::cryptohome::home::GetUserPathPrefix()));
     // We only need the homedir path, not the vault/mount paths.
     for (const auto& user : users_) {
-      ASSERT_TRUE(platform_.CreateDirectory(user.homedir_path));
+      ASSERT_TRUE(system_apis_.platform.CreateDirectory(user.homedir_path));
     }
   }
 
@@ -222,13 +224,13 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void SetUpHwsecAuthenticationMocks() {
     // When sealing, remember the secret and configure the unseal mock to return
     // it.
-    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+    EXPECT_CALL(system_apis_.hwsec, SealWithCurrentUser(_, _, _))
         .WillRepeatedly([this](auto, auto, auto unsealed_value) {
-          EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+          EXPECT_CALL(system_apis_.hwsec, UnsealWithCurrentUser(_, _, _))
               .WillRepeatedly(ReturnValue(unsealed_value));
           return brillo::Blob();
         });
-    EXPECT_CALL(hwsec_, PreloadSealedData(_))
+    EXPECT_CALL(system_apis_.hwsec, PreloadSealedData(_))
         .WillRepeatedly(ReturnValue(std::nullopt));
   }
 
@@ -254,7 +256,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          int index = 0) {
     for (auto& user : users_) {
       VaultKeyset vk;
-      vk.Initialize(&platform_, &crypto_);
+      vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
       AuthBlockState auth_block_state;
@@ -270,7 +272,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                                int index = 0) {
     for (auto& user : users_) {
       VaultKeyset vk;
-      vk.InitializeAsBackup(&platform_, &crypto_);
+      vk.InitializeAsBackup(&system_apis_.platform, &system_apis_.crypto);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
       AuthBlockState auth_block_state;
@@ -285,7 +287,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void KeysetSetUpWithoutKeyDataAndKeyBlobs() {
     for (auto& user : users_) {
       VaultKeyset vk;
-      vk.Initialize(&platform_, &crypto_);
+      vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       AuthBlockState auth_block_state = {
           .state = kTpmState,
@@ -313,7 +315,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {
               ASSERT_THAT(error, IsOk());
-              vk.Initialize(&platform_, &crypto_);
+              vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
               vk.SetKeyData(key_data);
               vk.set_backup_vk_for_testing(is_backup);
 
@@ -544,17 +546,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   // Mocks and fakes for the test AuthSessions to use.
-  NiceMock<MockPlatform> platform_;
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
-  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
-                 /*recovery_hwsec=*/nullptr};
-  UssStorage uss_storage_{&platform_};
+  MockSystemApis<> system_apis_;
+  UssStorage uss_storage_{&system_apis_.platform};
   UssManager uss_manager_{uss_storage_};
   UserSessionMap user_session_map_;
-  KeysetManagement keyset_management_{&platform_, &crypto_,
+  KeysetManagement keyset_management_{&system_apis_.platform,
+                                      &system_apis_.crypto,
                                       CreateMockVaultKeysetFactory()};
   FakeFeaturesForTesting features_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -563,33 +560,29 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       FingerprintAuthBlockService::MakeNullService()};
   AuthBlockUtilityImpl auth_block_utility_{
       &keyset_management_,
-      &crypto_,
-      &platform_,
+      &system_apis_.crypto,
+      &system_apis_.platform,
       &features_.async,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &platform_,
-      &crypto_,
+      &system_apis_.platform,
+      &system_apis_.crypto,
       &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
-                                         &uss_manager_};
-  AuthSession::BackingApis backing_apis_{&crypto_,
-                                         &platform_,
-                                         &user_session_map_,
-                                         &keyset_management_,
-                                         &auth_block_utility_,
-                                         &auth_factor_driver_manager_,
-                                         &auth_factor_manager_,
-                                         &uss_storage_,
-                                         &uss_manager_,
-                                         &features_.async};
+  AuthFactorManager auth_factor_manager_{&system_apis_.platform,
+                                         &keyset_management_, &uss_manager_};
+  AuthSession::BackingApis backing_apis_{
+      &system_apis_.crypto,  &system_apis_.platform,
+      &user_session_map_,    &keyset_management_,
+      &auth_block_utility_,  &auth_factor_driver_manager_,
+      &auth_factor_manager_, &uss_storage_,
+      &uss_manager_,         &features_.async};
 
   // An AuthSession manager for testing managed creation.
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
@@ -600,13 +593,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   NiceMock<MockUserSessionFactory> user_session_factory_;
 
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
-  NiceMock<MockUserOldestActivityTimestampManager>
-      user_activity_timestamp_manager_;
-  NiceMock<MockInstallAttributes> install_attrs_;
-  UserDataAuth userdataauth_{{.platform = &platform_,
-                              .hwsec = &hwsec_,
-                              .hwsec_pw_manager = &hwsec_pw_manager_,
-                              .recovery_crypto = &recovery_crypto_}};
+  UserDataAuth userdataauth_{system_apis_.ToBackingApis()};
 
   // Store user info for users that will be setup.
   std::vector<UserInfo> users_;
@@ -664,7 +651,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
               std::unique_ptr<AuthBlockState> auth_block_state) {
             ASSERT_THAT(error, IsOk());
             VaultKeyset vk;
-            vk.Initialize(&platform_, &crypto_);
+            vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
             vk.CreateFromFileSystemKeyset(file_system_keyset_);
             ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
             ASSERT_TRUE(vk.Save(
@@ -718,8 +705,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // Setup pinweaver manager.
   hwsec::Tpm2SimulatorFactoryForTest factory;
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
-  crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
-  crypto_.Init();
+  system_apis_.crypto.set_pinweaver_manager_for_testing(pw_manager.get());
+  system_apis_.crypto.Init();
 
   SetUpHwsecAuthenticationMocks();
   AuthInput auth_input = {
@@ -785,7 +772,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // backed factors.
   auth_input.user_input = brillo::SecureBlob(kPin);
   auth_input.reset_seed = reset_seed;
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
   KeyData pin_data;
   pin_data.set_label(kPinLabel);
   pin_data.mutable_policy()->set_low_entropy_credential(true);
@@ -812,16 +800,11 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   auto original_backing_apis = std::move(backing_apis_);
   NiceMock<MockKeysetManagement> mock_keyset_management;
   AuthSession::BackingApis backing_api_with_mock_km{
-      &crypto_,
-      &platform_,
-      &user_session_map_,
-      &mock_keyset_management,
-      &auth_block_utility_,
-      &auth_factor_driver_manager_,
-      &auth_factor_manager_,
-      &uss_storage_,
-      &uss_manager_,
-      &features_.async};
+      &system_apis_.crypto,  &system_apis_.platform,
+      &user_session_map_,    &mock_keyset_management,
+      &auth_block_utility_,  &auth_factor_driver_manager_,
+      &auth_factor_manager_, &uss_storage_,
+      &uss_manager_,         &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
 
   {
@@ -894,7 +877,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
   proto.mutable_kiosk_input();
   AuthFactorMetadata auth_factor_metadata;
   std::optional<AuthInput> auth_input = CreateAuthInput(
-      &platform_, proto, users_[0].username, users_[0].obfuscated,
+      &system_apis_.platform, proto, users_[0].username, users_[0].obfuscated,
       /*locked_to_single_user=*/true,
       /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
   auth_block_utility_.CreateKeyBlobsWithAuthBlock(
@@ -904,7 +887,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
               std::unique_ptr<AuthBlockState> auth_block_state) {
             ASSERT_THAT(error, IsOk());
             VaultKeyset vk;
-            vk.Initialize(&platform_, &crypto_);
+            vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
             vk.CreateFromFileSystemKeyset(file_system_keyset_);
             ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
             ASSERT_TRUE(vk.Save(
@@ -964,7 +947,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {
             ASSERT_THAT(error, IsOk());
-            vk.Initialize(&platform_, &crypto_);
+            vk.Initialize(&system_apis_.platform, &system_apis_.crypto);
             KeyData key_data;
             key_data.set_label(kDefaultLabel);
             vk.SetKeyData(key_data);
@@ -1013,7 +996,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   AuthenticateAndMigrate(auth_session, kDefaultLabel, kPassword);
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
-  UssStorage uss_storage(&platform_);
+  UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
@@ -1069,7 +1052,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   AuthenticateAndMigrate(auth_session2, kPasswordLabel, kPassword);
 
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
-  UssStorage uss_storage(&platform_);
+  UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
@@ -1130,7 +1113,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
 
   // Verify
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
-  UssStorage uss_storage(&platform_);
+  UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
@@ -1182,7 +1165,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthenticateAndMigrate(auth_session3, kPasswordLabel2, kPassword2);
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
-  UssStorage uss_storage(&platform_);
+  UssStorage uss_storage(&system_apis_.platform);
   UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
@@ -1274,10 +1257,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   // AuthSession.
   auto auth_session_manager_mock =
       std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
-          &crypto_, &platform_, &user_session_map_, &keyset_management_,
-          &mock_auth_block_utility_, &auth_factor_driver_manager_,
-          &auth_factor_manager_, &uss_storage_, &uss_manager_,
-          &features_.async});
+          &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
+          &keyset_management_, &mock_auth_block_utility_,
+          &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
+          &uss_manager_, &features_.async});
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
       Username(kUsername), flags, AuthIntent::kDecrypt);

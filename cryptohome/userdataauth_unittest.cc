@@ -58,6 +58,7 @@
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/fake_features.h"
@@ -88,6 +89,7 @@
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
+#include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -181,8 +183,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   void SetupHwsec() {
     userdataauth_->set_auth_block_utility(&auth_block_utility_);
     userdataauth_->set_keyset_management(&keyset_management_);
-    userdataauth_->set_crypto(&crypto_);
-    userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_user_session_factory(&user_session_factory_);
@@ -190,17 +190,20 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   void SetupDefaultUserDataAuth() {
     SET_DEFAULT_TPM_FOR_TESTING;
-    attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
-    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
-    ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_pw_manager_, IsEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_pw_manager_, GetVersion()).WillByDefault(ReturnValue(2));
-    ON_CALL(hwsec_pw_manager_, BlockGeneratePk())
+    ON_CALL(system_apis_.hwsec, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+        .WillByDefault(ReturnValue(false));
+    ON_CALL(system_apis_.hwsec, IsSealingSupported())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec_pw_manager, IsEnabled())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec_pw_manager, GetVersion())
+        .WillByDefault(ReturnValue(2));
+    ON_CALL(system_apis_.hwsec_pw_manager, BlockGeneratePk())
         .WillByDefault(ReturnOk<TPMError>());
 
     if (!userdataauth_) {
@@ -209,19 +212,12 @@ class UserDataAuthTestBase : public ::testing::Test {
       // class (such as UserDataAuthTestThreaded) need to have the constructor
       // of UserDataAuth run on a specific thread, and therefore will construct
       // |userdataauth_| before calling UserDataAuthTestBase::SetUp().
-      userdataauth_ = std::make_unique<UserDataAuth>(
-          UserDataAuth::BackingApis{.platform = &platform_,
-                                    .hwsec = &hwsec_,
-                                    .hwsec_pw_manager = &hwsec_pw_manager_,
-                                    .recovery_crypto = &recovery_crypto_});
+      userdataauth_ =
+          std::make_unique<UserDataAuth>(system_apis_.ToBackingApis());
     }
 
-    userdataauth_->set_user_activity_timestamp_manager(
-        &user_activity_timestamp_manager_);
-    userdataauth_->set_install_attrs(attrs_.get());
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_chaps_client(&chaps_client_);
-    userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
     userdataauth_->set_key_store_cert_provider(&key_store_cert_provider_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
@@ -246,7 +242,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     // list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
     // Skip CleanUpStaleMounts by default.
-    ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
+    ON_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
         .WillByDefault(Return(false));
     // Low Disk space handler initialization will do nothing.
     ON_CALL(low_disk_space_handler_, Init(_)).WillByDefault(Return(true));
@@ -294,11 +290,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // internal use.
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
 
-  // Mock UserOldestActivityTimestampManager, will be passed to UserDataAuth for
-  // its internal use.
-  NiceMock<MockUserOldestActivityTimestampManager>
-      user_activity_timestamp_manager_;
-
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
 
@@ -307,35 +298,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   // be called more than necessary.
   NiceMock<MockDiskCleanup> disk_cleanup_;
 
-  // Mock InstallAttributes object, will be passed to UserDataAuth for its
-  // internal use.
-  std::unique_ptr<NiceMock<MockInstallAttributes>> attrs_;
-
-  // Mock Platform object, will be passed to UserDataAuth for its internal use.
-  NiceMock<MockPlatform> platform_;
-
-  // Mock HWSec factory object, will be passed to UserDataAuth for its internal
-  // use.
-  NiceMock<hwsec::MockFactory> hwsec_factory_;
-
-  // Mock HWSec object, will be passed to UserDataAuth for its internal use.
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-
-  // Mock pinweaver manager object, will be passed to UserDataAuth for its
-  // internal use.
-  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
-
-  // Mock recovery crypto object, will be passed to UserDataAuth for its
-  // internal use.
-  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
-
-  // Mock Cryptohome Key Loader object, will be passed to UserDataAuth for its
-  // internal use.
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-
-  // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
-                 &recovery_crypto_};
+  // Mock system API objects needed to initialize UserDataAuth.
+  MockSystemApis<> system_apis_;
 
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.
@@ -348,10 +312,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Pcks11TokenFactory, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
-
-  // Mock Firmware Management Parameters object, will be passed to UserDataAuth
-  // for its internal use.
-  NiceMock<MockFirmwareManagementParameters> fwmp_;
 
   // Mock Fingerprint Manager object, will be passed to UserDataAuth for its
   // internal use.
@@ -430,12 +390,14 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     userdataauth_->set_origin_task_runner(origin_task_runner_);
     userdataauth_->set_mount_task_runner(mount_task_runner_);
 
-    ON_CALL(platform_, GetCurrentTime()).WillByDefault(Invoke([this]() {
-      // The time between origin and mount task runner may have a skew when fast
-      // forwarding the time. But current running task runner time must be the
-      // biggest one.
-      return std::max(origin_task_runner_->Now(), mount_task_runner_->Now());
-    }));
+    ON_CALL(system_apis_.platform, GetCurrentTime())
+        .WillByDefault(Invoke([this]() {
+          // The time between origin and mount task runner may have a skew when
+          // fast forwarding the time. But current running task runner time must
+          // be the biggest one.
+          return std::max(origin_task_runner_->Now(),
+                          mount_task_runner_->Now());
+        }));
   }
 
   void CreatePkcs11TokenInSession(NiceMock<MockUserSession>* session) {
@@ -1222,13 +1184,13 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
-  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
 
   std::string str_true = "true";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
   blob_true.push_back(0);
 
-  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
 
   InitializeUserDataAuth();
@@ -1237,13 +1199,13 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
-  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
 
   std::string str_true = "false";
   std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
   blob_true.push_back(0);
 
-  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
 
   InitializeUserDataAuth();
@@ -1265,7 +1227,7 @@ constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
 
 TEST_F(UserDataAuthTest, InstallAttributesGet) {
   // Test for successful case.
-  EXPECT_CALL(*attrs_, Get(kInstallAttributeName, _))
+  EXPECT_CALL(system_apis_.install_attrs, Get(kInstallAttributeName, _))
       .WillOnce(
           Invoke([](const std::string& name, std::vector<uint8_t>* data_out) {
             *data_out = std::vector<uint8_t>(
@@ -1279,15 +1241,17 @@ TEST_F(UserDataAuthTest, InstallAttributesGet) {
   EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
 
   // Test for unsuccessful case.
-  EXPECT_CALL(*attrs_, Get(kInstallAttributeName, _)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.install_attrs, Get(kInstallAttributeName, _))
+      .WillOnce(Return(false));
   EXPECT_FALSE(
       userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesSet) {
   // Test for successful case.
-  EXPECT_CALL(*attrs_, Set(kInstallAttributeName,
-                           ElementsAreArray(kInstallAttributeData)))
+  EXPECT_CALL(
+      system_apis_.install_attrs,
+      Set(kInstallAttributeName, ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(true));
 
   std::vector<uint8_t> data(
@@ -1296,8 +1260,9 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
   EXPECT_TRUE(userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
 
   // Test for unsuccessful case.
-  EXPECT_CALL(*attrs_, Set(kInstallAttributeName,
-                           ElementsAreArray(kInstallAttributeData)))
+  EXPECT_CALL(
+      system_apis_.install_attrs,
+      Set(kInstallAttributeName, ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(false));
   EXPECT_FALSE(
       userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
@@ -1305,27 +1270,27 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
 
 TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
   // Test for successful case.
-  EXPECT_CALL(*attrs_, Finalize()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.install_attrs, Finalize()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesFinalize());
 
   // Test for unsuccessful case.
-  EXPECT_CALL(*attrs_, Finalize()).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.install_attrs, Finalize()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->InstallAttributesFinalize());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesCount) {
   constexpr int kCount = 42;  // The Answer!!
-  EXPECT_CALL(*attrs_, Count()).WillOnce(Return(kCount));
+  EXPECT_CALL(system_apis_.install_attrs, Count()).WillOnce(Return(kCount));
   EXPECT_EQ(kCount, userdataauth_->InstallAttributesCount());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
   // Test for successful case.
-  EXPECT_CALL(*attrs_, IsSecure()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.install_attrs, IsSecure()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
 
   // Test for unsuccessful case.
-  EXPECT_CALL(*attrs_, IsSecure()).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.install_attrs, IsSecure()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->InstallAttributesIsSecure());
 }
 
@@ -1338,7 +1303,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
       InstallAttributesInterface::Status::kInvalid};
 
   for (auto& s : status_list) {
-    EXPECT_CALL(*attrs_, status()).WillOnce(Return(s));
+    EXPECT_CALL(system_apis_.install_attrs, status()).WillOnce(Return(s));
     EXPECT_EQ(s, userdataauth_->InstallAttributesGetStatus());
   }
 }
@@ -1375,8 +1340,9 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
       GetObfuscatedUsername(kUsername1);
 
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
-  EXPECT_CALL(hwsec_, SetCurrentUser(*kUsername1Obfuscated))
+  EXPECT_CALL(system_apis_.hwsec, IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
+  EXPECT_CALL(system_apis_.hwsec, SetCurrentUser(*kUsername1Obfuscated))
       .WillOnce(ReturnOk<TPMError>());
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
@@ -1389,7 +1355,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
   account_id.set_account_id(kUsername1);
 
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
-  EXPECT_CALL(hwsec_, IsCurrentUserSet())
+  EXPECT_CALL(system_apis_.hwsec, IsCurrentUserSet())
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
@@ -1402,7 +1368,8 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
   account_id.set_account_id(kUsername1);
 
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
-  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(system_apis_.hwsec, IsCurrentUserSet())
+      .WillOnce(ReturnValue(true));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED);
@@ -1416,8 +1383,9 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
       GetObfuscatedUsername(kUsername1);
 
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
-  EXPECT_CALL(hwsec_, SetCurrentUser(*kUsername1Obfuscated))
+  EXPECT_CALL(system_apis_.hwsec, IsCurrentUserSet())
+      .WillOnce(ReturnValue(false));
+  EXPECT_CALL(system_apis_.hwsec, SetCurrentUser(*kUsername1Obfuscated))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
@@ -1440,14 +1408,14 @@ TEST_F(UserDataAuthTest, GetEncryptionInfoEnabledTest) {
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(fwmp_, GetFWMP(&fwmp)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.fwmp, GetFWMP(&fwmp)).WillOnce(Return(true));
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             userdataauth_->GetFirmwareManagementParameters(&fwmp));
 }
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(fwmp_, GetFWMP(&fwmp)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.fwmp, GetFWMP(&fwmp)).WillOnce(Return(false));
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
       userdataauth_->GetFirmwareManagementParameters(&fwmp));
@@ -1455,27 +1423,27 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(fwmp_, SetFWMP(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.fwmp, SetFWMP(_)).WillOnce(Return(true));
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersError) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(fwmp_, SetFWMP(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.fwmp, SetFWMP(_)).WillOnce(Return(false));
   EXPECT_EQ(user_data_auth::
                 CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
             userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersSuccess) {
-  EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.fwmp, Destroy()).WillOnce(Return(true));
 
   EXPECT_TRUE(userdataauth_->RemoveFirmwareManagementParameters());
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
-  EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.fwmp, Destroy()).WillOnce(Return(false));
 
   EXPECT_FALSE(userdataauth_->RemoveFirmwareManagementParameters());
 }
@@ -1494,7 +1462,7 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackSuccess) {
   base::OnceCallback<void(hwsec::Status)> callback;
 
   // Called by Initialize().
-  EXPECT_CALL(hwsec_, RegisterOnReadyCallback)
+  EXPECT_CALL(system_apis_.hwsec, RegisterOnReadyCallback)
       .WillOnce([&](base::OnceCallback<void(hwsec::Status)> cb) {
         callback = std::move(cb);
       });
@@ -1506,10 +1474,10 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackSuccess) {
   SetupMount("foo@gmail.com");
 
   // Called by EnsureCryptohomeKeys().
-  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey())
+  EXPECT_CALL(system_apis_.cryptohome_keys_manager, HasAnyCryptohomeKey())
       .WillOnce(Return(true));
   // Called by InitializeInstallAttributes()
-  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
 
   std::move(callback).Run(hwsec::OkStatus());
 }
@@ -1518,7 +1486,7 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackFail) {
   base::OnceCallback<void(hwsec::Status)> callback;
 
   // Called by Initialize().
-  EXPECT_CALL(hwsec_, RegisterOnReadyCallback)
+  EXPECT_CALL(system_apis_.hwsec, RegisterOnReadyCallback)
       .WillOnce([&](base::OnceCallback<void(hwsec::Status)> cb) {
         callback = std::move(cb);
       });
@@ -1530,8 +1498,9 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackFail) {
   SetupMount("foo@gmail.com");
 
   // This function will not be called.
-  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey()).Times(0);
-  EXPECT_CALL(*attrs_, Init()).Times(0);
+  EXPECT_CALL(system_apis_.cryptohome_keys_manager, HasAnyCryptohomeKey())
+      .Times(0);
+  EXPECT_CALL(system_apis_.install_attrs, Init()).Times(0);
 
   std::move(callback).Run(
       MakeStatus<hwsec::TPMError>("fake", TPMRetryAction::kNoRetry));
@@ -1545,7 +1514,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
 
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
-  EXPECT_CALL(user_activity_timestamp_manager_,
+  EXPECT_CALL(system_apis_.user_activity_timestamp_manager,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true));
 
@@ -1559,7 +1528,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(*prev_session, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*prev_session, IsEphemeral()).WillOnce(Return(false));
-  EXPECT_CALL(user_activity_timestamp_manager_,
+  EXPECT_CALL(system_apis_.user_activity_timestamp_manager,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .Times(2)
       .WillRepeatedly(Return(true));
@@ -1575,7 +1544,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
 
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
-  EXPECT_CALL(user_activity_timestamp_manager_,
+  EXPECT_CALL(system_apis_.user_activity_timestamp_manager,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(false));
 
@@ -1715,15 +1684,16 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Dmcrypt) {
   // Check that when we have dm-crypt mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted.
 
-  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+  EXPECT_CALL(system_apis_.platform,
+              GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
       .WillOnce(Invoke(DmcryptDeviceMounts));
 
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kDmcryptMounts.size())
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
   for (int i = 0; i < kDmcryptMounts.size(); ++i) {
-    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+    EXPECT_CALL(system_apis_.platform, Unmount(kDmcryptMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -1734,7 +1704,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt) {
   // Check that when we have dm-crypt mounts, files open on dm-crypt cryptohome
   // for one user and no open filehandles, all stale mounts for the second user
   // are unmounted.
-  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+  EXPECT_CALL(system_apis_.platform,
+              GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
       .WillOnce(Invoke(DmcryptDeviceMounts));
 
   // The number of expired mounts depends on when the first busy mount is
@@ -1742,17 +1713,18 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt) {
   // the list, so ExpireMount() is called for the first two non-busy mounts for
   // user 1234 and then for the non-busy stale mounts for user 4567.
   const int kBusyMountIndex = 4;
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kBusyMountIndex)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
-  EXPECT_CALL(platform_, ExpireMount(kDmcryptMounts[kBusyMountIndex].dst))
+  EXPECT_CALL(system_apis_.platform,
+              ExpireMount(kDmcryptMounts[kBusyMountIndex].dst))
       .Times(1)
       .WillRepeatedly(Return(ExpireMountResult::kBusy));
 
   // Only user 4567's mounts will be unmounted.
   for (int i = 0; i < 2; ++i) {
-    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+    EXPECT_CALL(system_apis_.platform, Unmount(kDmcryptMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -1763,12 +1735,13 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt_Forced) {
   // Check that when we have dm-crypt mounts, files open on dm-crypt
   // and no open filehandles, all stale mounts are unmounted.
 
-  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+  EXPECT_CALL(system_apis_.platform,
+              GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
       .WillOnce(Invoke(DmcryptDeviceMounts));
-  EXPECT_CALL(platform_, ExpireMount(_)).Times(0);
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_)).Times(0);
 
   for (int i = 0; i < kDmcryptMounts.size(); ++i) {
-    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+    EXPECT_CALL(system_apis_.platform, Unmount(kDmcryptMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -1780,29 +1753,33 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
   // and no open filehandles, all stale mounts are unmounted, loop device is
   // detached and sparse file is deleted.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(kLoopDevices));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Invoke(LoopDeviceMounts));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kEphemeralMountsCount)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
   for (int i = 0; i < kEphemeralMountsCount; ++i) {
-    EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
+    EXPECT_CALL(system_apis_.platform, Unmount(kLoopDevMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
-  EXPECT_CALL(platform_, DetachLoop(FilePath("/dev/loop7")))
+  EXPECT_CALL(system_apis_.platform, DetachLoop(FilePath("/dev/loop7")))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[0])).WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1])).WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeletePathRecursively(kLoopDevMounts[0].dst))
+  EXPECT_CALL(system_apis_.platform, DeleteFile(kSparseFiles[0]))
+      .WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, DeleteFile(kSparseFiles[1]))
+      .WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform,
+              DeletePathRecursively(kLoopDevMounts[0].dst))
       .WillOnce(Return(true));
   EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(false));
 }
@@ -1811,27 +1788,30 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
   // Check that when we have ephemeral mounts, no active mounts,
   // and some open filehandles to the legacy homedir, everything is kept.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(kLoopDevices));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Invoke(LoopDeviceMounts));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kEphemeralMountsCount - 1)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
-  EXPECT_CALL(platform_, ExpireMount(FilePath("/home/chronos/user")))
+  EXPECT_CALL(system_apis_.platform,
+              ExpireMount(FilePath("/home/chronos/user")))
       .Times(1)
       .WillRepeatedly(Return(ExpireMountResult::kBusy));
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(FilePath("/dev/loop7"), _))
+  EXPECT_CALL(system_apis_.platform,
+              GetMountsBySourcePrefix(FilePath("/dev/loop7"), _))
       .WillOnce(Return(false));
 
-  EXPECT_CALL(platform_, Unmount(_, _, _)).Times(0);
+  EXPECT_CALL(system_apis_.platform, Unmount(_, _, _)).Times(0);
   EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
@@ -1840,27 +1820,31 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
   // and some open filehandles to the legacy homedir, but cleanup is forced,
   // all mounts are unmounted, loop device is detached and file is deleted.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(kLoopDevices));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Invoke(LoopDeviceMounts));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Invoke(EnumerateSparseFiles));
-  EXPECT_CALL(platform_, ExpireMount(_)).Times(0);
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_)).Times(0);
 
   for (int i = 0; i < kEphemeralMountsCount; ++i) {
-    EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
+    EXPECT_CALL(system_apis_.platform, Unmount(kLoopDevMounts[i].dst, true, _))
         .WillRepeatedly(Return(true));
   }
-  EXPECT_CALL(platform_, DetachLoop(FilePath("/dev/loop7")))
+  EXPECT_CALL(system_apis_.platform, DetachLoop(FilePath("/dev/loop7")))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[0])).WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1])).WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeletePathRecursively(kLoopDevMounts[0].dst))
+  EXPECT_CALL(system_apis_.platform, DeleteFile(kSparseFiles[0]))
+      .WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, DeleteFile(kSparseFiles[1]))
+      .WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform,
+              DeletePathRecursively(kLoopDevMounts[0].dst))
       .WillOnce(Return(true));
   EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(true));
 }
@@ -1869,20 +1853,21 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
-  EXPECT_CALL(platform_, Unmount(_, true, _))
+  EXPECT_CALL(system_apis_.platform, Unmount(_, true, _))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(false));
@@ -1893,23 +1878,24 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly_Forced) {
   // and no open filehandles, all stale mounts are unmounted and we attempt
   // to clear the encryption key for fscrypt/ecryptfs mounts.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, Unmount(_, true, _))
+  EXPECT_CALL(system_apis_.platform, Unmount(_, true, _))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(true));
 
   // Expect the cleanup to clear user keys.
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
-  EXPECT_CALL(platform_, InvalidateDirCryptoKey(_, _))
+  EXPECT_CALL(system_apis_.platform, ClearUserKeyring()).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, InvalidateDirCryptoKey(_, _))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(true));
 
@@ -1922,45 +1908,50 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   // filehandles are unmounted.
 
   // Called by CleanUpStaleMounts and each time a directory is excluded.
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               ExpireMount(Property(&FilePath::value, EndsWith("/0"))))
       .WillRepeatedly(Return(ExpireMountResult::kBusy));
-  EXPECT_CALL(platform_, ExpireMount(FilePath("/home/chronos/user")))
+  EXPECT_CALL(system_apis_.platform,
+              ExpireMount(FilePath("/home/chronos/user")))
       .WillRepeatedly(Return(ExpireMountResult::kBusy));
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               ExpireMount(Property(
                   &FilePath::value,
                   AnyOf(EndsWith("/1"), EndsWith("b/MyFiles/Downloads")))))
       .Times(4)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
-  EXPECT_CALL(platform_, ExpireMount(FilePath("/daemon-store/server/b")))
+  EXPECT_CALL(system_apis_.platform,
+              ExpireMount(FilePath("/daemon-store/server/b")))
       .WillOnce(Return(ExpireMountResult::kMarked));
   // Given /home/chronos/user and a is marked as active, only b mounts should be
   // removed.
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       Unmount(Property(&FilePath::value,
                        AnyOf(EndsWith("/1"), EndsWith("b/MyFiles/Downloads"))),
               true, _))
       .Times(4)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("/daemon-store/server/b"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/daemon-store/server/b"), true, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               Unmount(Property(&FilePath::value, EndsWith("/0")), true, _))
       .Times(0);
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/home/chronos/user"), true, _))
       .Times(0);
   EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
@@ -1971,22 +1962,26 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
+  EXPECT_CALL(system_apis_.platform,
+              FileExists(base::FilePath("/home/.shadow/salt")))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, FileExists(base::FilePath("/var/lib/system_salt")))
+  EXPECT_CALL(system_apis_.platform,
+              FileExists(base::FilePath("/var/lib/system_salt")))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))
       .WillOnce(Return(true));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       FileExists(base::FilePath("/run/cryptohome/pw_pk_establishment_blocked")))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
 
   InitializeUserDataAuth();
 
@@ -1996,10 +1991,12 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
 
   // StartAuthSession for new user.
   user_data_auth::StartAuthSessionRequest start_session_req;
@@ -2041,14 +2038,15 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   // Test CleanUpStaleMounts.
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
@@ -2057,7 +2055,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // same mount points that are expected to be unmounted below. But it is
   // important to check the number of calls here to make sure ExpireMount
   // doesn't run on any other mount points.
-  EXPECT_CALL(platform_, ExpireMount(_))
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(5)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
@@ -2067,17 +2065,20 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/root/1")))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               Unmount(Property(&FilePath::value, EndsWith("/0")), true, _))
       .Times(2)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/home/chronos/user"), true, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
-                                          EndsWith("user/MyFiles/Downloads")),
-                                 true, _))
+  EXPECT_CALL(
+      system_apis_.platform,
+      Unmount(Property(&FilePath::value, EndsWith("user/MyFiles/Downloads")),
+              true, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("/daemon-store/server/a"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/daemon-store/server/a"), true, _))
       .WillOnce(Return(true));
 
   std::vector<std::string> fake_token_list;
@@ -2102,20 +2103,22 @@ TEST_F(UserDataAuthTest,
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
+  EXPECT_CALL(system_apis_.platform,
+              FileExists(base::FilePath("/home/.shadow/salt")))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, FileExists(base::FilePath("/var/lib/system_salt")))
+  EXPECT_CALL(system_apis_.platform,
+              FileExists(base::FilePath("/var/lib/system_salt")))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))
       .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       FileExists(base::FilePath("/run/cryptohome/pw_pk_establishment_blocked")))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
-  EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).Times(0);
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _)).Times(0);
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices()).Times(0);
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_)).Times(0);
 
   InitializeUserDataAuth();
 
@@ -2125,10 +2128,12 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(ReturnError<CryptohomeMountError>());
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
 
   // StartAuthSession for new user
   user_data_auth::StartAuthSessionRequest start_session_req;
@@ -2168,14 +2173,15 @@ TEST_F(UserDataAuthTest,
   ASSERT_EQ(prepare_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
-  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+  EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
-  EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(
-      platform_,
+      system_apis_.platform,
       EnumerateDirectoryEntries(
           FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
       .WillOnce(Return(false));
@@ -2185,7 +2191,7 @@ TEST_F(UserDataAuthTest,
   // same mount points that are expected to be unmounted below. But it is
   // important to check the number of calls here to make sure ExpireMount
   // doesn't run on any other mount points.
-  EXPECT_CALL(platform_, ExpireMount(_)).Times(5);
+  EXPECT_CALL(system_apis_.platform, ExpireMount(_)).Times(5);
 
   EXPECT_CALL(*session_, OwnsMountPoint(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/user/1")))
@@ -2193,17 +2199,20 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/root/1")))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_,
+  EXPECT_CALL(system_apis_.platform,
               Unmount(Property(&FilePath::value, EndsWith("/0")), true, _))
       .Times(2)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/home/chronos/user"), true, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
-                                          EndsWith("user/MyFiles/Downloads")),
-                                 true, _))
+  EXPECT_CALL(
+      system_apis_.platform,
+      Unmount(Property(&FilePath::value, EndsWith("user/MyFiles/Downloads")),
+              true, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("/daemon-store/server/a"), true, _))
+  EXPECT_CALL(system_apis_.platform,
+              Unmount(FilePath("/daemon-store/server/a"), true, _))
       .WillOnce(Return(true));
 
   std::vector<std::string> fake_token_list;
@@ -2343,10 +2352,12 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
 }
 
 TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(false));
   EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
   EXPECT_TRUE(userdataauth_->IsLowEntropyCredentialSupported());
 }
 
@@ -2758,8 +2769,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
       "foo@example.com");
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, GetFileEnumerator(_, _, _))
       .WillOnce(Return(new NiceMock<MockFileEnumerator>));
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
   userdataauth_->StartAuthSession(
@@ -2952,7 +2963,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
   KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
 
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
@@ -3015,7 +3027,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
 
   // Add persistent auth factors.
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
@@ -3082,7 +3095,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
   start_auth_session_req_->set_flags(
       user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
 
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, "password-verifier-label",
       AuthFactorMetadata{.metadata = PasswordMetadata()}));
@@ -3123,7 +3137,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillOnce(Return(false));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3177,7 +3192,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillOnce(Return(false));
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
@@ -3212,7 +3228,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillOnce(Return(false));
   // Add a mount (and user session) for the ephemeral user.
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(true));
@@ -3267,7 +3284,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3290,8 +3307,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3316,8 +3334,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
 
 TEST_F(UserDataAuthExTest,
        ListAuthFactorsUserExistsWithNoFactorsButUssEnabled) {
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3343,7 +3362,7 @@ TEST_F(UserDataAuthExTest,
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
 
   // Set up mocks for a few of VKs. We deliberately have the second not work to
   // test that the listing correctly skips it.
@@ -3465,10 +3484,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(UINT32_MAX));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -3618,8 +3639,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -3720,8 +3743,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(false));
 
   // Set up standard start authsession parameters, we'll be calling this a few
   // times during the test.
@@ -3742,7 +3767,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   af_manager->DiscardAuthFactorMap(kObfuscatedUser);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
@@ -3771,7 +3797,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds)
       .WillRepeatedly(ReturnValue(UINT32_MAX));
 
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_2;
@@ -3837,8 +3863,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(false));
 
   // Set up standard start authsession parameters, we'll be calling this a few
   // times during the test.
@@ -3859,7 +3887,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   af_manager->DiscardAuthFactorMap(kObfuscatedUser);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
@@ -3891,7 +3920,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds)
       .WillRepeatedly(ReturnValue(30));
 
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_2;
@@ -3954,8 +3983,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4009,7 +4040,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds)
       .WillRepeatedly(ReturnValue(UINT32_MAX));
   // ListAuthFactors() load the factors according to the USS experiment status.
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
@@ -4080,8 +4111,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4138,7 +4171,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds)
       .WillRepeatedly(ReturnValue(30));
 
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
@@ -4206,10 +4239,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+  EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+      .WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(UINT32_MAX));
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -4509,7 +4544,8 @@ TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
   AuthFactorManager* af_manager =
       userdataauth_->GetAuthFactorManagerForTesting();
 
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
 
   // Add uss auth factors, 1 with recoverable key store and 1 without.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -4579,11 +4615,8 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
 
   void SetUpInOrigin() {
     // Create the |userdataauth_| object.
-    userdataauth_ = std::make_unique<UserDataAuth>(
-        UserDataAuth::BackingApis{.platform = &platform_,
-                                  .hwsec = &hwsec_,
-                                  .hwsec_pw_manager = &hwsec_pw_manager_,
-                                  .recovery_crypto = &recovery_crypto_});
+    userdataauth_ =
+        std::make_unique<UserDataAuth>(system_apis_.ToBackingApis());
 
     // Setup the usual stuff
     UserDataAuthTestBase::SetUp();
@@ -4619,7 +4652,7 @@ TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
   static const std::string true_str = "true";
   brillo::Blob true_value(true_str.begin(), true_str.end());
   true_value.push_back(0);
-  EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
+  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
 
   InitializeUserDataAuth();
@@ -4662,11 +4695,18 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     sim_hwsec_ = sim_factory_.GetCryptohomeFrontend();
     sim_hwsec_pw_manager_ = sim_factory_.GetPinWeaverManagerFrontend();
     sim_recovery_crypto_ = sim_factory_.GetRecoveryCryptoFrontend();
-    userdataauth_ = std::make_unique<UserDataAuth>(UserDataAuth::BackingApis{
-        .platform = &platform_,
-        .hwsec = sim_hwsec_.get(),
-        .hwsec_pw_manager = sim_hwsec_pw_manager_.get(),
-        .recovery_crypto = sim_recovery_crypto_.get()});
+    sim_keys_manager_ = std::make_unique<CryptohomeKeysManager>(
+        sim_hwsec_.get(), &system_apis_.platform);
+    sim_crypto_ = std::make_unique<Crypto>(
+        sim_hwsec_.get(), sim_hwsec_pw_manager_.get(), sim_keys_manager_.get(),
+        sim_recovery_crypto_.get());
+    auto backing_apis = system_apis_.ToBackingApis();
+    backing_apis.hwsec = sim_hwsec_.get();
+    backing_apis.hwsec_pw_manager = sim_hwsec_pw_manager_.get();
+    backing_apis.recovery_crypto = sim_recovery_crypto_.get();
+    backing_apis.cryptohome_keys_manager = sim_keys_manager_.get();
+    backing_apis.crypto = sim_crypto_.get();
+    userdataauth_ = std::make_unique<UserDataAuth>(backing_apis);
     userdataauth_->SetSignallingInterface(signalling_);
 
     SetupDefaultUserDataAuth();
@@ -5000,6 +5040,8 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   std::unique_ptr<const hwsec::CryptohomeFrontend> sim_hwsec_;
   std::unique_ptr<const hwsec::PinWeaverManagerFrontend> sim_hwsec_pw_manager_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend> sim_recovery_crypto_;
+  std::unique_ptr<CryptohomeKeysManager> sim_keys_manager_;
+  std::unique_ptr<Crypto> sim_crypto_;
 
   // Mock to use to capture any signals sent.
   NiceMock<MockSignalling> signalling_;
@@ -5415,7 +5457,8 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
 TEST_F(UserDataAuthApiTest, VaultWithoutAuth) {
   // Mock that the user exists.
   base::FilePath upath = UserPath(SanitizeUserName(kUsername1));
-  EXPECT_CALL(platform_, DirectoryExists(upath)).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(upath))
+      .WillOnce(Return(true));
 
   // Call StartAuthSession and it should fail.
   user_data_auth::StartAuthSessionRequest req;
@@ -5498,7 +5541,6 @@ TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
       /*enroll_signal_sender=*/base::DoNothing(),
       /*auth_signal_sender=*/base::DoNothing());
   userdataauth_->set_biometrics_service(bio_service_.get());
-  userdataauth_->set_crypto(&crypto_);
   userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
   ASSERT_TRUE(CreateTestUser());
   std::optional<std::string> session_id = GetTestAuthedAuthSession();

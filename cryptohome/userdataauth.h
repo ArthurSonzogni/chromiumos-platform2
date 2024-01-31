@@ -37,8 +37,10 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/fingerprint_manager.h"
@@ -75,12 +77,18 @@ namespace cryptohome {
 struct SystemApis {
   Platform platform;
   hwsec::FactoryImpl hwsec_factory;
-  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec =
-      hwsec_factory.GetCryptohomeFrontend();
-  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager =
-      hwsec_factory.GetPinWeaverManagerFrontend();
-  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto =
-      hwsec_factory.GetRecoveryCryptoFrontend();
+  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec{
+      hwsec_factory.GetCryptohomeFrontend()};
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager{
+      hwsec_factory.GetPinWeaverManagerFrontend()};
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto{
+      hwsec_factory.GetRecoveryCryptoFrontend()};
+  CryptohomeKeysManager cryptohome_keys_manager{hwsec.get(), &platform};
+  Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
+                recovery_crypto.get()};
+  FirmwareManagementParametersProxy firmware_management_parameters;
+  InstallAttributesProxy install_attrs;
+  UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
 };
 
 class UserDataAuth {
@@ -123,6 +131,11 @@ class UserDataAuth {
     const hwsec::CryptohomeFrontend* hwsec;
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager;
     const hwsec::RecoveryCryptoFrontend* recovery_crypto;
+    CryptohomeKeysManager* cryptohome_keys_manager;
+    Crypto* crypto;
+    FirmwareManagementParametersInterface* firmware_management_parameters;
+    InstallAttributesInterface* install_attrs;
+    UserOldestActivityTimestampManager* user_activity_timestamp_manager;
   };
 
   explicit UserDataAuth(BackingApis apis);
@@ -460,9 +473,6 @@ class UserDataAuth {
     return auth_factor_manager_;
   }
 
-  // Override |crypto_| for testing purpose.
-  void set_crypto(Crypto* crypto) { crypto_ = crypto; }
-
   // Override |keyset_management_| for testing purpose.
   void set_keyset_management(KeysetManagement* value) {
     keyset_management_ = value;
@@ -499,11 +509,6 @@ class UserDataAuth {
     auth_session_manager_ = value;
   }
 
-  void set_user_activity_timestamp_manager(
-      UserOldestActivityTimestampManager* user_activity_timestamp_manager) {
-    user_activity_timestamp_manager_ = user_activity_timestamp_manager;
-  }
-
   // Override |vault_factory_| for testing purpose.
   void set_vault_factory_for_testing(CryptohomeVaultFactory* vault_factory) {
     vault_factory_ = vault_factory;
@@ -512,20 +517,9 @@ class UserDataAuth {
   // Override |homedirs_| for testing purpose.
   void set_homedirs(HomeDirs* homedirs) { homedirs_ = homedirs; }
 
-  // Override |cryptohome_keys_manager_| for testing purpose.
-  void set_cryptohome_keys_manager(
-      CryptohomeKeysManager* cryptohome_keys_manager) {
-    cryptohome_keys_manager_ = cryptohome_keys_manager;
-  }
-
   // override |chaps_client_| for testing purpose.
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
     chaps_client_ = chaps_client;
-  }
-
-  // Override |install_attrs_| for testing purpose.
-  void set_install_attrs(InstallAttributesInterface* install_attrs) {
-    install_attrs_ = install_attrs;
   }
 
   // Override |pkcs11_init_| for testing purpose.
@@ -534,12 +528,6 @@ class UserDataAuth {
   // Override |pkcs11_token_factory_| for testing purpose.
   void set_pkcs11_token_factory(Pkcs11TokenFactory* pkcs11_token_factory) {
     pkcs11_token_factory_ = pkcs11_token_factory;
-  }
-
-  // Override |firmware_management_parameters_| for testing purpose.
-  void set_firmware_management_parameters(
-      FirmwareManagementParametersInterface* fwmp) {
-    firmware_management_parameters_ = fwmp;
   }
 
   // Override |fingerprint_manager_| for testing purpose.
@@ -1016,19 +1004,12 @@ class UserDataAuth {
   const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager_;
   // Object for accessing the recovery crypto related functions.
   const hwsec::RecoveryCryptoFrontend* recovery_crypto_;
-
-  // The default cryptohome key loader object
-  std::unique_ptr<CryptohomeKeysManager> default_cryptohome_keys_manager_;
-
-  // The cryptohome key loader object
+  // The cryptohome key loader object.
   CryptohomeKeysManager* cryptohome_keys_manager_;
-
-  // The default crypto object for performing cryptographic operations
-  std::unique_ptr<Crypto> default_crypto_;
-
-  // The actual crypto object used by this class, usually set to
-  // default_crypto_, but can be overridden for testing
+  // The crypto object used by this class.
   Crypto* crypto_;
+  // The Firmware Management Parameters object.
+  FirmwareManagementParametersInterface* firmware_management_parameters_;
 
   // The default token manager client for accessing chapsd's PKCS#11 interface
   std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;
@@ -1055,15 +1036,6 @@ class UserDataAuth {
 
   // The actual factory for Pkcs11TokenObjects.
   Pkcs11TokenFactory* pkcs11_token_factory_;
-
-  // The default Firmware Management Parameters object for accessing any
-  // Firmware Management Parameters related functionalities.
-  std::unique_ptr<FirmwareManagementParametersInterface>
-      default_firmware_management_params_;
-
-  // The actual Firmware Management Parameters object that is used by this
-  // class, but can be overridden for testing.
-  FirmwareManagementParametersInterface* firmware_management_parameters_;
 
   // The default Fingerprint Manager object for fingerprint authentication.
   std::unique_ptr<FingerprintManager> default_fingerprint_manager_;
@@ -1102,13 +1074,8 @@ class UserDataAuth {
 
   // =============== Install Attributes Related Variables ===============
 
-  // The default install attributes object, for accessing install attributes
-  // related functionality.
-  std::unique_ptr<InstallAttributesInterface> default_install_attrs_;
-
-  // The actual install attributes object used by this class, usually set to
-  // |default_install_attrs_|, but can be overridden for testing. This object
-  // should only be accessed on the origin thread.
+  // The actual install attributes object used by this class. This object should
+  // only be accessed on the origin thread.
   InstallAttributesInterface* install_attrs_;
 
   // Whether this device is an enterprise owned device. Write access should only
@@ -1119,12 +1086,7 @@ class UserDataAuth {
 
   // This holds a timestamp for each user that is the time that the user was
   // active.
-  std::unique_ptr<UserOldestActivityTimestampManager>
-      default_user_activity_timestamp_manager_;
-  // Usually points to |default_user_activity_timestamp_manager_|, but can be
-  // overridden for testing.
-  UserOldestActivityTimestampManager* user_activity_timestamp_manager_ =
-      nullptr;
+  UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
 
   std::unique_ptr<CryptohomeVaultFactory> default_vault_factory_;
   // Usually points to |default_vault_factory_|, but can be overridden for

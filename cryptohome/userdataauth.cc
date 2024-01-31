@@ -714,6 +714,11 @@ UserDataAuth::BackingApis UserDataAuth::BackingApis::FromSystemApis(
       .hwsec = apis.hwsec.get(),
       .hwsec_pw_manager = apis.hwsec_pw_manager.get(),
       .recovery_crypto = apis.recovery_crypto.get(),
+      .cryptohome_keys_manager = &apis.cryptohome_keys_manager,
+      .crypto = &apis.crypto,
+      .firmware_management_parameters = &apis.firmware_management_parameters,
+      .install_attrs = &apis.install_attrs,
+      .user_activity_timestamp_manager = &apis.user_activity_timestamp_manager,
   };
 }
 
@@ -724,23 +729,21 @@ UserDataAuth::UserDataAuth(BackingApis apis)
       hwsec_(apis.hwsec),
       hwsec_pw_manager_(apis.hwsec_pw_manager),
       recovery_crypto_(apis.recovery_crypto),
-      default_cryptohome_keys_manager_(nullptr),
-      cryptohome_keys_manager_(nullptr),
-      default_crypto_(nullptr),
-      crypto_(nullptr),
+      cryptohome_keys_manager_(apis.cryptohome_keys_manager),
+      crypto_(apis.crypto),
+      firmware_management_parameters_(apis.firmware_management_parameters),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
       default_pkcs11_token_factory_(new RealPkcs11TokenFactory()),
       pkcs11_token_factory_(default_pkcs11_token_factory_.get()),
-      firmware_management_parameters_(nullptr),
       fingerprint_manager_(nullptr),
       biometrics_service_(nullptr),
       key_store_cert_provider_(nullptr),
-      default_install_attrs_(nullptr),
-      install_attrs_(nullptr),
+      install_attrs_(apis.install_attrs),
       enterprise_owned_(false),
+      user_activity_timestamp_manager_(apis.user_activity_timestamp_manager),
       default_homedirs_(nullptr),
       homedirs_(nullptr),
       default_keyset_management_(nullptr),
@@ -794,39 +797,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
   }
 
-  // Note that we check to see if |cryptohome_keys_manager_| is available here
-  // because it may have been set to an overridden value during unit testing
-  // before Initialize() is called.
-  if (!cryptohome_keys_manager_) {
-    default_cryptohome_keys_manager_ =
-        std::make_unique<CryptohomeKeysManager>(hwsec_, platform_);
-    cryptohome_keys_manager_ = default_cryptohome_keys_manager_.get();
-  }
-
-  // Initialize Firmware Management Parameters
-  if (!firmware_management_parameters_) {
-    default_firmware_management_params_ =
-        std::make_unique<FirmwareManagementParametersProxy>();
-    firmware_management_parameters_ = default_firmware_management_params_.get();
-  }
-
-  if (!install_attrs_) {
-    default_install_attrs_ = std::make_unique<InstallAttributesProxy>();
-    install_attrs_ = default_install_attrs_.get();
-  }
-
-  if (!user_activity_timestamp_manager_) {
-    default_user_activity_timestamp_manager_ =
-        std::make_unique<UserOldestActivityTimestampManager>(platform_);
-    user_activity_timestamp_manager_ =
-        default_user_activity_timestamp_manager_.get();
-  }
-
-  if (!crypto_) {
-    default_crypto_ = std::make_unique<Crypto>(
-        hwsec_, hwsec_pw_manager_, cryptohome_keys_manager_, recovery_crypto_);
-    crypto_ = default_crypto_.get();
-  }
   crypto_->Init();
 
   if (!InitializeFilesystemLayout(platform_, &system_salt_)) {

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/userdataauth.h"
 
@@ -58,6 +59,7 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -134,15 +136,13 @@ void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
 
 class AuthSessionInterfaceTestBase : public ::testing::Test {
  public:
-  AuthSessionInterfaceTestBase()
-      : crypto_(
-            &hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_, nullptr) {
+  AuthSessionInterfaceTestBase() {
     SetUpHWSecExpectations();
-    crypto_.Init();
+    system_apis_.crypto.Init();
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        &keyset_management_, &crypto_, &platform_, &features_.async,
-        AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-        AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+        &keyset_management_, &system_apis_.crypto, &system_apis_.platform,
+        &features_.async, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+        nullptr, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
@@ -153,9 +153,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_user_session_map_for_testing(&user_session_map_);
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
-    userdataauth_.set_user_activity_timestamp_manager(
-        &user_activity_timestamp_manager_);
-    userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_uss_manager_for_testing(&uss_manager_);
@@ -172,37 +169,42 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   }
 
   void SetUpHWSecExpectations() {
-    ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_, GetManufacturer()).WillByDefault(ReturnValue(0x43524f53));
-    ON_CALL(hwsec_, GetAuthValue(_, _))
+    ON_CALL(system_apis_.hwsec, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, IsSealingSupported())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec, GetManufacturer())
+        .WillByDefault(ReturnValue(0x43524f53));
+    ON_CALL(system_apis_.hwsec, GetAuthValue(_, _))
         .WillByDefault(ReturnValue(brillo::SecureBlob()));
-    ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+    ON_CALL(system_apis_.hwsec, SealWithCurrentUser(_, _, _))
         .WillByDefault(ReturnValue(brillo::Blob()));
-    ON_CALL(hwsec_, PreloadSealedData(_))
+    ON_CALL(system_apis_.hwsec, PreloadSealedData(_))
         .WillByDefault(ReturnValue(std::nullopt));
-    ON_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+    ON_CALL(system_apis_.hwsec, UnsealWithCurrentUser(_, _, _))
         .WillByDefault(ReturnValue(brillo::SecureBlob()));
-    ON_CALL(hwsec_, GetPubkeyHash(_))
+    ON_CALL(system_apis_.hwsec, GetPubkeyHash(_))
         .WillByDefault(ReturnValue(brillo::Blob()));
-    ON_CALL(hwsec_, NotifyAuthenticateEvent()).WillByDefault([]() {
+    ON_CALL(system_apis_.hwsec, NotifyAuthenticateEvent()).WillByDefault([]() {
       return hwsec::ScopedEvent();
     });
-    ON_CALL(hwsec_pw_manager_, IsEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(hwsec_pw_manager_, GetVersion()).WillByDefault(ReturnValue(2));
-    ON_CALL(hwsec_pw_manager_, BlockGeneratePk())
+    ON_CALL(system_apis_.hwsec_pw_manager, IsEnabled())
+        .WillByDefault(ReturnValue(true));
+    ON_CALL(system_apis_.hwsec_pw_manager, GetVersion())
+        .WillByDefault(ReturnValue(2));
+    ON_CALL(system_apis_.hwsec_pw_manager, BlockGeneratePk())
         .WillByDefault(ReturnOk<TPMError>());
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
     auth_session_manager_ =
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
-            &crypto_, &platform_, &user_session_map_, &keyset_management_,
-            auth_block_utility, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &uss_storage_, &uss_manager_,
-            &features_.async});
+            &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
+            &keyset_management_, auth_block_utility,
+            &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
+            &uss_manager_, &features_.async});
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -368,44 +370,33 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
-  NiceMock<MockPlatform> platform_;
+  MockSystemApis<> system_apis_;
   UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
-  NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
-  Crypto crypto_;
-  UssStorage uss_storage_{&platform_};
+  UssStorage uss_storage_{&system_apis_.platform};
   UssManager uss_manager_{uss_storage_};
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &platform_,
-      &crypto_,
+      &system_apis_.platform,
+      &system_apis_.crypto,
       &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
-                                         &uss_manager_};
+  AuthFactorManager auth_factor_manager_{&system_apis_.platform,
+                                         &keyset_management_, &uss_manager_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
-  NiceMock<MockUserOldestActivityTimestampManager>
-      user_activity_timestamp_manager_;
-  NiceMock<MockInstallAttributes> install_attrs_;
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
 
   NiceMock<MockSignalling> signalling_;
   std::vector<user_data_auth::MountStarted> mount_started_signals_;
   std::vector<user_data_auth::MountCompleted> mount_completed_signals_;
 
-  UserDataAuth userdataauth_{{.platform = &platform_,
-                              .hwsec = &hwsec_,
-                              .hwsec_pw_manager = &hwsec_pw_manager_,
-                              .recovery_crypto = &recovery_crypto_}};
+  UserDataAuth userdataauth_{system_apis_.ToBackingApis()};
 
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   FakeFeaturesForTesting features_;
@@ -430,7 +421,8 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
-    ON_CALL(platform_, DirectoryExists(UserPath(SanitizeUserName(username))))
+    ON_CALL(system_apis_.platform,
+            DirectoryExists(UserPath(SanitizeUserName(username))))
         .WillByDefault(Return(true));
   }
 };
@@ -865,7 +857,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   serialized_token = StartAuthenticatedAuthSession(
       kUsername2String, user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername2);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, Exists(obfuscated_username))
       .WillRepeatedly(Return(true));
@@ -910,7 +903,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVaultAfterFailedPersistent) {
   std::string serialized_token = StartAuthenticatedAuthSession(
       kUsernameString, user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
 
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Arrange the vault operations: user exists, not active.
@@ -1082,7 +1076,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername3);
   serialized_token = StartAuthenticatedAuthSession(
       kUsername3String, user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   auto user_session3 = std::make_unique<MockUserSession>();
@@ -1108,7 +1103,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
 
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Arrange the vault operations.
@@ -1143,7 +1139,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenUnmount) {
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
 
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Arrange the vault operations.
@@ -1325,7 +1322,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuth) {
   // Arrange.
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Mock user vault mounting. Use the real user session class in order to check
@@ -1337,7 +1335,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuth) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      kUsername, &homedirs_, &system_apis_.user_activity_timestamp_manager,
       &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
@@ -1367,7 +1365,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuthMountPointBusy) {
   // Arrange.
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Mock user vault mounting. Use the real user session class in order to check
@@ -1379,7 +1378,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuthMountPointBusy) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      kUsername, &homedirs_, &system_apis_.user_activity_timestamp_manager,
       &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
@@ -1413,7 +1412,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   // Arrange.
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
   // Mock user vault mounting. Use the real user session class in order to check
   // session state transitions.
@@ -1424,7 +1424,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      kUsername, &homedirs_, &system_apis_.user_activity_timestamp_manager,
       &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
@@ -1488,7 +1488,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
   std::string CreateAndPrepareUserVault(const Username username) {
     ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
-    EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+    EXPECT_CALL(system_apis_.platform,
+                DirectoryExists(UserPath(obfuscated_username)))
         .WillRepeatedly(Return(false));
 
     std::string serialized_token;
@@ -1519,7 +1520,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
         .WillOnce(Return(false))
         .WillRepeatedly(Return(true));
     auto user_session = std::make_unique<RealUserSession>(
-        username, &homedirs_, &user_activity_timestamp_manager_,
+        username, &homedirs_, &system_apis_.user_activity_timestamp_manager,
         &pkcs11_token_factory_, mount);
     EXPECT_CALL(user_session_factory_, New(username, _, _))
         .WillOnce(Return(ByMove(std::move(user_session))));
@@ -1552,7 +1553,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
         .WillOnce(ReturnOk<StorageError>());
     EXPECT_CALL(*mount, IsEphemeral()).WillRepeatedly(Return(true));
     auto user_session = std::make_unique<RealUserSession>(
-        kUsername, &homedirs_, &user_activity_timestamp_manager_,
+        kUsername, &homedirs_, &system_apis_.user_activity_timestamp_manager,
         &pkcs11_token_factory_, mount);
     EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
         .WillOnce(Return(ByMove(std::move(user_session))));
@@ -1629,7 +1630,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
   // Arrange.
   std::string serialized_token =
       StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   user_data_auth::GetHibernateSecretRequest hs_request;
@@ -1722,7 +1724,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(true));
 
   // Act. Omit setting `auth_session_id` in the `request`.
@@ -1745,7 +1748,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(false));
 
   // Act.
@@ -1769,7 +1773,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(false));
   std::string auth_session_id;
   {
@@ -1804,7 +1809,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(false));
   std::string serialized_token;
   {
@@ -1837,7 +1843,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
-  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+  EXPECT_CALL(system_apis_.platform,
+              DirectoryExists(UserPath(obfuscated_username)))
       .WillRepeatedly(Return(false));
   std::string serialized_token;
   {
