@@ -78,19 +78,11 @@ Manager::Manager(const base::FilePath& cmd_path,
       multicast_counters_svc_.get(), metrics);
 
   datapath_->Start();
+
   multicast_counters_svc_->Start();
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
-
-  shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
-      &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
-      &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
-      &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
-      &Manager::OnDoHProvidersChanged, weak_factory_.GetWeakPtr()));
 
   constexpr ArcService::ArcType arc_type = []() constexpr {
     if (USE_ARCVM_NIC_HOTPLUG) {
@@ -115,21 +107,21 @@ Manager::Manager(const base::FilePath& cmd_path,
                                                  datapath_.get(), system);
   clat_svc_ =
       std::make_unique<ClatService>(datapath_.get(), process_manager, system);
-  network_monitor_svc_->Start();
   ipv6_svc_->Start();
+
+  // Setups the RTNL socket and listens to neighbor events. This should be
+  // called before NetworkMonitorService::Start and NetworkApplier::Start.
+  // RTMGRP_NEIGH is needed by NetworkMonitorService.
+  net_base::RTNLHandler::GetInstance()->Start(RTMGRP_NEIGH);
 
   // TODO(b/293997937): NetworkApplier to be a Manager-owned service rather than
   // a singleton.
   NetworkApplier::GetInstance()->Start();
 
-  // Shill client's default devices methods trigger the Manager's callbacks on
-  // registration. Call them after everything is set up.
-  shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
-      base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
-                          weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
-      base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
-                          weak_factory_.GetWeakPtr()));
+  // Run after DBusDaemon::OnInit().
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Manager::Initialize, weak_factory_.GetWeakPtr()));
 }
 
 Manager::~Manager() {
@@ -156,6 +148,30 @@ Manager::~Manager() {
 
   multicast_counters_svc_->Stop();
   datapath_->Stop();
+}
+
+void Manager::Initialize() {
+  shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
+      &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
+      &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
+      &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
+      &Manager::OnDoHProvidersChanged, weak_factory_.GetWeakPtr()));
+  network_monitor_svc_->Start();
+
+  // Make sure patchpanel get aware of the Devices created before it starts.
+  shill_client_->ScanDevices();
+
+  // Shill client's RegisterDefault*DeviceChangedHandler methods trigger the
+  // Manager's callbacks on registration. Call them after everything is set up.
+  shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
 }
 
 void Manager::OnShillDefaultLogicalDeviceChanged(

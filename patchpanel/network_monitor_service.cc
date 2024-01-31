@@ -359,20 +359,9 @@ NetworkMonitorService::NetworkMonitorService(
       rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
 
 void NetworkMonitorService::Start() {
-  // Setups the RTNL socket and listens to neighbor events. This should be
-  // called before creating NeighborLinkMonitors.
-  rtnl_handler_->Start(RTMGRP_NEIGH);
-
-  // Calls ScanDevices() first to make sure ShillClient knows all existing
-  // shill Devices, and then triggers OnShillDevicesChanged() manually before
-  // registering DevicesChangedHandler to make sure we see each shill Device
-  // exactly once.
-  shill_client_->ScanDevices();
-  OnShillDevicesChanged(shill_client_->GetDevices(), /*removed=*/{});
   shill_client_->RegisterDevicesChangedHandler(
       base::BindRepeating(&NetworkMonitorService::OnShillDevicesChanged,
                           weak_factory_.GetWeakPtr()));
-
   shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
       &NetworkMonitorService::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
 }

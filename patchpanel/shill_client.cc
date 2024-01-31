@@ -344,6 +344,8 @@ void ShillClient::RegisterDefaultPhysicalDeviceChangedHandler(
 void ShillClient::RegisterDevicesChangedHandler(
     const DevicesChangeHandler& handler) {
   device_handlers_.emplace_back(handler);
+  // Explicitly trigger the callback to ensure existing Devices are captured.
+  handler.Run(GetDevices(), /*removed=*/{});
 }
 
 void ShillClient::RegisterIPConfigsChangedHandler(
@@ -438,8 +440,8 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     if (!ipconfig_proxy->GetProperties(&ipconfig_props, nullptr)) {
       // It is possible that an IPConfig object is removed after we know its
       // path, especially when the interface is going down.
-      LOG(WARNING) << "[" << device.value() << "]: "
-                   << "Unable to get properties for " << path.value();
+      LOG(WARNING) << "[" << device.value()
+                   << "]: Unable to get properties for " << path.value();
       continue;
     }
 
@@ -461,8 +463,8 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 
     it = ipconfig_props.find(shill::kPrefixlenProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value() << "]: "
-                   << " IPConfig properties is missing Prefixlen";
+      LOG(WARNING) << "[" << device.value()
+                   << "]: IPConfig properties is missing Prefixlen";
       continue;
     }
     int prefix_length = it->second.TryGet<int>();
@@ -483,8 +485,8 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     const bool is_ipv4 = (cidr->GetFamily() == net_base::IPFamily::kIPv4);
     const std::string method = is_ipv4 ? "IPv4" : "IPv6";
     if ((is_ipv4 && ipconfig.ipv4_cidr) || (!is_ipv4 && ipconfig.ipv6_cidr)) {
-      LOG(WARNING) << "[" << device.value() << "]: "
-                   << "Duplicated IPconfig for " << method;
+      LOG(WARNING) << "[" << device.value() << "]: Duplicated IPconfig for "
+                   << method;
       continue;
     }
 

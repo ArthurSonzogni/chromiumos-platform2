@@ -430,12 +430,6 @@ class NetworkMonitorServiceTest : public testing::Test {
   std::unique_ptr<NetworkMonitorService> monitor_svc_;
 };
 
-TEST_F(NetworkMonitorServiceTest, StartRTNLHanlderOnServiceStart) {
-  monitor_svc_->rtnl_handler_ = mock_rtnl_handler_.get();
-  EXPECT_CALL(*mock_rtnl_handler_, Start(RTMGRP_NEIGH));
-  monitor_svc_->Start();
-}
-
 TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth_dev;
