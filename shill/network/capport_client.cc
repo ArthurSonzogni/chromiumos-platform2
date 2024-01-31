@@ -4,7 +4,6 @@
 
 #include "shill/network/capport_client.h"
 
-#include <compare>
 #include <memory>
 #include <utility>
 
@@ -12,6 +11,9 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <net-base/http_url.h>
+
+#include "shill/network/capport_proxy.h"
 
 namespace shill {
 namespace {
@@ -38,6 +40,22 @@ bool CapportClient::Result::operator==(const CapportClient::Result&) const =
 bool CapportClient::Result::operator!=(const CapportClient::Result&) const =
     default;
 
+std::unique_ptr<CapportClient> CapportClient::Create(
+    std::string_view interface,
+    const net_base::HttpUrl& api_url,
+    ResultCallback result_callback,
+    std::string_view logging_tag) {
+  std::unique_ptr<CapportProxy> proxy =
+      CapportProxy::Create(interface, api_url);
+  if (!proxy) {
+    LOG(ERROR) << logging_tag << ": Failed to create CAPPORT proxy";
+    return nullptr;
+  }
+
+  return std::make_unique<CapportClient>(
+      std::move(proxy), std::move(result_callback), logging_tag);
+}
+
 CapportClient::CapportClient(std::unique_ptr<CapportProxy> proxy,
                              ResultCallback result_callback,
                              std::string_view logging_tag)
@@ -49,7 +67,7 @@ CapportClient::~CapportClient() = default;
 
 void CapportClient::QueryCapport() {
   if (proxy_->IsRunning()) {
-    LOG(WARNING) << logging_tag_ << "The previous query is not finished";
+    LOG(WARNING) << logging_tag_ << ": The previous query is not finished";
     return;
   }
 
@@ -62,13 +80,14 @@ void CapportClient::QueryCapport() {
 
 void CapportClient::OnStatusReceived(std::optional<CapportStatus> status) {
   if (!status.has_value()) {
-    LOG(ERROR) << logging_tag_ << "Failed to get result from CAPPORT server";
+    LOG(ERROR) << logging_tag_ << ": Failed to get result from CAPPORT server";
     result_callback_.Run(GetFailedResult());
     return;
   }
   if (status->is_captive && !status->user_portal_url.has_value()) {
-    LOG(WARNING) << logging_tag_
-                 << "The user_portal_url is missing when the is_captive is set";
+    LOG(WARNING)
+        << logging_tag_
+        << ": The user_portal_url is missing when the is_captive is set";
     result_callback_.Run(GetFailedResult());
     return;
   }

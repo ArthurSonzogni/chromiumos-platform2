@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <net-base/http_url.h>
 
 #include "shill/network/capport_proxy.h"
 
@@ -40,6 +41,12 @@ class CapportClient {
   // The callback type that is used to return the result back to the caller of
   // CapportClient asynchronously.
   using ResultCallback = base::RepeatingCallback<void(const Result&)>;
+
+  static std::unique_ptr<CapportClient> Create(
+      std::string_view interface,
+      const net_base::HttpUrl& api_url,
+      ResultCallback result_callback,
+      std::string_view logging_tag = "");
 
   // Constructs the instance. |proxy| must be a valid instance.
   // |result_callback| is called after QueryCapport() finishes.

@@ -88,14 +88,11 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
 
 std::unique_ptr<CapportProxy> CapportProxy::Create(
     std::string_view interface,
-    std::string_view api_url,
+    const net_base::HttpUrl& api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
-  const std::optional<net_base::HttpUrl> url =
-      net_base::HttpUrl::CreateFromString(api_url);
-  if (!url.has_value() ||
-      url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
-    LOG(ERROR) << "The URL of CAPPORT API is invalid: " << api_url;
+  if (api_url.protocol() != net_base::HttpUrl::Protocol::kHttps) {
+    LOG(ERROR) << "The URL of CAPPORT API is invalid: " << api_url.ToString();
     return nullptr;
   }
 
@@ -106,7 +103,7 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
 }
 
 CapportProxy::CapportProxy(
-    std::string_view api_url,
+    const net_base::HttpUrl& api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
     std::string_view logging_tag)
     : api_url_(api_url),
@@ -123,7 +120,7 @@ void CapportProxy::SendRequest(StatusCallback callback) {
   LOG_IF(WARNING, http_request_)
       << logging_tag_ << "The pending request is not clear";
   auto http_request_ = std::make_optional<brillo::http::Request>(
-      api_url_, brillo::http::request_type::kGet, http_transport_);
+      api_url_.ToString(), brillo::http::request_type::kGet, http_transport_);
   http_request_->SetAccept(kAcceptHeader);
   http_request_->GetResponse(
       base::BindOnce(&CapportProxy::OnRequestSuccess, base::Unretained(this)),
@@ -149,7 +146,7 @@ void CapportProxy::OnRequestSuccess(
   std::optional<CapportStatus> status = CapportStatus::ParseFromJson(json_str);
   if (!status.has_value()) {
     LOG(ERROR) << logging_tag_ << "The CAPPORT server found by RFC8910 ("
-               << api_url_
+               << api_url_.ToString()
                << ") was not compliant, failed to parse JSON: " << json_str;
     std::move(callback_).Run(std::nullopt);
     return;

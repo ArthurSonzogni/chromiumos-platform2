@@ -4,9 +4,14 @@
 
 #include "shill/network/mock_capport_proxy.h"
 
+#include <net-base/http_url.h>
+
 namespace shill {
 
-MockCapportProxy::MockCapportProxy() : CapportProxy("", nullptr) {}
+MockCapportProxy::MockCapportProxy()
+    : CapportProxy(*net_base::HttpUrl::CreateFromString(
+                       "https://example.org/portal.html"),
+                   nullptr) {}
 MockCapportProxy::~MockCapportProxy() = default;
 
 }  // namespace shill

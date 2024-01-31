@@ -25,7 +25,8 @@ namespace {
 using testing::_;
 using testing::Eq;
 
-constexpr char kApiUrl[] = "https://example.org/captive-portal/api/X54PD39JV";
+const net_base::HttpUrl kApiUrl = *net_base::HttpUrl::CreateFromString(
+    "https://example.org/captive-portal/api/X54PD39JV");
 constexpr char kInterfaceName[] = "wlan0";
 constexpr char kUserPortalUrl[] = "https://example.org/portal.html";
 constexpr char kVenueInfoUrl[] = "https://flight.example.com/entertainment";
@@ -119,9 +120,10 @@ TEST(CapportProxyTest, SendRequest) {
       {"Accept", "application/captive+json"}};
   auto mock_transport = std::make_shared<brillo::http::MockTransport>();
   EXPECT_CALL(*mock_transport, SetInterface(kInterfaceName));
-  EXPECT_CALL(*mock_transport,
-              CreateConnection(kApiUrl, brillo::http::request_type::kGet,
-                               kHeaders, _, _, _));
+  EXPECT_CALL(
+      *mock_transport,
+      CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
+                       kHeaders, _, _, _));
 
   auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, mock_transport);
   EXPECT_NE(proxy, nullptr);
@@ -147,8 +149,8 @@ TEST(CapportProxyTest, SendRequestSuccess) {
   auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
   auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
   fake_transport->AddSimpleReplyHandler(
-      kApiUrl, brillo::http::request_type::kGet, brillo::http::status_code::Ok,
-      json_str, "application/captive+json");
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str, "application/captive+json");
 
   // When the HTTP server replies a valid JSON string, the client should get
   // the valid status via callback.
@@ -164,8 +166,9 @@ TEST(CapportProxyTest, SendRequestFail) {
   auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
   auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
   fake_transport->AddSimpleReplyHandler(
-      kApiUrl, brillo::http::request_type::kGet, brillo::http::status_code::Ok,
-      "Invalid JSON string", "application/captive+json");
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, "Invalid JSON string",
+      "application/captive+json");
 
   // When the HTTP server replies an invalid JSON string, the client should get
   // std::nullopt via callback.

@@ -5,7 +5,6 @@
 #ifndef SHILL_NETWORK_CAPPORT_PROXY_H_
 #define SHILL_NETWORK_CAPPORT_PROXY_H_
 
-#include <compare>
 #include <memory>
 #include <optional>
 #include <string>
@@ -48,12 +47,12 @@ class CapportProxy {
   // |http_transport| instance. Note that |api_url| must be HTTPS URL.
   static std::unique_ptr<CapportProxy> Create(
       std::string_view interface,
-      std::string_view api_url,
+      const net_base::HttpUrl& api_url,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = kDefaultTimeout);
 
-  CapportProxy(std::string_view api_url,
+  CapportProxy(const net_base::HttpUrl& api_url,
                std::shared_ptr<brillo::http::Transport> http_transport,
                std::string_view logging_tag = "");
   virtual ~CapportProxy();
@@ -82,7 +81,7 @@ class CapportProxy {
                       const brillo::Error* error);
 
   // The URL of the CAPPORT server.
-  std::string api_url_;
+  net_base::HttpUrl api_url_;
   // The HTTP transport used to send request to CAPPORT server.
   std::shared_ptr<brillo::http::Transport> http_transport_;
   // The tag that will be printed at every logging.
