@@ -14,4 +14,8 @@ MockCapportProxy::MockCapportProxy()
                    nullptr) {}
 MockCapportProxy::~MockCapportProxy() = default;
 
+MockCapportProxyFactory::MockCapportProxyFactory() = default;
+
+MockCapportProxyFactory::~MockCapportProxyFactory() = default;
+
 }  // namespace shill

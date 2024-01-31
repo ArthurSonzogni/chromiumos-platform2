@@ -977,7 +977,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalRedirect,
       .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
-      .probe_url = net_base::HttpUrl::CreateFromString(
+      .target_url = net_base::HttpUrl::CreateFromString(
           "https://service.google.com/generate_204"),
   };
 

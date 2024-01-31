@@ -29,6 +29,7 @@ struct CapportStatus {
   bool operator!=(const CapportStatus& rhs) const = default;
 
   bool is_captive;
+  // The field should have value when |is_captive| is true.
   std::optional<net_base::HttpUrl> user_portal_url;
   std::optional<net_base::HttpUrl> venue_info_url;
   std::optional<bool> can_extend_session;
@@ -39,7 +40,8 @@ struct CapportStatus {
 // The proxy of the CAPPORT API server.
 class CapportProxy {
  public:
-  using StatusCallback = base::OnceCallback<void(std::optional<CapportStatus>)>;
+  using StatusCallback =
+      base::OnceCallback<void(const std::optional<CapportStatus>&)>;
   static constexpr base::TimeDelta kDefaultTimeout = base::Seconds(5);
 
   // Creates a CapportProxy instance. The HTTP requests to the CAPPORT server
@@ -100,6 +102,22 @@ class CapportProxy {
   StatusCallback callback_;
 
   base::WeakPtrFactory<CapportProxy> weak_ptr_factory_{this};
+};
+
+// The factory class of the CapportProxy, used to derive a mock factory to
+// create mock CapportProxy instance at testing.
+class CapportProxyFactory {
+ public:
+  CapportProxyFactory();
+  virtual ~CapportProxyFactory();
+
+  // The default factory method, calling CapportProxy::Create() method.
+  virtual std::unique_ptr<CapportProxy> Create(
+      std::string_view interface,
+      const net_base::HttpUrl& api_url,
+      std::shared_ptr<brillo::http::Transport> http_transport =
+          brillo::http::Transport::CreateDefault(),
+      base::TimeDelta transport_timeout = CapportProxy::kDefaultTimeout);
 };
 
 }  // namespace shill

@@ -16,9 +16,11 @@
 #include <net-base/ip_address.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
 #include "shill/network/trial_scheduler.h"
 #include "shill/network/validation_log.h"
+#include "shill/portal_detector.h"
 
 namespace shill {
 namespace {
@@ -84,6 +86,7 @@ NetworkMonitor::NetworkMonitor(
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
     std::unique_ptr<PortalDetectorFactory> portal_detector_factory,
+    std::unique_ptr<CapportProxyFactory> capport_proxy_factory,
     std::unique_ptr<ConnectionDiagnosticsFactory>
         connection_diagnostics_factory)
     : dispatcher_(dispatcher),
@@ -96,6 +99,7 @@ NetworkMonitor::NetworkMonitor(
       probing_configuration_(probing_configuration),
       validation_mode_(validation_mode),
       trial_scheduler_(dispatcher),
+      capport_proxy_factory_(std::move(capport_proxy_factory)),
       validation_log_(std::move(network_validation_log)),
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
@@ -149,22 +153,37 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
 
   if (ShouldResetNetworkValidation(reason)) {
     portal_detector_->Reset();
+    if (capport_proxy_) {
+      capport_proxy_->Stop();
+    }
   }
 
+  result_from_portal_detector_.reset();
   portal_detector_->Start(*ip_family, dns_list);
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
+  if (capport_proxy_) {
+    result_from_capport_proxy_.reset();
+    capport_proxy_->SendRequest(base::BindOnce(
+        &NetworkMonitor::OnCapportStatusReceived, base::Unretained(this)));
+    LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
+              << "): Query CAPPORT API.";
+  }
   return true;
 }
 
 bool NetworkMonitor::Stop() {
-  const bool was_running = portal_detector_->IsRunning();
+  const bool was_running = IsRunning();
   portal_detector_->Reset();
+  if (capport_proxy_) {
+    capport_proxy_->Stop();
+  }
   return was_running;
 }
 
 bool NetworkMonitor::IsRunning() const {
-  return portal_detector_->IsRunning();
+  return portal_detector_->IsRunning() ||
+         (capport_proxy_ && capport_proxy_->IsRunning());
 }
 
 void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
@@ -180,7 +199,9 @@ void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
     }
   }
 
-  // TODO(b/305129516): Initiate CapportClient.
+  if (!capport_proxy_) {
+    capport_proxy_ = capport_proxy_factory_->Create(interface_, capport_api);
+  }
 }
 
 void NetworkMonitor::OnPortalDetectorResult(
@@ -231,7 +252,45 @@ void NetworkMonitor::OnPortalDetectorResult(
                         technology_, *result.http_content_length);
   }
 
-  client_->OnNetworkMonitorResult(Result::FromPortalDetectorResult(result));
+  result_from_portal_detector_ = Result::FromPortalDetectorResult(result);
+  if (ShouldSendNewResult(result_from_portal_detector_,
+                          result_from_capport_proxy_)) {
+    client_->OnNetworkMonitorResult(*result_from_portal_detector_);
+  }
+}
+
+void NetworkMonitor::OnCapportStatusReceived(
+    const std::optional<CapportStatus>& status) {
+  if (!status.has_value()) {
+    return;
+  }
+
+  // Use the attempt count from |portal_detector_| to keep the count of the
+  // results from both side the same.
+  const int num_attempts = portal_detector_->attempt_count();
+  result_from_capport_proxy_ = Result::FromCapportStatus(*status, num_attempts);
+  if (ShouldSendNewResult(result_from_capport_proxy_,
+                          result_from_portal_detector_)) {
+    client_->OnNetworkMonitorResult(*result_from_capport_proxy_);
+  }
+}
+
+bool NetworkMonitor::ShouldSendNewResult(
+    const std::optional<Result>& new_result,
+    const std::optional<Result>& other_result) const {
+  if (!new_result.has_value()) {
+    return false;
+  }
+
+  switch (new_result->origin) {
+    case ResultOrigin::kCapport:
+      // We always trust the result from CAPPORT.
+      return true;
+    case ResultOrigin::kProbe:
+      // If CAPPORT already replies the result, then we skip the result from
+      // legacy probe.
+      return !other_result.has_value();
+  }
 }
 
 void NetworkMonitor::StopNetworkValidationLog() {
@@ -301,6 +360,21 @@ void NetworkMonitor::set_portal_detector_for_testing(
   portal_detector_ = std::move(portal_detector);
 }
 
+void NetworkMonitor::set_capport_proxy_for_testing(
+    std::unique_ptr<CapportProxy> capport_proxy) {
+  capport_proxy_ = std::move(capport_proxy);
+}
+
+void NetworkMonitor::OnPortalDetectorResultForTesting(
+    const PortalDetector::Result& result) {
+  OnPortalDetectorResult(result);
+}
+
+void NetworkMonitor::OnCapportStatusReceivedForTesting(
+    const std::optional<CapportStatus>& status) {
+  OnCapportStatusReceived(status);
+}
+
 std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     EventDispatcher* dispatcher,
     Metrics* metrics,
@@ -353,10 +427,39 @@ std::ostream& operator<<(std::ostream& stream,
 NetworkMonitor::Result NetworkMonitor::Result::FromPortalDetectorResult(
     const PortalDetector::Result& result) {
   return Result{
+      .origin = ResultOrigin::kProbe,
       .num_attempts = result.num_attempts,
       .validation_state = result.GetValidationState(),
       .probe_result_metric = result.GetResultMetric(),
-      .probe_url = result.probe_url,
+      .target_url = result.probe_url,
+  };
+}
+
+NetworkMonitor::Result NetworkMonitor::Result::FromCapportStatus(
+    const CapportStatus& status, int num_attempts) {
+  if (!status.is_captive) {
+    // RFC8908 does not allow the client to distinguish between a local-only
+    // network without Internet and a netwoork with Internet access. So for now
+    // we assume that a CAPPORT network where is_captive is false is considered
+    // as kInternetConnectivity, but this may not be true all the time (e.g
+    // in-flight entertainment WiFi without satellite Internet).
+    return Result{
+        .origin = ResultOrigin::kCapport,
+        .num_attempts = num_attempts,
+        .validation_state =
+            PortalDetector::ValidationState::kInternetConnectivity,
+        .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+    };
+  }
+
+  CHECK(status.user_portal_url.has_value());
+  return Result{
+      .origin = ResultOrigin::kCapport,
+      .num_attempts = num_attempts,
+      .validation_state = PortalDetector::ValidationState::kPortalRedirect,
+      // TODO(b/305129516): Create a dedicated enum item for this case.
+      .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
+      .target_url = status.user_portal_url,
   };
 }
 
@@ -364,12 +467,26 @@ bool NetworkMonitor::Result::operator==(
     const NetworkMonitor::Result& rhs) const = default;
 
 std::ostream& operator<<(std::ostream& stream,
+                         NetworkMonitor::ResultOrigin result_origin) {
+  switch (result_origin) {
+    case NetworkMonitor::ResultOrigin::kProbe:
+      stream << "HTTP probe";
+      break;
+    case NetworkMonitor::ResultOrigin::kCapport:
+      stream << "CAPPORT";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream,
                          const NetworkMonitor::Result& result) {
-  stream << "{ num_attempts=" << result.num_attempts;
+  stream << "{ origin=" << result.origin;
+  stream << ", num_attempts=" << result.num_attempts;
   stream << ", validation_state=" << result.validation_state;
   stream << ", result_metric=" << result.probe_result_metric;
-  if (result.probe_url) {
-    stream << ", probe_url=" << result.probe_url->ToString();
+  if (result.target_url) {
+    stream << ", target_url=" << result.target_url->ToString();
   }
   return stream << " }";
 }

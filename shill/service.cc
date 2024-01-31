@@ -2673,10 +2673,10 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
     return;
   }
 
-  // Set the probe URL Service property if the network validation result was
-  // kPortalRedirect, otherwise clear it.
-  if (result.probe_url) {
-    service_->SetProbeUrl(result.probe_url->ToString());
+  // Set the probe URL from PortalDetector or sign-in URL from CAPPORT query if
+  // the network validation found it, otherwise clear it.
+  if (result.target_url) {
+    service_->SetProbeUrl(result.target_url->ToString());
   } else {
     service_->SetProbeUrl("");
   }

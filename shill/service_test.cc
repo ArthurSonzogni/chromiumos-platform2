@@ -3008,7 +3008,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalRedirect,
       .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
-      .probe_url =
+      .target_url =
           net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl),
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);

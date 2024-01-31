@@ -158,6 +158,13 @@ void CapportProxy::OnRequestSuccess(
     return;
   }
 
+  if (status->is_captive && !status->user_portal_url.has_value()) {
+    LOG(ERROR) << logging_tag_
+               << "user_portal_url field is empty when is_captive is true";
+    std::move(callback_).Run(std::nullopt);
+    return;
+  }
+
   std::move(callback_).Run(std::move(status));
 }
 
@@ -174,6 +181,19 @@ void CapportProxy::OnRequestError(brillo::http::RequestID request_id,
 
 bool CapportProxy::IsRunning() const {
   return !callback_.is_null();
+}
+
+CapportProxyFactory::CapportProxyFactory() = default;
+
+CapportProxyFactory::~CapportProxyFactory() = default;
+
+std::unique_ptr<CapportProxy> CapportProxyFactory::Create(
+    std::string_view interface,
+    const net_base::HttpUrl& api_url,
+    std::shared_ptr<brillo::http::Transport> http_transport,
+    base::TimeDelta transport_timeout) {
+  return CapportProxy::Create(interface, api_url, std::move(http_transport),
+                              transport_timeout);
 }
 
 }  // namespace shill

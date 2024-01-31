@@ -34,7 +34,7 @@ constexpr char kVenueInfoUrl[] = "https://flight.example.com/entertainment";
 // Used to verify the callback of CapportProxy.
 class MockCapportClient {
  public:
-  MOCK_METHOD(void, OnStatusReceived, (std::optional<CapportStatus>));
+  MOCK_METHOD(void, OnStatusReceived, (const std::optional<CapportStatus>&));
 };
 
 }  // namespace
@@ -100,6 +100,15 @@ TEST(CapportStatusTest, ParseFromJsonInvalidUserPortalUrl) {
   const std::string json = R"({
    "captive": true,
    "user-portal-url": "http://example.org/portal.html"
+})";
+
+  EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
+}
+
+TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {
+  // The user portal URL must be HTTPS, HTTP is considered invalid.
+  const std::string json = R"({
+   "captive": true,
 })";
 
   EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());

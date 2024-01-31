@@ -6,8 +6,10 @@
 #define SHILL_NETWORK_NETWORK_MONITOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -16,6 +18,7 @@
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
 #include "shill/network/trial_scheduler.h"
 #include "shill/portal_detector.h"
@@ -73,8 +76,16 @@ class NetworkMonitor {
     kRA,
   };
 
+  // Indicates where the result comes from.
+  enum class ResultOrigin {
+    kProbe,    // From PortalDetector.
+    kCapport,  // From CapportProxy.
+  };
+
   // Represents the detailed result of a complete network validation attempt.
   struct Result {
+    ResultOrigin origin;
+
     // The total number of trial attempts so far.
     int num_attempts = 0;
 
@@ -86,12 +97,14 @@ class NetworkMonitor {
     Metrics::PortalDetectorResult probe_result_metric =
         Metrics::kPortalDetectorResultUnknown;
 
-    // URL of the HTTP probe when |validation_state| is either kPortalRedirect
-    // or kPortalSuspected.
-    std::optional<net_base::HttpUrl> probe_url = std::nullopt;
+    // Target URL when |validation_state| is either kPortalRedirect or
+    // kPortalSuspected.
+    std::optional<net_base::HttpUrl> target_url = std::nullopt;
 
     static Result FromPortalDetectorResult(
         const PortalDetector::Result& result);
+    static Result FromCapportStatus(const CapportStatus& status,
+                                    int num_attempts);
 
     bool operator==(const Result& rhs) const;
   };
@@ -123,6 +136,8 @@ class NetworkMonitor {
       std::string_view logging_tag = "",
       std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
           std::make_unique<PortalDetectorFactory>(),
+      std::unique_ptr<CapportProxyFactory> capport_proxy_factory =
+          std::make_unique<CapportProxyFactory>(),
       std::unique_ptr<ConnectionDiagnosticsFactory>
           connection_diagnostics_factory =
               std::make_unique<ConnectionDiagnosticsFactory>());
@@ -180,6 +195,15 @@ class NetworkMonitor {
   void set_portal_detector_for_testing(
       std::unique_ptr<PortalDetector> portal_detector);
 
+  // Injects the CapportProxy for testing.
+  void set_capport_proxy_for_testing(
+      std::unique_ptr<CapportProxy> capport_proxy);
+
+  // Exposes the callbacks to public for testing.
+  void OnPortalDetectorResultForTesting(const PortalDetector::Result& result);
+  void OnCapportStatusReceivedForTesting(
+      const std::optional<CapportStatus>& status);
+
  private:
   // Starts the validation. Returns true is the validation has been successfully
   // started.
@@ -187,6 +211,15 @@ class NetworkMonitor {
 
   // Callback when |portal_detector_| returns the result.
   void OnPortalDetectorResult(const PortalDetector::Result& result);
+
+  // Callback when |capport_proxy_| returns the result.
+  void OnCapportStatusReceived(const std::optional<CapportStatus>& status);
+
+  // Returns true if we need to send the |new_result| back to client.
+  // The two parameters are either |result_from_portal_detector_| or
+  // |result_from_capport_proxy_|.
+  bool ShouldSendNewResult(const std::optional<Result>& new_result,
+                           const std::optional<Result>& other_result) const;
 
   // Stops the |validation_log_| and records metrics.
   void StopNetworkValidationLog();
@@ -210,6 +243,16 @@ class NetworkMonitor {
   // The lifetime of these instances are the same as the NetworkMonitor.
   TrialScheduler trial_scheduler_;
   std::unique_ptr<PortalDetector> portal_detector_;
+
+  std::unique_ptr<CapportProxyFactory> capport_proxy_factory_;
+  // The CAPPORT proxy, only valid when the CAPPORT API was set.
+  std::unique_ptr<CapportProxy> capport_proxy_;
+
+  // The results converted from |portal_detector_| and |capport_proxy_|. The
+  // value is reset when |portal_detector_| and |capport_proxy_| are triggered,
+  // and is set when they return the result.
+  std::optional<Result> result_from_portal_detector_;
+  std::optional<Result> result_from_capport_proxy_;
 
   std::unique_ptr<ValidationLog> validation_log_;
 
@@ -241,6 +284,9 @@ std::ostream& operator<<(std::ostream& stream,
                          NetworkMonitor::ValidationMode mode);
 std::ostream& operator<<(std::ostream& stream,
                          NetworkMonitor::ValidationReason reason);
+
+std::ostream& operator<<(std::ostream& stream,
+                         NetworkMonitor::ResultOrigin result_origin);
 
 std::ostream& operator<<(std::ostream& stream,
                          const NetworkMonitor::Result& result);

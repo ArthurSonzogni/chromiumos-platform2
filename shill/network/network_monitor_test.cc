@@ -21,6 +21,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
+#include "shill/network/mock_capport_proxy.h"
 #include "shill/network/mock_connection_diagnostics.h"
 #include "shill/network/mock_validation_log.h"
 #include "shill/portal_detector.h"
@@ -41,11 +42,13 @@ constexpr NetworkMonitor::ValidationMode kDefaultValidationMode =
     NetworkMonitor::ValidationMode::kFullValidation;
 const net_base::HttpUrl kCapportAPI =
     *net_base::HttpUrl::CreateFromString("https://example.org/api");
+const net_base::HttpUrl kUserPortalUrl =
+    *net_base::HttpUrl::CreateFromString("https://example.org/portal.html");
+const int kNumAttempts = 3;
 
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Return;
-using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class MockClient : public NetworkMonitor::ClientNetwork {
@@ -75,6 +78,10 @@ class NetworkMonitorTest : public ::testing::Test {
               return portal_detector;
             }));
 
+    auto mock_capport_proxy_factory =
+        std::make_unique<MockCapportProxyFactory>();
+    mock_capport_proxy_factory_ = mock_capport_proxy_factory.get();
+
     auto mock_validation_log = std::make_unique<MockValidationLog>();
     mock_validation_log_ = mock_validation_log.get();
     EXPECT_CALL(*mock_validation_log_, RecordMetrics).Times(1);
@@ -89,6 +96,7 @@ class NetworkMonitorTest : public ::testing::Test {
         kInterface, probing_configuration_, kDefaultValidationMode,
         std::move(mock_validation_log), kLoggingTag,
         std::move(mock_portal_detector_factory),
+        std::move(mock_capport_proxy_factory),
         std::move(mock_connection_diagnostics_factory));
 
     SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
@@ -114,6 +122,13 @@ class NetworkMonitorTest : public ::testing::Test {
 
     ON_CALL(client_, GetCurrentConfig)
         .WillByDefault(testing::ReturnRef(config_));
+  }
+
+  MockCapportProxy* SetCapportProxy() {
+    auto capport_proxy = std::make_unique<MockCapportProxy>();
+    MockCapportProxy* capport_proxy_p = capport_proxy.get();
+    network_monitor_->set_capport_proxy_for_testing(std::move(capport_proxy));
+    return capport_proxy_p;
   }
 
   // Runs the NetworkMonitor::Start() method and wait until the trial scheduled
@@ -147,16 +162,18 @@ class NetworkMonitorTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   EventDispatcher dispatcher_;
-  StrictMock<MockMetrics> metrics_;
+  MockMetrics metrics_;
   PortalDetector::ProbingConfiguration probing_configuration_;
 
   net_base::NetworkConfig config_;
   MockClient client_;
   std::unique_ptr<NetworkMonitor> network_monitor_;
-  MockPortalDetector* mock_portal_detector_;  // Owned by |network_monitor_|.
-  MockConnectionDiagnosticsFactory*
-      mock_connection_diagnostics_factory_;  // Owned by |network_monitor_|.
-  MockValidationLog* mock_validation_log_;   // Owned by |network_monitor_|.
+
+  // These instance are owned by |network_monitor_|.
+  MockPortalDetector* mock_portal_detector_;
+  MockCapportProxyFactory* mock_capport_proxy_factory_;
+  MockConnectionDiagnosticsFactory* mock_connection_diagnostics_factory_;
+  MockValidationLog* mock_validation_log_;
 };
 
 TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
@@ -168,10 +185,12 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
       NetworkMonitor::ValidationReason::kServiceReorder,
   };
 
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
   for (const auto reason : reasons) {
     EXPECT_CALL(*mock_portal_detector_,
                 Start(net_base::IPFamily::kIPv4, kDnsList))
         .Times(1);
+    EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
     EXPECT_CALL(client_, OnValidationStarted(true)).Times(1);
 
     // NetworkMonitor::Start() should schedule PortalDetector::Start()
@@ -185,6 +204,10 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
 
 TEST_F(NetworkMonitorTest, StartWithoutDNS) {
   SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, {});
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
+
+  EXPECT_CALL(*mock_portal_detector_, Start).Times(0);
+  EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(0);
 
   StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, false);
 }
@@ -194,11 +217,14 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
   const NetworkMonitor::ValidationReason reasons[] = {
       NetworkMonitor::ValidationReason::kNetworkConnectionUpdate};
 
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
   for (const auto reason : reasons) {
     EXPECT_CALL(*mock_portal_detector_, Reset).Times(1);
     EXPECT_CALL(*mock_portal_detector_,
                 Start(net_base::IPFamily::kIPv4, kDnsList))
         .Times(1);
+    EXPECT_CALL(*mock_capport_proxy, Stop).Times(1);
+    EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
     StartAndExpectResult(reason, true);
   }
 }
@@ -225,6 +251,37 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
                               kTechnology, 204));
 
   StartWithPortalDetectorResultReturned(result);
+}
+
+TEST_F(NetworkMonitorTest, Stop) {
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
+
+  EXPECT_CALL(*mock_capport_proxy, Stop).Times(1);
+  EXPECT_CALL(*mock_portal_detector_, IsRunning).WillOnce(Return(true));
+  EXPECT_CALL(*mock_portal_detector_, Reset).Times(1);
+
+  EXPECT_TRUE(network_monitor_->Stop());
+}
+
+TEST_F(NetworkMonitorTest, IsRunning) {
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
+
+  // Return true when either PortalDetector or CapportProxy is running.
+  ON_CALL(*mock_capport_proxy, IsRunning).WillByDefault(Return(false));
+  ON_CALL(*mock_portal_detector_, IsRunning).WillByDefault(Return(false));
+  EXPECT_FALSE(network_monitor_->IsRunning());
+
+  ON_CALL(*mock_capport_proxy, IsRunning).WillByDefault(Return(false));
+  ON_CALL(*mock_portal_detector_, IsRunning).WillByDefault(Return(true));
+  EXPECT_TRUE(network_monitor_->IsRunning());
+
+  ON_CALL(*mock_capport_proxy, IsRunning).WillByDefault(Return(true));
+  ON_CALL(*mock_portal_detector_, IsRunning).WillByDefault(Return(false));
+  EXPECT_TRUE(network_monitor_->IsRunning());
+
+  ON_CALL(*mock_capport_proxy, IsRunning).WillByDefault(Return(true));
+  ON_CALL(*mock_portal_detector_, IsRunning).WillByDefault(Return(true));
+  EXPECT_TRUE(network_monitor_->IsRunning());
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
@@ -378,14 +435,117 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
   StartWithPortalDetectorResultReturned(result);
 }
 
+TEST(NetworkMonitorResultTest, FromCapportStatusIsCaptive) {
+  const CapportStatus status{
+      .is_captive = true,
+      .user_portal_url = kUserPortalUrl,
+  };
+
+  const NetworkMonitor::Result expected = {
+      .origin = NetworkMonitor::ResultOrigin::kCapport,
+      .num_attempts = kNumAttempts,
+      .validation_state = PortalDetector::ValidationState::kPortalRedirect,
+      .probe_result_metric = Metrics::kPortalDetectorResultRedirectFound,
+      .target_url = kUserPortalUrl,
+  };
+  EXPECT_EQ(NetworkMonitor::Result::FromCapportStatus(status, kNumAttempts),
+            expected);
+}
+
+TEST(NetworkMonitorResultTest, FromCapportStatusIsOpen) {
+  const CapportStatus status = {
+      .is_captive = false,
+  };
+
+  const NetworkMonitor::Result expected = {
+      .origin = NetworkMonitor::ResultOrigin::kCapport,
+      .num_attempts = kNumAttempts,
+      .validation_state =
+          PortalDetector::ValidationState::kInternetConnectivity,
+      .probe_result_metric = Metrics::kPortalDetectorResultOnline,
+      .target_url = std::nullopt,
+  };
+  EXPECT_EQ(NetworkMonitor::Result::FromCapportStatus(status, kNumAttempts),
+            expected);
+}
+
+TEST_F(NetworkMonitorTest, IgnorePortalDetectorResult) {
+  const CapportStatus capport_status = {
+      .is_captive = false,
+  };
+  const PortalDetector::Result portal_result = {
+      .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
+      .http_duration = base::Milliseconds(100),
+      .https_duration = base::Milliseconds(200),
+  };
+
+  // When CapportProxy sends the result prior than PortalDetector,
+  // NetworkMonitor ignores the result from PortalDetector.
+  ON_CALL(*mock_portal_detector_, attempt_count)
+      .WillByDefault(Return(kNumAttempts));
+  EXPECT_CALL(client_,
+              OnNetworkMonitorResult(NetworkMonitor::Result::FromCapportStatus(
+                  capport_status, kNumAttempts)))
+      .Times(1);
+
+  network_monitor_->OnCapportStatusReceivedForTesting(capport_status);
+  network_monitor_->OnPortalDetectorResultForTesting(portal_result);
+}
+
+TEST_F(NetworkMonitorTest, SendBothResult) {
+  const CapportStatus capport_status = {
+      .is_captive = false,
+  };
+  const PortalDetector::Result portal_result = {
+      .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
+      .http_duration = base::Milliseconds(100),
+      .https_duration = base::Milliseconds(200),
+  };
+
+  // When PortalDetector sends the result prior than CapportProxy,
+  // NetworkMonitor sends both the results.
+  ON_CALL(*mock_portal_detector_, attempt_count)
+      .WillByDefault(Return(kNumAttempts));
+  EXPECT_CALL(
+      client_,
+      OnNetworkMonitorResult(
+          NetworkMonitor::Result::FromPortalDetectorResult(portal_result)))
+      .Times(1);
+  EXPECT_CALL(client_,
+              OnNetworkMonitorResult(NetworkMonitor::Result::FromCapportStatus(
+                  capport_status, kNumAttempts)))
+      .Times(1);
+
+  network_monitor_->OnPortalDetectorResultForTesting(portal_result);
+  network_monitor_->OnCapportStatusReceivedForTesting(capport_status);
+}
+
 TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
   EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
+  EXPECT_CALL(*mock_capport_proxy_factory_,
+              Create(kInterface, kCapportAPI, _, _))
+      .Times(1);
   network_monitor_->SetCapportAPI(kCapportAPI,
                                   NetworkMonitor::CapportSource::kDHCP);
 }
 
 TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
   EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
+  EXPECT_CALL(*mock_capport_proxy_factory_,
+              Create(kInterface, kCapportAPI, _, _))
+      .Times(1);
   network_monitor_->SetCapportAPI(kCapportAPI,
                                   NetworkMonitor::CapportSource::kRA);
 }

@@ -249,7 +249,7 @@ class PortalDetector {
   std::string LoggingTag() const;
 
   // Returns the total number of detection attempts scheduled so far.
-  int attempt_count() const { return attempt_count_; }
+  mockable int attempt_count() const { return attempt_count_; }
 
   // To use in unit tests only.
   void set_probing_configuration_for_testing(

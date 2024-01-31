@@ -28,6 +28,7 @@ class MockPortalDetector : public PortalDetector {
               (override));
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
+  MOCK_METHOD(int, attempt_count, (), (const, override));
 
   void SendResult(const Result& result);
 
