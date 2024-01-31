@@ -1760,3 +1760,38 @@ Output:
 
 Errors:
 - `Failed to access mojo service manager.`
+
+## Audio Routines
+
+### Audio driver malfunction
+
+The routine checks the health of audio driver. It contains the following
+examinations:
+-   CRAS can detect at least one internal audio card.
+-   No audio devices failed to open.
+
+From crosh:
+```bash
+crosh> diag audio_driver
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag audio_driver
+```
+
+Sample output:
+```bash
+Initialized
+Running Progress: 100
+Status: Passed
+Output:
+{
+   "audio_devices_succeed_to_open": true,
+   "internal_card_detected": true
+}
+```
+
+Errors:
+- `Failed to get detected internal card from cras: ${message}`
+- `Failed retrieving node info from cras: ${message}`
