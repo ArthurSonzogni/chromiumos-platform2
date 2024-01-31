@@ -754,6 +754,43 @@ Errors:
 - `Unable to deduce health descriptor path based on the bsg node path`
 - `Error reading content from UFS health descriptor`
 
+
+### eMMC Life Time
+
+Check the device's eMMC storage life time by examining its Pre-End of Life
+Information (PRE_EOL_INFO) is 0x01 (normal).
+
+From crosh:
+```bash
+crosh> diag emmc_lifetime
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag emmc_lifetime
+```
+
+Sample output:
+```bash
+Progress: 100
+Output: {
+   "resultDetails": {
+      "DEVICE_LIFE_TIME_EST_TYP_A": 11,
+      "DEVICE_LIFE_TIME_EST_TYP_B": 11,
+      "PRE_EOL_INFO": 1
+   }
+}
+
+Status: Passed
+Status message: Pre-EOL info is normal.
+```
+
+Errors:
+- `Pre-EOL info is not normal.`
+- `Failed to parse mmc output.`
+- `Debugd returns error.`
+
+
 ## Network Routines
 
 ### LAN Connectivity
