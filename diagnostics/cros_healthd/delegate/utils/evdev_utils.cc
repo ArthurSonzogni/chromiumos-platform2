@@ -4,10 +4,10 @@
 
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 
-#include <algorithm>
 #include <fcntl.h>
 #include <libevdev/libevdev.h>
-#include <optional>
+#include <linux/input-event-codes.h>
+
 #include <string>
 #include <utility>
 #include <vector>
