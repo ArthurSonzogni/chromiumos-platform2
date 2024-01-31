@@ -42,6 +42,8 @@ namespace patchpanel {
 namespace {
 // UID of Android root, relative to the host pid namespace.
 const int32_t kAndroidRootUid = 655360;
+// Allocate 5 subnets for physical interfaces.
+constexpr uint32_t kConfigPoolSize = 5;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
 constexpr char kArcVmIfnamePrefix[] = "eth";
@@ -463,7 +465,7 @@ void ArcService::AllocateArc0Config() {
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0);
   if (!ipv4_subnet) {
-    LOG(ERROR) << __func__ << ": Subnet already in use or unavailable";
+    LOG(ERROR) << __func__ << ": No subnet available";
     return;
   }
   uint32_t subnet_index = (IsVM(arc_type_)) ? 1 : kAnySubnetIndex;
@@ -476,23 +478,17 @@ void ArcService::AllocateAddressConfigs() {
   // The first usable subnet is the "other" ARC Device subnet.
   // As a temporary workaround, for ARCVM, allocate fixed MAC addresses.
   uint32_t mac_addr_index = 2;
-  // Allocate 2 subnets each for Ethernet and WiFi and 1 for LTE WAN interfaces.
-  for (const auto type :
-       {ShillClient::Device::Type::kEthernet,
-        ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
-        ShillClient::Device::Type::kWifi,
-        ShillClient::Device::Type::kCellular}) {
+  for (int config_index = 0; config_index < kConfigPoolSize; config_index++) {
     auto ipv4_subnet =
         addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet);
     if (!ipv4_subnet) {
-      LOG(ERROR) << __func__ << " " << type
-                 << ": Subnet already in use or unavailable";
+      LOG(ERROR) << __func__ << ": Subnet already in use or unavailable";
       continue;
     }
     MacAddress mac_addr = (arc_type_ == ArcType::kVMStatic)
                               ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
                               : addr_mgr_->GenerateMacAddress();
-    const auto& config = available_configs_[type].emplace_back(
+    const auto& config = available_configs_.emplace_back(
         std::make_unique<ArcConfig>(mac_addr, std::move(ipv4_subnet)));
     all_configs_.push_back(config.get());
   }
@@ -504,34 +500,20 @@ void ArcService::RefreshMacAddressesInConfigs() {
   }
 }
 
-std::unique_ptr<ArcService::ArcConfig> ArcService::AcquireConfig(
-    ShillClient::Device::Type type) {
-  // Normalize shill Device types for different ethernet flavors.
-  if (type == ShillClient::Device::Type::kEthernetEap)
-    type = ShillClient::Device::Type::kEthernet;
-
-  auto it = available_configs_.find(type);
-  if (it == available_configs_.end()) {
-    LOG(ERROR) << "Unsupported shill Device type " << type;
-    return nullptr;
-  }
-
-  if (it->second.empty()) {
-    LOG(ERROR)
-        << "Cannot make virtual Device: No more addresses available for type "
-        << type;
+std::unique_ptr<ArcService::ArcConfig> ArcService::AcquireConfig() {
+  if (available_configs_.empty()) {
+    LOG(ERROR) << "Cannot make virtual Device: No more addresses available.";
     return nullptr;
   }
 
   std::unique_ptr<ArcConfig> config;
-  config = std::move(it->second.front());
-  it->second.pop_front();
+  config = std::move(available_configs_.back());
+  available_configs_.pop_back();
   return config;
 }
 
-void ArcService::ReleaseConfig(ShillClient::Device::Type type,
-                               std::unique_ptr<ArcConfig> config) {
-  available_configs_[type].push_front(std::move(config));
+void ArcService::ReleaseConfig(std::unique_ptr<ArcConfig> config) {
+  available_configs_.emplace_back(std::move(config));
 }
 
 bool ArcService::Start(uint32_t id) {
@@ -724,7 +706,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   }
 
   // TODO(b:323291863): Fix config leak when AddDevice fails.
-  auto config = AcquireConfig(shill_device.type);
+  auto config = AcquireConfig();
   if (!config) {
     LOG(ERROR) << "Cannot acquire an ARC IPv4 config for shill device "
                << shill_device;
@@ -738,13 +720,13 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     if (tap_ifname.empty()) {
       LOG(ERROR) << "Failed to create tap device for shill device "
                  << shill_device;
-      ReleaseConfig(shill_device.type, std::move(config));
+      ReleaseConfig(std::move(config));
       return;
     }
     if (!guest_if_manager_->AddInterface(tap_ifname).has_value()) {
       LOG(ERROR) << "Failed to hotplug tap device " << tap_ifname
                  << " to guest for shill device " << shill_device;
-      ReleaseConfig(shill_device.type, std::move(config));
+      ReleaseConfig(std::move(config));
       return;
     }
     config->set_tap_ifname(tap_ifname);
@@ -763,14 +745,14 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     arc_device_ifname = config->tap_ifname();
     if (arc_device_ifname.empty()) {
       LOG(ERROR) << "No TAP device for " << shill_device;
-      ReleaseConfig(shill_device.type, std::move(config));
+      ReleaseConfig(std::move(config));
       return;
     }
     const auto guest_ifname_opt =
         guest_if_manager_->GetGuestIfName(config->tap_ifname());
     if (!guest_ifname_opt.has_value()) {
       LOG(ERROR) << "No guest device for " << shill_device;
-      ReleaseConfig(shill_device.type, std::move(config));
+      ReleaseConfig(std::move(config));
       return;
     }
     guest_ifname = *guest_ifname_opt;
@@ -784,7 +766,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   if (!technology.has_value()) {
     LOG(ERROR) << "Shill device technology type " << shill_device.type
                << " is invalid for ArcDevice.";
-    ReleaseConfig(shill_device.type, std::move(config));
+    ReleaseConfig(std::move(config));
     return;
   }
 
@@ -840,7 +822,7 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
                                   DeviceMode::kTap);
           config_it->second->set_tap_ifname("");
         }
-        ReleaseConfig(shill_device.type, std::move(config_it->second));
+        ReleaseConfig(std::move(config_it->second));
         assigned_configs_.erase(config_it);
       }
       devices_.erase(it);
