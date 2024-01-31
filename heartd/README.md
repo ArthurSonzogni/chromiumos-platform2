@@ -10,7 +10,20 @@ daisydog, etc)
 
 [TOC]
 
-## How to use the service
+## How to start the service
+
+This service is not running by default. It's a D-Bus service in current
+implementation. To start up, you have to send the signal to D-Bus and then it
+starts running.
+
+The following is an example to show how to run it in command line.
+
+```
+(DUT) $ dbus-send --system --type=signal --dest=org.chromium.Heartd
+        /org/chromium/Heartd org.chromium.Heartd
+```
+
+## How to register the service
 
 Using the service is simple.
 
