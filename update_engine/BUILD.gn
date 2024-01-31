@@ -31,6 +31,8 @@ group("all") {
       ":update_engine",
       ":update_engine_client",
     ]
+  } else {
+    deps += [ ":install_subtool" ]
   }
 
   if (use.test) {
@@ -414,6 +416,11 @@ executable("delta_generator") {
     ":libpayload_generator",
   ]
   install_path = "bin"
+}
+
+install_config("install_subtool") {
+  sources = [ "delta_generator_subtool.textproto" ]
+  install_path = "/etc/cros/sdk-packages.d/update_engine"
 }
 
 if (use.test || use.fuzzer) {
