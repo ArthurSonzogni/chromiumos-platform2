@@ -300,32 +300,28 @@ bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   return true;
 }
 
-bool DevicePolicyImpl::GetHwDataUsageEnabled(
-    bool* hw_data_usage_enabled) const {
+std::optional<bool> DevicePolicyImpl::GetUnenrolledHwDataUsageEnabled() const {
   if (!device_policy_->has_hardware_data_usage_enabled())
-    return false;
+    return std::nullopt;
 
   const em::RevenDeviceHWDataUsageEnabledProto& proto =
       device_policy_->hardware_data_usage_enabled();
   if (!proto.has_hardware_data_usage_enabled())
-    return false;
+    return std::nullopt;
 
-  *hw_data_usage_enabled = proto.hardware_data_usage_enabled();
-  return true;
+  return proto.hardware_data_usage_enabled();
 }
 
-bool DevicePolicyImpl::GetManagedHwDataUsageEnabled(
-    bool* managed_hw_data_usage_enabled) const {
+std::optional<bool> DevicePolicyImpl::GetEnrolledHwDataUsageEnabled() const {
   // This policy only applies to enrolled devices.
   if (!IsEnterpriseEnrolled())
-    return false;
+    return std::nullopt;
 
   // The default for this policy is supposed to be 'true', but the `default`
   // key in the policy definition doesn't make that happen for CrOS device
   // policies. Instead we need to enforce it ourselves, here.
-  // Only set result to false if we can read the policy and it's disabled, and
-  // ignore it if the proto is missing.
-  *managed_hw_data_usage_enabled = true;
+  // Only return false if we can read the policy and it's disabled; ignore it
+  // if the proto is missing.
   if (!device_policy_
            ->has_device_flex_hw_data_for_product_improvement_enabled())
     return true;
@@ -335,8 +331,7 @@ bool DevicePolicyImpl::GetManagedHwDataUsageEnabled(
   if (!proto.has_enabled())
     return true;
 
-  *managed_hw_data_usage_enabled = proto.enabled();
-  return true;
+  return proto.enabled();
 }
 
 bool DevicePolicyImpl::GetReportSystemInfo(bool* report_system_info) const {

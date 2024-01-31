@@ -94,13 +94,13 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(bool_value);
 
-  bool_value = true;
-  ASSERT_TRUE(policy.GetHwDataUsageEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
+  std::optional<bool> optional_bool = policy.GetUnenrolledHwDataUsageEnabled();
+  ASSERT_TRUE(optional_bool.has_value());
+  EXPECT_FALSE(*optional_bool);
 
-  bool_value = true;
-  ASSERT_TRUE(policy.GetManagedHwDataUsageEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
+  optional_bool = policy.GetEnrolledHwDataUsageEnabled();
+  ASSERT_TRUE(optional_bool.has_value());
+  EXPECT_FALSE(*optional_bool);
 
   bool_value = true;
   ASSERT_TRUE(policy.GetReportSystemInfo(&bool_value));
@@ -300,11 +300,11 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetAllowNewUsers(&bool_value));
   EXPECT_FALSE(policy.GetMetricsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
-  EXPECT_FALSE(policy.GetHwDataUsageEnabled(&bool_value));
+  EXPECT_FALSE(policy.GetUnenrolledHwDataUsageEnabled().has_value());
   // DeviceFlexHwDataForProductImprovementEnabled defaults to true,
   // so failure to read is success.
-  EXPECT_TRUE(policy.GetManagedHwDataUsageEnabled(&bool_value));
-  EXPECT_TRUE(bool_value);
+  EXPECT_TRUE(policy.GetEnrolledHwDataUsageEnabled().has_value());
+  EXPECT_TRUE(*policy.GetEnrolledHwDataUsageEnabled());
   EXPECT_FALSE(policy.GetReportSystemInfo(&bool_value));
   EXPECT_FALSE(policy.GetReportCpuInfo(&bool_value));
   EXPECT_FALSE(policy.GetReportGraphicsStatus(&bool_value));

@@ -124,14 +124,12 @@ class DevicePolicy {
   // on success.
   virtual bool GetMetricsEnabled(bool* metrics_enabled) const = 0;
 
-  // Write the value of HWDataUsageEnabled policy in |hw_data_usage_enabled|.
-  // Returns true on success.
-  virtual bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const = 0;
+  // Returns value of HWDataUsageEnabled policy, or std::nullopt on failed read.
+  virtual std::optional<bool> GetUnenrolledHwDataUsageEnabled() const = 0;
 
-  // Write the value of DeviceFlexHwDataForProductImprovementEnabled policy in
-  // |hw_data_usage_enabled|. Returns false if not enrolled, true otherwise.
-  virtual bool GetManagedHwDataUsageEnabled(
-      bool* hw_data_usage_enabled) const = 0;
+  // Returns value of DeviceFlexHwDataForProductImprovementEnabled policy
+  // (defaulting to true), or std::nullopt if not enrolled.
+  virtual std::optional<bool> GetEnrolledHwDataUsageEnabled() const = 0;
 
   // Writes the value of ReportSystemInfo policy in |report_system_info|.
   // Returns true on success.

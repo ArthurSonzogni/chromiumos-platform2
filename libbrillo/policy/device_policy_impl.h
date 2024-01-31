@@ -68,8 +68,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDataRoamingEnabled(bool* data_roaming_enabled) const override;
   bool GetAllowNewUsers(bool* allow_new_users) const override;
   bool GetMetricsEnabled(bool* metrics_enabled) const override;
-  bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const override;
-  bool GetManagedHwDataUsageEnabled(bool* hw_data_usage_enabled) const override;
+  std::optional<bool> GetUnenrolledHwDataUsageEnabled() const override;
+  std::optional<bool> GetEnrolledHwDataUsageEnabled() const override;
   bool GetReportSystemInfo(bool* report_system_info) const override;
   bool GetReportCpuInfo(bool* report_cpu_info) const override;
   bool GetReportGraphicsStatus(bool* report_graphics_status) const override;

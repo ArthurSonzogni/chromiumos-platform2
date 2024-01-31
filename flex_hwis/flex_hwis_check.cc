@@ -126,15 +126,18 @@ PermissionInfo FlexHwisCheck::CheckPermission() {
   const policy::DevicePolicy& policy = policy_provider_.GetDevicePolicy();
   info.managed = policy.IsEnterpriseEnrolled();
 
-  bool successful_read = false;
+  std::optional<bool> policy_result;
   if (info.managed) {
     LOG(INFO) << "The device is managed";
-    successful_read = policy.GetManagedHwDataUsageEnabled(&info.permission);
+    policy_result = policy.GetEnrolledHwDataUsageEnabled();
   } else {
     LOG(INFO) << "The device is not managed";
-    successful_read = policy.GetHwDataUsageEnabled(&info.permission);
+    policy_result = policy.GetUnenrolledHwDataUsageEnabled();
   }
-  if (!successful_read) {
+
+  if (policy_result.has_value()) {
+    info.permission = policy_result.value();
+  } else {
     LOG(INFO) << "Couldn't read permission to send hardware info: Not sending";
     info.permission = false;
   }
