@@ -121,6 +121,7 @@ class MockFirewallManager : public FirewallManager {
   explicit MockFirewallManager(const std::string& interface)
       : FirewallManager(interface) {}
 
+  MOCK_METHOD(std::vector<PortToken>, RequestPortsForDiscovery, (), (override));
   MOCK_METHOD(PortToken, RequestUdpPortAccess, (uint16_t), (override));
   MOCK_METHOD(void, ReleaseUdpPortAccess, (uint16_t), (override));
 };
@@ -424,9 +425,12 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   device_list.emplace_back(std::move(usb_printer.device));
   libusb_->SetDevices(std::move(device_list));
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
-      .WillOnce(testing::Return(PortToken(/*firewall_manager=*/nullptr,
-                                          /*port=*/8612)));
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery()).WillOnce([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
 
   StartScannerDiscoveryRequest start_request;
   start_request.set_client_id("CompleteDiscoverySession");
@@ -469,10 +473,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachingUnpluggedDeviceRemoved) {
   sane_client_->SetListDevicesResult(true);
   CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // First discovery session finds the device.
@@ -515,10 +523,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedIPPUSBDeviceIncluded) {
   libusb_->SetDevices(std::move(device_list));
   sane_client_->SetListDevicesResult(true);
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // First discovery session finds the device.
@@ -558,10 +570,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedSANEDeviceIncluded) {
   sane_client_->SetListDevicesResult(true);
   CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // First discovery session finds the device.
@@ -601,10 +617,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionClosesOpenScanners) {
   sane_client_->SetListDevicesResult(true);
   CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // First discovery session finds the device.
@@ -665,10 +685,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
   CreateFakeScanner(kEpson2Name, "GoogleTest", "GoogleTest SANE NetScan 4200",
                     "Network");
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // Session that should get both local and net devices.
@@ -712,6 +736,46 @@ TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
               ElementsAre(MatchesScannerInfo(usb_device)));
 }
 
+TEST_F(DeviceTrackerTest, DiscoverySessionEpsonBackend) {
+  sane_client_->SetListDevicesResult(true);
+
+  // Test the case where a device responds to the epson2 backend during SANE
+  // discovery but the device really uses the epsonds backend.
+  sane_client_->AddDeviceListing("epson2:net:127.0.0.1", "GoogleTest",
+                                 "GoogleTest SANE NetScan 4200", "Network");
+  sane_client_->SetDeviceForName("epsonds:net:127.0.0.1",
+                                 std::make_unique<SaneDeviceFake>());
+
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery()).WillOnce([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  StartScannerDiscoveryRequest request;
+  request.set_client_id("discovery");
+  StartScannerDiscoveryResponse response =
+      tracker_->StartScannerDiscovery(request);
+  EXPECT_TRUE(response.started());
+  EXPECT_FALSE(response.session_id().empty());
+  open_sessions_.insert(response.session_id());
+
+  run_loop_.Run();
+
+  ScannerInfo scanner;
+  // The epsonds should be the name of the device found, not epson2.
+  scanner.set_name("epsonds:net:127.0.0.1");
+  scanner.set_manufacturer("GoogleTest");
+  scanner.set_model("GoogleTest SANE NetScan 4200");
+  scanner.set_display_name("GoogleTest SANE NetScan 4200");
+  scanner.set_connection_type(lorgnette::CONNECTION_NETWORK);
+  scanner.set_secure(false);
+
+  EXPECT_THAT(discovered_scanners_[response.session_id()],
+              UnorderedElementsAre(MatchesScannerInfo(scanner)));
+}
+
 // Test that two discovery sessions finding the same devices return the same
 // device IDs.
 TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
@@ -741,10 +805,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   CreateFakeScanner("epson2:libusb:002:003", "GoogleTest",
                     "Unique BUSDEV Scanner", "USB");
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // First session finds the scanners.  They should have different deviceUuid
@@ -858,10 +926,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
   base::FilePath cache_file = socket_dir_.GetPath().Append("known_devices");
   brillo::DeleteFile(cache_file);  // Start off with no saved devices.
 
-  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
-        return PortToken(/*firewall_manager=*/nullptr,
-                         /*port=*/8612);
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
       });
 
   // Session finds all the scanners.  Three of them should have the same

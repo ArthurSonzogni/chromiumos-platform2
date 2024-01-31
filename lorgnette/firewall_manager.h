@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
@@ -44,8 +45,14 @@ class FirewallManager {
   void Init(std::unique_ptr<org::chromium::PermissionBrokerProxyInterface>
                 permission_broker_proxy);
 
-  // Request port access for all well-known Canon scanner port.
+  // Request port access for all ports needed during discovery.
+  virtual std::vector<PortToken> RequestPortsForDiscovery();
+
+  // Request port access for the well-known Canon scanner port.
   PortToken RequestPixmaPortAccess();
+
+  // Request port access for the well-known Epson scanner port.
+  PortToken RequestEpsonPortAccess();
 
   // Request UDP port access for the specified port.
   virtual PortToken RequestUdpPortAccess(uint16_t port);

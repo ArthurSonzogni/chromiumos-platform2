@@ -37,6 +37,8 @@ namespace {
 constexpr char kTestInterface[] = "Test Interface";
 // Well-known port for Canon scanners.
 constexpr uint16_t kCanonBjnpPort = 8612;
+// Port for epson2 scanners.
+constexpr uint16_t kEpson2Port = 1865;
 // Test ports to request access for.
 constexpr uint16_t kFirstUpdPort = 4311;
 constexpr uint16_t kSecondUpdPort = 4312;
@@ -126,6 +128,54 @@ TEST_F(FirewallManagerTest, RequestPixmaPortAccess) {
   // `pixma_token` is destroyed.
   EXPECT_CALL(*permission_broker_proxy_mock(),
               ReleaseUdpPort(kCanonBjnpPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+}
+
+// Test that FirewallManager can request access for the well-known Epson scanner
+// port.
+TEST_F(FirewallManagerTest, RequestEpsonPortAccess) {
+  InitFirewallManager();
+
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kEpson2Port, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+
+  PortToken port_token = firewall_manager()->RequestEpsonPortAccess();
+
+  // FirewallManager should request to release the associated port when
+  // `port_token` is destroyed.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kEpson2Port, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+}
+
+// Test that FirewallManager can request all ports needed for discovery.
+TEST_F(FirewallManagerTest, RequestPortsForDiscovery) {
+  InitFirewallManager();
+
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kCanonBjnpPort, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              RequestUdpPortAccess(kEpson2Port, kTestInterface, _, _, _,
+                                   dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<3>(true), Return(true)));
+
+  std::vector<PortToken> tokens =
+      firewall_manager()->RequestPortsForDiscovery();
+
+  // FirewallManager should request to release the associated ports when
+  // `tokens` goes out of scope.
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kCanonBjnpPort, kTestInterface, _, _,
+                             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+  EXPECT_CALL(*permission_broker_proxy_mock(),
+              ReleaseUdpPort(kEpson2Port, kTestInterface, _, _,
                              dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 }

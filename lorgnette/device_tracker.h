@@ -133,7 +133,7 @@ class DeviceTracker {
     std::string client_id;
     base::Time start_time;
     BackendDownloadPolicy dlc_policy;
-    std::unique_ptr<PortToken> port_token;
+    std::vector<std::unique_ptr<PortToken>> port_tokens;
     bool dlc_started;
     bool local_only;
     bool preferred_only;
@@ -182,6 +182,7 @@ class DeviceTracker {
                          std::unique_ptr<UsbDevice> device);
   void EnumerateSANEDevices(std::string session_id);
   void ProbeSANEDevice(std::string session_id, ScannerInfo scanner_info);
+  void CheckEpsonBackend(ScannerInfo& scanner_info);
   void SendEnumerationCompletedSignal(std::string session_id);
   void SendSessionEndingSignal(std::string session_id);
 

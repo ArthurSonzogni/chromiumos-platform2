@@ -25,6 +25,7 @@ namespace lorgnette {
 namespace {
 
 const uint16_t kCanonBjnpPort = 8612;
+const uint16_t kEpson2Port = 1865;
 
 }  // namespace
 
@@ -77,9 +78,22 @@ void FirewallManager::Init(
                           weak_factory_.GetWeakPtr()));
 }
 
+std::vector<PortToken> FirewallManager::RequestPortsForDiscovery() {
+  std::vector<PortToken> ports;
+  ports.emplace_back(PortToken(RequestPixmaPortAccess()));
+  ports.emplace_back(PortToken(RequestEpsonPortAccess()));
+
+  return ports;
+}
+
 PortToken FirewallManager::RequestPixmaPortAccess() {
   // Request access for the well-known port used by the Pixma backend.
   return RequestUdpPortAccess(kCanonBjnpPort);
+}
+
+PortToken FirewallManager::RequestEpsonPortAccess() {
+  // Request access for the port used by the epson2 backend.
+  return RequestUdpPortAccess(kEpson2Port);
 }
 
 bool FirewallManager::SetupLifelinePipe() {

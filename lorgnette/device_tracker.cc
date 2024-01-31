@@ -320,8 +320,10 @@ void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   LOG(INFO) << __func__ << ": Starting discovery session " << session_id;
 
   if (!session->local_only) {
-    session->port_token = std::make_unique<PortToken>(
-        firewall_manager_->RequestPixmaPortAccess());
+    for (PortToken& token : firewall_manager_->RequestPortsForDiscovery()) {
+      session->port_tokens.emplace_back(
+          std::make_unique<PortToken>(std::move(token)));
+    }
   }
 
   if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
@@ -495,6 +497,10 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
     return;
   }
 
+  // For Epson scanners, check which backend should be used.  Some epson
+  // scanners respond to both epson2 and epsonds.
+  CheckEpsonBackend(scanner_info);
+
   // The preferred_only flag tells us whether or not we want to drop any
   // duplicates of IPP-USB devices that were already discovered.
   std::string canonical_name = canonical_scanners_.LookupScanner(scanner_info);
@@ -550,6 +556,32 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
 
   known_devices_.push_back(std::move(scanner_info));
   signal_sender_.Run(signal);
+}
+
+void DeviceTracker::CheckEpsonBackend(ScannerInfo& scanner_info) {
+  // Some Epson scanners respond to the epson2 backend even though the scanner
+  // requires the epsonds backend for operation.  However, epsonds will never
+  // connect to an unsupported device, so if the scanner responds to the epsonds
+  // backend, prefer that over the epson2 backend.
+  if (!scanner_info.name().starts_with("epson2:net:")) {
+    return;
+  }
+
+  // Create an epsonds name and try to connect using that.
+  std::string epsonds_name = scanner_info.name();
+  epsonds_name = epsonds_name.replace(0, 6, "epsonds");
+
+  LOG(INFO) << "Attempting to connect to " << scanner_info.name()
+            << " using connection string " << epsonds_name;
+
+  brillo::ErrorPtr error;
+  SANE_Status status;
+  std::unique_ptr<SaneDevice> epsonds_device =
+      sane_client_->ConnectToDevice(&error, &status, epsonds_name);
+  if (epsonds_device) {
+    LOG(INFO) << "Found epsonds device for " << epsonds_name;
+    scanner_info.set_name(epsonds_name);
+  }
 }
 
 void DeviceTracker::SendEnumerationCompletedSignal(std::string session_id) {
