@@ -399,9 +399,14 @@ TPM_RC ResourceManager::EnsureSessionIsLoaded(
   return TPM_RC_SUCCESS;
 }
 
-void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
+void ResourceManager::EvictOneObject(const MessageInfo& command_info,
+                                     bool ignore_same_sender) {
+  bool evicted = false;
   for (size_t i = 0; i < loaded_object_infos_.size(); i++) {
     auto& item = loaded_object_infos_[i];
+    if (ignore_same_sender && item.info.sender == command_info.sender) {
+      continue;
+    }
     HandleInfo& info = item.info;
     if (std::find(command_info.handles.begin(), command_info.handles.end(),
                   *item.handle) != command_info.handles.end()) {
@@ -434,7 +439,11 @@ void ResourceManager::EvictOneObject(const MessageInfo& command_info) {
     tpm_to_virtual_handle_.erase(info.tpm_handle);
     unloaded_object_infos_.emplace(item.handle, std::move(item.info));
     loaded_object_infos_.erase(loaded_object_infos_.begin() + i);
+    evicted = true;
     break;
+  }
+  if (!evicted && ignore_same_sender) {
+    EvictOneObject(command_info, /*ignore_same_sender=*/false);
   }
 }
 
