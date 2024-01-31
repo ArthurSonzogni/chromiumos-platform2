@@ -28,7 +28,7 @@ fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<(), HwsecError> {
     ctx.cmd_runner()
         .run(
             "futility",
-            vec!["gbb", "--flash", "--set", "--flags='+0x8'"],
+            vec!["gbb", "--flash", "--set", "--flags=+0x8"],
         )
         .map_err(|_| {
             eprintln!("Failed to run futility");
