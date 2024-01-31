@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -265,9 +266,10 @@ void ResourceManager::Resume() {
   suspended_ = false;
 }
 
-bool ResourceManager::ChooseSessionToEvict(
-    const std::vector<SessionHandle>& sessions_to_retain,
-    SessionHandle* session_to_evict) {
+bool ResourceManager::ChooseSessionToEvict(const MessageInfo& command_info,
+                                           SessionHandle* session_to_evict) {
+  const std::vector<SessionHandle>& sessions_to_retain =
+      command_info.all_session_handles;
   // Build a list of candidates by excluding |sessions_to_retain|.
   std::vector<SessionHandle> candidates;
   for (const auto& [session, info] : session_handles_) {
@@ -282,12 +284,16 @@ bool ResourceManager::ChooseSessionToEvict(
     return false;
   }
   // Choose the candidate with the earliest |time_of_last_use|.
-  auto oldest_iter =
-      std::min_element(candidates.begin(), candidates.end(),
-                       [this](const SessionHandle& a, const SessionHandle& b) {
-                         return (session_handles_[a].time_of_last_use <
-                                 session_handles_[b].time_of_last_use);
-                       });
+  auto oldest_iter = std::min_element(
+      candidates.begin(), candidates.end(),
+      [&](const SessionHandle& a, const SessionHandle& b) {
+        // If the sender is different with the current command sender, we will
+        // want to evict it first. (false is smaller than true)
+        return std::make_tuple(command_info.sender == a.sender,
+                               session_handles_[a].time_of_last_use) <
+               std::make_tuple(command_info.sender == b.sender,
+                               session_handles_[b].time_of_last_use);
+      });
   *session_to_evict = *oldest_iter;
   return true;
 }
@@ -477,8 +483,7 @@ void ResourceManager::EvictObjects(const MessageInfo& command_info) {
 
 void ResourceManager::EvictSession(const MessageInfo& command_info) {
   SessionHandle session_to_evict;
-  if (!ChooseSessionToEvict(command_info.all_session_handles,
-                            &session_to_evict)) {
+  if (!ChooseSessionToEvict(command_info, &session_to_evict)) {
     return;
   }
   HandleInfo& info = session_handles_[session_to_evict];
@@ -587,8 +592,7 @@ bool ResourceManager::FixWarnings(const MessageInfo& command_info,
 void ResourceManager::FlushSession(const MessageInfo& command_info) {
   SessionHandle session_to_flush;
   LOG(WARNING) << "Resource manager needs to flush a session.";
-  if (!ChooseSessionToEvict(command_info.all_session_handles,
-                            &session_to_flush)) {
+  if (!ChooseSessionToEvict(command_info, &session_to_flush)) {
     return;
   }
   TPM_RC result =

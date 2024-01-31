@@ -146,12 +146,11 @@ class ResourceManager : public CommandTransceiver {
     HandleInfo info;
   };
 
-  // Chooses an appropriate session for eviction (or flush) which is not one of
-  // |sessions_to_retain| and assigns it to |session_to_evict|. Returns true on
+  // Chooses an appropriate session for eviction (or flush) from the
+  // |command_info| and assigns it to |session_to_evict|. Returns true on
   // success.
-  bool ChooseSessionToEvict(
-      const std::vector<SessionHandle>& sessions_to_retain,
-      SessionHandle* session_to_evict);
+  bool ChooseSessionToEvict(const MessageInfo& command_info,
+                            SessionHandle* session_to_evict);
 
   // Cleans up all references to and information about |flushed_session_handle|.
   void CleanupFlushedHandle(const SessionHandle& flushed_session_handle);
