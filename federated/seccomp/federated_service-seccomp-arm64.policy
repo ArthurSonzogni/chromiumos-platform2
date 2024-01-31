@@ -90,3 +90,4 @@ tgkill: 1
 uname: 1
 unlinkat: 1
 write: 1
+writev: 1
