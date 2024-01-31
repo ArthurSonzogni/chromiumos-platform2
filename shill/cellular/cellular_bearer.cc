@@ -42,6 +42,7 @@ const char CellularBearer::kMMIpTypeProperty[] = "ip-type";
 const char CellularBearer::kMMMultiplexProperty[] = "multiplex";
 const char CellularBearer::kMMForceProperty[] = "force";
 const char CellularBearer::kMMProfileIdProperty[] = "profile-id";
+const char CellularBearer::kMMProfileSourceProperty[] = "profile-source";
 
 namespace {
 

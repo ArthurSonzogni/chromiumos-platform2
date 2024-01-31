@@ -1577,6 +1577,36 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 }
 
+TEST_F(CellularCapability3gppTest, ProfilesChangedIgnoreUser) {
+  // Add a single element in the list with "user" source, which we should
+  // ignore.
+  constexpr char kApn1[] = "internet1";
+  brillo::VariantDictionary profile1;
+  profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
+  profile1[CellularBearer::kMMProfileSourceProperty] =
+      uint32_t(MM_BEARER_PROFILE_SOURCE_USER);
+  capability_->OnProfilesChanged({profile1});
+  EXPECT_EQ(0, capability_->profiles_->size());
+
+  // Add a single element in the list with "modem" source, which we should
+  // process.
+  constexpr char kApn2[] = "internet2";
+  brillo::VariantDictionary profile2;
+  profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
+  profile2[CellularBearer::kMMProfileSourceProperty] =
+      uint32_t(MM_BEARER_PROFILE_SOURCE_MODEM);
+  MobileAPN expected_profile2 = {.apn = kApn2, .apn_types = {kApnTypeDefault}};
+  capability_->OnProfilesChanged({profile2});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
+
+  // Add both elements in the list, only the "modem" source one should be
+  // processed.
+  capability_->OnProfilesChanged({profile1, profile2});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
+}
+
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
   constexpr char kTestApn[] = "test_apn";
   KeyValueStore properties;

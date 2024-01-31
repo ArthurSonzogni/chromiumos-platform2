@@ -4026,6 +4026,9 @@ void Cellular::UpdateHomeProvider() {
   if (manufacturer_ != kQ6V5ModemManufacturerName) {
     auto profiles = capability_->GetProfiles();
     if (profiles) {
+      // When profile source given in the stored profiles, both
+      // MM_BEARER_PROFILE_SOURCE_OPERATOR and MM_BEARER_PROFILE_SOURCE_MODEM
+      // map to ApnList::ApnSource::kModem.
       apn_list.AddApns(*profiles, ApnList::ApnSource::kModem);
     }
   }

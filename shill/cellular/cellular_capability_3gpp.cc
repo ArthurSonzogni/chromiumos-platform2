@@ -2206,6 +2206,38 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   profiles_ = std::make_optional<std::vector<MobileAPN>>({});
 
   for (const auto& profile : profiles) {
+    // We only care about non-user profiles, so if we have information about the
+    // source of each profile, filter out the unwanted ones.
+    if (base::Contains(profile, CellularBearer::kMMProfileSourceProperty)) {
+      MMBearerProfileSource source = static_cast<MMBearerProfileSource>(
+          brillo::GetVariantValueOrDefault<uint32_t>(
+              profile, CellularBearer::kMMProfileSourceProperty));
+      switch (source) {
+        case MM_BEARER_PROFILE_SOURCE_DEVICE:
+        case MM_BEARER_PROFILE_SOURCE_ADMIN:
+        case MM_BEARER_PROFILE_SOURCE_USER:
+          // "device" is expected when the OS creates the profile (e.g. we would
+          // use this whenever shill creates a profile from MODB info). "user"
+          // and "admin" are expected for user-created profiles (depending on
+          // the type of user). In all these three cases, we ignore the profiles
+          // because at this point we care only about "operator" created
+          // profiles (e.g. class 3 VZW via OTA) or "modem" provided profiles
+          // (e.g. via carrier setting firmware images).
+          SLOG(this, 3) << __func__ << ": ignoring user profile.";
+          continue;
+        case MM_BEARER_PROFILE_SOURCE_OPERATOR:
+          SLOG(this, 3) << __func__ << ": processing operator profile.";
+          break;
+        case MM_BEARER_PROFILE_SOURCE_MODEM:
+          SLOG(this, 3) << __func__ << ": processing modem profile.";
+          break;
+        default:
+          // We don't ignore unknown sources, but warn about them.
+          LOG(WARNING) << "Unknown profile source: " << source;
+          break;
+      }
+    }
+
     MobileAPN apn_info;
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
         profile, CellularBearer::kMMApnProperty);
