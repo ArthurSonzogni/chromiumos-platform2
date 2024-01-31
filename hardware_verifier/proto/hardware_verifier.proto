@@ -11,7 +11,7 @@ option optimize_for = SPEED;
 
 package hardware_verifier;
 
-option go_package = "chromiumos/hardware_verifier";
+option go_package = "go.chromium.org/chromiumos/hardware_verifier";
 
 // Name of the folder which contains |runtime_probe.pb.h| is different than
 // the one which contains |runtime_probo.proto| so we import the file name
