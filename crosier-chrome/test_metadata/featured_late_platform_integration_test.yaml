@@ -1,0 +1,29 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
+---
+author: "ChromiumOS Authors"
+name: "FileFeature/FeaturedLatePlatformIntegrationTest"
+harness: "crosier"
+category: "integration"
+owners:
+  - email: "jamescook@chromium.org"
+  - email: "kendraketsui@google.com"
+  - email: "mutexlox@google.com"
+  - email: "cros-telemetry@google.com"
+  - email: "chromeos-sw-engprod@google.com"
+hw_agnostic: True
+criteria: |
+  Verifies features are enabled/disabled as expected and parameters are unchanged
+cases:
+  - id: "LatePlatformFeatures/0"
+    tags: ["crosier:crosierdemosuite"]
+  - id: "LatePlatformFeatures/1"
+    tags: ["crosier:crosierdemosuite"]
+  - id: "LatePlatformFeatures/2"
+    tags: ["crosier:crosierdemosuite"]
+  - id: "LatePlatformFeatures/3"
+    tags: ["crosier:crosierdemosuite"]
+...
