@@ -224,21 +224,19 @@ class PortalDetector {
   using ResultCallback = base::RepeatingCallback<void(const Result&)>;
 
   PortalDetector(EventDispatcher* dispatcher,
+                 std::string_view ifname,
                  const ProbingConfiguration& probing_configuration,
-                 ResultCallback callback);
+                 ResultCallback callback,
+                 std::string_view logging_tag);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
 
   virtual ~PortalDetector();
 
-  // Starts and schedules a new portal detection attempt according to the value
-  // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
-  // not run yet, the new attempt will override the old attempt. Nothing happens
-  // if an attempt is already running.
-  mockable void Start(const std::string& ifname,
-                      net_base::IPFamily ip_family,
-                      const std::vector<net_base::IPAddress>& dns_list,
-                      const std::string& logging_tag);
+  // Starts a new portal detection attempt. Nothing happens if an attempt is
+  // already running.
+  mockable void Start(net_base::IPFamily ip_family,
+                      const std::vector<net_base::IPAddress>& dns_list);
 
   // Resets the instance to initial state. If the portal detection attempt is
   // running, then stop it and do not call the callback.
@@ -247,7 +245,7 @@ class PortalDetector {
   // Returns whether a portal detection attempt is running.
   mockable bool IsRunning() const;
 
-  // Returns |logging_tag_| appended with the |attempt_count_|.
+  // Returns |logging_tag_| appended with the |ip_family_| and |attempt_count_|.
   std::string LoggingTag() const;
 
   // Returns the total number of detection attempts scheduled so far.
@@ -309,11 +307,13 @@ class PortalDetector {
 
   // These instances are not changed during the whole lifetime.
   EventDispatcher* dispatcher_;
+  std::string ifname_;
   ProbingConfiguration probing_configuration_;
   ResultCallback portal_result_callback_;
-
   std::string logging_tag_;
 
+  // The IP family of the current trial. Used for logging.
+  std::optional<net_base::IPFamily> ip_family_ = std::nullopt;
   bool is_running_ = false;
   // The total number of detection attempts scheduled so far. Only used in logs
   // for debugging purposes, and for selecting the URL of detection and
@@ -346,8 +346,10 @@ class PortalDetectorFactory {
   // The default factory method, calling PortalDetector's constructor.
   mockable std::unique_ptr<PortalDetector> Create(
       EventDispatcher* dispatcher,
+      std::string_view ifname,
       const PortalDetector::ProbingConfiguration& probing_configuration,
-      base::RepeatingCallback<void(const PortalDetector::Result&)> callback);
+      PortalDetector::ResultCallback callback,
+      std::string_view logging_tag);
 };
 
 std::ostream& operator<<(std::ostream& stream,

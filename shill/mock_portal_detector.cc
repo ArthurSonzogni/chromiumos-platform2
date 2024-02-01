@@ -9,7 +9,7 @@
 namespace shill {
 
 MockPortalDetector::MockPortalDetector(ResultCallback callback)
-    : PortalDetector(nullptr, {}, base::DoNothing()),
+    : PortalDetector(nullptr, "wlan1", {}, base::DoNothing(), "tag"),
       callback_(std::move(callback)) {}
 
 MockPortalDetector::~MockPortalDetector() = default;

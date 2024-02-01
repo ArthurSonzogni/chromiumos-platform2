@@ -8,7 +8,7 @@
 #include "shill/portal_detector.h"
 
 #include <memory>
-#include <string>
+#include <string_view>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -24,10 +24,7 @@ class MockPortalDetector : public PortalDetector {
 
   MOCK_METHOD(void,
               Start,
-              (const std::string& ifname,
-               net_base::IPFamily,
-               const std::vector<net_base::IPAddress>&,
-               const std::string& logging_tag),
+              (net_base::IPFamily, const std::vector<net_base::IPAddress>&),
               (override));
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
@@ -46,8 +43,10 @@ class MockPortalDetectorFactory : public PortalDetectorFactory {
   MOCK_METHOD(std::unique_ptr<PortalDetector>,
               Create,
               (EventDispatcher*,
+               std::string_view,
                const PortalDetector::ProbingConfiguration&,
-               PortalDetector::ResultCallback),
+               PortalDetector::ResultCallback,
+               std::string_view),
               (override));
 };
 

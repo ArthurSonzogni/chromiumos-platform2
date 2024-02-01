@@ -65,7 +65,7 @@ class NetworkMonitorTest : public ::testing::Test {
     auto mock_portal_detector_factory =
         std::make_unique<MockPortalDetectorFactory>();
     EXPECT_CALL(*mock_portal_detector_factory, Create)
-        .WillOnce(testing::WithArg<2>(
+        .WillOnce(testing::WithArg<3>(
             [this](PortalDetector::ResultCallback callback) {
               auto portal_detector =
                   std::make_unique<MockPortalDetector>(std::move(callback));
@@ -127,8 +127,7 @@ class NetworkMonitorTest : public ::testing::Test {
   void StartWithPortalDetectorResultReturned(
       const PortalDetector::Result& result) {
     EXPECT_CALL(*mock_portal_detector_,
-                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                      Eq(kLoggingTag)))
+                Start(net_base::IPFamily::kIPv4, kDnsList))
         .WillOnce(
             [this, result]() { mock_portal_detector_->SendResult(result); });
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
@@ -168,8 +167,7 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
 
   for (const auto reason : reasons) {
     EXPECT_CALL(*mock_portal_detector_,
-                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                      Eq(kLoggingTag)))
+                Start(net_base::IPFamily::kIPv4, kDnsList))
         .Times(1);
     EXPECT_CALL(client_, OnValidationStarted(true)).Times(1);
 
@@ -196,8 +194,7 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
   for (const auto reason : reasons) {
     EXPECT_CALL(*mock_portal_detector_, Reset).Times(1);
     EXPECT_CALL(*mock_portal_detector_,
-                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                      Eq(kLoggingTag)))
+                Start(net_base::IPFamily::kIPv4, kDnsList))
         .Times(1);
     StartAndExpectResult(reason, true);
   }

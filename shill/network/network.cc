@@ -879,11 +879,11 @@ void Network::StartConnectivityTest(
   }
   LOG(INFO) << *this << ": Starting Internet connectivity test";
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, probe_config,
+      dispatcher_, interface_name_, probe_config,
       base::BindRepeating(&Network::ConnectivityTestCallback,
-                          weak_factory_.GetWeakPtr(), logging_tag_));
-  connectivity_test_portal_detector_->Start(interface_name_, *family, dns_list,
-                                            logging_tag_);
+                          weak_factory_.GetWeakPtr(), logging_tag_),
+      logging_tag_);
+  connectivity_test_portal_detector_->Start(*family, dns_list);
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,

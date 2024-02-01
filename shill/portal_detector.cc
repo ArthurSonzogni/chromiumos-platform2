@@ -7,6 +7,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/pattern.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -68,11 +70,15 @@ PortalDetector::DefaultProbingConfiguration() {
 
 PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
+    std::string_view ifname,
     const ProbingConfiguration& probing_configuration,
-    ResultCallback callback)
+    ResultCallback callback,
+    std::string_view logging_tag)
     : dispatcher_(dispatcher),
+      ifname_(ifname),
       probing_configuration_(probing_configuration),
-      portal_result_callback_(callback) {}
+      portal_result_callback_(callback),
+      logging_tag_(logging_tag) {}
 
 PortalDetector::~PortalDetector() = default;
 
@@ -96,17 +102,14 @@ const net_base::HttpUrl& PortalDetector::PickProbeUrl(
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
-void PortalDetector::Start(const std::string& ifname,
-                           net_base::IPFamily ip_family,
-                           const std::vector<net_base::IPAddress>& dns_list,
-                           const std::string& logging_tag) {
+void PortalDetector::Start(net_base::IPFamily ip_family,
+                           const std::vector<net_base::IPAddress>& dns_list) {
   if (IsRunning()) {
     LOG(INFO) << LoggingTag() << ": Attempt is already running";
     return;
   }
 
-  logging_tag_ = logging_tag + " " + net_base::ToString(ip_family);
-
+  ip_family_ = ip_family;
   SLOG(this, 3) << "In " << __func__;
 
   // If this is not the first attempt and if the previous attempt found a
@@ -124,13 +127,13 @@ void PortalDetector::Start(const std::string& ifname,
   https_url_ = PickProbeUrl(probing_configuration_.portal_https_url,
                             probing_configuration_.portal_fallback_https_urls);
 
-  http_request_ = CreateHTTPRequest(ifname, ip_family, dns_list,
+  http_request_ = CreateHTTPRequest(ifname_, ip_family, dns_list,
                                     /*allow_non_google_https=*/false);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
   bool allow_non_google_https = https_url_.ToString() != kDefaultHttpsUrl;
   https_request_ =
-      CreateHTTPRequest(ifname, ip_family, dns_list, allow_non_google_https);
+      CreateHTTPRequest(ifname_, ip_family, dns_list, allow_non_google_https);
 
   attempt_count_++;
   result_ = Result();
@@ -162,6 +165,7 @@ void PortalDetector::CleanupTrial() {
   result_ = std::nullopt;
   http_request_.reset();
   https_request_.reset();
+  ip_family_ = std::nullopt;
   is_running_ = false;
 }
 
@@ -359,7 +363,12 @@ std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()
 }
 
 std::string PortalDetector::LoggingTag() const {
-  return logging_tag_ + " attempt=" + std::to_string(attempt_count_);
+  std::string tag = logging_tag_;
+  if (ip_family_.has_value()) {
+    base::StrAppend(&tag, {" IPFamily=", net_base::ToString(*ip_family_)});
+  }
+  base::StrAppend(&tag, {" attempt=", std::to_string(attempt_count_)});
+  return tag;
 }
 
 std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
@@ -467,10 +476,13 @@ bool PortalDetector::Result::operator==(
 
 std::unique_ptr<PortalDetector> PortalDetectorFactory::Create(
     EventDispatcher* dispatcher,
+    std::string_view ifname,
     const PortalDetector::ProbingConfiguration& probing_configuration,
-    base::RepeatingCallback<void(const PortalDetector::Result&)> callback) {
-  return std::make_unique<PortalDetector>(dispatcher, probing_configuration,
-                                          std::move(callback));
+    PortalDetector::ResultCallback callback,
+    std::string_view logging_tag) {
+  return std::make_unique<PortalDetector>(dispatcher, ifname,
+                                          probing_configuration,
+                                          std::move(callback), logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,

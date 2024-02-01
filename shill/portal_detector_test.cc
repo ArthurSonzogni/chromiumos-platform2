@@ -89,7 +89,11 @@ class TestablePortalDetector : public PortalDetector {
   TestablePortalDetector(EventDispatcher* dispatcher,
                          const ProbingConfiguration& probing_configuration,
                          base::RepeatingCallback<void(const Result&)> callback)
-      : PortalDetector(dispatcher, probing_configuration, callback) {}
+      : PortalDetector(dispatcher,
+                       kInterfaceName,
+                       probing_configuration,
+                       callback,
+                       "tag") {}
   TestablePortalDetector(const TestablePortalDetector&) = delete;
   TestablePortalDetector& operator=(const TestablePortalDetector&) = delete;
   ~TestablePortalDetector() override = default;
@@ -179,8 +183,8 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(std::unique_ptr<MockHttpRequest>(https_request_)));
     EXPECT_CALL(*http_request_, Start);
     EXPECT_CALL(*https_request_, Start);
-    portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
-                            {kDNSServer0, kDNSServer1}, "tag");
+    portal_detector_->Start(net_base::IPFamily::kIPv4,
+                            {kDNSServer0, kDNSServer1});
   }
 
   MockHttpRequest* http_request() { return http_request_; }
@@ -255,13 +259,14 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false. Second request for the HTTPS probe with the default URL: set
   // |allow_non_google_https| to false.
-  EXPECT_CALL(*portal_detector,
-              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
-                                /*allow_non_google_https=*/false))
+  EXPECT_CALL(
+      *portal_detector,
+      CreateHTTPRequest(kInterfaceName, net_base::IPFamily::kIPv4, dns_list,
+                        /*allow_non_google_https=*/false))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
+  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list);
   portal_detector->Reset();
 }
 
@@ -275,18 +280,20 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
 
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false.
-  EXPECT_CALL(*portal_detector,
-              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
-                                /*allow_non_google_https=*/false))
+  EXPECT_CALL(
+      *portal_detector,
+      CreateHTTPRequest(kInterfaceName, net_base::IPFamily::kIPv4, dns_list,
+                        /*allow_non_google_https=*/false))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
   // Second request for the HTTPS probe with a non-default URL: set
   // |allow_non_google_https| to true.
-  EXPECT_CALL(*portal_detector,
-              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
-                                /*allow_non_google_https=*/true))
+  EXPECT_CALL(
+      *portal_detector,
+      CreateHTTPRequest(kInterfaceName, net_base::IPFamily::kIPv4, dns_list,
+                        /*allow_non_google_https=*/true))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
+  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list);
   portal_detector->Reset();
 }
 
@@ -404,8 +411,8 @@ TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
-  portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
-                          {kDNSServer0, kDNSServer1}, "tag");
+  portal_detector_->Start(net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1});
   EXPECT_EQ(1, portal_detector()->attempt_count());
   EXPECT_TRUE(portal_detector()->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());

@@ -98,9 +98,10 @@ NetworkMonitor::NetworkMonitor(
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
   portal_detector_ = portal_detector_factory->Create(
-      dispatcher_, probing_configuration_,
+      dispatcher_, interface_, probing_configuration_,
       base::BindRepeating(&NetworkMonitor::OnPortalDetectorResult,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetWeakPtr()),
+      logging_tag_);
 }
 
 NetworkMonitor::~NetworkMonitor() {
@@ -148,7 +149,7 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
     portal_detector_->Reset();
   }
 
-  portal_detector_->Start(interface_, *ip_family, dns_list, logging_tag_);
+  portal_detector_->Start(*ip_family, dns_list);
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
   return true;
