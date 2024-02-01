@@ -14,6 +14,10 @@ that the UI thread is blocked.
 received for the previous call at this point, `session_manager` sends a
 `SIGABRT` signal to Chrome's browser process.
 
+On all channels except stable, D-Bus message timeout is set to 6s, with
+9 retries allowed for a total of 10 messages being sent before the browser
+reset.
+
 Chrome exports the `org.chromium.LivenessService` D-Bus service and replies
 immediately to `CheckLiveness` method calls.
 

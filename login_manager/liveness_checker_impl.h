@@ -24,6 +24,7 @@ class SafeFD;
 namespace dbus {
 class ObjectProxy;
 class Response;
+class ErrorResponse;
 }  // namespace dbus
 
 namespace login_manager {
@@ -41,6 +42,7 @@ class LivenessCheckerImpl : public LivenessChecker {
                       dbus::ObjectProxy* dbus_proxy,
                       bool enable_aborting,
                       base::TimeDelta interval,
+                      int retries,
                       LoginMetrics* metrics);
   LivenessCheckerImpl(const LivenessCheckerImpl&) = delete;
   LivenessCheckerImpl& operator=(const LivenessCheckerImpl&) = delete;
@@ -68,8 +70,12 @@ class LivenessCheckerImpl : public LivenessChecker {
 
  private:
   // Handle async response to liveness ping by setting last_ping_acked_,
-  // iff there is a successful response.
+  // iff there is a successful response. Otherwise dump browser state and try
+  // again.
   void HandleAck(dbus::Response* response);
+
+  // Send a LivenessCheck dbus message to the browser.
+  void SendPing(base::TimeDelta dbus_timeout);
 
   // Opens a file (like "status" or "wchan") in the browser's /proc directory.
   // Returns a SafeFD if successful, nothing on error. If there is an error,
@@ -104,6 +110,8 @@ class LivenessCheckerImpl : public LivenessChecker {
 
   bool enable_aborting_;
   const base::TimeDelta interval_;
+  const int retry_limit_;
+  int remaining_retries_ = 0;
   bool last_ping_acked_ = true;
   base::CancelableOnceClosure liveness_check_;
   base::TimeTicks ping_sent_;

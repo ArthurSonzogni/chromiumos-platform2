@@ -52,7 +52,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
     metrics_.reset(new MockMetrics());
 
     checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
-                                           true, base::Seconds(10),
+                                           true, base::Seconds(10), 0,
                                            metrics_.get()));
     base::FilePath fake_proc_path(tmpdir_.GetPath());
     checker_->SetProcForTests(std::move(fake_proc_path));
@@ -60,6 +60,11 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   void ExpectUnAckedLivenessPing() {
     EXPECT_CALL(*object_proxy_.get(), DoCallMethod(_, _, _)).Times(1);
+  }
+  void ExpectFailedPings(int count) {
+    EXPECT_CALL(*object_proxy_.get(), DoCallMethod(_, _, _))
+        .Times(count)
+        .WillRepeatedly(Invoke(this, &LivenessCheckerImplTest::Timeout));
   }
 
   // Expect two pings, the first with a response.
@@ -96,6 +101,11 @@ class LivenessCheckerImplTest : public ::testing::Test {
                dbus::ObjectProxy::ResponseCallback* callback) {
     std::move(*callback).Run(dbus::Response::CreateEmpty().get());
   }
+  void Timeout(dbus::MethodCall* method_call,
+               int timeout_ms,
+               dbus::ObjectProxy::ResponseCallback* callback) {
+    std::move(*callback).Run(nullptr);
+  }
 };
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
@@ -104,6 +114,24 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   // Expects one failure for the un-acked ping.
   EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/false)).Times(1);
 
+  EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
+  EXPECT_CALL(*manager_.get(), GetBrowserPid())
+      .WillRepeatedly(Return(std::nullopt));
+  checker_->CheckAndSendLivenessPing(TimeDelta());
+  fake_loop_.Run();  // Runs until the message loop is empty.
+}
+
+TEST_F(LivenessCheckerImplTest, CheckDbusRetries) {
+  int retry_count = 9;
+  checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
+                                         true, base::Seconds(10), retry_count,
+                                         metrics_.get()));
+  base::FilePath fake_proc_path(tmpdir_.GetPath());
+  checker_->SetProcForTests(std::move(fake_proc_path));
+
+  // retry_count + 1 dbus messages are expected, with only one real failure.
+  ExpectFailedPings(retry_count + 1);
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(false)).Times(1);
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(std::nullopt));
@@ -128,7 +156,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                          false,  // Disable aborting
-                                         base::Seconds(10), metrics_.get()));
+                                         base::Seconds(10), 0, metrics_.get()));
   base::FilePath fake_proc_path(tmpdir_.GetPath());
   checker_->SetProcForTests(std::move(fake_proc_path));
 

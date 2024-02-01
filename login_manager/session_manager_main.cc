@@ -106,11 +106,19 @@ constexpr char kFlagFileDir[] = "/run/session_manager";
 // Hang-detection magic file and constants.
 constexpr char kHangDetectionFlagFile[] = "enable_hang_detection";
 constexpr base::TimeDelta kHangDetectionInterval = base::Seconds(60);
+constexpr int kHangDetectionRetriesDev = 9;
+// TODO(b/324017835): Enable the retry mechanism on stable, after it sits for
+// a bit on beta/dev.
+constexpr int kHangDetectionRetriesStable = 0;
 constexpr base::TimeDelta kHangDetectionIntervalTest = base::Seconds(5);
+constexpr int kHangDetectionRetriesTest = 0;
 
 // Time to wait for children to exit gracefully before killing them
 // with a SIGABRT.
 constexpr base::TimeDelta kKillTimeout = base::Seconds(3);
+
+constexpr char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
+constexpr char kStableChannel[] = "stable-channel";
 
 }  // namespace
 
@@ -185,8 +193,17 @@ int main(int argc, char* argv[]) {
       !is_developer_end_user || hang_detection_file_exists;
 
   base::TimeDelta hang_detection_interval = kHangDetectionInterval;
-  if (hang_detection_file_exists)
+  int hang_detection_retires = kHangDetectionRetriesStable;
+  std::string channel_string;
+  if (base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack,
+                                        &channel_string) &&
+      channel_string != kStableChannel) {
+    hang_detection_retires = kHangDetectionRetriesDev;
+  }
+  if (hang_detection_file_exists) {
     hang_detection_interval = kHangDetectionIntervalTest;
+    hang_detection_retires = kHangDetectionRetriesTest;
+  }
 
   // Job configuration.
   BrowserJob::Config config;
@@ -260,7 +277,7 @@ int main(int argc, char* argv[]) {
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
       std::move(browser_job), uid, ns_path, kKillTimeout, enable_hang_detection,
-      hang_detection_interval, &metrics, &system);
+      hang_detection_interval, hang_detection_retires, &metrics, &system);
 
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.

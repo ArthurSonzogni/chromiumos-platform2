@@ -131,6 +131,7 @@ class SessionManagerService
                         base::TimeDelta kill_timeout,
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
+                        int hang_detection_retries,
                         LoginMetrics* metrics,
                         SystemUtils* system);
   SessionManagerService(const SessionManagerService&) = delete;
@@ -301,6 +302,7 @@ class SessionManagerService
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
+  const int liveness_checking_retries_;
   base::FilePath aborted_browser_pid_path_;
   base::FilePath shutdown_browser_pid_path_;
 

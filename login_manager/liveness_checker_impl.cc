@@ -41,13 +41,19 @@ LivenessCheckerImpl::LivenessCheckerImpl(
     dbus::ObjectProxy* dbus_proxy,
     bool enable_aborting,
     base::TimeDelta interval,
+    int retries,
     LoginMetrics* metrics)
     : manager_(manager),
       dbus_proxy_(dbus_proxy),
       proc_directory_("/proc"),
       enable_aborting_(enable_aborting),
       interval_(interval),
-      metrics_(metrics) {}
+      retry_limit_(retries),
+      metrics_(metrics) {
+  CHECK_GE(retries, 0);
+  base::TimeDelta dbus_timeout = interval / (retries + 1);
+  CHECK_GE(dbus_timeout.InMilliseconds(), 1);
+}
 
 LivenessCheckerImpl::~LivenessCheckerImpl() {
   Stop();
@@ -109,15 +115,9 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     }
   }
 
-  DVLOG(1) << "Sending a liveness ping to the browser.";
-  last_ping_acked_ = false;
   ping_sent_ = base::TimeTicks::Now();
-  dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
-                        chromeos::kLivenessServiceCheckLivenessMethod);
-  dbus_proxy_->CallMethod(&ping, interval.InMilliseconds(),
-                          base::BindOnce(&LivenessCheckerImpl::HandleAck,
-                                         weak_ptr_factory_.GetWeakPtr()));
-
+  remaining_retries_ = retry_limit_;
+  SendPing(interval_ / (retry_limit_ + 1));
   DVLOG(1) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
       base::BindOnce(&LivenessCheckerImpl::CheckAndSendLivenessPing,
@@ -127,12 +127,33 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 }
 
 void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
-  last_ping_acked_ = (response != nullptr);
+  base::TimeDelta response_time = base::TimeTicks::Now() - ping_sent_;
   if (response != nullptr) {
-    base::TimeDelta ping_response_time = base::TimeTicks::Now() - ping_sent_;
-    metrics_->SendLivenessPingResponseTime(ping_response_time);
+    last_ping_acked_ = true;
+    metrics_->SendLivenessPingResponseTime(response_time);
     metrics_->SendLivenessPingResult(/*success=*/true);
+    return;
   }
+  if (remaining_retries_) {
+    // TODO(b/324016659): Add browser state logging here.
+    // No point in logging additional data on last attempt, when the watchdog
+    // is about to fire.
+    remaining_retries_--;
+    base::TimeDelta dbus_timeout =
+        std::min(interval_ - response_time, interval_ / (retry_limit_ + 1));
+    if (dbus_timeout >= base::Milliseconds(1)) {
+      SendPing(dbus_timeout);
+    }
+  }
+}
+
+void LivenessCheckerImpl::SendPing(base::TimeDelta dbus_timeout) {
+  last_ping_acked_ = false;
+  dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
+                        chromeos::kLivenessServiceCheckLivenessMethod);
+  dbus_proxy_->CallMethod(&ping, dbus_timeout.InMilliseconds(),
+                          base::BindOnce(&LivenessCheckerImpl::HandleAck,
+                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {

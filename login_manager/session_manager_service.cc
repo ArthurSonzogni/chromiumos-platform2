@@ -153,6 +153,7 @@ SessionManagerService::SessionManagerService(
     base::TimeDelta kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
+    int hang_detection_retries,
     LoginMetrics* metrics,
     SystemUtils* utils)
     : browser_(std::move(child_job)),
@@ -171,6 +172,7 @@ SessionManagerService::SessionManagerService(
           utils, base::FilePath(kContainerInstallDirectory))),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
+      liveness_checking_retries_(hang_detection_retries),
       aborted_browser_pid_path_(kAbortedBrowserPidPath),
       shutdown_browser_pid_path_(kShutdownBrowserPidPath) {
   DCHECK(browser_);
@@ -223,7 +225,7 @@ bool SessionManagerService::Initialize() {
                            dbus::ObjectPath(chromeos::kLivenessServicePath));
   liveness_checker_.reset(new LivenessCheckerImpl(
       this, liveness_proxy, enable_browser_abort_on_hang_,
-      liveness_checking_interval_, login_metrics_));
+      liveness_checking_interval_, liveness_checking_retries_, login_metrics_));
 
 #if USE_ARC_ADB_SIDELOADING
   boot_lockbox_dbus_proxy_ = bus_->GetObjectProxy(
