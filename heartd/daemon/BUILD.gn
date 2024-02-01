@@ -38,6 +38,7 @@ if (use.test) {
       "database_test.cc",
       "heartbeat_manager_test.cc",
       "heartbeat_tracker_test.cc",
+      "heartd_test.cc",
     ]
     configs += [
       "//common-mk:test",

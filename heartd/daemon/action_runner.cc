@@ -69,10 +69,6 @@ void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
         LOG(WARNING) << "Heartd is not allowed to force reboot the device.";
         break;
       }
-      if (sysrq_fd_ == -1) {
-        LOG(ERROR) << "Heartd failed to open /proc/sysrq-trigger";
-        break;
-      }
       if (IsForceRebootTooManyTimes()) {
         LOG(WARNING) << "There are too many reboots, skip the action.";
         break;

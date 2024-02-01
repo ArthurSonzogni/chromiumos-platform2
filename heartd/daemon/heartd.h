@@ -32,6 +32,9 @@ class HeartdDaemon final : public brillo::DBusServiceDaemon {
   int OnEventLoopStarted() override;
 
  private:
+  friend class HeartdDaemonTest;
+
+ private:
   // For mojo thread initialization.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   // Databse.

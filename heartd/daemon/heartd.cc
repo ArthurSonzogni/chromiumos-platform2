@@ -33,6 +33,9 @@ int HeartdDaemon::OnEventLoopStarted() {
   if (exit_code != EX_OK) {
     return exit_code;
   }
+  if (sysrq_fd_ == -1) {
+    return EX_UNAVAILABLE;
+  }
 
   database_ = std::make_unique<Database>();
   database_->Init();
