@@ -155,7 +155,7 @@ void Database::InsertBootRecord(const BootRecord& boot_record) const {
   ExecResult result = ExecSQL(sql);
 
   if (result.code != SQLITE_OK) {
-    LOG(ERROR) << "Failed to delete outdated data: " << result.msg;
+    LOG(ERROR) << "Failed to insert boot record data: " << result.msg;
   }
 }
 
@@ -173,7 +173,7 @@ std::vector<BootRecord> Database::GetBootRecordFromTime(
   ExecResult result = ExecSQL(sql, GetBootRecordCallback, &boot_records);
 
   if (result.code != SQLITE_OK) {
-    LOG(ERROR) << "Failed to delete outdated data: " << result.msg;
+    LOG(ERROR) << "Failed to query boot record data: " << result.msg;
     return {};
   }
 
