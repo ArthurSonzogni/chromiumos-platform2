@@ -535,6 +535,15 @@ std::string GetDalvikMemoryProfileParam(
                             dalvik_memory_profile.c_str());
 }
 
+// Converts host ureadahead mode to androidboot property if applicable.
+std::string GetHostUreadaheadModeParam(
+    const std::string& host_ureadahead_mode) {
+  if (host_ureadahead_mode.empty())
+    return std::string();
+  return base::StringPrintf("androidboot.arc_host_ureadahead_mode=%s ",
+                            host_ureadahead_mode.c_str());
+}
+
 // Converts MediaStore maintenance bool to androidboot property if applicable.
 std::string GetDisableMediaStoreMaintenance(
     bool disable_media_store_maintenance) {
@@ -1332,8 +1341,7 @@ void ArcSetup::InstallLinksToHostSideCode() {
     if (!InstallLinksToHostSideCodeInternal(src_isa_directory,
                                             dest_directory.Append(isa), isa)) {
       LOG(ERROR) << "InstallLinksToHostSideCodeInternal() for " << isa
-                 << " failed. "
-                 << "Deleting container's /data/dalvik-cache...";
+                 << " failed. Deleting container's /data/dalvik-cache...";
       DeleteExecutableFilesInData(true, /* delete dalvik cache */
                                   false /* delete data app executables */);
       break;
@@ -1382,6 +1390,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
 
   PlayStoreAutoUpdate play_store_auto_update;
   std::string dalvik_memory_profile;
+  std::string host_ureadahead_mode;
 
   bool play_store_auto_update_on;
   // PLAY_AUTO_UPDATE forces Play Store auto-update feature to on or off. If not
@@ -1395,6 +1404,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   }
 
   config_.GetString("DALVIK_MEMORY_PROFILE", &dalvik_memory_profile);
+
+  config_.GetString("HOST_UREADAHEAD_MODE", &host_ureadahead_mode);
 
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
@@ -1463,6 +1474,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
             << (dalvik_memory_profile.empty() ? "default"
                                               : dalvik_memory_profile)
             << "\"";
+  LOG(INFO) << "host ureadahead mode is \""
+            << (host_ureadahead_mode.empty() ? "default" : host_ureadahead_mode)
+            << "\"";
 
   // Get the CLOCK_BOOTTIME offset and send it to the container as the at which
   // the container "booted". Given that there is no way to namespace time in
@@ -1507,7 +1521,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.arc.ureadahead_generation=%d "
       "%s" /* Use dev caches */
       "androidboot.enable_privacy_hub_for_chrome=%d "
-      "androidboot.arc.signed_in=%d\n",
+      "androidboot.arc.signed_in=%d "
+      "%s\n" /* Host ureadahead mode */,
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
@@ -1520,7 +1535,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       enable_notifications_refresh, enable_tts_caching,
       enable_consumer_auto_update_toggle, host_ureadahead_generation,
       GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome,
-      arc_signed_in);
+      arc_signed_in, GetHostUreadaheadModeParam(host_ureadahead_mode).c_str());
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
