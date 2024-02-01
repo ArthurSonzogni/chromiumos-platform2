@@ -15,7 +15,6 @@
 #include "dbus/mock_object_proxy.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "missive/util/status.h"
 #include "secagentd/device_user.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_batch_sender.h"
@@ -43,6 +42,7 @@ using BatchSenderType =
                                           pb::UserEventAtomicVariant>>;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
+constexpr char kUnknown[] = "Unknown";
 
 class AuthenticationPluginTestFixture : public ::testing::Test {
  protected:
@@ -185,11 +185,13 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   EXPECT_THAT(*expected_event, EqualsProto(*lock_event));
 
   // Unlock.
+  expected_event->Clear();
   unlocked_cb_.Run();
   expected_event->mutable_unlock()->mutable_authentication()->add_auth_factor(
       AuthFactorType::Authentication_AuthenticationType_AUTH_PIN);
   expected_event->mutable_common()->set_create_timestamp_us(
       unlock_event->common().create_timestamp_us());
+  expected_event->mutable_common()->set_device_user(kDeviceUser);
   EXPECT_THAT(*expected_event, EqualsProto(*unlock_event));
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
@@ -200,10 +202,13 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
-      .Times(2)
-      .WillRepeatedly(WithArg<0>(Invoke(
+      .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
             std::move(cb).Run(kDeviceUser);
+          })))
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run("");
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
@@ -243,8 +248,10 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
             GetAuthFactor());
 
   // Logoff.
+  expected_event->Clear();
   state_changed_cb_.Run(kStopped);
   expected_event->mutable_logoff();
+  expected_event->mutable_common()->set_device_user(kUnknown);
   expected_event->mutable_common()->set_create_timestamp_us(
       logout_event->common().create_timestamp_us());
   expected_event->mutable_common()->set_device_user(kDeviceUser);
@@ -286,6 +293,7 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
             login_event->logon().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
+  EXPECT_EQ(kDeviceUser, login_event->common().device_user());
 
   // Unlock.
   auto unlock_event = std::make_unique<pb::UserEventAtomicVariant>();
@@ -308,6 +316,7 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
             unlock_event->unlock().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
+  EXPECT_EQ(kDeviceUser, unlock_event->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
@@ -315,8 +324,11 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
-      .Times(2)
-      .WillRepeatedly(WithArg<0>(Invoke(
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run("");
+          })))
+      .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
             std::move(cb).Run(kDeviceUser);
           })));
@@ -366,6 +378,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
             failure_event->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(2, failure_event->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event->common().device_user());
 
   // Success.
   ASSERT_EQ(1, login_event->logon().authentication().auth_factor_size());
@@ -373,6 +386,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
             login_event->logon().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
+  EXPECT_EQ(kDeviceUser, login_event->common().device_user());
 }
 
 // When a pin is incorrectly entered two Auth signals are sent on the
@@ -475,6 +489,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenLogin) {
             login_event->logon().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
+  EXPECT_EQ(kDeviceUser, login_event->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, FailedLockscreenDelayBetweenAttempts) {
@@ -562,7 +577,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
       .Times(1)
       .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+            std::move(cb).Run("");
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
@@ -599,6 +614,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
             failure_event->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(3, failure_event->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
@@ -606,10 +622,17 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
-      .Times(3)
-      .WillRepeatedly(WithArg<0>(Invoke(
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run("");
+          })))
+      .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
             std::move(cb).Run(kDeviceUser);
+          })))
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run("");
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
@@ -673,11 +696,13 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
             failure_event_1->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(2,
             failure_event_1->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event_1->common().device_user());
 
   // Success.
   ASSERT_EQ(1, login_event->logon().authentication().auth_factor_size());
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
             login_event->logon().authentication().auth_factor()[0]);
+  EXPECT_EQ(kDeviceUser, login_event->common().device_user());
 
   // Failure 2.
   ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
@@ -685,6 +710,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
             failure_event_2->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(1,
             failure_event_2->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event_2->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
@@ -695,7 +721,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
       .Times(2)
       .WillRepeatedly(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+            std::move(cb).Run("");
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
@@ -745,6 +771,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
             failure_event_1->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(2,
             failure_event_1->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event_1->common().device_user());
 
   // Failure 2.
   ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
@@ -752,6 +779,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
             failure_event_2->failure().authentication().auth_factor()[0]);
   EXPECT_EQ(1,
             failure_event_2->failure().authentication().num_failed_attempts());
+  EXPECT_EQ(kUnknown, failure_event_2->common().device_user());
 }
 
 TEST_F(AuthenticationPluginTestFixture, TestSecagentdRestart) {

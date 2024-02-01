@@ -379,6 +379,13 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
         pair.value().first,
         static_cast<metrics::AuthFactor>(pair.value().second));
   }
+
+  // TODO(b/322290467): 3P needs the device_user to always be filled for
+  // authentication events. If there is no device user fill it with "Unknown" as
+  // a temporary solution until the actual user can be filled.
+  if (atomic_event->common().device_user().empty()) {
+    atomic_event->mutable_common()->set_device_user("Unknown");
+  }
   batch_sender_->Enqueue(std::move(atomic_event));
 }
 
