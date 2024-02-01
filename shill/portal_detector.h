@@ -221,10 +221,11 @@ class PortalDetector {
     // and |https_duration| values are ignored in the comparison.
     bool operator==(const Result& rhs) const;
   };
+  using ResultCallback = base::RepeatingCallback<void(const Result&)>;
 
   PortalDetector(EventDispatcher* dispatcher,
                  const ProbingConfiguration& probing_configuration,
-                 base::RepeatingCallback<void(const Result&)> callback);
+                 ResultCallback callback);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
 
@@ -239,17 +240,17 @@ class PortalDetector {
                       const std::vector<net_base::IPAddress>& dns_list,
                       const std::string& logging_tag);
 
-  // End the current portal detection process if one exists, and do not call
-  // the callback.
-  mockable void Stop();
+  // Resets the instance to initial state. If the portal detection attempt is
+  // running, then stop it and do not call the callback.
+  mockable void Reset();
 
-  // Returns whether portal request is "in progress".
-  mockable bool IsInProgress() const;
+  // Returns whether a portal detection attempt is running.
+  mockable bool IsRunning() const;
 
-  // Return |logging_tag_| appended with the |attempt_count_|.
+  // Returns |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
 
-  // Return the total number of detection attempts scheduled so far.
+  // Returns the total number of detection attempts scheduled so far.
   int attempt_count() const { return attempt_count_; }
 
   // To use in unit tests only.
@@ -259,10 +260,6 @@ class PortalDetector {
   }
 
  protected:
-  base::RepeatingCallback<void(const Result&)>& portal_result_callback() {
-    return portal_result_callback_;
-  }
-
   // Can be overwritten in tests;
   mockable std::unique_ptr<HttpRequest> CreateHTTPRequest(
       const std::string& ifname,
@@ -310,9 +307,14 @@ class PortalDetector {
   std::optional<size_t> GetContentLength(
       brillo::http::Response* response) const;
 
+  // These instances are not changed during the whole lifetime.
   EventDispatcher* dispatcher_;
+  ProbingConfiguration probing_configuration_;
+  ResultCallback portal_result_callback_;
+
   std::string logging_tag_;
-  bool is_active_ = false;
+
+  bool is_running_ = false;
   // The total number of detection attempts scheduled so far. Only used in logs
   // for debugging purposes, and for selecting the URL of detection and
   // validation probes.
@@ -320,7 +322,6 @@ class PortalDetector {
   // Timestamp updated when StartTrialTask runs and used to determine when to
   // schedule the next portal detection attempt after this one.
   base::TimeTicks last_attempt_start_time_;
-  base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   // PortalDetector::Result for the current on-going attempt. Undefined if there
@@ -332,7 +333,6 @@ class PortalDetector {
   std::optional<Result> previous_result_ = std::nullopt;
   net_base::HttpUrl http_url_;
   net_base::HttpUrl https_url_;
-  ProbingConfiguration probing_configuration_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 

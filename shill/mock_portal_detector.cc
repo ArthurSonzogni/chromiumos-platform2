@@ -4,12 +4,19 @@
 
 #include "shill/mock_portal_detector.h"
 
+#include <utility>
+
 namespace shill {
 
-MockPortalDetector::MockPortalDetector()
-    : PortalDetector(nullptr, {}, base::DoNothing()) {}
+MockPortalDetector::MockPortalDetector(ResultCallback callback)
+    : PortalDetector(nullptr, {}, base::DoNothing()),
+      callback_(std::move(callback)) {}
 
 MockPortalDetector::~MockPortalDetector() = default;
+
+void MockPortalDetector::SendResult(const Result& result) {
+  callback_.Run(result);
+}
 
 MockPortalDetectorFactory::MockPortalDetectorFactory() = default;
 

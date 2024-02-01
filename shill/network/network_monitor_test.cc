@@ -64,7 +64,14 @@ class NetworkMonitorTest : public ::testing::Test {
   NetworkMonitorTest() {
     auto mock_portal_detector_factory =
         std::make_unique<MockPortalDetectorFactory>();
-    mock_portal_detector_factory_ = mock_portal_detector_factory.get();
+    EXPECT_CALL(*mock_portal_detector_factory, Create)
+        .WillOnce(testing::WithArg<2>(
+            [this](PortalDetector::ResultCallback callback) {
+              auto portal_detector =
+                  std::make_unique<MockPortalDetector>(std::move(callback));
+              mock_portal_detector_ = portal_detector.get();
+              return portal_detector;
+            }));
 
     auto mock_validation_log = std::make_unique<MockValidationLog>();
     mock_validation_log_ = mock_validation_log.get();
@@ -119,20 +126,11 @@ class NetworkMonitorTest : public ::testing::Test {
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
       const PortalDetector::Result& result) {
-    EXPECT_CALL(*mock_portal_detector_factory_,
-                Create(&dispatcher_, probing_configuration_, _))
-        .WillOnce(WithArg<2>([&](base::RepeatingCallback<void(
-                                     const PortalDetector::Result&)> callback) {
-          auto portal_detector = std::make_unique<MockPortalDetector>();
-          EXPECT_CALL(*portal_detector,
-                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                            Eq(kLoggingTag)))
-              .WillOnce([&, callback = std::move(callback)]() {
-                dispatcher_.PostTask(FROM_HERE,
-                                     base::BindOnce(callback, result));
-              });
-          return portal_detector;
-        }));
+    EXPECT_CALL(*mock_portal_detector_,
+                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                      Eq(kLoggingTag)))
+        .WillOnce(
+            [this, result]() { mock_portal_detector_->SendResult(result); });
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
     EXPECT_CALL(client_,
                 OnNetworkMonitorResult(
@@ -153,8 +151,7 @@ class NetworkMonitorTest : public ::testing::Test {
   net_base::NetworkConfig config_;
   MockClient client_;
   std::unique_ptr<NetworkMonitor> network_monitor_;
-  MockPortalDetectorFactory*
-      mock_portal_detector_factory_;  // Owned by |network_monitor_|.
+  MockPortalDetector* mock_portal_detector_;  // Owned by |network_monitor_|.
   MockConnectionDiagnosticsFactory*
       mock_connection_diagnostics_factory_;  // Owned by |network_monitor_|.
   MockValidationLog* mock_validation_log_;   // Owned by |network_monitor_|.
@@ -170,19 +167,18 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
   };
 
   for (const auto reason : reasons) {
-    EXPECT_CALL(*mock_portal_detector_factory_,
-                Create(&dispatcher_, probing_configuration_, _))
-        .WillOnce([]() {
-          auto portal_detector = std::make_unique<MockPortalDetector>();
-          EXPECT_CALL(*portal_detector,
-                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                            Eq(kLoggingTag)))
-              .Times(1);
-          return portal_detector;
-        });
+    EXPECT_CALL(*mock_portal_detector_,
+                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                      Eq(kLoggingTag)))
+        .Times(1);
+    EXPECT_CALL(client_, OnValidationStarted(true)).Times(1);
 
-    StartAndExpectResult(reason, true);
-    network_monitor_->Stop();
+    // NetworkMonitor::Start() should schedule PortalDetector::Start()
+    // immediately (i.e. delay=0).
+    network_monitor_->Start(reason);
+    EXPECT_TRUE(task_environment_.NextMainThreadPendingTaskDelay().is_zero());
+
+    task_environment_.RunUntilIdle();
   }
 }
 
@@ -197,21 +193,12 @@ TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
   const NetworkMonitor::ValidationReason reasons[] = {
       NetworkMonitor::ValidationReason::kNetworkConnectionUpdate};
 
-  auto portal_detector = std::make_unique<MockPortalDetector>();
-  network_monitor_->set_portal_detector_for_testing(std::move(portal_detector));
-
   for (const auto reason : reasons) {
-    EXPECT_CALL(*mock_portal_detector_factory_,
-                Create(&dispatcher_, probing_configuration_, _))
-        .WillOnce([]() {
-          auto portal_detector = std::make_unique<MockPortalDetector>();
-          EXPECT_CALL(*portal_detector,
-                      Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
-                            Eq(kLoggingTag)))
-              .Times(1);
-          return portal_detector;
-        });
-
+    EXPECT_CALL(*mock_portal_detector_, Reset).Times(1);
+    EXPECT_CALL(*mock_portal_detector_,
+                Start(Eq(kInterface), net_base::IPFamily::kIPv4, kDnsList,
+                      Eq(kLoggingTag)))
+        .Times(1);
     StartAndExpectResult(reason, true);
   }
 }

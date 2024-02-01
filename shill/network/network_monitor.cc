@@ -94,10 +94,14 @@ NetworkMonitor::NetworkMonitor(
       logging_tag_(std::string(logging_tag)),
       probing_configuration_(probing_configuration),
       trial_scheduler_(dispatcher),
-      portal_detector_factory_(std::move(portal_detector_factory)),
       validation_log_(std::move(network_validation_log)),
       connection_diagnostics_factory_(
-          std::move(connection_diagnostics_factory)) {}
+          std::move(connection_diagnostics_factory)) {
+  portal_detector_ = portal_detector_factory->Create(
+      dispatcher_, probing_configuration_,
+      base::BindRepeating(&NetworkMonitor::OnPortalDetectorResult,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
 
 NetworkMonitor::~NetworkMonitor() {
   StopNetworkValidationLog();
@@ -140,15 +144,8 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
     return false;
   }
 
-  // Create a new PortalDetector instance and start the portal detection if:
-  //   - has not been initialized yet,
-  //   - or has stopped,
-  //   - or should be reset immediately entirely.
-  if (!portal_detector_ || ShouldResetNetworkValidation(reason)) {
-    portal_detector_ = portal_detector_factory_->Create(
-        dispatcher_, probing_configuration_,
-        base::BindRepeating(&NetworkMonitor::OnPortalDetectorResult,
-                            weak_ptr_factory_.GetWeakPtr()));
+  if (ShouldResetNetworkValidation(reason)) {
+    portal_detector_->Reset();
   }
 
   portal_detector_->Start(interface_, *ip_family, dns_list, logging_tag_);
@@ -158,15 +155,13 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
 }
 
 bool NetworkMonitor::Stop() {
-  if (!portal_detector_) {
-    return false;
-  }
-  portal_detector_.reset();
-  return true;
+  const bool was_running = portal_detector_->IsRunning();
+  portal_detector_->Reset();
+  return was_running;
 }
 
 bool NetworkMonitor::IsRunning() const {
-  return portal_detector_ != nullptr;
+  return portal_detector_->IsRunning();
 }
 
 void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,

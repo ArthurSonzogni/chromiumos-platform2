@@ -181,14 +181,15 @@ class NetworkMonitor {
   Metrics* metrics_;
   ClientNetwork* client_;
 
+  // These instances are not changed during the whole lifetime.
   Technology technology_;
   int interface_index_;
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
 
+  // The lifetime of these instances are the same as the NetworkMonitor.
   TrialScheduler trial_scheduler_;
-  std::unique_ptr<PortalDetectorFactory> portal_detector_factory_;
   std::unique_ptr<PortalDetector> portal_detector_;
 
   std::unique_ptr<ValidationLog> validation_log_;

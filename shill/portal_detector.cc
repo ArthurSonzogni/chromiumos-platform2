@@ -69,14 +69,12 @@ PortalDetector::DefaultProbingConfiguration() {
 PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
     const ProbingConfiguration& probing_configuration,
-    base::RepeatingCallback<void(const Result&)> callback)
+    ResultCallback callback)
     : dispatcher_(dispatcher),
-      portal_result_callback_(callback),
-      probing_configuration_(probing_configuration) {}
+      probing_configuration_(probing_configuration),
+      portal_result_callback_(callback) {}
 
-PortalDetector::~PortalDetector() {
-  Stop();
-}
+PortalDetector::~PortalDetector() = default;
 
 const net_base::HttpUrl& PortalDetector::PickProbeUrl(
     const net_base::HttpUrl& default_url,
@@ -102,7 +100,7 @@ void PortalDetector::Start(const std::string& ifname,
                            net_base::IPFamily ip_family,
                            const std::vector<net_base::IPAddress>& dns_list,
                            const std::string& logging_tag) {
-  if (IsInProgress()) {
+  if (IsRunning()) {
     LOG(INFO) << LoggingTag() << ": Attempt is already running";
     return;
   }
@@ -137,7 +135,7 @@ void PortalDetector::Start(const std::string& ifname,
   attempt_count_++;
   result_ = Result();
   result_->num_attempts = attempt_count_;
-  is_active_ = true;
+  is_running_ = true;
   last_attempt_start_time_ = base::TimeTicks::Now();
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
@@ -164,10 +162,10 @@ void PortalDetector::CleanupTrial() {
   result_ = std::nullopt;
   http_request_.reset();
   https_request_.reset();
-  is_active_ = false;
+  is_running_ = false;
 }
 
-void PortalDetector::Stop() {
+void PortalDetector::Reset() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
   previous_result_ = std::nullopt;
@@ -232,8 +230,8 @@ void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
   StopTrialIfComplete(*result_);
 }
 
-bool PortalDetector::IsInProgress() const {
-  return is_active_;
+bool PortalDetector::IsRunning() const {
+  return is_running_;
 }
 
 std::optional<size_t> PortalDetector::GetContentLength(

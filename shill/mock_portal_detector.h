@@ -17,7 +17,7 @@ namespace shill {
 
 class MockPortalDetector : public PortalDetector {
  public:
-  MockPortalDetector();
+  explicit MockPortalDetector(ResultCallback callback);
   MockPortalDetector(const MockPortalDetector&) = delete;
   MockPortalDetector& operator=(const MockPortalDetector&) = delete;
   ~MockPortalDetector() override;
@@ -29,8 +29,13 @@ class MockPortalDetector : public PortalDetector {
                const std::vector<net_base::IPAddress>&,
                const std::string& logging_tag),
               (override));
-  MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(bool, IsInProgress, (), (const, override));
+  MOCK_METHOD(void, Reset, (), (override));
+  MOCK_METHOD(bool, IsRunning, (), (const, override));
+
+  void SendResult(const Result& result);
+
+ private:
+  ResultCallback callback_;
 };
 
 class MockPortalDetectorFactory : public PortalDetectorFactory {
@@ -42,7 +47,7 @@ class MockPortalDetectorFactory : public PortalDetectorFactory {
               Create,
               (EventDispatcher*,
                const PortalDetector::ProbingConfiguration&,
-               base::RepeatingCallback<void(const PortalDetector::Result&)>),
+               PortalDetector::ResultCallback),
               (override));
 };
 

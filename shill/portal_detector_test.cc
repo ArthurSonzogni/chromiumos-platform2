@@ -203,7 +203,7 @@ class PortalDetectorTest : public Test {
   }
 
   void ExpectCleanupTrial() {
-    EXPECT_FALSE(portal_detector_->IsInProgress());
+    EXPECT_FALSE(portal_detector_->IsRunning());
     EXPECT_EQ(nullptr, portal_detector_->http_request_);
     EXPECT_EQ(nullptr, portal_detector_->https_request_);
   }
@@ -262,7 +262,7 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
   portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
-  portal_detector->Stop();
+  portal_detector->Reset();
 }
 
 TEST_F(PortalDetectorTest, UseCustomCertificates) {
@@ -287,7 +287,7 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
   portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
-  portal_detector->Stop();
+  portal_detector->Reset();
 }
 
 TEST_F(PortalDetectorTest, Constructor) {
@@ -296,11 +296,11 @@ TEST_F(PortalDetectorTest, Constructor) {
 
 TEST_F(PortalDetectorTest, IsInProgress) {
   // Before the trial is started, should not be active.
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
 
   // Once the trial is started, IsInProgress should return true.
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector()->IsInProgress());
+  EXPECT_TRUE(portal_detector()->IsRunning());
 
   // Finish the trial, IsInProgress should return false.
   const PortalDetector::Result result = {
@@ -317,7 +317,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 }
 
 TEST_F(PortalDetectorTest, Restart) {
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
 
   EXPECT_EQ(0, portal_detector()->attempt_count());
   StartPortalRequest();
@@ -333,7 +333,7 @@ TEST_F(PortalDetectorTest, Restart) {
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Stop();
+  portal_detector()->Reset();
   ExpectReset();
 }
 
@@ -341,7 +341,7 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
   const std::optional<net_base::HttpUrl> probe_url =
       *net_base::HttpUrl::CreateFromString(kHttpUrl);
 
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   StartPortalRequest();
   EXPECT_EQ(1, portal_detector()->attempt_count());
@@ -356,7 +356,7 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Stop();
+  portal_detector()->Reset();
   ExpectReset();
 }
 
@@ -364,7 +364,7 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
   const std::optional<net_base::HttpUrl> probe_url =
       *net_base::HttpUrl::CreateFromString(kHttpUrl);
 
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   StartPortalRequest();
   EXPECT_EQ(1, portal_detector()->attempt_count());
@@ -390,27 +390,27 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Stop();
+  portal_detector()->Reset();
   ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
 
   EXPECT_EQ(0, portal_detector()->attempt_count());
   StartPortalRequest();
   EXPECT_EQ(1, portal_detector()->attempt_count());
-  EXPECT_TRUE(portal_detector()->IsInProgress());
+  EXPECT_TRUE(portal_detector()->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
   portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
                           {kDNSServer0, kDNSServer1}, "tag");
   EXPECT_EQ(1, portal_detector()->attempt_count());
-  EXPECT_TRUE(portal_detector()->IsInProgress());
+  EXPECT_TRUE(portal_detector()->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
-  portal_detector()->Stop();
+  portal_detector()->Reset();
   ExpectReset();
 }
 
@@ -425,7 +425,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
             result.GetValidationState());
 
   // The 1st attempt uses the default probing URLs.
-  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_FALSE(portal_detector()->IsRunning());
   StartPortalRequest();
   EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
   EXPECT_EQ(portal_detector()->https_url_.ToString(), kHttpsUrl);
@@ -459,7 +459,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     Mock::VerifyAndClearExpectations(&callback_target_);
   }
 
-  portal_detector()->Stop();
+  portal_detector()->Reset();
   ExpectReset();
 }
 
@@ -467,7 +467,7 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   StartPortalRequest();
 
   EXPECT_CALL(callback_target(), ResultCallback).Times(0);
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
 
@@ -510,7 +510,7 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
             result.GetValidationState());
 
   EXPECT_CALL(callback_target(), ResultCallback(Eq(result))).Times(0);
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
 
@@ -537,7 +537,7 @@ TEST_F(PortalDetectorTest, RequestHTTPSuccessHTTPSFailure) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(204);
@@ -563,7 +563,7 @@ TEST_F(PortalDetectorTest, RequestFail) {
             result.GetValidationState());
 
   EXPECT_CALL(callback_target(), ResultCallback(Eq(result))).Times(0);
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
 
@@ -579,7 +579,7 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   StartPortalRequest();
 
   EXPECT_CALL(callback_target(), ResultCallback).Times(0);
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
   HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
@@ -599,7 +599,7 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   StartPortalRequest();
 
   EXPECT_CALL(callback_target(), ResultCallback).Times(0);
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
   HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
@@ -623,7 +623,7 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
 
 TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
   result.https_result = PortalDetector::ProbeResult::kNoResult;
@@ -644,7 +644,7 @@ TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
 
 TEST_F(PortalDetectorTest, Request200AndInvalidContentLength) {
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
@@ -668,7 +668,7 @@ TEST_F(PortalDetectorTest, Request200AndInvalidContentLength) {
 
 TEST_F(PortalDetectorTest, Request200WithoutContent) {
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
@@ -692,7 +692,7 @@ TEST_F(PortalDetectorTest, Request200WithoutContent) {
 
 TEST_F(PortalDetectorTest, Request200WithContent) {
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
@@ -716,7 +716,7 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
 
 TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector_->IsInProgress());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
