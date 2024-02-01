@@ -149,13 +149,17 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   void InvokeSuccessCb(const base::FilePath& dlc_root_path) {
-    if (dlc_root_path_cb_)
+    if (dlc_root_path_cb_) {
       std::move(dlc_root_path_cb_).Run(dlc_root_path);
+      error_cb_.Reset();
+    }
   }
 
   void InvokeErrorCb(const std::string& error_msg) {
-    if (error_cb_)
+    if (error_cb_) {
       std::move(error_cb_).Run(error_msg);
+      dlc_root_path_cb_.Reset();
+    }
   }
 
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
