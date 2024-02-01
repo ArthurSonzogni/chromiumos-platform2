@@ -23,6 +23,11 @@
 
 namespace patchpanel {
 
+constexpr std::string_view kMdnsMcastAddrString = "224.0.0.251";
+constexpr std::string_view kSsdpMcastAddrString = "239.255.255.250";
+constexpr std::string_view kMdnsMcastAddr6String = "ff02::fb";
+constexpr std::string_view kSsdpMcastAddr6String = "ff05::c";
+
 // This class manages the iptables rules for multicast packet counters, and
 // queries iptables to get the counters when a request comes. This class will
 // set up several iptable rules to track the counters for each possible

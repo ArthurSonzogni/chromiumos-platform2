@@ -16,7 +16,6 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
-#include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -98,29 +97,29 @@ void MulticastCountersService::Start() {
                               Iptables::Command::kI, "rx_wifi_" + protocol,
                               {"-w"});
   }
-  std::vector<std::string> args;
-  args = {"-d",      kMdnsMcastAddress.ToString(),
+  std::vector<std::string_view> args;
+  args = {"-d",      kMdnsMcastAddrString,
           "-p",      "udp",
           "--dport", "5353",
           "-j",      "rx_mdns",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
                             Iptables::Command::kA, "INPUT", args);
-  args = {"-d",      kSsdpMcastAddress.ToString(),
+  args = {"-d",      kSsdpMcastAddrString,
           "-p",      "udp",
           "--dport", "1900",
           "-j",      "rx_ssdp",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
                             Iptables::Command::kA, "INPUT", args);
-  args = {"-d",      kMdnsMcastAddress6.ToString(),
+  args = {"-d",      kMdnsMcastAddr6String,
           "-p",      "udp",
           "--dport", "5353",
           "-j",      "rx_mdns",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
                             Iptables::Command::kA, "INPUT", args);
-  args = {"-d",      kSsdpMcastAddress6.ToString(),
+  args = {"-d",      kSsdpMcastAddr6String,
           "-p",      "udp",
           "--dport", "1900",
           "-j",      "rx_ssdp",
@@ -133,29 +132,29 @@ void MulticastCountersService::Stop() {
   auto batch_mode =
       MinijailedProcessRunner::GetInstance()->AcquireIptablesBatchMode();
 
-  std::vector<std::string> args;
-  args = {"-d",      kMdnsMcastAddress.ToString(),
+  std::vector<std::string_view> args;
+  args = {"-d",      kMdnsMcastAddrString,
           "-p",      "udp",
           "--dport", "5353",
           "-j",      "rx_mdns",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
                             Iptables::Command::kD, "INPUT", args);
-  args = {"-d",      kSsdpMcastAddress.ToString(),
+  args = {"-d",      kSsdpMcastAddrString,
           "-p",      "udp",
           "--dport", "1900",
           "-j",      "rx_ssdp",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv4, Iptables::Table::kMangle,
                             Iptables::Command::kD, "INPUT", args);
-  args = {"-d",      kMdnsMcastAddress6.ToString(),
+  args = {"-d",      kMdnsMcastAddr6String,
           "-p",      "udp",
           "--dport", "5353",
           "-j",      "rx_mdns",
           "-w"};
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
                             Iptables::Command::kD, "INPUT", args);
-  args = {"-d",      kSsdpMcastAddress6.ToString(),
+  args = {"-d",      kSsdpMcastAddr6String,
           "-p",      "udp",
           "--dport", "1900",
           "-j",      "rx_ssdp",
@@ -211,11 +210,11 @@ void MulticastCountersService::OnPhysicalDeviceRemoved(
 void MulticastCountersService::SetupJumpRules(Iptables::Command command,
                                               std::string_view ifname,
                                               std::string_view technology) {
-  std::vector<std::string> args;
-  for (const std::string& protocol : {"mdns", "ssdp"}) {
-    std::string chain = "rx_" + protocol;
-    args = {"-i", ifname.data(), "-j",
-            base::JoinString({"rx_", technology, "_", protocol}, ""), "-w"};
+  std::vector<std::string_view> args;
+  for (std::string_view protocol : {"mdns", "ssdp"}) {
+    std::string chain = base::StrCat({"rx_", protocol});
+    std::string rule = base::StrCat({"rx_", technology, "_", protocol});
+    args = {"-i", ifname, "-j", rule, "-w"};
     if (!datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                    command, chain, args)) {
       LOG(ERROR) << "Failed to add multicast iptables counter rules for "

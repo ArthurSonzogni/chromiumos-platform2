@@ -153,17 +153,16 @@ class Datapath {
   // |netns_pid|. If |netns_pid| is -1, a new namespace with name |netns_name|
   // will be created instead. If |netns_name| had already been created, it will
   // be deleted first.
-  virtual bool NetnsAttachName(const std::string& netns_name, pid_t netns_pid);
+  virtual bool NetnsAttachName(std::string_view netns_name, pid_t netns_pid);
 
   // Deletes the name |netns_name| of a network namespace.
-  virtual bool NetnsDeleteName(const std::string& netns_name);
+  virtual bool NetnsDeleteName(std::string_view netns_name);
 
-  virtual bool AddBridge(const std::string& ifname,
+  virtual bool AddBridge(std::string_view ifname,
                          const net_base::IPv4CIDR& cidr);
-  virtual void RemoveBridge(const std::string& ifname);
+  virtual void RemoveBridge(std::string_view ifname);
 
-  virtual bool AddToBridge(const std::string& br_ifname,
-                           const std::string& ifname);
+  virtual bool AddToBridge(std::string_view br_ifname, std::string_view ifname);
 
   // Adds a new TUN device or a TAP device.
   // |name| may be empty, in which case a default device name will be used;
@@ -174,12 +173,12 @@ class Datapath {
   // later bridged.
   // If |user| is empty, no owner will be set.
   virtual std::string AddTunTap(
-      const std::string& name,
+      std::string_view name,
       const std::optional<net_base::MacAddress>& mac_addr,
       const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
-      const std::string& user,
+      std::string_view user,
       DeviceMode dev_mode);
-  virtual void RemoveTunTap(const std::string& ifname, DeviceMode dev_mode);
+  virtual void RemoveTunTap(std::string_view ifname, DeviceMode dev_mode);
 
   // The following are iptables methods.
   // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)
@@ -190,9 +189,9 @@ class Datapath {
   // |peer_ifname| according // to the given parameters.
   virtual bool ConnectVethPair(
       pid_t pid,
-      const std::string& netns_name,
-      const std::string& veth_ifname,
-      const std::string& peer_ifname,
+      std::string_view netns_name,
+      std::string_view veth_ifname,
+      std::string_view peer_ifname,
       net_base::MacAddress remote_mac_addr,
       const net_base::IPv4CIDR& remote_ipv4_cidr,
       const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
@@ -201,14 +200,14 @@ class Datapath {
   // Disable and re-enable IPv6.
   virtual void RestartIPv6();
 
-  virtual void RemoveInterface(const std::string& ifname);
+  virtual void RemoveInterface(std::string_view ifname);
 
   // Create an OUTPUT DROP rule for any locally originated traffic
   // whose src IPv4 matches |src_ip| and would exit |oif|. This is mainly used
   // for dropping Chrome webRTC traffic incorrectly bound on ARC and other
   // guests virtual interfaces (chromium:898210).
-  virtual bool AddSourceIPv4DropRule(const std::string& oif,
-                                     const std::string& src_ip);
+  virtual bool AddSourceIPv4DropRule(std::string_view oif,
+                                     std::string_view src_ip);
 
   // Creates a virtual ethernet interface pair shared with the client namespace
   // of |nsinfo.pid| and sets up routing outside and inside the client namespace
@@ -232,7 +231,7 @@ class Datapath {
   // IPv6 SNAT and IPv6 forwarding is optionally set up depending on
   // |static_ipv6|.
   virtual void StartRoutingDevice(const ShillClient::Device& shill_device,
-                                  const std::string& int_ifname,
+                                  std::string_view int_ifname,
                                   TrafficSource source,
                                   bool static_ipv6 = false);
 
@@ -243,7 +242,7 @@ class Datapath {
   // ignores VPN connections.
   // IPv6 SNAT and IPv6 forwarding is optionally set up depending on
   // |static_ipv6|.
-  void StartRoutingDeviceAsSystem(const std::string& int_ifname,
+  void StartRoutingDeviceAsSystem(std::string_view int_ifname,
                                   TrafficSource source,
                                   bool static_ipv6 = false);
 
@@ -260,7 +259,7 @@ class Datapath {
   // IPv6 SNAT, IPv6 forwarding, and IPv6 VPN fwmark tagging bypass rule are
   // optionally set up depending on |int_ipv6_addr| and |peer_ipv6_addr|.
   virtual void StartRoutingDeviceAsUser(
-      const std::string& int_ifname,
+      std::string_view int_ifname,
       TrafficSource source,
       const net_base::IPv4Address& int_ipv4_addr,
       std::optional<net_base::IPv4Address> peer_ipv4_addr = std::nullopt,
@@ -269,7 +268,7 @@ class Datapath {
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
   // given downstream network interface |int_ifname| associated to |source|.
-  virtual void StopRoutingDevice(const std::string& int_ifname,
+  virtual void StopRoutingDevice(std::string_view int_ifname,
                                  TrafficSource source);
 
   // Starts or stops marking conntrack entries routed to |shill_device| with its
@@ -317,12 +316,12 @@ class Datapath {
   virtual void StopDownstreamNetwork(const DownstreamNetworkInfo& info);
 
   // Methods supporting IPv6 configuration for ARC.
-  virtual bool MaskInterfaceFlags(const std::string& ifname,
+  virtual bool MaskInterfaceFlags(std::string_view ifname,
                                   uint16_t on,
                                   uint16_t off = 0);
 
   virtual bool AddIPv6HostRoute(
-      const std::string& ifname,
+      std::string_view ifname,
       const net_base::IPv6CIDR& ipv6_cidr,
       const std::optional<net_base::IPv6Address>& src_addr = std::nullopt);
   virtual void RemoveIPv6HostRoute(const net_base::IPv6CIDR& ipv6_cidr);
@@ -330,21 +329,21 @@ class Datapath {
   // Add an 'ip -6 neigh proxy' entry so that |ipv6_addr| is resolvable into MAC
   // by neighbors from |ifname|, though itself is actually configured on a
   // different interface.
-  virtual bool AddIPv6NeighborProxy(const std::string& ifname,
+  virtual bool AddIPv6NeighborProxy(std::string_view ifname,
                                     const net_base::IPv6Address& ipv6_addr);
-  virtual void RemoveIPv6NeighborProxy(const std::string& ifname,
+  virtual void RemoveIPv6NeighborProxy(std::string_view ifname,
                                        const net_base::IPv6Address& ipv6_addr);
 
-  virtual bool AddIPv6Address(const std::string& ifname,
-                              const std::string& ipv6_addr);
-  virtual void RemoveIPv6Address(const std::string& ifname,
-                                 const std::string& ipv6_addr);
+  virtual bool AddIPv6Address(std::string_view ifname,
+                              std::string_view ipv6_addr);
+  virtual void RemoveIPv6Address(std::string_view ifname,
+                                 std::string_view ipv6_addr);
 
-  virtual bool AddIPv4RouteToTable(const std::string& ifname,
+  virtual bool AddIPv4RouteToTable(std::string_view ifname,
                                    const net_base::IPv4CIDR& ipv4_cidr,
                                    int table_id);
 
-  virtual void DeleteIPv4RouteFromTable(const std::string& ifname,
+  virtual void DeleteIPv4RouteFromTable(std::string_view ifname,
                                         const net_base::IPv4CIDR& ipv4_cidr,
                                         int table_id);
 
@@ -360,12 +359,12 @@ class Datapath {
                                const net_base::IPv6CIDR& subnet_cidr);
 
   // Adds (or deletes) an iptables rule for ADB port forwarding.
-  virtual bool AddAdbPortForwardRule(const std::string& ifname);
-  virtual void DeleteAdbPortForwardRule(const std::string& ifname);
+  virtual bool AddAdbPortForwardRule(std::string_view ifname);
+  virtual void DeleteAdbPortForwardRule(std::string_view ifname);
 
   // Adds (or deletes) an iptables rule for ADB port access.
-  virtual bool AddAdbPortAccessRule(const std::string& ifname);
-  virtual void DeleteAdbPortAccessRule(const std::string& ifname);
+  virtual bool AddAdbPortAccessRule(std::string_view ifname);
+  virtual void DeleteAdbPortAccessRule(std::string_view ifname);
 
   // Enables or disables netfilter conntrack helpers.
   virtual bool SetConntrackHelpers(bool enable_helpers);
@@ -374,7 +373,7 @@ class Datapath {
   // originated from guests like ARC or Crostini be accepted on the host and
   // should be used carefully in conjunction with firewall port access rules to
   // only allow very specific connection patterns.
-  virtual bool SetRouteLocalnet(const std::string& ifname, bool enable);
+  virtual bool SetRouteLocalnet(std::string_view ifname, bool enable);
   // Adds all |modules| into the kernel using modprobe.
   virtual bool ModprobeAll(const std::vector<std::string>& modules);
 
@@ -397,7 +396,7 @@ class Datapath {
   // addresses only routable through the VPN (b/178331695).
   // TODO(b/171157837) Replaces these rules with the system DNS proxy.
   bool AddRedirectDnsRule(const ShillClient::Device& shill_device,
-                          const std::string dns_ipv4_addr);
+                          std::string_view dns_ipv4_addr);
   bool RemoveRedirectDnsRule(const ShillClient::Device& shill_device);
 
   // Enable (or disable) QoS detection (i.e., setting QoS-related bits in
@@ -425,17 +424,17 @@ class Datapath {
   // Returns true if the chain |name| exists in |table|.
   virtual bool CheckChain(IpFamily family,
                           Iptables::Table table,
-                          const std::string& name);
+                          std::string_view name);
   // Add, remove, or flush chain |chain| in table |table|.
   virtual bool AddChain(IpFamily family,
                         Iptables::Table table,
-                        const std::string& name);
+                        std::string_view name);
   virtual bool RemoveChain(IpFamily family,
                            Iptables::Table table,
-                           const std::string& name);
+                           std::string_view name);
   virtual bool FlushChain(IpFamily family,
                           Iptables::Table table,
-                          const std::string& name);
+                          std::string_view name);
   // Manipulates a chain |chain| in table |table|.
   virtual bool ModifyChain(IpFamily family,
                            Iptables::Table table,
@@ -446,13 +445,13 @@ class Datapath {
   // packets from and outgoing packets to interface |ifname|. The manipulated
   // rules only affect IPv6 packets.
   virtual bool ModifyClatAcceptRules(Iptables::Command command,
-                                     const std::string& ifname);
+                                     std::string_view ifname);
   // Sends an iptables command for table |table|.
   virtual bool ModifyIptables(IpFamily family,
                               Iptables::Table table,
                               Iptables::Command command,
                               std::string_view chain,
-                              const std::vector<std::string>& argv,
+                              const std::vector<std::string_view>& argv,
                               bool log_failures = true);
   // Dumps the iptables chains rules for the table |table|. |family| must be
   // either IPv4 or IPv6.
@@ -466,22 +465,22 @@ class Datapath {
 
  private:
   // Creates a virtual interface pair.
-  bool AddVirtualInterfacePair(const std::string& netns_name,
-                               const std::string& veth_ifname,
-                               const std::string& peer_ifname);
+  bool AddVirtualInterfacePair(std::string_view netns_name,
+                               std::string_view veth_ifname,
+                               std::string_view peer_ifname);
   // Sets the configuration of an interface. |mac_addr| is an optional argument
   // that allows controlling the MAC address when configuring a virtual
   // interface used for ARC, crosvm, or with a network namespace. |mac_addr|
   // should be left undefined when configuring a physical interface used for a
   // downstream network.
-  bool ConfigureInterface(const std::string& ifname,
+  bool ConfigureInterface(std::string_view ifname,
                           std::optional<net_base::MacAddress> mac_addr,
                           const net_base::IPv4CIDR& ipv4_cidr,
                           const std::optional<net_base::IPv6CIDR>& ipv6_cidr,
                           bool up,
                           bool enable_multicast);
   // Sets the link status.
-  bool ToggleInterface(const std::string& ifname, bool up);
+  bool ToggleInterface(std::string_view ifname, bool up);
 
   // Creates the base FORWARD filter rules and PREROUTING mangle rules for
   // any downstream network interface (ARC, Crostini, Borealis, Parallels,
@@ -491,22 +490,22 @@ class Datapath {
   // on inspecting |source|, |int_ifname|, and |upstream_ifname|.
   void AddDownstreamInterfaceRules(
       std::optional<ShillClient::Device> upstream_device,
-      const std::string& int_ifname,
+      std::string_view int_ifname,
       TrafficSource source,
       bool static_ipv6 = false);
 
   bool ModifyRedirectDnsDNATRule(Iptables::Command command,
-                                 const std::string& protocol,
-                                 const std::string& ifname,
-                                 const std::string& dns_ipv4_addr);
+                                 std::string_view protocol,
+                                 std::string_view ifname,
+                                 std::string_view dns_ipv4_addr);
   bool ModifyDnsProxyMasquerade(IpFamily family,
                                 Iptables::Command command,
-                                const std::string& chain);
+                                std::string_view chain);
   bool ModifyRedirectDnsJumpRule(IpFamily family,
                                  Iptables::Command command,
-                                 const std::string& chain,
-                                 const std::string& ifname,
-                                 const std::string& target_chain,
+                                 std::string_view chain,
+                                 std::string_view ifname,
+                                 std::string_view target_chain,
                                  Fwmark mark = {},
                                  Fwmark mask = {},
                                  bool redirect_on_mark = false);
@@ -523,41 +522,41 @@ class Datapath {
   bool ModifyDnsExcludeDestinationRule(IpFamily family,
                                        const DnsRedirectionRule& rule,
                                        Iptables::Command command,
-                                       const std::string& chain);
+                                       std::string_view chain);
 
   // Create (or delete) DNAT rules for redirecting DNS queries to a DNS proxy.
   bool ModifyDnsProxyDNAT(IpFamily family,
                           const DnsRedirectionRule& rule,
                           Iptables::Command command,
-                          const std::string& ifname,
-                          const std::string& chain);
+                          std::string_view ifname,
+                          std::string_view chain);
 
   bool ModifyConnmarkSet(IpFamily family,
-                         const std::string& chain,
+                         std::string_view chain,
                          Iptables::Command command,
                          Fwmark mark,
                          Fwmark mask);
   bool ModifyConnmarkRestore(IpFamily family,
-                             const std::string& chain,
+                             std::string_view chain,
                              Iptables::Command command,
-                             const std::string& iif,
+                             std::string_view iif,
                              Fwmark mask,
                              bool skip_on_non_empty_mark = false);
   bool ModifyConnmarkSave(IpFamily family,
-                          const std::string& chain,
+                          std::string_view chain,
                           Iptables::Command command,
                           Fwmark mask);
-  bool ModifyFwmarkRoutingTag(const std::string& chain,
+  bool ModifyFwmarkRoutingTag(std::string_view chain,
                               Iptables::Command command,
                               Fwmark routing_mark);
-  bool ModifyFwmarkSourceTag(const std::string& chain,
+  bool ModifyFwmarkSourceTag(std::string_view chain,
                              Iptables::Command command,
                              TrafficSource source);
   bool ModifyFwmark(IpFamily family,
-                    const std::string& chain,
+                    std::string_view chain,
                     Iptables::Command command,
-                    const std::string& iif,
-                    const std::string& uid_name,
+                    std::string_view iif,
+                    std::string_view uid_name,
                     uint32_t classid,
                     Fwmark mark,
                     Fwmark mask,
@@ -565,12 +564,12 @@ class Datapath {
   bool ModifyJumpRule(IpFamily family,
                       Iptables::Table table,
                       Iptables::Command command,
-                      const std::string& chain,
-                      const std::string& target,
-                      const std::string& iif,
-                      const std::string& oif,
+                      std::string_view chain,
+                      std::string_view target,
+                      std::string_view iif,
+                      std::string_view oif,
                       bool log_failures = true);
-  bool ModifyFwmarkVpnJumpRule(const std::string& chain,
+  bool ModifyFwmarkVpnJumpRule(std::string_view chain,
                                Iptables::Command command,
                                Fwmark mark,
                                Fwmark mask);
@@ -597,7 +596,7 @@ class Datapath {
   // A map used for tracking the primary IPv4 dns address associated to a given
   // Shill Device known by its interface name. This is used for redirecting
   // DNS queries of system services when a VPN is connected.
-  std::map<std::string, std::string> physical_dns_addresses_;
+  std::map<std::string_view, std::string> physical_dns_addresses_;
 };
 
 std::ostream& operator<<(std::ostream& stream,

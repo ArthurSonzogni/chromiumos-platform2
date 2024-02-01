@@ -14,6 +14,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/strcat.h>
 
 namespace patchpanel {
 
@@ -34,10 +35,10 @@ std::unique_ptr<ScopedNS> ScopedNS::EnterNetworkNS(pid_t pid) {
 }
 
 std::unique_ptr<ScopedNS> ScopedNS::EnterNetworkNS(
-    const std::string& netns_name) {
+    std::string_view netns_name) {
   int nstype = CLONE_NEWNET;
   const std::string current_path = "/proc/self/ns/net";
-  const std::string target_path = "/run/netns/" + netns_name;
+  const std::string target_path = base::StrCat({"/run/netns/", netns_name});
   auto ns = base::WrapUnique(new ScopedNS(nstype, current_path, target_path));
   return ns->valid_ ? std::move(ns) : nullptr;
 }

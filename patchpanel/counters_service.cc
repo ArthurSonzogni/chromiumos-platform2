@@ -247,14 +247,10 @@ void CountersService::OnVpnDeviceRemoved(const std::string& ifname) {
 
 bool CountersService::AddAccountingRule(const std::string& chain_name,
                                         TrafficSource source) {
-  std::vector<std::string> args = {"-m",
-                                   "mark",
-                                   "--mark",
-                                   Fwmark::FromSource(source).ToString() + "/" +
-                                       kFwmarkAllSourcesMask.ToString(),
-                                   "-j",
-                                   "RETURN",
-                                   "-w"};
+  std::string mark = base::StrCat({Fwmark::FromSource(source).ToString(), "/",
+                                   kFwmarkAllSourcesMask.ToString()});
+  std::vector<std::string_view> args = {"-m", "mark",   "--mark", mark,
+                                        "-j", "RETURN", "-w"};
   return datapath_->ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                    Iptables::Command::kA, chain_name, args);
 }

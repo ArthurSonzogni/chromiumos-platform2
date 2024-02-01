@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/files/scoped_file.h>
 
@@ -23,8 +24,7 @@ class ScopedNS {
   // the returned object goes out of scope. Returns nullptr on failure.
   static std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
   static std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
-  static std::unique_ptr<ScopedNS> EnterNetworkNS(
-      const std::string& netns_name);
+  static std::unique_ptr<ScopedNS> EnterNetworkNS(std::string_view netns_name);
 
   ScopedNS(const ScopedNS&) = delete;
   ScopedNS& operator=(const ScopedNS&) = delete;

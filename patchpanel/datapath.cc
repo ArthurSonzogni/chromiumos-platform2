@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -185,13 +186,21 @@ std::ostream& operator<<(std::ostream& stream, const DeviceMode tun_tap) {
 
 // Returns the conventional name for the PREROUTING mangle subchain
 // pertaining to the downstream interface |int_ifname|.
-// TODO(b/177389948): Cleanup to use std::string_view for argument.
-std::string PreroutingSubChainName(const std::string& int_ifname) {
-  return "PREROUTING_" + int_ifname;
+std::string PreroutingSubChainName(std::string_view int_ifname) {
+  return base::StrCat({"PREROUTING_", int_ifname});
 }
 
-std::string EgressSubChainName(const std::string& ext_ifname) {
-  return "egress_" + ext_ifname;
+std::string EgressSubChainName(std::string_view ext_ifname) {
+  return base::StrCat({"egress_", ext_ifname});
+}
+
+struct ifreq GetInterfaceRequest(std::string_view ifname) {
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  // Since string_view is not null-terminated, leave 1 byte for null terminator.
+  memcpy(ifr.ifr_name, ifname.data(),
+         std::min(ifname.size(), sizeof(ifr.ifr_name)));
+  return ifr;
 }
 
 // Helper enum for controlling what type of FORWARD firewall rules are
@@ -227,7 +236,7 @@ ForwardFirewallRuleType GetForwardFirewallRuleType(TrafficSource source) {
   }
 }
 
-std::string GetEgressFilterChainName(DownstreamNetworkTopology topology) {
+std::string_view GetEgressFilterChainName(DownstreamNetworkTopology topology) {
   switch (topology) {
     case DownstreamNetworkTopology::kLocalOnly:
       return kEgressLocalOnlyChain;
@@ -236,7 +245,7 @@ std::string GetEgressFilterChainName(DownstreamNetworkTopology topology) {
   }
 }
 
-std::string GetIngressFilterChainName(DownstreamNetworkTopology topology) {
+std::string_view GetIngressFilterChainName(DownstreamNetworkTopology topology) {
   switch (topology) {
     case DownstreamNetworkTopology::kLocalOnly:
       return kIngressLocalOnlyChain;
@@ -301,11 +310,11 @@ void Datapath::Start() {
   if (system_->IsEbpfEnabled()) {
     auto run_iptables_in_batch = process_runner_->AcquireIptablesBatchMode();
 
-    const auto install_rule = [this](IpFamily family,
-                                     const std::vector<std::string>& args) {
-      ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
-                     kQoSDetectChain, args);
-    };
+    const auto install_rule =
+        [this](IpFamily family, const std::vector<std::string_view>& args) {
+          ModifyIptables(family, Iptables::Table::kMangle,
+                         Iptables::Command::kA, kQoSDetectChain, args);
+        };
 
     const std::string qos_mask = kFwmarkQoSCategoryMask.ToString();
     const std::string default_mark = QoSFwmarkWithMask(QoSCategory::kDefault);
@@ -333,10 +342,11 @@ void Datapath::Stop() {
   }
 }
 
-bool Datapath::NetnsAttachName(const std::string& netns_name, pid_t netns_pid) {
+bool Datapath::NetnsAttachName(std::string_view netns_name, pid_t netns_pid) {
   // Try first to delete any netns with name |netns_name| in case patchpanel
   // did not exit cleanly.
-  if (process_runner_->ip_netns_delete(netns_name, /*log_failures=*/false) == 0)
+  if (process_runner_->ip_netns_delete(netns_name,
+                                       /*log_failures=*/false) == 0)
     LOG(INFO) << "Deleted left over network namespace name " << netns_name;
 
   if (netns_pid == ConnectedNamespace::kNewNetnsPid)
@@ -345,14 +355,15 @@ bool Datapath::NetnsAttachName(const std::string& netns_name, pid_t netns_pid) {
     return process_runner_->ip_netns_attach(netns_name, netns_pid) == 0;
 }
 
-bool Datapath::NetnsDeleteName(const std::string& netns_name) {
+bool Datapath::NetnsDeleteName(std::string_view netns_name) {
   return process_runner_->ip_netns_delete(netns_name) == 0;
 }
 
-bool Datapath::AddBridge(const std::string& ifname, const IPv4CIDR& cidr) {
+bool Datapath::AddBridge(std::string_view ifname, const IPv4CIDR& cidr) {
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!control_fd.is_valid() ||
-      system_->Ioctl(control_fd.get(), SIOCBRADDBR, ifname.c_str()) != 0) {
+      system_->Ioctl(control_fd.get(), SIOCBRADDBR,
+                     std::string(ifname).c_str()) != 0) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
@@ -374,21 +385,20 @@ bool Datapath::AddBridge(const std::string& ifname, const IPv4CIDR& cidr) {
   return true;
 }
 
-void Datapath::RemoveBridge(const std::string& ifname) {
+void Datapath::RemoveBridge(std::string_view ifname) {
   process_runner_->ip("link", "set", {ifname, "down"});
 
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!control_fd.is_valid() ||
-      system_->Ioctl(control_fd.get(), SIOCBRDELBR, ifname.c_str()) != 0) {
+      system_->Ioctl(control_fd.get(), SIOCBRDELBR,
+                     std::string(ifname).c_str()) != 0) {
     LOG(ERROR) << "Failed to destroy bridge " << ifname;
   }
 }
 
-bool Datapath::AddToBridge(const std::string& br_ifname,
-                           const std::string& ifname) {
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, br_ifname.c_str(), sizeof(ifr.ifr_name));
+bool Datapath::AddToBridge(std::string_view br_ifname,
+                           std::string_view ifname) {
+  struct ifreq ifr = GetInterfaceRequest(br_ifname);
   ifr.ifr_ifindex = system_->IfNametoindex(ifname);
 
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
@@ -402,10 +412,10 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
 }
 
 std::string Datapath::AddTunTap(
-    const std::string& name,
+    std::string_view name,
     const std::optional<net_base::MacAddress>& mac_addr,
     const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
-    const std::string& user,
+    std::string_view user,
     DeviceMode dev_mode) {
   base::ScopedFD dev = system_->OpenTunDev();
   if (!dev.is_valid()) {
@@ -413,10 +423,7 @@ std::string Datapath::AddTunTap(
     return "";
   }
 
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, name.empty() ? kDefaultIfname : name.c_str(),
-          sizeof(ifr.ifr_name));
+  struct ifreq ifr = GetInterfaceRequest(name.empty() ? kDefaultIfname : name);
   switch (dev_mode) {
     case DeviceMode::kTun:
       ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
@@ -440,7 +447,7 @@ std::string Datapath::AddTunTap(
 
   if (!user.empty()) {
     uid_t uid = 0;
-    if (!brillo::userdb::GetUserInfo(user, &uid, nullptr)) {
+    if (!brillo::userdb::GetUserInfo(std::string(user), &uid, nullptr)) {
       PLOG(ERROR) << "Unable to look up UID for " << user;
       RemoveTunTap(ifname, dev_mode);
       return "";
@@ -518,17 +525,17 @@ std::string Datapath::AddTunTap(
   return ifname;
 }
 
-void Datapath::RemoveTunTap(const std::string& ifname, DeviceMode dev_mode) {
-  const std::string dev_mode_str =
+void Datapath::RemoveTunTap(std::string_view ifname, DeviceMode dev_mode) {
+  std::string_view dev_mode_str =
       (dev_mode == DeviceMode::kTun) ? "tun" : "tap";
   process_runner_->ip("tuntap", "del", {ifname, "mode", dev_mode_str},
                       /*as_patchpanel_user=*/true);
 }
 
 bool Datapath::ConnectVethPair(pid_t netns_pid,
-                               const std::string& netns_name,
-                               const std::string& veth_ifname,
-                               const std::string& peer_ifname,
+                               std::string_view netns_name,
+                               std::string_view veth_ifname,
+                               std::string_view peer_ifname,
                                net_base::MacAddress remote_mac_addr,
                                const IPv4CIDR& remote_ipv4_cidr,
                                const std::optional<IPv6CIDR>& remote_ipv6_cidr,
@@ -576,20 +583,20 @@ void Datapath::RestartIPv6() {
   }
 }
 
-bool Datapath::AddVirtualInterfacePair(const std::string& netns_name,
-                                       const std::string& veth_ifname,
-                                       const std::string& peer_ifname) {
+bool Datapath::AddVirtualInterfacePair(std::string_view netns_name,
+                                       std::string_view veth_ifname,
+                                       std::string_view peer_ifname) {
   return process_runner_->ip("link", "add",
                              {veth_ifname, "type", "veth", "peer", "name",
                               peer_ifname, "netns", netns_name}) == 0;
 }
 
-bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
-  const std::string link = up ? "up" : "down";
+bool Datapath::ToggleInterface(std::string_view ifname, bool up) {
+  std::string_view link = up ? "up" : "down";
   return process_runner_->ip("link", "set", {ifname, link}) == 0;
 }
 
-bool Datapath::ConfigureInterface(const std::string& ifname,
+bool Datapath::ConfigureInterface(std::string_view ifname,
                                   std::optional<net_base::MacAddress> mac_addr,
                                   const IPv4CIDR& ipv4_cidr,
                                   const std::optional<IPv6CIDR>& ipv6_cidr,
@@ -609,7 +616,7 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
 
   std::vector<std::string> iplink_args{
       "dev",
-      ifname,
+      std::string(ifname),
       up ? "up" : "down",
   };
   if (mac_addr) {
@@ -620,13 +627,14 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
   return process_runner_->ip("link", "set", iplink_args) == 0;
 }
 
-void Datapath::RemoveInterface(const std::string& ifname) {
-  process_runner_->ip("link", "delete", {ifname}, /*as_patchpanel_user=*/false,
+void Datapath::RemoveInterface(std::string_view ifname) {
+  process_runner_->ip("link", "delete", {ifname},
+                      /*as_patchpanel_user=*/false,
                       /*log_failures=*/false);
 }
 
-bool Datapath::AddSourceIPv4DropRule(const std::string& oif,
-                                     const std::string& src_ip) {
+bool Datapath::AddSourceIPv4DropRule(std::string_view oif,
+                                     std::string_view src_ip) {
   return process_runner_->iptables(
              Iptables::Table::kFilter, Iptables::Command::kI,
              kDropGuestIpv4PrefixChain,
@@ -746,17 +754,17 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
 bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
                                   const DnsRedirectionRule& rule,
                                   Iptables::Command op,
-                                  const std::string& ifname,
-                                  const std::string& chain) {
+                                  std::string_view ifname,
+                                  std::string_view chain) {
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string> args;
+    std::vector<std::string_view> args;
     if (!ifname.empty()) {
       args.insert(args.end(), {"-i", ifname});
     }
-    args.insert(args.end(),
-                {"-p", protocol, "--dport", kDefaultDnsPort, "-j", "DNAT",
-                 "--to-destination", rule.proxy_address.ToString(), "-w"});
+    std::string proxy_addr = rule.proxy_address.ToString();
+    args.insert(args.end(), {"-p", protocol, "--dport", kDefaultDnsPort, "-j",
+                             "DNAT", "--to-destination", proxy_addr, "-w"});
     if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
     }
@@ -766,10 +774,10 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
 
 bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
                                         Iptables::Command op,
-                                        const std::string& chain) {
+                                        std::string_view chain) {
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string> args = {
+    std::vector<std::string_view> args = {
         "-p", protocol, "--dport", kDefaultDnsPort, "-j", "MASQUERADE", "-w"};
     if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
@@ -893,7 +901,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
 
 void Datapath::AddDownstreamInterfaceRules(
     std::optional<ShillClient::Device> upstream_device,
-    const std::string& int_ifname,
+    std::string_view int_ifname,
     TrafficSource source,
     bool static_ipv6) {
   auto forward_firewall_rule_type = GetForwardFirewallRuleType(source);
@@ -982,12 +990,12 @@ void Datapath::AddDownstreamInterfaceRules(
 }
 
 void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
-                                  const std::string& int_ifname,
+                                  std::string_view int_ifname,
                                   TrafficSource source,
                                   bool static_ipv6) {
   auto batch_mode = process_runner_->AcquireIptablesBatchMode();
 
-  const std::string& ext_ifname = shill_device.ifname;
+  std::string_view ext_ifname = shill_device.ifname;
   AddDownstreamInterfaceRules(shill_device, int_ifname, source, static_ipv6);
   // If |ext_ifname| is not null, mark egress traffic with the
   // fwmark routing tag corresponding to |ext_ifname|.
@@ -1022,11 +1030,10 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
   // If the source bit from the connmark has already been restored to a known
   // traffic source mark, return. Otherwise mark with traffic source specified
   // in the args.
-  ModifyIptables(
-      IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-      subchain,
-      {"-m", "mark", "!", "--mark",
-       SourceFwmarkWithMask(TrafficSource::kUnknown), "-j", "RETURN", "-w"});
+  std::string mark = SourceFwmarkWithMask(TrafficSource::kUnknown);
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                 Iptables::Command::kA, subchain,
+                 {"-m", "mark", "!", "--mark", mark, "-j", "RETURN", "-w"});
 
   if (!ModifyFwmarkSourceTag(subchain, Iptables::Command::kA, source)) {
     LOG(ERROR) << "Failed to add source fwmark tagging rule for source "
@@ -1034,7 +1041,7 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
   }
 }
 
-void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
+void Datapath::StartRoutingDeviceAsSystem(std::string_view int_ifname,
                                           TrafficSource source,
                                           bool static_ipv6) {
   auto batch_mode = process_runner_->AcquireIptablesBatchMode();
@@ -1052,7 +1059,7 @@ void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
 }
 
 void Datapath::StartRoutingDeviceAsUser(
-    const std::string& int_ifname,
+    std::string_view int_ifname,
     TrafficSource source,
     const IPv4Address& int_ipv4_addr,
     std::optional<net_base::IPv4Address> peer_ipv4_addr,
@@ -1106,7 +1113,7 @@ void Datapath::StartRoutingDeviceAsUser(
     LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
 }
 
-void Datapath::StopRoutingDevice(const std::string& int_ifname,
+void Datapath::StopRoutingDevice(std::string_view int_ifname,
                                  TrafficSource source) {
   auto batch_mode = process_runner_->AcquireIptablesBatchMode();
 
@@ -1198,8 +1205,8 @@ void Datapath::RemoveInboundIPv4DNAT(AutoDNATTarget auto_dnat_target,
 }
 
 bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
-                                  const std::string dns_ipv4_addr) {
-  const std::string& ifname = shill_device.ifname;
+                                  std::string_view dns_ipv4_addr) {
+  std::string_view ifname = shill_device.ifname;
   bool success = true;
   success &= RemoveRedirectDnsRule(shill_device);
   // Use Insert operation to ensure that the new DNS address is used first.
@@ -1212,7 +1219,7 @@ bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
 }
 
 bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
-  const std::string& ifname = shill_device.ifname;
+  std::string_view ifname = shill_device.ifname;
   const auto it = physical_dns_addresses_.find(ifname);
   if (it == physical_dns_addresses_.end())
     return true;
@@ -1227,10 +1234,10 @@ bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
 }
 
 bool Datapath::ModifyRedirectDnsDNATRule(Iptables::Command op,
-                                         const std::string& protocol,
-                                         const std::string& ifname,
-                                         const std::string& dns_ipv4_addr) {
-  std::vector<std::string> args = {
+                                         std::string_view protocol,
+                                         std::string_view ifname,
+                                         std::string_view dns_ipv4_addr) {
+  std::vector<std::string_view> args = {
       "-p", protocol, "--dport",          "53",          "-o", ifname,
       "-j", "DNAT",   "--to-destination", dns_ipv4_addr, "-w"};
   return ModifyIptables(IpFamily::kIPv4, Iptables::Table::kNat, op,
@@ -1239,23 +1246,23 @@ bool Datapath::ModifyRedirectDnsDNATRule(Iptables::Command op,
 
 bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
                                          Iptables::Command op,
-                                         const std::string& chain,
-                                         const std::string& ifname,
-                                         const std::string& target_chain,
+                                         std::string_view chain,
+                                         std::string_view ifname,
+                                         std::string_view target_chain,
                                          Fwmark mark,
                                          Fwmark mask,
                                          bool redirect_on_mark) {
-  std::vector<std::string> args;
+  std::vector<std::string_view> args;
   if (!ifname.empty()) {
     args.insert(args.end(), {"-i", ifname});
   }
+  std::string mark_str = base::StrCat({mark.ToString(), "/", mask.ToString()});
   if (mark.Value() != 0 && mask.Value() != 0) {
     args.insert(args.end(), {"-m", "mark"});
     if (!redirect_on_mark) {
       args.push_back("!");
     }
-    args.insert(args.end(),
-                {"--mark", mark.ToString() + "/" + mask.ToString()});
+    args.insert(args.end(), {"--mark", mark_str});
   }
   args.insert(args.end(), {"-j", target_chain, "-w"});
   return ModifyIptables(family, Iptables::Table::kNat, op, chain, args);
@@ -1264,8 +1271,8 @@ bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
 bool Datapath::ModifyDnsProxyAcceptRule(IpFamily family,
                                         const DnsRedirectionRule& rule,
                                         Iptables::Command op) {
-  std::vector<std::string> args = {"-d", rule.proxy_address.ToString(), "-j",
-                                   "ACCEPT", "-w"};
+  std::string proxy_addr = rule.proxy_address.ToString();
+  std::vector<std::string_view> args = {"-d", proxy_addr, "-j", "ACCEPT", "-w"};
   return ModifyIptables(family, Iptables::Table::kFilter, op,
                         kAcceptEgressToDnsProxyChain, args);
 }
@@ -1274,7 +1281,7 @@ bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
                                                Iptables::Command op) {
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string> args = {
+    std::vector<std::string_view> args = {
         "-p", protocol, "--dport", kDefaultDnsPort, "-j", "ACCEPT", "-w",
     };
     if (!ModifyIptables(family, Iptables::Table::kMangle, op,
@@ -1288,20 +1295,13 @@ bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
 bool Datapath::ModifyDnsExcludeDestinationRule(IpFamily family,
                                                const DnsRedirectionRule& rule,
                                                Iptables::Command op,
-                                               const std::string& chain) {
+                                               std::string_view chain) {
   bool success = true;
+  std::string proxy_addr = rule.proxy_address.ToString();
   for (const auto& protocol : {"udp", "tcp"}) {
-    std::vector<std::string> args = {
-        "-p",
-        protocol,
-        "!",
-        "-d",
-        rule.proxy_address.ToString(),
-        "--dport",
-        kDefaultDnsPort,
-        "-j",
-        "RETURN",
-        "-w",
+    std::vector<std::string_view> args = {
+        "-p",      protocol,        "!",  "-d",     proxy_addr,
+        "--dport", kDefaultDnsPort, "-j", "RETURN", "-w",
     };
     if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
@@ -1310,7 +1310,7 @@ bool Datapath::ModifyDnsExcludeDestinationRule(IpFamily family,
   return success;
 }
 
-bool Datapath::MaskInterfaceFlags(const std::string& ifname,
+bool Datapath::MaskInterfaceFlags(std::string_view ifname,
                                   uint16_t on,
                                   uint16_t off) {
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
@@ -1318,8 +1318,7 @@ bool Datapath::MaskInterfaceFlags(const std::string& ifname,
     PLOG(ERROR) << "Failed to create control socket";
     return false;
   }
-  ifreq ifr;
-  snprintf(ifr.ifr_name, IFNAMSIZ, "%s", ifname.c_str());
+  struct ifreq ifr = GetInterfaceRequest(ifname);
   if (system_->Ioctl(sock.get(), SIOCGIFFLAGS, &ifr) < 0) {
     PLOG(WARNING) << "ioctl() failed to get interface flag on " << ifname;
     return false;
@@ -1335,7 +1334,7 @@ bool Datapath::MaskInterfaceFlags(const std::string& ifname,
 }
 
 bool Datapath::AddIPv6HostRoute(
-    const std::string& ifname,
+    std::string_view ifname,
     const net_base::IPv6CIDR& ipv6_cidr,
     const std::optional<net_base::IPv6Address>& src_addr) {
   if (src_addr) {
@@ -1352,33 +1351,33 @@ void Datapath::RemoveIPv6HostRoute(const net_base::IPv6CIDR& ipv6_cidr) {
   process_runner_->ip6("route", "del", {ipv6_cidr.ToString()});
 }
 
-bool Datapath::AddIPv6NeighborProxy(const std::string& ifname,
+bool Datapath::AddIPv6NeighborProxy(std::string_view ifname,
                                     const net_base::IPv6Address& ipv6_addr) {
   return process_runner_->ip6("neighbor", "add",
                               {"proxy", ipv6_addr.ToString(), "dev", ifname}) ==
          0;
 }
 
-void Datapath::RemoveIPv6NeighborProxy(const std::string& ifname,
+void Datapath::RemoveIPv6NeighborProxy(std::string_view ifname,
                                        const net_base::IPv6Address& ipv6_addr) {
   process_runner_->ip6("neighbor", "del",
                        {"proxy", ipv6_addr.ToString(), "dev", ifname});
 }
 
-bool Datapath::AddIPv6Address(const std::string& ifname,
-                              const std::string& ipv6_addr) {
+bool Datapath::AddIPv6Address(std::string_view ifname,
+                              std::string_view ipv6_addr) {
   return process_runner_->ip6("addr", "add", {ipv6_addr, "dev", ifname}) == 0;
 }
 
-void Datapath::RemoveIPv6Address(const std::string& ifname,
-                                 const std::string& ipv6_addr) {
+void Datapath::RemoveIPv6Address(std::string_view ifname,
+                                 std::string_view ipv6_addr) {
   process_runner_->ip6("addr", "del", {ipv6_addr, "dev", ifname});
 }
 
 void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
   auto batch_mode = process_runner_->AcquireIptablesBatchMode();
 
-  const std::string& ext_ifname = shill_device.ifname;
+  std::string_view ext_ifname = shill_device.ifname;
   int ifindex = system_->IfNametoindex(ext_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
@@ -1386,7 +1385,7 @@ void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
     return;
   }
 
-  std::string subchain = "POSTROUTING_" + ext_ifname;
+  std::string subchain = base::StrCat({"POSTROUTING_", ext_ifname});
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |ext_ifname| was previously deleted.
   if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
@@ -1433,8 +1432,8 @@ void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
 }
 
 void Datapath::StopConnectionPinning(const ShillClient::Device& shill_device) {
-  const std::string& ext_ifname = shill_device.ifname;
-  std::string subchain = "POSTROUTING_" + ext_ifname;
+  std::string_view ext_ifname = shill_device.ifname;
+  std::string subchain = base::StrCat({"POSTROUTING_", ext_ifname});
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "POSTROUTING", subchain, /*iif=*/"",
                  ext_ifname);
@@ -1450,7 +1449,7 @@ void Datapath::StopConnectionPinning(const ShillClient::Device& shill_device) {
 }
 
 void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
-  const std::string& vpn_ifname = vpn_device.ifname;
+  std::string_view vpn_ifname = vpn_device.ifname;
   int ifindex = system_->IfNametoindex(vpn_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
@@ -1471,12 +1470,12 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
                  /*iif=*/"", vpn_ifname);
   StartConnectionPinning(vpn_device);
 
+  std::string mark = base::StrCat({"0x0/", kFwmarkRoutingMask.ToString()});
   // Any traffic that already has a routing tag applied is accepted.
   if (!ModifyIptables(
           IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
           kApplyVpnMarkChain,
-          {"-m", "mark", "!", "--mark", "0x0/" + kFwmarkRoutingMask.ToString(),
-           "-j", "ACCEPT", "-w"})) {
+          {"-m", "mark", "!", "--mark", mark, "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
                   "connections";
   }
@@ -1501,18 +1500,17 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // All traffic with the VPN routing tag are explicitly accepted in the filter
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
   // lockdown is enabled.
+  mark = base::StrCat(
+      {routing_mark.value().ToString(), "/", kFwmarkRoutingMask.ToString()});
   if (!ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, kVpnAcceptChain,
-                      {"-m", "mark", "--mark",
-                       routing_mark.value().ToString() + "/" +
-                           kFwmarkRoutingMask.ToString(),
-                       "-j", "ACCEPT", "-w"})) {
+                      {"-m", "mark", "--mark", mark, "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to set filter rule for accepting VPN marked traffic";
   }
 }
 
 void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
-  const std::string& vpn_ifname = vpn_device.ifname;
+  std::string_view vpn_ifname = vpn_device.ifname;
   LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain)) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
@@ -1538,12 +1536,11 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
 
 void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
   if (enable_vpn_lockdown) {
-    if (!ModifyIptables(
-            IpFamily::kDual, Iptables::Table::kFilter, Iptables::Command::kA,
-            kVpnLockdownChain,
-            {"-m", "mark", "--mark",
-             kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
-             "-j", "REJECT", "-w"})) {
+    std::string mark = base::StrCat(
+        {kFwmarkRouteOnVpn.ToString(), "/", kFwmarkVpnMask.ToString()});
+    if (!ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
+                        Iptables::Command::kA, kVpnLockdownChain,
+                        {"-m", "mark", "--mark", mark, "-j", "REJECT", "-w"})) {
       LOG(ERROR) << "Failed to start VPN lockdown mode";
     }
   } else {
@@ -1599,12 +1596,12 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
     LOG(ERROR) << __func__ << ": Failed to flush " << subchain;
   }
   if (prefix) {
+    std::string prefix_str = prefix->ToString();
     if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
                         Iptables::Command::kA, subchain,
-                        {"-s", prefix->ToString(), "-j", "RETURN", "-w"})) {
-      LOG(ERROR) << __func__
-                 << ": Failed to add " + prefix->ToString() + " RETURN rule in "
-                 << subchain;
+                        {"-s", prefix_str, "-j", "RETURN", "-w"})) {
+      LOG(ERROR) << __func__ << ": Failed to add " << prefix_str
+                 << " RETURN rule in " << subchain;
     }
   }
   ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
@@ -1697,27 +1694,28 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
 }
 
 bool Datapath::ModifyConnmarkSet(IpFamily family,
-                                 const std::string& chain,
+                                 std::string_view chain,
                                  Iptables::Command op,
                                  Fwmark mark,
                                  Fwmark mask) {
+  std::string mark_str = base::StrCat({mark.ToString(), "/", mask.ToString()});
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain,
-                        {"-j", "CONNMARK", "--set-mark",
-                         mark.ToString() + "/" + mask.ToString(), "-w"});
+                        {"-j", "CONNMARK", "--set-mark", mark_str, "-w"});
 }
 
 bool Datapath::ModifyConnmarkRestore(IpFamily family,
-                                     const std::string& chain,
+                                     std::string_view chain,
                                      Iptables::Command op,
-                                     const std::string& iif,
+                                     std::string_view iif,
                                      Fwmark mask,
                                      bool skip_on_non_empty_mark) {
-  std::vector<std::string> args;
+  std::vector<std::string_view> args;
   if (!iif.empty()) {
     args.insert(args.end(), {"-i", iif});
   }
   if (skip_on_non_empty_mark) {
-    args.insert(args.end(), {"-m", "mark", "--mark", "0x0/" + mask.ToString()});
+    std::string mark = base::StrCat({"0x0/", mask.ToString()});
+    args.insert(args.end(), {"-m", "mark", "--mark", mark});
   }
   args.insert(args.end(), {"-j", "CONNMARK", "--restore-mark", "--mask",
                            mask.ToString(), "-w"});
@@ -1725,15 +1723,16 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
 }
 
 bool Datapath::ModifyConnmarkSave(IpFamily family,
-                                  const std::string& chain,
+                                  std::string_view chain,
                                   Iptables::Command op,
                                   Fwmark mask) {
-  std::vector<std::string> args = {"-j",     "CONNMARK",      "--save-mark",
-                                   "--mask", mask.ToString(), "-w"};
+  std::string mask_str = mask.ToString();
+  std::vector<std::string_view> args = {"-j",     "CONNMARK", "--save-mark",
+                                        "--mask", mask_str,   "-w"};
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args);
 }
 
-bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
+bool Datapath::ModifyFwmarkRoutingTag(std::string_view chain,
                                       Iptables::Command op,
                                       Fwmark routing_mark) {
   return ModifyFwmark(IpFamily::kDual, chain, op, /*int_ifname=*/"",
@@ -1741,7 +1740,7 @@ bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
                       kFwmarkRoutingMask);
 }
 
-bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
+bool Datapath::ModifyFwmarkSourceTag(std::string_view chain,
                                      Iptables::Command op,
                                      TrafficSource source) {
   return ModifyFwmark(IpFamily::kDual, chain, op, /*iif=*/"", /*uid_name=*/"",
@@ -1750,28 +1749,27 @@ bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
 }
 
 bool Datapath::ModifyFwmark(IpFamily family,
-                            const std::string& chain,
+                            std::string_view chain,
                             Iptables::Command op,
-                            const std::string& iif,
-                            const std::string& uid_name,
+                            std::string_view iif,
+                            std::string_view uid_name,
                             uint32_t classid,
                             Fwmark mark,
                             Fwmark mask,
                             bool log_failures) {
-  std::vector<std::string> args;
+  std::vector<std::string_view> args;
   if (!iif.empty()) {
     args.insert(args.end(), {"-i", iif});
   }
   if (!uid_name.empty()) {
     args.insert(args.end(), {"-m", "owner", "--uid-owner", uid_name});
   }
+  std::string id = base::StringPrintf("0x%08x", classid);
   if (classid != 0) {
-    args.insert(args.end(), {"-m", "cgroup", "--cgroup",
-                             base::StringPrintf("0x%08x", classid)});
+    args.insert(args.end(), {"-m", "cgroup", "--cgroup", id});
   }
-  args.insert(args.end(),
-              {"-j", "MARK", "--set-mark",
-               base::StrCat({mark.ToString(), "/", mask.ToString()}), "-w"});
+  std::string mask_str = base::StrCat({mark.ToString(), "/", mask.ToString()});
+  args.insert(args.end(), {"-j", "MARK", "--set-mark", mask_str, "-w"});
 
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args,
                         log_failures);
@@ -1780,12 +1778,12 @@ bool Datapath::ModifyFwmark(IpFamily family,
 bool Datapath::ModifyJumpRule(IpFamily family,
                               Iptables::Table table,
                               Iptables::Command op,
-                              const std::string& chain,
-                              const std::string& target,
-                              const std::string& iif,
-                              const std::string& oif,
+                              std::string_view chain,
+                              std::string_view target,
+                              std::string_view iif,
+                              std::string_view oif,
                               bool log_failures) {
-  std::vector<std::string> args;
+  std::vector<std::string_view> args;
   if (!iif.empty()) {
     args.insert(args.end(), {"-i", iif});
   }
@@ -1796,23 +1794,24 @@ bool Datapath::ModifyJumpRule(IpFamily family,
   if (!ModifyIptables(family, table, op, chain, args, log_failures)) {
     if (log_failures) {
       LOG(ERROR) << __func__ << " failure: " << family << " -t " << table << " "
-                 << op << " " << chain << (iif.empty() ? "" : (" -i " + iif))
-                 << (oif.empty() ? "" : (" -o " + oif)) << " -j " << target;
+                 << op << " " << chain
+                 << (iif.empty() ? "" : base::StrCat({" -i ", iif}))
+                 << (oif.empty() ? "" : base::StrCat({" -o ", oif})) << " -j "
+                 << target;
     }
     return false;
   }
   return true;
 }
 
-bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
+bool Datapath::ModifyFwmarkVpnJumpRule(std::string_view chain,
                                        Iptables::Command op,
                                        Fwmark mark,
                                        Fwmark mask) {
-  std::vector<std::string> args;
+  std::vector<std::string_view> args;
+  std::string mark_str = base::StrCat({mark.ToString(), "/", mask.ToString()});
   if (mark.Value() != 0 && mask.Value() != 0) {
-    args.insert(args.end(),
-                {"-m", "mark", "--mark",
-                 base::StrCat({mark.ToString(), "/", mask.ToString()})});
+    args.insert(args.end(), {"-m", "mark", "--mark", mark_str});
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
@@ -1821,14 +1820,14 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
 
 bool Datapath::CheckChain(IpFamily family,
                           Iptables::Table table,
-                          const std::string& name) {
+                          std::string_view name) {
   return ModifyChain(family, table, Iptables::Command::kC, name,
                      /*log_failures=*/false);
 }
 
 bool Datapath::AddChain(IpFamily family,
                         Iptables::Table table,
-                        const std::string& chain) {
+                        std::string_view chain) {
   DCHECK(chain.size() <= kIptablesMaxChainLength)
       << "chain name " << chain << " is longer than "
       << kIptablesMaxChainLength;
@@ -1837,13 +1836,13 @@ bool Datapath::AddChain(IpFamily family,
 
 bool Datapath::RemoveChain(IpFamily family,
                            Iptables::Table table,
-                           const std::string& chain) {
+                           std::string_view chain) {
   return ModifyChain(family, table, Iptables::Command::kX, chain);
 }
 
 bool Datapath::FlushChain(IpFamily family,
                           Iptables::Table table,
-                          const std::string& chain) {
+                          std::string_view chain) {
   return ModifyChain(family, table, Iptables::Command::kF, chain);
 }
 
@@ -1859,29 +1858,29 @@ bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Table table,
                               Iptables::Command command,
                               std::string_view chain,
-                              const std::vector<std::string>& argv,
+                              const std::vector<std::string_view>& argv,
                               bool log_failures) {
   bool success = true;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     // TODO(b/325359902): Change |argv| to span type and delete conversion.
-    success &=
-        process_runner_->iptables(table, command, chain,
-                                  const_cast<std::vector<std::string>&>(argv),
-                                  log_failures) == 0;
+    success &= process_runner_->iptables(
+                   table, command, chain,
+                   const_cast<std::vector<std::string_view>&>(argv),
+                   log_failures) == 0;
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     // TODO(b/325359902): Change |argv| to span type and delete conversion.
-    success &=
-        process_runner_->ip6tables(table, command, chain,
-                                   const_cast<std::vector<std::string>&>(argv),
-                                   log_failures) == 0;
+    success &= process_runner_->ip6tables(
+                   table, command, chain,
+                   const_cast<std::vector<std::string_view>&>(argv),
+                   log_failures) == 0;
   }
   return success;
 }
 
 std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::string result;
-  std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
+  std::vector<std::string_view> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
     case IpFamily::kIPv4:
       if (process_runner_->iptables(table, Iptables::Command::kL, /*chain=*/"",
@@ -1904,7 +1903,7 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   return result;
 }
 
-bool Datapath::AddIPv4RouteToTable(const std::string& ifname,
+bool Datapath::AddIPv4RouteToTable(std::string_view ifname,
                                    const net_base::IPv4CIDR& ipv4_cidr,
                                    int table_id) {
   return process_runner_->ip("route", "add",
@@ -1912,7 +1911,7 @@ bool Datapath::AddIPv4RouteToTable(const std::string& ifname,
                               base::NumberToString(table_id)}) == 0;
 }
 
-void Datapath::DeleteIPv4RouteFromTable(const std::string& ifname,
+void Datapath::DeleteIPv4RouteFromTable(std::string_view ifname,
                                         const net_base::IPv4CIDR& ipv4_cidr,
                                         int table_id) {
   process_runner_->ip("route", "del",
@@ -2014,26 +2013,26 @@ bool Datapath::ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route) {
   return true;
 }
 
-bool Datapath::AddAdbPortForwardRule(const std::string& ifname) {
-  return firewall_->AddIpv4ForwardRule(patchpanel::ModifyPortRuleRequest::TCP,
-                                       kArcAddr, kAdbServerPort, ifname,
-                                       kLocalhostAddr, kAdbProxyTcpListenPort);
+bool Datapath::AddAdbPortForwardRule(std::string_view ifname) {
+  return firewall_->AddIpv4ForwardRule(
+      patchpanel::ModifyPortRuleRequest::TCP, kArcAddr, kAdbServerPort,
+      std::string(ifname), kLocalhostAddr, kAdbProxyTcpListenPort);
 }
 
-void Datapath::DeleteAdbPortForwardRule(const std::string& ifname) {
-  firewall_->DeleteIpv4ForwardRule(patchpanel::ModifyPortRuleRequest::TCP,
-                                   kArcAddr, kAdbServerPort, ifname,
-                                   kLocalhostAddr, kAdbProxyTcpListenPort);
+void Datapath::DeleteAdbPortForwardRule(std::string_view ifname) {
+  firewall_->DeleteIpv4ForwardRule(
+      patchpanel::ModifyPortRuleRequest::TCP, kArcAddr, kAdbServerPort,
+      std::string(ifname), kLocalhostAddr, kAdbProxyTcpListenPort);
 }
 
-bool Datapath::AddAdbPortAccessRule(const std::string& ifname) {
+bool Datapath::AddAdbPortAccessRule(std::string_view ifname) {
   return firewall_->AddAcceptRules(patchpanel::ModifyPortRuleRequest::TCP,
-                                   kAdbProxyTcpListenPort, ifname);
+                                   kAdbProxyTcpListenPort, std::string(ifname));
 }
 
-void Datapath::DeleteAdbPortAccessRule(const std::string& ifname) {
+void Datapath::DeleteAdbPortAccessRule(std::string_view ifname) {
   firewall_->DeleteAcceptRules(patchpanel::ModifyPortRuleRequest::TCP,
-                               kAdbProxyTcpListenPort, ifname);
+                               kAdbProxyTcpListenPort, std::string(ifname));
 }
 
 bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
@@ -2041,7 +2040,7 @@ bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
                             enable_helpers ? "1" : "0");
 }
 
-bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
+bool Datapath::SetRouteLocalnet(std::string_view ifname, const bool enable) {
   return system_->SysNetSet(System::SysNet::kIPv4RouteLocalnet,
                             enable ? "1" : "0", ifname);
 }
@@ -2151,22 +2150,21 @@ void Datapath::ModifyQoSDetectJumpRule(Iptables::Command command) {
 void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
                                           std::string_view ifname) {
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
-                 "POSTROUTING",
-                 {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
+                 "POSTROUTING", {"-o", ifname, "-j", kQoSApplyDSCPChain, "-w"});
 }
 
 void Datapath::AddBorealisQoSRule(std::string_view ifname) {
+  std::string mark = QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive);
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kA, kQoSDetectBorealisChain,
-                 {"-i", std::string(ifname), "-j", "MARK", "--set-xmark",
-                  QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive), "-w"});
+                 {"-i", ifname, "-j", "MARK", "--set-xmark", mark, "-w"});
 }
 
 void Datapath::RemoveBorealisQoSRule(std::string_view ifname) {
+  std::string mark = QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive);
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, kQoSDetectBorealisChain,
-                 {"-i", std::string(ifname), "-j", "MARK", "--set-xmark",
-                  QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive), "-w"});
+                 {"-i", ifname, "-j", "MARK", "--set-xmark", mark, "-w"});
 }
 
 void Datapath::UpdateDoHProvidersForQoS(
@@ -2188,12 +2186,13 @@ void Datapath::UpdateDoHProvidersForQoS(
   // Mark all the TCP and UDP traffic to the 443 port of the DoH servers. This
   // may have false positives if the server is also used for non-DNS HTTPS
   // traffic.
+  std::string ip = base::JoinString(ip_strs, ",");
+  std::string mark = QoSFwmarkWithMask(QoSCategory::kNetworkControl);
   for (std::string_view protocol : {"udp", "tcp"}) {
     ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
                    kQoSDetectDoHChain,
-                   {"-p", std::string(protocol), "--dport", "443", "-d",
-                    base::JoinString(ip_strs, ","), "-j", "MARK", "--set-xmark",
-                    QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+                   {"-p", protocol, "--dport", "443", "-d", ip, "-j", "MARK",
+                    "--set-xmark", mark, "-w"});
   }
 }
 
@@ -2202,16 +2201,16 @@ bool Datapath::ModifyIsolatedGuestDropRule(Iptables::Command command,
   bool success = true;
   success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
                             kDropForwardToBruschettaChain,
-                            {"-o", std::string(ifname), "-j", "DROP", "-w"});
-  success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
-                            kDropOutputToBruschettaChain,
-                            {"-m", "state", "--state", "NEW", "-o",
-                             std::string(ifname), "-j", "DROP", "-w"});
+                            {"-o", ifname, "-j", "DROP", "-w"});
+  success &= ModifyIptables(
+      IpFamily::kDual, Iptables::Table::kFilter, command,
+      kDropOutputToBruschettaChain,
+      {"-m", "state", "--state", "NEW", "-o", ifname, "-j", "DROP", "-w"});
   return success;
 }
 
 bool Datapath::ModifyClatAcceptRules(Iptables::Command command,
-                                     const std::string& ifname) {
+                                     std::string_view ifname) {
   bool success = true;
   success &= ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter, command,
                             "FORWARD", "ACCEPT", /*iif=*/ifname, /*oif=*/"");

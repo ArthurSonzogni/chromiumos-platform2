@@ -15,7 +15,6 @@
 
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
-#include "patchpanel/multicast_forwarder.h"
 
 namespace patchpanel {
 
@@ -395,28 +394,28 @@ TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
     IpFamily ip_family;
     Iptables::Command command;
     std::string chain;
-    std::vector<std::string> argv;
+    std::vector<std::string_view> argv;
   } expected_rule_creations[] = {
       {IpFamily::kIPv4,
        Iptables::Command::kA,
        "INPUT",
-       {"-d", kMdnsMcastAddress.ToString(), "-p", "udp", "--dport", "5353",
-        "-j", "rx_mdns", "-w"}},
+       {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
+        "rx_mdns", "-w"}},
       {IpFamily::kIPv4,
        Iptables::Command::kA,
        "INPUT",
-       {"-d", kSsdpMcastAddress.ToString(), "-p", "udp", "--dport", "1900",
-        "-j", "rx_ssdp", "-w"}},
+       {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
+        "rx_ssdp", "-w"}},
       {IpFamily::kIPv6,
        Iptables::Command::kA,
        "INPUT",
-       {"-d", kMdnsMcastAddress6.ToString(), "-p", "udp", "--dport", "5353",
-        "-j", "rx_mdns", "-w"}},
+       {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
+        "rx_mdns", "-w"}},
       {IpFamily::kIPv6,
        Iptables::Command::kA,
        "INPUT",
-       {"-d", kSsdpMcastAddress6.ToString(), "-p", "udp", "--dport", "1900",
-        "-j", "rx_ssdp", "-w"}},
+       {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
+        "rx_ssdp", "-w"}},
       {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_mdns", {"-w"}},
       {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_ssdp", {"-w"}},
       {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_mdns", {"-w"}},
@@ -441,24 +440,24 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
   static const struct {
     IpFamily ip_family;
     Iptables::Command command;
-    std::vector<std::string> argv;
+    std::vector<std::string_view> argv;
   } expected_rule_deletions[] = {
       {IpFamily::kIPv4,
        Iptables::Command::kD,
-       {"-d", kMdnsMcastAddress.ToString(), "-p", "udp", "--dport", "5353",
-        "-j", "rx_mdns", "-w"}},
+       {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
+        "rx_mdns", "-w"}},
       {IpFamily::kIPv4,
        Iptables::Command::kD,
-       {"-d", kSsdpMcastAddress.ToString(), "-p", "udp", "--dport", "1900",
-        "-j", "rx_ssdp", "-w"}},
+       {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
+        "rx_ssdp", "-w"}},
       {IpFamily::kIPv6,
        Iptables::Command::kD,
-       {"-d", kMdnsMcastAddress6.ToString(), "-p", "udp", "--dport", "5353",
-        "-j", "rx_mdns", "-w"}},
+       {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
+        "rx_mdns", "-w"}},
       {IpFamily::kIPv6,
        Iptables::Command::kD,
-       {"-d", kSsdpMcastAddress6.ToString(), "-p", "udp", "--dport", "1900",
-        "-j", "rx_ssdp", "-w"}},
+       {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
+        "rx_ssdp", "-w"}},
   };
   static const struct {
     IpFamily ip_family;
