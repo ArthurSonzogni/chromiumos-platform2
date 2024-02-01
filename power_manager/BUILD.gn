@@ -55,6 +55,7 @@ group("all") {
   }
   if (use.amd64) {
     deps += [ ":dump_intel_rapl_consumption" ]
+    deps += [ ":intel_prepost_suspend" ]
   }
   if (use.fuzzer) {
     deps += [
@@ -730,6 +731,12 @@ if (use.test) {
 if (use.amd64) {
   executable("dump_intel_rapl_consumption") {
     sources = [ "tools/dump_intel_rapl_consumption.cc" ]
+    configs += [ ":target_defaults" ]
+    deps = [ ":libutil" ]
+    install_path = "bin"
+  }
+  executable("intel_prepost_suspend") {
+    sources = [ "tools/intel_prepost_suspend.cc" ]
     configs += [ ":target_defaults" ]
     deps = [ ":libutil" ]
     install_path = "bin"
