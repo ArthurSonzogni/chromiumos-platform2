@@ -75,6 +75,7 @@ bool AuthSessionManager::RemoveAuthSession(
     auto iter = expiration_map_.begin();
     while (iter != expiration_map_.end()) {
       if (iter->second == token) {
+        expiration_map_.erase(iter);
         auth_session_removed = true;
         break;
       }
