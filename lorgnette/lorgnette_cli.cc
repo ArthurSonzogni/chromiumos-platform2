@@ -119,11 +119,13 @@ std::optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
 }
 
 std::optional<lorgnette::ScannerConfig> OpenScanner(
-    ManagerProxy* manager, const std::string& scanner_name) {
+    ManagerProxy* manager,
+    const std::string& scanner_name,
+    const std::string& client_id) {
   brillo::ErrorPtr error;
   lorgnette::OpenScannerRequest open_request;
   open_request.mutable_scanner_id()->set_connection_string(scanner_name);
-  open_request.set_client_id("lorgnette_cli");
+  open_request.set_client_id(client_id);
   lorgnette::OpenScannerResponse open_response;
   if (!manager->OpenScanner(open_request, &open_response, &error)) {
     LOG(ERROR) << "OpenScanner failed: " << error->GetMessage();
@@ -539,6 +541,11 @@ int main(int argc, char** argv) {
   DEFINE_string(scanner, "",
                 "Name of the scanner whose capabilities are requested.");
 
+  // The client ID to use for the advanced scanning API.
+  DEFINE_string(client_id, "lorgnette_cli",
+                "Value of the client ID used in some of the advanced scanning "
+                "API functions.");
+
   brillo::FlagHelper::Init(argc, argv,
                            "lorgnette_cli, command-line interface to "
                            "Chromium OS Scanning Daemon");
@@ -670,7 +677,7 @@ int main(int argc, char** argv) {
       }
       handler.SetShowDetails(FLAGS_show_details);
       handler.SetScannerPattern(FLAGS_scanner);
-      if (!handler.StartDiscovery()) {
+      if (!handler.StartDiscovery(FLAGS_client_id)) {
         LOG(ERROR) << "Failed to start discovery";
         return 1;
       }
@@ -717,7 +724,7 @@ int main(int argc, char** argv) {
       }
 
       std::optional<lorgnette::ScannerConfig> config =
-          OpenScanner(manager.get(), FLAGS_scanner);
+          OpenScanner(manager.get(), FLAGS_scanner, FLAGS_client_id);
       if (!config.has_value()) {
         LOG(ERROR) << "Unable to open scanner " << FLAGS_scanner;
         return 1;
@@ -763,8 +770,8 @@ int main(int argc, char** argv) {
       }
 
       return lorgnette::cli::DoAdvancedScan(manager.get(), FLAGS_scanner,
-                                            scan_options, mime_type,
-                                            FLAGS_output)
+                                            FLAGS_client_id, scan_options,
+                                            mime_type, FLAGS_output)
                  ? 0
                  : 1;
     }

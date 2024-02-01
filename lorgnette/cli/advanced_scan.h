@@ -16,6 +16,7 @@ namespace lorgnette::cli {
 
 bool DoAdvancedScan(org::chromium::lorgnette::ManagerProxy* manager,
                     const std::string& scanner_name,
+                    const std::string& client_id,
                     const base::StringPairs& scan_options,
                     const std::string& mime_type,
                     const std::string& output_pattern);

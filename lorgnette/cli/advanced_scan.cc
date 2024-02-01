@@ -99,6 +99,7 @@ namespace lorgnette::cli {
 
 bool DoAdvancedScan(ManagerProxy* manager,
                     const std::string& scanner_name,
+                    const std::string& client_id,
                     const base::StringPairs& scan_options,
                     const std::string& mime_type,
                     const std::string& output_pattern) {
@@ -106,7 +107,7 @@ bool DoAdvancedScan(ManagerProxy* manager,
   brillo::ErrorPtr error;
   lorgnette::OpenScannerRequest open_request;
   open_request.mutable_scanner_id()->set_connection_string(scanner_name);
-  open_request.set_client_id("lorgnette_cli");
+  open_request.set_client_id(client_id);
   lorgnette::OpenScannerResponse open_response;
   if (!manager->OpenScanner(open_request, &open_response, &error)) {
     std::cerr << "OpenScanner failed: " << error->GetMessage() << std::endl;

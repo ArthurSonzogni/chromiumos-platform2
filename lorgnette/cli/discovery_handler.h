@@ -26,7 +26,7 @@ class DiscoveryHandler : public AsyncHandler {
   ~DiscoveryHandler() override;
   void ConnectSignal() override;
 
-  bool StartDiscovery();
+  bool StartDiscovery(const std::string& client_id);
 
   void SetScannerPattern(const std::string& scanner_substring);
   void SetShowDetails(bool show_details);

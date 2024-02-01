@@ -18,8 +18,6 @@ namespace lorgnette::cli {
 
 namespace {
 
-constexpr char kClientID[] = "lorgnette_cli";
-
 void PrintScannerDetails(const lorgnette::ScannerInfo& info,
                          std::ostream& out) {
   std::vector<std::string> formats(info.image_format().begin(),
@@ -68,9 +66,9 @@ void DiscoveryHandler::ConnectSignal() {
                      weak_factory_.GetWeakPtr()));
 }
 
-bool DiscoveryHandler::StartDiscovery() {
+bool DiscoveryHandler::StartDiscovery(const std::string& client_id) {
   StartScannerDiscoveryRequest request;
-  request.set_client_id(kClientID);
+  request.set_client_id(client_id);
   brillo::ErrorPtr error;
   StartScannerDiscoveryResponse response;
   if (!manager_->StartScannerDiscovery(request, &response, &error)) {
