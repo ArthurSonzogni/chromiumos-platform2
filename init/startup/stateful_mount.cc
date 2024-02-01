@@ -37,8 +37,8 @@
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/utils.h"
 
 namespace {
@@ -629,6 +629,22 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
 
   // Check for clobber.
   if (stateful_update_args.compare("clobber") == 0) {
+    // Because we want to preserve the testing tools under the /usr/local for
+    // test image, we only delete the cryptohome related LVs here.
+    if (USE_LVM_STATEFUL_PARTITION) {
+      // Remove the cryptohome LVs.
+      if (volume_group_ && volume_group_->IsValid()) {
+        volume_group_->Activate();
+        std::vector<brillo::LogicalVolume> lvs =
+            lvm_->ListLogicalVolumes(volume_group_.value(), "cryptohome*");
+        for (auto& lv : lvs) {
+          if (!lv.Remove()) {
+            LOG(WARNING) << "Failed to remove logical volume: " << lv.GetName();
+          }
+        }
+      }
+    }
+
     base::FilePath preserve_dir = stateful_.Append("unencrypted/preserve");
 
     // Find everything in stateful and delete it, except for protected paths,
