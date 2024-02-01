@@ -539,7 +539,6 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
     EXPECT_THAT(
         AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
         IsOk());
-    auth_session->ResetLECredentials();
   }
 
   // Assert. The PIN (not migrated yet) still works.
@@ -691,7 +690,6 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePinPartialMigration) {
     EXPECT_THAT(
         AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
         IsOk());
-    auth_session->ResetLECredentials();
     // Verify that authenticate with correct PIN succeed after the counter is
     // reset.
     EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kNewPin, *auth_session),

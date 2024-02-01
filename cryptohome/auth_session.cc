@@ -3847,6 +3847,9 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input,
                         auth_factor.metadata());
 
+  // Reset all of the rate limiters and and credential lockouts.
+  ResetLECredentials();
+
   // Backup VaultKeyset of the authenticated factor can still be in disk if
   // the migration is not completed. Break the dependency of the migrated and
   // not-migrated keysets and remove the backup keyset
@@ -3999,7 +4002,7 @@ void AuthSession::ResetLECredentials() {
   }
 
   if (!decrypt_token_ && local_reset_seed.empty()) {
-    LOG(WARNING)
+    LOG(ERROR)
         << "No user secret stash or VK available to reset LE credentials.";
     return;
   }

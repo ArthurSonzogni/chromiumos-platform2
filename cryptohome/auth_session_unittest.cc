@@ -4217,8 +4217,6 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   verify_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
       auth_factor_type_policy, verify_future.GetCallback());
-  // Trigger the LE reset expectations.
-  verify_session.ResetLECredentials();
   AuthenticateTestFuture decrypt_future_without_policy,
       decrypt_future_with_policy;
   AuthSession decrypt_session1({.username = kFakeUsername,
@@ -4245,9 +4243,6 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   decrypt_session2.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto), user_policy,
       decrypt_future_with_policy.GetCallback());
-  // Trigger the LE reset expectations.
-  decrypt_session2.ResetLECredentials();
-
   // Verify.
   auto [action, status] = verify_future.Take();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);

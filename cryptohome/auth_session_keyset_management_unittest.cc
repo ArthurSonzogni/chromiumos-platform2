@@ -872,7 +872,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
               AttemptAuthWithPinFactor(auth_session, kPinLabel, kPin));
     // Reset the PIN counter with correct password.
     AuthenticatePasswordFactor(auth_session, kPasswordLabel, kPassword);
-    auth_session.ResetLECredentials();
     // After resetting with password correct PIn should now work.
     EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               AttemptAuthWithPinFactor(auth_session, kPinLabel, kPin));
