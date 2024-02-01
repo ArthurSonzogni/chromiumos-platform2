@@ -10,14 +10,22 @@ group("all") {
     ":clobber-state",
     ":cros_sysrq_init",
     ":file_attrs_cleaner_tool",
+    ":install_lvm_config",
     ":install_setuid_restriction",
     ":net_poll_tool",
     ":periodic_scheduler",
     ":process_killer",
+    ":sbin_init_scripts",
     ":static_node_tool",
     ":usermode-helper",
     ":usr_share_cros_init_scripts",
   ]
+  if (use.syslog) {
+    deps += [
+      ":install_chromeos-cleanup-logs",
+      ":install_rsyslog",
+    ]
+  }
   if (use.test) {
     deps += [
       ":chromeos_startup_test",
@@ -114,6 +122,9 @@ executable("chromeos_startup") {
     ":libclobber",
     ":libcrosstartup",
   ]
+
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/sbin"
 }
 
 executable("clobber-state") {
@@ -123,6 +134,7 @@ executable("clobber-state") {
     ":libclobber",
     ":utils",
   ]
+  install_path = "/sbin"
 }
 
 static_library("file_attrs_cleaner_lib") {
@@ -134,6 +146,7 @@ executable("file_attrs_cleaner_tool") {
   sources = [ "file_attrs_cleaner_tool.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":file_attrs_cleaner_lib" ]
+  install_path = "/sbin"
 }
 
 static_library("process_killer_lib") {
@@ -149,6 +162,7 @@ executable("process_killer") {
   sources = [ "process_killer/main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":process_killer_lib" ]
+  install_path = "bin"
 }
 
 executable("periodic_scheduler") {
@@ -157,22 +171,26 @@ executable("periodic_scheduler") {
     "periodic_scheduler_main.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("cros_sysrq_init") {
   sources = [ "cros_sysrq_init.cc" ]
   pkg_deps = [ "vboot_host" ]
   configs += [ ":target_defaults" ]
+  install_path = "/sbin"
 }
 
 executable("net_poll_tool") {
   sources = [ "net_poll_tool.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "/sbin"
 }
 
 executable("static_node_tool") {
   sources = [ "static_node_tool.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "/sbin"
 }
 
 static_library("usermode-helper_lib") {
@@ -184,17 +202,48 @@ executable("usermode-helper") {
   sources = [ "usermode-helper.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":usermode-helper_lib" ]
+  install_path = "/sbin"
 }
 
 install_config("usr_share_cros_init_scripts") {
-  sources = [ "send-boot-metrics.sh" ]
+  sources = [
+    "is_feature_enabled.sh",
+    "send-boot-metrics.sh",
+  ]
   install_path = "/usr/share/cros/init"
+  type = "executable"
+}
+
+install_config("sbin_init_scripts") {
+  sources = [
+    "chromeos-boot-alert",
+    "chromeos_shutdown",
+    "clobber-log",
+  ]
+  install_path = "/sbin"
   type = "executable"
 }
 
 install_config("install_setuid_restriction") {
   sources = [ "setuid_restrictions/init_uid_allowlist.txt" ]
   install_path = "/usr/share/cros/startup/process_management_policies"
+}
+
+install_config("install_lvm_config") {
+  sources = [ "lvm.conf" ]
+  install_path = "/etc/lvm"
+}
+
+if (use.syslog) {
+  install_config("install_chromeos-cleanup-logs") {
+    sources = [ "chromeos-cleanup-logs" ]
+    install_path = "sbin"
+  }
+
+  install_config("install_rsyslog") {
+    sources = [ "rsyslog.chromeos" ]
+    install_path = "/etc"
+  }
 }
 
 if (use.test) {
