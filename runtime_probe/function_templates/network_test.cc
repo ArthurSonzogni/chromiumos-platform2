@@ -6,8 +6,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
@@ -56,6 +54,26 @@ class NetworkFunctionTest : public BaseFunctionTest {
     SetFile({bus_dev, "vendor"}, "0x2222");
     SetFile({bus_dev, "class"}, "0x010203");
 
+    shill_devices_["/dev/" + dev_name] = {{shill::kInterfaceProperty, dev_name},
+                                          {shill::kTypeProperty, network_type}};
+    mock_context()->SetShillProxies(shill_devices_);
+  }
+
+  void SetUsbNetworkDevice(const std::string& dev_name,
+                           const std::string& network_type,
+                           const std::string& removable) {
+    const std::string bus_dev =
+        "/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb2/2-3/";
+    const std::string bus_dev_relative_to_sys = "../../../../../../";
+    const std::string interface_name = "2-3:1.0";
+    SetSymbolicLink({bus_dev, interface_name},
+                    {"/sys/class/net", dev_name, "device"});
+    // The symbolic link is for getting the bus type.
+    SetSymbolicLink({bus_dev_relative_to_sys, "bus", "usb"},
+                    {bus_dev, interface_name, "subsystem"});
+    SetFile({bus_dev, "idProduct"}, "0x1111");
+    SetFile({bus_dev, "idVendor"}, "0x2222");
+    SetFile({bus_dev, "removable"}, removable);
     shill_devices_["/dev/" + dev_name] = {{shill::kInterfaceProperty, dev_name},
                                           {shill::kTypeProperty, network_type}};
     mock_context()->SetShillProxies(shill_devices_);
@@ -140,6 +158,16 @@ TEST_F(NetworkFunctionTest, CreateNetworkFunctionFailed) {
   arg.Set("device_type", "unknown_type");
   auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
   EXPECT_FALSE(probe_function);
+}
+
+TEST_F(NetworkFunctionTest, ProbeEthernetFilterExternal) {
+  SetUsbNetworkDevice("eth0", shill::kTypeEthernet, "unknown");
+  base::Value::Dict arg;
+  arg.Set("device_type", "ethernet");
+  auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
+
+  auto result = EvalProbeFunction(probe_function.get());
+  EXPECT_EQ(result.size(), 0);
 }
 
 }  // namespace

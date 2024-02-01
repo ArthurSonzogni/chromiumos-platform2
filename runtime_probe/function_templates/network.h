@@ -5,7 +5,6 @@
 #ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 #define RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 
-#include <memory>
 #include <optional>
 #include <string>
 

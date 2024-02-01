@@ -40,8 +40,38 @@ class BusUtilsTest : public BaseFileTest {
                     {bus_dev, "subsystem"});
     SetFile({bus_dev, "device"}, "0x1111");
     SetFile({bus_dev, "vendor"}, "0x2222");
+    SetFile({bus_dev, "revision"}, "0x01");
     SetFile({bus_dev, "class"}, "0x010203");
 
+    return bus_dev;
+  }
+
+  // Returns the string of fake usb bus device.
+  std::string SetFaksUsbDevice(const std::string& dev_name) {
+    const std::string bus_dev =
+        "/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb2/2-3";
+    const std::string bus_dev_relative_to_sys = "../../../../../../";
+    const std::string interface_name = "2-3:1.0";
+    SetSymbolicLink({bus_dev, interface_name},
+                    {kFakeSysClassDir, dev_name, "device"});
+    // The symbolic link is for getting the bus type.
+    SetSymbolicLink({bus_dev_relative_to_sys, "bus", "usb"},
+                    {bus_dev, interface_name, "subsystem"});
+    SetFile({bus_dev, "idProduct"}, "0x1111");
+    SetFile({bus_dev, "idVendor"}, "0x2222");
+    return bus_dev;
+  }
+
+  // Returns the string of fake sdio bus device.
+  std::string SetFaksSdioDevice(const std::string& dev_name) {
+    const std::string bus_dev = "/sys/devices/fake_sdio";
+    const std::string bus_dev_relative_to_sys = "../../";
+    SetSymbolicLink(bus_dev, {kFakeSysClassDir, dev_name, "device"});
+    // The symbolic link is for getting the bus type.
+    SetSymbolicLink({bus_dev_relative_to_sys, "bus", "sdio"},
+                    {bus_dev, "subsystem"});
+    SetFile({bus_dev, "device"}, "0x1111");
+    SetFile({bus_dev, "vendor"}, "0x2222");
     return bus_dev;
   }
 };
@@ -49,10 +79,7 @@ class BusUtilsTest : public BaseFileTest {
 TEST_F(BusUtilsTest, ProbePci) {
   const std::string dev_name = "dev_name";
   const std::string bus_dev = SetFakePciDevice(dev_name);
-  SetFile({bus_dev, "device"}, "0x1111");
-  SetFile({bus_dev, "vendor"}, "0x2222");
-  SetFile({bus_dev, "revision"}, "0x01");
-  SetFile({bus_dev, "class"}, "0x010203");
+
   auto ans = MakeValue({
       {"bus_type", "pci"},
       {"pci_device_id", "0x1111"},
@@ -63,7 +90,13 @@ TEST_F(BusUtilsTest, ProbePci) {
   });
   auto result = GetDeviceBusDataFromSysfsNode(
       GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  auto result_is_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), true);
+  auto result_is_not_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), false);
   EXPECT_EQ(result, ans);
+  EXPECT_EQ(result_is_fixed, ans);
+  EXPECT_EQ(result_is_not_fixed, ans);
 }
 
 TEST_F(BusUtilsTest, ProbePciRevisionOldKernel) {
@@ -96,41 +129,58 @@ TEST_F(BusUtilsTest, ProbePciRevisionOldKernelFailed) {
   EXPECT_FALSE(result->GetDict().FindString("pci_revision"));
 }
 
-TEST_F(BusUtilsTest, ProbeUsb) {
+TEST_F(BusUtilsTest, ProbeUsbRemovable) {
   const std::string dev_name = "dev_name";
-  const std::string bus_dev =
-      "/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb2/2-3";
-  const std::string bus_dev_relative_to_sys = "../../../../../../";
-  const std::string interface_name = "2-3:1.0";
-  SetSymbolicLink({bus_dev, interface_name},
-                  {kFakeSysClassDir, dev_name, "device"});
-  // The symbolic link is for getting the bus type.
-  SetSymbolicLink({bus_dev_relative_to_sys, "bus", "usb"},
-                  {bus_dev, interface_name, "subsystem"});
-  SetFile({bus_dev, "idProduct"}, "0x1111");
-  SetFile({bus_dev, "idVendor"}, "0x2222");
+  const auto bus_dev = SetFaksUsbDevice(dev_name);
+  SetFile({bus_dev, "removable"}, "unknown");
+
   auto ans = MakeValue({
       {"bus_type", "usb"},
       {"usb_product_id", "0x1111"},
       {"usb_vendor_id", "0x2222"},
+      {"usb_removable", "unknown"},
       {"path", GetPathUnderRoot({kFakeSysClassDir, dev_name}).value()},
   });
 
   auto result = GetDeviceBusDataFromSysfsNode(
       GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  auto result_is_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), true);
+  auto result_is_not_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), false);
   EXPECT_EQ(result, ans);
+  EXPECT_EQ(result_is_fixed, std::nullopt);
+  EXPECT_EQ(result_is_not_fixed, ans);
+}
+
+TEST_F(BusUtilsTest, ProbeUsbFixed) {
+  const std::string dev_name = "dev_name";
+  const auto bus_dev = SetFaksUsbDevice(dev_name);
+  SetFile({bus_dev, "removable"}, "fixed");
+
+  auto ans = MakeValue({
+      {"bus_type", "usb"},
+      {"usb_product_id", "0x1111"},
+      {"usb_vendor_id", "0x2222"},
+      {"usb_removable", "fixed"},
+      {"path", GetPathUnderRoot({kFakeSysClassDir, dev_name}).value()},
+  });
+
+  auto result = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  auto result_is_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), true);
+  auto result_is_not_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), false);
+  EXPECT_EQ(result, ans);
+  EXPECT_EQ(result_is_fixed, ans);
+  EXPECT_EQ(result_is_not_fixed, ans);
 }
 
 TEST_F(BusUtilsTest, ProbeSdio) {
   const std::string dev_name = "dev_name";
-  const std::string bus_dev = "/sys/devices/fake_sdio";
-  const std::string bus_dev_relative_to_sys = "../../";
-  SetSymbolicLink(bus_dev, {kFakeSysClassDir, dev_name, "device"});
-  // The symbolic link is for getting the bus type.
-  SetSymbolicLink({bus_dev_relative_to_sys, "bus", "sdio"},
-                  {bus_dev, "subsystem"});
-  SetFile({bus_dev, "device"}, "0x1111");
-  SetFile({bus_dev, "vendor"}, "0x2222");
+  const auto bus_dev = SetFaksSdioDevice(dev_name);
+
   auto ans = MakeValue({
       {"bus_type", "sdio"},
       {"sdio_device_id", "0x1111"},
@@ -140,7 +190,13 @@ TEST_F(BusUtilsTest, ProbeSdio) {
 
   auto result = GetDeviceBusDataFromSysfsNode(
       GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  auto result_is_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), true);
+  auto result_is_not_fixed = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}), false);
   EXPECT_EQ(result, ans);
+  EXPECT_EQ(result_is_fixed, ans);
+  EXPECT_EQ(result_is_not_fixed, ans);
 }
 
 TEST_F(BusUtilsTest, ProbePlatform) {
@@ -174,10 +230,6 @@ TEST_F(BusUtilsTest, ProbeUnknown) {
 TEST_F(BusUtilsTest, ProbePciPlatform) {
   const std::string dev_name = "dev_name";
   const std::string bus_dev = SetFakePciDevice(dev_name);
-  SetFile({bus_dev, "device"}, "0x1111");
-  SetFile({bus_dev, "vendor"}, "0x2222");
-  SetFile({bus_dev, "revision"}, "0x01");
-  SetFile({bus_dev, "class"}, "0x010203");
 
   const std::string platform_dev_name = "platform_dev";
   // Unset link set by SetFakePciDevice.
@@ -203,10 +255,6 @@ TEST_F(BusUtilsTest, ProbePciPlatform) {
 TEST_F(BusUtilsTest, ProbeWwan) {
   const std::string dev_name = "dev_name";
   const std::string bus_dev = SetFakePciDevice(dev_name);
-  SetFile({bus_dev, "device"}, "0x1111");
-  SetFile({bus_dev, "vendor"}, "0x2222");
-  SetFile({bus_dev, "revision"}, "0x01");
-  SetFile({bus_dev, "class"}, "0x010203");
 
   // Set fake wwan subsystem
   SetSymbolicLink({"class", "wwan"}, {bus_dev, "wwan", "wwan0", "subsystem"});

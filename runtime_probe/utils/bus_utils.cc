@@ -7,8 +7,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <utility>
-#include <vector>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/containers/span.h>
@@ -38,7 +36,7 @@ constexpr auto kUsbFields =
         {{"vendor_id", "idVendor"}, {"product_id", "idProduct"}});
 constexpr auto kUsbOptionalFields =
     base::MakeFixedFlatMap<std::string_view, std::string_view>(
-        {{"bcd_device", "bcdDevice"}});
+        {{"bcd_device", "bcdDevice"}, {"removable", "removable"}});
 
 constexpr int PCI_REVISION_ID_OFFSET = 0x08;
 
@@ -127,12 +125,29 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsDeviceNode(
   return res;
 }
 
+bool IsRemovableDevice(const base::Value::Dict& result) {
+  // Currently the "removable" attribute is only available for USB devices.  We
+  // might need to revise the filter once we have removable PCI devices in
+  // ChromeOS.
+  const auto* removable = result.FindString("usb_removable");
+  return (removable != nullptr && *removable != "fixed");
+}
+
 }  // namespace
 
 std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
     const base::FilePath& node_path) {
   const auto dev_path = node_path.Append("device");
   return GetDeviceBusDataFromSysfsDeviceNode(node_path, dev_path);
+}
+
+std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
+    const base::FilePath& node_path, bool is_fixed) {
+  auto res = GetDeviceBusDataFromSysfsNode(node_path);
+  if (is_fixed && res.has_value() && IsRemovableDevice(res->GetDict())) {
+    return std::nullopt;
+  }
+  return res;
 }
 
 }  // namespace runtime_probe

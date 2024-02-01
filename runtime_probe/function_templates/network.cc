@@ -66,7 +66,6 @@ std::map<std::string, std::string> GetDevicesType() {
 
   return result;
 }
-
 }  // namespace
 
 bool NetworkFunction::PostParseArguments() {
@@ -83,7 +82,9 @@ NetworkFunction::DataType NetworkFunction::EvalImpl() const {
   base::FilePath net_dev_pattern =
       Context::Get()->root_dir().Append("sys/class/net/*");
   for (const auto& net_dev_path : Glob(net_dev_pattern)) {
-    auto node_res = GetDeviceBusDataFromSysfsNode(net_dev_path);
+    auto node_res = GetDeviceBusDataFromSysfsNode(net_dev_path,
+                                                  /*is_fixed=*/true);
+
     if (node_res) {
       results.Append(std::move(*node_res));
     }

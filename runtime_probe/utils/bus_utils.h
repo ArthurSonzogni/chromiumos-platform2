@@ -20,6 +20,9 @@ namespace runtime_probe {
 std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
     const base::FilePath& node_path);
 
+std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
+    const base::FilePath& node_path, bool is_fixed);
+
 }  // namespace runtime_probe
 
 #endif  // RUNTIME_PROBE_UTILS_BUS_UTILS_H_
