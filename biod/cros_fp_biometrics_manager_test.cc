@@ -304,6 +304,24 @@ TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateNoSpaceAvailable) {
   EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
 }
 
+TEST_F(CrosFpBiometricsManagerTest, TestReadRecordsForSingleUserTwice) {
+  std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
+                                      kLabel, kFakeValidationValue1},
+                                     kTemplateMetadataVersion0}});
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser)
+      .WillRepeatedly(Return(user_records));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount)
+      .WillRepeatedly(Return(kMaxTemplateCount));
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate).WillRepeatedly(Return(true));
+
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+
+  EXPECT_THAT(cros_fp_biometrics_manager_->GetLoadedRecords(),
+              testing::SizeIs(1));
+}
+
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionStartStopSuccess) {
   BiometricsManager::AuthSession auth_session;
 

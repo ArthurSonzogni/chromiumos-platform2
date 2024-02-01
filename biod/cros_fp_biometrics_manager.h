@@ -65,9 +65,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
       const std::string& record_id) const;
 
-  // Clear FPMCU context and re-upload all records from storage.
-  bool ReloadAllRecords(std::string user_id);
-
   // Updates record metadata on disk.
   bool UpdateRecordMetadata(
       const BiodStorageInterface::RecordMetadata& record_metadata);

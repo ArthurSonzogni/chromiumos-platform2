@@ -37,15 +37,6 @@ namespace biod {
 
 using Mode = ec::FpMode::Mode;
 
-bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
-  // Here we need a copy of user_id because the user_id could be part of
-  // loaded_records_ which is cleared in this method.
-  loaded_records_.clear();
-  suspicious_templates_.clear();
-
-  return ReadRecordsForSingleUser(user_id);
-}
-
 BiometricType CrosFpBiometricsManager::GetType() {
   return BIOMETRIC_TYPE_FINGERPRINT;
 }
@@ -164,9 +155,8 @@ bool CrosFpBiometricsManager::RemoveRecord(const std::string& record_id) {
   if (!record_manager_->DeleteRecord(record_id))
     return false;
 
-  // We cannot remove only one record if we want to stay in sync with the MCU,
-  // Clear and reload everything.
-  return ReloadAllRecords(user_id);
+  // We cannot remove only one record in the FPMCU. Reload user records.
+  return ReadRecordsForSingleUser(user_id);
 }
 
 bool CrosFpBiometricsManager::UpdateRecordMetadata(
@@ -176,7 +166,13 @@ bool CrosFpBiometricsManager::UpdateRecordMetadata(
 
 bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
     const std::string& user_id) {
+  // Setting context in FPMCU removes the templates.
+  // Clear loaded_records_ and suspicious_templates_ to keep
+  // biod and FPMCU in sync.
+  loaded_records_.clear();
+  suspicious_templates_.clear();
   cros_dev_->SetContext(user_id);
+
   auto valid_records = record_manager_->GetRecordsForUser(user_id);
   for (const auto& record : valid_records) {
     LoadRecord(std::move(record));
