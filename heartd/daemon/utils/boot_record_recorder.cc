@@ -29,11 +29,6 @@ void CollectShutdownTime(const base::FilePath& root_dir,
           base::FileEnumerator::FileType::DIRECTORIES);
   // According to b/293410814, there should be only one bootstat archive.
   auto path = file_enum.Next();
-  if (path.empty()) {
-    LOG(ERROR) << "There is no bootstat archive";
-    return;
-  }
-
   base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to open file: " << path;
@@ -77,8 +72,8 @@ void CollectBootID(const base::FilePath& root_dir, const Database* db_ptr) {
   // 2024-01-01T00:00:00.00000Z INFO boot_id: 6d415d5587ed4024be70a645f2b019c3
   auto tokens = base::SplitString(lines.back(), " ", base::TRIM_WHITESPACE,
                                   base::SPLIT_WANT_NONEMPTY);
-  if (tokens.empty()) {
-    LOG(ERROR) << "Failed to parse boot_id records";
+  if (tokens.size() != 4 || tokens[2] != "boot_id:") {
+    LOG(ERROR) << "Failed to parse boot_id records: " << lines.back();
     return;
   }
 

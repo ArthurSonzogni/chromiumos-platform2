@@ -26,10 +26,10 @@ namespace {
 constexpr char kFakeShutdownDirName[] = "shutdown.dir";
 constexpr char kLatestBootID[] = "latest";
 constexpr char kFakeBootIDContent[] =
-    "2023-12-07T03:13:27.906000Z INFO boot_id: old_1"
-    "2023-12-07T03:27:50.906000Z INFO boot_id: old_2"
-    "2023-12-07T09:54:02.906000Z INFO boot_id: old_3"
-    "2023-12-07T10:01:17.906000Z INFO boot_id: latest";
+    "2023-12-07T03:13:27.906000Z INFO boot_id: old_1\n"
+    "2023-12-07T03:27:50.906000Z INFO boot_id: old_2\n"
+    "2023-12-07T09:54:02.906000Z INFO boot_id: old_3\n"
+    "2023-12-07T10:01:17.906000Z INFO boot_id: latest\n";
 
 class BootMetricsRecorderTest : public testing::Test {
  public:
@@ -112,6 +112,30 @@ TEST_F(BootMetricsRecorderTest, EmptyBootIDIsFine) {
   Init();
   EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
   CreateFakeBootIDFile("");
+  RecordBootMetrics(GetFakeRoot(), db_.get());
+
+  auto boot_records =
+      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+  EXPECT_EQ(boot_records.size(), 1);
+  EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
+}
+
+TEST_F(BootMetricsRecorderTest, WrongBootIDText) {
+  Init();
+  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
+  CreateFakeBootIDFile("2024-01-01 INFO wrong_boot_id_text: test");
+  RecordBootMetrics(GetFakeRoot(), db_.get());
+
+  auto boot_records =
+      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+  EXPECT_EQ(boot_records.size(), 1);
+  EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
+}
+
+TEST_F(BootMetricsRecorderTest, WrongBootIDTokenLength) {
+  Init();
+  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
+  CreateFakeBootIDFile("2024-01-01 INFO boot_id: one_more_text test");
   RecordBootMetrics(GetFakeRoot(), db_.get());
 
   auto boot_records =
