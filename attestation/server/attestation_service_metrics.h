@@ -31,6 +31,10 @@ enum class AttestationOpsStatus {
   kIdentityFailure = 7,
   // Failure related to endorsement key or endorsement certificate.
   kEndorsementFailure = 8,
+  // Failure of IO operation.
+  kIOFailure = 9,
+  // Failure related to hwsec chips.
+  kHwsecFailure = 10,
   kMaxValue,
 };
 

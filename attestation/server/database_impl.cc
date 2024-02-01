@@ -58,21 +58,28 @@ AttestationDatabase* DatabaseImpl::GetMutableProtobuf() {
 bool DatabaseImpl::SaveChanges() {
   std::string buffer;
   auto status = EncryptProtobuf(&buffer);
-  metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase, status);
   if (status != AttestationOpsStatus::kSuccess) {
+    metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase, status);
     return false;
   }
-  return io_->Write(buffer);
+  if (!io_->Write(buffer)) {
+    metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase,
+                                        AttestationOpsStatus::kIOFailure);
+    return false;
+  }
+  metrics_.ReportAttestationOpsStatus(kAttestationEncryptDatabase,
+                                      AttestationOpsStatus::kSuccess);
+  return true;
 }
 
 bool DatabaseImpl::Reload() {
   LOG(INFO) << "Loading attestation database.";
   std::string buffer;
   if (!io_->Read(&buffer)) {
+    metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase,
+                                        AttestationOpsStatus::kIOFailure);
     return false;
   }
-
-  RETURN_IF_ERROR(hwsec_->WaitUntilReady()).As(false);
 
   auto status = DecryptProtobuf(buffer);
   metrics_.ReportAttestationOpsStatus(kAttestationDecryptDatabase, status);
@@ -163,6 +170,9 @@ AttestationOpsStatus DatabaseImpl::EncryptProtobuf(
 
 AttestationOpsStatus DatabaseImpl::DecryptProtobuf(
     const std::string& encrypted_input) {
+  RETURN_IF_ERROR(hwsec_->WaitUntilReady())
+      .As(AttestationOpsStatus::kHwsecFailure);
+
   if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
     LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
     return AttestationOpsStatus::kInvalidBootMode;
