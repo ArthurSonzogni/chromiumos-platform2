@@ -66,6 +66,7 @@ constexpr char kDiscoverableTimeoutProperty[] = "DiscoverableTimeout";
 constexpr char kDiscoveringProperty[] = "Discovering";
 constexpr char kUUIDsProperty[] = "UUIDs";
 constexpr char kModaliasProperty[] = "Modalias";
+constexpr char kRolesProperty[] = "Roles";
 constexpr char kStackSyncQuittingProperty[] = "StackSyncQuitting";
 constexpr char kUseSuspendNotifierProperty[] = "UseSuspendNotifier";
 
