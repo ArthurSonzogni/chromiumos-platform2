@@ -14,7 +14,8 @@ set -e
 
 CONFIG_INDEX="$(crosid -f CONFIG_INDEX)"
 if [ "${CONFIG_INDEX}" = "unknown" ]; then
-    echo 'No device identity matched.  Run "crosid -v" for explanation.' >&2
+    echo 'FATAL: No device identity matched.' \
+        'Run "crosid -v" for explanation.' | tee -a /dev/kmsg >&2
     exit 1
 fi
 
