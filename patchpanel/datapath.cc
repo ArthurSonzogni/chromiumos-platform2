@@ -1494,6 +1494,30 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
     LOG(ERROR) << "Failed to add fwmark routing tag for " << ext_ifname << "<-"
                << int_ifname << " in " << subchain;
   }
+
+  // Restores the source bits from the conntrack mark to the fwmark of a
+  // packet. The source information specific to a particular connection in
+  // conntrack table is always preferred over the default source value.
+  // Such source tag overrides can be injected in conntrack with
+  // ConntrackMonitor.
+  if (!ModifyConnmarkRestore(IpFamily::kDual, subchain, Iptables::Command::kA,
+                             /*iif=*/"", kFwmarkAllSourcesMask)) {
+    LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
+  }
+
+  // If the source bit from the connmark has already been restored to a known
+  // traffic source mark, return. Otherwise mark with traffic source specified
+  // in the args.
+  ModifyIptables(
+      IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
+      subchain,
+      {"-m", "mark", "!", "--mark",
+       SourceFwmarkWithMask(TrafficSource::kUnknown), "-j", "RETURN", "-w"});
+
+  if (!ModifyFwmarkSourceTag(subchain, Iptables::Command::kA, source)) {
+    LOG(ERROR) << "Failed to add source fwmark tagging rule for source "
+               << source << " in " << subchain;
+  }
 }
 
 void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,

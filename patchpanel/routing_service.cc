@@ -79,6 +79,11 @@ std::string QoSFwmarkWithMask(QoSCategory category) {
       {mark.ToString(), "/", kFwmarkQoSCategoryMask.ToString()});
 }
 
+std::string SourceFwmarkWithMask(TrafficSource source) {
+  auto mark = Fwmark::FromSource(source);
+  return base::StrCat({mark.ToString(), "/", kFwmarkAllSourcesMask.ToString()});
+}
+
 std::string_view TrafficSourceName(TrafficSource source) {
   static constexpr auto kTrafficSourceNames =
       base::MakeFixedFlatMap<TrafficSource, std::string_view>({

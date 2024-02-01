@@ -104,6 +104,10 @@ std::string_view TrafficSourceName(TrafficSource source);
 // argument to call iptables, e.g., "0x00000040/0x000000e0".
 std::string QoSFwmarkWithMask(QoSCategory category);
 
+// Returns the "mark/mask" string for `source` which can be used as an
+// argument to call iptables, e.g., "0x00002400/0x00003f00".
+std::string SourceFwmarkWithMask(TrafficSource source);
+
 // A representation of how fwmark bits are split and used for tagging and
 // routing traffic. The 32 bits of the fwmark are currently organized as such:
 //    0                   1                   2                   3

@@ -1178,6 +1178,15 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
                   "0x03ec0000/0xffff0000 -w");
   Verify_ip(*runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
   Verify_ip(*runner_, "link set dev ap0 up multicast on");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_ap0 -j CONNMARK --restore-mark "
+                  "--mask 0x00003f00 -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_ap0 -m mark ! --mark "
+                  "0x00000000/0x00003f00 -j RETURN -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x00002300/0x00003f00 -w");
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
@@ -1290,6 +1299,15 @@ TEST_F(DatapathTest, StartRoutingDevice) {
   Verify_iptables(*runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x03ea0000/0xffff0000 -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_eth0 -j CONNMARK --restore-mark "
+                  "--mask 0x00003f00 -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_eth0 -m mark ! --mark "
+                  "0x00000000/0x00003f00 -j RETURN -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
+                  "0x00002000/0x00003f00 -w");
 
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
@@ -1467,6 +1485,15 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "--restore-mark --mask 0x00003f00 -w");
   Verify_iptables(*runner_, IpFamily::kIPv4,
                   "nat -A POSTROUTING -o tun0 -j MASQUERADE -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arcbr0 -j CONNMARK --restore-mark "
+                  "--mask 0x00003f00 -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arcbr0 -m mark ! --mark "
+                  "0x00000000/0x00003f00 -j RETURN -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
+                  "0x00002000/0x00003f00 -w");
   Verify_iptables(*runner_, IpFamily::kIPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
