@@ -69,6 +69,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     HS20Information hs20_information;
     bool mbo_support = false;
     QosSupport qos_support;
+    bool anqp_support = false;
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
@@ -126,6 +127,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const HS20Information& hs20_information() const;
   bool mbo_support() const;
   const QosSupport& qos_support() const;
+  bool anqp_support() const;
   // Transitional mode OWE AP consists of two BSSes pointing to each other via
   // IEs in the beacon. The SSID and BSSID is included in these IEs for
   // identification and these two functions return them. For endpoints not
@@ -146,6 +148,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
   FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
   FRIEND_TEST(WiFiEndpointTest, ParseCountryCode);
+  FRIEND_TEST(WiFiEndpointTest, ParseAdvertisementProtocolList);
   // These test cases need access to the KeyManagement enum.
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsOWE);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
@@ -238,6 +241,10 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // Parse a single vendor information element.
   void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                      std::vector<uint8_t>::const_iterator end);
+  // Parse Advertisement Protocols list.
+  void ParseAdvertisementProtocolList(std::vector<uint8_t>::const_iterator ie,
+                                      std::vector<uint8_t>::const_iterator end,
+                                      bool* anqp_support);
 
   // Assigns a value to |has_tethering_signature_|.
   void CheckForTetheringSignature();

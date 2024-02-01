@@ -608,6 +608,15 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_TRUE(
         ep->supported_features_.krv_support.bss_max_idle_period_supported);
   }
+  {
+    std::vector<uint8_t> ies;
+    const std::vector<uint8_t> kAdvProt{0x7f, 0x00};
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->supported_features_.anqp_support);
+  }
 }
 
 TEST_F(WiFiEndpointTest, ParseVendorIEs) {
@@ -922,6 +931,52 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
     EXPECT_EQ(std::string(kCountryCode, 0, 2), ep->country_code());
+  }
+}
+
+TEST_F(WiFiEndpointTest, ParseAdvertisementProtocolList) {
+  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  {
+    std::vector<uint8_t> ies;
+    const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtANQP};
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->supported_features_.anqp_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtEAS};
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_FALSE(ep->supported_features_.anqp_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtANQP};
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, 0, std::vector<uint8_t>(),
+                &ies);
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->supported_features_.anqp_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    const std::vector<uint8_t> kANQP{0x7f, IEEE_80211::kAdvProtANQP};
+    const std::vector<uint8_t> kRLQP{0x7f, IEEE_80211::kAdvProtRLQP};
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kRLQP, &ies);
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, 0, std::vector<uint8_t>(),
+                &ies);
+    AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kANQP, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->supported_features_.anqp_support);
   }
 }
 

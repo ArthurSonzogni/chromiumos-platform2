@@ -36,6 +36,7 @@ const uint8_t kElemIdVendor = 0xdd;
 const uint8_t kElemIdVHTCap = 0xbf;
 const uint8_t kElemIdVHTOperation = 0xc0;
 const uint8_t kElemIdMeshId = 0x72;
+const uint8_t kElemIdAdvertisementProtocols = 0x6c;
 const uint8_t kElemIdExt = 0xff;
 
 // Element Id Extensions from P802.11ax/D4.0 Section 9.4.2.1.
@@ -143,6 +144,14 @@ const uint16_t kWlanCapMaskRadioMeasurement = 0x1000;
 const uint16_t kWlanCapMaskDsssOfdm = 0x2000;
 const uint16_t kWlanCapMaskDelayedBlockAck = 0x4000;
 const uint16_t kWlanCapMaskImmediateBlockAck = 0x8000;
+
+// Advertisement protocol identifier from IEEE 802.11-2020 Table 9-237.
+const uint8_t kAdvProtANQP = 0;
+const uint8_t kAdvProtMisIS = 1;
+const uint8_t kAdvProtMisCESCD = 2;
+const uint8_t kAdvProtEAS = 3;
+const uint8_t kAdvProtRLQP = 4;
+const uint8_t kAdvProtVendorSpecific = 221;
 
 // This structure is incomplete.  Fields will be added as necessary.
 //

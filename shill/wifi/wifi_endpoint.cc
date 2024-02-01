@@ -370,6 +370,10 @@ const WiFiEndpoint::QosSupport& WiFiEndpoint::qos_support() const {
   return supported_features_.qos_support;
 }
 
+bool WiFiEndpoint::anqp_support() const {
+  return supported_features_.anqp_support;
+}
+
 // static
 WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
@@ -722,6 +726,15 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         }
 
         break;
+      case IEEE_80211::kElemIdAdvertisementProtocols:
+        // Format of an Advertisement Protocol element
+        //    1       1
+        // +------+--------+-----------------------------------+
+        // | Type | Length | Advertisement Protocol Tuple list |
+        // +------+--------+-----------------------------------+
+        ParseAdvertisementProtocolList(it + 2, it + ie_len,
+                                       &supported_features_.anqp_support);
+        break;
       default:
         SLOG(5) << __func__ << ": parsing of " << *it
                 << " type IE not supported.";
@@ -998,6 +1011,55 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
     }
     supported_features_.krv_support.adaptive_ft_supported =
         *ie & IEEE_80211::kCiscoExtendedCapabilitiesAdaptiveFT;
+  }
+}
+
+void WiFiEndpoint::ParseAdvertisementProtocolList(
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
+    bool* anqp_support) {
+  if (std::distance(ie, end) < 2) {
+    LOG(WARNING) << __func__
+                 << ": no room in IE for Advertisement protocol tuple.";
+    return;
+  }
+
+  // Format of an Advertisement Protocol tuple (Figure 9-486).
+  //    1                     variable
+  // +---------------------+---------------------------+
+  // | Query Response Info | Advertisement Protocol ID |
+  // +---------------------+---------------------------+
+
+  while (std::distance(ie, end) >= 2) {
+    // Skip the Query Response Info.
+    ie++;
+    // Advertisement Protocol ID.
+    switch (*ie) {
+      case IEEE_80211::kAdvProtANQP:
+        *anqp_support = true;
+        ie++;
+        break;
+      case IEEE_80211::kAdvProtVendorSpecific: {
+        // Format of a Vendor Specific element (Figure 9-290).
+        //    1            1
+        // +------------+--------+-----+-----------------+
+        // | Element ID | Length | OUI | Vendor specific |
+        // +------------+--------+-----+-----------------+
+        uint8_t element_len = *(ie + 1);
+        // Skip the vendor specific element.
+        ie += element_len;
+        break;
+      }
+      case IEEE_80211::kAdvProtMisIS:
+      case IEEE_80211::kAdvProtMisCESCD:
+      case IEEE_80211::kAdvProtEAS:
+      case IEEE_80211::kAdvProtRLQP:
+      default:
+        // Except for Vendor specific element, elements ID are always 1 byte
+        // long (IEEE802.11-2020 - 9.4.2.92). Skip unsupported or reserved
+        // identifiers.
+        ie++;
+    }
   }
 }
 
