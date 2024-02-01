@@ -53,12 +53,13 @@ class DatabaseImpl : public Database, public DatabaseIO {
   void set_io(DatabaseIO* io) { io_ = io; }
 
  private:
-  // Encrypts |protobuf_| into |encrypted_output|. Returns true on success.
-  bool EncryptProtobuf(std::string* encrypted_output);
+  // Encrypts |protobuf_| into |encrypted_output|. Returns
+  // AttestationOpsStatus::kSuccess on success.
+  AttestationOpsStatus EncryptProtobuf(std::string* encrypted_output);
 
   // Decrypts |encrypted_input| as output by EncryptProtobuf into |protobuf_|.
-  // Returns true on success.
-  bool DecryptProtobuf(const std::string& encrypted_input);
+  // Returns AttestationOpsStatus::kSuccess on success.
+  AttestationOpsStatus DecryptProtobuf(const std::string& encrypted_input);
 
   AttestationDatabase protobuf_;
   DatabaseIO* io_;

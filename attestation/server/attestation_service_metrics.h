@@ -25,7 +25,7 @@ enum class AttestationOpsStatus {
   kCryptoFailure = 4,
   // Failure of database operation.
   kDatabaseFailure = 5,
-  // Failure to parse data.
+  // Failure to parse or serialize data.
   kParsingFailue = 6,
   // Failure related to identity.
   kIdentityFailure = 7,
