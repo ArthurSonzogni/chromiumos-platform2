@@ -126,10 +126,8 @@ void P2PManager::Stop() {
 void P2PManager::CreateP2PGroup(P2PResultCallback callback,
                                 const KeyValueStore& args) {
   LOG(INFO) << __func__;
-  if (!callback) {
-    LOG(ERROR) << "Callback is empty";
-    return;
-  }
+  CHECK(callback) << "Callback is empty";
+
   if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
       result_callback_) {
     LOG(WARNING) << "Failed to create P2P group, operation is already "
@@ -206,10 +204,8 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
 void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
                                    const KeyValueStore& args) {
   LOG(INFO) << __func__;
-  if (!callback) {
-    LOG(ERROR) << "Callback is empty";
-    return;
-  }
+  CHECK(callback) << "Callback is empty";
+
   if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
       result_callback_) {
     LOG(WARNING) << "Failed to connect to P2P group, operation is already "
@@ -290,10 +286,8 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
 
 void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int shill_id) {
   LOG(INFO) << __func__;
-  if (!callback) {
-    LOG(ERROR) << "Callback is empty";
-    return;
-  }
+  CHECK(callback) << "Callback is empty";
+
   if (result_callback_) {
     PostResult(kDestroyP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));
@@ -313,10 +307,8 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int shill_id) {
 void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
                                         int shill_id) {
   LOG(INFO) << __func__;
-  if (!callback) {
-    LOG(ERROR) << "Callback is empty";
-    return;
-  }
+  CHECK(callback) << "Callback is empty";
+
   if (result_callback_) {
     PostResult(kDisconnectFromP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));

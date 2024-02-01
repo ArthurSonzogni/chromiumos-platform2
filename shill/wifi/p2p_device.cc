@@ -247,7 +247,11 @@ bool P2PDevice::CreateGroup(std::unique_ptr<P2PService> service) {
                << P2PDeviceStateName(state_);
     return false;
   }
-  CHECK(service);
+  if (!service) {
+    LOG(ERROR) << log_name()
+               << ": Tried to create a group with an empty service.";
+    return false;
+  }
   if (service_) {
     LOG(ERROR) << log_name()
                << ": Attempted to create group on a device which already has a "
@@ -269,7 +273,10 @@ bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
                << P2PDeviceStateName(state_);
     return false;
   }
-  CHECK(service);
+  if (!service) {
+    LOG(ERROR) << log_name() << ": Tried to connect with an empty serveice.";
+    return false;
+  }
   if (service_) {
     LOG(ERROR) << log_name()
                << ": Attempted to connect to group on a device which already "
