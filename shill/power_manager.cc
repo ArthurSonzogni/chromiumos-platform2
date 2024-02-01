@@ -26,6 +26,7 @@ const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 
 PowerManager::PowerManager(ControlInterface* control_interface)
     : control_interface_(control_interface),
+      delay_registration_started_(false),
       suspending_(false),
       suspend_ready_(false),
       suspend_done_deferred_(false),
@@ -225,9 +226,11 @@ void PowerManager::OnPowerManagerAppeared() {
 
   // This function could get called twice in a row due to races in
   // ObjectProxy.
-  if (suspend_delay_id_.has_value()) {
+  if (delay_registration_started_) {
     return;
   }
+
+  delay_registration_started_ = true;
 
   power_manager_proxy_->RegisterSuspendDelay(
       suspend_delay_, kSuspendDelayDescription,
@@ -245,10 +248,12 @@ void PowerManager::OnPowerManagerAppeared() {
 }
 
 void PowerManager::OnSuspendDelayRegistered(std::optional<int> delay_id) {
+  DCHECK(!suspend_delay_id_.has_value());
   suspend_delay_id_ = delay_id;
 }
 
 void PowerManager::OnDarkSuspendDelayRegistered(std::optional<int> delay_id) {
+  DCHECK(!dark_suspend_delay_id_.has_value());
   dark_suspend_delay_id_ = delay_id;
 }
 
@@ -262,6 +267,7 @@ void PowerManager::OnPowerManagerVanished() {
 
   suspend_delay_id_.reset();
   dark_suspend_delay_id_.reset();
+  delay_registration_started_ = false;
 }
 
 }  // namespace shill

@@ -382,6 +382,17 @@ TEST_F(PowerManagerTest, RegisterDarkSuspendDelayFailure) {
   OnDarkSuspendImminent(kSuspendId1);
 }
 
+TEST_F(PowerManagerTest, OnPowerManagerAppearedCalledTwice) {
+  EXPECT_CALL(*power_manager_proxy_,
+              RegisterSuspendDelay(kTimeout, kDescription, _))
+      .Times(1);
+  EXPECT_CALL(*power_manager_proxy_,
+              RegisterDarkSuspendDelay(kTimeout, kDarkDescription, _))
+      .Times(1);
+  OnPowerManagerAppeared();
+  OnPowerManagerAppeared();
+}
+
 TEST_F(PowerManagerTest, ReportSuspendReadinessFailure) {
   RegisterSuspendDelays();
   EXPECT_CALL(*this, SuspendImminentAction());

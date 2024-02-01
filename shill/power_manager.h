@@ -123,6 +123,9 @@ class PowerManager : public PowerManagerProxyDelegate {
   // |suspend_delay_| after the notification, if we do not
   // |ReportSuspendReadiness| earlier.
   base::TimeDelta suspend_delay_;
+  // True if powerd is present and we've requested suspend delays, in order to
+  // prevent multiple registration attempts in case of race conditions.
+  bool delay_registration_started_;
   // powerd tracks each (dark) suspend delay requested (by different clients)
   // using randomly generated unique |(dark)suspend_delay_id_|s.
   std::optional<int> suspend_delay_id_;
