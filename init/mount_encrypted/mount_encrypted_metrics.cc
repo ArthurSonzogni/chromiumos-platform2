@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/mount_encrypted/mount_encrypted_metrics.h"
 
 #include <base/check_op.h>
 #include <base/time/time.h>

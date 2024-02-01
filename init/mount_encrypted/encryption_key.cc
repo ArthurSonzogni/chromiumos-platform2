@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/encryption_key.h"
+#include "init/mount_encrypted/encryption_key.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -22,8 +22,8 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
-#include "cryptohome/mount_encrypted/tpm.h"
+#include "init/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {
 namespace paths {

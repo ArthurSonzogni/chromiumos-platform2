@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_TLCL_STUB_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_TLCL_STUB_H_
+#ifndef INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_
+#define INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_
 
 #include <stdint.h>
 
@@ -127,4 +127,4 @@ class TlclStub {
 
 }  // namespace mount_encrypted
 
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TLCL_STUB_H_
+#endif  // INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_

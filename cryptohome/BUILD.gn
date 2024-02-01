@@ -23,8 +23,6 @@ group("all") {
     ":install_udev_rule",
     ":lockbox-cache",
     ":lockbox-cache-manager",
-    ":mount-encrypted",
-    ":mount_encrypted_lib",
     ":stateful-recovery",
     ":stateful_recovery_lib",
     "libs:install_data_migrator_headers",
@@ -36,7 +34,6 @@ group("all") {
       ":cryptohome_testrunner",
       ":error_location_check",
       ":lockbox-cache-manager_testrunner",
-      ":mount_encrypted_unittests",
       ":stateful_recovery_unittests",
     ]
   }
@@ -224,44 +221,12 @@ executable("lockbox-cache-manager") {
   install_path = "sbin"
 }
 
-static_library("mount_encrypted_lib") {
-  sources = [
-    "mount_encrypted/encrypted_fs.cc",
-    "mount_encrypted/encryption_key.cc",
-    "mount_encrypted/mount_encrypted_metrics.cc",
-    "mount_encrypted/tpm.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  defines = [ "CHROMEOS_ENVIRONMENT=1" ]
-  deps = [ "libs:cryptohome-proto" ]
-  pkg_deps = [ "vboot_host" ]
-
-  if (use.tpm2) {
-    sources += [ "mount_encrypted/tpm2.cc" ]
-
-    # This selects TPM2 code in vboot_host headers.
-    defines += [ "TPM2_MODE=1" ]
-  } else {
-    sources += [ "mount_encrypted/tpm1.cc" ]
-  }
-}
-
 executable("encrypted-reboot-vault") {
   sources = [
     "encrypted_reboot_vault/encrypted_reboot_vault.cc",
     "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
   ]
   deps = [ "libs:libcrostpm" ]
-  install_path = "sbin"
-}
-
-executable("mount-encrypted") {
-  sources = [ "mount_encrypted/mount_encrypted.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":mount_encrypted_lib",
-    "libs:libcrostpm",
-  ]
   install_path = "sbin"
 }
 
@@ -532,34 +497,6 @@ if (use.test) {
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
     ]
-    run_test = true
-  }
-
-  executable("mount_encrypted_unittests") {
-    sources = [
-      "mount_encrypted/encrypted_fs_unittest.cc",
-      "mount_encrypted/encryption_key_unittest.cc",
-      "mount_encrypted/tlcl_stub.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":fake_platform-static",
-      ":mount_encrypted_lib",
-      "libs:libcrostpm",
-      "//common-mk/testrunner",
-    ]
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-      "libstorage_fake_platform",
-    ]
-
-    if (use.tpm2) {
-      defines = [ "TPM2_MODE=1" ]
-    }
     run_test = true
   }
 

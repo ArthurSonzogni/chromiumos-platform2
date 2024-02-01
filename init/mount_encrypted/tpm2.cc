@@ -14,8 +14,8 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
-#include "cryptohome/mount_encrypted/tpm.h"
+#include "init/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {
 namespace {

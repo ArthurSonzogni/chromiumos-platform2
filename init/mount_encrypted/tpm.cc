@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/tpm.h"
+#include "init/mount_encrypted/tpm.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -20,7 +20,7 @@
 #include <openssl/rsa.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {
 namespace {

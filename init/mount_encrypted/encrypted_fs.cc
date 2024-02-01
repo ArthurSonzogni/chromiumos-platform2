@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/encrypted_fs.h"
+#include "init/mount_encrypted/encrypted_fs.h"
 
 #include <fcntl.h>
 #include <grp.h>
@@ -30,7 +30,7 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {
 

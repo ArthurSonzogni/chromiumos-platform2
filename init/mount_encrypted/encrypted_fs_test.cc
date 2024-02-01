@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/encrypted_fs.h"
+#include "init/mount_encrypted/encrypted_fs.h"
 
 #include <memory>
 #include <optional>

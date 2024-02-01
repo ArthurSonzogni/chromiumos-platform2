@@ -9,7 +9,7 @@
 #define _FILE_OFFSET_BITS 64
 #define CHROMEOS_ENVIRONMENT
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/mount_encrypted.h"
 
 #include <fcntl.h>
 #include <sys/time.h>
@@ -33,10 +33,10 @@
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/mount_encrypted/encrypted_fs.h"
-#include "cryptohome/mount_encrypted/encryption_key.h"
-#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
-#include "cryptohome/mount_encrypted/tpm.h"
+#include "init/mount_encrypted/encrypted_fs.h"
+#include "init/mount_encrypted/encryption_key.h"
+#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/mount_encrypted/tpm.h"
 
 #define PROP_SIZE 64
 

@@ -8,3 +8,4 @@ gwendal@chromium.org
 per-file startup/...=asavery@chromium.org
 per-file upstart/preload-network.conf=grundler@chromium.org,briannorris@chromium.org
 per-file upstart/udev*.conf=grundler@chromium.org,briannorris@chromium.org
+per-file mount-encrypted/...=apronin@chromium.org

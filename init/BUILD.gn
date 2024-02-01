@@ -12,6 +12,8 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":install_lvm_config",
     ":install_setuid_restriction",
+    ":mount-encrypted",
+    ":mount_encrypted_lib",
     ":net_poll_tool",
     ":periodic_scheduler",
     ":process_killer",
@@ -31,6 +33,7 @@ group("all") {
       ":chromeos_startup_test",
       ":clobber_state_test",
       ":file_attrs_cleaner_test",
+      ":mount_encrypted_tests",
       ":periodic_scheduler_test",
       ":process_killer_test",
       ":usermode-helper_test",
@@ -49,8 +52,12 @@ pkg_config("target_defaults") {
     "USE_LVM_MIGRATION=${use.lvm_migration}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_PRJQUOTA=${use.prjquota}",
-    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
+    "USE_VTPM_PROXY=${use.vtpm_proxy}",
   ]
   pkg_deps = [
     "libbrillo",
@@ -61,6 +68,8 @@ pkg_config("target_defaults") {
     "libimageloader-manifest",
     "libmetrics",
     "libselinux",
+    "libstorage_platform",
+    "libstorage_storage_container",
     "re2",
     "vboot_host",
   ]
@@ -198,6 +207,35 @@ static_library("usermode-helper_lib") {
   configs += [ ":target_defaults" ]
 }
 
+static_library("mount_encrypted_lib") {
+  sources = [
+    "mount_encrypted/encrypted_fs.cc",
+    "mount_encrypted/encryption_key.cc",
+    "mount_encrypted/mount_encrypted_metrics.cc",
+    "mount_encrypted/tpm.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  defines = [ "CHROMEOS_ENVIRONMENT=1" ]
+  pkg_deps = [ "vboot_host" ]
+
+  if (use.tpm2) {
+    sources += [ "mount_encrypted/tpm2.cc" ]
+
+    # This selects TPM2 code in vboot_host headers.
+    defines += [ "TPM2_MODE=1" ]
+  } else {
+    sources += [ "mount_encrypted/tpm1.cc" ]
+  }
+  libs = [ "hwsec-foundation" ]
+}
+
+executable("mount-encrypted") {
+  sources = [ "mount_encrypted/mount_encrypted.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":mount_encrypted_lib" ]
+  install_path = "sbin"
+}
+
 executable("usermode-helper") {
   sources = [ "usermode-helper.cc" ]
   configs += [ ":target_defaults" ]
@@ -311,6 +349,32 @@ if (use.test) {
       ":file_attrs_cleaner_lib",
       "//common-mk/testrunner",
     ]
+  }
+
+  executable("mount_encrypted_tests") {
+    sources = [
+      "mount_encrypted/encrypted_fs_test.cc",
+      "mount_encrypted/encryption_key_test.cc",
+      "mount_encrypted/tlcl_stub.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":mount_encrypted_lib",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libstorage_fake_platform",
+    ]
+
+    if (use.tpm2) {
+      defines = [ "TPM2_MODE=1" ]
+    }
+    run_test = true
   }
 
   executable("process_killer_test") {

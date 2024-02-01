@@ -4,8 +4,8 @@
 //
 // Interface used by "mount-encrypted" to interface with the TPM.
 
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_
+#ifndef INIT_MOUNT_ENCRYPTED_TPM_H_
+#define INIT_MOUNT_ENCRYPTED_TPM_H_
 
 #include <stdint.h>
 
@@ -17,7 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {
 const uint32_t kLockboxSizeV1 = 0x2c;
@@ -292,4 +292,4 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
 };
 
 }  // namespace mount_encrypted
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_
+#endif  // INIT_MOUNT_ENCRYPTED_TPM_H_

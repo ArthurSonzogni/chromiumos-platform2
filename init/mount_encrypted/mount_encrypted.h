@@ -4,8 +4,8 @@
  *
  * Private header file for mount-encrypted helper tool.
  */
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
+#ifndef INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
+#define INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,4 +21,4 @@ enum result_code {
   RESULT_FAIL_FATAL = 1,
 };
 
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_
+#endif  // INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_H_

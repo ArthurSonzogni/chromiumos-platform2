@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_
+#ifndef INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_
+#define INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_
 
 #include <string>
 
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
-#include "cryptohome/mount_encrypted/encryption_key.h"
+#include "init/mount_encrypted/encryption_key.h"
 
 namespace mount_encrypted {
 
@@ -52,4 +52,4 @@ class ScopedMountEncryptedMetricsSingleton {
 
 }  // namespace mount_encrypted
 
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_
+#endif  // INIT_MOUNT_ENCRYPTED_MOUNT_ENCRYPTED_METRICS_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mount_encrypted/encryption_key.h"
+#include "init/mount_encrypted/encryption_key.h"
 
 #include <memory>
 
@@ -15,9 +15,9 @@
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
-#include "cryptohome/mount_encrypted/tlcl_stub.h"
-#include "cryptohome/mount_encrypted/tpm.h"
+#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/mount_encrypted/tlcl_stub.h"
+#include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {
 namespace {

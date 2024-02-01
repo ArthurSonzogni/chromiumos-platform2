@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
-#define CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
+#ifndef INIT_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
+#define INIT_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
 
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -22,7 +22,7 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
-#include "cryptohome/mount_encrypted/mount_encrypted.h"
+#include "init/mount_encrypted/mount_encrypted.h"
 
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
@@ -134,4 +134,4 @@ class EncryptedFs {
 
 }  // namespace mount_encrypted
 
-#endif  // CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
+#endif  // INIT_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
