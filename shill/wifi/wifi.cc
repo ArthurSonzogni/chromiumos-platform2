@@ -1584,6 +1584,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
       endpoint->qos_support().mscs_supported);
   metrics()->NotifyAlternateEDCASupport(
       endpoint->qos_support().alternate_edca_supported);
+  metrics()->NotifyANQPSupport(endpoint->anqp_support());
 
   SLOG(this, 2) << "WiFi " << link_name() << " roamed to Endpoint "
                 << endpoint->bssid_string() << " "

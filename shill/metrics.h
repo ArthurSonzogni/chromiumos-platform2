@@ -1594,6 +1594,10 @@ class Metrics {
       .max = IEEE_80211::kReasonCodeMax,
   };
 
+  // AP 802.11u support statistics.
+  static constexpr char kMetricAp80211uANQPSupport[] =
+      "Network.Shill.WiFi.Ap80211uANQPSupport";
+
   // 802.11 Status Codes for auth/assoc failures
   static constexpr char kMetricWiFiAssocFailureType[] =
       "Network.Shill.WiFi.AssocFailureType";
@@ -1831,6 +1835,9 @@ class Metrics {
   // Notifies this object that an AP was discovered with Cisco Adaptive FT
   // support.
   void NotifyCiscoAdaptiveFTSupport(bool adaptive_ft_supported);
+
+  // Notifies this object that an AP was discovered with ANQP support.
+  void NotifyANQPSupport(bool anqp_supported);
 
   // Notifies this object of WiFi disconnect.
   // TODO(b/234176329): Deprecate those metrics once

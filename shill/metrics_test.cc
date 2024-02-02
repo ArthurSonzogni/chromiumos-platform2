@@ -758,6 +758,18 @@ TEST_F(MetricsTest, NotifyCiscoAdaptiveFTSupportTrue) {
   metrics_.NotifyCiscoAdaptiveFTSupport(adaptive_ft_supported);
 }
 
+TEST_F(MetricsTest, NotifyAp80211uANQPSupport) {
+  bool anqp_supported = false;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricAp80211uANQPSupport,
+                                      anqp_supported));
+  metrics_.NotifyANQPSupport(anqp_supported);
+
+  anqp_supported = true;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricAp80211uANQPSupport,
+                                      anqp_supported));
+  metrics_.NotifyANQPSupport(anqp_supported);
+}
+
 TEST_F(MetricsTest, NotifyApChannelSwitch) {
   EXPECT_CALL(library_,
               SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
