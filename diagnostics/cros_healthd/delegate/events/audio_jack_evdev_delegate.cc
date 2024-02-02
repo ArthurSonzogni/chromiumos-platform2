@@ -64,6 +64,8 @@ void AudioJackEvdevDelegate::InitializationFail(
   observer_.ResetWithReason(custom_reason, description);
 }
 
-void AudioJackEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {}
+void AudioJackEvdevDelegate::ReportProperties(LibevdevWrapper* dev) {
+  // Audio jack has no property to report.
+}
 
 }  // namespace diagnostics
