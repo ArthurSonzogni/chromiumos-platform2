@@ -16,4 +16,6 @@ source_set("frame_annotator") {
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
   deps = [ "//camera/common:libcros_camera_mojom" ]
+
+  defines = [ "USE_CAMERA_ANGLE_BACKEND=${use.camera_angle_backend}" ]
 }
