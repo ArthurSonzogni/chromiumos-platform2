@@ -658,6 +658,8 @@ void WiFi::TermsAndConditions(const std::string& url) {
     return;
   }
   GetPrimaryNetwork()->OnTermsAndConditions(http_url.value());
+  metrics()->SendEnumToUMA(Metrics::kMetricPasspointTermsAndConditions,
+                           Metrics::kPasspointTermsAndConditionsURL);
 }
 
 void WiFi::ConnectTo(WiFiService* service, Error* error) {
@@ -2603,6 +2605,11 @@ void WiFi::StateChanged(const std::string& new_state) {
         receive_byte_count_at_connect_ = GetReceiveByteCount();
       } else {
         affected_service->ResetSuspectedCredentialFailures();
+      }
+      if (affected_service->parent_credentials()) {
+        metrics()->SendEnumToUMA(
+            Metrics::kMetricPasspointTermsAndConditions,
+            Metrics::kPasspointTermsAndConditionsAssociated);
       }
     }
     has_already_completed_ = true;

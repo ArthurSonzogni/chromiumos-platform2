@@ -1031,6 +1031,9 @@ void Network::ReportNeighborLinkMonitorFailure(
 
 void Network::OnTermsAndConditions(const net_base::HttpUrl& url) {
   // TODO(b/319632165)
+  if (network_monitor_) {
+    network_monitor_->SetTermsAndConditions(url);
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {

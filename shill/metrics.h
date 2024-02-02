@@ -1227,6 +1227,28 @@ class Metrics {
   static constexpr char kMetricCapportContainsVenueInfoUrl[] =
       "Network.Shill.CAPPORT.ContainsVenueInfoURL";
 
+  // Metric counting whether the upstream network presents a portal or a Terms
+  // and Conditions URL.
+  enum TermsAndConditionsAggregateResult {
+    kTermsAndConditionsAggregateResultUnknown = 0,
+    // No portal detected, no terms and conditions URL.
+    kTermsAndConditionsAggregateResultNoPortalNoURL = 1,
+    // No portal detected, terms and conditions URL provided.
+    kTermsAndConditionsAggregateResultNoPortalWithURL = 2,
+    // Portal detected, no terms and conditions URL.
+    kTermsAndConditionsAggregateResultPortalNoURL = 3,
+    // Portal detected and terms and conditions URL provided.
+    kTermsAndConditionsAggregateResultPortalWithURL = 4,
+
+    kTermsAndConditionsAggregateResultMax,
+  };
+  static constexpr EnumMetric<FixedName>
+      kMetricTermsAndConditionsAggregateResult = {
+          .n = FixedName{"Network.Shill.PortalDetector."
+                         "TermsAndConditionsAggregateResult"},
+          .max = kTermsAndConditionsAggregateResultMax,
+  };
+
   // Metric indicating the provisioning origin of Passpoint credentials.
   // This metric is recorded once for any successful Passpoint provisioning
   // event.
@@ -1368,6 +1390,20 @@ class Metrics {
   // WifiProvider loads a user profile.
   static constexpr char kMetricPasspointSavedCredentials[] =
       "Network.Shill.WiFi.Passpoint.SavedCredentials";
+
+  // Histogram metric recording the number of connected Passpoint networks
+  // requiring the acceptance of Terms and Conditions.
+  enum PasspointTermsAndConditions {
+    // An association to a Passpoint network was successful.
+    kPasspointTermsAndConditionsAssociated = 0,
+    // An association to a Passpoint network led to a terms and conditions URL.
+    kPasspointTermsAndConditionsURL = 1,
+    kPasspointTermsAndConditionsMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricPasspointTermsAndConditions = {
+      .n = FixedName{"Network.Shill.WiFi.Passpoint.TermsAndConditions"},
+      .max = kPasspointTermsAndConditionsMax,
+  };
 
   static constexpr int kMetricRememberedWiFiNetworkCountMax = 1024;
   static constexpr int kMetricRememberedWiFiNetworkCountMin = 1;

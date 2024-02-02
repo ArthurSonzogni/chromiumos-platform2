@@ -187,6 +187,9 @@ class NetworkMonitor {
   mockable void SetValidationMode(ValidationMode mode);
   mockable ValidationMode GetValidationMode() { return validation_mode_; }
 
+  // Sets the terms and conditions URL.
+  mockable void SetTermsAndConditions(const net_base::HttpUrl& url);
+
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(
       std::unique_ptr<PortalDetector> portal_detector);

@@ -28,6 +28,7 @@ class ValidationLog {
   mockable void AddResult(const PortalDetector::Result& result);
   mockable void SetCapportDHCPSupported();
   mockable void SetCapportRASupported();
+  mockable void SetHasTermsAndConditions();
   mockable void RecordMetrics() const;
 
  private:
@@ -43,6 +44,7 @@ class ValidationLog {
   std::vector<ResultData> results_;
   bool capport_dhcp_supported_ = false;
   bool capport_ra_supported_ = false;
+  bool has_terms_and_conditions_ = false;
 };
 
 }  // namespace shill

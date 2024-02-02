@@ -37,6 +37,10 @@ void ValidationLog::SetCapportRASupported() {
   capport_ra_supported_ = true;
 }
 
+void ValidationLog::SetHasTermsAndConditions() {
+  has_terms_and_conditions_ = true;
+}
+
 void ValidationLog::RecordMetrics() const {
   if (results_.empty()) {
     return;
@@ -133,6 +137,22 @@ void ValidationLog::RecordMetrics() const {
     metrics_->SendEnumToUMA(
         Metrics::kMetricCapportSupported, technology_,
         capport_support.value_or(Metrics::kCapportNotSupported));
+  }
+
+  if (technology_ == Technology::kWiFi) {
+    Metrics::TermsAndConditionsAggregateResult tc_result =
+        Metrics::kTermsAndConditionsAggregateResultUnknown;
+    if (has_terms_and_conditions_ && (has_redirect || has_suspected_redirect)) {
+      tc_result = Metrics::kTermsAndConditionsAggregateResultPortalWithURL;
+    } else if (has_terms_and_conditions_) {
+      tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalWithURL;
+    } else if (has_redirect || has_suspected_redirect) {
+      tc_result = Metrics::kTermsAndConditionsAggregateResultPortalNoURL;
+    } else {
+      tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalNoURL;
+    }
+    metrics_->SendEnumToUMA(Metrics::kMetricTermsAndConditionsAggregateResult,
+                            tc_result);
   }
 }
 

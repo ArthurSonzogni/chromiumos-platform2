@@ -204,6 +204,10 @@ void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
   }
 }
 
+void NetworkMonitor::SetTermsAndConditions(const net_base::HttpUrl& url) {
+  validation_log_->SetHasTermsAndConditions();
+}
+
 void NetworkMonitor::OnPortalDetectorResult(
     const PortalDetector::Result& result) {
   if (validation_log_) {
