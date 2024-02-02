@@ -472,8 +472,8 @@ class AttestationServiceBaseTest : public testing::Test {
 };
 
 TEST_F(AttestationServiceBaseTest, GetFeatures) {
-  EXPECT_CALL(mock_tpm_utility_, GetSupportedKeyTypes())
-      .WillOnce(Return(std::vector<KeyType>{KEY_TYPE_RSA, KEY_TYPE_ECC}));
+  EXPECT_CALL(mock_hwsec_, GetSupportedKeyTypes())
+      .WillOnce(ReturnValue(std::vector<KeyType>{KEY_TYPE_RSA, KEY_TYPE_ECC}));
   auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetFeaturesReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);

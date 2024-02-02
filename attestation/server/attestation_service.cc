@@ -553,7 +553,9 @@ void AttestationService::GetFeaturesTask(
     const GetFeaturesRequest& request,
     const std::shared_ptr<GetFeaturesReply>& result) {
   result->set_is_available(false);
-  for (const KeyType key_type : tpm_utility_->GetSupportedKeyTypes()) {
+  ASSIGN_OR_RETURN(std::vector<attestation::KeyType> supported_types,
+                   hwsec_->GetSupportedKeyTypes(), _.LogError().ReturnVoid());
+  for (const KeyType key_type : supported_types) {
     result->set_is_available(true);
     *(result->mutable_supported_key_types()->Add()) = key_type;
   }
@@ -2202,7 +2204,9 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
     return false;
   }
 
-  for (KeyType key_type : tpm_utility_->GetSupportedKeyTypes()) {
+  ASSIGN_OR_RETURN(std::vector<attestation::KeyType> supported_types,
+                   hwsec_->GetSupportedKeyTypes(), _.LogError().As(false));
+  for (KeyType key_type : supported_types) {
     ASSIGN_OR_RETURN(
         CertifiedKey certified_key,
         hwsec_->CreateCertifiedKey(BlobFromString(aik_key_blob), key_type,
