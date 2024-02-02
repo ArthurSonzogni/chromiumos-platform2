@@ -343,8 +343,15 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile({crash}, filename_));
 
   std::vector<MetricSample> samples;
+
+  size_t bytes_read = 0;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
+
+  // Shouldn't count the bytes we ignored.
+  EXPECT_EQ(bytes_read, crash.ToString().length() + sizeof(int32_t));
+
   ASSERT_EQ(1U, samples.size());
   EXPECT_TRUE(crash.IsEqual(samples.front()));
 }
@@ -389,8 +396,13 @@ TEST_F(SerializationUtilsTest, NegativeLengthTest) {
                         sizeof(kInput)));
 
   std::vector<MetricSample> samples;
+  size_t bytes_read;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
+  // Read should ignore the -16.
+  EXPECT_EQ(sizeof(kInput) - sizeof(int32_t), bytes_read);
+
   ASSERT_EQ(0U, samples.size());
 }
 
@@ -407,16 +419,21 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
 
   EXPECT_TRUE(
       SerializationUtils::WriteMetricsToFile(output_samples, filename_));
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+
   std::vector<MetricSample> samples;
+  size_t bytes_read;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
+  EXPECT_EQ(size, bytes_read);
 
   ASSERT_EQ(output_samples.size(), samples.size());
   for (size_t i = 0; i < output_samples.size(); ++i) {
     EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
   }
 
-  int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   ASSERT_EQ(0, size);
 }
@@ -456,8 +473,10 @@ TEST_F(SerializationUtilsTest, LockDeleteRace) {
   loop.Run();
 
   std::vector<MetricSample> samples;
+  size_t bytes_read;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
 
   ASSERT_EQ(output_samples.size(), samples.size());
   for (size_t i = 0; i < output_samples.size(); ++i) {
@@ -502,23 +521,58 @@ TEST_F(SerializationUtilsTest, LockDeleteRecreateRace) {
   };
   EXPECT_TRUE(
       SerializationUtils::WriteMetricsToFile(output_samples, filename_));
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
 
   // Ensure thread is done to make sure that it's not about to delete the file
   // (e.g. if ReadAndTruncateMetricsFromFile didn't wait for the lock).
   loop.Run();
 
   std::vector<MetricSample> samples;
+  size_t bytes_read;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
+  EXPECT_EQ(bytes_read, size);
 
   ASSERT_EQ(output_samples.size(), samples.size());
   for (size_t i = 0; i < output_samples.size(); ++i) {
     EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
   }
 
-  int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   ASSERT_EQ(0, size);
+}
+
+TEST_F(SerializationUtilsTest, WriteReadDeleteTest) {
+  std::vector<MetricSample> output_samples = {
+      MetricSample::HistogramSample("myhist", 3, 1, 10, 5, /*num_samples=*/1),
+      MetricSample::CrashSample("mycrash", /*num_samples=*/2),
+      MetricSample::LinearHistogramSample("linear", 1, 10, /*num_samples=*/3),
+      MetricSample::SparseHistogramSample("mysparse", 30, /*num_samples=*/4),
+      MetricSample::UserActionSample("myaction", /*num_samples=*/5),
+      MetricSample::HistogramSample("myrepeatedhist", 3, 1, 10, 5,
+                                    /*num_samples=*/10),
+  };
+
+  EXPECT_TRUE(
+      SerializationUtils::WriteMetricsToFile(output_samples, filename_));
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+
+  std::vector<MetricSample> samples;
+  size_t bytes_read;
+  SerializationUtils::ReadAndDeleteMetricsFromFile(
+      filename_, &samples, SerializationUtils::kSampleBatchMaxLength,
+      bytes_read);
+  EXPECT_EQ(bytes_read, size);
+
+  ASSERT_EQ(output_samples.size(), samples.size());
+  for (size_t i = 0; i < output_samples.size(); ++i) {
+    EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
+  }
+
+  ASSERT_FALSE(base::PathExists(filepath_));
 }
 
 // Test of batched upload.  Creates a metrics log with enough samples to
@@ -540,8 +594,13 @@ TEST_F(SerializationUtilsTest, BatchedUploadTest) {
       std::vector<MetricSample>(sample_count, hist), filename_));
 
   std::vector<MetricSample> samples;
+  size_t bytes_read;
   bool first_pass_status = SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, sample_batch_max_length);
+      filename_, &samples, sample_batch_max_length, bytes_read);
+  // subtlety: We can overflow by at most one sample; we only stop when a sample
+  // causes us to *exceed* sample_batch_max_length.
+  EXPECT_GT(bytes_read, 0);
+  EXPECT_GE(sample_batch_max_length + serialized_sample_length, bytes_read);
 
   ASSERT_FALSE(first_pass_status);  // means: more samples remain
   int first_pass_count = samples.size();
@@ -557,8 +616,13 @@ TEST_F(SerializationUtilsTest, BatchedUploadTest) {
   // Check that the file has holes.
   ASSERT_LT(stat_buf.st_blocks * 512, stat_buf.st_size);
 
+  size_t second_bytes_read;
   bool second_pass_status = SerializationUtils::ReadAndTruncateMetricsFromFile(
-      filename_, &samples, sample_batch_max_length);
+      filename_, &samples, sample_batch_max_length, second_bytes_read);
+  EXPECT_GT(second_bytes_read, 0);
+  EXPECT_GE(sample_batch_max_length + serialized_sample_length,
+            second_bytes_read);
+  EXPECT_EQ(1.5 * sample_batch_max_length, second_bytes_read + bytes_read);
 
   ASSERT_TRUE(second_pass_status);  // no more samples.
   // Check that stat() is successful.

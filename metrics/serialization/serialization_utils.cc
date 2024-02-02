@@ -164,11 +164,98 @@ bool AcquireLock(const base::ScopedFD& file_descriptor) {
   return HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) == 0;
 }
 
+bool ReadAndTruncateOrDeleteMetricsFromFile(const std::string& filename,
+                                            std::vector<MetricSample>* metrics,
+                                            size_t sample_batch_max_length,
+                                            bool delete_file,
+                                            size_t& bytes_read) {
+  struct stat stat_buf = {};
+  int result;
+  bytes_read = 0;
+
+  result = stat(filename.c_str(), &stat_buf);
+  if (result < 0) {
+    if (errno != ENOENT)
+      PLOG(ERROR) << filename << ": bad metrics file stat";
+
+    // Nothing to collect---try later.
+    return true;
+  }
+  if (stat_buf.st_size == 0) {
+    // Also nothing to collect.
+    return true;
+  }
+  base::ScopedFD fd(open(filename.c_str(), O_RDWR | O_CLOEXEC));
+  if (fd.get() < 0) {
+    PLOG(ERROR) << filename << ": cannot open";
+    return true;
+  }
+  result = flock(fd.get(), LOCK_EX);
+  if (result < 0) {
+    PLOG(ERROR) << filename << ": cannot lock";
+    return true;
+  }
+
+  // Skip consecutive zeros at the beginning of the file, which may have been
+  // left by an earlier partial read if the file was too large.  Normally there
+  // are none, but following long stretches of time without connectivity, there
+  // could be a large number.  (They are optimized away by fallocate().)
+  SeekToSamples(fd.get());
+
+  // Try to process all messages in the log, but stop when
+  // sample_batch_max_length has been exceeded.  If all messages are read and
+  // processed, or an error occurs, truncate the file to zero size or delete it.
+  // If the max byte count is exceeded, stop processing samples, but set up the
+  // file to continue at the next call.  There are races on daemon crash or
+  // system crash: resolve them by allowing the loss of samples.
+  bool skip_truncation = false;
+  while (true) {
+    std::string message;
+    size_t bytes_used = 0;
+
+    if (!ReadMessage(fd.get(), &message, &bytes_used))
+      break;
+
+    MetricSample sample = SerializationUtils::ParseSample(message);
+    if (sample.IsValid())
+      metrics->push_back(std::move(sample));
+
+    bytes_read += bytes_used;
+    if (bytes_read > sample_batch_max_length) {
+      // Set up the file to continue processing.  Avoid final truncation,
+      // unless there were errors.
+      skip_truncation = RemovePreviousSamples(fd.get());
+      break;
+    }
+  }
+
+  if (!skip_truncation) {
+    if (delete_file) {
+      result = unlink(filename.c_str());
+      if (result < 0) {
+        PLOG(ERROR) << "remove metrics log: " << filename;
+      }
+    } else {
+      result = ftruncate(fd.get(), 0);
+      if (result < 0) {
+        PLOG(ERROR) << "truncate metrics log: ";
+      }
+    }
+  }
+
+  result = flock(fd.get(), LOCK_UN);
+  if (result < 0)
+    PLOG(ERROR) << "unlock metrics log";
+
+  return bytes_read <= sample_batch_max_length;
+}
+
 }  // namespace
 
 MetricSample SerializationUtils::ParseSample(const std::string& sample) {
-  if (sample.empty())
+  if (sample.empty()) {
     return MetricSample();
+  }
 
   // Can't split at \0 anymore, so replace null chars with \n.
   std::string sample_copy = sample;
@@ -204,78 +291,21 @@ MetricSample SerializationUtils::ParseSample(const std::string& sample) {
 bool SerializationUtils::ReadAndTruncateMetricsFromFile(
     const std::string& filename,
     std::vector<MetricSample>* metrics,
-    size_t sample_batch_max_length) {
-  struct stat stat_buf = {};
-  int result;
-  off_t total_length = 0;
+    size_t sample_batch_max_length,
+    size_t& bytes_read) {
+  return ReadAndTruncateOrDeleteMetricsFromFile(
+      filename, metrics, sample_batch_max_length,
+      /*delete_file=*/false, bytes_read);
+}
 
-  result = stat(filename.c_str(), &stat_buf);
-  if (result < 0) {
-    if (errno != ENOENT)
-      PLOG(ERROR) << filename << ": bad metrics file stat";
-
-    // Nothing to collect---try later.
-    return true;
-  }
-  if (stat_buf.st_size == 0) {
-    // Also nothing to collect.
-    return true;
-  }
-  base::ScopedFD fd(open(filename.c_str(), O_RDWR | O_CLOEXEC));
-  if (fd.get() < 0) {
-    PLOG(ERROR) << filename << ": cannot open";
-    return true;
-  }
-  result = flock(fd.get(), LOCK_EX);
-  if (result < 0) {
-    PLOG(ERROR) << filename << ": cannot lock";
-    return true;
-  }
-
-  // Skip consecutive zeros at the beginning of the file, which may have been
-  // left by an earlier partial read if the file was too large.  Normally there
-  // are none, but following long stretches of time without connectivity, there
-  // could be a large number.  (They are optimized away by fallocate().)
-  SeekToSamples(fd.get());
-
-  // Try to process all messages in the log, but stop when
-  // kMaxMetricsBytesCount has been exceeded.  If all messages are read and
-  // processed, or an error occurs, truncate the file to zero size.  If the max
-  // byte count is exceeded, stop processing samples, but set up the file to
-  // continue at the next call.  There are races on daemon crash or system
-  // crash: resolve them by allowing the loss of samples.
-  bool skip_truncation = false;
-  while (true) {
-    std::string message;
-    size_t bytes_used = 0;
-
-    if (!ReadMessage(fd.get(), &message, &bytes_used))
-      break;
-
-    MetricSample sample = ParseSample(message);
-    if (sample.IsValid())
-      metrics->push_back(std::move(sample));
-
-    total_length += bytes_used;
-    if (total_length > sample_batch_max_length) {
-      // Set up the file to continue processing.  Avoid final truncation,
-      // unless there were errors.
-      skip_truncation = RemovePreviousSamples(fd.get());
-      break;
-    }
-  }
-
-  if (!skip_truncation) {
-    result = ftruncate(fd.get(), 0);
-    if (result < 0)
-      PLOG(ERROR) << "truncate metrics log";
-  }
-
-  result = flock(fd.get(), LOCK_UN);
-  if (result < 0)
-    PLOG(ERROR) << "unlock metrics log";
-
-  return total_length <= sample_batch_max_length;
+bool SerializationUtils::ReadAndDeleteMetricsFromFile(
+    const std::string& filename,
+    std::vector<MetricSample>* metrics,
+    size_t sample_batch_max_length,
+    size_t& bytes_read) {
+  return ReadAndTruncateOrDeleteMetricsFromFile(
+      filename, metrics, sample_batch_max_length,
+      /*delete_file=*/true, bytes_read);
 }
 
 bool SerializationUtils::WriteMetricsToFile(

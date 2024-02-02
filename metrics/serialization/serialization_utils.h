@@ -32,7 +32,14 @@ MetricSample ParseSample(const std::string& sample);
 // cases (including errors).
 bool ReadAndTruncateMetricsFromFile(const std::string& filename,
                                     std::vector<MetricSample>* metrics,
-                                    size_t sample_batch_max_length);
+                                    size_t sample_batch_max_length,
+                                    size_t& bytes_read);
+
+// Same, but deletes the file rather than truncating when completing a read.
+bool ReadAndDeleteMetricsFromFile(const std::string& filename,
+                                  std::vector<MetricSample>* metrics,
+                                  size_t sample_batch_max_length,
+                                  size_t& bytes_read);
 
 // Serializes a vector of samples and writes them to |filename|.
 // The format for each sample is:

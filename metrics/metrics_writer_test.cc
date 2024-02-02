@@ -30,9 +30,10 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics) {
   EXPECT_TRUE(writer->WriteMetrics({sample1}));
   EXPECT_TRUE(writer->WriteMetrics({sample2}));
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 2);
   EXPECT_EQ(samples[0].name(), sample1.name());
   EXPECT_EQ(samples[1].name(), sample2.name());
@@ -53,9 +54,10 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics_AvoidBlocking) {
   EXPECT_TRUE(writer->WriteMetrics({sample2}));
   std::vector<metrics::MetricSample> samples;
   auto file_path = temp_dir.GetPath().Append(base::NumberToString(getpid()));
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 2);
   EXPECT_EQ(samples[0].name(), sample1.name());
   EXPECT_EQ(samples[1].name(), sample2.name());
@@ -77,15 +79,16 @@ TEST(SynchronousMetricsWriterTest, SetOutputFile) {
   EXPECT_TRUE(writer->SetOutputFile(file_path2.value()));
   EXPECT_TRUE(writer->WriteMetrics({sample2}));
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 1);
   EXPECT_EQ(samples[0].name(), sample1.name());
   samples.clear();
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path2.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 1);
   EXPECT_EQ(samples[0].name(), sample2.name());
 }
@@ -118,9 +121,10 @@ TEST_F(AsynchronousMetricsWriterTest, WriteMetrics) {
   writer_->WaitUntilFlushed();
 
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path_.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 2);
   EXPECT_EQ(samples[0].name(), sample1.name());
   EXPECT_EQ(samples[1].name(), sample2.name());
@@ -138,9 +142,10 @@ TEST_F(AsynchronousMetricsWriterTest, WriteMetricsWithoutFlush) {
   writer_.reset();
 
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path_.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 2);
   EXPECT_EQ(samples[0].name(), sample1.name());
   EXPECT_EQ(samples[1].name(), sample2.name());
@@ -159,15 +164,16 @@ TEST_F(AsynchronousMetricsWriterTest, SetOutputFile) {
   writer_->WaitUntilFlushed();
 
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path_.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 1);
   EXPECT_EQ(samples[0].name(), sample1.name());
   samples.clear();
   ASSERT_TRUE(metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
       file_path2.value(), &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength));
+      metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read));
   EXPECT_EQ(samples.size(), 1);
   EXPECT_EQ(samples[0].name(), sample2.name());
 }

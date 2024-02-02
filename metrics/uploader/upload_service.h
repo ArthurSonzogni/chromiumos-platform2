@@ -13,6 +13,7 @@
 #include "base/metrics/histogram_snapshot_manager.h"
 
 #include "metrics/metrics_library.h"
+#include "metrics/serialization/serialization_utils.h"
 #include "metrics/uploader/metrics_log.h"
 #include "metrics/uploader/sender.h"
 #include "metrics/uploader/system_profile_cache.h"
@@ -63,6 +64,7 @@ class UploadService : public base::HistogramFlattener {
 
   void Init(const base::TimeDelta& upload_interval,
             const std::string& metrics_file,
+            const std::string& metrics_dir,
             bool uploads_enabled);
 
   // Starts a new log. The log needs to be regenerated after each successful
@@ -91,6 +93,8 @@ class UploadService : public base::HistogramFlattener {
   FRIEND_TEST(UploadServiceTest, LogKernelCrash);
   FRIEND_TEST(UploadServiceTest, LogUncleanShutdown);
   FRIEND_TEST(UploadServiceTest, LogUserCrash);
+  FRIEND_TEST(UploadServiceTest, ReadMetrics);
+  FRIEND_TEST(UploadServiceTest, ReadMetrics_TooLargeFiles);
   FRIEND_TEST(UploadServiceTest, UnknownCrashIgnored);
   FRIEND_TEST(UploadServiceTest, ValuesInConfigFileAreSent);
 
@@ -107,9 +111,14 @@ class UploadService : public base::HistogramFlattener {
   // Resets the internal state.
   void Reset();
 
+  // (TEST ONLY): Set specific file paths for the metrics file and directory.
+  void SetPathsForTesting(const std::string& metrics_file,
+                          const std::string& metrics_dir);
+
   // Reads and consumes metrics from the message file, up to a max amount.
   // Returns false if more metrics are remaining in the file.
-  bool ReadMetrics();
+  bool ReadMetrics(size_t sample_batch_max_length =
+                       metrics::SerializationUtils::kSampleBatchMaxLength);
 
   // Adds a generic sample to the current log.
   void AddSample(const metrics::MetricSample& sample);
@@ -141,6 +150,7 @@ class UploadService : public base::HistogramFlattener {
   std::unique_ptr<MetricsLog> staged_log_;
 
   std::string metrics_file_;
+  std::string metrics_dir_;
   bool skip_upload_;
 
   bool testing_;

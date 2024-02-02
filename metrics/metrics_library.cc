@@ -340,9 +340,10 @@ void MetricsLibrary::SetOutputFile(const std::string& output_file) {
 
 bool MetricsLibrary::Replay(const std::string& input_file) {
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read = 0;
   if (!metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
           input_file, &samples,
-          metrics::SerializationUtils::kSampleBatchMaxLength)) {
+          metrics::SerializationUtils::kSampleBatchMaxLength, bytes_read)) {
     return false;
   }
   return metrics_writer_->WriteMetrics(samples);

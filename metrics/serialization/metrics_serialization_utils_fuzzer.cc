@@ -32,8 +32,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                                  reinterpret_cast<const char*>(data), size));
 
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read;
   metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
-      metrics_file.value(), &samples, kSampleBatchMaxLengthForFuzzing);
+      metrics_file.value(), &samples, kSampleBatchMaxLengthForFuzzing,
+      bytes_read);
 
   return 0;
 }

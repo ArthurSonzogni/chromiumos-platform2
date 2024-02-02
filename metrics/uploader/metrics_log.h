@@ -34,6 +34,8 @@ class MetricsLog : public metrics::MetricsLogBase {
   FRIEND_TEST(UploadServiceTest, LogKernelCrash);
   FRIEND_TEST(UploadServiceTest, LogUncleanShutdown);
   FRIEND_TEST(UploadServiceTest, LogUserCrash);
+  FRIEND_TEST(UploadServiceTest, ReadMetrics);
+  FRIEND_TEST(UploadServiceTest, ReadMetrics_TooLargeFiles);
   FRIEND_TEST(UploadServiceTest, UnknownCrashIgnored);
 };
 

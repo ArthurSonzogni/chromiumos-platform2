@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/dir_reader_posix.h>
 #include <base/functional/bind.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
@@ -46,8 +47,10 @@ UploadService::UploadService(SystemProfileSetter* setter,
 
 void UploadService::Init(const base::TimeDelta& upload_interval,
                          const std::string& metrics_file,
+                         const std::string& metrics_dir,
                          bool uploads_enabled) {
   metrics_file_ = metrics_file;
+  metrics_dir_ = metrics_dir;
   skip_upload_ = !uploads_enabled;
 
   if (!testing_) {
@@ -160,21 +163,48 @@ void UploadService::Reset() {
   failed_upload_count_ = 0;
 }
 
-bool UploadService::ReadMetrics() {
+void UploadService::SetPathsForTesting(const std::string& metrics_file,
+                                       const std::string& metrics_dir) {
+  metrics_file_ = metrics_file;
+  metrics_dir_ = metrics_dir;
+}
+
+bool UploadService::ReadMetrics(size_t sample_batch_max_length) {
   CHECK(!staged_log_)
       << "cannot read metrics until the old logs have been discarded";
 
   std::vector<metrics::MetricSample> samples;
+  size_t bytes_read_total = 0;
   bool result = metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
-      metrics_file_, &samples,
-      metrics::SerializationUtils::kSampleBatchMaxLength);
+      metrics_file_, &samples, sample_batch_max_length, bytes_read_total);
+
+  base::DirReaderPosix reader(metrics_dir_.c_str());
+  if (!reader.IsValid()) {
+    LOG(ERROR)
+        << "Failed to create DirReaderPosix. Cannot read per-pid uma files.";
+  } else {
+    while (bytes_read_total < sample_batch_max_length && reader.Next()) {
+      std::string filename(reader.name());
+      if (filename == "." || filename == "..") {
+        continue;
+      }
+      size_t bytes_read = 0;
+      if (!metrics::SerializationUtils::ReadAndDeleteMetricsFromFile(
+              base::StrCat({metrics_dir_, "/", filename}), &samples,
+              sample_batch_max_length - bytes_read_total, bytes_read)) {
+        result = false;
+      }
+      bytes_read_total += bytes_read;
+    }
+  }
 
   for (const auto& sample : samples) {
     AddSample(sample);
   }
-  DLOG(INFO) << samples.size() << " samples found in uma-events";
+  DLOG(INFO) << samples.size()
+             << " samples found in uma-events and uma-events.d";
 
-  return result;
+  return result && !reader.Next();  // If there's more to read, return false.
 }
 
 void UploadService::AddSample(const metrics::MetricSample& sample) {

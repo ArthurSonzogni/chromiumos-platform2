@@ -65,6 +65,8 @@ int main(int argc, char** argv) {
                 "Server to upload the metrics to. (needs -uploader)");
   DEFINE_string(metrics_file, "/var/lib/metrics/uma-events",
                 "File to use as a proxy for uploading the metrics");
+  DEFINE_string(metrics_dir, "/var/lib/metrics/uma-events.d",
+                "Directory to use as a proxy for uploading the metrics");
   DEFINE_string(config_root, "/",
                 "Root of the configuration files (testing only)");
 
@@ -85,7 +87,8 @@ int main(int argc, char** argv) {
               &metrics_lib, MetricsMainDiskStatsPath(), "/proc/vmstat",
               kScalingMaxFreqPath, kCpuinfoMaxFreqPath,
               base::Seconds(FLAGS_upload_interval_secs), FLAGS_server,
-              FLAGS_metrics_file, FLAGS_config_root, backing_dir_path);
+              FLAGS_metrics_file, FLAGS_metrics_dir, FLAGS_config_root,
+              backing_dir_path);
 
   if (FLAGS_uploader_test) {
     daemon.RunUploaderTest();
