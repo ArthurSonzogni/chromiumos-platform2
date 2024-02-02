@@ -76,6 +76,9 @@ namespace {
 // directory timestamp.  ~3 months should be old enough for test purposes.
 constexpr base::TimeDelta kSetCurrentUserOldOffset = base::Days(92);
 
+constexpr char kPinweaverPkEstablishmentBlocked[] =
+    "/run/cryptohome/pw_pk_establishment_blocked";
+
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
 
@@ -261,6 +264,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "restore_device_key",
                                     "get_recovery_ids",
                                     "get_recoverable_key_stores",
+                                    "is_pw_pk_establishment_blocked",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -325,6 +329,7 @@ enum ActionEnum {
   ACTION_RESTORE_DEVICE_KEY,
   ACTION_GET_RECOVERY_IDS,
   ACTION_GET_RECOVERABLE_KEY_STORES,
+  ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -3114,6 +3119,14 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Failed to get recoverable key stores.\n");
       return static_cast<int>(reply.error());
+    }
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED],
+                     action.c_str())) {
+    if (platform.FileExists(FilePath(kPinweaverPkEstablishmentBlocked))) {
+      printer.PrintHumanOutput("true\n");
+    } else {
+      printer.PrintHumanOutput("false\n");
     }
   } else {
     printer.PrintHumanOutput(

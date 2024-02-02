@@ -133,6 +133,11 @@ namespace {
 constexpr char kMountThreadName[] = "MountThread";
 constexpr char kNotFirstBootFilePath[] = "/run/cryptohome/not_first_boot";
 constexpr char kEncDeviceEvictedPath[] = "/run/cryptohome/device_evicted";
+// For enhanced security, PinWeaver pairing key establishment is blocked after
+// the first user login event in each boot cycle. An ephemeral flag file is used
+// to allow tracking this status.
+constexpr char kPinweaverPkEstablishmentBlocked[] =
+    "/run/cryptohome/pw_pk_establishment_blocked";
 constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
 constexpr base::TimeDelta kDefaultExtensionTime = base::Seconds(60);
 // Some utility functions used by UserDataAuth.
@@ -1836,6 +1841,11 @@ void UserDataAuth::BlockPkEstablishment() {
                  << status.status();
   } else {
     pk_establishment_blocked_ = true;
+    if (!platform_->FileExists(
+            base::FilePath(kPinweaverPkEstablishmentBlocked))) {
+      platform_->TouchFileDurable(
+          base::FilePath(kPinweaverPkEstablishmentBlocked));
+    }
   }
 }
 
@@ -1845,11 +1855,13 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const Username& username) {
   AssertOnMountThread();
   UserSession* session = sessions_->Find(username);
   if (!session) {
-    // We don't have a mount associated with |username|, let's create one.
+    // Lock bootlockbox as we considered the device becoming more vulnerable to
+    // attackers.
     EnsureBootLockboxFinalized();
-    // Block biometrics Pk establishment afterwards as we considered the device
-    // becoming more vulnerable to attackers.
+    // Block biometrics pairing key establishment afterwards as we considered
+    // the device becoming more vulnerable to attackers.
     BlockPkEstablishment();
+    // We don't have a mount associated with |username|, let's create one.
     std::unique_ptr<UserSession> owned_session = user_session_factory_->New(
         username, legacy_mount_, bind_mount_downloads_);
     session = owned_session.get();

@@ -1979,6 +1979,10 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))
       .WillOnce(Return(true));
+  EXPECT_CALL(
+      platform_,
+      FileExists(base::FilePath("/run/cryptohome/pw_pk_establishment_blocked")))
+      .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2106,6 +2110,10 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(platform_,
               FileExists(base::FilePath("/run/cryptohome/not_first_boot")))
       .WillOnce(Return(false));
+  EXPECT_CALL(
+      platform_,
+      FileExists(base::FilePath("/run/cryptohome/pw_pk_establishment_blocked")))
+      .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
   EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).Times(0);
