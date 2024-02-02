@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_ATTESTATION_MOCK_FRONTEND_H_
 
 #include <string>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
@@ -64,6 +65,10 @@ class MockAttestationFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::Blob>,
               GetEndorsementPublicKey,
               (attestation::KeyType key_type),
+              (const override));
+  MOCK_METHOD(StatusOr<std::vector<attestation::KeyType>>,
+              GetSupportedKeyTypes,
+              (),
               (const override));
 };
 

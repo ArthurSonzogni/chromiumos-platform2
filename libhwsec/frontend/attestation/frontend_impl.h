@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_IMPL_H_
 
 #include <string>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
@@ -50,6 +51,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
       attestation::KeyType key_type) const override;
   StatusOr<brillo::Blob> GetEndorsementPublicKey(
       attestation::KeyType key_type) const override;
+  StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
+      const override;
 };
 
 }  // namespace hwsec

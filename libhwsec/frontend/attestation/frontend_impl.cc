@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
@@ -35,6 +36,9 @@ StatusOr<KeyAlgoType> ToKeyAlgoType(attestation::KeyType key_type) {
   return MakeStatus<TPMError>("Unsuported attestation key algorithm type",
                               TPMRetryAction::kNoRetry);
 }
+
+attestation::KeyType key_types[] = {attestation::KeyType::KEY_TYPE_RSA,
+                                    attestation::KeyType::KEY_TYPE_ECC};
 
 }  // namespace
 
@@ -130,6 +134,22 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::GetEndorsementPublicKey(
   ASSIGN_OR_RETURN(KeyAlgoType key_algo, ToKeyAlgoType(key_type));
   return middleware_.CallSync<&Backend::KeyManagement::GetEndorsementPublicKey>(
       key_algo);
+}
+
+StatusOr<std::vector<attestation::KeyType>>
+AttestationFrontendImpl::GetSupportedKeyTypes() const {
+  ASSIGN_OR_RETURN(
+      absl::flat_hash_set<KeyAlgoType> key_algoes,
+      middleware_.CallSync<&Backend::KeyManagement::GetSupportedAlgo>());
+  std::vector<attestation::KeyType> result;
+  for (auto key_type : key_types) {
+    ASSIGN_OR_RETURN(KeyAlgoType key_algo, ToKeyAlgoType(key_type));
+    if (key_algoes.count(key_algo)) {
+      result.push_back(key_type);
+    }
+  }
+
+  return result;
 }
 
 }  // namespace hwsec

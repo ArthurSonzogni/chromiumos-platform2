@@ -6,6 +6,7 @@
 #define LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_H_
 
 #include <string>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
@@ -74,6 +75,10 @@ class AttestationFrontend : public Frontend {
   // Gets the DER-encoded endorsement public key based on |key_type|.
   virtual StatusOr<brillo::Blob> GetEndorsementPublicKey(
       attestation::KeyType key_type) const = 0;
+
+  // Gets the vector of available attestation::KeyType.
+  virtual StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
+      const = 0;
 };
 
 }  // namespace hwsec
