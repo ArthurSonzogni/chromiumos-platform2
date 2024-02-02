@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
@@ -55,7 +56,7 @@ bool WriteOneByte(int fd) {
 
 class MockDelegate : public EvdevUtil::Delegate {
  public:
-  MockDelegate() {}
+  MockDelegate() = default;
   MockDelegate(const MockDelegate&) = delete;
   MockDelegate& operator=(const MockDelegate&) = delete;
 
@@ -72,45 +73,15 @@ class MockDelegate : public EvdevUtil::Delegate {
   MOCK_METHOD(void, ReportProperties, (LibevdevWrapper * dev), (override));
 };
 
-class MockLibevdevWrapper : public LibevdevWrapper {
- public:
-  MockLibevdevWrapper() {}
-  MockLibevdevWrapper(const MockLibevdevWrapper&) = delete;
-  MockLibevdevWrapper& operator=(const MockLibevdevWrapper&) = delete;
-  ~MockLibevdevWrapper() = default;
-
-  // LibevdevWrapper overrides:
-  MOCK_METHOD(bool, HasProperty, (unsigned int prop), (override));
-  MOCK_METHOD(bool, HasEventType, (unsigned int type), (override));
-  MOCK_METHOD(bool,
-              HasEventCode,
-              (unsigned int type, unsigned int code),
-              (override));
-  // No need to mock |GetName| since it's only for logging.
-  std::string GetName() override { return "Mock device name"; }
-  MOCK_METHOD(int, GetIdBustype, (), (override));
-  MOCK_METHOD(int, GetAbsMaximum, (unsigned int code), (override));
-  MOCK_METHOD(int,
-              GetEventValue,
-              (unsigned int type, unsigned int code),
-              (override));
-  MOCK_METHOD(int, GetNumSlots, (), (override));
-  MOCK_METHOD(int,
-              FetchSlotValue,
-              (unsigned int slot, unsigned int code, int* value),
-              (override));
-  MOCK_METHOD(int,
-              NextEvent,
-              (unsigned int flags, input_event* ev),
-              (override));
-};
-
-void SetMockSlotValue(MockLibevdevWrapper* dev, int slot, int code, int value) {
+void SetMockSlotValue(test::MockLibevdevWrapper* dev,
+                      int slot,
+                      int code,
+                      int value) {
   EXPECT_CALL(*dev, FetchSlotValue(slot, code, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(value), Return(1)));
 }
 
-void SetMockSlotValue(MockLibevdevWrapper* dev,
+void SetMockSlotValue(test::MockLibevdevWrapper* dev,
                       int slot,
                       int code,
                       const mojom::NullableUint32Ptr& value) {
@@ -121,7 +92,7 @@ void SetMockSlotValue(MockLibevdevWrapper* dev,
   }
 }
 
-void SetMockTouchPointInfo(MockLibevdevWrapper* dev,
+void SetMockTouchPointInfo(test::MockLibevdevWrapper* dev,
                            int slot,
                            const mojom::TouchPointInfoPtr& info) {
   SetMockSlotValue(dev, slot, ABS_MT_TRACKING_ID, info->tracking_id);
@@ -164,7 +135,8 @@ class EvdevUtilsTest : public ::testing::Test {
   }
 
   void ExpectEventFromNode(int fd, input_event fake_event) {
-    auto libevdev_wrapper = std::make_unique<StrictMock<MockLibevdevWrapper>>();
+    auto libevdev_wrapper =
+        std::make_unique<StrictMock<test::MockLibevdevWrapper>>();
     // Save the pointer to verify the later accesses are against this instance.
     LibevdevWrapper* const libevdev_wrapper_ptr = libevdev_wrapper.get();
     EXPECT_CALL(*libevdev_wrapper, NextEvent)
@@ -236,7 +208,7 @@ TEST_F(EvdevUtilsTest, InitializationFailIfNoTargetDevices) {
   ASSERT_TRUE(scoped_fd.is_valid());
 
   EXPECT_CALL(mock_factory_method_, Run)
-      .WillOnce(Return(std::make_unique<MockLibevdevWrapper>()));
+      .WillOnce(Return(std::make_unique<test::MockLibevdevWrapper>()));
 
   EXPECT_CALL(mock_delegate(), IsTarget).WillOnce(Return(false));
   EXPECT_CALL(mock_delegate(), InitializationFail).Times(1);
@@ -296,7 +268,7 @@ INSTANTIATE_TEST_SUITE_P(DifferentNumberOfEvdevNodes,
 
 TEST(EvdevUtilsTouchPointTest,
      FetchTouchPointsReturnsEmptyListIfNumberOfSlotsIsInvalid) {
-  StrictMock<MockLibevdevWrapper> libevdev_wrapper;
+  StrictMock<test::MockLibevdevWrapper> libevdev_wrapper;
   EXPECT_CALL(libevdev_wrapper, GetNumSlots).WillRepeatedly(Return(-1));
 
   auto res = FetchTouchPoints(&libevdev_wrapper);
@@ -304,7 +276,7 @@ TEST(EvdevUtilsTouchPointTest,
 }
 
 TEST(EvdevUtilsTouchPointTest, FetchTouchPointsReturnsEmptyListIfNoSlots) {
-  StrictMock<MockLibevdevWrapper> libevdev_wrapper;
+  StrictMock<test::MockLibevdevWrapper> libevdev_wrapper;
   EXPECT_CALL(libevdev_wrapper, GetNumSlots).WillRepeatedly(Return(0));
 
   auto res = FetchTouchPoints(&libevdev_wrapper);
@@ -312,7 +284,7 @@ TEST(EvdevUtilsTouchPointTest, FetchTouchPointsReturnsEmptyListIfNoSlots) {
 }
 
 TEST(EvdevUtilsTouchPointTest, FetchSingleTouchPointsSuccessfully) {
-  StrictMock<MockLibevdevWrapper> libevdev_wrapper;
+  StrictMock<test::MockLibevdevWrapper> libevdev_wrapper;
 
   auto expected = mojom::TouchPointInfo::New();
   expected->tracking_id = 1;
@@ -334,7 +306,7 @@ TEST(EvdevUtilsTouchPointTest, FetchSingleTouchPointsSuccessfully) {
 
 TEST(EvdevUtilsTouchPointTest, FetchMultipleTouchPointsSuccessfully) {
   constexpr int kNumberOfSlots = 5;
-  StrictMock<MockLibevdevWrapper> libevdev_wrapper;
+  StrictMock<test::MockLibevdevWrapper> libevdev_wrapper;
 
   std::vector<mojom::TouchPointInfoPtr> expected_points;
   for (int i = 0; i < kNumberOfSlots; ++i) {
@@ -355,7 +327,7 @@ TEST(EvdevUtilsTouchPointTest, FetchMultipleTouchPointsSuccessfully) {
 
 // Negative tracking IDs indicate non-contact points.
 TEST(EvdevUtilsTouchPointTest, FetchTouchPointsIgnoresNegativeTrackingIds) {
-  StrictMock<MockLibevdevWrapper> libevdev_wrapper;
+  StrictMock<test::MockLibevdevWrapper> libevdev_wrapper;
 
   auto non_contact_point = mojom::TouchPointInfo::New();
   non_contact_point->tracking_id = -1;
