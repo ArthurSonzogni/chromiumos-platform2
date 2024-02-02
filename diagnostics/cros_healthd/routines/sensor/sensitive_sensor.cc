@@ -439,8 +439,8 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
 
 void SensitiveSensorRoutine::OnRoutineFinished() {
   for (const auto& [_, result] : existence_check_result_) {
-    if (result.state == SensorExistenceChecker::Result::kMissing ||
-        result.state == SensorExistenceChecker::Result::kUnexpected) {
+    if (result.state == SensorExistenceChecker::Result::State::kMissing ||
+        result.state == SensorExistenceChecker::Result::State::kUnexpected) {
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineCheckConfigErrorMessage);
       return;

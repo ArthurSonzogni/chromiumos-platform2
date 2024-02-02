@@ -125,7 +125,7 @@ TEST_F(SensorExistenceCheckerTest, PassWithAllSensorsPresent) {
   auto sensor_check_result = VerifySensorInfoSync(present_sensors);
   for (const auto& sensor : present_sensors) {
     EXPECT_EQ(sensor_check_result[sensor].state,
-              SensorExistenceChecker::Result::kPassed);
+              SensorExistenceChecker::Result::State::kPassed);
     EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
               std::vector<int32_t>{static_cast<int32_t>(sensor)});
   }
@@ -145,7 +145,7 @@ TEST_F(SensorExistenceCheckerTest, NoSensor) {
   auto sensor_check_result = VerifySensorInfoSync(/*present_sensors=*/{});
   for (const auto& sensor : sensors) {
     EXPECT_EQ(sensor_check_result[sensor].state,
-              SensorExistenceChecker::Result::kPassed);
+              SensorExistenceChecker::Result::State::kPassed);
     EXPECT_EQ(sensor_check_result[sensor].sensor_ids, std::vector<int32_t>{});
   }
 }
@@ -167,7 +167,7 @@ TEST_F(SensorExistenceCheckerTest, NullConfig) {
   auto sensor_check_result = VerifySensorInfoSync(present_sensors);
   for (const auto& sensor : sensors) {
     EXPECT_EQ(sensor_check_result[sensor].state,
-              SensorExistenceChecker::Result::kSkipped);
+              SensorExistenceChecker::Result::State::kSkipped);
     if (std::find(present_sensors.begin(), present_sensors.end(), sensor) !=
         present_sensors.end()) {
       EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
@@ -192,7 +192,7 @@ TEST_F(SensorExistenceCheckerTest, MissingSensors) {
   auto sensor_check_result = VerifySensorInfoSync(/*present_sensors=*/{});
   for (const auto& sensor : missing_sensors) {
     EXPECT_EQ(sensor_check_result[sensor].state,
-              SensorExistenceChecker::Result::kMissing);
+              SensorExistenceChecker::Result::State::kMissing);
     EXPECT_EQ(sensor_check_result[sensor].sensor_ids, std::vector<int32_t>{});
   }
 }
@@ -211,7 +211,7 @@ TEST_F(SensorExistenceCheckerTest, UnexpectedSensors) {
       VerifySensorInfoSync(/*present_sensors=*/unexpected_sensors);
   for (const auto& sensor : unexpected_sensors) {
     EXPECT_EQ(sensor_check_result[sensor].state,
-              SensorExistenceChecker::Result::kUnexpected);
+              SensorExistenceChecker::Result::State::kUnexpected);
     EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
               std::vector<int32_t>{static_cast<int32_t>(sensor)});
   }

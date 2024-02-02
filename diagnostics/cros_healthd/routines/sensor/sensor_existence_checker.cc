@@ -31,18 +31,18 @@ bool IsTargetType(const std::vector<cros::mojom::DeviceType>& types) {
 }
 
 // Check if the |has_sensor| value in static config is consistent with the
-// actual |is_present| and retrun the result.
+// actual |is_present| and return the result.
 diagnostics::SensorExistenceChecker::Result::State GetExistenceCheckState(
     std::optional<bool> has_sensor, bool is_present) {
   if (!has_sensor.has_value()) {
-    return diagnostics::SensorExistenceChecker::Result::kSkipped;
+    return diagnostics::SensorExistenceChecker::Result::State::kSkipped;
   } else if (has_sensor.value() != is_present) {
     if (!is_present)
-      return diagnostics::SensorExistenceChecker::Result::kMissing;
+      return diagnostics::SensorExistenceChecker::Result::State::kMissing;
     else
-      return diagnostics::SensorExistenceChecker::Result::kUnexpected;
+      return diagnostics::SensorExistenceChecker::Result::State::kUnexpected;
   } else {
-    return diagnostics::SensorExistenceChecker::Result::kPassed;
+    return diagnostics::SensorExistenceChecker::Result::State::kPassed;
   }
 }
 

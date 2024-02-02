@@ -28,7 +28,7 @@ class SensorExistenceChecker {
   ~SensorExistenceChecker();
 
   struct Result {
-    enum State {
+    enum class State {
       // The sensors from iioservice match the static config.
       kPassed,
       // The static config is null.
