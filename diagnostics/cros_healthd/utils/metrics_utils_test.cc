@@ -253,6 +253,14 @@ TEST_F(MetricsUtilsTest, SendSensorTelemetryResult) {
   SendTelemetryResult({mojom::ProbeCategoryEnum::kSensor}, info);
 }
 
+TEST_F(MetricsUtilsTest, SendThermalTelemetryResult) {
+  ExpectSendEnumToUMA(metrics_name::kTelemetryResultThermal,
+                      CrosHealthdTelemetryResult::kSuccess);
+  auto info = mojom::TelemetryInfo::New();
+  info->thermal_result = mojom::ThermalResult::NewThermalInfo({});
+  SendTelemetryResult({mojom::ProbeCategoryEnum::kThermal}, info);
+}
+
 TEST_F(MetricsUtilsTest, SendMultipleTelemetryResult) {
   // The choice of categories is arbitrary.
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
