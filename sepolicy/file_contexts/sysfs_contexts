@@ -18,7 +18,7 @@
 /sys/firmware/efi/efivars(/.*)?            u:object_r:efivarfs:s0
 
 
-/sys/module/kvm/parameters/kvm_pv_sched    u:object_r:module_kvm_params_pvsched:s0
+/sys/module/kvm/parameters/kvm_pv_sched    u:object_r:sysfs_kvm_pvsched:s0
 
 /sys/class/net(/.*)?                       u:object_r:sysfs_net:s0
 /sys/class/tpm(/.*)?                       u:object_r:sysfs_tpm:s0
