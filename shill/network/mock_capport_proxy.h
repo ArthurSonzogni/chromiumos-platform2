@@ -17,6 +17,7 @@ class MockCapportProxy : public CapportProxy {
   ~MockCapportProxy() override;
 
   MOCK_METHOD(void, SendRequest, (StatusCallback callback), (override));
+  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
 };
 

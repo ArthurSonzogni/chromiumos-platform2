@@ -178,4 +178,24 @@ TEST(CapportProxyTest, SendRequestFail) {
                                     base::Unretained(&client)));
 }
 
+TEST(CapportProxyTest, SendRequestAndStop) {
+  auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
+  auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
+  fake_transport->SetAsyncMode(true);
+  fake_transport->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, "Invalid JSON string",
+      "application/captive+json");
+
+  // When stopping proxy before the transport is done, the client should not get
+  // callback.
+  MockCapportClient client;
+  EXPECT_CALL(client, OnStatusReceived).Times(0);
+
+  proxy->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                    base::Unretained(&client)));
+  proxy->Stop();
+  fake_transport->HandleAllAsyncRequests();  // Simulate the transport is done.
+}
+
 }  // namespace shill

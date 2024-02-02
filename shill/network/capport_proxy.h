@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
@@ -71,6 +72,10 @@ class CapportProxy {
   // Note that the caller should not call this method when IsRunning() is true.
   mockable void SendRequest(StatusCallback callback);
 
+  // Stops the current query if exists. The callback of previous request will
+  // not be called.
+  mockable void Stop();
+
   // Returns true if the previous request has not been finished.
   mockable bool IsRunning() const;
 
@@ -93,6 +98,8 @@ class CapportProxy {
   // The callback of the request, only has value when there is pending
   // request.
   StatusCallback callback_;
+
+  base::WeakPtrFactory<CapportProxy> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

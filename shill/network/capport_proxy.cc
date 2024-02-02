@@ -122,9 +122,15 @@ void CapportProxy::SendRequest(StatusCallback callback) {
   auto http_request_ = std::make_optional<brillo::http::Request>(
       api_url_.ToString(), brillo::http::request_type::kGet, http_transport_);
   http_request_->SetAccept(kAcceptHeader);
-  http_request_->GetResponse(
-      base::BindOnce(&CapportProxy::OnRequestSuccess, base::Unretained(this)),
-      base::BindOnce(&CapportProxy::OnRequestError, base::Unretained(this)));
+  http_request_->GetResponse(base::BindOnce(&CapportProxy::OnRequestSuccess,
+                                            weak_ptr_factory_.GetWeakPtr()),
+                             base::BindOnce(&CapportProxy::OnRequestError,
+                                            weak_ptr_factory_.GetWeakPtr()));
+}
+
+void CapportProxy::Stop() {
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  callback_.Reset();
 }
 
 void CapportProxy::OnRequestSuccess(
