@@ -45,58 +45,8 @@ class MockPsrCmd : public PsrCmd {
   MOCK_METHOD(std::optional<bool>, CheckPlatformServiceRecord, (), (override));
 };
 
-class PsrCmdTest : public testing::Test {
- public:
-  PsrCmdTest(const PsrCmdTest&) = delete;
-  PsrCmdTest& operator=(const PsrCmdTest&) = delete;
-
- protected:
-  PsrCmdTest() = default;
-  virtual ~PsrCmdTest() = default;
-};
-
-// Check MEI Connect.
-TEST_F(PsrCmdTest, MeiConnect) {
-  MockPsrCmd cmd;
-  EXPECT_CALL(cmd, MeiConnect()).WillOnce(Return(false));
-  EXPECT_FALSE(cmd.MeiConnect());  // Failure.
-
-  EXPECT_CALL(cmd, MeiConnect()).WillOnce(Return(true));
-  EXPECT_TRUE(cmd.MeiConnect());  // Success.
-}
-
-// Check MEI Send.
-TEST_F(PsrCmdTest, MeiSend) {
-  MockPsrCmd cmd;
-  ssize_t buffer_size = 0;
-  void* buffer = nullptr;
-
-  EXPECT_CALL(cmd, MeiSend(_, _)).WillOnce(Return(false));
-  EXPECT_FALSE(cmd.MeiSend(buffer, buffer_size));  // Failure.
-
-  EXPECT_CALL(cmd, MeiSend(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(cmd.MeiSend(buffer, buffer_size));  // Success.
-}
-
-// Check MEI Receive.
-TEST_F(PsrCmdTest, MeiReceive) {
-  MockPsrCmd cmd;
-  ssize_t buffer_size = 1;
-  std::vector<uint8_t> buffer;
-  buffer.reserve(buffer_size);
-
-  EXPECT_CALL(cmd, MeiReceive(_, _)).WillOnce(Return(false));
-  EXPECT_FALSE(cmd.MeiReceive(buffer, buffer_size));  // Failure.
-
-  EXPECT_CALL(cmd, MeiReceive(_, _))
-      .WillOnce(DoAll(SetArgReferee<0>(buffer), SetArgReferee<1>(buffer_size),
-                      Return(true)));
-
-  EXPECT_TRUE(cmd.MeiReceive(buffer, buffer_size));  // Success.
-}
-
 // Check IdToHexString.
-TEST_F(PsrCmdTest, IdToHexString) {
+TEST(PsrCmdTest, IdToHexString) {
   MockPsrCmd cmd;
   const int len = 2;
   uint8_t id[len] = {205, 171};
@@ -105,28 +55,8 @@ TEST_F(PsrCmdTest, IdToHexString) {
   EXPECT_EQ(cmd.IdToHexString(id, 0), "");        // Empty.
 }
 
-// Check Transaction.
-TEST_F(PsrCmdTest, Transaction) {
-  MockPsrCmd cmd;
-  HeciGetRequest heci_get_request;
-  PsrHeciResp psr_heci_resp;
-
-  EXPECT_CALL(cmd, Transaction(_, _))
-      .WillOnce(Return(MockPsrCmd::CmdStatus::kInvalidState));
-  EXPECT_EQ(cmd.Transaction(heci_get_request, psr_heci_resp),
-            MockPsrCmd::CmdStatus::kInvalidState);  // Failure.
-
-  EXPECT_CALL(cmd, Transaction(_, _))
-      .WillOnce(DoAll(SetArgReferee<0>(heci_get_request),
-                      SetArgReferee<1>(psr_heci_resp),
-                      Return(MockPsrCmd::CmdStatus::kSuccess)));
-
-  EXPECT_EQ(cmd.Transaction(heci_get_request, psr_heci_resp),
-            MockPsrCmd::CmdStatus::kSuccess);  // Success.
-}
-
 // Check GetPlatformServiceRecord.
-TEST_F(PsrCmdTest, GetPlatformServiceRecord) {
+TEST(PsrCmdTest, GetPlatformServiceRecord) {
   MockPsrCmd cmd;
   HeciGetRequest heci_get_request;
   GenesisRecord gr;
