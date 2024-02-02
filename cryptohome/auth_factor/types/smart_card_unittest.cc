@@ -228,9 +228,9 @@ TEST_F(SmartCardDriverTest, GetExpirationFails) {
                         {.public_key_spki_der = kPublicKey}),
                     {.state = ChallengeCredentialAuthBlockState()});
 
-  auto expired = driver.IsExpired(kObfuscatedUser, factor);
-  ASSERT_THAT(expired, NotOk());
-  EXPECT_THAT(expired.status()->local_legacy_error(),
+  auto delay = driver.GetTimeUntilExpiration(kObfuscatedUser, factor);
+  ASSERT_THAT(delay, NotOk());
+  EXPECT_THAT(delay.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 

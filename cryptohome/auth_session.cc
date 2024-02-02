@@ -587,35 +587,70 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     }
 
     user_data_auth::AuthFactorStatusUpdate status_update;
+    user_data_auth::AuthFactorWithStatus& factor_with_status =
+        *status_update.mutable_auth_factor_with_status();
     status_update.set_broadcast_id(serialized_public_token_);
-    *status_update.mutable_auth_factor_with_status()->mutable_auth_factor() =
-        std::move(*auth_factor_proto);
+    *factor_with_status.mutable_auth_factor() = std::move(*auth_factor_proto);
 
-    base::flat_set<AuthIntent> supported_intents = GetFullAuthAvailableIntents(
-        obfuscated_username_, auth_factor, *auth_factor_driver_manager_,
-        GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
+    base::flat_set<AuthIntent> supported_intents = GetSupportedIntents(
+        obfuscated_username_, auth_factor.type(), *auth_factor_driver_manager_,
+        GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()),
+        /*only_light_auth=*/false);
     for (const auto& auth_intent : supported_intents) {
-      status_update.mutable_auth_factor_with_status()
-          ->add_available_for_intents(AuthIntentToProto(auth_intent));
+      factor_with_status.add_available_for_intents(
+          AuthIntentToProto(auth_intent));
     }
 
+    // Set |time_available_in| field.
     auto delay = driver.GetFactorDelay(obfuscated_username_, auth_factor);
-    if (delay.ok()) {
-      status_update.mutable_auth_factor_with_status()
-          ->mutable_status_info()
-          ->set_time_available_in(delay->is_max()
-                                      ? std::numeric_limits<uint64_t>::max()
-                                      : delay->InMilliseconds());
-      signalling_->SendAuthFactorStatusUpdate(status_update);
-      if (delay->is_zero()) {
+    if (!delay.ok()) {
+      // Something is wrong, prefer not to send the signal over filling some
+      // default values.
+      continue;
+    }
+    factor_with_status.mutable_status_info()->set_time_available_in(
+        delay->is_max() ? std::numeric_limits<uint64_t>::max()
+                        : delay->InMilliseconds());
+
+    // Set |time_expiring_in| field.
+    base::TimeDelta time_expiring_in;
+    if (driver.IsExpirationSupported()) {
+      auto expiration_delay =
+          driver.GetTimeUntilExpiration(obfuscated_username_, auth_factor);
+      if (!expiration_delay.ok()) {
+        // Something is wrong, prefer not to send the signal over filling some
+        // default values.
         continue;
       }
-      base::TimeDelta next_signal_delay =
-          std::min(*delay, kAuthFactorStatusUpdateDelay);
+      time_expiring_in = *expiration_delay;
+      factor_with_status.mutable_status_info()->set_time_expiring_in(
+          expiration_delay->InMilliseconds());
+    } else {
+      factor_with_status.mutable_status_info()->set_time_expiring_in(
+          std::numeric_limits<uint64_t>::max());
+    }
+
+    signalling_->SendAuthFactorStatusUpdate(status_update);
+
+    // If both delays are zero, then don't schedule another update.
+    if (delay->is_zero() && time_expiring_in.is_zero()) {
+      continue;
+    }
+    // Schedule another update after the smallest of |delay|,
+    // |time_expiring_in|, and kAuthFactorStatusUpdateDelay, but excluding zero
+    // values.
+    std::array<base::TimeDelta, 3> delays = {*delay, time_expiring_in,
+                                             kAuthFactorStatusUpdateDelay};
+    std::sort(delays.begin(), delays.end());
+    for (auto d : delays) {
+      if (d.is_zero()) {
+        continue;
+      }
       auth_factor_status_update_timer_->Start(
-          FROM_HERE, base::Time::Now() + next_signal_delay,
+          FROM_HERE, base::Time::Now() + d,
           base::BindOnce(&AuthSession::SendAuthFactorStatusUpdateSignal,
                          weak_factory_for_timed_tasks_.GetWeakPtr()));
+      break;
     }
   }
 }

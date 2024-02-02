@@ -2063,6 +2063,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoverableKeyStoreCreateNoHashInfo = 3449,
   /* ./auth_blocks/recoverable_key_store.cc */
   kLocRecoverableKeyStoreCreateDontCreate = 3450,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFingerprintIsExpiredNoExpiration = 3451,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

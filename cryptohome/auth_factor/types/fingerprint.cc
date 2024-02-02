@@ -341,8 +341,9 @@ bool FingerprintAuthFactorDriver::IsExpirationSupported() const {
   return true;
 }
 
-CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
-    const ObfuscatedUsername& username, const AuthFactor& factor) {
+CryptohomeStatusOr<base::TimeDelta>
+FingerprintAuthFactorDriver::GetTimeUntilExpiration(
+    const ObfuscatedUsername& username, const AuthFactor& factor) const {
   // Do all the error checks to make sure the input is useful.
   if (factor.type() != type()) {
     return MakeStatus<CryptohomeError>(
@@ -360,7 +361,7 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  // Try and extract the expiration from pinweaver manager..
+  // Try and extract the expiration from pinweaver manager.
   hwsec::StatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
       crypto_->GetPinWeaverManager()->GetExpirationInSeconds(
           *uss->fingerprint_rate_limiter_id());
@@ -370,10 +371,14 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         .Wrap(MakeStatus<error::CryptohomeTPMError>(
             std::move(time_until_expiration_in_seconds).err_status()));
   }
-  // If |time_until_expiration_in_seconds| is nullopt, the leaf has no
-  // expiration.
-  return time_until_expiration_in_seconds->has_value() &&
-         time_until_expiration_in_seconds->value() == 0;
+  // Currently fingerprint auth factors should always have finite expiraition.
+  if (!time_until_expiration_in_seconds->has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredNoExpiration),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  return base::Seconds(time_until_expiration_in_seconds->value());
 }
 
 AuthFactorLabelArity FingerprintAuthFactorDriver::GetAuthFactorLabelArity()

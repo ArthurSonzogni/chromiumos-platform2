@@ -303,19 +303,30 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
-  auto supported_intents = GetFullAuthAvailableIntents(
-      username, auth_factor, *auth_factor_driver_manager,
+  auto supported_intents = GetSupportedIntents(
+      username, auth_factor.type(), *auth_factor_driver_manager,
       GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
-                                        auth_factor.type()));
+                                        auth_factor.type()),
+      /*only_light_auth=*/false);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
   }
+  user_data_auth::StatusInfo& status_info =
+      *auth_factor_with_status.mutable_status_info();
   auto delay = factor_driver.GetFactorDelay(username, auth_factor);
   if (delay.ok()) {
-    auth_factor_with_status.mutable_status_info()->set_time_available_in(
-        delay->is_max() ? std::numeric_limits<uint64_t>::max()
-                        : delay->InMilliseconds());
+    status_info.set_time_available_in(delay->is_max()
+                                          ? std::numeric_limits<uint64_t>::max()
+                                          : delay->InMilliseconds());
+  }
+  auto expiration_delay =
+      factor_driver.GetTimeUntilExpiration(username, auth_factor);
+  if (expiration_delay.ok()) {
+    status_info.set_time_expiring_in(expiration_delay->InMilliseconds());
+  } else {
+    // Error getting the expiration time. Treat it as won't expire.
+    status_info.set_time_expiring_in(std::numeric_limits<uint64_t>::max());
   }
   return auth_factor_with_status;
 }
@@ -2638,10 +2649,11 @@ void UserDataAuth::StartAuthSessionWithSession(
                                 PossibleAction::kReboot})));
         return;
       }
-      auto supported_intents = GetFullAuthAvailableIntents(
-          auth_session->obfuscated_username(), auth_factor,
+      auto supported_intents = GetSupportedIntents(
+          auth_session->obfuscated_username(), auth_factor.type(),
           *auth_factor_driver_manager_,
-          GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
+          GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()),
+          /*only_light_auth=*/false);
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
       user_data_auth::AuthFactorWithStatus auth_factor_with_status;
@@ -2655,12 +2667,22 @@ void UserDataAuth::StartAuthSessionWithSession(
           *reply.add_auth_factors() = std::move(*proto_factor);
         }
       }
+      user_data_auth::StatusInfo& status_info =
+          *auth_factor_with_status.mutable_status_info();
       auto delay = factor_driver.GetFactorDelay(
           auth_session->obfuscated_username(), auth_factor);
       if (delay.ok()) {
-        auth_factor_with_status.mutable_status_info()->set_time_available_in(
+        status_info.set_time_available_in(
             delay->is_max() ? std::numeric_limits<uint64_t>::max()
                             : delay->InMilliseconds());
+      }
+      auto expiration_delay = factor_driver.GetTimeUntilExpiration(
+          auth_session->obfuscated_username(), auth_factor);
+      if (expiration_delay.ok()) {
+        status_info.set_time_expiring_in(expiration_delay->InMilliseconds());
+      } else {
+        // Error getting the expiration time. Treat it as won't expire.
+        status_info.set_time_expiring_in(std::numeric_limits<uint64_t>::max());
       }
       *reply.add_configured_auth_factors_with_status() =
           std::move(auth_factor_with_status);

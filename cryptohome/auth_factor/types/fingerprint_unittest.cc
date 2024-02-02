@@ -40,6 +40,7 @@ using ::hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 using ::hwsec_foundation::kAesGcmIVSize;
 using ::hwsec_foundation::kAesGcmTagSize;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::IsOkAnd;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -408,7 +409,7 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
   EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
-TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
+TEST_F(FingerprintDriverTest, GetTimeUntilExpirationFailsWithoutLeLabel) {
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
@@ -418,9 +419,9 @@ TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
                     CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
 
-  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
-  ASSERT_THAT(is_expired, NotOk());
-  EXPECT_THAT(is_expired.status()->local_legacy_error(),
+  auto delay = driver.GetTimeUntilExpiration(kObfuscatedUser, factor);
+  ASSERT_THAT(delay, NotOk());
+  EXPECT_THAT(delay.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 }
 
@@ -437,9 +438,8 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
-  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
-  ASSERT_THAT(is_expired, IsOk());
-  EXPECT_FALSE(*is_expired);
+  auto delay = driver.GetTimeUntilExpiration(kObfuscatedUser, factor);
+  ASSERT_THAT(delay, IsOkAnd(Eq(base::Seconds(10))));
 }
 
 TEST_F(FingerprintDriverTest, IsExpired) {
@@ -455,9 +455,8 @@ TEST_F(FingerprintDriverTest, IsExpired) {
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
-  ASSERT_THAT(is_expired, IsOk());
-  EXPECT_TRUE(*is_expired);
+  auto delay = driver.GetTimeUntilExpiration(kObfuscatedUser, factor);
+  ASSERT_THAT(delay, IsOkAnd(Eq(base::TimeDelta())));
 }
 
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {

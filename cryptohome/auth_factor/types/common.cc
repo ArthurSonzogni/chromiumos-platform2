@@ -65,8 +65,9 @@ CryptohomeStatusOr<base::TimeDelta> AfDriverNoDelay::GetFactorDelay(
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-CryptohomeStatusOr<bool> AfDriverNoExpiration::IsExpired(
-    const ObfuscatedUsername& username, const AuthFactor& factor) {
+CryptohomeStatusOr<base::TimeDelta>
+AfDriverNoExpiration::GetTimeUntilExpiration(const ObfuscatedUsername& username,
+                                             const AuthFactor& factor) const {
   return MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonIsExpiredUnsupported),
       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),

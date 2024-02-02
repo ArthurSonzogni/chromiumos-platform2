@@ -34,15 +34,6 @@ bool IsIntentEnabledBasedOnPolicy(
     const AuthIntent& intent,
     const SerializedUserAuthFactorTypePolicy& user_policy);
 
-// Compute the set of auth intents available by the given AuthFactor. If the
-// auth intents have been overridden by the user_policy, the user_policy will be
-// returned unless the auth intent set to |kNotConfigurable| by its driver.
-base::flat_set<AuthIntent> GetFullAuthAvailableIntents(
-    const ObfuscatedUsername& username,
-    const AuthFactor& auth_factor,
-    AuthFactorDriverManager& driver_manager,
-    const SerializedUserAuthFactorTypePolicy& user_policy);
-
 // This function computes the set of intents that are supported by the given
 // AuthFactorType. This function takes the override of policies into
 // consideration but doesn't consider if an auth factor type is not available at

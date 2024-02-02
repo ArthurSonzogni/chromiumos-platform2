@@ -2405,8 +2405,10 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
   // Create a USS with wrapped keys registered for all of the given labels. Note
   // that the generated USS will not contain any "real" keys.
-  void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
-                         const std::vector<std::string>& labels) {
+  void MakeUssWithLabelsAndRateLimiter(
+      const ObfuscatedUsername& obfuscated_username,
+      const std::vector<std::string>& labels,
+      bool create_rate_limiter) {
     // Create a random USS.
     UserUssStorage user_storage(system_apis_.uss_storage, obfuscated_username);
     auto uss = DecryptedUss::CreateWithRandomMainKey(
@@ -2432,6 +2434,16 @@ class UserDataAuthExTest : public UserDataAuthTest {
         }
       }
 
+      if (create_rate_limiter) {
+        CryptohomeStatus status =
+            transaction.InitializeFingerprintRateLimiterId(0x10);
+        if (!status.ok()) {
+          ADD_FAILURE()
+              << "Making a test USS failed adding fingerprint rate-limiter.";
+          return;
+        }
+      }
+
       auto status = std::move(transaction).Commit();
       if (!status.ok()) {
         ADD_FAILURE() << "Making a test USS failed during Commit: " << status;
@@ -2445,6 +2457,11 @@ class UserDataAuthExTest : public UserDataAuthTest {
                     << status.status();
       return;
     }
+  }
+
+  void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
+                         const std::vector<std::string>& labels) {
+    MakeUssWithLabelsAndRateLimiter(obfuscated_username, labels, false);
   }
 
  protected:
@@ -3850,6 +3867,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
                 .status_info()
                 .time_available_in(),
             std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(start_reply.configured_auth_factors_with_status(1)
+                .status_info()
+                .time_expiring_in(),
+            std::numeric_limits<uint64_t>::max());
   EXPECT_TRUE(start_reply.user_exists());
 }
 
@@ -3973,6 +3994,91 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
                 .status_info()
                 .time_available_in(),
             30000);
+  EXPECT_EQ(start_reply.configured_auth_factors_with_status(1)
+                .status_info()
+                .time_expiring_in(),
+            std::numeric_limits<uint64_t>::max());
+}
+
+TEST_F(UserDataAuthExTest, StartAuthSessionFingerprintLocked) {
+  // Setup.
+  const Username kUser("foo@example.com");
+  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
+
+  ON_CALL(system_apis_.hwsec, IsBiometricsPinWeaverEnabled())
+      .WillByDefault(ReturnValue(true));
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(false));
+
+  // Set up standard start authsession parameters, we'll be calling this a few
+  // times during the test.
+  user_data_auth::StartAuthSessionRequest start_request;
+  start_request.mutable_account_id()->set_account_id(*kUser);
+  TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_1;
+
+  // List all the auth factors, there should be none at the start.
+  userdataauth_->StartAuthSession(
+      start_request,
+      start_reply_future_1
+          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  EXPECT_EQ(start_reply_future_1.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
+              IsEmpty());
+  EXPECT_THAT(start_reply_future_1.Get().user_exists(), false);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
+
+  // Now that we are starting to save AuthFactors, let's assume user exists.
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  // Add uss auth factors, we should be able to list them.
+  auto fp_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kFingerprint, "fp-label",
+      AuthFactorMetadata{.metadata = FingerprintMetadata()},
+      AuthBlockState{.state = FingerprintAuthBlockState{}});
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *fp_factor),
+              IsOk());
+  MakeUssWithLabelsAndRateLimiter(kObfuscatedUser, {"fp-label"}, true);
+
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetDelayInSeconds)
+      .WillRepeatedly(ReturnValue(30));
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, GetExpirationInSeconds)
+      .WillRepeatedly(ReturnValue(20));
+
+  TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_2;
+  userdataauth_->StartAuthSession(
+      start_request,
+      start_reply_future_2
+          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  user_data_auth::StartAuthSessionReply start_reply =
+      start_reply_future_2.Take();
+  EXPECT_EQ(start_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::sort(
+      start_reply.mutable_configured_auth_factors_with_status()
+          ->pointer_begin(),
+      start_reply.mutable_configured_auth_factors_with_status()->pointer_end(),
+      [](const user_data_auth::AuthFactorWithStatus* lhs,
+         const user_data_auth::AuthFactorWithStatus* rhs) {
+        return lhs->auth_factor().label() < rhs->auth_factor().label();
+      });
+  ASSERT_EQ(start_reply.configured_auth_factors_with_status_size(), 1);
+  EXPECT_EQ(
+      start_reply.configured_auth_factors_with_status(0).auth_factor().label(),
+      "fp-label");
+  EXPECT_TRUE(start_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_fingerprint_metadata());
+  EXPECT_TRUE(
+      start_reply.configured_auth_factors_with_status(0).has_status_info());
+  EXPECT_EQ(start_reply.configured_auth_factors_with_status(0)
+                .status_info()
+                .time_available_in(),
+            30000);
+  EXPECT_EQ(start_reply.configured_auth_factors_with_status(0)
+                .status_info()
+                .time_expiring_in(),
+            20000);
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
@@ -4092,6 +4198,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(1)
                 .status_info()
                 .time_available_in(),
+            std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(1)
+                .status_info()
+                .time_expiring_in(),
             std::numeric_limits<uint64_t>::max());
   EXPECT_THAT(
       list_reply_2.supported_auth_factors(),
@@ -4224,6 +4334,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
                 .status_info()
                 .time_available_in(),
             30000);
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(1)
+                .status_info()
+                .time_expiring_in(),
+            std::numeric_limits<uint64_t>::max());
   EXPECT_THAT(
       list_reply_2.supported_auth_factors(),
       UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,

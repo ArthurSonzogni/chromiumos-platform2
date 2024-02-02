@@ -245,8 +245,8 @@ class AfDriverNoDelay : public virtual AuthFactorDriver {
 class AfDriverNoExpiration : public virtual AuthFactorDriver {
  private:
   bool IsExpirationSupported() const final { return false; }
-  CryptohomeStatusOr<bool> IsExpired(const ObfuscatedUsername& username,
-                                     const AuthFactor& factor) final;
+  CryptohomeStatusOr<base::TimeDelta> GetTimeUntilExpiration(
+      const ObfuscatedUsername& username, const AuthFactor& factor) const final;
 };
 
 // Common implementation of the rate-limiter functions for drivers which do not

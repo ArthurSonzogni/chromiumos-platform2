@@ -559,14 +559,23 @@ message StartAuthSessionRequest {
 }
 
 message StatusInfo {
-  // This field will be used for PIN lockout time. Once an auth factor is locked
-  // out, this field will show the time the factor is locked out for in
+  // This field will be used for factor lockout time. Once an auth factor is
+  // locked out, this field will show the time the factor is locked out for in
   // milliseconds. If the auth factor is not locked, this field will be set to
   // zero. If the auth factor is locked out permanently (i.e. until it is
   // unlocked via a separate credential) this will be set to the maximum uint64
   // value. |time_available_in| would be indicated in terms of a wall clock
   // timer, and it will not be affected by sleep.
   uint64 time_available_in = 1;
+  // This field will be used for remaining time until the factor is expired.
+  // Once an auth factor is expired it needs to be unlocked via a separate
+  // credential.
+  // If the auth factor is already expired, this field will be set to zero.
+  // If the auth factor won't expire, this will be set to the maximum uint64
+  // value, and will not decrement through time.
+  // This field would be indicated in terms of a wall clock time, and keeps
+  // counting through sleep.
+  uint64 time_expiring_in = 2;
 }
 
 // AuthFactorWithStatus returns read-only AuthFactor with relevant status
@@ -576,13 +585,10 @@ message StatusInfo {
 message AuthFactorWithStatus {
   // AuthFactor read from disk.
   AuthFactor auth_factor = 1;
-  // Gives the set of possible actions available for this
-  // auth_factor. For example:
-  // 1) If a pinweaver backed pin is available for login, then the following
-  // would be returned:
-  // available_for_intents = {AUTH_INTENT_DECRYPT,AUTH_INTENT_VERIFY_ONLY}
-  // 2) If a pinweaver backed pin is not available (aka locked out), then an
-  // empty available_for_intents would be returned.
+  // Gives the set of possible actions available for this auth_factor.
+  // This reflects the user policy (through settings or enterprise policy)
+  // configured for the factor type, but not other runtime status of the
+  // factor that make it unavailable (like lockout or expiration).
   repeated AuthIntent available_for_intents = 2;
 
   StatusInfo status_info = 3;

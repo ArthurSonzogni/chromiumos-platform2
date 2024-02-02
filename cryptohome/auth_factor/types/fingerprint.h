@@ -78,8 +78,9 @@ class FingerprintAuthFactorDriver final
       const ObfuscatedUsername& username,
       const AuthFactor& factor) const override;
   bool IsExpirationSupported() const override;
-  CryptohomeStatusOr<bool> IsExpired(const ObfuscatedUsername& username,
-                                     const AuthFactor& factor) override;
+  CryptohomeStatusOr<base::TimeDelta> GetTimeUntilExpiration(
+      const ObfuscatedUsername& username,
+      const AuthFactor& factor) const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

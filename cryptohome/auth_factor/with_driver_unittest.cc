@@ -146,8 +146,8 @@ TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
 
   auto auth_factor_type_policy =
       GetEmptyAuthFactorTypePolicy(password_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, password_factor,
-                                             manager_, auth_factor_type_policy);
+  auto intents = GetSupportedIntents(kObfuscatedUser, password_factor.type(),
+                                     manager_, auth_factor_type_policy, false);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -160,42 +160,23 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithNoHardware) {
 
   auto auth_factor_type_policy =
       GetEmptyAuthFactorTypePolicy(pin_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
-                                             manager_, auth_factor_type_policy);
+  auto intents = GetSupportedIntents(kObfuscatedUser, pin_factor.type(),
+                                     manager_, auth_factor_type_policy, false);
 
   EXPECT_THAT(intents, IsEmpty());
 }
 
-TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithDelay) {
+TEST_F(AuthFactorWithDriverTest, PinSupportAllIntents) {
   AuthFactor pin_factor =
       CreateFactor(AuthFactorType::kPin, PinMetadata(),
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(15));
 
   auto auth_factor_type_policy =
       GetEmptyAuthFactorTypePolicy(pin_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
-                                             manager_, auth_factor_type_policy);
-
-  EXPECT_THAT(intents, IsEmpty());
-}
-
-TEST_F(AuthFactorWithDriverTest, PinSupportAllIntentsWhenUnlocked) {
-  AuthFactor pin_factor =
-      CreateFactor(AuthFactorType::kPin, PinMetadata(),
-                   PinWeaverAuthBlockState{.le_label = kLeLabel});
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(0));
-
-  auto auth_factor_type_policy =
-      GetEmptyAuthFactorTypePolicy(pin_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
-                                             manager_, auth_factor_type_policy);
+  auto intents = GetSupportedIntents(kObfuscatedUser, pin_factor.type(),
+                                     manager_, auth_factor_type_policy, false);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -207,46 +188,8 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
   EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(false));
 
   auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
-                                             manager_, auth_factor_type_policy);
-
-  EXPECT_THAT(intents, IsEmpty());
-}
-
-TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
-  AuthFactor fp_factor =
-      CreateFactor(AuthFactorType::kFingerprint, FingerprintMetadata(),
-                   FingerprintAuthBlockState{});
-  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
-      .WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(0));
-
-  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
-                                             manager_, auth_factor_type_policy);
-
-  EXPECT_THAT(intents, IsEmpty());
-}
-
-TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
-  AuthFactor fp_factor =
-      CreateFactor(AuthFactorType::kFingerprint, FingerprintMetadata(),
-                   FingerprintAuthBlockState{});
-  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
-      .WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(15));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(15));
-
-  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
-                                             manager_, auth_factor_type_policy);
+  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor.type(),
+                                     manager_, auth_factor_type_policy, false);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -259,14 +202,10 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(15));
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
-      .WillOnce(ReturnValue(0));
 
   auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
-  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
-                                             manager_, auth_factor_type_policy);
+  auto intents = GetSupportedIntents(kObfuscatedUser, fp_factor.type(),
+                                     manager_, auth_factor_type_policy, false);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly,
                                             AuthIntent::kWebAuthn));
