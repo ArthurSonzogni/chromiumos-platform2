@@ -217,8 +217,7 @@ void ProxyConnectJob::HandleClientHTTPRequest(std::string_view http_request) {
   read_watcher_.reset();
   target_url_ = GetUriAuthorityFromHttpHeader(http_request);
   if (target_url_.empty()) {
-    std::string encoded;
-    base::Base64Encode(http_request, &encoded);
+    auto encoded = base::Base64Encode(http_request);
     LOG(ERROR) << *this << " Failed to parse HTTP CONNECT request " << encoded;
     OnError(kHttpBadRequest);
     return;

@@ -447,8 +447,7 @@ bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
   }
 
   std::string serialized = status.SerializeAsString();
-  std::string base64_encoded;
-  base::Base64Encode(serialized, &base64_encoded);
+  auto base64_encoded = base::Base64Encode(serialized);
 
   brillo::ProcessImpl vpd;
   vpd.AddArg("/usr/sbin/vpd");

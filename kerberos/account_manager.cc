@@ -48,9 +48,7 @@ constexpr size_t kFileSizeLimit = 1024 * 1024;
 // Returns the base64 encoded |principal_name|. This is used to create safe
 // filenames while at the same time allowing easy debugging.
 std::string GetSafeFilename(const std::string& principal_name) {
-  std::string encoded_principal;
-  base::Base64Encode(principal_name, &encoded_principal);
-  return encoded_principal;
+  return base::Base64Encode(principal_name);
 }
 
 // Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file

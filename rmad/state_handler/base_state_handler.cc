@@ -57,9 +57,9 @@ bool BaseStateHandler::StoreState() {
   json_store_->GetValue(kStateMap, &state_map);
 
   int key = GetStateCase();
-  std::string serialized_string, serialized_string_base64;
+  std::string serialized_string;
   state_.SerializeToString(&serialized_string);
-  base::Base64Encode(serialized_string, &serialized_string_base64);
+  auto serialized_string_base64 = base::Base64Encode(serialized_string);
 
   state_map[key] = serialized_string_base64;
   return json_store_->SetValue(kStateMap, state_map);

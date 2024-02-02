@@ -60,9 +60,7 @@ FeatureManagementUtil::ReadDeviceInfo(const base::FilePath& file_path) {
 std::string FeatureManagementUtil::EncodeDeviceInfo(
     const libsegmentation::DeviceInfo& device_info) {
   std::string serialized = device_info.SerializeAsString();
-  std::string base64_encoded;
-  base::Base64Encode(serialized, &base64_encoded);
-  return base64_encoded;
+  return base::Base64Encode(serialized);
 }
 
 FeatureManagementInterface::FeatureLevel

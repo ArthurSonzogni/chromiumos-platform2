@@ -81,8 +81,7 @@ class NvmeWearLevelRoutineTest : public testing::Test {
 TEST_F(NvmeWearLevelRoutineTest, Pass) {
   const std::string kNvmeRawOutput(std::begin(kWearLevel4),
                                    std::end(kWearLevel4));
-  std::string nvme_encoded_output;
-  base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(kNvmeRawOutput);
 
   CreateWearLevelRoutine(kThreshold50);
   EXPECT_CALL(debugd_proxy_,
@@ -106,8 +105,7 @@ TEST_F(NvmeWearLevelRoutineTest, Pass) {
 TEST_F(NvmeWearLevelRoutineTest, HighWearLevel) {
   const std::string kNvmeRawOutput(std::begin(kWearLevel70),
                                    std::end(kWearLevel70));
-  std::string nvme_encoded_output;
-  base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(kNvmeRawOutput);
 
   CreateWearLevelRoutine(kThreshold50);
   EXPECT_CALL(debugd_proxy_,
@@ -163,8 +161,7 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidWearLevel) {
 TEST_F(NvmeWearLevelRoutineTest, InvalidLength) {
   const std::string kNvmeRawOutput(std::begin(kEightByteWearLevel4),
                                    std::end(kEightByteWearLevel4));
-  std::string nvme_encoded_output;
-  base::Base64Encode(kNvmeRawOutput, &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(kNvmeRawOutput);
 
   CreateWearLevelRoutine(kThreshold50);
   EXPECT_CALL(debugd_proxy_,
