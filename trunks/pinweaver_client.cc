@@ -166,6 +166,8 @@ std::string PwErrorStr(int code) {
       return "PW_ERR_BIO_AUTH_ACCESS_DENIED";
     case PW_ERR_BIO_AUTH_PK_NOT_ESTABLISHED:
       return "PW_ERR_BIO_AUTH_PK_NOT_ESTABLISHED";
+    case PW_ERR_BIO_AUTH_PK_ALREADY_ESTABLISHED:
+      return "PW_ERR_BIO_AUTH_PK_ALREADY_ESTABLISHED";
     default:
       return "?";
   }
