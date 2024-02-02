@@ -145,31 +145,6 @@ std::string GetDiffString<::ash::cros_healthd::mojom::SystemInfo>(
     const ::ash::cros_healthd::mojom::SystemInfo& a,
     const ::ash::cros_healthd::mojom::SystemInfo& b);
 
-template <>
-std::string GetDiffString<::ash::cros_healthd::mojom::BusDevice>(
-    const ::ash::cros_healthd::mojom::BusDevice& a,
-    const ::ash::cros_healthd::mojom::BusDevice& b);
-
-template <>
-std::string GetDiffString<::ash::cros_healthd::mojom::BusInfo>(
-    const ::ash::cros_healthd::mojom::BusInfo& a,
-    const ::ash::cros_healthd::mojom::BusInfo& b);
-
-template <>
-std::string GetDiffString<::ash::cros_healthd::mojom::PciBusInfo>(
-    const ::ash::cros_healthd::mojom::PciBusInfo& a,
-    const ::ash::cros_healthd::mojom::PciBusInfo& b);
-
-template <>
-std::string GetDiffString<::ash::cros_healthd::mojom::UsbBusInfo>(
-    const ::ash::cros_healthd::mojom::UsbBusInfo& a,
-    const ::ash::cros_healthd::mojom::UsbBusInfo& b);
-
-template <>
-std::string GetDiffString<::ash::cros_healthd::mojom::UsbBusInterfaceInfo>(
-    const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& a,
-    const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& b);
-
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_
