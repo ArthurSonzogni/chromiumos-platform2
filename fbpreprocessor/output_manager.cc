@@ -33,9 +33,11 @@
 namespace {
 void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump,
                         std::string_view reason) {
-  LOG(INFO) << "Deleting WiFi dump file triggered by: " << reason;
+  LOG(INFO) << "Deleting dump file triggered by: " << reason;
   VLOG(fbpreprocessor::kLocalOnlyDebugVerbosity) << "Deleting file " << fw_dump;
-  if (!fw_dump.Delete()) {
+  if (fw_dump.Delete()) {
+    LOG(INFO) << "Firmware dump file deleted successfully.";
+  } else {
     LOG(ERROR) << "Failed to delete firmware dump.";
   }
 }

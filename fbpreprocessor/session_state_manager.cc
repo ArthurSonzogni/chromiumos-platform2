@@ -58,7 +58,7 @@ constexpr std::array<std::string_view, kUserAllowlistSize> kUserAllowlist{
     "testuser@gmail.com"};
 
 // Settings of the UserFeedbackWithLowLevelDebugDataAllowed policy that allow
-// the addition of WiFi firmware dumps to feedback reports.
+// the addition of firmware dumps to feedback reports.
 constexpr int kPolicyOptionsSize = 2;
 constexpr std::array<std::string_view, kPolicyOptionsSize> kPolicyOptions{
     "all", "wifi"};
