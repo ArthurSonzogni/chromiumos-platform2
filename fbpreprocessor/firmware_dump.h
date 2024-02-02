@@ -31,7 +31,8 @@ class FirmwareDump {
   // iwlwifi_${timestamp}
   base::FilePath BaseName() const;
 
-  // Delete .dmp file from disk.
+  // Delete .dmp file from disk. Returns true on success, false otherwise.
+  // If the file did not exist in the first place it's considered successful.
   bool Delete() const;
 
  private:
