@@ -755,6 +755,9 @@ class Service : public base::RefCounted<Service> {
   // tests.
   void UpdateStateTransitionMetrics(Service::ConnectState new_state);
 
+  // Gets a weak ptr to this object.
+  base::WeakPtr<Service> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
+
  protected:
   friend class base::RefCounted<Service>;
 

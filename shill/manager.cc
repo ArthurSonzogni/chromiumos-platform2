@@ -2024,9 +2024,19 @@ void Manager::AutoConnect() {
   if (IsWifiIdle()) {
     wifi_provider_->ReportAutoConnectableServices();
   }
-  // Perform auto-connect.
+
+  // Perform auto-connect. Note that we cannot guarantee that service list won't
+  // be changed in this process, e.g., a service maybe destroyed in
+  // `Service::AutoConnect()` of another service (b/323386660), so we use a
+  // cached list to do the loop. Use WeakPtr to avoid holding a reference to the
+  // service.
+  std::vector<base::WeakPtr<Service>> candidates;
+  candidates.reserve(services_.size());
   for (const auto& service : services_) {
-    if (service->auto_connect()) {
+    candidates.push_back(service->AsWeakPtr());
+  }
+  for (const auto& service : candidates) {
+    if (service && service->auto_connect()) {
       service->AutoConnect();
     }
   }
