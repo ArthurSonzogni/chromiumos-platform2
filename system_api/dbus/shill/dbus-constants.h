@@ -1019,6 +1019,10 @@ constexpr char kTetheringStatusUpstreamServiceProperty[] = "upstream_service";
 // kTetheringStatusIdleReasonProperty values
 constexpr char kTetheringIdleReasonClientStop[] = "client_stop";
 constexpr char kTetheringIdleReasonConfigChange[] = "config_change";
+constexpr char kTetheringIdleReasonDownstreamLinkDisconnect[] =
+    "downstream_link_disconnect";
+constexpr char kTetheringIdleReasonDownstreamNetworkDisconnect[] =
+    "downstream_network_disconnect";
 constexpr char kTetheringIdleReasonError[] = "error";
 constexpr char kTetheringIdleReasonInactive[] = "inactive";
 constexpr char kTetheringIdleReasonInitialState[] = "initial_state";

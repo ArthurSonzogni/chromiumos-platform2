@@ -1121,8 +1121,9 @@ Properties	object ActiveProfile [readonly]
 			string idle_reason
 				the reason why tethering is in idle state. Could be any one of
 				"initial_state", "client_stop", "user_exit", "inactive", "error"
-				"upstream_disconnect", "upstream_no_internet", "suspend", or
-				"config_change".
+				"upstream_disconnect", "upstream_no_internet", "suspend",
+				"config_change", "downstream_link_disconnect",
+				"downstream_network_disconnect".
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the

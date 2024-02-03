@@ -997,7 +997,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
       if (state_ == TetheringState::kTetheringStarting) {
         PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
       }
-      StopTetheringSession(StopReason::kError);
+      StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
       break;
     case LocalDevice::DeviceEvent::kInterfaceEnabled:
       OnDownstreamDeviceEnabled();
@@ -1365,6 +1365,10 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonError;
     case StopReason::kConfigChange:
       return kTetheringIdleReasonConfigChange;
+    case StopReason::kDownstreamLinkDisconnect:
+      return kTetheringIdleReasonDownstreamLinkDisconnect;
+    case StopReason::kDownstreamNetDisconnect:
+      return kTetheringIdleReasonDownstreamNetworkDisconnect;
     default:
       NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";

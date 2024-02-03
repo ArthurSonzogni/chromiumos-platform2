@@ -1373,7 +1373,8 @@ TEST_F(TetheringManagerTest, DeviceEventInterfaceDisabled) {
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
   DispatchPendingEvents();
-  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonDownstreamLinkDisconnect);
 }
 
 TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
@@ -1385,7 +1386,8 @@ TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
   DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkDown,
                         hotspot_device_.get());
   DispatchPendingEvents();
-  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonDownstreamLinkDisconnect);
 }
 
 TEST_F(TetheringManagerTest, UpstreamNetworkStopped) {
@@ -1424,7 +1426,8 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
                         hotspot_device_.get());
   VerifyResult(TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
   // Expect stopping state: the attempt will be aborted.
-  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonDownstreamLinkDisconnect);
 }
 
 TEST_F(TetheringManagerTest, UpstreamNetworkValidationFails) {

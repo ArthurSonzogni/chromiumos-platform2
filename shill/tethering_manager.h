@@ -146,15 +146,17 @@ class TetheringManager : public Network::EventHandler {
   FRIEND_TEST(TetheringManagerTest, CheckMACStored);
 
   enum class StopReason {
-    kInitial,             // Initial idle state.
-    kClientStop,          // Client explicitly stops tethering.
-    kUserExit,            // User logs out or shuts down device.
-    kSuspend,             // Device suspend.
-    kUpstreamDisconnect,  // Upstream network disconnects.
-    kUpstreamNoInternet,  // Upstream network has no Internet connectivity.
-    kInactive,            // Inactive timer fires.
-    kError,               // Internal error.
-    kConfigChange,        // Config is changed.
+    kInitial,                   // Initial idle state.
+    kClientStop,                // Client explicitly stops tethering.
+    kUserExit,                  // User logs out or shuts down device.
+    kSuspend,                   // Device suspend.
+    kUpstreamDisconnect,        // Upstream network disconnects.
+    kUpstreamNoInternet,        // Upstream has no Internet connectivity.
+    kInactive,                  // Inactive timer fires.
+    kError,                     // Internal error.
+    kConfigChange,              // Config is changed.
+    kDownstreamLinkDisconnect,  // Downstream link disconnects.
+    kDownstreamNetDisconnect,   // Downstream network disconnects.
   };
 
   // Convert stop reason enum to string.
