@@ -17,6 +17,8 @@ SerializedAuthIntent SerializeAuthIntent(AuthIntent intent) {
       return SerializedAuthIntent::kVerifyOnly;
     case AuthIntent::kWebAuthn:
       return SerializedAuthIntent::kWebAuthn;
+    case AuthIntent::kRestoreKey:
+      return SerializedAuthIntent::kRestoreKey;
   }
 }
 
@@ -28,6 +30,8 @@ AuthIntent DeserializeAuthIntent(SerializedAuthIntent intent) {
       return AuthIntent::kVerifyOnly;
     case SerializedAuthIntent::kWebAuthn:
       return AuthIntent::kWebAuthn;
+    case SerializedAuthIntent::kRestoreKey:
+      return AuthIntent::kRestoreKey;
   }
 }
 

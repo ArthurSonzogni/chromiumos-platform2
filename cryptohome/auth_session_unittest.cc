@@ -491,6 +491,18 @@ TEST_F(AuthSessionTest, WebAuthnIntent) {
   EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kWebAuthn);
 }
 
+TEST_F(AuthSessionTest, RestoreKeyIntent) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kRestoreKey,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false},
+                           backing_apis_);
+
+  EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kRestoreKey);
+}
+
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
   base::UnguessableToken token = base::UnguessableToken::Null();
   std::optional<std::string> serialized_token =

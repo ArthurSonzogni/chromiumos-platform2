@@ -665,7 +665,8 @@ void RunWithAuthSessionWhenAvailable(
 // takes an extra second location to use when the session exists and is OK but
 // is not authenticated.
 template <typename RequestType, typename ReplyType>
-void RunWithDecryptAuthSessionWhenAvailable(
+void RunWithAuthorizedAuthSessionWhenAvailable(
+    AuthIntent intent,
     AuthSessionManager* auth_session_manager,
     CryptohomeError::ErrorLocationPair not_ok_err_loc,
     CryptohomeError::ErrorLocationPair not_auth_err_loc,
@@ -680,7 +681,8 @@ void RunWithDecryptAuthSessionWhenAvailable(
   auth_session_manager->RunWhenAvailable(
       auth_session_id,
       base::BindOnce(
-          [](CryptohomeError::ErrorLocationPair not_ok_err_loc,
+          [](AuthIntent intent,
+             CryptohomeError::ErrorLocationPair not_ok_err_loc,
              CryptohomeError::ErrorLocationPair not_auth_err_loc,
              RequestType request,
              UserDataAuth::OnDoneCallback<ReplyType> on_done,
@@ -700,8 +702,7 @@ void RunWithDecryptAuthSessionWhenAvailable(
                       .Wrap(std::move(status).err_status()));
               return;
             }
-            if (!auth_session->authorized_intents().contains(
-                    AuthIntent::kDecrypt)) {
+            if (!auth_session->authorized_intents().contains(intent)) {
               ReplyWithError(
                   std::move(on_done), ReplyType{},
                   MakeStatus<CryptohomeError>(
@@ -715,7 +716,7 @@ void RunWithDecryptAuthSessionWhenAvailable(
             std::move(run_with).Run(std::move(request), std::move(on_done),
                                     std::move(auth_session));
           },
-          std::move(not_ok_err_loc), std::move(not_auth_err_loc),
+          intent, std::move(not_ok_err_loc), std::move(not_auth_err_loc),
           std::move(request), std::move(on_done), std::move(run_with)));
 }
 
@@ -2347,8 +2348,8 @@ void UserDataAuth::GetHibernateSecret(
   // If there's an auth_session_id, use that to create the hibernate
   // secret on demand (otherwise it's not available until later).
   if (!request.auth_session_id().empty()) {
-    RunWithDecryptAuthSessionWhenAvailable(
-        auth_session_manager_,
+    RunWithAuthorizedAuthSessionWhenAvailable(
+        AuthIntent::kDecrypt, auth_session_manager_,
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetHibernateSecret),
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInGetHibernateSecret),
         std::move(request), std::move(on_done),
@@ -2745,8 +2746,8 @@ void UserDataAuth::ExtendAuthSession(
     OnDoneCallback<user_data_auth::ExtendAuthSessionReply> on_done) {
   AssertOnMountThread();
 
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInExtendAuthSession),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInExtendAuthSession),
       std::move(request), std::move(on_done),
@@ -3000,8 +3001,8 @@ void UserDataAuth::PreparePersistentVault(
     user_data_auth::PreparePersistentVaultRequest request,
     OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(
           kLocUserDataAuthSessionNotFoundInPreparePersistentVault),
       CRYPTOHOME_ERR_LOC(
@@ -3049,8 +3050,8 @@ void UserDataAuth::PrepareVaultForMigration(
     user_data_auth::PrepareVaultForMigrationRequest request,
     OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(
           kLocUserDataAuthSessionNotFoundInPrepareVaultForMigration),
       CRYPTOHOME_ERR_LOC(
@@ -3418,8 +3419,8 @@ void UserDataAuth::AddAuthFactor(
     user_data_auth::AddAuthFactorRequest request,
     OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthSessionNotFoundInAddAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthSessionNotAuthInAddAuthFactor),
       std::move(request), std::move(on_done),
@@ -3602,8 +3603,8 @@ void UserDataAuth::UpdateAuthFactor(
     user_data_auth::UpdateAuthFactorRequest request,
     OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInUpdateAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInUpdateAuthFactor),
       std::move(request), std::move(on_done),
@@ -3676,8 +3677,8 @@ void UserDataAuth::UpdateAuthFactorMetadata(
     user_data_auth::UpdateAuthFactorMetadataRequest request,
     OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(
           kLocUserDataAuthSessionNotFoundInUpdateAuthFactorMetadata),
       CRYPTOHOME_ERR_LOC(
@@ -3733,8 +3734,8 @@ void UserDataAuth::RelabelAuthFactor(
     user_data_auth::RelabelAuthFactorRequest request,
     OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRelabelAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRelabelAuthFactor),
       std::move(request), std::move(on_done),
@@ -3786,8 +3787,8 @@ void UserDataAuth::ReplaceAuthFactor(
     user_data_auth::ReplaceAuthFactorRequest request,
     OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInReplaceAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInReplaceAuthFactor),
       std::move(request), std::move(on_done),
@@ -3839,8 +3840,8 @@ void UserDataAuth::RemoveAuthFactor(
     user_data_auth::RemoveAuthFactorRequest request,
     OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemoveAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRemoveAuthFactor),
       std::move(request), std::move(on_done),
@@ -4097,8 +4098,8 @@ void UserDataAuth::ModifyAuthFactorIntents(
     user_data_auth::ModifyAuthFactorIntentsRequest request,
     OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(
           kLocUserDataAuthSessionNotFoundInModifyAuthFactorIntents),
       CRYPTOHOME_ERR_LOC(
@@ -4403,8 +4404,8 @@ void UserDataAuth::CreateVaultKeyset(
     OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done) {
   user_data_auth::CreateVaultKeysetReply reply;
 
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInCreateVaultKeyset),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInCreateVaultKeyset),
       std::move(request), std::move(on_done),
@@ -4428,8 +4429,8 @@ void UserDataAuth::RestoreDeviceKey(
     user_data_auth::RestoreDeviceKeyRequest request,
     OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done) {
   AssertOnMountThread();
-  RunWithDecryptAuthSessionWhenAvailable(
-      auth_session_manager_,
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kRestoreKey, auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRestoreDeviceKey),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRestoreDeviceKey),
       std::move(request), std::move(on_done),

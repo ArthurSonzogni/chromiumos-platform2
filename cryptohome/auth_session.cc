@@ -141,6 +141,8 @@ constexpr std::string_view IntentToDebugString(AuthIntent intent) {
       return "verify-only";
     case AuthIntent::kWebAuthn:
       return "webauthn";
+    case AuthIntent::kRestoreKey:
+      return "restore-key";
   }
 }
 
@@ -480,6 +482,7 @@ base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
   check_auth_for(auth_for_decrypt_);
   check_auth_for(auth_for_verify_only_);
   check_auth_for(auth_for_web_authn_);
+  check_auth_for(auth_for_restore_key_);
   return intents;
 }
 
@@ -522,8 +525,9 @@ void AuthSession::SetAuthorizedForIntents(
   set_auth_for(auth_for_decrypt_);
   set_auth_for(auth_for_verify_only_);
   set_auth_for(auth_for_web_authn_);
+  set_auth_for(auth_for_restore_key_);
 
-  if (auth_for_decrypt_) {
+  if (auth_for_decrypt_ || auth_for_restore_key_) {
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
   }
@@ -2799,6 +2803,10 @@ AuthSession::AuthForWebAuthn* AuthSession::GetAuthForWebAuthn() {
   return auth_for_web_authn_ ? &*auth_for_web_authn_ : nullptr;
 }
 
+AuthSession::AuthForRestoreKey* AuthSession::GetAuthForRestoreKey() {
+  return auth_for_restore_key_ ? &*auth_for_restore_key_ : nullptr;
+}
+
 void AuthSession::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
@@ -3843,6 +3851,14 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
       uss_manager_->GetDecrypted(*decrypt_token_).file_system_keyset();
 
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
+
+  // If the authentication intent is to restore key on lock screen.
+  if (auth_intent_ == AuthIntent::kRestoreKey) {
+    SetAuthorizedForIntents({AuthIntent::kRestoreKey});
+    std::move(on_done).Run(std::move(prepare_status));
+    return;
+  }
+
   if (auth_intent_ == AuthIntent::kWebAuthn) {
     // Even if we failed to prepare WebAuthn secret, file system keyset
     // is already populated and we should proceed to set AuthSession as
@@ -3857,7 +3873,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     LOG(ERROR) << "Failed to prepare chaps key: " << status;
   }
 
-  // Flip the status on the successful authentication.
+  // Flip the status on the successful authentication and set the
+  // authorization.
   SetAuthorizedForFullAuthIntents(auth_factor_type,
                                   auth_factor_type_user_policy);
 

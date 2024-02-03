@@ -22,6 +22,10 @@ enum class AuthIntent {
   // Intent to unlock the WebAuthn capability. Authorizing for this intent
   // allows the WebAuthn operation.
   kWebAuthn,
+  // Intent to decrypt the user's file system keys. Authorizing for this intent
+  // only allows key restore operation for filesystem key. It doesn't allow
+  // AuthFactor operations e.g. adding/updating/removing factors.
+  kRestoreKey,
 };
 
 // All intents as an array. Useful for things like iterating through every
@@ -30,6 +34,7 @@ inline constexpr AuthIntent kAllAuthIntents[] = {
     AuthIntent::kDecrypt,
     AuthIntent::kVerifyOnly,
     AuthIntent::kWebAuthn,
+    AuthIntent::kRestoreKey,
 };
 
 // A template that accepts a list of intents as a parameter pack and then

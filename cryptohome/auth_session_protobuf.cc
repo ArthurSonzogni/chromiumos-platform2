@@ -21,6 +21,8 @@ user_data_auth::AuthIntent AuthIntentToProto(AuthIntent auth_intent) {
       return user_data_auth::AUTH_INTENT_VERIFY_ONLY;
     case AuthIntent::kWebAuthn:
       return user_data_auth::AUTH_INTENT_WEBAUTHN;
+    case AuthIntent::kRestoreKey:
+      return user_data_auth::AUTH_INTENT_RESTORE_KEY;
   }
 }
 
@@ -33,6 +35,8 @@ std::optional<AuthIntent> AuthIntentFromProto(
       return AuthIntent::kVerifyOnly;
     case user_data_auth::AUTH_INTENT_WEBAUTHN:
       return AuthIntent::kWebAuthn;
+    case user_data_auth::AUTH_INTENT_RESTORE_KEY:
+      return AuthIntent::kRestoreKey;
     default:
       LOG(WARNING) << "Unknown AuthIntent " << auth_intent;
       return std::nullopt;

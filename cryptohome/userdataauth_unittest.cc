@@ -92,6 +92,7 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
+#include "rpc.pb.h"
 
 namespace cryptohome {
 namespace {
@@ -137,7 +138,9 @@ using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::IsFalse;
+using ::testing::IsNull;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Pointee;
 using ::testing::Property;
 using ::testing::Return;
@@ -3018,12 +3021,14 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
                   .auth_factor()
                   .type(),
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
-                  .at(0)
-                  .available_for_intents(),
-              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
-                                   user_data_auth::AUTH_INTENT_DECRYPT,
-                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status()
+          .at(0)
+          .available_for_intents(),
+      UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                           user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY,
+                           user_data_auth::AUTH_INTENT_DECRYPT,
+                           user_data_auth::AUTH_INTENT_WEBAUTHN));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
@@ -3089,12 +3094,14 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
                   .auth_factor()
                   .type(),
               user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
-                  .at(0)
-                  .available_for_intents(),
-              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
-                                   user_data_auth::AUTH_INTENT_DECRYPT,
-                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status()
+          .at(0)
+          .available_for_intents(),
+      UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                           user_data_auth::AUTH_INTENT_DECRYPT,
+                           user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY,
+                           user_data_auth::AUTH_INTENT_WEBAUTHN));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
@@ -3191,9 +3198,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
   for (const auto& intents_for_type : list_reply.auth_intents_for_types()) {
     types_with_intents.push_back(intents_for_type.type());
     EXPECT_THAT(intents_for_type.current(),
-                UnorderedElementsAre(user_data_auth::AUTH_INTENT_DECRYPT,
-                                     user_data_auth::AUTH_INTENT_VERIFY_ONLY,
-                                     user_data_auth::AUTH_INTENT_WEBAUTHN));
+                UnorderedElementsAre(
+                    user_data_auth::AUTH_INTENT_DECRYPT,
+                    user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                    user_data_auth::AUTH_INTENT_WEBAUTHN,
+                    user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY));
   }
   EXPECT_THAT(
       types_with_intents,
@@ -5465,7 +5474,8 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
 TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id = GetTestAuthedAuthSession(
+      user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY);
   ASSERT_TRUE(session_id.has_value());
   scoped_refptr<MockMount> mount = new MockMount();
   new_mounts_.push_back(mount.get());
@@ -5481,40 +5491,22 @@ TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
                   std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
 
-TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithEphemeralVault) {
+TEST_F(UserDataAuthApiTest, EphemeralUserNotAuthorizedForRestoreDevice) {
   // Prepare an auth session for ephemeral mount.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
+      user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY,
       user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_TRUE(session_id.has_value());
 
-  // Ensure that the ephemeral mount succeeds.
-  scoped_refptr<MockMount> mount = new MockMount();
-  EXPECT_CALL(*mount, MountEphemeralCryptohome(_))
-      .WillOnce(ReturnOk<StorageError>());
-  EXPECT_CALL(homedirs_, GetOwner(_))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<0>(SanitizeUserName(kUsername2)), Return(true)));
-  new_mounts_.push_back(mount.get());
-
-  // Prepare the ephemeral vault.
-  user_data_auth::PrepareEphemeralVaultRequest prepare_req;
-  prepare_req.set_auth_session_id(session_id.value());
-  std::optional<user_data_auth::PrepareEphemeralVaultReply> prepare_reply =
-      PrepareEphemeralVaultSync(prepare_req);
-
-  ASSERT_TRUE(prepare_reply.has_value());
-  EXPECT_EQ(prepare_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-  // Check that RestoreDeviceKey fails when the user session is ephemeral.
-  user_data_auth::RestoreDeviceKeyRequest restore_req;
-  restore_req.set_auth_session_id(session_id.value());
-  std::optional<user_data_auth::RestoreDeviceKeyReply> restore_reply =
-      RestoreDeviceKeySync(restore_req);
-  ASSERT_TRUE(restore_reply.has_value());
-  EXPECT_THAT(restore_reply->error_info(),
-              HasPossibleActions(
-                  std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+  // Check that ephemeral user is not authorized for RestoreDevice intent.
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
+        ASSERT_THAT(auth_session->GetAuthForDecrypt(), NotNull());
+        ASSERT_THAT(auth_session->GetAuthForVerifyOnly(), NotNull());
+        ASSERT_THAT(auth_session->GetAuthForRestoreKey(), IsNull());
+      }));
 }
 
 TEST_F(UserDataAuthApiTest, GuestMountFailed) {
@@ -5671,6 +5663,7 @@ TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
   // disabled.
   modify_req.add_intents(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
   modify_req.add_intents(user_data_auth::AuthIntent::AUTH_INTENT_VERIFY_ONLY);
+  modify_req.add_intents(user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY);
   EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
   std::optional<user_data_auth::ModifyAuthFactorIntentsReply> modify_reply =
       ModifyAuthFactorIntentsSync(modify_req);
@@ -5680,13 +5673,15 @@ TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
   EXPECT_THAT(modify_reply->auth_intents().current(),
               UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
                                    user_data_auth::AUTH_INTENT_DECRYPT,
-                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN,
+                                   user_data_auth::AUTH_INTENT_RESTORE_KEY));
   EXPECT_THAT(modify_reply->auth_intents().minimum(),
               UnorderedElementsAre(user_data_auth::AUTH_INTENT_WEBAUTHN));
   EXPECT_THAT(modify_reply->auth_intents().maximum(),
               UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
                                    user_data_auth::AUTH_INTENT_DECRYPT,
-                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN,
+                                   user_data_auth::AUTH_INTENT_RESTORE_KEY));
 }
 
 // This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
