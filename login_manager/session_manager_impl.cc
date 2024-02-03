@@ -1573,7 +1573,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
   android_container_->SetStatefulMode(StatefulMode::STATEFUL);
   auto env_vars = CreateUpgradeArcEnvVars(request, account_id, pid);
-  const base::TimeTicks arc_continue_boot_impulse_time = base::TimeTicks::Now();
 
   dbus::Error dbus_error;
   std::unique_ptr<dbus::Response> response =
@@ -1585,10 +1584,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
       GetArcContinueBootImpulseStatus(&dbus_error);
   login_metrics_->SendArcContinueBootImpulseStatus(status);
 
-  if (response) {
-    login_metrics_->SendArcContinueBootImpulseTime(
-        base::TimeTicks::Now() - arc_continue_boot_impulse_time);
-  } else {
+  if (!response) {
     *error = CREATE_ERROR_AND_LOG(dbus_error::kEmitFailed,
                                   "Emitting continue-arc-boot impulse failed.");
 

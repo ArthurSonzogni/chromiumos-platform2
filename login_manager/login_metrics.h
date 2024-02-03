@@ -158,10 +158,6 @@ class LoginMetrics {
   virtual void SendArcContinueBootImpulseStatus(
       ArcContinueBootImpulseStatus status);
 
-  // Submits to UMA the time to execute continue-arc-boot impulse.
-  virtual void SendArcContinueBootImpulseTime(
-      base::TimeDelta arc_continue_boot_impulse_time);
-
   // Submits a UMA sample indicating compatibility feature flag mapping status.
   virtual void SendSwitchToFeatureFlagMappingStatus(
       SwitchToFeatureFlagMappingStatus status);
