@@ -53,7 +53,7 @@ static_library("libfbpreprocessord") {
     "fbpreprocessor_daemon.cc",
     "firmware_dump.cc",
     "input_manager.cc",
-    "manager.cc",
+    "manager_impl.cc",
     "output_manager.cc",
     "platform_features_client.cc",
     "pseudonymization_manager.cc",

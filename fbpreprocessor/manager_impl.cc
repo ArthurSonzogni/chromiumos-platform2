@@ -1,8 +1,8 @@
-// Copyright 2023 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/manager_impl.h"
 
 #include <memory>
 
@@ -18,10 +18,12 @@
 
 namespace fbpreprocessor {
 
-Manager::Manager(const Configuration& config)
+ManagerImpl::ManagerImpl(const Configuration& config)
     : default_file_expiration_in_secs_(config.default_expiration_secs()) {}
 
-void Manager::Start(dbus::Bus* bus) {
+ManagerImpl::~ManagerImpl() = default;
+
+void ManagerImpl::Start(dbus::Bus* bus) {
   CHECK(base::SequencedTaskRunner::HasCurrentDefault())
       << "No default task runner.";
   task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
@@ -43,9 +45,11 @@ void Manager::Start(dbus::Bus* bus) {
   session_state_manager_->RefreshPrimaryUser();
 }
 
-Manager::~Manager() = default;
+SessionStateManagerInterface* ManagerImpl::session_state_manager() const {
+  return session_state_manager_.get();
+}
 
-bool Manager::FirmwareDumpsAllowed() const {
+bool ManagerImpl::FirmwareDumpsAllowed() const {
   if (session_state_manager_.get() == nullptr) {
     LOG(ERROR) << "SessionStateManager not instantiated.";
     return false;

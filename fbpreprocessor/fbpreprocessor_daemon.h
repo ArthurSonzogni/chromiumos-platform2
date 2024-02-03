@@ -11,7 +11,7 @@
 
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/dbus_adaptor.h"
-#include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/manager_impl.h"
 
 namespace fbpreprocessor {
 
@@ -34,7 +34,7 @@ class FbPreprocessorDaemon : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<DBusAdaptor> adaptor_;
 
-  std::unique_ptr<Manager> manager_;
+  std::unique_ptr<ManagerImpl> manager_;
 };
 
 }  // namespace fbpreprocessor

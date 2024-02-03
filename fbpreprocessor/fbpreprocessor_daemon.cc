@@ -14,13 +14,13 @@
 #include <fbpreprocessor-client/fbpreprocessor/dbus-constants.h>
 
 #include "fbpreprocessor/configuration.h"
-#include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/manager_impl.h"
 
 namespace fbpreprocessor {
 
 FbPreprocessorDaemon::FbPreprocessorDaemon(const Configuration& config)
     : brillo::DBusServiceDaemon(kFbPreprocessorServiceName) {
-  manager_ = std::make_unique<Manager>(config);
+  manager_ = std::make_unique<ManagerImpl>(config);
 }
 
 int FbPreprocessorDaemon::OnInit() {
