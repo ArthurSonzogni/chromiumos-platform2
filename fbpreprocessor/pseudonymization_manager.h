@@ -44,6 +44,11 @@ class PseudonymizationManager : public SessionStateManager::Observer {
   // Returns false otherwise.
   bool RateLimitingAllowsNewPseudonymization();
 
+  // Reset the state of the logic that verifies that we don't start "too many"
+  // pseudonymizations. Typically called on login/logout to clear the state left
+  // by previous users.
+  void ResetRateLimiter();
+
   base::FilePath user_root_dir_;
 
   // Keep track of the timestamps when recent pseudonymization operations were

@@ -99,10 +99,12 @@ void PseudonymizationManager::OnUserLoggedIn(const std::string& user_dir) {
     return;
   }
   user_root_dir_ = base::FilePath(kDaemonStorageRoot).Append(user_dir);
+  ResetRateLimiter();
 }
 void PseudonymizationManager::OnUserLoggedOut() {
   LOG(INFO) << "User logged out.";
   user_root_dir_.clear();
+  ResetRateLimiter();
 }
 
 void PseudonymizationManager::DoNoOpPseudonymization(
@@ -153,6 +155,12 @@ bool PseudonymizationManager::RateLimitingAllowsNewPseudonymization() {
   bool allowed = recently_processed_.size() < kMaxProcessedDumps;
   recently_processed_lock_.Release();
   return allowed;
+}
+
+void PseudonymizationManager::ResetRateLimiter() {
+  recently_processed_lock_.Acquire();
+  recently_processed_.clear();
+  recently_processed_lock_.Release();
 }
 
 }  // namespace fbpreprocessor
