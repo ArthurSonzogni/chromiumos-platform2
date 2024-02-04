@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <bindings/cloud_policy.pb.h>
@@ -57,6 +58,10 @@ class SessionStateManager : public SessionStateManagerInterface {
   // reports, false otherwise.
   bool FirmwareDumpsAllowedByPolicy() const;
 
+  void set_base_dir_for_test(const base::FilePath& base_dir) {
+    base_dir_ = base_dir;
+  }
+
  private:
   void OnSessionStateChanged(const std::string& state);
 
@@ -101,6 +106,11 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Proxy for dbus communication with session manager / login.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
+
+  // Base directory to the root of the daemon-store where the firmware dumps are
+  // stored, typically /run/daemon-store/fbpreprocessord/. Unit tests can
+  // replace this directory with local temporary directories.
+  base::FilePath base_dir_;
 
   // Username of the primary user. Empty if no primary user present.
   std::string primary_user_;

@@ -49,6 +49,10 @@ class OutputManager : public SessionStateManager::Observer,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
           response);
 
+  void set_base_dir_for_test(const base::FilePath& base_dir) {
+    base_dir_ = base_dir;
+  }
+
  private:
   class OutputFile {
    public:
@@ -96,6 +100,13 @@ class OutputManager : public SessionStateManager::Observer,
   // Delete pseudonymized firmware dumps from disk after |expire_after_|.
   base::TimeDelta expire_after_;
 
+  // Base directory to the root of the daemon-store where the firmware dumps are
+  // stored, typically /run/daemon-store/fbpreprocessord/. Unit tests can
+  // replace this directory with local temporary directories.
+  base::FilePath base_dir_;
+
+  // Path to the user-specific directory of the daemon-store, typically
+  // ${base_dir_}/${user_hash}. Updated when the user logs in/out.
   base::FilePath user_root_dir_;
 
   Manager* manager_;

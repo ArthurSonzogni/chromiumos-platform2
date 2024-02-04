@@ -36,6 +36,10 @@ class PseudonymizationManager : public SessionStateManager::Observer {
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
 
+  void set_base_dir_for_test(const base::FilePath& base_dir) {
+    base_dir_ = base_dir;
+  }
+
  private:
   void DoNoOpPseudonymization(const FirmwareDump& input,
                               const FirmwareDump& output) const;
@@ -54,6 +58,13 @@ class PseudonymizationManager : public SessionStateManager::Observer {
   // by previous users.
   void ResetRateLimiter();
 
+  // Base directory to the root of the daemon-store where the firmware dumps are
+  // stored, typically /run/daemon-store/fbpreprocessord/. Unit tests can
+  // replace this directory with local temporary directories.
+  base::FilePath base_dir_;
+
+  // Path to the user-specific directory of the daemon-store, typically
+  // ${base_dir_}/${user_hash}. Updated when the user logs in/out.
   base::FilePath user_root_dir_;
 
   // Keep track of the timestamps when recent pseudonymization operations were

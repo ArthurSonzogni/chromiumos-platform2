@@ -112,6 +112,7 @@ namespace fbpreprocessor {
 SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
     : session_manager_proxy_(
           std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)),
+      base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
       fw_dumps_allowed_by_policy_(false),
       manager_(manager) {
@@ -313,8 +314,7 @@ bool SessionStateManager::CreateUserDirectories() const {
     LOG(ERROR) << "Can't create input/output directories without daemon store.";
     return false;
   }
-  base::FilePath root_dir =
-      base::FilePath(kDaemonStorageRoot).Append(primary_user_hash_);
+  base::FilePath root_dir = base_dir_.Append(primary_user_hash_);
   base::File::Error error;
   if (!base::CreateDirectoryAndGetError(root_dir.Append(kInputDirectory),
                                         &error)) {

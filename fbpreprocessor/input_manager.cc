@@ -35,7 +35,7 @@ constexpr char kCrashReporterFirmwareDumpCreated[] = "DebugDumpCreated";
 namespace fbpreprocessor {
 
 InputManager::InputManager(Manager* manager, dbus::Bus* bus)
-    : manager_(manager) {
+    : base_dir_(kDaemonStorageRoot), manager_(manager) {
   manager_->session_state_manager()->AddObserver(this);
   crash_reporter_proxy_ = bus->GetObjectProxy(
       kCrashReporterServiceName, dbus::ObjectPath(kCrashReporterServicePath));
@@ -111,7 +111,7 @@ void InputManager::OnUserLoggedIn(const std::string& user_dir) {
     LOG(ERROR) << "No user directory defined.";
     return;
   }
-  user_root_dir_ = base::FilePath(kDaemonStorageRoot).Append(user_dir);
+  user_root_dir_ = base_dir_.Append(user_dir);
   DeleteAllFiles();
 }
 

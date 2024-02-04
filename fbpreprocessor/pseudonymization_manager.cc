@@ -32,7 +32,7 @@ constexpr base::TimeDelta kMaxProcessedInterval = base::Minutes(30);
 namespace fbpreprocessor {
 
 PseudonymizationManager::PseudonymizationManager(Manager* manager)
-    : manager_(manager) {
+    : base_dir_(kDaemonStorageRoot), manager_(manager) {
   manager_->session_state_manager()->AddObserver(this);
 }
 
@@ -100,7 +100,7 @@ void PseudonymizationManager::OnUserLoggedIn(const std::string& user_dir) {
     LOG(ERROR) << "No user directory defined.";
     return;
   }
-  user_root_dir_ = base::FilePath(kDaemonStorageRoot).Append(user_dir);
+  user_root_dir_ = base_dir_.Append(user_dir);
   ResetRateLimiter();
 }
 void PseudonymizationManager::OnUserLoggedOut() {
