@@ -18,7 +18,7 @@ namespace brillo::dbus_utils {
 namespace details {
 namespace {
 AutoVariantUnwrapState g_auto_variant_unwrap_state =
-    AutoVariantUnwrapState::kEnabled;
+    AutoVariantUnwrapState::kDumpWithoutCrash;
 }  // namespace
 
 bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
