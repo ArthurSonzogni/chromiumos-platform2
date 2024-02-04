@@ -86,6 +86,10 @@ class FakeManager : public Manager {
   // daemon.
   base::FilePath GetRootDir() const { return root_dir_.GetPath(); }
 
+  // Let tests simulate cases where firmware dump collection is disallowed, for
+  // example by policy.
+  void set_firmware_dumps_allowed(bool allowed) { fw_dumps_allowed_ = allowed; }
+
  private:
   // Create a temporary directory with the same structure as the real-world
   // daemon-store. Tests can create firmware dumps in the input directory and

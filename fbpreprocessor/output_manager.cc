@@ -9,6 +9,7 @@
 #include <string_view>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
@@ -49,8 +50,10 @@ OutputManager::OutputManager(Manager* manager)
     : expire_after_(base::Seconds(manager->default_file_expiration_in_secs())),
       base_dir_(kDaemonStorageRoot),
       manager_(manager) {
+  CHECK(manager_->session_state_manager());
   manager_->session_state_manager()->AddObserver(this);
-  manager_->platform_features()->AddObserver(this);
+  if (manager_->platform_features())
+    manager_->platform_features()->AddObserver(this);
 }
 
 OutputManager::~OutputManager() {
