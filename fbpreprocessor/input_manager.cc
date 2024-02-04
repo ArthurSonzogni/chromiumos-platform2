@@ -121,7 +121,9 @@ void InputManager::OnUserLoggedOut() {
 }
 
 void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
-  manager_->pseudonymization_manager()->StartPseudonymization(fw_dump);
+  if (!manager_->pseudonymization_manager()->StartPseudonymization(fw_dump)) {
+    LOG(ERROR) << "Failed to start pseudonymization.";
+  }
 }
 
 void InputManager::DeleteAllFiles() const {

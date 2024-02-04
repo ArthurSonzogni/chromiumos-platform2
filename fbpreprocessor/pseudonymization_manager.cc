@@ -41,7 +41,7 @@ PseudonymizationManager::~PseudonymizationManager() {
     manager_->session_state_manager()->RemoveObserver(this);
 }
 
-void PseudonymizationManager::StartPseudonymization(
+bool PseudonymizationManager::StartPseudonymization(
     const FirmwareDump& fw_dump) {
   VLOG(kLocalDebugVerbosity) << __func__;
   // For the MVP we're not pseudonymizing, so the pseudonymization operation
@@ -52,7 +52,7 @@ void PseudonymizationManager::StartPseudonymization(
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
-    return;
+    return false;
   }
   if (!RateLimitingAllowsNewPseudonymization()) {
     LOG(INFO) << "Too many recent pseudonymizations, rejecting the current "
@@ -62,7 +62,7 @@ void PseudonymizationManager::StartPseudonymization(
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
-    return;
+    return false;
   }
   FirmwareDump output(
       user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()));
@@ -88,7 +88,9 @@ void PseudonymizationManager::StartPseudonymization(
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
+    return false;
   }
+  return true;
 }
 
 void PseudonymizationManager::OnUserLoggedIn(const std::string& user_dir) {

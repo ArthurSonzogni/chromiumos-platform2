@@ -26,7 +26,12 @@ class PseudonymizationManager : public SessionStateManager::Observer {
   PseudonymizationManager& operator=(const PseudonymizationManager&) = delete;
   ~PseudonymizationManager();
 
-  void StartPseudonymization(const FirmwareDump& fw_dump);
+  // Start the pseudonymization of a firmware dump. The pseudonymization is done
+  // asynchronously.
+  // Returns false if we failed to start the pseudonymization process, true
+  // otherwise. Note that the method will return true if the pseudonymization
+  // started successfully, but the pseudonymization process could still fail.
+  bool StartPseudonymization(const FirmwareDump& fw_dump);
 
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
