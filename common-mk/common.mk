@@ -322,9 +322,10 @@ endif
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
 COMMON_CFLAGS-gcc := -fvisibility=internal -ggdb3 -Wa,--noexecstack
-COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb -Wimplicit-fallthrough
+COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb -Wimplicit-fallthrough \
+  -Wstring-plus-int
 COMMON_CFLAGS := -Wall -Wunused -Wno-unused-parameter -Wunreachable-code \
-  -Wbool-operation -Wstring-compare -Wstring-plus-int  -Wxor-used-as-pow \
+  -Wbool-operation -Wstring-compare -Wxor-used-as-pow \
   -Wint-in-bool-context -Wfree-nonheap-object \
   -Werror -Wformat=2 -fno-strict-aliasing $(SSP_CFLAGS) -O1
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER)) -std=gnu++17
