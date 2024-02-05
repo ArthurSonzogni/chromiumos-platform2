@@ -177,6 +177,7 @@ static std::vector<ScannerInfo> SendProbeAndListen(uint16_t probe_socket) {
         info.set_type(kScannerTypeFlatbed);
         info.set_connection_type(lorgnette::CONNECTION_NETWORK);
         info.set_secure(false);
+        info.set_protocol_type(ProtocolTypeForScanner(info));
         info.set_display_name(DisplayNameForScanner(info));
         scanners.push_back(info);
       } else {

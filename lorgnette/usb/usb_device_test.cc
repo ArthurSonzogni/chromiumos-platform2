@@ -176,6 +176,7 @@ TEST(UsbDeviceTest, ScannerInfoDedupMfgrInModel) {
   EXPECT_EQ(info->model(), "GoogleTest Scanner 3000");
   EXPECT_EQ(info->connection_type(), CONNECTION_USB);
   EXPECT_TRUE(info->secure());
+  EXPECT_EQ(info->protocol_type(), "Mopria");
 }
 
 TEST(UsbDeviceTest, ScannerInfoConcatModelWithoutMfgr) {
@@ -196,6 +197,7 @@ TEST(UsbDeviceTest, ScannerInfoConcatModelWithoutMfgr) {
   EXPECT_EQ(info->model(), "Scanner 3000");
   EXPECT_EQ(info->connection_type(), CONNECTION_USB);
   EXPECT_TRUE(info->secure());
+  EXPECT_EQ(info->protocol_type(), "Mopria");
 }
 
 }  // namespace

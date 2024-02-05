@@ -290,6 +290,8 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
     if (epsonds_device) {
       LOG(INFO) << "Found epsonds device for " << epsonds_name;
       scanner.set_name(epsonds_name);
+      scanner.set_protocol_type(ProtocolTypeForScanner(scanner));
+      scanner.set_display_name(DisplayNameForScanner(scanner));
       scanners.push_back(scanner);
       continue;
     }

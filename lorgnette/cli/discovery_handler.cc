@@ -34,6 +34,7 @@ void PrintScannerDetails(const lorgnette::ScannerInfo& info,
                                            << std::endl
       << "      " << "Secure Connection: " << (info.secure() ? "yes" : "no")
                                            << std::endl
+      << "      " << "Protocol type:     " << info.protocol_type() << std::endl
       << "      " << "Supported Formats: " << base::JoinString(formats, " ")
                                            << std::endl;
   // clang-format on

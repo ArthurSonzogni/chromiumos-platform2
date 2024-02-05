@@ -102,5 +102,38 @@ TEST(ScannerMatchTest, OtherConnections) {
   EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_USB);
 }
 
+TEST(ScannerMatchTest, ProtocolTypeMopriaNet) {
+  ScannerInfo info;
+  info.set_name("airscan:escl:therest");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "Mopria");
+}
+
+TEST(ScannerMatchTest, ProtocolTypeMopriaUSB) {
+  ScannerInfo info;
+  info.set_name("ippusb:escl:therest");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "Mopria");
+}
+
+TEST(ScannerMatchTest, ProtocolTypeWSD) {
+  ScannerInfo info;
+  info.set_name("airscan:wsd:therest");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "WSD");
+}
+
+TEST(ScannerMatchTest, ProtocolTypeOther) {
+  ScannerInfo info;
+  info.set_name("epson2:net:therest");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "epson2");
+
+  info.set_name("epsonds:libusb:001:002");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "epsonds");
+
+  info.set_name("pixma:04a91234_ABC321");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "pixma");
+
+  info.set_name("fujitsu:fi-8120:10000");
+  EXPECT_EQ(ProtocolTypeForScanner(info), "fujitsu");
+}
+
 }  // namespace
 }  // namespace lorgnette

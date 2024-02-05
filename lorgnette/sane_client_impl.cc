@@ -82,6 +82,7 @@ std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
     info.set_type(dev->type ? dev->type : "");
     info.set_connection_type(ConnectionTypeForScanner(info));
     info.set_secure(info.connection_type() == lorgnette::CONNECTION_USB);
+    info.set_protocol_type(ProtocolTypeForScanner(info));
     info.set_display_name(DisplayNameForScanner(info));
     scanners.push_back(info);
   }

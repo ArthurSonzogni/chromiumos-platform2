@@ -120,6 +120,7 @@ std::optional<ScannerInfo> ScannerInfoForDevice(
   info.set_type(kScannerTypeMFP);  // Printer that can scan == MFP.
   info.set_connection_type(lorgnette::CONNECTION_USB);
   info.set_secure(true);
+  info.set_protocol_type(ProtocolTypeForScanner(info));
   info.set_display_name(DisplayNameForScanner(info));
   return info;
 }

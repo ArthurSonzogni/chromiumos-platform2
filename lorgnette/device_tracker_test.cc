@@ -717,6 +717,7 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   escl3000.set_model("eSCL Scanner 3000");
   escl3000.set_connection_type(lorgnette::CONNECTION_USB);
   escl3000.set_display_name("GoogleTest eSCL Scanner 3000 (USB)");
+  escl3000.set_protocol_type("Mopria");
   escl3000.set_secure(true);
   ScannerInfo sane4000;
   sane4000.set_manufacturer("GoogleTest");
@@ -724,12 +725,14 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   sane4000.set_display_name("GoogleTest SANE Scanner 4000 (USB)");
   sane4000.set_connection_type(lorgnette::CONNECTION_USB);
   sane4000.set_secure(true);
+  sane4000.set_protocol_type("epsonds");
   ScannerInfo sane4200;
   sane4200.set_manufacturer("GoogleTest");
   sane4200.set_model("GoogleTest SANE NetScan 4200");
   sane4200.set_display_name("GoogleTest SANE NetScan 4200");
   sane4200.set_connection_type(lorgnette::CONNECTION_NETWORK);
   sane4200.set_secure(false);
+  sane4200.set_protocol_type("epson2");
 
   EXPECT_THAT(closed_sessions_, ElementsAre(response.session_id()));
   EXPECT_THAT(discovered_scanners_[response.session_id()],
@@ -990,12 +993,14 @@ TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
   usb_device.set_model("SANE Scanner 4000");
   usb_device.set_display_name("GoogleTest SANE Scanner 4000 (USB)");
   usb_device.set_connection_type(lorgnette::CONNECTION_USB);
+  usb_device.set_protocol_type("epsonds");
   usb_device.set_secure(true);
   ScannerInfo net_device;
   net_device.set_manufacturer("GoogleTest");
   net_device.set_model("GoogleTest SANE NetScan 4200");
   net_device.set_display_name("GoogleTest SANE NetScan 4200");
   net_device.set_connection_type(lorgnette::CONNECTION_NETWORK);
+  net_device.set_protocol_type("epson2");
   net_device.set_secure(false);
 
   EXPECT_THAT(discovered_scanners_[full_response.session_id()],
@@ -1039,6 +1044,7 @@ TEST_F(DeviceTrackerTest, DiscoverySessionEpsonBackend) {
   scanner.set_model("GoogleTest SANE NetScan 4200");
   scanner.set_display_name("GoogleTest SANE NetScan 4200");
   scanner.set_connection_type(lorgnette::CONNECTION_NETWORK);
+  scanner.set_protocol_type("epsonds");
   scanner.set_secure(false);
 
   EXPECT_THAT(discovered_scanners_[response.session_id()],

@@ -18,6 +18,14 @@
 
 namespace lorgnette {
 
+namespace {
+
+// Names of scanner protocol types.
+constexpr char kMopriaProtocolType[] = "Mopria";
+constexpr char kWsdProtocolType[] = "WSD";
+
+}  // namespace
+
 std::optional<std::pair<std::string, std::string>>
 ExtractIdentifiersFromDeviceName(const std::string& device_name,
                                  const std::string& regex_pattern) {
@@ -87,6 +95,21 @@ std::string DisplayNameForScanner(const ScannerInfo& scanner) {
     scanner_name += " (USB)";
   }
   return scanner_name;
+}
+
+std::string ProtocolTypeForScanner(const ScannerInfo& scanner) {
+  // sane-airscan implements two protocols.  For other backends, just return
+  // the backend name.
+  if (scanner.name().starts_with("airscan:escl:")) {
+    return kMopriaProtocolType;
+  } else if (scanner.name().starts_with("airscan:wsd:")) {
+    return kWsdProtocolType;
+  } else if (scanner.name().starts_with("ippusb:escl:")) {
+    return kMopriaProtocolType;
+  } else {
+    return base::ToLowerASCII(
+        scanner.name().substr(0, scanner.name().find(':')));
+  }
 }
 
 void ScannerMatcher::AddUsbDevice(UsbDevice& device, const std::string& id) {

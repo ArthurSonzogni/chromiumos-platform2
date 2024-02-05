@@ -122,9 +122,18 @@ bool MatchesScannerInfoMatcher::MatchAndExplain(
   // hardcoded defaults is available.
   if (!expected_.display_name().empty() &&
       value->display_name() != expected_.display_name()) {
-    std::string msg = base::StringPrintf("display name is %s, expected %s",
+    std::string msg = base::StringPrintf("display_name is %s, expected %s",
                                          value->display_name().c_str(),
                                          expected_.display_name().c_str());
+    LOG(ERROR) << msg;
+    *ml << msg;
+    return false;
+  }
+  if (!expected_.protocol_type().empty() &&
+      value->protocol_type() != expected_.protocol_type()) {
+    std::string msg = base::StringPrintf("protocol_type is %s, expected %s",
+                                         value->protocol_type().c_str(),
+                                         expected_.protocol_type().c_str());
     LOG(ERROR) << msg;
     *ml << msg;
     return false;

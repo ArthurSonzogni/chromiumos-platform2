@@ -40,6 +40,10 @@ lorgnette::ConnectionType ConnectionTypeForScanner(
 // Create a human-readable display name from the info in `scanner`.
 std::string DisplayNameForScanner(const ScannerInfo& scanner);
 
+// Convert the SANE connection string to a "protocol type", such as Mopria, WSD,
+// or epson2.
+std::string ProtocolTypeForScanner(const ScannerInfo& scanner);
+
 // Associate a string value with known USB devices and allow looking up stored
 // values based on a ScannerInfo.  This is conceptually similar to a map that
 // has multiple keys for each value.

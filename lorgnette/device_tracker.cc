@@ -604,6 +604,8 @@ void DeviceTracker::CheckEpsonBackend(ScannerInfo& scanner_info) {
   if (epsonds_device) {
     LOG(INFO) << "Found epsonds device for " << epsonds_name;
     scanner_info.set_name(epsonds_name);
+    scanner_info.set_protocol_type(ProtocolTypeForScanner(scanner_info));
+    scanner_info.set_display_name(DisplayNameForScanner(scanner_info));
   }
 }
 
