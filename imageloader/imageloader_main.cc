@@ -253,8 +253,8 @@ int main(int argc, char** argv) {
       // dependencies, which may not be available at early boot.
       imageloader::ImageLoaderImpl loader(std::move(config));
 
-      return loader.LoadDlc(request, helper_process_proxy.get()).empty() ? 0
-                                                                         : 1;
+      return loader.LoadDlc(request, helper_process_proxy.get()).empty() ? 1
+                                                                         : 0;
     }
 
     LOG(ERROR) << "--mount_component=name or --mount_dlc=name must be set "
