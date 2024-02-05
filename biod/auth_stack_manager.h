@@ -85,7 +85,7 @@ class AuthStackManager {
   virtual void OnUserLoggedIn(const std::string& user_id) = 0;
 
   // This will be called when an existing session is resumed from hibernate.
-  virtual void OnSessionResumedFromHibernate() = 0;
+  virtual void ReloadUserWhenResumed(const std::string& user_id) = 0;
 
   // The callbacks should remain valid as long as this object is valid.
 

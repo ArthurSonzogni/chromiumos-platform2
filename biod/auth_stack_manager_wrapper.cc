@@ -338,7 +338,27 @@ void AuthStackManagerWrapper::OnUserLoggedOut() {
 }
 
 void AuthStackManagerWrapper::OnSessionResumedFromHibernate() {
-  auth_stack_manager_->OnSessionResumedFromHibernate();
+  brillo::ErrorPtr error;
+  if (enroll_session_) {
+    LOG(WARNING)
+        << "Ending existing enroll session after resumed from hibernate.";
+    EnrollSessionCancel(&error);
+  }
+  if (auth_session_) {
+    LOG(WARNING)
+        << "Ending existing auth session after resumed from hibernate.";
+    AuthSessionEnd(&error);
+    // We're not able to restart the auth session here because auth session
+    // needs to be established between FPMCU and GSC, where the establishment is
+    // driven by cryptohomed. Cryptohomed should be in charge of restarting the
+    // session when resumed from hibernate.
+    // TODO(b/313456958): Restart auth session in cryptohomed when resumed from
+    // hibernate.
+  }
+  std::string primary_user = session_state_manager_->GetPrimaryUser();
+  if (!primary_user.empty()) {
+    auth_stack_manager_->ReloadUserWhenResumed(primary_user);
+  }
 }
 
 }  // namespace biod

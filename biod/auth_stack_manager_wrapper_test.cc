@@ -726,5 +726,61 @@ TEST_F(AuthStackManagerWrapperTest, TestOnUserLoggedInLoggedOut) {
   wrapper_->OnUserLoggedOut();
 }
 
+// This test will validate that a hibernate resume ends existing enroll sessions
+TEST_F(AuthStackManagerWrapperTest,
+       TestHibernateResumeEndsExistingEnrollSessions) {
+  dbus::ObjectPath object_path;
+  ExpectStartEnrollSession();
+
+  auto response = StartEnrollSession(&object_path);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
+
+  // Now by calling OnSessionResumedFromHibernate we will expect that the
+  // session will be ended.
+  EXPECT_CALL(*bio_manager_, EndEnrollSession).Times(1);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume ends existing auth sessions
+// and starts a new one.
+TEST_F(AuthStackManagerWrapperTest,
+       TestHibernateResumeEndsExistingAuthSessions) {
+  dbus::ObjectPath object_path;
+  ExpectStartAuthSession();
+
+  auto response = StartAuthSession(&object_path);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
+
+  // Now by calling OnSessionResumedFromHibernate we will expect that the
+  // session will be ended.
+  EXPECT_CALL(*bio_manager_, EndAuthSession).Times(1);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume reloads the fpmcu state.
+TEST_F(AuthStackManagerWrapperTest, TestHibernateResumeReloadsRecords) {
+  constexpr char kUserId[] = "user";
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserId));
+
+  EXPECT_CALL(*bio_manager_, ReloadUserWhenResumed(kUserId));
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume without a primary user does
+// nothing.
+TEST_F(AuthStackManagerWrapperTest,
+       TestHibernateResumeOnlyProceedWithPrimaryUser) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+
+  EXPECT_CALL(*bio_manager_, ReloadUserWhenResumed).Times(0);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
 }  // namespace
 }  // namespace biod

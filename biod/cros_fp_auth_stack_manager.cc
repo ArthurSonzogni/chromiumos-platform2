@@ -450,10 +450,16 @@ void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
   LoadUser(user_id, true);
 }
 
-void CrosFpAuthStackManager::OnSessionResumedFromHibernate() {
-  // TODO(hcyang@google.com): Session restart logic has been added to
-  // biod_manager, as of today restarting a session transparently in auth stack
-  // manager is not possible.
+void CrosFpAuthStackManager::ReloadUserWhenResumed(const std::string& user_id) {
+  // Check: If this is called, it should mean that the same user is loaded
+  // before hibernation.
+  const std::optional<std::string>& current_user = session_manager_->GetUser();
+  if (!current_user.has_value() || current_user.value() != user_id) {
+    // We are in a strange state. Lock the state machine.
+    state_ = State::kLocked;
+    return;
+  }
+  UploadCurrentUserTemplates();
 }
 
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
