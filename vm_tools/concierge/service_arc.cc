@@ -571,7 +571,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
   }
 
-  if (PCI_HOTPLUG_SLOTS) {
+  if (USE_PCI_HOTPLUG_SLOTS) {
     vm_builder.AppendCustomParam("--pci-hotplug-slots",
                                  std::to_string(kHotplugSlotCount));
   }
