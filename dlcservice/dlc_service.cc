@@ -344,7 +344,8 @@ void DlcService::InstallWithUpdateEngine(
     return ret_func(std::move(response), err->Clone());
   }
   install_params.set_scaled(dlc->IsScaled());
-  install_params.set_force_ota(dlc->IsForceOTA());
+  install_params.set_force_ota(dlc->IsForceOTA() ||
+                               install_request.force_ota());
   ErrorPtr tmp_err;
   // TODO(kimjae): need update engine to propagate correct error message by
   // passing in |ErrorPtr| and being set within update engine, current default

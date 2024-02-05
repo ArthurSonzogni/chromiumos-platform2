@@ -136,7 +136,7 @@ bool Manifest::operator==(const Manifest& rhs) const {
       scaled() == rhs.scaled() &&
       powerwash_safe() == rhs.powerwash_safe() &&
       artifacts_meta() == rhs.artifacts_meta() &&
-      force_ota() == force_ota();
+      force_ota() == rhs.force_ota();
 }
 // clang-format on
 
