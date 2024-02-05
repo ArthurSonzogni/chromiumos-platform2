@@ -20,8 +20,8 @@
 #define CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND 0x0001
 #define CROSS_DOMAIN_CHANNEL_TYPE_CAMERA 0x0002
 
-// The maximum number of identifiers (value based on wp_linux_dmabuf)
-#define CROSS_DOMAIN_MAX_IDENTIFIERS 4
+// The maximum number of identifiers.
+#define CROSS_DOMAIN_MAX_IDENTIFIERS 28
 
 // virtgpu memory resource ID.  Also works with non-blob memory resources,
 // despite the name.
