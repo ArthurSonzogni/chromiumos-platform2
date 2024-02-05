@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_capability_3gpp.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
@@ -1522,6 +1523,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
+  EXPECT_EQ(0, capability_->profiles_->size());
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Same empty list again. This time the stored list and the new one
@@ -1529,36 +1531,49 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(0);
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
+  EXPECT_EQ(0, capability_->profiles_->size());
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Set a one element list.
   constexpr char kApn1[] = "internet";
   brillo::VariantDictionary profile1;
   profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
+  MobileAPN expected_profile1 = {.apn = kApn1, .apn_types = {kApnTypeDefault}};
+
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged({profile1});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile1));
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Same list again.
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(0);
   capability_->OnProfilesChanged({profile1});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile1));
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Slightly different element in the list.
   constexpr char kApn2[] = "internet2";
   brillo::VariantDictionary profile2;
   profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
+  MobileAPN expected_profile2 = {.apn = kApn2, .apn_types = {kApnTypeDefault}};
+
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged({profile2});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Same list as before plus an extra duplicated item.
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(0);
   capability_->OnProfilesChanged({profile2, profile2});
+  EXPECT_EQ(1, capability_->profiles_->size());
+  EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 }
 
