@@ -126,12 +126,12 @@ void ValidationLog::RecordMetrics() const {
   }
 
   if (capport_support) {
-    metrics_->SendEnumToUMA(Metrics::kMetricCapportAdvertised,
+    metrics_->SendEnumToUMA(Metrics::kMetricCapportAdvertised, technology_,
                             *capport_support);
   }
   if (has_redirect) {
     metrics_->SendEnumToUMA(
-        Metrics::kMetricCapportSupported,
+        Metrics::kMetricCapportSupported, technology_,
         capport_support.value_or(Metrics::kCapportNotSupported));
   }
 }

@@ -149,8 +149,9 @@ TEST_F(ValidationLogTest, PortalRedirectResult) {
                                   Technology::kWiFi, 1));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
                                   Technology::kWiFi, _));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported,
-                                      Metrics::kCapportNotSupported));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricCapportSupported, Technology::kWiFi,
+                            Metrics::kCapportNotSupported));
 
   log_.RecordMetrics();
 }
@@ -274,8 +275,9 @@ TEST_F(ValidationLogTest, MultiplePortalRedirectAndSuspectedResults) {
                                   Technology::kWiFi, 4));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
                                   Technology::kWiFi, _));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported,
-                                      Metrics::kCapportNotSupported));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricCapportSupported, Technology::kWiFi,
+                            Metrics::kCapportNotSupported));
 
   log_.RecordMetrics();
 }
@@ -314,8 +316,9 @@ TEST_F(ValidationLogTest, InternetConnectivityAfterPortalRedirects) {
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
                         Technology::kWiFi, _));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported,
-                                      Metrics::kCapportNotSupported));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricCapportSupported, Technology::kWiFi,
+                            Metrics::kCapportNotSupported));
 
   log_.RecordMetrics();
 }
@@ -357,8 +360,9 @@ TEST_F(ValidationLogTest,
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
                         Technology::kWiFi, _));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported,
-                                      Metrics::kCapportNotSupported));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricCapportSupported, Technology::kWiFi,
+                            Metrics::kCapportNotSupported));
 
   log_.RecordMetrics();
 }
@@ -437,9 +441,9 @@ TEST_F(ValidationLogTest, ValidationLogRecordMetricsWithoutRecord) {
       .Times(0);
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
       .Times(0);
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported, _))
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported, _, _))
       .Times(0);
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportAdvertised, _))
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportAdvertised, _, _))
       .Times(0);
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult, _, _))
@@ -483,9 +487,11 @@ TEST_F(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
   redirect_result.http_duration = base::Milliseconds(100);
   redirect_result.https_duration = base::Seconds(8);
 
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportSupported,
-                                      Metrics::kCapportSupportedByDHCPv4));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricCapportSupported, Technology::kWiFi,
+                            Metrics::kCapportSupportedByDHCPv4));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportAdvertised,
+                                      Technology::kWiFi,
                                       Metrics::kCapportSupportedByDHCPv4));
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorAttemptsToRedirectFound,

@@ -381,7 +381,7 @@ class Metrics {
   // [100, 599] range and special defined values.
   static constexpr SparseMetric<NameByTechnology>
       kPortalDetectorHTTPResponseCode = {
-          .n = NameByTechnology{"PortalDetector.HTTPReponseCode",
+          .n = NameByTechnology{"PortalDetector.HTTPResponseCode",
                                 TechnologyLocation::kAfterName},
   };
   // Value used with |kPortalDetectorHTTPResponseCode| to indicate an invalid
@@ -398,7 +398,7 @@ class Metrics {
   // which have received a HTTP 200 response status code.
   static constexpr HistogramMetric<NameByTechnology>
       kPortalDetectorHTTPResponseContentLength = {
-          .n = NameByTechnology{"PortalDetector.HTTPReponseContentLength",
+          .n = NameByTechnology{"PortalDetector.HTTPResponseContentLength",
                                 TechnologyLocation::kAfterName},
           .min = 1,
           .max = 10000,
@@ -1193,8 +1193,9 @@ class Metrics {
   // Metric counting whether the upstream network supports CAPPORT protocol.
   // This metric is only recorded at most once by network connection when a
   // portal is found with an HTTP redirect.
-  static constexpr EnumMetric<FixedName> kMetricCapportSupported = {
-      .n = FixedName{"Network.Shill.PortalDetector.CAPPORTSupported"},
+  static constexpr EnumMetric<NameByTechnology> kMetricCapportSupported = {
+      .n = NameByTechnology{"PortalDetector.CAPPORTSupported",
+                            TechnologyLocation::kAfterName},
       .max = kCapportSupportedMax,
   };
 
@@ -1202,8 +1203,9 @@ class Metrics {
   // This metric is only recorded once for every network connection where
   // CAPPORT was advertised, regardless of whether a HTTP redirect was found or
   // not with legacy HTTP probes.
-  static constexpr EnumMetric<FixedName> kMetricCapportAdvertised = {
-      .n = FixedName{"Network.Shill.PortalDetector.CAPPORTAdvertised"},
+  static constexpr EnumMetric<NameByTechnology> kMetricCapportAdvertised = {
+      .n = NameByTechnology{"PortalDetector.CAPPORTAdvertised",
+                            TechnologyLocation::kAfterName},
       .max = kCapportSupportedMax,
   };
 
