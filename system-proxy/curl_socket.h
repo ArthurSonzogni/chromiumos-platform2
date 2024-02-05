@@ -35,6 +35,7 @@ class CurlSocket : public net_base::Socket {
  private:
   ScopedCurlEasyhandle curl_easyhandle_;
 };
+
 }  // namespace system_proxy
 
 #endif  // SYSTEM_PROXY_CURL_SOCKET_H_

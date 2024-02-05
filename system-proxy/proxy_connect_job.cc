@@ -59,6 +59,7 @@ constexpr char kHttpErrorTunnelFailed[] =
 }  // namespace
 
 namespace system_proxy {
+
 // CURLOPT_HEADERFUNCTION callback implementation that only returns the headers
 // from the last response sent by the sever. This is to make sure that we
 // send back valid HTTP replies and auhentication data from the HTTP messages is
@@ -285,7 +286,7 @@ void ProxyConnectJob::DoCurlServerConnection() {
   DCHECK(!proxy_servers_.empty());
   CURL* easyhandle = curl_easy_init();
   CURLcode res;
-  curl_socket_t newSocket = -1;
+  curl_socket_t new_socket = -1;
 
   if (!easyhandle) {
     // Unfortunately it's not possible to get the failure reason.
@@ -343,7 +344,7 @@ void ProxyConnectJob::DoCurlServerConnection() {
   }
   credentials_request_timeout_callback_.Cancel();
   // Extract the socket from the curl handle.
-  res = curl_easy_getinfo(easyhandle, CURLINFO_ACTIVESOCKET, &newSocket);
+  res = curl_easy_getinfo(easyhandle, CURLINFO_ACTIVESOCKET, &new_socket);
   if (res != CURLE_OK) {
     LOG(ERROR) << *this << " Failed to get socket from curl with error: "
                << curl_easy_strerror(res);
@@ -352,8 +353,8 @@ void ProxyConnectJob::DoCurlServerConnection() {
     return;
   }
 
-  ScopedCurlEasyhandle scoped_handle(easyhandle, FreeCurlEasyhandle());
-  auto server_conn = std::make_unique<CurlSocket>(base::ScopedFD(newSocket),
+  ScopedCurlEasyhandle scoped_handle(easyhandle);
+  auto server_conn = std::make_unique<CurlSocket>(base::ScopedFD(new_socket),
                                                   std::move(scoped_handle));
 
   // Send the server reply to the client. If the connection is successful, the
