@@ -291,10 +291,11 @@ void ProxyConnectJob::DoCurlServerConnection() {
   if (!easyhandle) {
     // Unfortunately it's not possible to get the failure reason.
     LOG(ERROR) << *this << " Failure to create curl handle.";
-    curl_easy_cleanup(easyhandle);
     OnError(kHttpInternalServerError);
     return;
   }
+  ScopedCurlEasyhandle scoped_handle(easyhandle);
+
   curl_easy_setopt(easyhandle, CURLOPT_URL, target_url_.c_str());
   std::vector<char> http_response_headers;
   std::vector<char> http_response_body;
@@ -330,12 +331,9 @@ void ProxyConnectJob::DoCurlServerConnection() {
                << curl_easy_strerror(res);
     if (AreAuthCredentialsRequired(easyhandle)) {
       AuthenticationRequired(http_response_headers);
-      curl_easy_cleanup(easyhandle);
       return;
     }
     credentials_request_timeout_callback_.Cancel();
-
-    curl_easy_cleanup(easyhandle);
 
     SendHttpResponseToClient(/* http_response_headers= */ {},
                              /* http_response_body= */ {});
@@ -348,12 +346,10 @@ void ProxyConnectJob::DoCurlServerConnection() {
   if (res != CURLE_OK) {
     LOG(ERROR) << *this << " Failed to get socket from curl with error: "
                << curl_easy_strerror(res);
-    curl_easy_cleanup(easyhandle);
     OnError(kHttpBadGateway);
     return;
   }
 
-  ScopedCurlEasyhandle scoped_handle(easyhandle);
   auto server_conn = std::make_unique<CurlSocket>(base::ScopedFD(new_socket),
                                                   std::move(scoped_handle));
 
