@@ -211,7 +211,17 @@ bool DeviceMapper::WipeTable(const std::string& name) {
       return false;
     }
 
-    if (!wipe_task->AddTarget(0, size, type, parameters)) {
+    if (!wipe_task->SetReadOnly()) {
+      LOG(ERROR) << "WipeTable: SetReadOnly failed.";
+      return false;
+    }
+
+    if (!wipe_task->NoOpenCount()) {
+      LOG(ERROR) << "WipeTable: NoOpenCount failed.";
+      return false;
+    }
+
+    if (!wipe_task->AddTarget(0, size, "error", SecureBlob())) {
       LOG(ERROR) << "WipeTable: AddTarget failed.";
       return false;
     }

@@ -24,6 +24,22 @@ bool DevmapperTaskImpl::SetName(const std::string& name) {
   return true;
 }
 
+bool DevmapperTaskImpl::SetReadOnly() {
+  if (!task_ || !dm_task_set_ro(task_.get())) {
+    LOG(ERROR) << "SetReadOnly failed";
+    return false;
+  }
+  return true;
+}
+
+bool DevmapperTaskImpl::NoOpenCount() {
+  if (!task_ || !dm_task_no_open_count(task_.get())) {
+    LOG(ERROR) << "NoOpenCount failed";
+    return false;
+  }
+  return true;
+}
+
 bool DevmapperTaskImpl::SetMessage(const std::string& msg) {
   if (!task_ || !dm_task_set_message(task_.get(), msg.c_str())) {
     LOG(ERROR) << "SetMessage failed";

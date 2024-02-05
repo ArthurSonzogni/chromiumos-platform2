@@ -45,6 +45,8 @@ class BRILLO_EXPORT DmcryptContainer : public StorageContainer {
 
   bool Exists() override;
 
+  bool IsDeviceKeyValid() override;
+
   bool Purge() override;
 
   bool Reset() override;

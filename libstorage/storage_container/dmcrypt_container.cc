@@ -77,6 +77,14 @@ bool DmcryptContainer::Exists() {
   return backing_device_->Exists();
 }
 
+bool DmcryptContainer::IsDeviceKeyValid() {
+  // Considered valid if the keys are anything other than repeating 0's.
+  return device_mapper_->GetTable(dmcrypt_device_name_)
+             .CryptGetKey()
+             .to_string()
+             .find_first_not_of("0") != std::string::npos;
+}
+
 bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // Check whether the kernel keyring provisioning is supported by the current
   // kernel.
@@ -129,6 +137,15 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
+  // Ensure that once the key has been used by dmcrypt or failed,
+  // remove it from the keyring.
+  absl::Cleanup keyring_cleanup_runner = [this]() {
+    LOG(INFO) << "Removing provisioned dmcrypt key from kernel keyring.";
+    if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
+      LOG(ERROR) << "Failed to remove key from keyring";
+    }
+  };
+
   // Once the key is inserted, update the key descriptor.
   brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
       key_reference_.fek_sig, encryption_key.fek.size());
@@ -155,12 +172,6 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  // Once the key has been used by dm-crypt, remove it from the keyring.
-  LOG(INFO) << "Removing provisioned dm-crypt key from kernel keyring.";
-  if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
-    LOG(ERROR) << "Failed to remove key";
-  }
-
   // Wait for the dmcrypt device path to show up before continuing to setting
   // up the filesystem.
   LOG(INFO) << "Waiting for dm-crypt device to appear";
@@ -174,12 +185,19 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
 }
 
 bool DmcryptContainer::EvictKey() {
-  // Pause device file I/O before wiping the key reference from the device.
+  if (!IsDeviceKeyValid()) {
+    LOG(INFO) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
+              << ") isn't valid.";
+    return true;
+  }
+
+  // Suspend device to properly freeze block IO and flush data in cache.
   if (!device_mapper_->Suspend(dmcrypt_device_name_)) {
     LOG(ERROR) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
-               << ") failed.";
+               << ") Suspend failed.";
     return false;
   }
+
   // Remove the dmcrypt device key only, keeps the backing device
   // attached and dmcrypt table.
   if (!device_mapper_->Message(dmcrypt_device_name_, "key wipe")) {
@@ -195,13 +213,7 @@ bool DmcryptContainer::RestoreKey(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  // Check before the operation if the device key is valid, considered
-  // valid if the keys are anything other than repeating 0's.
-  if (device_mapper_->GetTable(dmcrypt_device_name_)
-          .CryptGetKey()
-          .to_string()
-          .find_first_not_of("0") != std::string::npos) {
-    // Key state is already valid.
+  if (IsDeviceKeyValid()) {
     LOG(INFO) << "Dm-crypt device RestoreKey(" << dmcrypt_device_name_
               << ") is already valid.";
     return true;
@@ -282,8 +294,30 @@ bool DmcryptContainer::SetLazyTeardownWhenUnused() {
 }
 
 bool DmcryptContainer::Teardown() {
+  if (!IsDeviceKeyValid()) {
+    // To force remove the block device, replace device with an error, read-only
+    // target. It should stop processes from reading it and also removed
+    // underlying device from mapping, so it is usable again. If some process
+    // try to read temporary cryptsetup device, it is bug - no other process
+    // should try touch it (e.g. udev).
+    if (!device_mapper_->WipeTable(dmcrypt_device_name_)) {
+      LOG(ERROR) << "Failed to wipe device mapper table.";
+      return false;
+    }
+    // Move error from inactive device mapper table to live one.
+    if (!device_mapper_->Resume(dmcrypt_device_name_)) {
+      LOG(ERROR) << "Failed to teardown device mapper device.";
+      return false;
+    }
+
+    LOG(INFO) << "Dm-crypt device remapped to error target.";
+  }
+
   if (!device_mapper_->Remove(dmcrypt_device_name_)) {
     LOG(ERROR) << "Failed to teardown device mapper device.";
+    // If we are unable to remove the device from the mapper, it could
+    // have a running process still tied to it i.e. Chrome, even if remapped
+    // to an error target.
     return false;
   }
 

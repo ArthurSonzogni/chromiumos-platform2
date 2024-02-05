@@ -64,6 +64,12 @@ class DevmapperTask {
   // Sets device name for the command.
   virtual bool SetName(const std::string& name) = 0;
 
+  // Sets the block to device to be read-only.
+  virtual bool SetReadOnly() = 0;
+
+  // Checks if the device has an open reference count.
+  virtual bool NoOpenCount() = 0;
+
   // Sets message to a command.
   virtual bool SetMessage(const std::string& msg) = 0;
 
@@ -121,6 +127,8 @@ class DevmapperTaskImpl : public DevmapperTask {
   explicit DevmapperTaskImpl(int type);
   ~DevmapperTaskImpl() override = default;
   bool SetName(const std::string& name) override;
+  bool SetReadOnly() override;
+  bool NoOpenCount() override;
   bool SetMessage(const std::string& msg) override;
   bool AddTarget(uint64_t start,
                  uint64_t sectors,

@@ -86,14 +86,21 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
         return false;
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
-    case DM_DEVICE_REMOVE:
+    case DM_DEVICE_REMOVE: {
       CHECK_EQ(udev_sync, true);
       if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+        return false;
+      // Map behaviour of real system - if the target isn't valid, most likely
+      // can't be removed. Fetch the DmTarget from the dm_target_map and check
+      // the type.
+      DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
+      if (dmt.type == "error")
         return false;
       if (!task->deferred) {
         dm_target_map_.erase(dev_name);
       }
       break;
+    }
     case DM_DEVICE_TABLE:
       CHECK_EQ(udev_sync, false);
       if (dm_target_map_.find(dev_name) == dm_target_map_.end())
@@ -221,6 +228,14 @@ std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type) {
 DeviceMapperVersion FakeDevmapperTask::GetVersion() {
   DeviceMapperVersion version({1, 21, 0});
   return version;
+}
+
+bool FakeDevmapperTask::SetReadOnly() {
+  return true;
+}
+
+bool FakeDevmapperTask::NoOpenCount() {
+  return true;
 }
 
 bool FakeDevmapperTask::SetMessage(const std::string& msg) {

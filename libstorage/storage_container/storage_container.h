@@ -88,6 +88,8 @@ class BRILLO_EXPORT StorageContainer {
   virtual bool Teardown() = 0;
   // Checks if the container exists on disk.
   virtual bool Exists() = 0;
+  // Checks if the encryption keys in memory are valid.
+  virtual bool IsDeviceKeyValid() { return false; }
   // Resize the container
   // Return false when resizing failed.
   // size of 0 resize to the size of the underlaying container / backing device.

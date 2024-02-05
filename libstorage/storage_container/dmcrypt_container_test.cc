@@ -132,8 +132,18 @@ TEST_F(DmcryptContainerTest, EvictKeyCheck) {
   EXPECT_TRUE(container_->EvictKey());
 
   // Check that the key in memory has been zeroed from the table
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlob("0"));
+  EXPECT_FALSE(container_->IsDeviceKeyValid());
+
+  // Do the eviction again, should return true and no-op.
+  EXPECT_TRUE(container_->EvictKey());
+
+  // Now, attempt teardown of the device.
+  EXPECT_FALSE(container_->Teardown());
+
+  // Device mapper target still exists, but remapping to error allows
+  // the device to be force unmounted later on for shutdown purposes.
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).GetType(),
+            "error");
 }
 
 // Tests that RestoreKey resume the device with a key.
@@ -148,8 +158,7 @@ TEST_F(DmcryptContainerTest, RestoreKeyCheck) {
   EXPECT_TRUE(container_->Setup(key_));
   EXPECT_TRUE(container_->EvictKey());
   // Check that the key in memory has been zeroed from the table.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlob("0"));
+  EXPECT_FALSE(container_->IsDeviceKeyValid());
 
   EXPECT_TRUE(container_->RestoreKey(key_));
 

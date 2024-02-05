@@ -51,6 +51,9 @@ class FakeStorageContainer : public StorageContainer {
   }
 
   bool Exists() override { return exists_; }
+  bool IsDeviceKeyValid() override {
+    return type_ != StorageContainerType::kDmcrypt && exists_;
+  }
 
   StorageContainerType GetType() const override { return type_; }
 
