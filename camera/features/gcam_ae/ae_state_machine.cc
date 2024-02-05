@@ -126,8 +126,7 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   const AeParameters& raw_ae_parameters = inputs.ae_parameters;
 
   VLOGFID(1, frame_info.frame_number)
-      << "Raw AE parameters:"
-      << " short_tet=" << raw_ae_parameters.short_tet
+      << "Raw AE parameters: short_tet=" << raw_ae_parameters.short_tet
       << " long_tet=" << raw_ae_parameters.long_tet
       << " log_scene_brightness=" << raw_ae_parameters.log_scene_brightness;
 
@@ -136,12 +135,16 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   float prev_long_tet = current_ae_parameters_.long_tet;
   if (!current_ae_parameters_.IsValid()) {
     // This is the first set of AE parameters we get.
-    prev_short_tet = tuning_parameters_.initial_tet;
-    prev_long_tet =
-        tuning_parameters_.initial_tet * tuning_parameters_.initial_hdr_ratio;
+    float initial_tet = tuning_parameters_.initial_tet;
+    if (tuning_parameters_.scaled_tet.has_value()) {
+      initial_tet = *tuning_parameters_.scaled_tet /
+                    frame_info.estimated_sensor_sensitivity;
+    }
+    prev_short_tet = initial_tet;
+    prev_long_tet = initial_tet * tuning_parameters_.initial_hdr_ratio;
     // Initialize |next_| with the initial TET and HDR ratio to jump start the
     // AE loop.
-    next_.tet = tuning_parameters_.initial_tet;
+    next_.tet = initial_tet;
     next_.hdr_ratio = tuning_parameters_.initial_hdr_ratio;
   }
   current_ae_parameters_.short_tet = IirFilterLog2(
@@ -154,8 +157,8 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   const float hdr_ratio =
       current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
   VLOGFID(1, frame_info.frame_number)
-      << "Filtered AE parameters:"
-      << " short_tet=" << current_ae_parameters_.short_tet
+      << "Filtered AE parameters: short_tet="
+      << current_ae_parameters_.short_tet
       << " long_tet=" << current_ae_parameters_.long_tet
       << " hdr_ratio=" << hdr_ratio;
 
@@ -262,7 +265,7 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       }
 
       // Searching for or converging to a new TET target if we observed that the
-      // frame brightness has chnaged for more than |tet_retention_duration_ms_|
+      // frame brightness has changed for more than |tet_retention_duration_ms_|
       // ms.
       if (ElapsedTimeMs(last_converged_time_) > *tet_retention_duration_ms_) {
         if (target_) {
@@ -435,6 +438,12 @@ void AeStateMachine::OnOptionsUpdated(const base::Value::Dict& json_values) {
   LoadIfExist(json_values, kInitialHdrRatio,
               &tuning_parameters_.initial_hdr_ratio);
   LoadIfExist(json_values, kHdrRatioStep, &tuning_parameters_.hdr_ratio_step);
+
+  // Load the scaled TET value if available.
+  tuning_parameters_.scaled_tet = 1.0f;
+  if (!LoadIfExist(json_values, kScaledTet, &*tuning_parameters_.scaled_tet)) {
+    tuning_parameters_.scaled_tet = std::nullopt;
+  }
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "AeStateMachine tuning parameters:"

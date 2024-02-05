@@ -66,6 +66,10 @@ bool GcamAeStreamManipulator::Initialize(
       reloadable_config_file->StopOverrideFileWatcher();
       reloadable_config_file->UpdateOption(AeStateMachine::kInitialTet,
                                            base::Value(settings.last_tet));
+      if (settings.last_scaled_tet.has_value()) {
+        reloadable_config_file->UpdateOption(
+            AeStateMachine::kScaledTet, base::Value(*settings.last_scaled_tet));
+      }
       reloadable_config_file->UpdateOption(
           AeStateMachine::kInitialHdrRatio,
           base::Value(settings.last_hdr_ratio));
@@ -215,8 +219,8 @@ void GcamAeStreamManipulator::OnOptionsUpdated(
   }
 
   if (VLOG_IS_ON(1)) {
-    VLOGF(1) << "Gcam AE config:"
-             << " log_frame_metadata=" << options_.log_frame_metadata;
+    VLOGF(1) << "Gcam AE config: log_frame_metadata="
+             << options_.log_frame_metadata;
   }
 
   base::AutoLock lock(ae_controller_lock_);

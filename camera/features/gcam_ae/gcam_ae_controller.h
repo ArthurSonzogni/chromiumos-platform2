@@ -27,6 +27,7 @@ class GcamAeController {
   // A callback to cache the last TET value before destruction.
   struct CachedSettings {
     float last_tet = 1.0f;
+    std::optional<float> last_scaled_tet = 1.0f;
     float last_hdr_ratio = 1.0f;
   };
   using DestructionCallback = base::OnceCallback<void(CachedSettings settings)>;

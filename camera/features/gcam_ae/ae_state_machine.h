@@ -42,6 +42,10 @@ class AeStateMachine {
   static constexpr char kInitialTet[] = "initial_tet";
   static constexpr char kInitialHdrRatio[] = "initial_hdr_ratio";
 
+  // Cache the TET value scaled by the estimated sensor sensitivity when the
+  // camera device is closed.
+  static constexpr char kScaledTet[] = "scaled_tet";
+
   struct TuningParameters {
     // The threshold in log2 space for TET target stabilization. See the
     // comments for the kSearching state below.
@@ -75,6 +79,9 @@ class AeStateMachine {
     // camera initialization.
     float initial_tet = 33.33f;
     float initial_hdr_ratio = 1.0f;
+
+    // The cached TET value scaled by the estimated sensor sensitivity.
+    std::optional<float> scaled_tet = std::nullopt;
 
     // The bound for the inter-frame HDR ratio transition. We need to bound the
     // HDR ratio delta to avoid having sudden frame brightness changes.

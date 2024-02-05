@@ -154,9 +154,15 @@ GcamAeControllerImpl::GcamAeControllerImpl(
 
 GcamAeControllerImpl::~GcamAeControllerImpl() {
   DCHECK(!destruction_callback_.is_null());
+  float last_tet = std::max(ae_state_machine_.GetCaptureTet(), 1.0f);
+  std::optional<float> last_scaled_tet = std::nullopt;
+  if (estimated_sensor_sensitivity_.has_value()) {
+    last_scaled_tet = last_tet * *estimated_sensor_sensitivity_;
+  }
   std::move(destruction_callback_)
       .Run({
-          .last_tet = std::max(ae_state_machine_.GetCaptureTet(), 1.0f),
+          .last_tet = last_tet,
+          .last_scaled_tet = last_scaled_tet,
           .last_hdr_ratio =
               std::max(ae_state_machine_.GetFilteredHdrRatio(), 1.0f),
       });
@@ -262,7 +268,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
       base::checked_cast<float>(exposure_time_ns[0]) / 1'000'000;
   frame_info->analog_gain = analog_gain;
   frame_info->digital_gain = digital_gain;
-  frame_info->estimated_sensor_sensitivity =
+  estimated_sensor_sensitivity_ = frame_info->estimated_sensor_sensitivity =
       (base::checked_cast<float>(sensor_metadata.sensitivity_range.lower()) /
        (aperture[0] * aperture[0]));
   frame_info->ae_compensation = ae_compensation[0];

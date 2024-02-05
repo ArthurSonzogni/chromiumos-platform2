@@ -87,6 +87,9 @@ class GcamAeControllerImpl : public GcamAeController {
   static constexpr size_t kAeFrameInfoRingBufferSize = 12;
   std::array<AeFrameInfo, kAeFrameInfoRingBufferSize> frame_info_;
 
+  // Stores the last estimated sensor sensitivity.
+  std::optional<float> estimated_sensor_sensitivity_ = std::nullopt;
+
   // Device-specific AE adapter that handles AE stats extraction and AE
   // parameters computation.
   std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter_;
