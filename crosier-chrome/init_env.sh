@@ -39,6 +39,17 @@ if [[ -d ./web_handwriting ]]; then
   mv web_handwriting ../../chrome/test/data/chromeos/
 fi
 
+if [[ -f "./test_accounts.json" ]]; then
+  TA_PATH="../../chrome/browser/internal/resources/chromeos/crosier"
+  mkdir -p "${TA_PATH}"
+  mv "./test_accounts.json" "${TA_PATH}/"
+fi
+
+if [[ -f "./libvk_swiftshader.so" && ! -f "./vk_swiftshader_icd.json" ]]; then
+  echo '{"file_format_version": "1.0.0", "ICD": {"library_path": "'\
+'./libvk_swiftshader.so", "api_version": "1.0.5"}}' > "vk_swiftshader_icd.json"
+fi
+
 # Set permissions and folder owners.
 chown -R chronos: ../../chrome
 chown -R chronos: ..
