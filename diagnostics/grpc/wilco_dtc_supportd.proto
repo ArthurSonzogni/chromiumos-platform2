@@ -9,7 +9,7 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
-option go_package = "chromiumos/wilco_dtc";
+option go_package = "go.chromium.org/chromiumos/wilco_dtc";
 
 service WilcoDtcSupportd {
   // Sends a message to the diagnostics UI extension (hosted by the browser).
