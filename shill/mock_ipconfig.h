@@ -6,7 +6,6 @@
 #define SHILL_MOCK_IPCONFIG_H_
 
 #include <string>
-#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -24,9 +23,7 @@ class MockIPConfig : public IPConfig {
   ~MockIPConfig() override;
 
   MOCK_METHOD(const Properties&, properties, (), (const, override));
-  MOCK_METHOD(void, ResetProperties, (), (override));
   MOCK_METHOD(void, EmitChanges, (), (override));
-  MOCK_METHOD(void, UpdateDNSServers, (std::vector<std::string>), (override));
 
  private:
   const Properties& real_properties() const { return IPConfig::properties(); }

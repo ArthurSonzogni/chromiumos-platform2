@@ -9,9 +9,9 @@
 #include <optional>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <vector>
 
+#include <gtest/gtest_prod.h>
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
 
@@ -26,7 +26,38 @@ class IPConfigAdaptorInterface;
 
 class IPConfig {
  public:
-  // TODO(b/307855773): Mark it private after Properties is set private.
+  static constexpr int kUndefinedMTU = 0;
+
+  static constexpr char kTypeDHCP[] = "dhcp";
+
+  IPConfig(ControlInterface* control_interface, const std::string& device_name);
+  IPConfig(ControlInterface* control_interface,
+           const std::string& device_name,
+           const std::string& type);
+  IPConfig(const IPConfig&) = delete;
+  IPConfig& operator=(const IPConfig&) = delete;
+
+  virtual ~IPConfig();
+
+  const std::string& device_name() const { return device_name_; }
+  const std::string& type() const { return type_; }
+  uint32_t serial() const { return serial_; }
+
+  const RpcIdentifier& GetRpcIdentifier() const;
+
+  uint32_t GetLeaseDurationSeconds(Error* /*error*/);
+
+  PropertyStore* mutable_store() { return &store_; }
+  const PropertyStore& store() const { return store_; }
+
+  // Applies the |family| part of |config| and |dhcp_data| to this object and
+  // inform D-Bus listeners of the change.
+  void ApplyNetworkConfig(
+      const net_base::NetworkConfig& config,
+      net_base::IPFamily family = net_base::IPFamily::kIPv4,
+      const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
+
+ protected:
   struct Route {
     Route() {}
     Route(const std::string& host_in,
@@ -41,15 +72,6 @@ class IPConfig {
   struct Properties {
     Properties();
     ~Properties();
-
-    // Whether this struct contains both IP address and DNS, and thus is ready
-    // to be used for network connection.
-    bool HasIPAddressAndDNS() const;
-
-    // Generate a net_base::NetworkConfig from an IPConfig::Properties for IPv4
-    // and another one from IPv6. Non-family-specific fields are merged.
-    static net_base::NetworkConfig ToNetworkConfig(const Properties* ipv4_prop,
-                                                   const Properties* ipv6_prop);
 
     // Applies all non-empty properties in |network_config| of |family| to this
     // object. The |address_family| on |this| must be either empty or the same
@@ -93,55 +115,16 @@ class IPConfig {
     DHCPv4Config::Data dhcp_data;
   };
 
-  static constexpr int kUndefinedMTU = 0;
-
-  static constexpr char kTypeDHCP[] = "dhcp";
-
-  IPConfig(ControlInterface* control_interface, const std::string& device_name);
-  IPConfig(ControlInterface* control_interface,
-           const std::string& device_name,
-           const std::string& type);
-  IPConfig(const IPConfig&) = delete;
-  IPConfig& operator=(const IPConfig&) = delete;
-
-  virtual ~IPConfig();
-
-  const std::string& device_name() const { return device_name_; }
-  const std::string& type() const { return type_; }
-  uint32_t serial() const { return serial_; }
-
-  const RpcIdentifier& GetRpcIdentifier() const;
-
-  uint32_t GetLeaseDurationSeconds(Error* /*error*/);
-
-  void set_properties(const Properties& props) { properties_ = props; }
-
-  // Update DNS servers setting for this ipconfig, this allows Chrome
-  // to retrieve the new DNS servers.
-  mockable void UpdateDNSServers(std::vector<std::string> dns_servers);
-
-  // Reset the IPConfig properties to their default values.
-  mockable void ResetProperties();
-
-  // Updates the IP configuration properties and notifies listeners on D-Bus.
-  void UpdateProperties(const Properties& properties);
-
-  PropertyStore* mutable_store() { return &store_; }
-  const PropertyStore& store() const { return store_; }
-
-  // Applies the |family| part of |config| and |dhcp_data| to this object and
-  // inform D-Bus listeners of the change.
-  void ApplyNetworkConfig(
-      const net_base::NetworkConfig& config,
-      net_base::IPFamily family = net_base::IPFamily::kIPv4,
-      const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
-
- protected:
   mockable const Properties& properties() const { return properties_; }
 
  private:
   friend class IPConfigTest;
+
   friend std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
+  friend bool operator==(const Route& lhs, const Route& rhs);
+  friend bool operator==(const Properties& lhs, const Properties& rhs);
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  const Properties& properties);
 
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
@@ -156,12 +139,7 @@ class IPConfig {
   Properties properties_;
 };
 
-bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs);
-bool operator==(const IPConfig::Properties& lhs,
-                const IPConfig::Properties& rhs);
 std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
-std::ostream& operator<<(std::ostream& stream,
-                         const IPConfig::Properties& properties);
 
 }  // namespace shill
 
