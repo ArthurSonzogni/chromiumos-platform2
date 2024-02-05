@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 
 import("//common-mk/proto_library.gni")
+import("//system_api/dbus/install_dbus_client_headers.gni")
 
 group("all") {
   deps = [
+    ":install_dbus_headers",
     ":install_headers",
     ":install_pkg_config",
     ":libsystem_api",
@@ -107,6 +109,40 @@ install_config("install_headers") {
   ]
   install_path = "/usr/include/chromeos"
   recursive = true
+}
+
+install_dbus_client_headers("install_dbus_headers") {
+  target_packages = [
+    "anomaly_detector",
+    "attestation",
+    "biod",
+    "chunneld",
+    "crash-reporter",
+    "cros-disks",
+    "cros_healthd",
+    "cryptohome",
+    "debugd",
+    "discod",
+    "dlcservice",
+    "fbpreprocessor",
+    "kerberos",
+    "login_manager",
+    "lorgnette",
+    "oobe_config",
+    "runtime_probe",
+    "pciguard",
+    "permission_broker",
+    "printscanmgr",
+    "power_manager",
+    "rgbkbd",
+    "rmad",
+    "shadercached",
+    "shill",
+    "smbprovider",
+    "tpm_manager",
+    "u2f",
+    "update_engine",
+  ]
 }
 
 install_config("install_pkg_config") {
