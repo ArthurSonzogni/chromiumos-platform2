@@ -92,6 +92,13 @@ message ScannerInfo {
 
   // A suggested string for displaying to the user.
   string display_name = 9;
+
+  // A general description of the protocol/backend used for this scanner, such
+  // as Mopria, WSD, or epson2.  In most cases, this can be derived from the
+  // first part of the SANE connection string, but it is explicitly given here
+  // to avoid requiring every consumer of this message to do a
+  // redundant/inconsistent calculation.
+  string protocol_type = 10;
 }
 
 // Information returned from a ListScanners dbus request.
