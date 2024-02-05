@@ -10,11 +10,15 @@
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/status.h"
+#include "libhwsec/structures/device_config.h"
 
 namespace hwsec {
 
 StatusOr<std::string> SerializeFromTpmSignature(
     const trunks::TPMT_SIGNATURE& signature);
+
+std::string GetTpm2PCRValueForMode(
+    const DeviceConfigSettings::BootModeSetting::Mode& mode);
 
 }  // namespace hwsec
 

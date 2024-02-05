@@ -61,6 +61,9 @@ class ConfigTpm1 : public Config {
   // Gets Hardware ID.
   StatusOr<std::string> GetHardwareID();
 
+  StatusOr<DeviceConfigSettings::BootModeSetting::Mode> ToBootMode(
+      const brillo::Blob& value);
+
  private:
   overalls::Overalls& overalls_;
   TssHelper& tss_helper_;

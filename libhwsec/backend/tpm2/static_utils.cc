@@ -6,7 +6,9 @@
 
 #include <string>
 
+#include <base/hash/sha1.h>
 #include <crypto/scoped_openssl_types.h>
+#include <crypto/sha2.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <trunks/tpm_generated.h>
@@ -94,6 +96,17 @@ StatusOr<std::string> SerializeFromTpmSignature(
       return MakeStatus<TPMError>("Unkown TPM 2.0 signature type",
                                   TPMRetryAction::kNoRetry);
   }
+}
+
+std::string GetTpm2PCRValueForMode(
+    const DeviceConfigSettings::BootModeSetting::Mode& mode) {
+  char boot_modes[3] = {mode.developer_mode, mode.recovery_mode,
+                        mode.verified_firmware};
+  std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
+  std::string mode_digest = base::SHA1HashString(mode_str);
+  mode_digest.resize(SHA256_DIGEST_LENGTH);
+  const std::string pcr_initial_value(SHA256_DIGEST_LENGTH, 0);
+  return crypto::SHA256HashString(pcr_initial_value + mode_digest);
 }
 
 }  // namespace hwsec

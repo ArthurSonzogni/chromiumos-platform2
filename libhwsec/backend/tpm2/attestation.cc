@@ -11,6 +11,7 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
+#include <base/strings/stringprintf.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <trunks/mock_tpm_utility.h>
@@ -29,11 +30,19 @@ using brillo::BlobToString;
 using hwsec_foundation::status::MakeStatus;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
+using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
 
 namespace hwsec {
 namespace {
 
 constexpr size_t kRandomCertifiedKeyPasswordLength = 32;
+
+std::string GetDescriptionForMode(const Mode& mode) {
+  return base::StringPrintf(
+      "(Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s)",
+      mode.developer_mode ? "On" : "Off", mode.recovery_mode ? "On" : "Off",
+      mode.verified_firmware ? "Verified" : "Developer");
+}
 
 }  // namespace
 
@@ -118,6 +127,20 @@ StatusOr<bool> AttestationTpm2::IsQuoted(DeviceConfigs device_configs,
   if (!quote.has_quoted_data()) {
     return MakeStatus<TPMError>("Invalid attestation::Quote",
                                 TPMRetryAction::kNoRetry);
+  }
+  if (device_configs[DeviceConfig::kBootMode]) {
+    ASSIGN_OR_RETURN(Mode mode, config_.GetCurrentBootMode(),
+                     _.WithStatus<TPMError>("Failed to get current boot mode"));
+    ASSIGN_OR_RETURN(Mode quoted_mode,
+                     config_.ToBootMode(quote.quoted_pcr_value()),
+                     _.WithStatus<TPMError>("Failed to get quoted boot mode"));
+    if (mode != quoted_mode) {
+      std::string err_msg = base::StringPrintf(
+          "Quoted boot mode mismatched: current %s vs quoted %s",
+          GetDescriptionForMode(mode).c_str(),
+          GetDescriptionForMode(quoted_mode).c_str());
+      return MakeStatus<TPMError>(err_msg, TPMRetryAction::kNoRetry);
+    }
   }
 
   std::string quoted_data = quote.quoted_data();

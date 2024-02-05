@@ -63,6 +63,8 @@ struct DeviceConfigSettings {
       NoDefault<bool> developer_mode;
       NoDefault<bool> recovery_mode;
       NoDefault<bool> verified_firmware;
+      bool operator==(const Mode& rhs) const = default;
+      bool operator!=(const Mode& rhs) const = default;
     };
 
     // std::nullopt means using current setting.

@@ -13,6 +13,7 @@
 #include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "libhwsec/backend/tpm2/static_utils.h"
 
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
@@ -107,20 +108,11 @@ TEST_F(BackendConfigTpm2Test, GetCurrentBootMode) {
       .recovery_mode = true,
       .verified_firmware = false,
   };
-  char boot_modes[3] = {fake_mode.developer_mode, fake_mode.recovery_mode,
-                        fake_mode.verified_firmware};
-  std::string mode_string =
-      std::string(std::begin(boot_modes), std::end(boot_modes));
-  std::string mode_digest = base::SHA1HashString(mode_string);
-  mode_digest.resize(crypto::kSHA256Length);
 
-  const std::string pcr_initial_value(crypto::kSHA256Length, 0);
-  const std::string kValidPcr =
-      crypto::SHA256HashString(pcr_initial_value + mode_digest);
-
+  const std::string valid_pcr = GetTpm2PCRValueForMode(fake_mode);
   EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(kValidPcr), Return(trunks::TPM_RC_SUCCESS)));
+          DoAll(SetArgPointee<1>(valid_pcr), Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = backend_->GetConfigTpm2().GetCurrentBootMode();
   ASSERT_OK(result);
@@ -130,11 +122,11 @@ TEST_F(BackendConfigTpm2Test, GetCurrentBootMode) {
 }
 
 TEST_F(BackendConfigTpm2Test, GetCurrentBootModeInvalid) {
-  const std::string kInvalidPcr(SHA256_DIGEST_LENGTH, 0);
+  const std::string invalid_pcr(SHA256_DIGEST_LENGTH, 0);
 
   EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(kInvalidPcr), Return(trunks::TPM_RC_SUCCESS)));
+          DoAll(SetArgPointee<1>(invalid_pcr), Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = backend_->GetConfigTpm2().GetCurrentBootMode();
   ASSERT_NOT_OK(result);

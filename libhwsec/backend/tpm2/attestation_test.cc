@@ -13,6 +13,7 @@
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/structures/key.h"
 
 using brillo::BlobFromString;
@@ -298,6 +299,16 @@ TEST_F(BackendAttestationTpm2Test, QuoteFailure) {
 TEST_F(BackendAttestationTpm2Test, IsQuoted) {
   const DeviceConfigs kFakeDeviceConfigs =
       DeviceConfigs{DeviceConfig::kBootMode};
+  const DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+      .developer_mode = false,
+      .recovery_mode = true,
+      .verified_firmware = false,
+  };
+  std::string valid_pcr = GetTpm2PCRValueForMode(fake_mode);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(valid_pcr), Return(trunks::TPM_RC_SUCCESS)));
 
   auto pcr_selection_result =
       backend_->GetConfigTpm2().ToPcrSelection(kFakeDeviceConfigs);
@@ -317,6 +328,7 @@ TEST_F(BackendAttestationTpm2Test, IsQuoted) {
             TPM_RC_SUCCESS);
 
   attestation::Quote fake_quote;
+  fake_quote.set_quoted_pcr_value(valid_pcr);
   fake_quote.set_quoted_data(serialized_fake_attest);
 
   auto is_quoted_result =
@@ -327,9 +339,9 @@ TEST_F(BackendAttestationTpm2Test, IsQuoted) {
 
 TEST_F(BackendAttestationTpm2Test, IsQuotedWrontDeviceConfigs) {
   const DeviceConfigs kExpectedDeviceConfigs =
-      DeviceConfigs{DeviceConfig::kBootMode};
-  const DeviceConfigs kQuotedDeviceConfigs =
       DeviceConfigs{DeviceConfig::kDeviceModel};
+  const DeviceConfigs kQuotedDeviceConfigs =
+      DeviceConfigs{DeviceConfig::kBootMode};
 
   auto pcr_selection_result =
       backend_->GetConfigTpm2().ToPcrSelection(kQuotedDeviceConfigs);

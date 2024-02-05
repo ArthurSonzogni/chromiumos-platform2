@@ -13,6 +13,7 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -28,6 +29,7 @@
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec_foundation::status::MakeStatus;
+using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
 
 namespace hwsec {
 
@@ -134,6 +136,13 @@ StatusOr<std::string> DecryptIdentityRequest(overalls::Overalls& overalls,
   return identity_binding;
 }
 
+std::string GetDescriptionForMode(const Mode& mode) {
+  return base::StringPrintf(
+      "(Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s)",
+      mode.developer_mode ? "On" : "Off", mode.recovery_mode ? "On" : "Off",
+      mode.verified_firmware ? "Verified" : "Developer");
+}
+
 }  // namespace
 
 StatusOr<attestation::Quote> AttestationTpm1::Quote(
@@ -208,6 +217,22 @@ StatusOr<bool> AttestationTpm1::IsQuoted(DeviceConfigs device_configs,
   if (!quote.has_quoted_pcr_value() || !quote.has_quoted_data()) {
     return MakeStatus<TPMError>("Invalid attestation::Quote",
                                 TPMRetryAction::kNoRetry);
+  }
+
+  if (device_configs[DeviceConfig::kBootMode]) {
+    ASSIGN_OR_RETURN(Mode mode, config_.GetCurrentBootMode(),
+                     _.WithStatus<TPMError>("Failed to get current boot mode"));
+    ASSIGN_OR_RETURN(
+        Mode quoted_mode,
+        config_.ToBootMode(BlobFromString(quote.quoted_pcr_value())),
+        _.WithStatus<TPMError>("Failed to get quoted boot mode"));
+    if (mode != quoted_mode) {
+      std::string err_msg = base::StringPrintf(
+          "Quoted boot mode mismatched: current %s vs quoted %s",
+          GetDescriptionForMode(mode).c_str(),
+          GetDescriptionForMode(quoted_mode).c_str());
+      return MakeStatus<TPMError>(err_msg, TPMRetryAction::kNoRetry);
+    }
   }
 
   ASSIGN_OR_RETURN(const ConfigTpm1::PcrMap& pcr_map,

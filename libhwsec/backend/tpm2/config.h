@@ -41,7 +41,6 @@ class ConfigTpm2 : public Config {
   StatusOr<bool> IsCurrentUserSet() override;
   StatusOr<DeviceConfigSettings::BootModeSetting::Mode> GetCurrentBootMode()
       override;
-
   using PcrMap = std::map<uint32_t, std::string>;
 
   struct TrunksSession {
@@ -98,6 +97,9 @@ class ConfigTpm2 : public Config {
 
   // Gets Hardware ID.
   StatusOr<std::string> GetHardwareID();
+
+  StatusOr<DeviceConfigSettings::BootModeSetting::Mode> ToBootMode(
+      const std::string& value);
 
  private:
   TrunksContext& context_;

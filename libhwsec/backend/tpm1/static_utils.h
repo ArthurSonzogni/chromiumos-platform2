@@ -13,6 +13,7 @@
 
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/device_config.h"
 
 namespace hwsec {
 
@@ -72,6 +73,9 @@ StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
                                      TSS_HOBJECT object,
                                      TSS_FLAG flag,
                                      TSS_FLAG sub_flag);
+
+brillo::Blob GetTpm1PCRValueForMode(
+    const DeviceConfigSettings::BootModeSetting::Mode& mode);
 
 }  // namespace hwsec
 

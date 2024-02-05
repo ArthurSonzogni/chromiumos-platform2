@@ -8,9 +8,11 @@
 #include <cstdint>
 #include <iterator>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/hash/sha1.h>
 #include <base/memory/free_deleter.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -473,6 +475,19 @@ StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
 
   return brillo::Blob(buf.value(), buf.value() + length);
+}
+
+brillo::Blob GetTpm1PCRValueForMode(
+    const DeviceConfigSettings::BootModeSetting::Mode& mode) {
+  char boot_modes[3] = {mode.developer_mode, mode.recovery_mode,
+                        mode.verified_firmware};
+  std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
+  const std::string mode_digest = base::SHA1HashString(mode_str);
+
+  // PCR0 value immediately after power on.
+  const std::string pcr_initial_value(base::kSHA1Length, 0);
+
+  return BlobFromString(base::SHA1HashString(pcr_initial_value + mode_digest));
 }
 
 }  // namespace hwsec

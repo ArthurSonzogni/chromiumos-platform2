@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/containers/contains.h>
-#include <base/hash/sha1.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
@@ -20,6 +19,7 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -93,16 +93,6 @@ Status AddToPolicySession(trunks::PolicySession& policy_session,
   return OkStatus();
 }
 
-std::string GetPCRValueForMode(const Mode& mode) {
-  char boot_modes[3] = {mode.developer_mode, mode.recovery_mode,
-                        mode.verified_firmware};
-  std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
-  std::string mode_digest = base::SHA1HashString(mode_str);
-  mode_digest.resize(SHA256_DIGEST_LENGTH);
-  const std::string pcr_initial_value(SHA256_DIGEST_LENGTH, 0);
-  return crypto::SHA256HashString(pcr_initial_value + mode_digest);
-}
-
 // The mapping that maps pcr value to corresponding boot mode.
 const std::map<std::string, Mode>& BootModeMapping() {
   static const base::NoDestructor<std::map<std::string, Mode>> mapping([] {
@@ -118,7 +108,7 @@ const std::map<std::string, Mode>& BootModeMapping() {
           .recovery_mode = i & 2,
           .verified_firmware = i & 4,
       };
-      mapping.emplace(GetPCRValueForMode(mode), mode);
+      mapping.emplace(GetTpm2PCRValueForMode(mode), mode);
     }
     return mapping;
   }());
@@ -168,10 +158,13 @@ StatusOr<bool> ConfigTpm2::IsCurrentUserSet() {
 }
 
 StatusOr<Mode> ConfigTpm2::GetCurrentBootMode() {
-  const std::map<std::string, Mode>& mapping = BootModeMapping();
   ASSIGN_OR_RETURN(const std::string& value, ReadPcr(kBootModePcr),
                    _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+  return ToBootMode(value);
+}
 
+StatusOr<Mode> ConfigTpm2::ToBootMode(const std::string& value) {
+  const std::map<std::string, Mode>& mapping = BootModeMapping();
   if (auto it = mapping.find(value); it != mapping.end()) {
     return it->second;
   }
@@ -200,7 +193,7 @@ StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToSettingsPcrMap(
   if (settings.boot_mode.has_value()) {
     const auto& mode = settings.boot_mode->mode;
     if (mode.has_value()) {
-      result[kBootModePcr] = GetPCRValueForMode(*mode);
+      result[kBootModePcr] = GetTpm2PCRValueForMode(*mode);
     } else {
       ASSIGN_OR_RETURN(std::string && value, ReadPcr(kBootModePcr),
                        _.WithStatus<TPMError>("Failed to read boot mode PCR"));

@@ -12,6 +12,7 @@
 #include <openssl/sha.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
+#include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/overalls/mock_overalls.h"
 #include "libhwsec/structures/key.h"
 
@@ -215,21 +216,33 @@ TEST_F(BackendAttestationTpm1Test, QuoteFailure) {
 TEST_F(BackendAttestationTpm1Test, IsQuoted) {
   const DeviceConfigs kFakeDeviceConfigs =
       DeviceConfigs{DeviceConfig::kBootMode};
-  const std::string kFakePcrValue = "fake_pcr_value";
-  const uint8_t value_size = static_cast<unsigned char>(kFakePcrValue.size());
+  const DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+      .developer_mode = false,
+      .recovery_mode = true,
+      .verified_firmware = false,
+  };
+  brillo::Blob valid_pcr_blob = GetTpm1PCRValueForMode(fake_mode);
+
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(valid_pcr_blob.size()),
+                      SetArgPointee<3>(valid_pcr_blob.data()),
+                      Return(TPM_SUCCESS)));
+
+  const std::string valid_pcr = BlobToString(valid_pcr_blob);
+  const uint8_t value_size = static_cast<unsigned char>(valid_pcr.size());
   const uint8_t kFakeCompositeHeaderBuffer[] = {
       0, 2,                 // select_size = 2 (big-endian)
       1, 0,                 // select_bitmap = bit 0 selected
-      0, 0, 0, value_size,  // value_size = kFakePcrValue.size() (big-endian)
+      0, 0, 0, value_size,  // value_size = valid_pcr.size() (big-endian)
   };
   const std::string kFakeCompositeHeader(std::begin(kFakeCompositeHeaderBuffer),
                                          std::end(kFakeCompositeHeaderBuffer));
-  const std::string kFakePcrComposite = kFakeCompositeHeader + kFakePcrValue;
+  const std::string kFakePcrComposite = kFakeCompositeHeader + valid_pcr;
   const std::string kFakePcrDigest = base::SHA1HashString(kFakePcrComposite);
   const std::string kQuotedData = std::string('x', 8) + kFakePcrDigest;
 
   attestation::Quote fake_quote;
-  fake_quote.set_quoted_pcr_value(kFakePcrValue);
+  fake_quote.set_quoted_pcr_value(valid_pcr);
   fake_quote.set_quoted_data(kQuotedData);
   auto result =
       backend_->GetAttestationTpm1().IsQuoted(kFakeDeviceConfigs, fake_quote);
