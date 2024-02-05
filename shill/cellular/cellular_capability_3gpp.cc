@@ -493,12 +493,6 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
                                               PowerOpt::PowerState::kOn);
 }
 
-void CellularCapability3gpp::SetModemToLowPowerModeOnModemStop(
-    bool set_low_power) {
-  SLOG(this, 2) << __func__ << " value=" << set_low_power;
-  set_modem_to_low_power_mode_on_stop_ = set_low_power;
-}
-
 void CellularCapability3gpp::StopModem(ResultCallback callback) {
   SLOG(this, 1) << __func__;
   CHECK(!callback.is_null());
@@ -542,10 +536,7 @@ void CellularCapability3gpp::Stop_DisableCompleted(ResultCallback callback,
   // Set the modem to low power state even when we fail to stop the modem,
   // since a modem without a SIM card is in failed state and might have its
   // radio on.
-  if (set_modem_to_low_power_mode_on_stop_)
-    Stop_PowerDown(std::move(callback), error);
-  else
-    Stop_Completed(std::move(callback), error);
+  Stop_PowerDown(std::move(callback), error);
 }
 
 void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
@@ -576,17 +567,10 @@ void CellularCapability3gpp::Stop_PowerDownCompleted(
   if (error.IsFailure())
     SLOG(this, 2) << "Ignoring error returned by SetPowerState: " << error;
 
-  Stop_Completed(std::move(callback), stop_disabled_error);
-}
-
-void CellularCapability3gpp::Stop_Completed(ResultCallback callback,
-                                            const Error& error) {
-  SLOG(this, 3) << __func__;
-
-  if (error.IsSuccess())
+  if (stop_disabled_error.IsSuccess())
     metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
   ReleaseProxies();
-  std::move(callback).Run(error);
+  std::move(callback).Run(stop_disabled_error);
 }
 
 void CellularCapability3gpp::ConnectionAttemptComplete(

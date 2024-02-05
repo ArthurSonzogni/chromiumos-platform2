@@ -841,8 +841,6 @@ void Cellular::OnBeforeSuspend(ResultCallback callback) {
   LOG(INFO) << LoggingTag() << ": " << __func__;
   Error error;
   StopPPP();
-  if (capability_)
-    capability_->SetModemToLowPowerModeOnModemStop(true);
   SetEnabledNonPersistent(false, std::move(callback));
 }
 

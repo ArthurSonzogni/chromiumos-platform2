@@ -110,16 +110,9 @@ class CellularCapability3gpp {
   // finished.
   void StartModem(ResultCallback callback);
 
-  // Sets a flag to be used by |StopModem| to decide if the modem will be set
-  // to low power mode as the last step. By default, |StopModem| does set the
-  // modem to low power mode.
-  void SetModemToLowPowerModeOnModemStop(bool set_low_power);
-
   // StopModem asynchronously disconnects, disables and sets the modem to low
-  // power mode. If |SetModemToLowPowerModeOnModemStop| was called with a
-  // `false` value, |StopModem| will not set the modem to low power mode.
-  // |callback| is invoked when this completes and the result is passed to the
-  // callback.
+  // power mode. |callback| is invoked when this completes and the result is
+  // passed to the callback.
   void StopModem(ResultCallback callback);
 
   // Resets the modem.
@@ -393,7 +386,6 @@ class CellularCapability3gpp {
   void EnableModemCompleted(ResultCallback callback, const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_Completed(ResultCallback callback, const Error& error);
   void Stop_Disable(ResultCallback callback);
   void Stop_DisableCompleted(ResultCallback callback, const Error& error);
   void Stop_PowerDown(ResultCallback callback, const Error& stop_disable_error);
@@ -582,7 +574,6 @@ class CellularCapability3gpp {
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::optional<std::vector<MobileAPN>> profiles_;
-  bool set_modem_to_low_power_mode_on_stop_ = true;
 
   // SIM properties
   RpcIdentifier sim_path_;
