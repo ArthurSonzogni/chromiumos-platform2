@@ -208,12 +208,12 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
     }
   }
 
-  if (waitpid(pid, nullptr, 0) != 0) {
-    PLOG(ERROR) << "waitpid " << kCroshSyscallErrorString;
-    exit(1);
-  }
   if (tcsetattr(fd, TCSANOW, &oattrs)) {
     PLOG(ERROR) << "tcsetattr " << kCroshSyscallErrorString;
+    exit(1);
+  }
+  if (waitpid(pid, nullptr, 0) != 0) {
+    PLOG(ERROR) << "waitpid " << kCroshSyscallErrorString;
     exit(1);
   }
 }
