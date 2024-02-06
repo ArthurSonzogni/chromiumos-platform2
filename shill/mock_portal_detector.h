@@ -7,8 +7,6 @@
 
 #include "shill/portal_detector.h"
 
-#include <memory>
-#include <string_view>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -17,7 +15,7 @@ namespace shill {
 
 class MockPortalDetector : public PortalDetector {
  public:
-  explicit MockPortalDetector(ResultCallback callback);
+  MockPortalDetector();
   MockPortalDetector(const MockPortalDetector&) = delete;
   MockPortalDetector& operator=(const MockPortalDetector&) = delete;
   ~MockPortalDetector() override;
@@ -29,26 +27,6 @@ class MockPortalDetector : public PortalDetector {
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
   MOCK_METHOD(int, attempt_count, (), (const, override));
-
-  void SendResult(const Result& result);
-
- private:
-  ResultCallback callback_;
-};
-
-class MockPortalDetectorFactory : public PortalDetectorFactory {
- public:
-  MockPortalDetectorFactory();
-  ~MockPortalDetectorFactory() override;
-
-  MOCK_METHOD(std::unique_ptr<PortalDetector>,
-              Create,
-              (EventDispatcher*,
-               std::string_view,
-               const PortalDetector::ProbingConfiguration&,
-               PortalDetector::ResultCallback,
-               std::string_view),
-              (override));
 };
 
 }  // namespace shill

@@ -85,7 +85,6 @@ NetworkMonitor::NetworkMonitor(
     NetworkMonitor::ValidationMode validation_mode,
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag,
-    std::unique_ptr<PortalDetectorFactory> portal_detector_factory,
     std::unique_ptr<CapportProxyFactory> capport_proxy_factory,
     std::unique_ptr<ConnectionDiagnosticsFactory>
         connection_diagnostics_factory)
@@ -103,7 +102,7 @@ NetworkMonitor::NetworkMonitor(
       validation_log_(std::move(network_validation_log)),
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
-  portal_detector_ = portal_detector_factory->Create(
+  portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, interface_, probing_configuration_,
       base::BindRepeating(&NetworkMonitor::OnPortalDetectorResult,
                           weak_ptr_factory_.GetWeakPtr()),

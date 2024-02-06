@@ -4,22 +4,11 @@
 
 #include "shill/mock_portal_detector.h"
 
-#include <utility>
-
 namespace shill {
 
-MockPortalDetector::MockPortalDetector(ResultCallback callback)
-    : PortalDetector(nullptr, "wlan1", {}, base::DoNothing(), "tag"),
-      callback_(std::move(callback)) {}
+MockPortalDetector::MockPortalDetector()
+    : PortalDetector(nullptr, "wlan1", {}, base::DoNothing(), "tag") {}
 
 MockPortalDetector::~MockPortalDetector() = default;
-
-void MockPortalDetector::SendResult(const Result& result) {
-  callback_.Run(result);
-}
-
-MockPortalDetectorFactory::MockPortalDetectorFactory() = default;
-
-MockPortalDetectorFactory::~MockPortalDetectorFactory() = default;
 
 }  // namespace shill

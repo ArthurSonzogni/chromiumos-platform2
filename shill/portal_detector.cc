@@ -474,17 +474,6 @@ bool PortalDetector::Result::operator==(
          redirect_url == rhs.redirect_url && probe_url == rhs.probe_url;
 }
 
-std::unique_ptr<PortalDetector> PortalDetectorFactory::Create(
-    EventDispatcher* dispatcher,
-    std::string_view ifname,
-    const PortalDetector::ProbingConfiguration& probing_configuration,
-    PortalDetector::ResultCallback callback,
-    std::string_view logging_tag) {
-  return std::make_unique<PortalDetector>(dispatcher, ifname,
-                                          probing_configuration,
-                                          std::move(callback), logging_tag);
-}
-
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ProbeResult result) {
   return stream << PortalDetector::ProbeResultName(result);

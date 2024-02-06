@@ -67,16 +67,8 @@ class MockClient : public NetworkMonitor::ClientNetwork {
 class NetworkMonitorTest : public ::testing::Test {
  public:
   NetworkMonitorTest() {
-    auto mock_portal_detector_factory =
-        std::make_unique<MockPortalDetectorFactory>();
-    EXPECT_CALL(*mock_portal_detector_factory, Create)
-        .WillOnce(testing::WithArg<3>(
-            [this](PortalDetector::ResultCallback callback) {
-              auto portal_detector =
-                  std::make_unique<MockPortalDetector>(std::move(callback));
-              mock_portal_detector_ = portal_detector.get();
-              return portal_detector;
-            }));
+    auto portal_detector = std::make_unique<MockPortalDetector>();
+    mock_portal_detector_ = portal_detector.get();
 
     auto mock_capport_proxy_factory =
         std::make_unique<MockCapportProxyFactory>();
@@ -95,9 +87,10 @@ class NetworkMonitorTest : public ::testing::Test {
         &dispatcher_, &metrics_, &client_, kTechnology, kInterfaceIndex,
         kInterface, probing_configuration_, kDefaultValidationMode,
         std::move(mock_validation_log), kLoggingTag,
-        std::move(mock_portal_detector_factory),
         std::move(mock_capport_proxy_factory),
         std::move(mock_connection_diagnostics_factory));
+    network_monitor_->set_portal_detector_for_testing(
+        std::move(portal_detector));
 
     SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
   }
@@ -146,8 +139,9 @@ class NetworkMonitorTest : public ::testing::Test {
       const PortalDetector::Result& result) {
     EXPECT_CALL(*mock_portal_detector_,
                 Start(net_base::IPFamily::kIPv4, kDnsList))
-        .WillOnce(
-            [this, result]() { mock_portal_detector_->SendResult(result); });
+        .WillOnce([this, result]() {
+          network_monitor_->OnPortalDetectorResultForTesting(result);
+        });
     EXPECT_CALL(*mock_validation_log_, AddResult(result));
     EXPECT_CALL(client_,
                 OnNetworkMonitorResult(

@@ -336,22 +336,6 @@ class PortalDetector {
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 
-// The factory class of the PortalDetector, used to derive a mock factory to
-// create mock PortalDetector instance at testing.
-class PortalDetectorFactory {
- public:
-  PortalDetectorFactory() = default;
-  virtual ~PortalDetectorFactory() = default;
-
-  // The default factory method, calling PortalDetector's constructor.
-  mockable std::unique_ptr<PortalDetector> Create(
-      EventDispatcher* dispatcher,
-      std::string_view ifname,
-      const PortalDetector::ProbingConfiguration& probing_configuration,
-      PortalDetector::ResultCallback callback,
-      std::string_view logging_tag);
-};
-
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ProbeResult result);
 std::ostream& operator<<(std::ostream& stream,

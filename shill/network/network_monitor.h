@@ -123,24 +123,21 @@ class NetworkMonitor {
     virtual void OnValidationStarted(bool is_success) = 0;
   };
 
-  NetworkMonitor(
-      EventDispatcher* dispatcher,
-      Metrics* metrics,
-      ClientNetwork* client,
-      Technology technology,
-      int interface_index,
-      std::string_view interface,
-      PortalDetector::ProbingConfiguration probing_configuration,
-      ValidationMode validation_mode,
-      std::unique_ptr<ValidationLog> network_validation_log,
-      std::string_view logging_tag = "",
-      std::unique_ptr<PortalDetectorFactory> portal_detector_factory =
-          std::make_unique<PortalDetectorFactory>(),
-      std::unique_ptr<CapportProxyFactory> capport_proxy_factory =
-          std::make_unique<CapportProxyFactory>(),
-      std::unique_ptr<ConnectionDiagnosticsFactory>
-          connection_diagnostics_factory =
-              std::make_unique<ConnectionDiagnosticsFactory>());
+  NetworkMonitor(EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 ClientNetwork* client,
+                 Technology technology,
+                 int interface_index,
+                 std::string_view interface,
+                 PortalDetector::ProbingConfiguration probing_configuration,
+                 ValidationMode validation_mode,
+                 std::unique_ptr<ValidationLog> network_validation_log,
+                 std::string_view logging_tag = "",
+                 std::unique_ptr<CapportProxyFactory> capport_proxy_factory =
+                     std::make_unique<CapportProxyFactory>(),
+                 std::unique_ptr<ConnectionDiagnosticsFactory>
+                     connection_diagnostics_factory =
+                         std::make_unique<ConnectionDiagnosticsFactory>());
   virtual ~NetworkMonitor();
 
   // It's neither copyable nor movable.
