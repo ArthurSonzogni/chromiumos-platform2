@@ -155,10 +155,12 @@ class WPASupplicant {
   static constexpr char kNetworkPropertyEngine[] = "engine";
   static constexpr char kNetworkPropertyEngineId[] = "engine_id";
   static constexpr char kNetworkPropertyFrequency[] = "frequency";
+  static constexpr char kNetworkPropertyGroupCiphers[] = "group";
   static constexpr char kNetworkPropertyIeee80211w[] = "ieee80211w";
   static constexpr char kNetworkPropertyMACAddrPolicy[] = "mac_addr";
   static constexpr char kNetworkPropertyMACAddrValue[] = "mac_value";
   static constexpr char kNetworkPropertyMode[] = "mode";
+  static constexpr char kNetworkPropertyPairwiseCiphers[] = "pairwise";
   static constexpr char kNetworkPropertyScanSSID[] = "scan_ssid";
   static constexpr char kNetworkPropertySSID[] = "ssid";
   static constexpr char kPropertyAuthAlg[] = "auth_alg";

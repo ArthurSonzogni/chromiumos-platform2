@@ -1310,6 +1310,10 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   SLOG(2) << "Sending KeyMgmt to supplicant: " << key_mgmt;
   params.Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
                           key_mgmt);
+  params.Set<std::string>(WPASupplicant::kNetworkPropertyPairwiseCiphers,
+                          "TKIP CCMP GCMP CCMP-256 GCMP-256");
+  params.Set<std::string>(WPASupplicant::kNetworkPropertyGroupCiphers,
+                          "TKIP CCMP GCMP CCMP-256 GCMP-256");
 
   params.Set<std::vector<uint8_t>>(WPASupplicant::kNetworkPropertySSID, ssid_);
 
