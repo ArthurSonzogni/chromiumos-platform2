@@ -28,9 +28,7 @@
 using testing::_;
 using testing::Eq;
 using testing::Mock;
-using testing::NiceMock;
 using testing::Return;
-using testing::ReturnRef;
 using testing::StrictMock;
 using testing::Test;
 
@@ -76,14 +74,6 @@ class MockHttpRequest : public HttpRequest {
 };
 
 }  // namespace
-
-MATCHER(PositiveDelay, "") {
-  return arg.is_positive();
-}
-
-MATCHER(ZeroDelay, "") {
-  return arg.is_zero();
-}
 
 class TestablePortalDetector : public PortalDetector {
  public:
@@ -140,14 +130,15 @@ class PortalDetectorTest : public Test {
   }
 
   PortalDetector::Result GetPortalRedirectResult(std::string_view probe_url) {
-    PortalDetector::Result r;
-    r.num_attempts = 1;
-    r.http_result = PortalDetector::ProbeResult::kPortalRedirect;
-    r.http_status_code = 302;
-    r.http_content_length = 0;
-    r.https_result = PortalDetector::ProbeResult::kConnectionFailure;
-    r.redirect_url = net_base::HttpUrl::CreateFromString(kPortalSignInURL);
-    r.probe_url = net_base::HttpUrl::CreateFromString(probe_url);
+    const PortalDetector::Result r = {
+        .num_attempts = 1,
+        .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+        .http_status_code = 302,
+        .http_content_length = 0,
+        .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+        .redirect_url = net_base::HttpUrl::CreateFromString(kPortalSignInURL),
+        .probe_url = net_base::HttpUrl::CreateFromString(probe_url),
+    };
     EXPECT_TRUE(r.IsHTTPProbeComplete());
     EXPECT_TRUE(r.IsHTTPSProbeComplete());
     EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
@@ -169,18 +160,6 @@ class PortalDetectorTest : public Test {
         net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
         base::BindOnce(&CallbackTarget::ResultCallback,
                        base::Unretained(&callback_target_)));
-  }
-
-  MockHttpRequest* http_request() { return http_request_; }
-  MockHttpRequest* https_request() { return https_request_; }
-  PortalDetector* portal_detector() { return portal_detector_.get(); }
-  MockEventDispatcher& dispatcher() { return dispatcher_; }
-  CallbackTarget& callback_target() { return callback_target_; }
-  brillo::http::MockConnection* http_connection() {
-    return http_probe_connection_.get();
-  }
-  brillo::http::MockConnection* https_connection() {
-    return https_probe_connection_.get();
   }
 
   void ExpectReset() {
@@ -287,11 +266,11 @@ TEST_F(PortalDetectorTest, Constructor) {
 
 TEST_F(PortalDetectorTest, IsInProgress) {
   // Before the trial is started, should not be active.
-  EXPECT_FALSE(portal_detector()->IsRunning());
+  EXPECT_FALSE(portal_detector_->IsRunning());
 
   // Once the trial is started, IsInProgress should return true.
   StartPortalRequest();
-  EXPECT_TRUE(portal_detector()->IsRunning());
+  EXPECT_TRUE(portal_detector_->IsRunning());
 
   // Finish the trial, IsInProgress should return false.
   const PortalDetector::Result result = {
@@ -303,28 +282,28 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  portal_detector()->StopTrialIfComplete(result);
+  portal_detector_->StopTrialIfComplete(result);
   ExpectCleanupTrial();
 }
 
 TEST_F(PortalDetectorTest, Restart) {
-  EXPECT_FALSE(portal_detector()->IsRunning());
+  EXPECT_FALSE(portal_detector_->IsRunning());
 
-  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_EQ(0, portal_detector_->attempt_count());
   StartPortalRequest();
-  EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
-  EXPECT_EQ(1, portal_detector()->attempt_count());
+  EXPECT_EQ(portal_detector_->http_url_.ToString(), kHttpUrl);
+  EXPECT_EQ(1, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  portal_detector()->StopTrialIfComplete(result);
+  portal_detector_->StopTrialIfComplete(result);
   ExpectCleanupTrial();
 
   StartPortalRequest();
-  EXPECT_EQ(2, portal_detector()->attempt_count());
+  EXPECT_EQ(2, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Reset();
+  portal_detector_->Reset();
   ExpectReset();
 }
 
@@ -332,22 +311,22 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
   const std::optional<net_base::HttpUrl> probe_url =
       *net_base::HttpUrl::CreateFromString(kHttpUrl);
 
-  EXPECT_FALSE(portal_detector()->IsRunning());
-  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_FALSE(portal_detector_->IsRunning());
+  EXPECT_EQ(0, portal_detector_->attempt_count());
   StartPortalRequest();
-  EXPECT_EQ(1, portal_detector()->attempt_count());
+  EXPECT_EQ(1, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  portal_detector()->StopTrialIfComplete(result);
+  portal_detector_->StopTrialIfComplete(result);
   ExpectCleanupTrial();
 
   StartPortalRequest();
-  EXPECT_EQ(portal_detector()->http_url_, probe_url);
-  EXPECT_EQ(2, portal_detector()->attempt_count());
+  EXPECT_EQ(portal_detector_->http_url_, probe_url);
+  EXPECT_EQ(2, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Reset();
+  portal_detector_->Reset();
   ExpectReset();
 }
 
@@ -355,10 +334,10 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
   const std::optional<net_base::HttpUrl> probe_url =
       *net_base::HttpUrl::CreateFromString(kHttpUrl);
 
-  EXPECT_FALSE(portal_detector()->IsRunning());
-  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_FALSE(portal_detector_->IsRunning());
+  EXPECT_EQ(0, portal_detector_->attempt_count());
   StartPortalRequest();
-  EXPECT_EQ(1, portal_detector()->attempt_count());
+  EXPECT_EQ(1, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   const PortalDetector::Result result = {
@@ -373,35 +352,35 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  portal_detector()->StopTrialIfComplete(result);
+  portal_detector_->StopTrialIfComplete(result);
   ExpectCleanupTrial();
 
   StartPortalRequest();
-  EXPECT_EQ(portal_detector()->http_url_, probe_url);
-  EXPECT_EQ(2, portal_detector()->attempt_count());
+  EXPECT_EQ(portal_detector_->http_url_, probe_url);
+  EXPECT_EQ(2, portal_detector_->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  portal_detector()->Reset();
+  portal_detector_->Reset();
   ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
-  EXPECT_FALSE(portal_detector()->IsRunning());
+  EXPECT_FALSE(portal_detector_->IsRunning());
 
-  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_EQ(0, portal_detector_->attempt_count());
   StartPortalRequest();
-  EXPECT_EQ(1, portal_detector()->attempt_count());
-  EXPECT_TRUE(portal_detector()->IsRunning());
+  EXPECT_EQ(1, portal_detector_->attempt_count());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
   portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
                           base::DoNothing());
-  EXPECT_EQ(1, portal_detector()->attempt_count());
-  EXPECT_TRUE(portal_detector()->IsRunning());
+  EXPECT_EQ(1, portal_detector_->attempt_count());
+  EXPECT_TRUE(portal_detector_->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
-  portal_detector()->Reset();
+  portal_detector_->Reset();
   ExpectReset();
 }
 
@@ -416,14 +395,14 @@ TEST_F(PortalDetectorTest, AttemptCount) {
             result.GetValidationState());
 
   // The 1st attempt uses the default probing URLs.
-  EXPECT_FALSE(portal_detector()->IsRunning());
+  EXPECT_FALSE(portal_detector_->IsRunning());
   StartPortalRequest();
-  EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
-  EXPECT_EQ(portal_detector()->https_url_.ToString(), kHttpsUrl);
+  EXPECT_EQ(portal_detector_->http_url_.ToString(), kHttpUrl);
+  EXPECT_EQ(portal_detector_->https_url_.ToString(), kHttpsUrl);
   result.num_attempts = 1;
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  portal_detector()->StopTrialIfComplete(result);
-  EXPECT_EQ(1, portal_detector()->attempt_count());
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  portal_detector_->StopTrialIfComplete(result);
+  EXPECT_EQ(1, portal_detector_->attempt_count());
 
   // The 2nd and so on attempts use the fallback or the default probing URLs.
   std::set<std::string> expected_retry_http_urls(kFallbackHttpUrls.begin(),
@@ -435,29 +414,29 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   expected_retry_https_urls.insert(kHttpsUrl);
   for (int i = 2; i < 10; i++) {
     result.num_attempts = i;
-    EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
+    EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
     StartPortalRequest();
-    EXPECT_EQ(i, portal_detector()->attempt_count());
+    EXPECT_EQ(i, portal_detector_->attempt_count());
 
     EXPECT_NE(
-        expected_retry_http_urls.find(portal_detector()->http_url_.ToString()),
+        expected_retry_http_urls.find(portal_detector_->http_url_.ToString()),
         expected_retry_http_urls.end());
-    EXPECT_NE(expected_retry_https_urls.find(
-                  portal_detector()->https_url_.ToString()),
-              expected_retry_https_urls.end());
+    EXPECT_NE(
+        expected_retry_https_urls.find(portal_detector_->https_url_.ToString()),
+        expected_retry_https_urls.end());
 
-    portal_detector()->StopTrialIfComplete(result);
+    portal_detector_->StopTrialIfComplete(result);
     Mock::VerifyAndClearExpectations(&callback_target_);
   }
 
-  portal_detector()->Reset();
+  portal_detector_->Reset();
   ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, RequestSuccess) {
   StartPortalRequest();
 
-  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
+  EXPECT_CALL(callback_target_, ResultCallback).Times(0);
   EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
@@ -478,8 +457,8 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(204);
   ExpectCleanupTrial();
@@ -500,15 +479,15 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result))).Times(0);
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
 
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("10"));
   ExpectHttpRequestSuccessWithStatus(123);
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
   HTTPSRequestSuccess();
   ExpectCleanupTrial();
 }
@@ -529,10 +508,10 @@ TEST_F(PortalDetectorTest, RequestHTTPSuccessHTTPSFailure) {
             result.GetValidationState());
 
   EXPECT_TRUE(portal_detector_->IsRunning());
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(204);
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
   HTTPSRequestFailure(HttpRequest::Error::kTLSFailure);
   ExpectCleanupTrial();
 }
@@ -553,13 +532,13 @@ TEST_F(PortalDetectorTest, RequestFail) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result))).Times(0);
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("10"));
   ExpectHttpRequestSuccessWithStatus(123);
   HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
@@ -569,7 +548,7 @@ TEST_F(PortalDetectorTest, RequestFail) {
 TEST_F(PortalDetectorTest, RequestRedirect) {
   StartPortalRequest();
 
-  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
+  EXPECT_CALL(callback_target_, ResultCallback).Times(0);
   EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
@@ -577,10 +556,10 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   Mock::VerifyAndClearExpectations(&callback_target_);
 
   const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return(std::string(kPortalSignInURL)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(302);
   ExpectCleanupTrial();
@@ -589,7 +568,7 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
 TEST_F(PortalDetectorTest, RequestTempRedirect) {
   StartPortalRequest();
 
-  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
+  EXPECT_CALL(callback_target_, ResultCallback).Times(0);
   EXPECT_TRUE(portal_detector_->IsRunning());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
@@ -603,10 +582,10 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return(std::string(kPortalSignInURL)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(307);
   ExpectCleanupTrial();
@@ -623,10 +602,10 @@ TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return(std::string(kPortalSignInURL)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(302);
   // The HTTPS probe does not complete.
@@ -649,8 +628,8 @@ TEST_F(PortalDetectorTest, Request200AndInvalidContentLength) {
   ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("invalid"));
   ExpectHttpRequestSuccessWithStatus(200);
   HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
@@ -673,8 +652,8 @@ TEST_F(PortalDetectorTest, Request200WithoutContent) {
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
   ExpectHttpRequestSuccessWithStatus(200);
   HTTPSRequestSuccess();
@@ -697,8 +676,8 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("768"));
   ExpectHttpRequestSuccessWithStatus(200);
   // The trial has been completed, even if the HTTPS probe did not complete.
@@ -722,10 +701,10 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
       .WillOnce(Return("0"));
-  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return("invalid_url"));
   ExpectHttpRequestSuccessWithStatus(302);
   // The trial has been completed, even if the HTTPS probe did not complete.
