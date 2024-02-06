@@ -35,22 +35,29 @@ class V4L2EventMonitor {
   void RegisterCallback(PrivacySwitchStateChangeCallback callback);
 
   // Try to activate the event loop to subscribe the privacy event if it hasn't
-  // been started by given |camera_id| and its corresponding |device_path|.
+  // been started by given |camera_id| and its corresponding |device_path|. Also
+  // for frame sync event if specified.
   void TrySubscribe(int camera_id,
                     const base::FilePath& device_path,
-                    bool has_privacy_switch);
+                    bool has_privacy_switch,
+                    bool subscribe_frame_sync);
 
   // Remove the |camera_id| from the subscription list.
   void Unsubscribe(int camera_id);
 
+  // Unsubscribe only the frame sync event and remove the |camera_id| from the
+  // subscription list if no more event is subscribed.
+  void UnsubscribeFrameSyncEvent(int camera_id);
+
  private:
   void OnStatusChanged(int camera_id, PrivacySwitchState state);
 
-  // Subscribe the camera privacy switch status changed and shutter trace as
-  // v4l2-events with given |camera_id| and |device_fd|.
+  // Subscribe the camera privacy switch status changed  as v4l2-events with
+  // given |camera_id| and |device_fd|, and also frame sync event if specified.
   void SubscribeEvent(int camera_id,
                       base::ScopedFD device_fd,
-                      bool has_privacy_switch);
+                      bool has_privacy_switch,
+                      bool subscribe_frame_sync);
 
   // Unsubscribe all v4l2-event.
   void UnsubscribeEvents();
@@ -76,6 +83,8 @@ class V4L2EventMonitor {
   // The map for subscribed camera ids to a flag if the device has a HW privacy
   // switch.
   base::flat_set<int> subscribed_camera_ids_with_privacy_switch_
+      GUARDED_BY(camera_id_lock_);
+  base::flat_set<int> subscribed_camera_ids_with_frame_sync_event_
       GUARDED_BY(camera_id_lock_);
 
   // The endpoint for writing of the pipe to control the event loop. Writing

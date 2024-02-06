@@ -78,7 +78,8 @@ void V4L2EventMonitor::RegisterCallback(
 
 void V4L2EventMonitor::TrySubscribe(int camera_id,
                                     const base::FilePath& device_path,
-                                    bool has_privacy_switch) {
+                                    bool has_privacy_switch,
+                                    bool subscribe_frame_sync) {
   {
     base::AutoLock l(camera_id_lock_);
     if (subscribed_camera_id_to_fd_.find(camera_id) !=
@@ -109,7 +110,8 @@ void V4L2EventMonitor::TrySubscribe(int camera_id,
   OnStatusChanged(camera_id, priv_init_value != 0 ? PrivacySwitchState::kOn
                                                   : PrivacySwitchState::kOff);
 
-  SubscribeEvent(camera_id, std::move(device_fd), has_privacy_switch);
+  SubscribeEvent(camera_id, std::move(device_fd), has_privacy_switch,
+                 subscribe_frame_sync);
 }
 
 void V4L2EventMonitor::Unsubscribe(int camera_id) {
@@ -127,6 +129,39 @@ void V4L2EventMonitor::Unsubscribe(int camera_id) {
       return;
     }
     subscribed_camera_ids_with_privacy_switch_.erase(it);
+  }
+  {
+    auto it = subscribed_camera_ids_with_frame_sync_event_.find(camera_id);
+    if (it == subscribed_camera_ids_with_frame_sync_event_.end()) {
+      return;
+    }
+    subscribed_camera_ids_with_frame_sync_event_.erase(it);
+  }
+
+  RestartEventLoop();
+}
+
+void V4L2EventMonitor::UnsubscribeFrameSyncEvent(int camera_id) {
+  base::AutoLock l(camera_id_lock_);
+  {
+    auto it = subscribed_camera_ids_with_frame_sync_event_.find(camera_id);
+    if (it == subscribed_camera_ids_with_frame_sync_event_.end()) {
+      return;
+    }
+    subscribed_camera_ids_with_frame_sync_event_.erase(it);
+  }
+
+  // Remove the |camera_id| from the subscription list if no more event is
+  // subscribed.
+  {
+    auto it = subscribed_camera_ids_with_privacy_switch_.find(camera_id);
+    if (it == subscribed_camera_ids_with_privacy_switch_.end()) {
+      auto it = subscribed_camera_id_to_fd_.find(camera_id);
+      if (it == subscribed_camera_id_to_fd_.end()) {
+        return;
+      }
+      subscribed_camera_id_to_fd_.erase(it);
+    }
   }
 
   RestartEventLoop();
@@ -146,7 +181,8 @@ void V4L2EventMonitor::OnStatusChanged(int camera_id,
 
 void V4L2EventMonitor::SubscribeEvent(int camera_id,
                                       base::ScopedFD device_fd,
-                                      bool has_privacy_switch) {
+                                      bool has_privacy_switch,
+                                      bool subscribe_frame_sync) {
   // Force disable HW privacy switch if the config doesn't declare it.  This is
   // to block privacy switch signal that is not HW based (b/273675069).
   if (has_privacy_switch) {
@@ -159,11 +195,17 @@ void V4L2EventMonitor::SubscribeEvent(int camera_id,
     }
   }
 
-  bool is_frame_sync_subscribed = true;
-  struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC, .id = 0};
-  if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) < 0) {
-    PLOGF(ERROR) << "Failed to subscribe for frame sync event";
-    is_frame_sync_subscribed = false;
+  bool is_frame_sync_subscribed = false;
+
+  if (subscribe_frame_sync) {
+    is_frame_sync_subscribed = true;
+    struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC,
+                                          .id = 0};
+    if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) <
+        0) {
+      PLOGF(ERROR) << "Failed to subscribe for frame sync event";
+      is_frame_sync_subscribed = false;
+    }
   }
 
   LOGF(INFO) << "has_privacy_switch = " << has_privacy_switch
@@ -171,11 +213,13 @@ void V4L2EventMonitor::SubscribeEvent(int camera_id,
   if (!has_privacy_switch && !is_frame_sync_subscribed) {
     return;
   }
-
   base::AutoLock l(camera_id_lock_);
   subscribed_camera_id_to_fd_.emplace(camera_id, std::move(device_fd));
   if (has_privacy_switch) {
     subscribed_camera_ids_with_privacy_switch_.insert(camera_id);
+  }
+  if (is_frame_sync_subscribed) {
+    subscribed_camera_ids_with_frame_sync_event_.insert(camera_id);
   }
 
   // If the thread hasn't been started, start the thread to listen for events.
@@ -213,19 +257,22 @@ void V4L2EventMonitor::UnsubscribeEvents() {
       struct v4l2_event_subscription sub = {.type = V4L2_EVENT_CTRL};
       if (HANDLE_EINTR(ioctl(it.second.get(), VIDIOC_UNSUBSCRIBE_EVENT, &sub)) <
           0) {
-        PLOGF(ERROR) << "Failed to unsubscribe for frame sync event";
+        PLOGF(ERROR) << "Failed to unsubscribe for privacy status change";
       }
     }
 
-    struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC,
-                                          .id = V4L2_CID_PRIVACY};
-    if (HANDLE_EINTR(ioctl(it.second.get(), VIDIOC_UNSUBSCRIBE_EVENT, &sub)) <
-        0) {
-      PLOGF(ERROR) << "Failed to unsubscribe for privacy status change";
+    if (subscribed_camera_ids_with_frame_sync_event_.contains(camera_id)) {
+      struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC,
+                                            .id = V4L2_CID_PRIVACY};
+      if (HANDLE_EINTR(ioctl(it.second.get(), VIDIOC_UNSUBSCRIBE_EVENT, &sub)) <
+          0) {
+        PLOGF(ERROR) << "Failed to unsubscribe for frame sync event";
+      }
     }
   }
   subscribed_camera_id_to_fd_.clear();
   subscribed_camera_ids_with_privacy_switch_.clear();
+  subscribed_camera_ids_with_frame_sync_event_.clear();
 }
 
 void V4L2EventMonitor::RunDequeueEventsLoop() {

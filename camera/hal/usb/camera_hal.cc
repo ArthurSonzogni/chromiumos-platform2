@@ -776,7 +776,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
       ScopedCameraMetadata(request_template.release());
 
   v4l2_event_monitor_.TrySubscribe(info.camera_id, info.device_path,
-                                   info.has_privacy_switch);
+                                   info.has_privacy_switch, false);
 
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,

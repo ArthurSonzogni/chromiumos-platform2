@@ -616,7 +616,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
 
   v4l2_event_monitor_->TrySubscribe(device_info_.camera_id,
                                     device_info_.device_path,
-                                    device_info_.has_privacy_switch);
+                                    device_info_.has_privacy_switch, true);
 
   if (device_info_.enable_face_detection && roi_flags_ &&
       roi_control_api_ == RoiControlApi::kUvcRoiRectRelative) {
@@ -657,6 +657,8 @@ int V4L2CameraDevice::StreamOff() {
   }
   buffers_at_client_.clear();
   stream_on_ = false;
+
+  v4l2_event_monitor_->UnsubscribeFrameSyncEvent(device_info_.camera_id);
   return 0;
 }
 
