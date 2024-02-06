@@ -72,8 +72,6 @@ UsbEndpoint::UsbEndpoint(uint16_t vendor_id,
                          std::string path)
     : vendor_id_(vendor_id), product_id_(product_id), path_(path) {}
 
-UsbEndpoint::UsbEndpoint(std::string path) : path_(path) {}
-
 UsbEndpoint::~UsbEndpoint() {
   Close();
 }
@@ -83,7 +81,7 @@ bool UsbEndpoint::UsbSysfsExists() {
   return base::DirectoryExists(usb_path);
 }
 
-UsbConnectStatus UsbEndpoint::Connect() {
+UsbConnectStatus UsbEndpoint::Connect(bool check_id) {
   if (IsConnected()) {
     DLOG(INFO) << "Already initialized. Ignore.";
     return UsbConnectStatus::kSuccess;
@@ -98,7 +96,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
     return UsbConnectStatus::kUsbPathEmpty;
   }
   const base::FilePath usb_path = GetUsbSysfsPath(path_);
-  if (vendor_id_.has_value() && product_id_.has_value()) {
+  if (check_id) {
     int vendor_id, product_id;
 
     if (!ReadFileToInt(usb_path.Append("idVendor"), &vendor_id) ||
@@ -106,7 +104,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
       LOG(ERROR) << "Failed to read VID and PID.";
       return UsbConnectStatus::kUnknownError;
     }
-    if (*vendor_id_ != vendor_id || *product_id_ != product_id) {
+    if (vendor_id_ != vendor_id || product_id_ != product_id) {
       LOG(ERROR) << "Invalid VID and PID.";
       return UsbConnectStatus::kInvalidDevice;
     }

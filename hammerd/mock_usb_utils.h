@@ -24,7 +24,7 @@ class MockUsbEndpoint : public UsbEndpointInterface {
   MockUsbEndpoint() = default;
   ~MockUsbEndpoint() override = default;
   MOCK_METHOD(bool, UsbSysfsExists, (), (override));
-  MOCK_METHOD(UsbConnectStatus, Connect, (), (override));
+  MOCK_METHOD(UsbConnectStatus, Connect, (bool), (override));
   MOCK_METHOD(void, Close, (), (override));
   MOCK_METHOD(bool, IsConnected, (), (const, override));
   MOCK_METHOD(int, GetChunkLength, (), (const, override));

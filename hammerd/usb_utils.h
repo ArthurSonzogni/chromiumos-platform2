@@ -54,7 +54,7 @@ class UsbEndpointInterface {
   // Check whether the USB sysfs file exist or not.
   virtual bool UsbSysfsExists() = 0;
   // Initializes the USB endpoint.
-  virtual UsbConnectStatus Connect() = 0;
+  virtual UsbConnectStatus Connect(bool check_id) = 0;
   // Releases USB endpoint.
   virtual void Close() = 0;
   // Returns whether the USB endpoint is initialized.
@@ -94,14 +94,13 @@ class UsbEndpointInterface {
 class UsbEndpoint : public UsbEndpointInterface {
  public:
   UsbEndpoint(uint16_t vendor_id, uint16_t product_id, std::string path);
-  explicit UsbEndpoint(std::string path);
   UsbEndpoint(const UsbEndpoint&) = delete;
   UsbEndpoint& operator=(const UsbEndpoint&) = delete;
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
   bool UsbSysfsExists() override;
-  UsbConnectStatus Connect() override;
+  UsbConnectStatus Connect(bool check_id) override;
   void Close() override;
   bool IsConnected() const override;
   int Transfer(const void* outbuf,
@@ -132,8 +131,8 @@ class UsbEndpoint : public UsbEndpointInterface {
                    int len,
                    unsigned int timeout_ms = 0);
 
-  std::optional<uint16_t> vendor_id_;
-  std::optional<uint16_t> product_id_;
+  uint16_t vendor_id_;
+  uint16_t product_id_;
   std::string path_;
   int fd_ = -1;
   std::string configuration_string_;

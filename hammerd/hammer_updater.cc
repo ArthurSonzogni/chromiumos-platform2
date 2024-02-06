@@ -46,35 +46,30 @@ HammerUpdater::UpdateCondition HammerUpdater::ToUpdateCondition(
   return UpdateCondition::kUnknown;
 }
 
-HammerUpdater::HammerUpdater(const std::string& ec_image,
-                             const std::string& touchpad_image,
-                             const std::string& touchpad_product_id,
-                             const std::string& touchpad_fw_ver,
-                             uint16_t vendor_id,
-                             uint16_t product_id,
-                             const std::string& usb_path,
-                             bool at_boot,
-                             UpdateCondition update_condition)
-    : HammerUpdater(
-          ec_image,
-          touchpad_image,
-          touchpad_product_id,
-          touchpad_fw_ver,
-          usb_path,
-          at_boot,
-          update_condition,
-          std::make_unique<FirmwareUpdater>(
-              std::make_unique<UsbEndpoint>(vendor_id, product_id, usb_path)),
-          std::make_unique<PairManager>(),
-          std::make_unique<DBusWrapper>(),
-          std::make_unique<MetricsLibrary>()) {}
+HammerUpdater::HammerUpdater(
+    const std::string& ec_image,
+    const std::string& touchpad_image,
+    const std::string& touchpad_product_id,
+    const std::string& touchpad_fw_ver,
+    std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
+    bool at_boot,
+    UpdateCondition update_condition)
+    : HammerUpdater(ec_image,
+                    touchpad_image,
+                    touchpad_product_id,
+                    touchpad_fw_ver,
+                    at_boot,
+                    update_condition,
+                    std::move(fw_updater),
+                    std::make_unique<PairManager>(),
+                    std::make_unique<DBusWrapper>(),
+                    std::make_unique<MetricsLibrary>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& ec_image,
     const std::string& touchpad_image,
     const std::string& touchpad_product_id,
     const std::string& touchpad_fw_ver,
-    const std::string& usb_path,
     bool at_boot,
     UpdateCondition update_condition,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
@@ -85,7 +80,6 @@ HammerUpdater::HammerUpdater(
       touchpad_image_(touchpad_image),
       touchpad_product_id_(touchpad_product_id),
       touchpad_fw_ver_(touchpad_fw_ver),
-      usb_path_(usb_path),
       at_boot_(at_boot),
       update_condition_(update_condition),
       task_(HammerUpdater::TaskState()),
@@ -149,10 +143,9 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         LOG(INFO) << "Device with invalid ID found, try to reboot to RO.";
         invalid_device_seen = true;
         // Create an updater instance that allows any usb ID.
-        FirmwareUpdater fw_updater(std::make_unique<UsbEndpoint>(usb_path_));
-        if (fw_updater.TryConnectUsb() == UsbConnectStatus::kSuccess) {
-          fw_updater.SendSubcommand(UpdateExtraCommand::kImmediateReset);
-          fw_updater.CloseUsb();
+        if (fw_updater_->TryConnectUsb() == UsbConnectStatus::kSuccess) {
+          fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
+          fw_updater_->CloseUsb();
           base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         }
         status = HammerUpdater::RunStatus::kNeedJump;

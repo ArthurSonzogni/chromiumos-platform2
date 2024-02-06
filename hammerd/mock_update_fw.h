@@ -30,6 +30,7 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
   MOCK_METHOD(bool, UsbSysfsExists, (), (override));
   MOCK_METHOD(UsbConnectStatus, ConnectUsb, (), (override));
   MOCK_METHOD(UsbConnectStatus, TryConnectUsb, (), (override));
+  MOCK_METHOD(UsbConnectStatus, TryConnectUsbNoCheck, (), (override));
   MOCK_METHOD(void, CloseUsb, (), (override));
   MOCK_METHOD(bool, SendFirstPdu, (), (override));
   MOCK_METHOD(void, SendDone, (), (override));

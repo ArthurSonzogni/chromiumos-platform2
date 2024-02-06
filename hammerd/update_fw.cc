@@ -126,10 +126,18 @@ bool FirmwareUpdater::UsbSysfsExists() {
 }
 
 UsbConnectStatus FirmwareUpdater::ConnectUsb() {
-  return endpoint_->Connect();
+  return endpoint_->Connect(true);
 }
 
 UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
+  return TryConnectUsbImpl(true);
+}
+
+UsbConnectStatus FirmwareUpdater::TryConnectUsbNoCheck() {
+  return TryConnectUsbImpl(false);
+}
+
+UsbConnectStatus FirmwareUpdater::TryConnectUsbImpl(bool check_id) {
   constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;
   constexpr unsigned int kIntervalMs = 100;
@@ -138,7 +146,7 @@ UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
   auto start_time = base::Time::Now();
   int64_t duration = 0;
   while (true) {
-    UsbConnectStatus ret = endpoint_->Connect();
+    UsbConnectStatus ret = endpoint_->Connect(check_id);
     // Short-circuit if we have a strange device, since a retry will make
     // no difference.
     if (ret == UsbConnectStatus::kInvalidDevice) {
@@ -608,9 +616,8 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
     ufh.block_base = htobe32(section_addr);
     ufh.block_digest = 0;
     LOG(INFO) << "Update frame header: " << std::hex << "0x" << ufh.block_size
-              << " "
-              << "0x" << ufh.block_base << " "
-              << "0x" << ufh.block_digest << std::dec;
+              << " " << "0x" << ufh.block_base << " " << "0x"
+              << ufh.block_digest << std::dec;
     if (!TransferBlock(&ufh, data_ptr, payload_size, use_block_skip)) {
       LOG(ERROR) << "Failed to transfer block, " << data_len << " to go";
       ret = false;

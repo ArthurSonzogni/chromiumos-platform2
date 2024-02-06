@@ -93,7 +93,7 @@ class HammerUpdaterTest : public testing::Test {
   void SetUp() override {
     // Mock out data members.
     hammer_updater_.reset(new HammerUpdaterType{
-        ec_image_, touchpad_image_, touchpad_product_id_, touchpad_fw_ver_, "",
+        ec_image_, touchpad_image_, touchpad_product_id_, touchpad_fw_ver_,
         false, HammerUpdater::ToUpdateCondition("mismatch"),
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),

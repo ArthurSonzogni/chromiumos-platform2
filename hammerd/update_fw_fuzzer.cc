@@ -28,7 +28,9 @@ class FuzzedUsbEndpoint : public UsbEndpointInterface {
 
   void Close() override {}
   bool UsbSysfsExists() override { return true; }
-  UsbConnectStatus Connect() override { return UsbConnectStatus::kSuccess; }
+  UsbConnectStatus Connect(bool check_id) override {
+    return UsbConnectStatus::kSuccess;
+  }
   bool IsConnected() const override {
     return fuzz_provider_->ConsumeIntegral<bool>();
   }

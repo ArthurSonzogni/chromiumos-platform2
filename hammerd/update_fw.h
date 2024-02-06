@@ -239,6 +239,8 @@ class FirmwareUpdaterInterface {
   virtual UsbConnectStatus ConnectUsb() = 0;
   // Tries to connect to the USB endpoint during a period of time.
   virtual UsbConnectStatus TryConnectUsb() = 0;
+  // TryConnectUsb() but don't fail on VID/PID mismatch
+  virtual UsbConnectStatus TryConnectUsbNoCheck() = 0;
 
   // Closes the connection to the USB endpoint.
   virtual void CloseUsb() = 0;
@@ -333,6 +335,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool UsbSysfsExists() override;
   UsbConnectStatus ConnectUsb() override;
   UsbConnectStatus TryConnectUsb() override;
+  UsbConnectStatus TryConnectUsbNoCheck() override;
   void CloseUsb() override;
   bool SendFirstPdu() override;
   void SendDone() override;
@@ -388,6 +391,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                      const uint8_t* transfer_data_ptr,
                      size_t payload_size,
                      bool use_block_skip);
+
+  UsbConnectStatus TryConnectUsbImpl(bool check_id);
 
   // The USB endpoint interface to the hammer EC.
   std::unique_ptr<UsbEndpointInterface> endpoint_;

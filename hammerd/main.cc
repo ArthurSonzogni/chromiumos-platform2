@@ -142,8 +142,8 @@ int main(int argc, const char* argv[]) {
   } else if (!hammerd::HammerUpdater::ParseTouchpadInfoFromFilename(
                  FLAGS_touchpad_image_path, &touchpad_product_id,
                  &touchpad_fw_ver)) {
-    LOG(ERROR) << "Not able to get version info from filename. "
-               << "Check if [" << FLAGS_touchpad_image_path << "] follows "
+    LOG(ERROR) << "Not able to get version info from filename. " << "Check if ["
+               << FLAGS_touchpad_image_path << "] follows "
                << "<product_id>_<fw_version>.bin format (applied to symbolic "
                << "link as well).";
     return static_cast<int>(ExitStatus::kInvalidFirmware);
@@ -158,9 +158,11 @@ int main(int argc, const char* argv[]) {
   // The task executor registers a task runner with the current thread, which
   // is used by DBusWrapper to send signals.
   base::SingleThreadTaskExecutor task_executor;
+  auto fw_updater = std::make_unique<hammerd::FirmwareUpdater>(
+      std::make_unique<hammerd::UsbEndpoint>(FLAGS_vendor_id, FLAGS_product_id,
+                                             FLAGS_usb_path));
   hammerd::HammerUpdater updater(ec_image, touchpad_image, touchpad_product_id,
-                                 touchpad_fw_ver, FLAGS_vendor_id,
-                                 FLAGS_product_id, FLAGS_usb_path,
+                                 touchpad_fw_ver, std::move(fw_updater),
                                  FLAGS_at_boot, update_condition);
 
   updater.SetInjectEntropyFlag(FLAGS_force_inject_entropy);
