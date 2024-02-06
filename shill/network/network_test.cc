@@ -774,88 +774,62 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   Mock::VerifyAndClearExpectations(&metrics_);
 }
 
+TEST_F(NetworkTest, UpdateNetworkValidationModeWhenNotConnected) {
+  ASSERT_FALSE(network_->IsConnected());
+
+  network_->UpdateNetworkValidationMode(
+      NetworkMonitor::ValidationMode::kDisabled);
+  network_->UpdateNetworkValidationMode(
+      NetworkMonitor::ValidationMode::kFullValidation);
+}
+
+TEST_F(NetworkTest, UpdateNetworkValidationModeNoop) {
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kDisabled));
+  ASSERT_TRUE(network_->IsConnected());
+
+  EXPECT_CALL(*network_monitor_, Start).Times(0);
+  EXPECT_CALL(*network_monitor_, Stop).Times(0);
+  network_->UpdateNetworkValidationMode(
+      NetworkMonitor::ValidationMode::kDisabled);
+}
+
+TEST_F(NetworkTest, UpdateNetworkValidationToFullValidation) {
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kDisabled));
+  ASSERT_TRUE(network_->IsConnected());
+
+  EXPECT_CALL(*network_monitor_, Start);
+  EXPECT_CALL(*network_monitor_, Stop).Times(0);
+  network_->UpdateNetworkValidationMode(
+      NetworkMonitor::ValidationMode::kFullValidation);
+}
+
+TEST_F(NetworkTest, UpdateNetworkValidationToDisabled) {
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ASSERT_TRUE(network_->IsConnected());
+
+  EXPECT_CALL(*network_monitor_, Start).Times(0);
+  EXPECT_CALL(*network_monitor_, Stop);
+  network_->UpdateNetworkValidationMode(
+      NetworkMonitor::ValidationMode::kDisabled);
+}
+
 TEST_F(NetworkTest, PortalDetectionStopBeforeStart) {
+  ASSERT_FALSE(network_->IsConnected());
+
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   network_->StopPortalDetection();
 }
 
-TEST_F(NetworkTest, PortalDetectionNotConnected) {
-  EXPECT_FALSE(network_->IsConnected());
-
-  EXPECT_CALL(*network_monitor_factory_, Create).Times(0);
-  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
-  EXPECT_FALSE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_FALSE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kDBusRequest));
-}
-
-TEST_F(NetworkTest, PortalDetectionStartSuccess) {
-  const int ifindex = network_->interface_index();
+TEST_F(NetworkTest, PortalDetectionStopSuccess) {
   SetNetworkStateForPortalDetection();
-
-  ExpectNetworkMonitorStartAndReturn(true);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(ifindex, /*is_failure=*/false));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(ifindex, /*is_failure=*/false));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_TRUE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-}
-
-TEST_F(NetworkTest, PortalDetectionStartFailure) {
-  const int ifindex = network_->interface_index();
-  SetNetworkStateForPortalDetection();
-
-  ExpectNetworkMonitorStartAndReturn(false);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(false));
-  EXPECT_CALL(*network_monitor_, Stop).Times(0);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(ifindex, /*is_failure=*/true));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(ifindex, /*is_failure=*/true));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_TRUE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-}
-
-TEST_F(NetworkTest, PortalDetectionRestartFailure) {
-  const int ifindex = network_->interface_index();
-  SetNetworkStateForPortalDetection();
-
-  ExpectNetworkMonitorStartAndReturn(false);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(true));
-  EXPECT_CALL(*network_monitor_, Stop).WillOnce(Return(true));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStop(ifindex, /*is_failure=*/true));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStop(ifindex, /*is_failure=*/true));
-  EXPECT_TRUE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-}
-
-TEST_F(NetworkTest, PortalDetectionStartStop) {
-  SetNetworkStateForPortalDetection();
-
-  ExpectNetworkMonitorStartAndReturn(true);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(network_->interface_index(),
-                                       /*is_failure=*/false));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(network_->interface_index(),
-                                       /*is_failure=*/false));
-  EXPECT_TRUE(network_->StartPortalDetection(
-      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  Mock::VerifyAndClearExpectations(&event_handler_);
-  Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(network_monitor_);
+  ASSERT_TRUE(network_->IsConnected());
 
   EXPECT_CALL(*network_monitor_, Stop).WillOnce(Return(true));
   EXPECT_CALL(event_handler_,
@@ -865,6 +839,89 @@ TEST_F(NetworkTest, PortalDetectionStartStop) {
               OnNetworkValidationStop(network_->interface_index(),
                                       /*is_failure=*/false));
   network_->StopPortalDetection(/*is_failure=*/false);
+}
+
+TEST_F(NetworkTest, PortalDetectionStopFailure) {
+  SetNetworkStateForPortalDetection();
+  ASSERT_TRUE(network_->IsConnected());
+
+  EXPECT_CALL(*network_monitor_, Stop).WillOnce(Return(false));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
+  network_->StopPortalDetection(/*is_failure=*/false);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestWhenNotConnected) {
+  ASSERT_FALSE(network_->IsConnected());
+
+  network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kDBusRequest);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestWhenDisabled) {
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kDisabled));
+  ASSERT_TRUE(network_->IsConnected());
+
+  EXPECT_CALL(*network_monitor_, Start).Times(0);
+  network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kDBusRequest);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestStartSuccess) {
+  const int ifindex = network_->interface_index();
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ON_CALL(*network_monitor_, IsRunning).WillByDefault(Return(false));
+  ASSERT_TRUE(network_->IsConnected());
+
+  ExpectNetworkMonitorStartAndReturn(true);
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationStart(ifindex, /*is_failure=*/false));
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationStart(ifindex, /*is_failure=*/false));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
+  network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kDBusRequest);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestRestart) {
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ON_CALL(*network_monitor_, IsRunning).WillByDefault(Return(true));
+  ASSERT_TRUE(network_->IsConnected());
+
+  ExpectNetworkMonitorStartAndReturn(true);
+  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
+  network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kDBusRequest);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestStartFailure) {
+  const int ifindex = network_->interface_index();
+  SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ON_CALL(*network_monitor_, IsRunning).WillByDefault(Return(false));
+  ASSERT_TRUE(network_->IsConnected());
+
+  ExpectNetworkMonitorStartAndReturn(false);
+  EXPECT_CALL(*network_monitor_, Stop).Times(0);
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationStart(ifindex, /*is_failure=*/true));
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationStart(ifindex, /*is_failure=*/true));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
+  network_->RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate);
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
@@ -887,22 +944,25 @@ TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
 
 TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ASSERT_TRUE(network_->IsConnected());
+
   const NetworkMonitor::Result result{
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
       .probe_result_metric = Metrics::kPortalDetectorResultHTTPSFailure,
   };
+
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(true));
+
   ExpectNetworkMonitorStartAndReturn(true);
   network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
@@ -911,6 +971,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
 
 TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ASSERT_TRUE(network_->IsConnected());
   const NetworkMonitor::Result result{
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kNoConnectivity,
@@ -920,13 +983,10 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(true));
   ExpectNetworkMonitorStartAndReturn(true);
   network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
@@ -963,6 +1023,9 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ASSERT_TRUE(network_->IsConnected());
   const NetworkMonitor::Result result{
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalRedirect,
@@ -979,7 +1042,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(true));
   ExpectNetworkMonitorStartAndReturn(true);
   network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
@@ -988,6 +1050,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   SetNetworkStateForPortalDetection();
+  ON_CALL(*network_monitor_, GetValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+  ASSERT_TRUE(network_->IsConnected());
   const NetworkMonitor::Result result{
       .num_attempts = 1,
       .validation_state = PortalDetector::ValidationState::kPortalSuspected,
@@ -1002,7 +1067,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
-  EXPECT_CALL(*network_monitor_, IsRunning).WillOnce(Return(true));
   ExpectNetworkMonitorStartAndReturn(true);
   network_->OnNetworkMonitorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalSuspected,

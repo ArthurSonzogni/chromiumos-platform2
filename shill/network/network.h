@@ -334,8 +334,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // See the detail of NetworkMonitor::Start().
   mockable void RequestNetworkValidation(
       NetworkMonitor::ValidationReason reason);
-  // Starts a network validation. See the detail of NetworkMonitor::Start().
-  mockable bool StartPortalDetection(NetworkMonitor::ValidationReason reason);
   // Stops the current network validation cycle if it is still running.
   mockable void StopPortalDetection(bool is_failure = false);
   // Returns the PortalDetector::Result from the last network validation

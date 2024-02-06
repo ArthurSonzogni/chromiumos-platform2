@@ -807,7 +807,8 @@ void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
   }
   network_monitor_->SetValidationMode(mode);
   if (previous_mode == NetworkMonitor::ValidationMode::kDisabled) {
-    StartPortalDetection(
+    network_monitor_was_running_ = network_monitor_->IsRunning();
+    network_monitor_->Start(
         NetworkMonitor::ValidationReason::kServicePropertyUpdate);
   } else if (mode == NetworkMonitor::ValidationMode::kDisabled) {
     StopPortalDetection(/*is_failure=*/false);
@@ -816,26 +817,20 @@ void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
 
 void Network::RequestNetworkValidation(
     NetworkMonitor::ValidationReason reason) {
-  // TODO(b/314693271): Merge with StartPortalDetection
-  if (!network_monitor_ || network_monitor_->GetValidationMode() ==
-                               NetworkMonitor::ValidationMode::kDisabled) {
-    LOG(INFO) << *this << ": " << __func__
-              << ": network validation is disabled";
-    return;
-  }
-  StartPortalDetection(reason);
-}
-
-bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
     LOG(INFO) << *this << ": " << __func__ << "(" << reason
-              << "): Cannot start portal detection: Network is not connected";
-    return false;
+              << "): Network is not connected";
+    return;
   }
 
+  if (network_monitor_->GetValidationMode() ==
+      NetworkMonitor::ValidationMode::kDisabled) {
+    LOG(INFO) << *this << ": " << __func__ << "(" << reason
+              << "): Network validation is disabled";
+    return;
+  }
   network_monitor_was_running_ = network_monitor_->IsRunning();
   network_monitor_->Start(reason);
-  return true;
 }
 
 void Network::OnValidationStarted(bool is_success) {
@@ -909,7 +904,8 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
     StopPortalDetection(/*is_failure=*/false);
   } else {
     // Restart the next network validation attempt.
-    StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation);
+    network_monitor_was_running_ = true;
+    network_monitor_->Start(NetworkMonitor::ValidationReason::kRetryValidation);
   }
 }
 
