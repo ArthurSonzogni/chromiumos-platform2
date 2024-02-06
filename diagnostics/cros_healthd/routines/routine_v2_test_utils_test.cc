@@ -27,14 +27,12 @@ class FakeExceptionRoutine final : public BaseRoutineControl {
 };
 
 void StartFakeExceptionRoutineButDontExpectExceptions() {
-  base::test::TestFuture<void> future;
-  RoutineObserverForTesting observer{future.GetCallback()};
-
+  RoutineObserverForTesting observer;
   FakeExceptionRoutine routine;
   routine.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
   routine.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine.Start();
-  EXPECT_TRUE(future.Wait());
+  observer.WaitUntilRoutineFinished();
 }
 
 TEST(RoutineV2TestUtilsDeathTest,

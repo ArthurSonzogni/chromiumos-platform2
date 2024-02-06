@@ -56,12 +56,11 @@ class UrandomRoutineV2Test : public testing::Test {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit(bool passed) {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> future;
-    RoutineObserverForTesting observer{future.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishUrandomDelegate(passed);
-    EXPECT_TRUE(future.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 
@@ -137,8 +136,7 @@ TEST_F(UrandomRoutineV2Test, IncrementalProgress) {
       base::BindOnce([](uint32_t error, const std::string& reason) {
         ADD_FAILURE() << "An exception has occurred when it shouldn't have.";
       }));
-  auto observer =
-      std::make_unique<RoutineObserverForTesting>(base::DoNothing());
+  auto observer = std::make_unique<RoutineObserverForTesting>();
   routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
   observer->receiver_.FlushForTesting();

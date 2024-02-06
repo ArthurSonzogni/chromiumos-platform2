@@ -91,11 +91,10 @@ class AudioDriverRoutineTest : public testing::Test {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> future;
-    RoutineObserverForTesting observer{future.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    EXPECT_TRUE(future.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 

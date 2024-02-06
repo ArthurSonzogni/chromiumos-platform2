@@ -265,11 +265,10 @@ class MemoryRoutineTest : public MemoryRoutineTestBase {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> future;
-    RoutineObserverForTesting observer{future.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    EXPECT_TRUE(future.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 
@@ -582,7 +581,7 @@ TEST_F(MemoryRoutineTest, IncrementalProgress) {
   SetExecutorOutputFromTestFile("progress_0_output");
 
   routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  RoutineObserverForTesting observer{base::DoNothing()};
+  RoutineObserverForTesting observer;
   routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
 

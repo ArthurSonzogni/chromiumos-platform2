@@ -88,12 +88,11 @@ class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit(bool passed) {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> future;
-    RoutineObserverForTesting observer{future.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     FinishPrimeSearchDelegate(passed);
-    EXPECT_TRUE(future.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 
@@ -260,8 +259,7 @@ TEST_F(PrimeSearchRoutineTest, IncrementalProgress) {
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  auto observer =
-      std::make_unique<RoutineObserverForTesting>(base::DoNothing());
+  auto observer = std::make_unique<RoutineObserverForTesting>();
   routine_->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
   observer->receiver_.FlushForTesting();

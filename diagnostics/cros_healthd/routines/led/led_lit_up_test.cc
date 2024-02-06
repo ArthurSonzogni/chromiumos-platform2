@@ -53,11 +53,10 @@ mojom::RoutineStatePtr GetRoutineState(BaseRoutineControl& routine) {
 mojom::RoutineStatePtr StartRoutineAndWaitForResult(
     BaseRoutineControl& routine) {
   routine.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  base::test::TestFuture<void> future;
-  RoutineObserverForTesting observer{future.GetCallback()};
+  RoutineObserverForTesting observer;
   routine.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine.Start();
-  EXPECT_TRUE(future.Wait());
+  observer.WaitUntilRoutineFinished();
   return std::move(observer.state_);
 }
 

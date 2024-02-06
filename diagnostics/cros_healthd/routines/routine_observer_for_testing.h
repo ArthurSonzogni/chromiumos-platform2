@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ROUTINE_OBSERVER_FOR_TESTING_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ROUTINE_OBSERVER_FOR_TESTING_H_
 
+#include <optional>
+
+#include <base/functional/callback_forward.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -14,20 +17,35 @@ namespace diagnostics {
 class RoutineObserverForTesting
     : public ash::cros_healthd::mojom::RoutineObserver {
  public:
-  explicit RoutineObserverForTesting(base::OnceClosure on_finished);
+  RoutineObserverForTesting();
   RoutineObserverForTesting(const RoutineObserverForTesting&) = delete;
   RoutineObserverForTesting& operator=(const RoutineObserverForTesting&) =
       delete;
-  ~RoutineObserverForTesting() override = default;
+  ~RoutineObserverForTesting() override;
 
+  // ash::cros_healthd::mojom::RoutineObserver overrides:
   void OnRoutineStateChange(
       ash::cros_healthd::mojom::RoutineStatePtr state) override;
+
+  // Wait for the routine to be in the finished state.
+  void WaitUntilRoutineFinished();
 
   ash::cros_healthd::mojom::RoutineStatePtr state_;
   mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_{this};
 
  private:
-  base::OnceClosure on_finished_;
+  // The config to invoke the given callback when the routine state satisfies
+  // certain conditions.
+  struct StateTriggeredAction {
+    // Whether the state satisfies the required condition.
+    base::RepeatingCallback<bool(
+        const ash::cros_healthd::mojom::RoutineStatePtr&)>
+        is_condition_satisfied;
+    // Called when |is_condition_satisfied| returns |true|.
+    base::OnceClosure on_condition_satisfied;
+  };
+
+  std::optional<StateTriggeredAction> state_action_;
 };
 
 }  // namespace diagnostics

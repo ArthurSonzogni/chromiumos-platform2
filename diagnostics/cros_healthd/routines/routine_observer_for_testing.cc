@@ -4,7 +4,15 @@
 
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 
+#include <optional>
 #include <utility>
+
+#include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
+#include <base/test/test_future.h>
+
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -12,20 +20,39 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+bool IsFinishedState(const mojom::RoutineStatePtr& state) {
+  return state->state_union->is_finished();
+}
+
 }  // namespace
 
-RoutineObserverForTesting::RoutineObserverForTesting(
-    base::OnceClosure on_finished)
-    : on_finished_(std::move(on_finished)) {}
+RoutineObserverForTesting::RoutineObserverForTesting() = default;
+
+RoutineObserverForTesting::~RoutineObserverForTesting() = default;
 
 void RoutineObserverForTesting::OnRoutineStateChange(
     mojom::RoutineStatePtr state) {
   CHECK(state);
   state_ = std::move(state);
-  if (state_->state_union->is_finished()) {
-    CHECK(on_finished_);
-    std::move(on_finished_).Run();
+  if (state_action_) {
+    if (state_action_->is_condition_satisfied.Run(state_)) {
+      CHECK(state_action_->on_condition_satisfied);
+      std::move(state_action_->on_condition_satisfied).Run();
+      state_action_.reset();
+    }
   }
+}
+
+void RoutineObserverForTesting::WaitUntilRoutineFinished() {
+  if (!state_.is_null() && IsFinishedState(state_)) {
+    return;
+  }
+  CHECK(!state_action_) << "Can set only one state action";
+  base::test::TestFuture<void> signal;
+  state_action_ = {
+      .is_condition_satisfied = base::BindRepeating(&IsFinishedState),
+      .on_condition_satisfied = signal.GetCallback()};
+  EXPECT_TRUE(signal.Wait());
 }
 
 }  // namespace diagnostics

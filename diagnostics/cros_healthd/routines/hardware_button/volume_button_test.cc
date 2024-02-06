@@ -66,14 +66,11 @@ class VolumeButtonRoutineTest : public testing::Test {
         }));
   }
 
-  // Returns a RoutineObserverForTesting to monitor the routine state. Caller
-  // must hold the returned object. Otherwise, the |on_finished| callback won't
-  // work.
+  // Returns a RoutineObserverForTesting to monitor the routine state.
   [[nodiscard]] std::unique_ptr<RoutineObserverForTesting>
-  StartRoutineAndObserve(base::OnceClosure on_finished) {
+  StartRoutineAndObserve() {
     routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(std::move(on_finished));
+    auto observer = std::make_unique<RoutineObserverForTesting>();
     routine->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());
     routine->Start();
     return observer;
@@ -127,12 +124,9 @@ TEST_F(VolumeButtonRoutineTest, PassedWhenEventReceived) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 kArbitraryTimeout);
 
-  base::test::TestFuture<void> future;
-  auto observer = StartRoutineAndObserve(future.GetCallback());
-
+  auto observer = StartRoutineAndObserve();
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeUp);
-
-  EXPECT_TRUE(future.Wait());
+  observer->WaitUntilRoutineFinished();
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -146,12 +140,9 @@ TEST_F(VolumeButtonRoutineTest, FailedWhenTimeout) {
   const base::TimeDelta timeout = base::Seconds(10);
   CreateRoutine(kArbitraryButtonType, timeout);
 
-  base::test::TestFuture<void> future;
-  auto observer = StartRoutineAndObserve(future.GetCallback());
-
+  auto observer = StartRoutineAndObserve();
   task_environment_.FastForwardBy(timeout);
-
-  EXPECT_TRUE(future.Wait());
+  observer->WaitUntilRoutineFinished();
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -166,14 +157,10 @@ TEST_F(VolumeButtonRoutineTest, FailedWhenTimeoutIfNoCorrectButtonPressed) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 timeout);
 
-  base::test::TestFuture<void> future;
-  auto observer = StartRoutineAndObserve(future.GetCallback());
-
+  auto observer = StartRoutineAndObserve();
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeDown);
-
   task_environment_.FastForwardBy(timeout);
-
-  EXPECT_TRUE(future.Wait());
+  observer->WaitUntilRoutineFinished();
 
   const auto& result = observer->state_;
   EXPECT_EQ(result->percentage, 100);
@@ -188,12 +175,9 @@ TEST_F(VolumeButtonRoutineTest, NoCrashAfterRoutineFinished) {
   CreateRoutine(mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp,
                 timeout);
 
-  base::test::TestFuture<void> future;
-  auto observer = StartRoutineAndObserve(future.GetCallback());
-
+  auto observer = StartRoutineAndObserve();
   EmitVolumeButtonEvent(mojom::VolumeButtonObserver::Button::kVolumeUp);
-
-  EXPECT_TRUE(future.Wait());
+  observer->WaitUntilRoutineFinished();
 
   const auto& result = observer->state_;
   EXPECT_TRUE(result->state_union->is_finished());

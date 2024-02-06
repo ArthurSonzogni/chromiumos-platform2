@@ -101,11 +101,10 @@ class DiskReadRoutineTest : public testing::Test {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> signal;
-    RoutineObserverForTesting observer{signal.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    EXPECT_TRUE(signal.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 

@@ -43,7 +43,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
  protected:
   UfsLifetimeRoutineTest() = default;
 
-  void SetUp() {
+  void SetUp() override {
     routine_ = std::make_unique<UfsLifetimeRoutine>(
         &mock_context_, mojom::UfsLifetimeRoutineArgument::New());
   }
@@ -72,12 +72,11 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    base::test::TestFuture<void> signal;
-    RoutineObserverForTesting observer{signal.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     routine_->Start();
-    EXPECT_TRUE(signal.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 

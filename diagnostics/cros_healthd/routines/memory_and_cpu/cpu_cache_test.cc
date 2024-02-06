@@ -94,11 +94,10 @@ class CpuCacheRoutineTest : public CpuCacheRoutineTestBase {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-    base::test::TestFuture<void> future;
-    RoutineObserverForTesting observer{future.GetCallback()};
+    RoutineObserverForTesting observer;
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
-    EXPECT_TRUE(future.Wait());
+    observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 
@@ -256,7 +255,7 @@ TEST_F(CpuCacheRoutineTest, IncrementalProgress) {
       &mock_context_, mojom::CpuCacheRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  RoutineObserverForTesting observer{base::DoNothing()};
+  RoutineObserverForTesting observer;
   routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
   observer.receiver_.FlushForTesting();
