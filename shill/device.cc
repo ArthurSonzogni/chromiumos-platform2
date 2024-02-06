@@ -418,9 +418,6 @@ void Device::OnConnectionUpdated(int interface_index) {
   }
   OnConnected();
 
-  // When already connected, a Network must exist.
-  DCHECK(GetPrimaryNetwork());
-
   // If portal detection is disabled for this technology, immediately set
   // the service state to "Online".
   if (selected_service_->GetNetworkValidationMode() ==
@@ -430,19 +427,6 @@ void Device::OnConnectionUpdated(int interface_index) {
     SetServiceState(Service::kStateOnline);
     return;
   }
-
-  // Subtle: Start portal detection after transitioning the service to the
-  // Connected state because this call may immediately transition to the Online
-  // state. Always ignore any on-going portal detection such that the latest
-  // network layer properties are used to restart portal detection. This ensures
-  // that network validation over IPv4 is prioritized on dual stack networks
-  // when IPv4 provisioning completes after IPv6 provisioning. Note that
-  // currently SetupConnection() is never called a second time if IPv6
-  // provisioning completes after IPv4 provisioning.
-  // TODO(b/314693271): Automatically start network validation in Network
-  // if the validation mode is not disabled.
-  GetPrimaryNetwork()->RequestNetworkValidation(
-      NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
 }
 
 void Device::OnNetworkStopped(int interface_index, bool is_failure) {

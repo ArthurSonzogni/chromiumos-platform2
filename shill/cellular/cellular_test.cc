@@ -3133,12 +3133,6 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
         .WillRepeatedly(Return(Service::kStateConnected));
   }
 
-  // Once the new Network is started, portal detection should be explicitly
-  // requested.
-  EXPECT_CALL(*default_pdn_,
-              RequestNetworkValidation(
-                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
-
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);
 
@@ -3462,10 +3456,6 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
   // Operation doesn't finish yet.
   EXPECT_FALSE(future.IsReady());
 
-  // Once the new Network is started, portal detection should be explicitly
-  // requested.
-  EXPECT_CALL(*tethering_pdn_, StartPortalDetection).WillOnce(Return(true));
-
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestMultiplexedInterfaceIndex2);
 
@@ -3752,12 +3742,6 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
     EXPECT_CALL(*service, state())
         .WillRepeatedly(Return(Service::kStateConnected));
   }
-
-  // Once the new Network is started, portal detection should be explicitly
-  // requested.
-  EXPECT_CALL(*default_pdn_,
-              RequestNetworkValidation(
-                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);

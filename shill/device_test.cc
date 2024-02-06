@@ -304,7 +304,6 @@ TEST_F(DeviceTest, ConnectionUpdatedWithNetworkValidationDisabled) {
   EXPECT_CALL(*service_, SetState(Service::kStateConnected));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_CALL(*network_, StopPortalDetection).Times(0);
-  EXPECT_CALL(*network_, RequestNetworkValidation).Times(0);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -321,9 +320,6 @@ TEST_F(DeviceTest, ConnectionUpdatedWithNetworkValidationEnabled) {
   EXPECT_CALL(*service_, GetNetworkValidationMode)
       .WillRepeatedly(Return(NetworkMonitor::ValidationMode::kFullValidation));
   EXPECT_CALL(*service_, SetState(Service::kStateConnected));
-  EXPECT_CALL(*network_,
-              RequestNetworkValidation(
-                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
@@ -342,11 +338,6 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyConnected) {
   EXPECT_CALL(*service_, GetNetworkValidationMode)
       .WillRepeatedly(Return(NetworkMonitor::ValidationMode::kFullValidation));
   EXPECT_CALL(*service_, SetState).Times(0);
-  EXPECT_CALL(*network_,
-              RequestNetworkValidation(
-                  NetworkMonitor::ValidationReason::kNetworkConnectionUpdate));
-
-  // Successful portal (non-)detection forces the service Online.
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,

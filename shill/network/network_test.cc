@@ -267,9 +267,8 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
       &event_handler_, &event_handler2_, &event_handler3};
 
   // EventHandler #3 is not yet registered.
-  EXPECT_CALL(event_handler_, OnNetworkStopped(network_->interface_index(), _));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkStopped(network_->interface_index(), _));
+  EXPECT_CALL(event_handler_, OnNetworkStopped(kTestIfindex, _));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, _));
   EXPECT_CALL(event_handler3, OnNetworkStopped).Times(0);
   network_->Start(Network::StartOptions{.accept_ra = true});
   network_->Stop();
@@ -280,7 +279,7 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   // All EventHandlers are registered.
   network_->RegisterEventHandler(&event_handler3);
   for (auto* ev : all_event_handlers) {
-    EXPECT_CALL(*ev, OnNetworkStopped(network_->interface_index(), _));
+    EXPECT_CALL(*ev, OnNetworkStopped(kTestIfindex, _));
   }
   network_->Start(Network::StartOptions{.accept_ra = true});
   network_->Stop();
@@ -293,7 +292,7 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   network_->RegisterEventHandler(&event_handler2_);
   network_->RegisterEventHandler(&event_handler3);
   for (auto* ev : all_event_handlers) {
-    EXPECT_CALL(*ev, OnNetworkStopped(network_->interface_index(), _)).Times(1);
+    EXPECT_CALL(*ev, OnNetworkStopped(kTestIfindex, _)).Times(1);
   }
   network_->Start(Network::StartOptions{.accept_ra = true});
   network_->Stop();
@@ -304,9 +303,8 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   // EventHandlers can be unregistered.
   network_->UnregisterEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
-  EXPECT_CALL(event_handler2_,
-              OnNetworkStopped(network_->interface_index(), _));
-  EXPECT_CALL(event_handler3, OnNetworkStopped(network_->interface_index(), _));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, _));
+  EXPECT_CALL(event_handler3, OnNetworkStopped(kTestIfindex, _));
   network_->Start(Network::StartOptions{.accept_ra = true});
   network_->Stop();
   for (auto* ev : all_event_handlers) {
@@ -329,8 +327,8 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   // Network destruction
   network_->RegisterEventHandler(&event_handler_);
   network_->RegisterEventHandler(&event_handler2_);
-  EXPECT_CALL(event_handler_, OnNetworkDestroyed(network_->interface_index()));
-  EXPECT_CALL(event_handler2_, OnNetworkDestroyed(network_->interface_index()));
+  EXPECT_CALL(event_handler_, OnNetworkDestroyed(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkDestroyed(kTestIfindex));
   EXPECT_CALL(event_handler3, OnNetworkDestroyed).Times(0);
   network_ = nullptr;
   for (auto* ev : all_event_handlers) {
@@ -355,12 +353,8 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnStopAfterStart) {
   ExpectCreateDHCPController(true);
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 
-  EXPECT_CALL(event_handler_,
-              OnNetworkStopped(network_->interface_index(), false))
-      .Times(1);
-  EXPECT_CALL(event_handler2_,
-              OnNetworkStopped(network_->interface_index(), false))
-      .Times(1);
+  EXPECT_CALL(event_handler_, OnNetworkStopped(kTestIfindex, false)).Times(1);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, false)).Times(1);
   network_->Stop();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
@@ -393,12 +387,8 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
   ExpectCreateDHCPController(true);
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 
-  EXPECT_CALL(event_handler_,
-              OnNetworkStopped(network_->interface_index(), true))
-      .Times(1);
-  EXPECT_CALL(event_handler2_,
-              OnNetworkStopped(network_->interface_index(), true))
-      .Times(1);
+  EXPECT_CALL(event_handler_, OnNetworkStopped(kTestIfindex, true)).Times(1);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, true)).Times(1);
   ASSERT_NE(dhcp_controller_, nullptr);
   dhcp_controller_->TriggerDropCallback(/*is_voluntary=*/false);
 }
@@ -502,13 +492,13 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   // Connected network with IPv4 configured, reachability event matching the
   // IPv4 gateway.
-  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
-                                  network_->interface_index(), ipv4_addr,
-                                  Role::kGateway, Status::kReachable))
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv4_addr,
+                                          Role::kGateway, Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
-                                   network_->interface_index(), ipv4_addr,
-                                   Role::kGateway, Status::kReachable))
+  EXPECT_CALL(event_handler2_,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv4_addr,
+                                          Role::kGateway, Status::kReachable))
       .Times(1);
   patchpanel::Client::NeighborReachabilityEvent event1;
   event1.ifindex = 1;
@@ -524,13 +514,13 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   // Connected network with IPv6 configured, reachability event matching the
   // IPv6 gateway.
   EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv6_addr, Role::kGatewayAndDnsServer,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv6_addr,
+                                          Role::kGatewayAndDnsServer,
                                           Status::kReachable))
       .Times(1);
   EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv6_addr, Role::kGatewayAndDnsServer,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv6_addr,
+                                          Role::kGatewayAndDnsServer,
                                           Status::kReachable))
       .Times(1);
   patchpanel::Client::NeighborReachabilityEvent event2;
@@ -586,13 +576,13 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // Connected and IPv4 configured, IPv6 reachability signals are ignored.
-  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
-                                  network_->interface_index(), ipv4_addr,
-                                  Role::kGateway, Status::kReachable))
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv4_addr,
+                                          Role::kGateway, Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
-                                   network_->interface_index(), ipv4_addr,
-                                   Role::kGateway, Status::kReachable))
+  EXPECT_CALL(event_handler2_,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv4_addr,
+                                          Role::kGateway, Status::kReachable))
       .Times(1);
   network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_address =
@@ -613,13 +603,13 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   // are ignored.
   ExpectCreateDHCPController(true);
   EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv6_addr, Role::kGatewayAndDnsServer,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv6_addr,
+                                          Role::kGatewayAndDnsServer,
                                           Status::kReachable))
       .Times(1);
   EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv6_addr, Role::kGatewayAndDnsServer,
+              OnNeighborReachabilityEvent(kTestIfindex, ipv6_addr,
+                                          Role::kGatewayAndDnsServer,
                                           Status::kReachable))
       .Times(1);
   network_->Stop();
@@ -1080,6 +1070,8 @@ class NetworkStartTest : public NetworkTest {
     bool link_protocol_ipv4 = false;
     bool link_protocol_ipv6 = false;
     bool accept_ra = false;
+    bool enable_network_validation = false;
+    bool expect_network_monitor_start = false;
   };
 
   // Each value indicates a specific kind of IPConfig used in the tests.
@@ -1136,7 +1128,20 @@ class NetworkStartTest : public NetworkTest {
         .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})
                                : std::nullopt,
         .accept_ra = test_opts.accept_ra,
+        .validation_mode = test_opts.enable_network_validation
+                               ? NetworkMonitor::ValidationMode::kFullValidation
+                               : NetworkMonitor::ValidationMode::kDisabled,
     };
+    EXPECT_CALL(*network_monitor_factory_, Create)
+        .WillOnce([&start_opts, &test_opts, this]() {
+          auto network_monitor = std::make_unique<MockNetworkMonitor>();
+          this->network_monitor_ = network_monitor.get();
+          ON_CALL(*this->network_monitor_, GetValidationMode)
+              .WillByDefault(Return(start_opts.validation_mode));
+          EXPECT_CALL(*this->network_monitor_, Start)
+              .Times(test_opts.expect_network_monitor_start ? 1 : 0);
+          return network_monitor;
+        });
     network_->Start(start_opts);
     dispatcher_.task_environment().RunUntilIdle();
   }
@@ -1301,9 +1306,13 @@ class NetworkStartTest : public NetworkTest {
 };
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
-  const TestOptions test_opts = {.dhcp = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = false};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkStopped(network_->interface_index(),
                                                /*is_failure=*/true));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
                                                 /*is_failure=*/true));
   EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
@@ -1315,8 +1324,13 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
-  const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .static_ipv4 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
 
@@ -1327,16 +1341,20 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPFailure) {
-  const TestOptions test_opts = {.dhcp = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = false};
   EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
+  EXPECT_CALL(event_handler_, OnConnectionUpdated).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure(network_->interface_index()));
   EXPECT_CALL(event_handler_, OnNetworkStopped(network_->interface_index(),
                                                /*is_failure=*/true));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure(network_->interface_index()));
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
                                                 /*is_failure=*/true));
@@ -1346,7 +1364,10 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPFailure) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPFailureWithStaticIP) {
-  const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .static_ipv4 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
@@ -1365,9 +1386,41 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPFailureWithStaticIP) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCP) {
-  const TestOptions test_opts = {.dhcp = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
+  EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
+  EXPECT_CALL(event_handler_,
+              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnGetDHCPLease(network_->interface_index()));
+  EXPECT_CALL(event_handler2_,
+              OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
+  TriggerDHCPUpdateCallback();
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kNone);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeIPv4Only);
+}
+
+TEST_F(NetworkStartTest, IPv4OnlyDHCPWithoutNetworkValidation) {
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = false,
+                                 .expect_network_monitor_start = false};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
@@ -1389,7 +1442,10 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCP) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
-  const TestOptions test_opts = {.dhcp = true, .static_ipv4 = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .static_ipv4 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4Static);
@@ -1400,15 +1456,18 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCPWithStatic);
   // Still expect the DHCP lease callback in this case.
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnGetDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnGetDHCPLease(network_->interface_index()));
   EXPECT_CALL(event_handler2_,
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   // Release DHCP should be called since we have static IP now.
   EXPECT_CALL(*dhcp_controller_,
               ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);
@@ -1419,7 +1478,9 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
-  const TestOptions test_opts = {.dhcp = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
@@ -1440,14 +1501,19 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4Static, IPConfigType::kNone);
 
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCPWithStatic);
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPAfterDHCPConnected) {
-  const TestOptions test_opts = {.dhcp = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
@@ -1461,16 +1527,23 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPAfterDHCPConnected) {
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCPWithStatic);
+  EXPECT_CALL(*network_monitor_, Start);
   ConfigureStaticIPv4Config();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyLinkProtocol) {
-  const TestOptions test_opts = {.link_protocol_ipv4 = true};
+  const TestOptions test_opts = {.link_protocol_ipv4 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
@@ -1481,12 +1554,14 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocol) {
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithStaticIP) {
-  const TestOptions test_opts = {
-      .static_ipv4 = true,
-      .link_protocol_ipv4 = true,
-  };
+  const TestOptions test_opts = {.static_ipv4 = true,
+                                 .link_protocol_ipv4 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
@@ -1498,9 +1573,13 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithStaticIP) {
 }
 
 TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
-  const TestOptions test_opts = {.accept_ra = true};
+  const TestOptions test_opts = {.accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
 
@@ -1521,9 +1600,10 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
 }
 
 TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
-  const TestOptions test_opts = {.accept_ra = true};
+  const TestOptions test_opts = {.accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   InvokeStart(test_opts);
-  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -1537,13 +1617,13 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
                   ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
   EXPECT_CALL(*network_,
               ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
-  EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerSLAACAddressUpdate(net_base::IPv6CIDR(new_addr));
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -1563,13 +1643,13 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
                   ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
   EXPECT_CALL(*network_,
               ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
-  EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerSLAACAddressUpdate(
       *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64));
   dispatcher_.task_environment().RunUntilIdle();
@@ -1578,7 +1658,9 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 }
 
 TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
-  const TestOptions test_opts = {.accept_ra = true};
+  const TestOptions test_opts = {.accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   InvokeStart(test_opts);
 
   // The Network should not be set up if there is no valid DNS.
@@ -1591,11 +1673,10 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
 
   // A valid DNS should bring the network up.
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
-  EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
   TriggerSLAACNameServersUpdate({dns_server});
@@ -1618,13 +1699,13 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
 
   // Reset the DNS server.
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
-  EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnConnectionUpdated(network_->interface_index()));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerSLAACNameServersUpdate({dns_server});
   EXPECT_EQ(network_->GetNetworkConfig().dns_servers.size(), 1);
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -1632,7 +1713,11 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
 }
 
 TEST_F(NetworkStartTest, IPv6OnlyLinkProtocol) {
-  const TestOptions test_opts = {.link_protocol_ipv6 = true};
+  const TestOptions test_opts = {.link_protocol_ipv6 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1644,7 +1729,10 @@ TEST_F(NetworkStartTest, IPv6OnlyLinkProtocol) {
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPRequestIPFailure) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = false};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1656,7 +1744,10 @@ TEST_F(NetworkStartTest, DualStackDHCPRequestIPFailure) {
 // Note that if the DHCP failure happens before we get the SLAAC address, the
 // Network will be stopped.
 TEST_F(NetworkStartTest, DualStackDHCPFailure) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = false};
   EXPECT_CALL(event_handler_, OnNetworkStopped(network_->interface_index(),
                                                /*is_failure=*/true));
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
@@ -1672,7 +1763,10 @@ TEST_F(NetworkStartTest, DualStackDHCPFailure) {
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPFailureAfterIPv6Connected) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1688,13 +1782,17 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterIPv6Connected) {
 
 // Verifies the behavior on IPv4 failure after both v4 and v6 are connected.
 TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
   TriggerDHCPUpdateCallback();
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerSLAACUpdate();
 
   // Connection should be reconfigured with IPv6 on IPv4 failure. Connection
@@ -1709,7 +1807,10 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
 
 // When configuring if received DHCP option 108, continue to wait for SLAAC.
 TEST_F(NetworkStartTest, RFC8925) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1725,7 +1826,10 @@ TEST_F(NetworkStartTest, RFC8925) {
 }
 
 TEST_F(NetworkStartTest, RFC8925IPv6ConnectedFirst) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1741,13 +1845,17 @@ TEST_F(NetworkStartTest, RFC8925IPv6ConnectedFirst) {
 
 // Verifies the behavior on option 108 after both v4 and v6 are connected.
 TEST_F(NetworkStartTest, RFC8925Option108AfterIPv4Connected) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
   TriggerDHCPUpdateCallback();
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerSLAACUpdate();
 
   // Connection should be reconfigured with IPv6. Connection should be reset.
@@ -1757,7 +1865,10 @@ TEST_F(NetworkStartTest, RFC8925Option108AfterIPv4Connected) {
 }
 
 TEST_F(NetworkStartTest, DualStackSLAACFirst) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1769,6 +1880,7 @@ TEST_F(NetworkStartTest, DualStackSLAACFirst) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
+  EXPECT_CALL(*network_monitor_, Start);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
@@ -1777,7 +1889,10 @@ TEST_F(NetworkStartTest, DualStackSLAACFirst) {
 }
 
 TEST_F(NetworkStartTest, DualStackDHCPFirst) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1805,7 +1920,9 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
 // then IPv4.
 TEST_F(NetworkStartTest, DualStackLinkProtocol) {
   const TestOptions test_opts = {.link_protocol_ipv4 = true,
-                                 .link_protocol_ipv6 = true};
+                                 .link_protocol_ipv6 = true,
+                                 .enable_network_validation = false,
+                                 .expect_network_monitor_start = false};
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
 
@@ -1823,7 +1940,10 @@ TEST_F(NetworkStartTest, DualStackLinkProtocol) {
 
 // Verifies that the exposed IPConfig objects should be cleared on stopped.
 TEST_F(NetworkStartTest, Stop) {
-  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  const TestOptions test_opts = {.dhcp = true,
+                                 .accept_ra = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);

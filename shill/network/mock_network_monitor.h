@@ -22,6 +22,10 @@ class MockNetworkMonitor : public NetworkMonitor {
   MockNetworkMonitor();
   ~MockNetworkMonitor() override;
 
+  MOCK_METHOD(NetworkMonitor::ValidationMode,
+              GetValidationMode,
+              (),
+              (override));
   MOCK_METHOD(void, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));

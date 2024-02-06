@@ -250,7 +250,8 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
 }
 
 void Network::OnSetupConnectionFinished(bool success) {
-  LOG(INFO) << *this << ": " << __func__;
+  LOG(INFO) << *this << ": " << __func__ << "(success: " << std::boolalpha
+            << success << ")";
   if (!success) {
     StopInternal(/*is_failure=*/true,
                  /*trigger_callback=*/state_ == State::kConnected);
@@ -267,6 +268,17 @@ void Network::OnSetupConnectionFinished(bool success) {
         base::Seconds(30));
   }
   state_ = State::kConnected;
+
+  // Subtle: Start portal detection after transitioning the service to the
+  // Connected state because this call may immediately transition to the Online
+  // state. Always ignore any on-going portal detection such that the latest
+  // network layer properties are used to restart portal detection. This ensures
+  // that network validation over IPv4 is prioritized on dual stack networks
+  // when IPv4 provisioning completes after IPv6 provisioning. Note that
+  // currently SetupConnection() is never called a second time if IPv6
+  // provisioning completes after IPv4 provisioning.
+  RequestNetworkValidation(
+      NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
 
   for (auto& ev : event_handlers_) {
     ev.OnConnectionUpdated(interface_index_);
