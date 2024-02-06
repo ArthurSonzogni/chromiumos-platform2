@@ -69,6 +69,12 @@ class PowerOpt;
 // TODO(hugobenichi): simplify access patterns to the Manager properties and
 // remove virtual mockable getter functions in Manager.
 struct ManagerProperties {
+  // Configuration for auto disconnecting wifi when ethernet is available.
+  // |kOff| means the feature is not turned on, while |kConnected| and |kOnline|
+  // means wifi will be auto disconnected when an ethernet service becomes
+  // a connected state or Online, correspondingly.
+  enum class DisconnectWiFiOnEthernet { kOff, kConnected, kOnline };
+
   // Comma separated list of technologies for which portal detection is
   // enabled.
   std::string check_portal_list;
@@ -111,6 +117,8 @@ struct ManagerProperties {
   std::optional<bool> ft_enabled;
   bool scan_allow_roam = true;
   std::string request_scan_type;
+  DisconnectWiFiOnEthernet disconnect_wifi_on_ethernet =
+      DisconnectWiFiOnEthernet::kOff;
 };
 
 class Manager {
@@ -580,6 +588,8 @@ class Manager {
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
+  FRIEND_TEST(ManagerTest, DisconnectWiFiOnEthernet);
+  FRIEND_TEST(ManagerTest, DisconnectWiFiOnMultiEthernet);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, GetPortalDetectorProbingConfiguration);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
@@ -790,6 +800,10 @@ class Manager {
   // Notifies Metrics when the default logical Service has changed.
   void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
 
+  // Iterate through all Ethernet services to check if any of them matches the
+  // current disconnect-wifi-on-ethernet criteria.
+  bool HasEthernetMatchingDisconnectWiFiCriteria();
+
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
@@ -902,6 +916,10 @@ class Manager {
 
   // Whether any of the services is in connected state or not.
   bool is_connected_state_;
+
+  // Used to judge whether wifi should be auto-connectable. Only meaningful when
+  // props_.disconnect_wifi_on_ethernet is not kOff.
+  bool disable_wifi_autoconnect_ = false;
 
   // Set to true if there is a user session, which is inferred based on calls
   // to Manager::InsertUserProfile() and Manager::PopAllUserProfiles().

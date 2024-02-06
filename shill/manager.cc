@@ -1023,6 +1023,9 @@ bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {
     // Auto connect is disabled on VPNs when the always-on VPN is enabled.
     return true;
   }
+  if (technology == Technology::kWiFi && disable_wifi_autoconnect_) {
+    return true;
+  }
   return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
 
@@ -1433,7 +1436,51 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
   SortServices();
 }
 
+bool Manager::HasEthernetMatchingDisconnectWiFiCriteria() {
+  if (props_.disconnect_wifi_on_ethernet ==
+      ManagerProperties::DisconnectWiFiOnEthernet::kOff) {
+    return false;
+  }
+
+  for (const auto& service : services_) {
+    if (service->technology() != Technology::kEthernet) {
+      continue;
+    }
+    if (props_.disconnect_wifi_on_ethernet ==
+            ManagerProperties::DisconnectWiFiOnEthernet::kConnected &&
+        Service::IsConnectedState(service->state())) {
+      return true;
+    }
+    if (props_.disconnect_wifi_on_ethernet ==
+            ManagerProperties::DisconnectWiFiOnEthernet::kOnline &&
+        service->state() == Service::ConnectState::kStateOnline) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Manager::NotifyServiceStateChanged(const ServiceRefPtr& to_update) {
+  if (to_update->technology() == Technology::kEthernet) {
+    bool disable_wifi_autoconnect_previous = disable_wifi_autoconnect_;
+    disable_wifi_autoconnect_ = HasEthernetMatchingDisconnectWiFiCriteria();
+
+    if (!disable_wifi_autoconnect_previous && disable_wifi_autoconnect_) {
+      LOG(INFO) << "Ethernet becomes "
+                << Service::ConnectStateToString(to_update->state())
+                << ", disconnecting any connected WiFi service.";
+      Error e;
+      for (const auto& service : services_) {
+        if (service->technology() == Technology::kWiFi &&
+            (service->IsConnected() || service->IsConnecting())) {
+          service->Disconnect(&e, "Auto disconnect");
+        }
+      }
+    }
+    // The UpdateService() below will trigger AutoConnect and check
+    // disable_wifi_autoconnect_ so we don't need to explicitly call it here.
+  }
+
   UpdateService(to_update);
   if (to_update != last_default_physical_service_) {
     return;

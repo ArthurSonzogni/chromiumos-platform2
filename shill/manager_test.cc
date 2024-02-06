@@ -2370,6 +2370,130 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->DeregisterService(mock_service0);
 }
 
+TEST_F(ManagerTest, DisconnectWiFiOnEthernet) {
+  MockServiceRefPtr mock_service_eth(new NiceMock<MockService>(manager()));
+  ON_CALL(*mock_service_eth, technology)
+      .WillByDefault(Return(Technology::kEthernet));
+  MockServiceRefPtr mock_service_wifi(new NiceMock<MockService>(manager()));
+  ON_CALL(*mock_service_wifi, technology)
+      .WillByDefault(Return(Technology::kWiFi));
+  ON_CALL(*mock_service_wifi, IsConnected).WillByDefault(Return(true));
+  manager()->RegisterService(mock_service_eth);
+  manager()->RegisterService(mock_service_wifi);
+
+  manager()->props_.disconnect_wifi_on_ethernet =
+      ManagerProperties::DisconnectWiFiOnEthernet::kConnected;
+  // Non connected state -> connected state will trigger WiFi disconnect.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateConnected));
+  EXPECT_CALL(*mock_service_wifi, Disconnect);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+  // Connected state -> connected state will not trigger WiFi disconnect.
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+  // Connected state -> non connected state will not trigger WiFi disconnect.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateIdle));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+  // Non connected state -> non connected state will not trigger WiFi
+  // disconnect.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateAssociating));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  manager()->props_.disconnect_wifi_on_ethernet =
+      ManagerProperties::DisconnectWiFiOnEthernet::kOnline;
+  // Idle -> Connected will not trigger WiFi disconnect.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateConnected));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+  // Connected -> Online will trigger WiFi disconnect.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateOnline));
+  EXPECT_CALL(*mock_service_wifi, Disconnect);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  manager()->props_.disconnect_wifi_on_ethernet =
+      ManagerProperties::DisconnectWiFiOnEthernet::kOff;
+  // WiFi disconnect will not be triggered.
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateIdle));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+  EXPECT_CALL(*mock_service_eth, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateOnline));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  manager()->DeregisterService(mock_service_wifi);
+  manager()->DeregisterService(mock_service_eth);
+}
+
+TEST_F(ManagerTest, DisconnectWiFiOnMultiEthernet) {
+  MockServiceRefPtr mock_service_eth1(new NiceMock<MockService>(manager()));
+  ON_CALL(*mock_service_eth1, technology)
+      .WillByDefault(Return(Technology::kEthernet));
+  MockServiceRefPtr mock_service_eth2(new NiceMock<MockService>(manager()));
+  ON_CALL(*mock_service_eth2, technology)
+      .WillByDefault(Return(Technology::kEthernet));
+  MockServiceRefPtr mock_service_wifi(new NiceMock<MockService>(manager()));
+  ON_CALL(*mock_service_wifi, technology)
+      .WillByDefault(Return(Technology::kWiFi));
+  ON_CALL(*mock_service_wifi, IsConnected).WillByDefault(Return(true));
+  manager()->RegisterService(mock_service_eth1);
+  manager()->RegisterService(mock_service_eth2);
+  manager()->RegisterService(mock_service_wifi);
+  manager()->props_.disconnect_wifi_on_ethernet =
+      ManagerProperties::DisconnectWiFiOnEthernet::kConnected;
+
+  // First ethernet becoming connected should trigger wifi disconnect.
+  EXPECT_CALL(*mock_service_eth1, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateConnected));
+  EXPECT_CALL(*mock_service_eth2, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateIdle));
+  EXPECT_CALL(*mock_service_wifi, Disconnect);
+  manager()->NotifyServiceStateChanged(mock_service_eth1);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  // Second ethernet becoming connected should not trigger wifi disconnect, and
+  // should keep wifi autoconnect disabled.
+  EXPECT_CALL(*mock_service_eth2, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateConnected));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth2);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  // First ethernet becoming disconnected should not change wifi autoconnect
+  // disable state.
+  EXPECT_CALL(*mock_service_eth1, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateIdle));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth1);
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  // Second ethernet becoming disconnected should re-enable wifi autoconnect.
+  EXPECT_CALL(*mock_service_eth2, state)
+      .WillRepeatedly(Return(Service::ConnectState::kStateIdle));
+  EXPECT_CALL(*mock_service_wifi, Disconnect).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service_eth2);
+  EXPECT_FALSE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
+
+  manager()->DeregisterService(mock_service_wifi);
+  manager()->DeregisterService(mock_service_eth1);
+  manager()->DeregisterService(mock_service_eth2);
+}
+
 #if !defined(DISABLE_VPN)
 TEST_F(ManagerTest, FindDeviceFromService) {
   MockServiceRefPtr not_selected_service(new MockService(manager()));
