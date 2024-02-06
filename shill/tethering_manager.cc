@@ -1066,6 +1066,12 @@ void TetheringManager::OnDownstreamNetworkReady(
 void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
                                                  Network* network,
                                                  ServiceRefPtr service) {
+  if (state_ == TetheringState::kTetheringStopping) {
+    // Ignore this event when tethering start is aborted.
+    // TODO(b/323251708): cancel this callback when tethering start is aborted.
+    return;
+  }
+
   if (result != SetEnabledResult::kSuccess) {
     LOG(ERROR) << __func__ << ": no upstream " << upstream_technology_
                << " Network available";
