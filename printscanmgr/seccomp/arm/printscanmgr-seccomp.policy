@@ -78,3 +78,4 @@ eventfd2: 1
 mremap: 1
 madvise: 1
 unlinkat: 1
+gettimeofday: 1
