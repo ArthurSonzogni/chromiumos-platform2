@@ -442,6 +442,7 @@ type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ml_core, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemfwd, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_modemloggerd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_node_exporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
@@ -501,6 +502,7 @@ type cros_var_log_hypervisor, file_type, cros_log_type, cros_file_type, cros_var
 type cros_var_log_lorgnette, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_modemfwd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_modemloggerd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_node_exporter, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_os_install_service, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_recover_duts, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
