@@ -116,7 +116,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorNotSubscribedMM1, Error::kInvalidApn),
         TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
         TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),
-        TestParam(kErrorThrottledMM1, Error::kInvalidApn),
+        TestParam(kErrorThrottledMM1, Error::kThrottled),
         TestParam(kErrorNoCellsInArea, Error::kNoCarrier),
         TestParam(kErrorPlmnNotAllowed, Error::kNoCarrier),
         TestParam(kErrorServiceOptionNotAuthorizedInPlmn, Error::kNoCarrier),
