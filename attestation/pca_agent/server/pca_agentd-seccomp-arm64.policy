@@ -103,3 +103,5 @@ prlimit64: arg2 == 0 && arg3 != 0
 fstatfs: 1
 
 process_vm_readv: 1
+
+flock: 1

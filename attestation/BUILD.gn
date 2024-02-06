@@ -252,6 +252,7 @@ generate_dbus_proxies("pca-agent-proxies") {
 source_set("pca_agent_server_library") {
   sources = [
     "pca_agent/server/default_transport_factory.cc",
+    "pca_agent/server/metrics.cc",
     "pca_agent/server/pca_agent_service.cc",
     "pca_agent/server/pca_request.cc",
     "pca_agent/server/rks_agent_service.cc",
@@ -259,7 +260,10 @@ source_set("pca_agent_server_library") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":pca-agent-adaptors" ]
-  pkg_deps = [ "libshill-client" ]
+  pkg_deps = [
+    "libmetrics",
+    "libshill-client",
+  ]
 }
 
 executable("pca_agentd") {

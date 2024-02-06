@@ -238,6 +238,7 @@ void RksCertificateFetcher::OnFetchSignatureSuccess(
   certificate_.set_certificate_xml(cert_xml);
   certificate_.set_signature_xml(std::move(*sig_xml));
   on_cert_fetched.Run(certificate_);
+  metrics_.ReportCertificateFetchResult(CertificateFetchResult::kSuccess);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -256,6 +257,7 @@ void RksCertificateFetcher::OnFetchGetError(
 
 void RksCertificateFetcher::OnFetchError(
     OnCertFetchedCallback on_cert_fetched) {
+  metrics_.ReportCertificateFetchResult(CertificateFetchResult::kFailed);
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&RksCertificateFetcher::Fetch, weak_factory_.GetWeakPtr(),

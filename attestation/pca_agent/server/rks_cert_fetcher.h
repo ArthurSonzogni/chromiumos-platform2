@@ -19,6 +19,7 @@
 #include <shill/dbus-proxies.h>
 
 #include "attestation/pca_agent/server/default_transport_factory.h"
+#include "attestation/pca_agent/server/metrics.h"
 #include "attestation/pca_agent/server/pca_http_utils.h"
 
 namespace attestation {
@@ -146,6 +147,8 @@ class RksCertificateFetcher final : private DefaultTransportFactory,
 
   // Most recently fetched certificate files.
   RksCertificateAndSignature certificate_;
+
+  Metrics metrics_;
 
   base::WeakPtrFactory<RksCertificateFetcher> weak_factory_{this};
 };
