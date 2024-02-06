@@ -53,8 +53,6 @@ The repository hosts the core ChromeOS Health Service components, including:
   access.
 * [core health service daemon](./cros_healthd) (a.k.a. `cros_healthd`) provides
   core functionalities.
-* [Legacy Wilco services](./docs/wilco_dtc.md) provide telemetry and
-  diagnostics on Wilco devices.
 
 [g3doc]: http://go/cros-tdm-g3doc
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
