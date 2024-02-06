@@ -277,9 +277,6 @@ mod tests {
         ))
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_process_state() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -310,9 +307,6 @@ mod tests {
         let _ = join_handle.await;
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_process_state_invalid_state() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -325,9 +319,6 @@ mod tests {
         assert!(matches!(result.err().unwrap(), Error::InvalidState));
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_process_state_invalid_pid() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -357,9 +348,6 @@ mod tests {
         assert!(matches!(result.err().unwrap(), Error::ProcessNotFound));
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_thread_state() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -389,9 +377,6 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_thread_state_invalid_state() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -404,9 +389,6 @@ mod tests {
         assert!(matches!(result.err().unwrap(), Error::InvalidState));
     }
 
-    // sched_getattr(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_set_thread_state_invalid_pid() {
         let sched_ctx = create_schedqos_context_for_test();
@@ -438,9 +420,6 @@ mod tests {
         assert!(matches!(result.err().unwrap(), Error::ProcessNotFound));
     }
 
-    // pidfd_open(2) is not supported on qemu-user which CQ uses to run tests for non-x86_64
-    // boards.
-    #[cfg(target_arch = "x86_64")]
     #[tokio::test]
     async fn test_create_async_pidfd() {
         assert!(create_async_pidfd(std::process::id()).is_ok());
