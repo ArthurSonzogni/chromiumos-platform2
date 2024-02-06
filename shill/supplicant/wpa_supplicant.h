@@ -97,11 +97,13 @@ class WPASupplicant {
   static constexpr char kKeyManagementFTEAP[] = "FT-EAP";
   static constexpr char kKeyManagementFTPSK[] = "FT-PSK";
   static constexpr char kKeyManagementFTSAE[] = "FT-SAE";
+  static constexpr char kKeyManagementFTSAEEXTKEY[] = "FT-SAE-EXT-KEY";
   static constexpr char kKeyManagementWPAEAP[] = "WPA-EAP";
   static constexpr char kKeyManagementWPAEAPSHA256[] = "WPA-EAP-SHA256";
   static constexpr char kKeyManagementWPAPSK[] = "WPA-PSK";
   static constexpr char kKeyManagementWPAPSKSHA256[] = "WPA-PSK-SHA256";
   static constexpr char kKeyManagementSAE[] = "SAE";
+  static constexpr char kKeyManagementSAEEXTKEY[] = "SAE-EXT-KEY";
   static constexpr char kKeyManagementOWE[] = "OWE";
   static constexpr char kKeyManagementMethodPrefixEAP[] = "wpa-eap";
   static constexpr char kKeyManagementMethodSuffixEAP[] = "-eap";
@@ -110,6 +112,7 @@ class WPASupplicant {
   static constexpr char kKeyManagementMethodSuiteB[] = "-suite-b";
   static constexpr char kKeyManagementMethodSuffixEAPSHA256[] = "-eap-sha256";
   static constexpr char kKeyManagementMethodSAE[] = "sae";
+  static constexpr char kKeyManagementMethodSAEEXTKEY[] = "sae-ext-key";
   static constexpr char kKeyManagementMethodOWE[] = "owe";
   static constexpr char kKeyManagementNone[] = "NONE";
   static constexpr char kNetworkBgscanMethodLearn[] = "learn";

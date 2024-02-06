@@ -571,6 +571,8 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 
   for (const auto& method : key_management_vec) {
     if (base::EndsWith(method, WPASupplicant::kKeyManagementMethodSAE,
+                       base::CompareCase::SENSITIVE) ||
+        base::EndsWith(method, WPASupplicant::kKeyManagementMethodSAEEXTKEY,
                        base::CompareCase::SENSITIVE)) {
       // sae and ft-sae
       key_management_methods->insert(kKeyManagementSAE);
