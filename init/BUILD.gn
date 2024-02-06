@@ -60,6 +60,7 @@ pkg_config("target_defaults") {
     "USE_FSVERITY=${use.fsverity}",
     "USE_LVM_MIGRATION=${use.lvm_migration}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
+    "USE_DISABLE_LVM_INSTALL=${use.disable_lvm_install}",
     "USE_PRJQUOTA=${use.prjquota}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",

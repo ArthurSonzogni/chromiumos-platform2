@@ -53,6 +53,8 @@ class ClobberState {
     // Preserve LVM stateful without wiping entire stateful partition.
     // (Only supported/enforced on LVM stateful devices)
     bool preserve_lvs = false;
+    // Force disable LVM stateful, even if the device supports it.
+    bool disable_lvm_install = false;
   };
 
   struct DeviceWipeInfo {

@@ -218,8 +218,14 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.ad_migration_wipe = true;
     } else if (arg == "preserve_lvs") {
       args.preserve_lvs = USE_LVM_STATEFUL_PARTITION;
+    } else if (arg == "disable_lvm_install" || USE_DISABLE_LVM_INSTALL) {
+      args.disable_lvm_install = true;
     }
   }
+
+  if (args.disable_lvm_install)
+    args.preserve_lvs = false;
+
   return args;
 }
 
@@ -757,6 +763,8 @@ int ClobberState::Run() {
     log_preserve.AddArg("rma");
   if (args_.ad_migration_wipe)
     log_preserve.AddArg("ad_migration");
+  if (args_.disable_lvm_install)
+    log_preserve.AddArg("disable_lvm_install");
 
   log_preserve.RedirectOutputToMemory(true);
   log_preserve.Run();
@@ -800,7 +808,7 @@ int ClobberState::Run() {
     new_stateful_filesystem_device =
         clobber_lvm_->CreateLogicalVolumeStackForPreserved(
             wipe_info_.stateful_partition_device);
-  } else if (USE_LVM_STATEFUL_PARTITION) {
+  } else if (USE_LVM_STATEFUL_PARTITION && !args_.disable_lvm_install) {
     new_stateful_filesystem_device = clobber_lvm_->CreateLogicalVolumeStack(
         wipe_info_.stateful_partition_device);
   } else {

@@ -91,6 +91,7 @@ _IUSE = [
     "device_mapper",
     "dhcpv6",
     "direncryption",
+    "disable_lvm_install",
     "dlc",
     "enable_slow_boot_notify",
     "encrypted_reboot_vault",
