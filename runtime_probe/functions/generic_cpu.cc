@@ -54,7 +54,8 @@ void ProbeCpuTelemetryInfoCallback(
     for (const auto& physical_cpu_info : cpu_info->physical_cpus) {
       probe_result.Append(
           base::Value::Dict()
-              .Set("cores", CountLogicalCores(physical_cpu_info))
+              .Set("cores",
+                   std::to_string(CountLogicalCores(physical_cpu_info)))
               .Set("model",
                    physical_cpu_info->model_name.value_or(kUnknownModel)));
     }

@@ -100,7 +100,7 @@ TEST_F(GenericCpuTest, Suceed) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "cores": 4,
+        "cores": "4",
         "model": "fake model name"
       }
     ]
@@ -120,7 +120,7 @@ TEST_F(GenericCpuTest, SingleCoreMultiThreads) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "cores": 2,
+        "cores": "2",
         "model": "fake model name"
       }
     ]
@@ -139,7 +139,7 @@ TEST_F(GenericCpuTest, NoModelName) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "cores": 4,
+        "cores": "4",
         "model": "unknown"
       }
     ]
