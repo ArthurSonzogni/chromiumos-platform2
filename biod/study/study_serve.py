@@ -300,7 +300,7 @@ class FingerWebSocket(WebSocket):
         self.send(json.dumps(req), False)
 
 
-class Root(object):
+class Root:
     """Serve the static HTML/CSS and connect the websocket."""
 
     def __init__(self, cmdline_args):
