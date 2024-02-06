@@ -72,12 +72,10 @@ PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
     std::string_view ifname,
     const ProbingConfiguration& probing_configuration,
-    ResultCallback callback,
     std::string_view logging_tag)
     : dispatcher_(dispatcher),
       ifname_(ifname),
       probing_configuration_(probing_configuration),
-      portal_result_callback_(callback),
       logging_tag_(logging_tag) {}
 
 PortalDetector::~PortalDetector() = default;
@@ -103,7 +101,8 @@ const net_base::HttpUrl& PortalDetector::PickProbeUrl(
 }
 
 void PortalDetector::Start(net_base::IPFamily ip_family,
-                           const std::vector<net_base::IPAddress>& dns_list) {
+                           const std::vector<net_base::IPAddress>& dns_list,
+                           ResultCallback callback) {
   if (IsRunning()) {
     LOG(INFO) << LoggingTag() << ": Attempt is already running";
     return;
@@ -138,8 +137,8 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   attempt_count_++;
   result_ = Result();
   result_->num_attempts = attempt_count_;
-  is_running_ = true;
   last_attempt_start_time_ = base::TimeTicks::Now();
+  result_callback_ = std::move(callback);
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
@@ -153,12 +152,13 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
 
 void PortalDetector::StopTrialIfComplete(Result result) {
   LOG(INFO) << LoggingTag() << ": " << result;
-  if (!result.IsComplete()) {
+  if (result_callback_.is_null() || !result.IsComplete()) {
     return;
   }
+
   CleanupTrial();
   previous_result_ = result;
-  portal_result_callback_.Run(result);
+  std::move(result_callback_).Run(result);
 }
 
 void PortalDetector::CleanupTrial() {
@@ -166,13 +166,13 @@ void PortalDetector::CleanupTrial() {
   http_request_.reset();
   https_request_.reset();
   ip_family_ = std::nullopt;
-  is_running_ = false;
 }
 
 void PortalDetector::Reset() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
   previous_result_ = std::nullopt;
+  result_callback_.Reset();
   CleanupTrial();
 }
 
@@ -235,7 +235,7 @@ void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
 }
 
 bool PortalDetector::IsRunning() const {
-  return is_running_;
+  return !result_callback_.is_null();
 }
 
 std::optional<size_t> PortalDetector::GetContentLength(

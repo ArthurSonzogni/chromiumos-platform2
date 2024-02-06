@@ -221,25 +221,27 @@ class PortalDetector {
     // and |https_duration| values are ignored in the comparison.
     bool operator==(const Result& rhs) const;
   };
-  using ResultCallback = base::RepeatingCallback<void(const Result&)>;
+  using ResultCallback = base::OnceCallback<void(const Result&)>;
 
   PortalDetector(EventDispatcher* dispatcher,
                  std::string_view ifname,
                  const ProbingConfiguration& probing_configuration,
-                 ResultCallback callback,
                  std::string_view logging_tag);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
 
   virtual ~PortalDetector();
 
-  // Starts a new portal detection attempt. Nothing happens if an attempt is
-  // already running.
+  // Starts a new portal detection attempt. |callback| will be executed when the
+  // attempt has been finished. Nothing happens and |callback| will be dropped
+  // if an attempt is already running.
+  // Note: |callback| won't be executed after the PortalDetector is destroyed.
   mockable void Start(net_base::IPFamily ip_family,
-                      const std::vector<net_base::IPAddress>& dns_list);
+                      const std::vector<net_base::IPAddress>& dns_list,
+                      ResultCallback callback);
 
   // Resets the instance to initial state. If the portal detection attempt is
-  // running, then stop it and do not call the callback.
+  // running, then stop it and drop the callback.
   mockable void Reset();
 
   // Returns whether a portal detection attempt is running.
@@ -309,12 +311,14 @@ class PortalDetector {
   EventDispatcher* dispatcher_;
   std::string ifname_;
   ProbingConfiguration probing_configuration_;
-  ResultCallback portal_result_callback_;
   std::string logging_tag_;
+
+  // The callback that returns the result to the caller. It's not null if and
+  // only if there is an attempt running.
+  ResultCallback result_callback_;
 
   // The IP family of the current trial. Used for logging.
   std::optional<net_base::IPFamily> ip_family_ = std::nullopt;
-  bool is_running_ = false;
   // The total number of detection attempts scheduled so far. Only used in logs
   // for debugging purposes, and for selecting the URL of detection and
   // validation probes.

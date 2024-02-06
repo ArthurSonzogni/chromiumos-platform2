@@ -103,10 +103,7 @@ NetworkMonitor::NetworkMonitor(
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
   portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, interface_, probing_configuration_,
-      base::BindRepeating(&NetworkMonitor::OnPortalDetectorResult,
-                          weak_ptr_factory_.GetWeakPtr()),
-      logging_tag_);
+      dispatcher_, interface_, probing_configuration_, logging_tag_);
 }
 
 NetworkMonitor::~NetworkMonitor() {
@@ -158,7 +155,10 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
   }
 
   result_from_portal_detector_.reset();
-  portal_detector_->Start(*ip_family, dns_list);
+  portal_detector_->Start(
+      *ip_family, dns_list,
+      base::BindOnce(&NetworkMonitor::OnPortalDetectorResult,
+                     base::Unretained(this)));
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
   if (capport_proxy_) {

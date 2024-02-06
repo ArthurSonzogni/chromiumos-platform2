@@ -255,8 +255,6 @@ class NetworkMonitor {
 
   std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
-
-  base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_{this};
 };
 
 class NetworkMonitorFactory {

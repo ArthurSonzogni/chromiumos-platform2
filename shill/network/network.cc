@@ -885,11 +885,11 @@ void Network::StartConnectivityTest(
   }
   LOG(INFO) << *this << ": Starting Internet connectivity test";
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, interface_name_, probe_config,
-      base::BindRepeating(&Network::ConnectivityTestCallback,
-                          weak_factory_.GetWeakPtr(), logging_tag_),
-      logging_tag_);
-  connectivity_test_portal_detector_->Start(*family, dns_list);
+      dispatcher_, interface_name_, probe_config, logging_tag_);
+  connectivity_test_portal_detector_->Start(
+      *family, dns_list,
+      base::BindOnce(&Network::ConnectivityTestCallback,
+                     weak_factory_.GetWeakPtr(), logging_tag_));
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,

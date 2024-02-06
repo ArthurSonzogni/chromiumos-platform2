@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_connection.h>
@@ -87,13 +88,9 @@ MATCHER(ZeroDelay, "") {
 class TestablePortalDetector : public PortalDetector {
  public:
   TestablePortalDetector(EventDispatcher* dispatcher,
-                         const ProbingConfiguration& probing_configuration,
-                         base::RepeatingCallback<void(const Result&)> callback)
-      : PortalDetector(dispatcher,
-                       kInterfaceName,
-                       probing_configuration,
-                       callback,
-                       "tag") {}
+                         const ProbingConfiguration& probing_configuration)
+      : PortalDetector(
+            dispatcher, kInterfaceName, probing_configuration, "tag") {}
   TestablePortalDetector(const TestablePortalDetector&) = delete;
   TestablePortalDetector& operator=(const TestablePortalDetector&) = delete;
   ~TestablePortalDetector() override = default;
@@ -118,28 +115,13 @@ class PortalDetectorTest : public Test {
             https_probe_transport_)),
         interface_name_(kInterfaceName),
         dns_servers_({kDNSServer0, kDNSServer1}),
-        portal_detector_(
-            new TestablePortalDetector(&dispatcher_,
-                                       MakeProbingConfiguration(),
-                                       callback_target_.result_callback())) {}
+        portal_detector_(new TestablePortalDetector(
+            &dispatcher_, MakeProbingConfiguration())) {}
 
  protected:
   class CallbackTarget {
    public:
-    CallbackTarget()
-        : result_callback_(base::BindRepeating(&CallbackTarget::ResultCallback,
-                                               base::Unretained(this))) {}
-
     MOCK_METHOD(void, ResultCallback, (const PortalDetector::Result&));
-
-    base::RepeatingCallback<void(const PortalDetector::Result&)>&
-    result_callback() {
-      return result_callback_;
-    }
-
-   private:
-    base::RepeatingCallback<void(const PortalDetector::Result&)>
-        result_callback_;
   };
 
   static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
@@ -183,8 +165,10 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(std::unique_ptr<MockHttpRequest>(https_request_)));
     EXPECT_CALL(*http_request_, Start);
     EXPECT_CALL(*https_request_, Start);
-    portal_detector_->Start(net_base::IPFamily::kIPv4,
-                            {kDNSServer0, kDNSServer1});
+    portal_detector_->Start(
+        net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+        base::BindOnce(&CallbackTarget::ResultCallback,
+                       base::Unretained(&callback_target_)));
   }
 
   MockHttpRequest* http_request() { return http_request_; }
@@ -201,8 +185,6 @@ class PortalDetectorTest : public Test {
 
   void ExpectReset() {
     EXPECT_EQ(0, portal_detector_->attempt_count());
-    EXPECT_TRUE(callback_target_.result_callback() ==
-                portal_detector_->portal_result_callback_);
     ExpectCleanupTrial();
   }
 
@@ -253,8 +235,8 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
   auto config = MakeProbingConfiguration();
   config.portal_https_url =
       *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpsUrl);
-  auto portal_detector = std::make_unique<TestablePortalDetector>(
-      &dispatcher_, config, callback_target_.result_callback());
+  auto portal_detector =
+      std::make_unique<TestablePortalDetector>(&dispatcher_, config);
 
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false. Second request for the HTTPS probe with the default URL: set
@@ -266,7 +248,8 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
       .WillOnce(Return(std::make_unique<MockHttpRequest>()))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list);
+  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list,
+                         base::DoNothing());
   portal_detector->Reset();
 }
 
@@ -275,8 +258,8 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
   auto config = MakeProbingConfiguration();
   ASSERT_NE(config.portal_https_url, *net_base::HttpUrl::CreateFromString(
                                          PortalDetector::kDefaultHttpsUrl));
-  auto portal_detector = std::make_unique<TestablePortalDetector>(
-      &dispatcher_, config, callback_target_.result_callback());
+  auto portal_detector =
+      std::make_unique<TestablePortalDetector>(&dispatcher_, config);
 
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false.
@@ -293,7 +276,8 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
                         /*allow_non_google_https=*/true))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list);
+  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list,
+                         base::DoNothing());
   portal_detector->Reset();
 }
 
@@ -411,8 +395,8 @@ TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
-  portal_detector_->Start(net_base::IPFamily::kIPv4,
-                          {kDNSServer0, kDNSServer1});
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::DoNothing());
   EXPECT_EQ(1, portal_detector()->attempt_count());
   EXPECT_TRUE(portal_detector()->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());

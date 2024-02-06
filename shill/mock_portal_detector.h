@@ -22,7 +22,9 @@ class MockPortalDetector : public PortalDetector {
 
   MOCK_METHOD(void,
               Start,
-              (net_base::IPFamily, const std::vector<net_base::IPAddress>&),
+              (net_base::IPFamily,
+               const std::vector<net_base::IPAddress>&,
+               ResultCallback),
               (override));
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
