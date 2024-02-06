@@ -222,12 +222,6 @@ impl SuspendConductor<'_> {
         mem::drop(log_file);
         drop(hibermeta_mount);
 
-        // Abort the hibernation if there is clearly not enough free memory for the snapshot.
-        if !might_have_enough_free_memory_for_snapshot() {
-            Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
-            return Err(HibernateError::InsufficientMemoryAvailableError().into());
-        }
-
         self.volume_manager.thicken_hiberimage()?;
 
         // Make sure the thinpool has time to commit pending metadata changes
@@ -241,6 +235,12 @@ impl SuspendConductor<'_> {
         }
 
         record_free_memory_metric();
+
+        // Abort the hibernation if there is clearly not enough free memory for the snapshot.
+        if !might_have_enough_free_memory_for_snapshot() {
+            Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
+            return Err(HibernateError::InsufficientMemoryAvailableError().into());
+        }
 
         if let Err(e) = self.snapshot_and_save(frozen_userspace) {
             if let Some(HibernateError::SnapshotIoctlError(_, err)) = e.downcast_ref() {
