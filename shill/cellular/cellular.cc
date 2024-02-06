@@ -522,8 +522,8 @@ void Cellular::Start(EnabledStateChangedCallback callback) {
 }
 
 void Cellular::Stop(EnabledStateChangedCallback callback) {
-  LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
-            << GetStateString(state_);
+  LOG(INFO) << LoggingTag() << ": Stop requested (modem "
+            << GetStateString(state_) << ")";
   DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
   stop_step_ = StopSteps::kStopModem;
   StopStep(std::move(callback), Error());
@@ -542,7 +542,7 @@ void Cellular::StopStep(EnabledStateChangedCallback callback,
       DestroyAllServices();
 
       if (capability_) {
-        LOG(INFO) << LoggingTag() << ": " << __func__ << ": Calling StopModem.";
+        LOG(INFO) << LoggingTag() << ": Stopping modem.";
         SetState(State::kModemStopping);
         capability_->StopModem(base::BindOnce(&Cellular::StopModemCallback,
                                               weak_ptr_factory_.GetWeakPtr(),
@@ -570,20 +570,12 @@ void Cellular::StopStep(EnabledStateChangedCallback callback,
 
       UpdateScanning();
 
-      if (error_result.type() == Error::kWrongState) {
-        // ModemManager.Modem will not respond to Stop when in a failed state.
-        // Allow the callback to succeed so that Shill identifies and persists
-        // Cellular as disabled. TODO(b/184974739): StopModem should probably
-        // succeed when in a failed state.
-        LOG(WARNING) << LoggingTag()
-                     << ": StopModem returned an error: " << error_result;
-        std::move(callback).Run(Error());
-      } else {
-        if (error_result.IsFailure())
-          LOG(ERROR) << LoggingTag()
-                     << ": StopModem returned an error: " << error_result;
-        std::move(callback).Run(error_result);
+      if (error_result.IsFailure()) {
+        LOG(ERROR) << LoggingTag()
+                   << ": Failed stopping modem: " << error_result;
       }
+      std::move(callback).Run(error_result);
+
       stop_step_.reset();
       return;
   }
