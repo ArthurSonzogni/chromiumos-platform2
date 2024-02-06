@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/userdb_utils.h>
 
 namespace debugd {
@@ -37,6 +38,7 @@ constexpr char kCroshSyscallErrorString[] = "failed for crosh shell process";
 constexpr char kCroshToolErrorString[] = "org.chromium.debugd.error.CroshShell";
 
 const size_t kBufSize = 4096;
+const base::TimeDelta kReapDelay = base::Seconds(1);
 
 bool BashShellAvailable() {
   return base::PathExists(base::FilePath(kBashShell));
@@ -218,6 +220,22 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
   }
 }
 
+void ReapChildProcess(const pid_t pid) {
+  int status;
+
+  if (waitpid(pid, &status, WNOHANG) < 0) {
+    PLOG(ERROR) << "waitpid " << kCroshSyscallErrorString;
+    // Don't continue trying to reap if waitpid() fails.
+    return;
+  }
+
+  if (!WIFEXITED(status))
+    // Only check !WIFEXITED(status), because checking !WIFSIGNALED(status) too
+    // would cause the message loop to exit too early.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, base::BindOnce(&ReapChildProcess, pid), kReapDelay);
+}
+
 }  // namespace
 
 bool CroshShellTool::Run(const base::ScopedFD& shell_lifeline_fd,
@@ -228,7 +246,8 @@ bool CroshShellTool::Run(const base::ScopedFD& shell_lifeline_fd,
   // TODO(akhna): remove outfd parameter.
 
   // Fork so the D-Bus call can return.
-  switch (fork()) {
+  const pid_t pid = fork();
+  switch (pid) {
     case -1:
       DEBUGD_ADD_ERROR(error, kCroshToolErrorString,
                        "Could not fork() to create crosh shell process");
@@ -236,11 +255,14 @@ bool CroshShellTool::Run(const base::ScopedFD& shell_lifeline_fd,
     case 0:
       // Child.
 
-      // TODO(akhna): make sure any zombies are reaped.
-
       // SetUpPseudoTerminal() will exit() for error conditions.
       SetUpPseudoTerminal(shell_lifeline_fd, infd);
       break;
+    default:
+      // Parent.
+
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE, base::BindOnce(&ReapChildProcess, pid), kReapDelay);
   }
 
   return true;
