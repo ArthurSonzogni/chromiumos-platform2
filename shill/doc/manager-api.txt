@@ -691,6 +691,15 @@ Properties	object ActiveProfile [readonly]
 			Disables 802.11ac Very High Throughput (VHT) connections, reverting
 			to 802.11n.
 
+		string DisconnectWiFiOnEthernet [readwrite]
+
+			Option to auto disconnect WiFi and inhibit WiFi autoconnect when an
+			Ethernet service is available. Setting value to "connected" configure
+			shill to disconnect WiFi when basic network provisioning is done on
+			Ethernet, while setting value to "online" only disconnect WiFi when
+			Internet reachability is verified on Ethernet. Setting value to "off"
+			turns off this feature. "off" by default.
+
 		array{string} EnabledTechnologies [readonly]
 
 			The list of technologies for which at least one Device is enabled

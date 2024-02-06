@@ -145,6 +145,9 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageWifiGlobalFTEnabled, true);
   profile_->SetStorageForTest(std::move(owned_storage));
+  storage->SetString(DefaultProfile::kStorageId,
+                     DefaultProfile::kStorageDisableWiFiOnEthernet,
+                     DefaultProfile::kStorageDisableWiFiOnEthernetConnected);
   ManagerProperties manager_props;
 
   profile_->LoadManagerProperties(&manager_props);
@@ -156,6 +159,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(hostname, manager_props.dhcp_hostname);
   EXPECT_TRUE(manager_props.ft_enabled.has_value());
   EXPECT_TRUE(manager_props.ft_enabled.value());
+  EXPECT_EQ(manager_props.disconnect_wifi_on_ethernet,
+            ManagerProperties::DisconnectWiFiOnEthernet::kConnected);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

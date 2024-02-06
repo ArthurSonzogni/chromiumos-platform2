@@ -127,6 +127,23 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
   }
 
   manager_props->request_scan_type = kWiFiRequestScanTypeDefault;
+
+  manager_props->disconnect_wifi_on_ethernet =
+      ManagerProperties::DisconnectWiFiOnEthernet::kOff;
+  std::string disconnect_wifi_property;
+  if (storage()->GetString(kStorageId, kStorageDisableWiFiOnEthernet,
+                           &disconnect_wifi_property)) {
+    if (base::EqualsCaseInsensitiveASCII(
+            disconnect_wifi_property, kStorageDisableWiFiOnEthernetConnected)) {
+      manager_props->disconnect_wifi_on_ethernet =
+          ManagerProperties::DisconnectWiFiOnEthernet::kConnected;
+    }
+    if (base::EqualsCaseInsensitiveASCII(disconnect_wifi_property,
+                                         kStorageDisableWiFiOnEthernetOnline)) {
+      manager_props->disconnect_wifi_on_ethernet =
+          ManagerProperties::DisconnectWiFiOnEthernet::kOnline;
+    }
+  }
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
@@ -166,6 +183,19 @@ bool DefaultProfile::Save() {
   if (props_.ft_enabled.has_value()) {
     storage()->SetBool(kStorageId, kStorageWifiGlobalFTEnabled,
                        props_.ft_enabled.value());
+  }
+  switch (props_.disconnect_wifi_on_ethernet) {
+    case ManagerProperties::DisconnectWiFiOnEthernet::kOff:
+      storage()->DeleteKey(kStorageId, kStorageDisableWiFiOnEthernet);
+      break;
+    case ManagerProperties::DisconnectWiFiOnEthernet::kConnected:
+      storage()->SetString(kStorageId, kStorageDisableWiFiOnEthernet,
+                           kStorageDisableWiFiOnEthernetConnected);
+      break;
+    case ManagerProperties::DisconnectWiFiOnEthernet::kOnline:
+      storage()->SetString(kStorageId, kStorageDisableWiFiOnEthernet,
+                           kStorageDisableWiFiOnEthernetOnline);
+      break;
   }
   return Profile::Save();
 }

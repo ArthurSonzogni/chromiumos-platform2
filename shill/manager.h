@@ -674,6 +674,9 @@ class Manager {
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
   void OnTechnologyProhibited(Technology technology, const Error& error);
+  bool SetDisconnectingWiFiOnEthernet(
+      const std::string& prohibited_technologies, Error* error);
+  std::string GetDisconnectingWiFiOnEthernet(Error* error);
 
   void UseDNSProxy(const std::vector<std::string>& proxy_addrs);
 

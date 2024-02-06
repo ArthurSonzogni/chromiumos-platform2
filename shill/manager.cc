@@ -274,6 +274,9 @@ Manager::Manager(ControlInterface* control_interface,
                                    &Manager::SetDNSProxyDOHProviders);
   store_.RegisterConstString(kSupportedVPNTypesProperty, &supported_vpn_);
   store_.RegisterString(kDhcpPropertyHostnameProperty, &props_.dhcp_hostname);
+  HelpRegisterDerivedString(kDisconnectWiFiOnEthernetProperty,
+                            &Manager::GetDisconnectingWiFiOnEthernet,
+                            &Manager::SetDisconnectingWiFiOnEthernet);
 
   tethering_manager_->InitPropertyStore(&store_);
 
@@ -1338,6 +1341,57 @@ void Manager::OnTechnologyProhibited(Technology technology,
 
 std::string Manager::GetProhibitedTechnologies(Error* error) {
   return props_.prohibited_technologies;
+}
+
+bool Manager::SetDisconnectingWiFiOnEthernet(
+    const std::string& disconect_wifi_property, Error* error) {
+  if (base::EqualsCaseInsensitiveASCII(disconect_wifi_property,
+                                       kDisconnectWiFiOnEthernetOff)) {
+    props_.disconnect_wifi_on_ethernet =
+        ManagerProperties::DisconnectWiFiOnEthernet::kOff;
+  } else if (base::EqualsCaseInsensitiveASCII(
+                 disconect_wifi_property, kDisconnectWiFiOnEthernetConnected)) {
+    props_.disconnect_wifi_on_ethernet =
+        ManagerProperties::DisconnectWiFiOnEthernet::kConnected;
+  } else if (base::EqualsCaseInsensitiveASCII(
+                 disconect_wifi_property, kDisconnectWiFiOnEthernetOnline)) {
+    props_.disconnect_wifi_on_ethernet =
+        ManagerProperties::DisconnectWiFiOnEthernet::kOnline;
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          disconect_wifi_property + " is not a valid " +
+                              kDisconnectWiFiOnEthernetProperty + " value.");
+    return false;
+  }
+
+  bool disable_wifi_autoconnect_previous = disable_wifi_autoconnect_;
+  disable_wifi_autoconnect_ = HasEthernetMatchingDisconnectWiFiCriteria();
+
+  if (!disable_wifi_autoconnect_previous && disable_wifi_autoconnect_) {
+    LOG(INFO) << __func__ << ": disconnecting WiFi.";
+    Error e;
+    for (const auto& service : services_) {
+      if (service->technology() == Technology::kWiFi &&
+          (service->IsConnected() || service->IsConnecting())) {
+        service->Disconnect(&e, "Auto disconnect");
+      }
+    }
+  }
+  if (disable_wifi_autoconnect_previous && !disable_wifi_autoconnect_) {
+    AutoConnect();
+  }
+  return true;
+}
+
+std::string Manager::GetDisconnectingWiFiOnEthernet(Error* /*error*/) {
+  switch (props_.disconnect_wifi_on_ethernet) {
+    case ManagerProperties::DisconnectWiFiOnEthernet::kOff:
+      return kDisconnectWiFiOnEthernetOff;
+    case ManagerProperties::DisconnectWiFiOnEthernet::kConnected:
+      return kDisconnectWiFiOnEthernetConnected;
+    case ManagerProperties::DisconnectWiFiOnEthernet::kOnline:
+      return kDisconnectWiFiOnEthernetOnline;
+  }
 }
 
 bool Manager::HasService(const ServiceRefPtr& service) {

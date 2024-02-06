@@ -106,6 +106,7 @@ constexpr char kDefaultTechnologyProperty[] = "DefaultTechnology";
 constexpr char kDevicesProperty[] = "Devices";
 constexpr char kDhcpPropertyHostnameProperty[] = "DHCPProperty.Hostname";
 constexpr char kDisableWiFiVHTProperty[] = "DisableWiFiVHT";
+constexpr char kDisconnectWiFiOnEthernetProperty[] = "DisconnectWiFiOnEthernet";
 constexpr char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 constexpr char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
 constexpr char kEnableDHCPQoSProperty[] = "EnableDHCPQoS";
@@ -136,6 +137,10 @@ constexpr char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 constexpr char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
 constexpr char kWifiScanAllowRoamProperty[] = "WiFi.ScanAllowRoam";
 constexpr char kWifiRequestScanTypeProperty[] = "WiFi.RequestScanType";
+// Valid values of DisconnectWiFiOnEthernet
+constexpr char kDisconnectWiFiOnEthernetOff[] = "off";
+constexpr char kDisconnectWiFiOnEthernetConnected[] = "connected";
+constexpr char kDisconnectWiFiOnEthernetOnline[] = "online";
 
 // Manager and DefaultProfile property names (the Manager properties that are
 // persisted by a DefaultProfile; these are always read-only for

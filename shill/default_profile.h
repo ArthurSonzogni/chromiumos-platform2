@@ -66,6 +66,10 @@ class DefaultProfile : public Profile {
   static const char kStorageProhibitedTechnologies[];
   static const char kStorageDhcpHostname[];
   static const char kStorageWifiGlobalFTEnabled[];
+  static constexpr char kStorageDisableWiFiOnEthernet[] =
+      "DisableWiFiOnEthernet";
+  static constexpr char kStorageDisableWiFiOnEthernetConnected[] = "connected";
+  static constexpr char kStorageDisableWiFiOnEthernetOnline[] = "online";
   static constexpr char kStorageEnableRFC8925[] = "RFC8925";
 
   void HelpRegisterConstDerivedBool(std::string_view name,
