@@ -57,12 +57,12 @@ class FlexHwisCheckTest : public ::testing::Test {
         .WillOnce(SetEnterpriseEnrolled(enrolled));
   }
 
-  void ExpectHwCollectionResult(std::optional<bool> result) {
+  void ExpectUnenrolledHwCollectionResult(std::optional<bool> result) {
     EXPECT_CALL(mock_device_policy_, GetUnenrolledHwDataUsageEnabled())
         .WillOnce(Return(result));
   }
 
-  void ExpectManagedHwCollectionResult(std::optional<bool> result) {
+  void ExpectEnrolledHwCollectionResult(std::optional<bool> result) {
     EXPECT_CALL(mock_device_policy_, GetEnrolledHwDataUsageEnabled())
         .WillOnce(Return(result));
   }
@@ -106,7 +106,7 @@ TEST_F(FlexHwisCheckTest, CheckManagedWithPermission) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(true);
+  ExpectEnrolledHwCollectionResult(true);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_TRUE(info.managed);
@@ -119,7 +119,7 @@ TEST_F(FlexHwisCheckTest, CheckManagedWithoutPermission) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(false);
+  ExpectEnrolledHwCollectionResult(false);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_TRUE(info.managed);
@@ -132,7 +132,7 @@ TEST_F(FlexHwisCheckTest, CheckManagedFailedRead) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(std::nullopt);
+  ExpectEnrolledHwCollectionResult(std::nullopt);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_TRUE(info.managed);
@@ -145,7 +145,7 @@ TEST_F(FlexHwisCheckTest, CheckUnmanagedWithPermission) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(true);
+  ExpectUnenrolledHwCollectionResult(true);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_FALSE(info.managed);
@@ -158,7 +158,7 @@ TEST_F(FlexHwisCheckTest, CheckUnmanagedWithoutPermission) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(false);
+  ExpectUnenrolledHwCollectionResult(false);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_FALSE(info.managed);
@@ -171,7 +171,7 @@ TEST_F(FlexHwisCheckTest, CheckUnmanagedFailedRead) {
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(std::nullopt);
+  ExpectUnenrolledHwCollectionResult(std::nullopt);
 
   PermissionInfo info = flex_hwis_check.CheckPermission();
   EXPECT_FALSE(info.managed);

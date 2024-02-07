@@ -74,12 +74,12 @@ class FlexHwisTest : public ::testing::Test {
         .WillOnce(SetEnterpriseEnrolled(enrolled));
   }
 
-  void ExpectHwCollectionResult(std::optional<bool> result) {
+  void ExpectUnenrolledHwCollectionResult(std::optional<bool> result) {
     EXPECT_CALL(mock_device_policy_, GetUnenrolledHwDataUsageEnabled())
         .WillOnce(Return(result));
   }
 
-  void ExpectManagedHwCollectionResult(std::optional<bool> result) {
+  void ExpectEnrolledHwCollectionResult(std::optional<bool> result) {
     EXPECT_CALL(mock_device_policy_, GetEnrolledHwDataUsageEnabled())
         .WillOnce(Return(result));
   }
@@ -143,7 +143,7 @@ TEST_F(FlexHwisTest, ManagedWithoutPermission) {
       test_path_, mock_policy_provider_, mock_http_sender_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(false);
+  ExpectEnrolledHwCollectionResult(false);
   ExpectPermissionMetric(PermissionResult::kPolicyDenial);
   ExpectDeleteAction();
 
@@ -156,7 +156,7 @@ TEST_F(FlexHwisTest, ManagedWithPermission) {
       test_path_, mock_policy_provider_, mock_http_sender_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(true);
+  ExpectEnrolledHwCollectionResult(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   ExpectRegisterAction(/*api_call_success=*/true);
 
@@ -168,7 +168,7 @@ TEST_F(FlexHwisTest, ManagedFailToReadPermission) {
       test_path_, mock_policy_provider_, mock_http_sender_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(std::nullopt);
+  ExpectEnrolledHwCollectionResult(std::nullopt);
   ExpectPermissionMetric(PermissionResult::kPolicyDenial);
 
   EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_),
@@ -179,7 +179,7 @@ TEST_F(FlexHwisTest, UnmanagedWithoutPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(false);
+  ExpectUnenrolledHwCollectionResult(false);
   ExpectPermissionMetric(PermissionResult::kOptInDenial);
   ExpectDeleteAction();
 
@@ -191,7 +191,7 @@ TEST_F(FlexHwisTest, UnmanagedWithPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(true);
+  ExpectUnenrolledHwCollectionResult(true);
   ExpectPermissionMetric(PermissionResult::kOptInSuccess);
   ExpectRegisterAction(/*api_call_success=*/true);
 
@@ -202,7 +202,7 @@ TEST_F(FlexHwisTest, UnmanagedFailToReadPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);
-  ExpectHwCollectionResult(std::nullopt);
+  ExpectUnenrolledHwCollectionResult(std::nullopt);
   ExpectPermissionMetric(PermissionResult::kOptInDenial);
   ExpectDeleteAction();
 
@@ -215,7 +215,7 @@ TEST_F(FlexHwisTest, UpdateDeviceFail) {
       test_path_, mock_policy_provider_, mock_http_sender_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(true);
+  ExpectEnrolledHwCollectionResult(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
@@ -230,7 +230,7 @@ TEST_F(FlexHwisTest, UpdateDeviceNotFound) {
       test_path_, mock_policy_provider_, mock_http_sender_);
 
   ExpectEnrolled(true);
-  ExpectManagedHwCollectionResult(true);
+  ExpectEnrolledHwCollectionResult(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
