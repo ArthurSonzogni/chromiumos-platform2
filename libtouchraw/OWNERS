@@ -1,7 +1,1 @@
-aaboagye@chromium.org
-hbarnor@chromium.org
-jingyliang@chromium.org
-kenalba@google.com
-seobrien@chromium.org
-torsha@google.com
-wmahon@google.com
+include chromiumos/owners:v1:/platform/OWNERS.p12s
