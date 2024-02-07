@@ -82,6 +82,10 @@ class TetheringManager : public Network::EventHandler {
     kDownstreamWiFiFailure,
     // Failed to setup/tear down network layer for tethering
     kNetworkSetupFailure,
+    // Starting action is aborted by user
+    kAbort,
+    // Start/stop tethering when previous action is ongoing
+    kBusy,
     // Other unknown failures
     kFailure,
   };

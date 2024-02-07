@@ -1106,12 +1106,26 @@ void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
 
 void TetheringManager::SetEnabled(bool enabled,
                                   SetEnabledResultCallback callback) {
-  result_callback_ = std::move(callback);
-
   if (!enabled) {
+    if (state_ == TetheringState::kTetheringStarting) {
+      // Abort tethering start, send result for the start method call first.
+      CHECK(result_callback_);
+      std::move(result_callback_).Run(SetEnabledResult::kAbort);
+    }
+    result_callback_ = std::move(callback);
     StopTetheringSession(StopReason::kClientStop);
     return;
   }
+
+  if (state_ == TetheringState::kTetheringStarting ||
+      state_ == TetheringState::kTetheringStopping) {
+    // Reject a new action immediately if the previous one is ongoing.
+    std::move(callback).Run(SetEnabledResult::kBusy);
+    return;
+  }
+
+  CHECK(!result_callback_);
+  result_callback_ = std::move(callback);
 
   if (!allowed_) {
     LOG(ERROR) << __func__ << ": not allowed";
@@ -1158,6 +1172,10 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultDownstreamWiFiFailure;
     case SetEnabledResult::kNetworkSetupFailure:
       return kTetheringEnableResultNetworkSetupFailure;
+    case SetEnabledResult::kAbort:
+      return kTetheringEnableResultAbort;
+    case SetEnabledResult::kBusy:
+      return kTetheringEnableResultBusy;
   }
 }
 

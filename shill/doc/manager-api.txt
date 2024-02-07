@@ -493,9 +493,9 @@ Methods		dict GetProperties()
 			Manager.TetheringConfig. Only supports cellular and ethernet as the
 			upstream technologies. Only supports WiFi as the downstream technology.
 			Returns a string indicating the result. This could be any one of,
-			"success", "failure", "not_allowed", "invalid_properties",
+			"success", "failure", "not_allowed", "invalid_properties", "abort",
 			"upstream_not_available", "downstream_wifi_failure", "wrong_state"
-			"network_setup_failure", "upstream_failure".
+			"network_setup_failure", "upstream_failure", "busy".
 
 
 		string CheckTetheringReadiness()

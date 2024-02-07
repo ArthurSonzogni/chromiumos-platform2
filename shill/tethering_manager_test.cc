@@ -1026,6 +1026,28 @@ TEST_F(TetheringManagerTest, SetEnabledResultName) {
       "upstream_not_available",
       TetheringManager::SetEnabledResultName(
           TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable));
+
+  EXPECT_EQ("wrong_state",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kWrongState));
+
+  EXPECT_EQ("upstream_failure",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kUpstreamFailure));
+
+  EXPECT_EQ("downstream_wifi_failure",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kDownstreamWiFiFailure));
+
+  EXPECT_EQ("network_setup_failure",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kNetworkSetupFailure));
+
+  EXPECT_EQ("abort", TetheringManager::SetEnabledResultName(
+                         TetheringManager::SetEnabledResult::kAbort));
+
+  EXPECT_EQ("busy", TetheringManager::SetEnabledResultName(
+                        TetheringManager::SetEnabledResult::kBusy));
 }
 
 TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
@@ -1299,6 +1321,36 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
   VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(TetheringManagerTest, StartTetheringSessionBusy) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabled(tethering_manager_, true);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Start again while tethering state is starting.
+  EXPECT_CALL(result_cb_, Run(TetheringManager::SetEnabledResult::kBusy));
+  SetEnabled(tethering_manager_, true);
+  Mock::VerifyAndClearExpectations(&result_cb_);
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(TetheringManagerTest, StartTetheringSessionAbort) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabled(tethering_manager_, true);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Abort.
+  EXPECT_CALL(result_cb_, Run(TetheringManager::SetEnabledResult::kAbort));
+  SetEnabled(tethering_manager_, false);
+  Mock::VerifyAndClearExpectations(&result_cb_);
+  // Send upstream tear down event
+  OnUpstreamNetworkReleased(tethering_manager_, true);
+  VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonClientStop);
   Mock::VerifyAndClearExpectations(&manager_);
 }
 

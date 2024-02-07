@@ -1042,6 +1042,8 @@ constexpr char kTetheringStateStarting[] = "starting";
 constexpr char kTetheringStateStopping[] = "stopping";
 
 // SetTetheringEnabled result values
+constexpr char kTetheringEnableResultAbort[] = "abort";
+constexpr char kTetheringEnableResultBusy[] = "busy";
 constexpr char kTetheringEnableResultDownstreamWiFiFailure[] =
     "downstream_wifi_failure";
 constexpr char kTetheringEnableResultFailure[] = "failure";
