@@ -1209,6 +1209,24 @@ class Metrics {
       .max = kCapportSupportedMax,
   };
 
+  // Boolean metric counting whether the CAPPORT server contains the venue info
+  // URL. This metric is only recorded once for every CAPPORT session when we
+  // can determine the CAPPORT server contains it or not.
+  //
+  // We assume:
+  // 1. Before receiving the first CAPPORT status with is_captive=false, we
+  //    should receive at least one status with is_captive=true.
+  // 2. If the CAPPORT server contains the venue info URL, then it must send the
+  //    URL in the first status with either is_captive=true or is_captive=false.
+  //
+  // Based on that, this metric is sent with true if a CAPPORT status with a
+  // venue info URL has been received. If a CAPPORT status with is_captive=false
+  // has been received and all the received CAPPORT status don't contain a venue
+  // info URL, then this metric is sent with false. Otherwise, this metric will
+  // not be sent.
+  static constexpr char kMetricCapportContainsVenueInfoUrl[] =
+      "Network.Shill.CAPPORT.ContainsVenueInfoURL";
+
   // Metric indicating the provisioning origin of Passpoint credentials.
   // This metric is recorded once for any successful Passpoint provisioning
   // event.

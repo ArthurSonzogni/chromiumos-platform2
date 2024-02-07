@@ -199,7 +199,8 @@ void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
   }
 
   if (!capport_proxy_) {
-    capport_proxy_ = capport_proxy_factory_->Create(interface_, capport_api);
+    capport_proxy_ =
+        capport_proxy_factory_->Create(metrics_, interface_, capport_api);
   }
 }
 

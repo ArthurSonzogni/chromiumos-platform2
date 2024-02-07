@@ -9,7 +9,8 @@
 namespace shill {
 
 MockCapportProxy::MockCapportProxy()
-    : CapportProxy(*net_base::HttpUrl::CreateFromString(
+    : CapportProxy(nullptr,
+                   *net_base::HttpUrl::CreateFromString(
                        "https://example.org/portal.html"),
                    nullptr) {}
 MockCapportProxy::~MockCapportProxy() = default;

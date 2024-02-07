@@ -17,6 +17,7 @@
 #include <brillo/http/http_transport.h>
 #include <net-base/http_url.h>
 
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 
 namespace shill {
@@ -49,13 +50,15 @@ class CapportProxy {
   // discovered with RFC8910. The HTTP request will be send through
   // |http_transport| instance. Note that |api_url| must be HTTPS URL.
   static std::unique_ptr<CapportProxy> Create(
+      Metrics* metrics,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = kDefaultTimeout);
 
-  CapportProxy(const net_base::HttpUrl& api_url,
+  CapportProxy(Metrics* metrics,
+               const net_base::HttpUrl& api_url,
                std::shared_ptr<brillo::http::Transport> http_transport,
                std::string_view logging_tag = "");
   virtual ~CapportProxy();
@@ -87,6 +90,8 @@ class CapportProxy {
   void OnRequestError(brillo::http::RequestID request_id,
                       const brillo::Error* error);
 
+  Metrics* metrics_;
+
   // The URL of the CAPPORT server.
   net_base::HttpUrl api_url_;
   // The HTTP transport used to send request to CAPPORT server.
@@ -101,6 +106,9 @@ class CapportProxy {
   // request.
   StatusCallback callback_;
 
+  // Indicates whether the CAPPORT server replies with a venue info URL.
+  std::optional<bool> has_venue_info_url_ = std::nullopt;
+
   base::WeakPtrFactory<CapportProxy> weak_ptr_factory_{this};
 };
 
@@ -113,6 +121,7 @@ class CapportProxyFactory {
 
   // The default factory method, calling CapportProxy::Create() method.
   virtual std::unique_ptr<CapportProxy> Create(
+      Metrics* metrics,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       std::shared_ptr<brillo::http::Transport> http_transport =

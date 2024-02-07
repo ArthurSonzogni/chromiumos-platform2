@@ -87,6 +87,7 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
 }
 
 std::unique_ptr<CapportProxy> CapportProxy::Create(
+    Metrics* metrics,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
@@ -98,18 +99,27 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
 
   http_transport->SetInterface(std::string(interface));
   http_transport->SetDefaultTimeout(transport_timeout);
-  return std::make_unique<CapportProxy>(api_url, std::move(http_transport),
+  return std::make_unique<CapportProxy>(metrics, api_url,
+                                        std::move(http_transport),
                                         std::string(interface) + ": ");
 }
 
 CapportProxy::CapportProxy(
+    Metrics* metrics,
     const net_base::HttpUrl& api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
     std::string_view logging_tag)
-    : api_url_(api_url),
+    : metrics_(metrics),
+      api_url_(api_url),
       http_transport_(std::move(http_transport)),
       logging_tag_(logging_tag) {}
-CapportProxy::~CapportProxy() = default;
+
+CapportProxy::~CapportProxy() {
+  if (has_venue_info_url_.has_value()) {
+    metrics_->SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl,
+                            *has_venue_info_url_);
+  }
+}
 
 void CapportProxy::SendRequest(StatusCallback callback) {
   LOG_IF(DFATAL, IsRunning())
@@ -165,6 +175,12 @@ void CapportProxy::OnRequestSuccess(
     return;
   }
 
+  if (status->venue_info_url.has_value()) {
+    has_venue_info_url_ = true;
+  } else if (!has_venue_info_url_.has_value() && !status->is_captive) {
+    has_venue_info_url_ = false;
+  }
+
   std::move(callback_).Run(std::move(status));
 }
 
@@ -188,12 +204,13 @@ CapportProxyFactory::CapportProxyFactory() = default;
 CapportProxyFactory::~CapportProxyFactory() = default;
 
 std::unique_ptr<CapportProxy> CapportProxyFactory::Create(
+    Metrics* metrics,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
-  return CapportProxy::Create(interface, api_url, std::move(http_transport),
-                              transport_timeout);
+  return CapportProxy::Create(metrics, interface, api_url,
+                              std::move(http_transport), transport_timeout);
 }
 
 }  // namespace shill

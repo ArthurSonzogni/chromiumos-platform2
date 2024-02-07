@@ -11,6 +11,8 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/metrics.h"
+
 namespace shill {
 
 class MockCapportProxy : public CapportProxy {
@@ -30,7 +32,8 @@ class MockCapportProxyFactory : public CapportProxyFactory {
 
   MOCK_METHOD(std::unique_ptr<CapportProxy>,
               Create,
-              (std::string_view,
+              (Metrics*,
+               std::string_view,
                const net_base::HttpUrl&,
                std::shared_ptr<brillo::http::Transport>,
                base::TimeDelta transport_timeout),

@@ -19,6 +19,8 @@
 #include <gmock/gmock.h>
 #include <net-base/http_url.h>
 
+#include "shill/mock_metrics.h"
+
 namespace shill {
 namespace {
 
@@ -123,7 +125,20 @@ TEST(CapportStatusTest, ParseFromJsonInvalidVenueInfoUrl) {
   EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
 }
 
-TEST(CapportProxyTest, SendRequest) {
+class CapportProxyTest : public testing::Test {
+ protected:
+  CapportProxyTest()
+      : fake_transport_(std::make_shared<brillo::http::fake::Transport>()),
+        proxy_(CapportProxy::Create(
+            &metrics_, kInterfaceName, kApiUrl, fake_transport_)) {}
+
+  MockCapportClient client_;
+  MockMetrics metrics_;
+  std::shared_ptr<brillo::http::fake::Transport> fake_transport_;
+  std::unique_ptr<CapportProxy> proxy_;
+};
+
+TEST_F(CapportProxyTest, SendRequest) {
   // Verify if SendRequest() sends the expected HTTP request.
   const std::vector<std::pair<std::string, std::string>> kHeaders = {
       {"Accept", "application/captive+json"}};
@@ -134,13 +149,14 @@ TEST(CapportProxyTest, SendRequest) {
       CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
                        kHeaders, _, _, _));
 
-  auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, mock_transport);
-  EXPECT_NE(proxy, nullptr);
+  proxy_ =
+      CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, mock_transport);
+  EXPECT_NE(proxy_, nullptr);
 
-  proxy->SendRequest(base::DoNothing());
+  proxy_->SendRequest(base::DoNothing());
 }
 
-TEST(CapportProxyTest, SendRequestSuccess) {
+TEST_F(CapportProxyTest, SendRequestSuccess) {
   const std::string json_str = R"({
    "captive": true,
    "user-portal-url": "https://example.org/portal.html"
@@ -155,56 +171,141 @@ TEST(CapportProxyTest, SendRequestSuccess) {
       .bytes_remaining = std::nullopt,
   };
 
-  auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
-  auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
-  fake_transport->AddSimpleReplyHandler(
+  fake_transport_->AddSimpleReplyHandler(
       kApiUrl.ToString(), brillo::http::request_type::kGet,
       brillo::http::status_code::Ok, json_str, "application/captive+json");
 
   // When the HTTP server replies a valid JSON string, the client should get
   // the valid status via callback.
-  MockCapportClient client;
-  EXPECT_CALL(client, OnStatusReceived(Eq(status))).Times(2);
-  proxy->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
-                                    base::Unretained(&client)));
-  proxy->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
-                                    base::Unretained(&client)));
+  EXPECT_CALL(client_, OnStatusReceived(Eq(status))).Times(2);
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
 }
 
-TEST(CapportProxyTest, SendRequestFail) {
-  auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
-  auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
-  fake_transport->AddSimpleReplyHandler(
+TEST_F(CapportProxyTest, SendRequestFail) {
+  fake_transport_->AddSimpleReplyHandler(
       kApiUrl.ToString(), brillo::http::request_type::kGet,
       brillo::http::status_code::Ok, "Invalid JSON string",
       "application/captive+json");
 
   // When the HTTP server replies an invalid JSON string, the client should get
   // std::nullopt via callback.
-  MockCapportClient client;
-  EXPECT_CALL(client, OnStatusReceived(Eq(std::nullopt)));
-  proxy->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
-                                    base::Unretained(&client)));
+  EXPECT_CALL(client_, OnStatusReceived(Eq(std::nullopt)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
 }
 
-TEST(CapportProxyTest, SendRequestAndStop) {
-  auto fake_transport = std::make_shared<brillo::http::fake::Transport>();
-  auto proxy = CapportProxy::Create(kInterfaceName, kApiUrl, fake_transport);
-  fake_transport->SetAsyncMode(true);
-  fake_transport->AddSimpleReplyHandler(
+TEST_F(CapportProxyTest, SendRequestAndStop) {
+  fake_transport_->SetAsyncMode(true);
+  fake_transport_->AddSimpleReplyHandler(
       kApiUrl.ToString(), brillo::http::request_type::kGet,
       brillo::http::status_code::Ok, "Invalid JSON string",
       "application/captive+json");
 
   // When stopping proxy before the transport is done, the client should not get
   // callback.
-  MockCapportClient client;
-  EXPECT_CALL(client, OnStatusReceived).Times(0);
+  EXPECT_CALL(client_, OnStatusReceived).Times(0);
 
-  proxy->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
-                                    base::Unretained(&client)));
-  proxy->Stop();
-  fake_transport->HandleAllAsyncRequests();  // Simulate the transport is done.
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->Stop();
+  fake_transport_->HandleAllAsyncRequests();  // Simulate the transport is done.
+}
+
+TEST_F(CapportProxyTest, SendMetricsContainVenueInfoUrl) {
+  // Send the metric only once even we receive the status twice.
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
+      .Times(1);
+
+  const std::string json_str = R"({
+   "captive": false,
+   "user-portal-url": "https://example.org/portal.html",
+   "venue-info-url": "https://flight.example.com/entertainment"
+})";
+  fake_transport_->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str, "application/captive+json");
+
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, SendMetricsNotContainVenueInfoUrl) {
+  // If there is no venue info URL when the portal is open, then the CAPPORT
+  // server doesn't contain the venue info URL.
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, false))
+      .Times(1);
+
+  const std::string json_str = R"({
+   "captive": false,
+   "user-portal-url": "https://example.org/portal.html"
+})";
+  fake_transport_->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str, "application/captive+json");
+
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, VenueInfoUrlInSecondRound) {
+  // If the fisrt status doesn't contain the venue info URL but the second
+  // status contains it, then we treat the CAPPORT server contains the venue
+  // info URL.
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
+      .Times(1);
+
+  const std::string json_str_without_venue = R"({
+   "captive": false,
+   "user-portal-url": "https://example.org/portal.html"
+})";
+  fake_transport_->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str_without_venue,
+      "application/captive+json");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+
+  const std::string json_str_with_venue = R"({
+   "captive": false,
+   "user-portal-url": "https://example.org/portal.html",
+   "venue-info-url": "https://flight.example.com/entertainment"
+})";
+  fake_transport_->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str_with_venue,
+      "application/captive+json");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, DoesNotSendMetricsContainVenueInfoUrl) {
+  // The venue info URL might be sent after the portal is open. So we cannot
+  // determine if the CAPPORT server contains venue info URL when the portal is
+  // still closed.
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, _))
+      .Times(0);
+
+  const std::string json_str = R"({
+   "captive": true,
+   "user-portal-url": "https://example.org/portal.html"
+})";
+  fake_transport_->AddSimpleReplyHandler(
+      kApiUrl.ToString(), brillo::http::request_type::kGet,
+      brillo::http::status_code::Ok, json_str, "application/captive+json");
+
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
 }
 
 }  // namespace shill
