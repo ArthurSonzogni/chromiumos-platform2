@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_health_tool/diag/routine_v2_client.h"
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -61,83 +62,22 @@ RoutineV2Client::RoutineV2Client(
 
 RoutineV2Client::~RoutineV2Client() = default;
 
-void RoutineV2Client::OnRoutineStateChange(
-    mojom::RoutineStatePtr state_update) {
-  switch (state_update->state_union->which()) {
-    case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument: {
+void RoutineV2Client::OnRoutineStateChange(mojom::RoutineStatePtr state) {
+  switch (state->state_union->which()) {
+    case mojom::RoutineStateUnion::Tag::kInitialized:
+      OnInitializedState();
+      return;
+    case mojom::RoutineStateUnion::Tag::kRunning:
+      OnRunningState(state->percentage);
+      return;
+    case mojom::RoutineStateUnion::Tag::kWaiting:
+      OnWaitingState(state->state_union->get_waiting());
+      return;
+    case mojom::RoutineStateUnion::Tag::kFinished:
+      OnFinishedState(state->percentage, state->state_union->get_finished());
+      return;
+    case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument:
       NOTREACHED_NORETURN() << "Got unrecognized RoutineState";
-      break;
-    }
-    case mojom::RoutineStateUnion::Tag::kFinished: {
-      auto& finished_state = state_update->state_union->get_finished();
-      std::cout << '\r' << "Running Progress: " << int(state_update->percentage)
-                << std::endl;
-      std::string passed_status =
-          finished_state->has_passed ? "Passed" : "Failed";
-      std::cout << ("Status: ") << passed_status << std::endl;
-      const auto& detail = finished_state->detail;
-      switch (detail->which()) {
-        case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
-          NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
-          break;
-        }
-        // These routines do not produce printable output. Printing passed or
-        // failed is enough.
-        case mojom::RoutineDetail::Tag::kCpuStress:
-        case mojom::RoutineDetail::Tag::kDiskRead:
-        case mojom::RoutineDetail::Tag::kCpuCache:
-        case mojom::RoutineDetail::Tag::kPrimeSearch:
-        case mojom::RoutineDetail::Tag::kVolumeButton:
-        case mojom::RoutineDetail::Tag::kLedLitUp:
-        case mojom::RoutineDetail::Tag::kFloatingPoint:
-        case mojom::RoutineDetail::Tag::kUrandom:
-          break;
-        case mojom::RoutineDetail::Tag::kMemory:
-          PrintOutput(ConvertToValue(detail->get_memory()));
-          break;
-        case mojom::RoutineDetail::Tag::kAudioDriver:
-          PrintOutput(ConvertToValue(detail->get_audio_driver()));
-          break;
-        case mojom::RoutineDetail::Tag::kUfsLifetime:
-          PrintOutput(ConvertToValue(detail->get_ufs_lifetime()));
-          break;
-        case mojom::RoutineDetail::Tag::kBluetoothPower:
-          PrintOutput(ConvertToValue(detail->get_bluetooth_power()));
-          break;
-        case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
-          PrintOutput(ConvertToValue(detail->get_bluetooth_discovery()));
-          break;
-        case mojom::RoutineDetail::Tag::kFan:
-          PrintOutput(ConvertToValue(detail->get_fan()));
-          break;
-        case mojom::RoutineDetail::Tag::kBluetoothScanning:
-          PrintOutput(ConvertToValue(detail->get_bluetooth_scanning()));
-          break;
-        case mojom::RoutineDetail::Tag::kBluetoothPairing:
-          PrintOutput(ConvertToValue(detail->get_bluetooth_pairing()));
-          break;
-        case mojom::RoutineDetail::Tag::kCameraAvailability:
-          PrintOutput(ConvertToValue(detail->get_camera_availability()));
-          break;
-      }
-      run_loop_.Quit();
-      return;
-    }
-    case mojom::RoutineStateUnion::Tag::kInitialized: {
-      std::cout << "Initialized" << std::endl;
-      return;
-    }
-    case mojom::RoutineStateUnion::Tag::kWaiting: {
-      std::cout << '\r' << "Waiting: "
-                << state_update->state_union->get_waiting()->reason
-                << std::endl;
-      return;
-    }
-    case mojom::RoutineStateUnion::Tag::kRunning: {
-      std::cout << '\r' << "Running Progress: " << int(state_update->percentage)
-                << std::flush;
-      return;
-    }
   }
 }
 
@@ -169,6 +109,72 @@ void RoutineV2Client::OnRoutineDisconnection(uint32_t error,
 
 void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
   output_printer_.Run(output);
+}
+
+void RoutineV2Client::OnInitializedState() {
+  std::cout << "Initialized" << std::endl;
+}
+
+void RoutineV2Client::OnRunningState(uint8_t percentage) {
+  std::cout << '\r' << "Running Progress: " << int(percentage) << std::flush;
+}
+
+void RoutineV2Client::OnWaitingState(
+    const mojom::RoutineStateWaitingPtr& waiting) {
+  std::cout << '\r' << "Waiting: " << waiting->reason << std::endl;
+}
+
+void RoutineV2Client::OnFinishedState(
+    uint8_t percentage, const mojom::RoutineStateFinishedPtr& finished) {
+  std::cout << '\r' << "Running Progress: " << int(percentage) << std::endl;
+  std::cout << "Status: " << (finished->has_passed ? "Passed" : "Failed")
+            << std::endl;
+  const auto& detail = finished->detail;
+  switch (detail->which()) {
+    case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
+      NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
+      break;
+    }
+    // These routines do not produce printable output. Printing passed or
+    // failed is enough.
+    case mojom::RoutineDetail::Tag::kCpuStress:
+    case mojom::RoutineDetail::Tag::kDiskRead:
+    case mojom::RoutineDetail::Tag::kCpuCache:
+    case mojom::RoutineDetail::Tag::kPrimeSearch:
+    case mojom::RoutineDetail::Tag::kVolumeButton:
+    case mojom::RoutineDetail::Tag::kLedLitUp:
+    case mojom::RoutineDetail::Tag::kFloatingPoint:
+    case mojom::RoutineDetail::Tag::kUrandom:
+      break;
+    case mojom::RoutineDetail::Tag::kMemory:
+      PrintOutput(ConvertToValue(detail->get_memory()));
+      break;
+    case mojom::RoutineDetail::Tag::kAudioDriver:
+      PrintOutput(ConvertToValue(detail->get_audio_driver()));
+      break;
+    case mojom::RoutineDetail::Tag::kUfsLifetime:
+      PrintOutput(ConvertToValue(detail->get_ufs_lifetime()));
+      break;
+    case mojom::RoutineDetail::Tag::kBluetoothPower:
+      PrintOutput(ConvertToValue(detail->get_bluetooth_power()));
+      break;
+    case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
+      PrintOutput(ConvertToValue(detail->get_bluetooth_discovery()));
+      break;
+    case mojom::RoutineDetail::Tag::kFan:
+      PrintOutput(ConvertToValue(detail->get_fan()));
+      break;
+    case mojom::RoutineDetail::Tag::kBluetoothScanning:
+      PrintOutput(ConvertToValue(detail->get_bluetooth_scanning()));
+      break;
+    case mojom::RoutineDetail::Tag::kBluetoothPairing:
+      PrintOutput(ConvertToValue(detail->get_bluetooth_pairing()));
+      break;
+    case mojom::RoutineDetail::Tag::kCameraAvailability:
+      PrintOutput(ConvertToValue(detail->get_camera_availability()));
+      break;
+  }
+  run_loop_.Quit();
 }
 
 }  // namespace diagnostics

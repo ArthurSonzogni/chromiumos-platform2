@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_ROUTINE_V2_CLIENT_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_ROUTINE_V2_CLIENT_H_
 
+#include <cstdint>
 #include <string>
 
 #include <base/functional/callback.h>
@@ -45,6 +46,15 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
  private:
   void OnRoutineDisconnection(uint32_t error, const std::string& message);
   void PrintOutput(const base::Value::Dict& output);
+
+  // Handle state transition.
+  void OnInitializedState();
+  void OnRunningState(uint8_t percentage);
+  void OnWaitingState(
+      const ash::cros_healthd::mojom::RoutineStateWaitingPtr& waiting);
+  void OnFinishedState(
+      uint8_t percentage,
+      const ash::cros_healthd::mojom::RoutineStateFinishedPtr& finished);
 
   // The remote for CrosHealthdRoutinesService.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
