@@ -5533,14 +5533,15 @@ mno {
     uuid: "f7944fbe-84fc-458f-ac86-9e77bff121d6"
     country: "hu"
     localized_name {
-      name: "DIGI"
+      name: "Telenor"
     }
     mccmnc: "21601"
     mobile_apn {
-      apn: "digi"
+      apn: "online"
       localized_name {
-        name: "DIGI Move"
+        name: "Telenor"
       }
+      ip_type: IPV4V6
       type: DEFAULT
     }
   }
