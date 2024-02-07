@@ -43,7 +43,8 @@ std::unique_ptr<V4lMcRemap> V4lMcRemap::CreateFromYamlNode(
       MCTK_PANIC("Remap entry without target name/regex.");
 
     /* Create the remap entry */
-    V4lMcRemapEntry new_entry = V4lMcRemapEntry(*id, *name, *name_regex);
+    V4lMcRemapEntry new_entry =
+        V4lMcRemapEntry(*id, name.value_or(""), name_regex.value_or(""));
     remap->remap_list_.push_back(std::move(new_entry));
   }
 
