@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -133,7 +134,7 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   attempt_count_++;
   result_ = Result();
   result_->num_attempts = attempt_count_;
-  last_attempt_start_time_ = base::TimeTicks::Now();
+  const base::TimeTicks start_time = base::TimeTicks::Now();
   result_callback_ = std::move(callback);
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url.host()
@@ -141,10 +142,11 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   http_request_->Start(
       LoggingTag() + " HTTP probe", http_url, kHeaders,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
-                     weak_ptr_factory_.GetWeakPtr(), http_url));
-  https_request_->Start(LoggingTag() + " HTTPS probe", https_url, kHeaders,
-                        base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
-                                       weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(), http_url, start_time));
+  https_request_->Start(
+      LoggingTag() + " HTTPS probe", https_url, kHeaders,
+      base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
+                     weak_ptr_factory_.GetWeakPtr(), start_time));
 }
 
 void PortalDetector::StopTrialIfComplete(Result result) {
@@ -178,6 +180,7 @@ void PortalDetector::Reset() {
 }
 
 void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
+                                            base::TimeTicks start_time,
                                             HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->http_result = GetProbeResultFromRequestError(result.error());
@@ -219,11 +222,12 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
       result_->http_result = ProbeResult::kFailure;
     }
   }
-  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
+  result_->http_duration = base::TimeTicks::Now() - start_time;
   StopTrialIfComplete(*result_);
 }
 
-void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
+void PortalDetector::ProcessHTTPSProbeResult(base::TimeTicks start_time,
+                                             HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->https_result = GetProbeResultFromRequestError(result.error());
   } else {
@@ -232,7 +236,7 @@ void PortalDetector::ProcessHTTPSProbeResult(HttpRequest::Result result) {
     // completed.
     result_->https_result = ProbeResult::kSuccess;
   }
-  result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
+  result_->https_duration = base::TimeTicks::Now() - start_time;
   StopTrialIfComplete(*result_);
 }
 

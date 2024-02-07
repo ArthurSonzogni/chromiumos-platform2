@@ -291,10 +291,12 @@ class PortalDetector {
 
   // Process the HttpRequest Result of the HTTP probe.
   void ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
+                              base::TimeTicks start_time,
                               HttpRequest::Result result);
 
   // Process the HttpRequest Result of the HTTPS probe.
-  void ProcessHTTPSProbeResult(HttpRequest::Result result);
+  void ProcessHTTPSProbeResult(base::TimeTicks start_time,
+                               HttpRequest::Result result);
 
   // Called after each probe result to check if the current trial can be
   // stopped and if |portal_result_callback_| can be invoked.
@@ -330,9 +332,6 @@ class PortalDetector {
   // for debugging purposes, and for selecting the URL of detection and
   // validation probes.
   int attempt_count_ = 0;
-  // Timestamp updated when StartTrialTask runs and used to determine when to
-  // schedule the next portal detection attempt after this one.
-  base::TimeTicks last_attempt_start_time_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   // PortalDetector::Result for the current on-going attempt. Undefined if there

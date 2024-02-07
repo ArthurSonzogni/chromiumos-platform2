@@ -182,17 +182,20 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(status_code));
     auto response =
         std::make_unique<brillo::http::Response>(http_probe_connection_);
-    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, std::move(response));
+    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, base::TimeTicks(),
+                                             std::move(response));
   }
 
   void HTTPSRequestSuccess() {
     auto response =
         std::make_unique<brillo::http::Response>(https_probe_connection_);
-    portal_detector_->ProcessHTTPSProbeResult(std::move(response));
+    portal_detector_->ProcessHTTPSProbeResult(base::TimeTicks(),
+                                              std::move(response));
   }
 
   void HTTPSRequestFailure(HttpRequest::Error error) {
-    portal_detector_->ProcessHTTPSProbeResult(base::unexpected(error));
+    portal_detector_->ProcessHTTPSProbeResult(base::TimeTicks(),
+                                              base::unexpected(error));
   }
 
  protected:
