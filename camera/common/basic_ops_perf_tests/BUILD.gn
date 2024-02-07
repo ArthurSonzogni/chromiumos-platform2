@@ -18,6 +18,7 @@ generate_mojom_bindings("test_mojom") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "benchmark",
+    "libbrillo",
     "libchrome",
   ]
 }

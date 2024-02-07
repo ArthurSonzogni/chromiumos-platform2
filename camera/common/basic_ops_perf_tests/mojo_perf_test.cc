@@ -16,6 +16,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread.h>
 #include <benchmark/benchmark.h>
+#include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -107,6 +108,7 @@ BENCHMARK(BM_CallWithBuffer)
 int main(int argc, char** argv) {
   benchmark::Initialize(&argc, argv);
   base::CommandLine::Init(argc, argv);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   base::SingleThreadTaskExecutor main_task_executor;
 
   mojo::core::Init();
