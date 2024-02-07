@@ -11,6 +11,10 @@
 
 namespace diagnostics {
 
+FloatingPointAccuracyDelegate::FloatingPointAccuracyDelegate() = default;
+
+FloatingPointAccuracyDelegate::~FloatingPointAccuracyDelegate() = default;
+
 bool FloatingPointAccuracyDelegate::Run() {
   // kIncrement is the result from 1.0 / 1024.0
   constexpr float kIncrement = 0.0009765625f;

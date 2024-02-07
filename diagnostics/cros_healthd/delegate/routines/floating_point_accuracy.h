@@ -9,11 +9,11 @@ namespace diagnostics {
 
 class FloatingPointAccuracyDelegate {
  public:
-  FloatingPointAccuracyDelegate() = default;
+  FloatingPointAccuracyDelegate();
   FloatingPointAccuracyDelegate(const FloatingPointAccuracyDelegate&) = delete;
   FloatingPointAccuracyDelegate& operator=(
       const FloatingPointAccuracyDelegate&) = delete;
-  virtual ~FloatingPointAccuracyDelegate() = default;
+  ~FloatingPointAccuracyDelegate();
 
   // Executes floating point accuracy task. Returns true if test is completed
   // without any error, false otherwise.
