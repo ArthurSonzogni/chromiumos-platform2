@@ -13387,6 +13387,24 @@ mno {
       mtu: 1342
     }
   }
+  mvno {
+    mvno_filter {
+      type: IMSI
+      regex: "3103805[0-9]+"
+    }
+    data {
+      uuid: "8a834969-050f-455f-b2dc-0f321b6be479"
+      country: "us"
+      localized_name {
+        name: "Gigsky"
+      }
+      mobile_apn {
+        apn: "gigsky"
+        type: DEFAULT
+        type: IA
+      }
+    }
+  }
 }
 
 mno {
