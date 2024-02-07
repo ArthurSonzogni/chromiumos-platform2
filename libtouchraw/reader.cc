@@ -19,9 +19,9 @@ constexpr ssize_t kHIDMaxSize = 16384;
 constexpr int kHIDReportIDIndex = 0;
 
 Reader::Reader(base::ScopedFD fd,
-               std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher,
-               HIDDataConsumerInterface* q)
-    : fd_(std::move(fd)), watcher_(std::move(watcher)), q_(q) {}
+               std::unique_ptr<HIDDataConsumerInterface> q,
+               std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher)
+    : fd_(std::move(fd)), q_(std::move(q)), watcher_(std::move(watcher)) {}
 
 absl::Status Reader::Start() {
   if (!base::SequencedTaskRunner::HasCurrentDefault()) {
@@ -55,7 +55,7 @@ void Reader::OnFileCanReadWithoutBlocking(int fd) {
     return;
   }
 
-  static uint8_t buf[kHIDMaxSize] = {0};
+  uint8_t buf[kHIDMaxSize] = {0};
   int attempts = 3;
   ssize_t read_size;
   while (attempts-- > 0) {
@@ -76,7 +76,7 @@ void Reader::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 void Reader::ProcessData(const uint8_t* buf, const ssize_t read_size) {
-  HIDData hid_data = {};
+  auto hid_data = std::make_unique<HIDData>();
 
   if (!buf || read_size == 0) {
     LOG(WARNING) << "Invalid buffer or read size is zero";
@@ -84,11 +84,11 @@ void Reader::ProcessData(const uint8_t* buf, const ssize_t read_size) {
   }
 
   // Push HIDData into consumer queue.
-  hid_data.report_id = buf[kHIDReportIDIndex];
-  hid_data.payload = std::span<const uint8_t>(buf + 1, buf + read_size);
+  hid_data->report_id = buf[kHIDReportIDIndex];
+  hid_data->payload.assign(buf + 1, buf + read_size);
 
   // Dispatch.
-  q_->Push(hid_data);
+  q_->Push(std::move(hid_data));
 }
 
 }  // namespace touchraw

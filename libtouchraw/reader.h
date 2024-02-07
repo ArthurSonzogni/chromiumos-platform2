@@ -24,13 +24,13 @@ class LIBTOUCHRAW_EXPORT Reader {
    * This class monitors and reads the input device when HID data is available.
    *
    * @param fd Scoped file descriptor of the input device.
-   * @param watcher File descriptor watcher.
    * @param q HIDData consumer queue for tasks to be posted.
+   * @param watcher File descriptor watcher, default is nullptr.
    */
-  explicit Reader(
-      base::ScopedFD fd,
-      std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher,
-      HIDDataConsumerInterface* q);
+  explicit Reader(base::ScopedFD fd,
+                  std::unique_ptr<HIDDataConsumerInterface> q,
+                  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+                      watcher = nullptr);
 
   Reader(const Reader&) = delete;
   Reader& operator=(const Reader&) = delete;
@@ -56,11 +56,11 @@ class LIBTOUCHRAW_EXPORT Reader {
   // File descriptor to read.
   base::ScopedFD fd_;
 
+  // Consumer queue.
+  const std::unique_ptr<HIDDataConsumerInterface> q_;
+
   // Controller for watching the input file descriptor.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-
-  // Consumer queue.
-  HIDDataConsumerInterface* q_;
 };
 
 }  // namespace touchraw

@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include <linux/hidraw.h>
@@ -84,19 +85,19 @@ class LIBTOUCHRAW_EXPORT Parser : public HIDDataConsumerInterface {
    * @return Unique pointer of Parser if create succeeds, null pointer
    * otherwise.
    */
-  static std::unique_ptr<Parser> Create(const int fd,
-                                        HeatmapChunkConsumerInterface* q);
+  static std::unique_ptr<Parser> Create(
+      const int fd, std::unique_ptr<HeatmapChunkConsumerInterface> q);
 
   static std::unique_ptr<Parser> CreateForTesting(
-      HeatmapChunkConsumerInterface* q);
+      std::unique_ptr<HeatmapChunkConsumerInterface> q);
 
   Parser(const Parser&) = delete;
   Parser& operator=(const Parser&) = delete;
 
-  void Push(const HIDData data) override {
+  void Push(std::unique_ptr<const HIDData> data) override {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&Parser::ParseHIDData, base::Unretained(this), data));
+        FROM_HERE, base::BindOnce(&Parser::ParseHIDData, base::Unretained(this),
+                                  std::move(data)));
   }
 
  protected:
@@ -105,7 +106,7 @@ class LIBTOUCHRAW_EXPORT Parser : public HIDDataConsumerInterface {
    *
    * @param hid_data
    */
-  void ParseHIDData(const HIDData& hid_data);
+  void ParseHIDData(std::unique_ptr<const HIDData> hid_data);
 
  private:
   FRIEND_TEST(ParserTest, ReportDescriptorWithHeatmap);
@@ -119,7 +120,7 @@ class LIBTOUCHRAW_EXPORT Parser : public HIDDataConsumerInterface {
    *
    * @param q HeatmapChunk consumer queue for tasks to be posted.
    */
-  explicit Parser(HeatmapChunkConsumerInterface* q);
+  explicit Parser(std::unique_ptr<HeatmapChunkConsumerInterface> q);
 
   /**
    * Get report descriptor from ioctl.
@@ -178,7 +179,7 @@ class LIBTOUCHRAW_EXPORT Parser : public HIDDataConsumerInterface {
   std::optional<uint16_t> sub_report_offset_;
 
   // Task queue.
-  HeatmapChunkConsumerInterface* q_;
+  const std::unique_ptr<HeatmapChunkConsumerInterface> q_;
 };
 
 }  // namespace touchraw

@@ -8,6 +8,8 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <linux/hidraw.h>
 #include <sys/ioctl.h>
@@ -87,10 +89,10 @@ void ReportDescriptor::Reset() {
   next_item_idx_ = 0;
 }
 
-std::unique_ptr<Parser> Parser::Create(const int fd,
-                                       HeatmapChunkConsumerInterface* q) {
+std::unique_ptr<Parser> Parser::Create(
+    const int fd, std::unique_ptr<HeatmapChunkConsumerInterface> q) {
   // Using `new` to access a non-public constructor.
-  std::unique_ptr<Parser> parser = base::WrapUnique(new Parser(q));
+  std::unique_ptr<Parser> parser = base::WrapUnique(new Parser(std::move(q)));
   hidraw_report_descriptor rpt_desc;
 
   if (parser->GetReportDescriptorSysfs(fd, &rpt_desc) != 0) {
@@ -106,11 +108,12 @@ std::unique_ptr<Parser> Parser::Create(const int fd,
 }
 
 std::unique_ptr<Parser> Parser::CreateForTesting(
-    HeatmapChunkConsumerInterface* q) {
-  return base::WrapUnique(new Parser(q));
+    std::unique_ptr<HeatmapChunkConsumerInterface> q) {
+  return base::WrapUnique(new Parser(std::move(q)));
 }
 
-Parser::Parser(HeatmapChunkConsumerInterface* q) : q_(q) {}
+Parser::Parser(std::unique_ptr<HeatmapChunkConsumerInterface> q)
+    : q_(std::move(q)) {}
 
 int Parser::GetReportDescriptorIoctl(const int fd,
                                      hidraw_report_descriptor* rpt_desc) {
@@ -253,46 +256,46 @@ bool Parser::ParseHeatmapReportsFromDescriptor(
   return sync_report_offset_.has_value();
 }
 
-void Parser::ParseHIDData(const HIDData& hid_data) {
+void Parser::ParseHIDData(std::unique_ptr<const HIDData> hid_data) {
   int cur = 0;
   uint16_t offset = 0;
-  HeatmapChunk chunk = {};
+  auto chunk = std::make_unique<HeatmapChunk>();
 
   // Discards HIDData for unsupported report_ids.
   if (sync_report_offset_ &&
-      hid_data.report_id == usages_[sync_report_offset_.value()].report_id) {
+      hid_data->report_id == usages_[sync_report_offset_.value()].report_id) {
     offset = sync_report_offset_.value();
   } else if (sub_report_offset_ &&
-             hid_data.report_id ==
+             hid_data->report_id ==
                  usages_[sub_report_offset_.value()].report_id) {
     offset = sub_report_offset_.value();
   } else {
-    LOG(INFO) << "Report id " << static_cast<int>(hid_data.report_id)
+    LOG(INFO) << "Report id " << static_cast<int>(hid_data->report_id)
               << ": Not heat map data.";
     return;
   }
 
-  chunk.report_type = ReportType::kInvalid;
+  chunk->report_type = ReportType::kInvalid;
 
-  for (int i = offset; usages_[i].report_id == hid_data.report_id; ++i) {
+  for (int i = offset; usages_[i].report_id == hid_data->report_id; ++i) {
     switch (usages_[i].usage_page) {
       case kHidDigitizersPage:
         switch (usages_[i].usage) {
           case kHidDGHeatMapProtocolVendorID:
-            chunk.vendor_id =
-                GetDataField(cur, usages_[i].data_size, hid_data.payload);
+            chunk->vendor_id =
+                GetDataField(cur, usages_[i].data_size, hid_data->payload);
             break;
           case kHidDGHeatMapProtocolVersion:
-            chunk.protocol_version =
-                GetDataField(cur, usages_[i].data_size, hid_data.payload);
+            chunk->protocol_version =
+                GetDataField(cur, usages_[i].data_size, hid_data->payload);
             break;
           case kHidDGScanTime:
-            chunk.scan_time =
-                GetDataField(cur, usages_[i].data_size, hid_data.payload);
+            chunk->scan_time =
+                GetDataField(cur, usages_[i].data_size, hid_data->payload);
             break;
           case kHidDGHeatMapFrameData:
-            chunk.payload = std::span<const uint8_t>(
-                hid_data.payload.begin() + cur, hid_data.payload.end());
+            chunk->payload.assign(hid_data->payload.begin() + cur,
+                                  hid_data->payload.end());
             break;
           default:
             break;
@@ -301,9 +304,9 @@ void Parser::ParseHIDData(const HIDData& hid_data) {
       case kHidGenericDesktopPage:
         switch (usages_[i].usage) {
           case kHidGDByteCount:
-            chunk.byte_count =
-                GetDataField(cur, usages_[i].data_size, hid_data.payload);
-            chunk.report_type = ReportType::kFirst;
+            chunk->byte_count =
+                GetDataField(cur, usages_[i].data_size, hid_data->payload);
+            chunk->report_type = ReportType::kFirst;
             break;
           default:
             break;
@@ -312,9 +315,9 @@ void Parser::ParseHIDData(const HIDData& hid_data) {
       case kHidGenericDeviceControlsPage:
         switch (usages_[i].usage) {
           case kHidGDCSequenceID:
-            chunk.sequence_id =
-                GetDataField(cur, usages_[i].data_size, hid_data.payload);
-            chunk.report_type = ReportType::kSubsequent;
+            chunk->sequence_id =
+                GetDataField(cur, usages_[i].data_size, hid_data->payload);
+            chunk->report_type = ReportType::kSubsequent;
             break;
           default:
             break;
@@ -327,7 +330,7 @@ void Parser::ParseHIDData(const HIDData& hid_data) {
   }
 
   // Dispatch.
-  q_->Push(chunk);
+  q_->Push(std::move(chunk));
 }
 
 // Support short items only - data size is limited to 4 bytes.

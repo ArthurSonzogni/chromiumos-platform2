@@ -5,25 +5,27 @@
 #ifndef LIBTOUCHRAW_CONSUMER_INTERFACE_H_
 #define LIBTOUCHRAW_CONSUMER_INTERFACE_H_
 
+#include <memory>
+
 #include "libtouchraw/touchraw.h"
 
 namespace touchraw {
 
 class HIDDataConsumerInterface {
  public:
-  virtual void Push(const HIDData data) = 0;
+  virtual void Push(std::unique_ptr<const HIDData> data) = 0;
   virtual ~HIDDataConsumerInterface() = default;
 };
 
 class HeatmapChunkConsumerInterface {
  public:
-  virtual void Push(const HeatmapChunk chunk) = 0;
+  virtual void Push(std::unique_ptr<const HeatmapChunk> chunk) = 0;
   virtual ~HeatmapChunkConsumerInterface() = default;
 };
 
 class HeatmapConsumerInterface {
  public:
-  virtual void Push(const Heatmap hm) = 0;
+  virtual void Push(std::unique_ptr<const Heatmap> hm) = 0;
   virtual ~HeatmapConsumerInterface() = default;
 };
 

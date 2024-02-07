@@ -15,7 +15,7 @@
 
 namespace touchraw {
 
-// TODO(jingyliang): Add unit tests for ReportDescriptor class. b/275615279.
+// TODO: b/275615279 - Add unit tests for ReportDescriptor class.
 
 base::FilePath GetTestDataPath(const std::string& name) {
   base::FilePath src = base::FilePath(getenv("SRC"));
@@ -26,15 +26,16 @@ base::FilePath GetTestDataPath(const std::string& name) {
 class ParserTest : public testing::Test {
  protected:
   void SetUp() override {
-    mock_consumer_ =
+    auto mock_consumer =
         std::make_unique<testing::StrictMock<MockHeatmapChunkConsumer>>();
-    parser_ = Parser::CreateForTesting(mock_consumer_.get());
+    mock_consumer_ = mock_consumer.get();
+    parser_ = Parser::CreateForTesting(std::move(mock_consumer));
   }
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  std::unique_ptr<MockHeatmapChunkConsumer> mock_consumer_;
+  MockHeatmapChunkConsumer* mock_consumer_;
   std::unique_ptr<Parser> parser_;
 };
 
@@ -55,55 +56,55 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
   EXPECT_EQ(parser_->usages_[parser_->sub_report_offset_.value()].report_id,
             145);
 
-  // First Chunk.
+  // First chunk.
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
-      .WillOnce([&](const HeatmapChunk chunk) {
-        EXPECT_EQ(chunk.vendor_id, 0x2211);
-        EXPECT_EQ(chunk.protocol_version, 0x4433);
-        EXPECT_EQ(chunk.scan_time, 0x88776655);
-        EXPECT_EQ(chunk.byte_count, 0xccbbaa99);
-        EXPECT_FALSE(chunk.sequence_id.has_value());
-        EXPECT_EQ(chunk.report_type, ReportType::kFirst);
-        EXPECT_EQ(chunk.payload.size(), 3);
-        EXPECT_EQ(chunk.payload[0], 0xdd);
-        EXPECT_EQ(chunk.payload[1], 0xee);
-        EXPECT_EQ(chunk.payload[2], 0xff);
+      .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
+        EXPECT_EQ(chunk->vendor_id, 0x2211);
+        EXPECT_EQ(chunk->protocol_version, 0x4433);
+        EXPECT_EQ(chunk->scan_time, 0x88776655);
+        EXPECT_EQ(chunk->byte_count, 0xccbbaa99);
+        EXPECT_FALSE(chunk->sequence_id.has_value());
+        EXPECT_EQ(chunk->report_type, ReportType::kFirst);
+        EXPECT_EQ(chunk->payload.size(), 3);
+        EXPECT_EQ(chunk->payload[0], 0xdd);
+        EXPECT_EQ(chunk->payload[1], 0xee);
+        EXPECT_EQ(chunk->payload[2], 0xff);
       });
-  uint8_t body1[]{
-      0x11, 0x22,              // protocol vendor ID.
-      0x33, 0x44,              // Protocol version.
-      0x55, 0x66, 0x77, 0x88,  // Scan time.
-      0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
-      0xdd, 0xee, 0xff,        // Frame data.
-  };
-  HIDData hid_data1 = {144,  // report id.
-                       body1};
-  parser_->ParseHIDData(hid_data1);
+  auto hid_data1 = std::make_unique<HIDData>(
+      HIDData{144,  // Report id.
+              {
+                  0x11, 0x22,              // Protocol vendor ID.
+                  0x33, 0x44,              // Protocol version.
+                  0x55, 0x66, 0x77, 0x88,  // Scan time.
+                  0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
+                  0xdd, 0xee, 0xff,        // Frame data.
+              }});
+  parser_->ParseHIDData(std::move(hid_data1));
 
-  // A subsequent Chunk.
+  // A subsequent chunk.
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
-      .WillOnce([&](const HeatmapChunk chunk) {
-        EXPECT_EQ(chunk.vendor_id, 0x2211);
-        EXPECT_EQ(chunk.protocol_version, 0x4433);
-        EXPECT_EQ(chunk.scan_time, 0x88776655);
-        EXPECT_FALSE(chunk.byte_count.has_value());
-        EXPECT_EQ(chunk.sequence_id, 0xaa99);
-        EXPECT_EQ(chunk.report_type, ReportType::kSubsequent);
-        EXPECT_EQ(chunk.payload.size(), 5);
-        EXPECT_EQ(chunk.payload[0], 0xbb);
-        EXPECT_EQ(chunk.payload[1], 0xcc);
-        EXPECT_EQ(chunk.payload[2], 0xdd);
+      .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
+        EXPECT_EQ(chunk->vendor_id, 0x2211);
+        EXPECT_EQ(chunk->protocol_version, 0x4433);
+        EXPECT_EQ(chunk->scan_time, 0x88776655);
+        EXPECT_FALSE(chunk->byte_count.has_value());
+        EXPECT_EQ(chunk->sequence_id, 0xaa99);
+        EXPECT_EQ(chunk->report_type, ReportType::kSubsequent);
+        EXPECT_EQ(chunk->payload.size(), 5);
+        EXPECT_EQ(chunk->payload[0], 0xbb);
+        EXPECT_EQ(chunk->payload[1], 0xcc);
+        EXPECT_EQ(chunk->payload[2], 0xdd);
       });
-  uint8_t body2[]{
-      0x11, 0x22,                    // protocol vendor ID.
-      0x33, 0x44,                    // Protocol version.
-      0x55, 0x66, 0x77, 0x88,        // Scan time.
-      0x99, 0xaa,                    // Sequence ID.
-      0xbb, 0xcc, 0xdd, 0xee, 0xff,  // Frame data.
-  };
-  HIDData hid_data2 = {145,  // report id.
-                       body2};
-  parser_->ParseHIDData(hid_data2);
+  auto hid_data2 = std::make_unique<HIDData>(
+      HIDData{145,  // Report id.
+              {
+                  0x11, 0x22,                    // Protocol vendor ID.
+                  0x33, 0x44,                    // Protocol version.
+                  0x55, 0x66, 0x77, 0x88,        // Scan time.
+                  0x99, 0xaa,                    // Sequence ID.
+                  0xbb, 0xcc, 0xdd, 0xee, 0xff,  // Frame data.
+              }});
+  parser_->ParseHIDData(std::move(hid_data2));
 }
 
 // Complete report descriptor that does not support heat map.
@@ -140,40 +141,40 @@ TEST_F(ParserTest, UnknownHidType) {
             145);
 
   // Unsupported report ID.
-  uint8_t body1[]{
-      0x11, 0x22,              // protocol vendor ID.
-      0x33, 0x44,              // Protocol version.
-      0x55, 0x66, 0x77, 0x88,  // Scan time.
-      0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
-      0xdd, 0xee, 0xff,        // Frame data.
-  };
-  HIDData hid_data1 = {140,  // report id.
-                       body1};
-  parser_->ParseHIDData(hid_data1);
+  auto hid_data1 = std::make_unique<HIDData>(
+      HIDData{140,  // Report id.
+              {
+                  0x11, 0x22,              // Protocol vendor ID.
+                  0x33, 0x44,              // Protocol version.
+                  0x55, 0x66, 0x77, 0x88,  // Scan time.
+                  0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
+                  0xdd, 0xee, 0xff,        // Frame data.
+              }});
+  parser_->ParseHIDData(std::move(hid_data1));
 
   // Report descriptor and data do not match.
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
-      .WillOnce([&](const HeatmapChunk chunk) {
-        EXPECT_EQ(chunk.vendor_id, 0x2211);
-        EXPECT_EQ(chunk.protocol_version, 0x4433);
-        EXPECT_EQ(chunk.scan_time, 0);
-        EXPECT_EQ(chunk.byte_count, 0x88776655);
-        EXPECT_FALSE(chunk.sequence_id.has_value());
-        EXPECT_EQ(chunk.report_type, ReportType::kFirst);
-        EXPECT_EQ(chunk.payload.size(), 7);
-        EXPECT_EQ(chunk.payload[0], 0x99);
-        EXPECT_EQ(chunk.payload[6], 0xff);
+      .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
+        EXPECT_EQ(chunk->vendor_id, 0x2211);
+        EXPECT_EQ(chunk->protocol_version, 0x4433);
+        EXPECT_EQ(chunk->scan_time, 0);
+        EXPECT_EQ(chunk->byte_count, 0x88776655);
+        EXPECT_FALSE(chunk->sequence_id.has_value());
+        EXPECT_EQ(chunk->report_type, ReportType::kFirst);
+        EXPECT_EQ(chunk->payload.size(), 7);
+        EXPECT_EQ(chunk->payload[0], 0x99);
+        EXPECT_EQ(chunk->payload[6], 0xff);
       });
-  uint8_t body2[]{
-      0x11, 0x22,              // protocol vendor ID.
-      0x33, 0x44,              // Protocol version.
-      0x55, 0x66, 0x77, 0x88,  // Scan time.
-      0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
-      0xdd, 0xee, 0xff,        // Frame data.
-  };
-  HIDData hid_data2 = {144,  // report id.
-                       body2};
-  parser_->ParseHIDData(hid_data2);
+  auto hid_data2 = std::make_unique<HIDData>(
+      HIDData{144,  // Report id.
+              {
+                  0x11, 0x22,              // Protocol vendor ID.
+                  0x33, 0x44,              // Protocol version.
+                  0x55, 0x66, 0x77, 0x88,  // Scan time.
+                  0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
+                  0xdd, 0xee, 0xff,        // Frame data.
+              }});
+  parser_->ParseHIDData(std::move(hid_data2));
 }
 
 }  // namespace touchraw

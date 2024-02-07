@@ -6,15 +6,16 @@
 #define LIBTOUCHRAW_TOUCHRAW_H_
 
 #include <cstdint>
+#include <memory>
 #include <optional>
-#include <span>
+#include <vector>
 
 namespace touchraw {
 
 // Describe HID data received from the device.
 struct HIDData {
   uint8_t report_id;
-  std::span<const uint8_t> payload;
+  std::vector<uint8_t> payload;
 };
 
 enum ReportType {
@@ -44,7 +45,7 @@ struct HeatmapChunk {
   // Please refer to HID Usage Tables
   // https://www.usb.org/sites/default/files/hut1_4.pdf section 16.9 Capacitive
   // Heat Map Frame Data.
-  std::span<const uint8_t> payload;
+  std::vector<uint8_t> payload;
 };
 
 enum EncodingType {
@@ -68,7 +69,7 @@ struct Heatmap {
   uint8_t width;
   uint16_t threshold;
   uint16_t length;
-  std::span<const uint8_t> payload;
+  std::vector<uint8_t> payload;
 };
 
 }  // namespace touchraw
