@@ -47,6 +47,7 @@ DEFAULT_ARGS = {
     "gpg-keyring": "",
     "gpg-recipients": "",
     "log-dir": "/var/log/fpstudy",
+    "export-fmi": False,
 }
 
 errors = [
@@ -81,6 +82,7 @@ class FingerWebSocket(WebSocket):
     pict_dir = "/tmp"
     # fpcutils.FpUtils class to process images through the external library.
     fpcutils = None
+    export_fmi = False
     # The optional GNUGPG instance used for encryption.
     gpg = None
     gpg_recipients: list = None
@@ -102,6 +104,8 @@ class FingerWebSocket(WebSocket):
         self.pict_dir = arg.picture_dir
         if fpcutils:
             self.fpcutils = fpcutils.FpUtils()
+        if arg.export_fmi:
+            self.export_fmi = True
         if arg.gpg_keyring:
             # The verbose flag prints a lot of info to console using print
             # directly. We use the logging interface instead.
@@ -243,12 +247,15 @@ class FingerWebSocket(WebSocket):
             cherrypy.log("Failed to download fpframe")
             return
         self.save_to_file(img, raw_file)
-        if self.fpcutils:
-            rc, fmi = self.fpcutils.image_data_to_fmi(img)
-            if rc == 0:
-                self.save_to_file(fmi, fmi_file)
+        if self.export_fmi:
+            if self.fpcutils:
+                rc, fmi = self.fpcutils.image_data_to_fmi(img)
+                if rc == 0:
+                    self.save_to_file(fmi, fmi_file)
+                else:
+                    cherrypy.log(f"FMI conversion failed {rc}")
             else:
-                cherrypy.log(f"FMI conversion failed {rc}")
+                cherrypy.log("FPC utils are unavailable")
 
     def finger_process(self, req):
         # Ensure the user has removed the finger between 2 captures.
@@ -419,6 +426,13 @@ def main(argv: list):
         type=str,
         default=env_default["gpg-recipients"],
         help="User IDs of GPG recipients separated by space",
+    )
+    parser.add_argument(
+        "-fmi",
+        "--export-fmi",
+        action="store_true",
+        default=env_default["export-fmi"],
+        help="Enable export of FMI converted capture.",
     )
     args = parser.parse_args(argv)
 
