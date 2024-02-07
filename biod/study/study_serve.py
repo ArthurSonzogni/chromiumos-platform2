@@ -33,9 +33,9 @@ from ws4py.websocket import WebSocket
 # Use the image conversion library if available.
 sys.path.extend(["/usr/local/opt/fpc", "/opt/fpc"])
 try:
-    import fputils
+    import fputils as fpcutils
 except ImportError:
-    fputils = None
+    fpcutils = None
 
 DEFAULT_ARGS = {
     "finger-count": 2,
@@ -79,8 +79,8 @@ class FingerWebSocket(WebSocket):
 
     config = {}
     pict_dir = "/tmp"
-    # FpUtils class to process images through the external library.
-    utils = None
+    # fpcutils.FpUtils class to process images through the external library.
+    fpcutils = None
     # The optional GNUGPG instance used for encryption.
     gpg = None
     gpg_recipients: list = None
@@ -100,8 +100,8 @@ class FingerWebSocket(WebSocket):
             "verificationCount": arg.verification_count,
         }
         self.pict_dir = arg.picture_dir
-        if fputils:
-            self.utils = fputils.FpUtils()
+        if fpcutils:
+            self.fpcutils = fpcutils.FpUtils()
         if arg.gpg_keyring:
             # The verbose flag prints a lot of info to console using print
             # directly. We use the logging interface instead.
@@ -243,8 +243,8 @@ class FingerWebSocket(WebSocket):
             cherrypy.log("Failed to download fpframe")
             return
         self.save_to_file(img, raw_file)
-        if self.utils:
-            rc, fmi = self.utils.image_data_to_fmi(img)
+        if self.fpcutils:
+            rc, fmi = self.fpcutils.image_data_to_fmi(img)
             if rc == 0:
                 self.save_to_file(fmi, fmi_file)
             else:
