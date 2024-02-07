@@ -21,6 +21,11 @@ module chromeos.machine_learning.mojom;
 import "ml/mojom/time.mojom";
 
 // Enum indicates the result of LoadHeatmapPalmRejection in mlservice.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// Keep this enum in sync with
+// MachineLearningServiceLoadHeatmapPalmRejectionResult in
+// tools/metrics/histograms/metadata/cros_ml/enums.xml.
 [Stable, Extensible]
 enum LoadHeatmapPalmRejectionResult {
   // The service was loaded successfully.
