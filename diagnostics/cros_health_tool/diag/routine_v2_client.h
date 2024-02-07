@@ -59,8 +59,9 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
   // The remote for CrosHealthdRoutinesService.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       routine_service_;
-  // The callback for printing the output.
-  base::RepeatingCallback<void(const base::Value::Dict&)> output_printer_;
+  // Whether to print the output JSON string in a single line. When it is
+  // |false|, the JSON string will be pretty-printed.
+  const bool single_line_json_ = false;
   // This mojo remote controls the routine.
   mojo::Remote<ash::cros_healthd::mojom::RoutineControl> routine_control_;
   // Used for waiting until terminated.

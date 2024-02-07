@@ -41,24 +41,13 @@ base::Value::Dict ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
   return output;
 }
 
-void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
-  if (single_line_json) {
-    std::cout << "Output: ";
-    OutputSingleLineJson(output);
-    return;
-  }
-  std::cout << "Output: " << std::endl;
-  OutputJson(output);
-}
-
 }  // namespace
 
 RoutineV2Client::RoutineV2Client(
     mojo::Remote<mojom::CrosHealthdRoutinesService> routine_service,
     bool single_line_json)
-    : routine_service_(std::move(routine_service)) {
-  output_printer_ = base::BindRepeating(&FormatJsonOutput, single_line_json);
-}
+    : routine_service_(std::move(routine_service)),
+      single_line_json_(single_line_json) {}
 
 RoutineV2Client::~RoutineV2Client() = default;
 
@@ -108,7 +97,13 @@ void RoutineV2Client::OnRoutineDisconnection(uint32_t error,
 }
 
 void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
-  output_printer_.Run(output);
+  if (single_line_json_) {
+    std::cout << "Output: ";
+    OutputSingleLineJson(output);
+    return;
+  }
+  std::cout << "Output: " << std::endl;
+  OutputJson(output);
 }
 
 void RoutineV2Client::OnInitializedState() {
