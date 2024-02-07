@@ -10409,6 +10409,22 @@ mno {
 
 mno {
   data {
+    uuid: "b7915d22-bd5c-4540-a0d8-295714771825"
+    country: "ph"
+    localized_name {
+      name: "DITO"
+    }
+    mccmnc: "51566"
+    mobile_apn {
+      apn: "internet.dito.ph"
+      ip_type: IPV4V6
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid: "28bd2442-9a5f-4653-95c1-7f2d9a6d84d2"
     country: "pk"
     localized_name {
