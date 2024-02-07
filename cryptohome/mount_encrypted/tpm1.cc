@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -416,12 +417,13 @@ result_code Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
       rootdir_.AppendASCII(paths::cryptohome::kShallInitialize);
   base::FilePath attestation_database_path =
       rootdir_.AppendASCII(paths::cryptohome::kAttestationDatabase);
-  if (!base::DeleteFile(tpm_status_path) || !base::DeleteFile(tpm_owned_path) ||
+  if (!brillo::DeleteFile(tpm_status_path) ||
+      !brillo::DeleteFile(tpm_owned_path) ||
       !brillo::SyncFileOrDirectory(tpm_status_path.DirName(), true, false) ||
       !brillo::WriteToFileAtomic(shall_initialize_path, nullptr, 0, 0644) ||
       !brillo::SyncFileOrDirectory(shall_initialize_path.DirName(), true,
                                    false) ||
-      !base::DeleteFile(attestation_database_path)) {
+      !brillo::DeleteFile(attestation_database_path)) {
     PLOG(ERROR) << "Failed to update ownership state files.";
     return RESULT_FAIL_FATAL;
   }

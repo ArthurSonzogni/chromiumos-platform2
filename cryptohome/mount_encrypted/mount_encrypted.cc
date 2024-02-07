@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
@@ -233,7 +234,7 @@ bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
     PLOG(ERROR) << "Failed to change ownership/perms of tmpfs file "
                 << filename;
     // Remove the file as it contains the tpm seed with incorrect owner.
-    PLOG_IF(ERROR, !base::DeleteFile(file)) << "Unable to remove file!";
+    PLOG_IF(ERROR, !brillo::DeleteFile(file)) << "Unable to remove file!";
     return false;
   }
 
