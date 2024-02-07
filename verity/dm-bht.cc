@@ -106,7 +106,7 @@ static bool set_digest_params(struct dm_bht* bht, const char* alg_name) {
   if (!strcasecmp(alg_name, "blake2b-512")) {
     bht->digest_alg = EVP_get_digestbyname("blake2b512");
   } else if (!strcasecmp(alg_name, "blake2b-256")) {
-    bht->digest_alg = EVP_get_digestbyname("blake2b512");
+    bht->digest_alg = EVP_get_digestbyname("blake2b256");
   } else if (!strcasecmp(alg_name, "blake2s-256")) {
     bht->digest_alg = EVP_get_digestbyname("blake2s256");
   } else {
@@ -118,12 +118,6 @@ static bool set_digest_params(struct dm_bht* bht, const char* alg_name) {
   }
 
   bht->digest_size = EVP_MD_size(bht->digest_alg);
-  if (!strcasecmp(alg_name, "blake2b-256")) {
-    // OpenSSL doesn't have direct blake2b256 calls, but 256 bit digest is just
-    // a truncation of full length digest, so tell our code to only use first
-    // half of it.
-    bht->digest_size /= 2;
-  }
 
   return true;
 }
