@@ -26,6 +26,7 @@ namespace secagentd::bpf {
 #define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(NO)
 #else
 #define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(YES)
+#define CROS_FENTRY_FEXIT_SUPPORTED (1)
 #endif
 #endif
 

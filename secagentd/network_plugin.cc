@@ -90,6 +90,12 @@ bool IsFilteredOut(const pb::NetworkFlowEvent& flow_event) {
   if (process.commandline().starts_with("\'avahi-daemon: running")) {
     return true;
   }
+
+  // Filter out obvious local traffic.
+  if (flow.has_remote_ip() && flow.remote_ip() == "127.0.0.1") {
+    return true;
+  }
+
   return false;
 }
 
