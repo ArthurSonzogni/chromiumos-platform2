@@ -15,6 +15,7 @@
 | python gpg lib    | dev-python/python-gnupg    | python3-gnupg      |
 """
 
+from __future__ import annotations
 from __future__ import print_function
 
 import argparse
@@ -26,6 +27,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from typing import Literal
 
 # The following imports will be available on the test image, but will usually
 # be missing in the SDK.
@@ -66,6 +68,8 @@ SENSORS = {
     ),
 }
 
+SENSORS_TYPING = Literal["FPC1145", "FPC1025"]
+
 OUTPUT_IMAGE_FILE_EXTS = [
     # The intermediate ASCII Image format.
     "pgm",
@@ -74,6 +78,8 @@ OUTPUT_IMAGE_FILE_EXTS = [
     "png",
     "jpg",
 ]
+
+OUTPUT_IMAGE_FILE_EXT_TYPING = Literal["pgm", "pnm", "png", "jpg"]
 
 CAPTURE_FILE_EXTS = [
     "gpg",
@@ -165,6 +171,80 @@ def decrypt(private_key: str, private_key_pass: str, files: list):
             os.system(f"find {gnupghome} -type f | xargs shred -v")
 
 
+def convert(
+    raw_capture: bytes,
+    sensor_name: SENSORS_TYPING,
+    out_type: OUTPUT_IMAGE_FILE_EXT_TYPING,
+) -> bytes:
+    """Convert a raw fingerprint capture to another usable format."""
+
+    if not sensor_name in SENSORS:
+        raise ValueError(f"Arg sensor must be one of {SENSORS}.")
+
+    if not out_type in OUTPUT_IMAGE_FILE_EXTS:
+        raise ValueError(
+            f"Arg out_type must be one of {OUTPUT_IMAGE_FILE_EXTS}."
+        )
+
+    if out_type != "pgm" and not shutil.which("mogrify"):
+        # The mogrify utility can be found in the imagemagick package.
+        raise RuntimeError(
+            f"Conversion to {out_type} requires the mogrify utility. "
+            "Please install the imagemagick package."
+        )
+
+    sensor = SENSORS[sensor_name]
+
+    # We always build the ASCII PGM representation of the image.
+    # If the user wants a PGM image, we just save it to a file.
+    # If the user wants a more complex type, we feed the PGM representation
+    # into mogrify and save the output image binary.
+
+    # More information about PGM can be found at
+    # https://en.wikipedia.org/wiki/Netpbm#File_formats
+    #
+    # This raw to PGM conversion can also be seen in the upload_pgm_image
+    # function of ec/common/fpsensor/fpsensor.c and the cmd_fp_frame
+    # function of ec/util/ectool.c. Check commit description for more info.
+    pgm_buffer = ""
+    if len(raw_capture) != sensor.frame_size:
+        raise ValueError(
+            f"Raw frame size {len(raw_capture)} != "
+            f"expected size {sensor.frame_size}."
+        )
+
+    # Use magic vendor frame offset.
+    raw_capture = raw_capture[sensor.frame_offset_image :]
+
+    # Write 8-bpp PGM ASCII header.
+    pgm_buffer += "P2\n"
+    pgm_buffer += f"{sensor.width} {sensor.height}\n"
+    pgm_buffer += f"{2**sensor.bits - 1}\n"
+    # Write table of pixel values.
+    for h in range(sensor.height):
+        for w in range(sensor.width):
+            pgm_buffer += f"{int(raw_capture[sensor.width*h + w])} "
+        pgm_buffer += "\n"
+    # Write non-essential footer.
+    pgm_buffer += "# END OF FILE\n"
+
+    if out_type == "pgm":
+        return bytes(pgm_buffer, "utf-8")
+    else:
+        # The mogrify utility can be found in the imagemagick package.
+        # mogrify -format png *.pgm
+        p = subprocess.run(
+            ["mogrify", "-format", out_type, "-"],
+            capture_output=True,
+            input=bytes(pgm_buffer, "utf-8"),
+            check=False,
+        )
+        if p.returncode != 0:
+            print("mogrify:", str(p.stderr, "utf-8"))
+            raise RuntimeError(f"The mogrify utility returned {p.returncode}.")
+        return bytes(p.stdout)
+
+
 def cmd_decrypt(args: argparse.Namespace) -> int:
     """Decrypt all gpg encrypted fingerprint captures."""
 
@@ -212,75 +292,15 @@ def cmd_convert(args: argparse.Namespace) -> int:
         print("Error - The given path does not contain raw files.")
         return 1
 
-    if args.outtype != "pgm" and not shutil.which("mogrify"):
-        print("Error - The mogrify utility does not exist.")
-        print("Please install imagemagick.")
-        return 1
-
-    sensor = SENSORS[args.sensor]
-    print(
-        f"Sensor {args.sensor} is {sensor.height} x {sensor.width} with "
-        f"{sensor.bits} bits of resolution."
-    )
-
     for infile in files:
-        print(f"Converting {infile} to {args.outtype}.")
-
         outfile, _ = os.path.splitext(infile)
         outfile += "." + args.outtype
 
-        # We always build the ASCII PGM representation of the image.
-        # If the user wants a PGM image, we just save it to a file.
-        # If the user wants a more complex type, we feed the PGM representation
-        # into mogrify and save the output image binary.
-
-        # More information about PGM can be found at
-        # https://en.wikipedia.org/wiki/Netpbm#File_formats
-        #
-        # This raw to PGM conversion can also be seen in the upload_pgm_image
-        # function of ec/common/fpsensor/fpsensor.c and the cmd_fp_frame
-        # function of ec/util/ectool.c. Check commit description for more info.
-        pgm_buffer = ""
         with open(infile, "rb") as fin:
             b = fin.read()
-            if len(b) != sensor.frame_size:
-                print(
-                    f"Error - Raw frame is size {len(b)}, but we expected "
-                    f"size {sensor.frame_size}"
-                )
-                return 1
-            # Use magic vendor frame offset.
-            b = b[sensor.frame_offset_image :]
-
-            # Write 8-bpp PGM ASCII header.
-            pgm_buffer += "P2\n"
-            pgm_buffer += f"{sensor.width} {sensor.height}\n"
-            pgm_buffer += f"{2**sensor.bits - 1}\n"
-            # Write table of pixel values.
-            for h in range(sensor.height):
-                for w in range(sensor.width):
-                    pgm_buffer += f"{int(b[sensor.width*h + w])} "
-                pgm_buffer += "\n"
-            # Write non-essential footer.
-            pgm_buffer += "# END OF FILE\n"
-
-        with open(outfile, "wb") as fout:
-            if args.outtype == "pgm":
-                fout.write(bytes(pgm_buffer, "utf-8"))
-            else:
-                # Install imagemagick
-                # mogrify -format png *.pgm
-                p = subprocess.run(
-                    ["mogrify", "-format", args.outtype, "-"],
-                    capture_output=True,
-                    input=bytes(pgm_buffer, "utf-8"),
-                    check=False,
-                )
-                if p.returncode != 0:
-                    print("mogrify:", str(p.stderr, "utf-8"))
-                    print(f"Error - mogrify returned {p.returncode}.")
-                    return 1
-                fout.write(p.stdout)
+            out_bytes = convert(b, args.sensor, args.outtype)
+            with open(outfile, "wb") as fout:
+                fout.write(out_bytes)
 
     return 0
 
