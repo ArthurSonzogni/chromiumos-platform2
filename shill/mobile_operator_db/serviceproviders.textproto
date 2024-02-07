@@ -10409,29 +10409,12 @@ mno {
 
 mno {
   data {
-    uuid: "7c70c5b1-5f0a-4be6-ba08-195c37e2ce4b"
-    country: "pk"
-    localized_name {
-      name: "Djuice"
-    }
-    mccmnc: "51506"
-    mobile_apn {
-      apn: "internet"
-      username: "telenor"
-      password: "telenor"
-      type: DEFAULT
-    }
-  }
-}
-
-mno {
-  data {
     uuid: "28bd2442-9a5f-4653-95c1-7f2d9a6d84d2"
     country: "pk"
     localized_name {
       name: "Mobilink"
     }
-    mccmnc: "51501"
+    mccmnc: "41001"
     mobile_apn {
       apn: "connect.mobilinkworld.com"
       localized_name {
@@ -10444,23 +10427,6 @@ mno {
       localized_name {
         name: "Jazz"
       }
-      type: DEFAULT
-    }
-  }
-}
-
-mno {
-  data {
-    uuid: "31602bcf-0886-40dc-8b96-1e2e1b568964"
-    country: "pk"
-    localized_name {
-      name: "Telenor"
-    }
-    mccmnc: "51506"
-    mobile_apn {
-      apn: "internet"
-      username: "telenor"
-      password: "telenor"
       type: DEFAULT
     }
   }
@@ -10485,14 +10451,16 @@ mno {
 
 mno {
   data {
-    uuid: "5be9e131-6094-4edf-9d69-e295bf8b70e4"
+    uuid: "31602bcf-0886-40dc-8b96-1e2e1b568964"
     country: "pk"
     localized_name {
-      name: "Warid"
+      name: "Telenor"
     }
-    mccmnc: "51507"
+    mccmnc: "41006"
     mobile_apn {
-      apn: "warid"
+      apn: "internet"
+      username: "telenor"
+      password: "telenor"
       type: DEFAULT
     }
   }
@@ -10500,10 +10468,15 @@ mno {
 
 mno {
   data {
-    uuid: "be7861c0-9cd8-41d1-b022-d5ce13d41ab7"
+    uuid: "5be9e131-6094-4edf-9d69-e295bf8b70e4"
     country: "pk"
     localized_name {
-      name: "WorldCall Wireless"
+      name: "Warid"
+    }
+    mccmnc: "41007"
+    mobile_apn {
+      apn: "warid"
+      type: DEFAULT
     }
   }
 }
@@ -10515,7 +10488,7 @@ mno {
     localized_name {
       name: "ZONG"
     }
-    mccmnc: "51504"
+    mccmnc: "41004"
     mobile_apn {
       apn: "zonginternet"
       type: DEFAULT
