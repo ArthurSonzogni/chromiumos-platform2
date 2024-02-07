@@ -225,7 +225,7 @@ const char MetricsDaemon::kMetricDetachableBaseActivePercentName[] =
 
 const char MetricsDaemon::kHammerSysfsPathPath[] =
     "/run/metrics/external/hammer/hammer_sysfs_path";
-const char MetricsDaemon::kDetachableBaseSysfsLevelName[] = "power/level";
+const char MetricsDaemon::kDetachableBaseSysfsLevelName[] = "power/control";
 const char MetricsDaemon::kDetachableBaseSysfsLevelValue[] = "auto";
 const char MetricsDaemon::kDetachableBaseSysfsActiveTimeName[] =
     "power/runtime_active_time";
