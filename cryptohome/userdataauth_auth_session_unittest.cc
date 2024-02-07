@@ -141,22 +141,19 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     SetUpHWSecExpectations();
     system_apis_.crypto.Init();
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        &keyset_management_, &system_apis_.crypto, &system_apis_.platform,
-        &features_.async, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
-        nullptr, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+        &system_apis_.keyset_management, &system_apis_.crypto,
+        &system_apis_.platform, &features_.async,
+        AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
+        AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
-    userdataauth_.set_keyset_management(&keyset_management_);
     userdataauth_.set_auth_factor_driver_manager_for_testing(
         &auth_factor_driver_manager_);
-    userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
-    userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_user_session_map_for_testing(&user_session_map_);
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
-    userdataauth_.set_uss_manager_for_testing(&uss_manager_);
 
     userdataauth_.SetSignallingInterface(signalling_);
     ON_CALL(signalling_, SendMountStarted(_))
@@ -203,9 +200,10 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     auth_session_manager_ =
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
-            &keyset_management_, auth_block_utility,
-            &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
-            &uss_manager_, &features_.async});
+            &system_apis_.keyset_management, auth_block_utility,
+            &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
+            &system_apis_.uss_storage, &system_apis_.uss_manager,
+            &features_.async});
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -371,25 +369,20 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
-  MockSystemApis<> system_apis_;
+  MockSystemApis<WithMockKeysetManagement> system_apis_;
   UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;
-  UssStorage uss_storage_{&system_apis_.platform};
-  UssManager uss_manager_{uss_storage_};
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthFactorDriverManager auth_factor_driver_manager_{
       &system_apis_.platform,
       &system_apis_.crypto,
-      &uss_manager_,
+      &system_apis_.uss_manager,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&system_apis_.platform,
-                                         &keyset_management_, &uss_manager_};
-  NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
 
@@ -420,7 +413,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
 
   void ExpectAuth(const Username& username, const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
-    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
+    EXPECT_CALL(system_apis_.keyset_management, GetValidKeyset(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
     ON_CALL(system_apis_.platform,
             DirectoryExists(UserPath(SanitizeUserName(username))))

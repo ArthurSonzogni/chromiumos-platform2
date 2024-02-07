@@ -55,6 +55,7 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
 #include <libstorage/platform/platform.h>
@@ -107,7 +108,6 @@
 #include "cryptohome/username.h"
 #include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
-#include "libhwsec-foundation/status/status_chain.h"
 
 using base::FilePath;
 using brillo::Blob;
@@ -708,21 +708,6 @@ void RunWithDecryptAuthSessionWhenAvailable(
 
 }  // namespace
 
-UserDataAuth::BackingApis UserDataAuth::BackingApis::FromSystemApis(
-    SystemApis& apis) {
-  return {
-      .platform = &apis.platform,
-      .hwsec = apis.hwsec.get(),
-      .hwsec_pw_manager = apis.hwsec_pw_manager.get(),
-      .recovery_crypto = apis.recovery_crypto.get(),
-      .cryptohome_keys_manager = &apis.cryptohome_keys_manager,
-      .crypto = &apis.crypto,
-      .firmware_management_parameters = &apis.firmware_management_parameters,
-      .install_attrs = &apis.install_attrs,
-      .user_activity_timestamp_manager = &apis.user_activity_timestamp_manager,
-  };
-}
-
 UserDataAuth::UserDataAuth(BackingApis apis)
     : origin_thread_id_(base::PlatformThread::CurrentId()),
       mount_thread_(nullptr),
@@ -745,10 +730,12 @@ UserDataAuth::UserDataAuth(BackingApis apis)
       install_attrs_(apis.install_attrs),
       enterprise_owned_(false),
       user_activity_timestamp_manager_(apis.user_activity_timestamp_manager),
+      keyset_management_(apis.keyset_management),
+      uss_storage_(apis.uss_storage),
+      uss_manager_(apis.uss_manager),
+      auth_factor_manager_(apis.auth_factor_manager),
       default_homedirs_(nullptr),
       homedirs_(nullptr),
-      default_keyset_management_(nullptr),
-      keyset_management_(nullptr),
       auth_block_utility_(nullptr),
       default_auth_session_manager_(nullptr),
       auth_session_manager_(nullptr),
@@ -805,12 +792,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     return false;
   }
 
-  if (!keyset_management_) {
-    default_keyset_management_ = std::make_unique<KeysetManagement>(
-        platform_, crypto_, std::make_unique<VaultKeysetFactory>());
-    keyset_management_ = default_keyset_management_.get();
-  }
-
   AsyncInitPtr<SignallingInterface> async_signalling(base::BindRepeating(
       [](UserDataAuth* uda) -> SignallingInterface* {
         if (uda->signalling_intf_ != &uda->default_signalling_) {
@@ -857,21 +838,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         async_cc_helper, key_challenge_service_factory_,
         async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
-  }
-
-  if (!uss_storage_) {
-    default_uss_storage_ = std::make_unique<UssStorage>(platform_);
-    uss_storage_ = default_uss_storage_.get();
-  }
-  if (!uss_manager_) {
-    default_uss_manager_ = std::make_unique<UssManager>(*uss_storage_);
-    uss_manager_ = default_uss_manager_.get();
-  }
-
-  if (!auth_factor_manager_) {
-    default_auth_factor_manager_ = std::make_unique<AuthFactorManager>(
-        platform_, keyset_management_, uss_manager_);
-    auth_factor_manager_ = default_auth_factor_manager_.get();
   }
 
   if (!auth_factor_driver_manager_) {

@@ -45,13 +45,9 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/fingerprint_manager.h"
-#include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/firmware_management_parameters_interface.h"
-#include "cryptohome/firmware_management_parameters_proxy.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
-#include "cryptohome/install_attributes.h"
 #include "cryptohome/install_attributes_interface.h"
-#include "cryptohome/install_attributes_proxy.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"
@@ -69,27 +65,9 @@
 #include "cryptohome/user_session/user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
+#include "cryptohome/vault_keyset_factory.h"
 
 namespace cryptohome {
-
-// Collection of APIs for accessing various aspects of the system. Used to
-// populate the BackingApis parameter on non-test constructions of UserDataAuth.
-struct SystemApis {
-  libstorage::Platform platform;
-  hwsec::FactoryImpl hwsec_factory;
-  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec{
-      hwsec_factory.GetCryptohomeFrontend()};
-  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager{
-      hwsec_factory.GetPinWeaverManagerFrontend()};
-  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto{
-      hwsec_factory.GetRecoveryCryptoFrontend()};
-  CryptohomeKeysManager cryptohome_keys_manager{hwsec.get(), &platform};
-  Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
-                recovery_crypto.get()};
-  FirmwareManagementParametersProxy firmware_management_parameters;
-  InstallAttributesProxy install_attrs;
-  UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
-};
 
 class UserDataAuth {
  public:
@@ -124,9 +102,6 @@ class UserDataAuth {
   // depends on. All of these pointers must be valid for the entire lifetime of
   // the UserDataAuth object and are all required to be non null.
   struct BackingApis {
-    // Construct a BackingApis from SystemApis.
-    static BackingApis FromSystemApis(SystemApis& apis);
-
     libstorage::Platform* platform;
     const hwsec::CryptohomeFrontend* hwsec;
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager;
@@ -136,6 +111,10 @@ class UserDataAuth {
     FirmwareManagementParametersInterface* firmware_management_parameters;
     InstallAttributesInterface* install_attrs;
     UserOldestActivityTimestampManager* user_activity_timestamp_manager;
+    KeysetManagement* keyset_management;
+    UssStorage* uss_storage;
+    UssManager* uss_manager;
+    AuthFactorManager* auth_factor_manager;
   };
 
   explicit UserDataAuth(BackingApis apis);
@@ -468,16 +447,6 @@ class UserDataAuth {
   // Note that all functions below in this section should only be used for unit
   // testing purpose only.
 
-  // Direct access to the underlying interface(s) for testing.
-  AuthFactorManager* GetAuthFactorManagerForTesting() {
-    return auth_factor_manager_;
-  }
-
-  // Override |keyset_management_| for testing purpose.
-  void set_keyset_management(KeysetManagement* value) {
-    keyset_management_ = value;
-  }
-
   // Override |keyset_management_| for testing purpose.
   void set_auth_block_utility(AuthBlockUtility* value) {
     auth_block_utility_ = value;
@@ -488,17 +457,6 @@ class UserDataAuth {
       AuthFactorDriverManager* value) {
     auth_factor_driver_manager_ = value;
   }
-
-  // Override |auth_factor_manager_| for testing purpose.
-  void set_auth_factor_manager_for_testing(AuthFactorManager* value) {
-    auth_factor_manager_ = value;
-  }
-
-  // Override |uss_storage_| for testing purpose.
-  void set_uss_storage_for_testing(UssStorage* value) { uss_storage_ = value; }
-
-  // Override |uss_manager_| for testing purpose.
-  void set_uss_manager_for_testing(UssManager* value) { uss_manager_ = value; }
 
   void set_user_session_map_for_testing(UserSessionMap* user_session_map) {
     sessions_ = user_session_map;
@@ -1087,6 +1045,16 @@ class UserDataAuth {
   // This holds a timestamp for each user that is the time that the user was
   // active.
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
+  // This holds the object that records information about the vault keysets.
+  // This is to be accessed from the mount thread only because there's no
+  // guarantee on thread safety of the HomeDirs object.
+  KeysetManagement* keyset_management_;
+  // User secret stash storage helper.
+  UssStorage* uss_storage_;
+  // Manages all of the loaded USS objects.
+  UssManager* uss_manager_;
+  // Manager of auth factor files.
+  AuthFactorManager* auth_factor_manager_;
 
   std::unique_ptr<CryptohomeVaultFactory> default_vault_factory_;
   // Usually points to |default_vault_factory_|, but can be overridden for
@@ -1102,14 +1070,6 @@ class UserDataAuth {
   // This is to be accessed from the mount thread only because there's no
   // guarantee on thread safety of the HomeDirs object.
   HomeDirs* homedirs_;
-
-  // The keyset_management_ object in normal operation.
-  std::unique_ptr<KeysetManagement> default_keyset_management_;
-  // This holds the object that records information about the
-  // keyset_management. This is usually set to default_keyset_management_, but
-  // can be overridden for testing. This is to be accessed from the mount thread
-  // only because there's no guarantee on thread safety of the HomeDirs object.
-  KeysetManagement* keyset_management_;
 
   // Default challenge credential helper utility object. This object is required
   // for doing a challenge response style login, and is only lazily created when
@@ -1141,23 +1101,6 @@ class UserDataAuth {
   // Usually set to |default_auth_factor_manager_|, but can be overridden for
   // tests.
   AuthFactorDriverManager* auth_factor_driver_manager_ = nullptr;
-
-  // Manager of auth factor files.
-  std::unique_ptr<AuthFactorManager> default_auth_factor_manager_;
-  // Usually set to |default_auth_factor_manager_|, but can be overridden for
-  // tests.
-  AuthFactorManager* auth_factor_manager_ = nullptr;
-
-  // User secret stash storage helper.
-  std::unique_ptr<UssStorage> default_uss_storage_;
-  // Usually set to |default_uss_storage_|, but can be overridden
-  // for tests.
-  UssStorage* uss_storage_ = nullptr;
-  // Manages all of the loaded USS objects.
-  std::unique_ptr<UssManager> default_uss_manager_;
-  // Usually set to |default_uss_manager_|, but can be overridden
-  // for tests.
-  UssManager* uss_manager_ = nullptr;
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.

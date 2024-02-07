@@ -183,7 +183,6 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   void SetupHwsec() {
     userdataauth_->set_auth_block_utility(&auth_block_utility_);
-    userdataauth_->set_keyset_management(&keyset_management_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_user_session_factory(&user_session_factory_);
@@ -283,10 +282,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   }
 
  protected:
-  // Mock KeysetManagent object, will be passed to UserDataAuth for its internal
-  // use.
-  NiceMock<MockKeysetManagement> keyset_management_;
-
   // Mock AuthBlockUtility object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
@@ -300,7 +295,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   NiceMock<MockDiskCleanup> disk_cleanup_;
 
   // Mock system API objects needed to initialize UserDataAuth.
-  MockSystemApis<> system_apis_;
+  MockSystemApis<WithMockKeysetManagement> system_apis_;
 
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.
@@ -2413,8 +2408,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
                          const std::vector<std::string>& labels) {
     // Create a random USS.
-    UserUssStorage user_storage(*userdataauth_->uss_storage_,
-                                obfuscated_username);
+    UserUssStorage user_storage(system_apis_.uss_storage, obfuscated_username);
     auto uss = DecryptedUss::CreateWithRandomMainKey(
         user_storage, FileSystemKeyset::CreateRandom());
     if (!uss.ok()) {
@@ -2444,8 +2438,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
         return;
       }
     }
-    auto status = userdataauth_->uss_manager_->AddDecrypted(obfuscated_username,
-                                                            std::move(*uss));
+    auto status = system_apis_.uss_manager.AddDecrypted(obfuscated_username,
+                                                        std::move(*uss));
     if (!status.ok()) {
       ADD_FAILURE() << "Making a test USS failed during AddDecrypted: "
                     << status.status();
@@ -2967,9 +2961,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
-  EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
+  EXPECT_CALL(system_apis_.keyset_management, GetVaultKeysets(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
+  EXPECT_CALL(system_apis_.keyset_management, LoadVaultKeysetForUser(_, 0))
       .WillRepeatedly([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -3031,9 +3025,9 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   std::vector<int> vk_indicies = {0};
-  EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
+  EXPECT_CALL(system_apis_.keyset_management, GetVaultKeysets(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
+  EXPECT_CALL(system_apis_.keyset_management, LoadVaultKeysetForUser(_, 0))
       .WillRepeatedly([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -3368,9 +3362,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   // Set up mocks for a few of VKs. We deliberately have the second not work to
   // test that the listing correctly skips it.
   std::vector<int> vk_indicies = {0, 1, 2};
-  EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
+  EXPECT_CALL(system_apis_.keyset_management,
+              GetVaultKeysets(kObfuscatedUser, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
+  EXPECT_CALL(system_apis_.keyset_management,
+              LoadVaultKeysetForUser(kObfuscatedUser, 0))
       .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -3383,9 +3379,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
         vk->SetExtendedTPMKey(BlobFromString("fake extended tpm key"));
         return vk;
       });
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 1))
+  EXPECT_CALL(system_apis_.keyset_management,
+              LoadVaultKeysetForUser(kObfuscatedUser, 1))
       .WillRepeatedly([](const ObfuscatedUsername&, int) { return nullptr; });
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 2))
+  EXPECT_CALL(system_apis_.keyset_management,
+              LoadVaultKeysetForUser(kObfuscatedUser, 2))
       .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
@@ -3482,8 +3480,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
@@ -3514,7 +3510,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
                   user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -3528,7 +3524,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3540,7 +3537,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
@@ -3595,13 +3593,13 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                            user_data_auth::AUTH_FACTOR_TYPE_PIN,
                            user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
                            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Remove an auth factor, we should still be able to list the remaining one.
   TestFuture<CryptohomeStatus> remove_result;
-  af_manager->RemoveAuthFactor(kObfuscatedUser, *pin_factor,
-                               &auth_block_utility_,
-                               remove_result.GetCallback());
+  system_apis_.auth_factor_manager.RemoveAuthFactor(
+      kObfuscatedUser, *pin_factor, &auth_block_utility_,
+      remove_result.GetCallback());
   EXPECT_THAT(remove_result.Take(), IsOk());
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_3;
   userdataauth_->ListAuthFactors(
@@ -3637,8 +3635,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
@@ -3667,7 +3663,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
                   user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Add uss auth factors, but with only one of them having both the auth factor
   // and USS components of the fact. Only the complete one should work.
@@ -3682,7 +3678,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3694,7 +3691,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label"});
 
@@ -3741,8 +3739,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
@@ -3765,7 +3761,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
               IsEmpty());
   EXPECT_THAT(start_reply_future_1.Get().user_exists(), false);
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
@@ -3782,7 +3778,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3794,7 +3791,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
@@ -3859,8 +3857,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
@@ -3885,7 +3881,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
               IsEmpty());
   EXPECT_THAT(start_reply_future_1.Get().user_exists(), false);
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Now that we are starting to save AuthFactors, let's assume user exists.
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
@@ -3902,7 +3898,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3917,7 +3914,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
@@ -3981,8 +3979,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
@@ -4011,7 +4007,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
                   user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -4025,7 +4021,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -4037,7 +4034,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
@@ -4107,8 +4105,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
@@ -4139,7 +4135,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
                   user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -4153,7 +4149,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
               .extended_tpm_key = BlobFromString("fake extended tpm key"),
               .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -4168,7 +4165,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
@@ -4237,8 +4235,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.hwsec, IsPinWeaverEnabled())
       .WillRepeatedly(ReturnValue(true));
@@ -4269,13 +4265,15 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
                   user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  af_manager->DiscardAuthFactorMap(kObfuscatedUser);
+  system_apis_.auth_factor_manager.DiscardAuthFactorMap(kObfuscatedUser);
 
   // Set up mocks for a VK.
   std::vector<int> vk_indice = {0};
-  EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
+  EXPECT_CALL(system_apis_.keyset_management,
+              GetVaultKeysets(kObfuscatedUser, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(vk_indice), Return(true)));
-  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
+  EXPECT_CALL(system_apis_.keyset_management,
+              LoadVaultKeysetForUser(kObfuscatedUser, 0))
       .WillRepeatedly([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -4299,7 +4297,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                          .fek_iv = BlobFromString("fake file encryption IV"),
                          .reset_salt = BlobFromString("more fake salt"),
                      }});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"pin-label"});
 
@@ -4542,8 +4541,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
 TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager* af_manager =
-      userdataauth_->GetAuthFactorManagerForTesting();
 
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
@@ -4553,7 +4550,8 @@ TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
       AuthFactorType::kPassword, "password-label",
       AuthFactorMetadata{.metadata = PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState{}});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *password_factor),
               IsOk());
   std::string key_store_proto;
   EXPECT_TRUE(RecoverableKeyStore().SerializeToString(&key_store_proto));
@@ -4564,7 +4562,8 @@ TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
           .state = PinWeaverAuthBlockState{},
           .recoverable_key_store_state = RecoverableKeyStoreState{
               .key_store_proto = brillo::BlobFromString(key_store_proto)}});
-  ASSERT_THAT(af_manager->SaveAuthFactorFile(kObfuscatedUser, *pin_factor),
+  ASSERT_THAT(system_apis_.auth_factor_manager.SaveAuthFactorFile(
+                  kObfuscatedUser, *pin_factor),
               IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 

@@ -54,6 +54,7 @@
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
+#include "cryptohome/system_apis.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -360,7 +361,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Create a standard set of system API dependencies for UserDataAuth but then
   // override some of them with our fuzzed versions.
   SystemApis system_apis;
-  auto backing_apis = UserDataAuth::BackingApis::FromSystemApis(system_apis);
+  auto backing_apis = system_apis.ToBackingApis();
   backing_apis.platform = &platform;
   backing_apis.hwsec = hwsec.get();
   backing_apis.hwsec_pw_manager = hwsec_pw_manager.get();

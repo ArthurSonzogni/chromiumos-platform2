@@ -44,23 +44,17 @@
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
-#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_firmware_management_parameters.h"
-#include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
-#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
-#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
@@ -114,25 +108,6 @@ const brillo::SecureBlob kAdditionalBlob32(32, 'B');
 const brillo::SecureBlob kInitialBlob16(16, 'C');
 const brillo::SecureBlob kAdditionalBlob16(16, 'D');
 
-// Helper function to create a mock vault keyset with some useful default
-// functions to create basic minimal VKs.
-std::unique_ptr<VaultKeysetFactory> CreateMockVaultKeysetFactory() {
-  auto factory = std::make_unique<MockVaultKeysetFactory>();
-  ON_CALL(*factory, New(_, _))
-      .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
-        auto* vk = new VaultKeyset();
-        vk->Initialize(platform, crypto);
-        return vk;
-      });
-  ON_CALL(*factory, NewBackup(_, _))
-      .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
-        auto* vk = new VaultKeyset();
-        vk->InitializeAsBackup(platform, crypto);
-        return vk;
-      });
-  return factory;
-}
-
 AuthSession::AuthenticateAuthFactorRequest ToAuthenticateRequest(
     std::vector<std::string> labels, user_data_auth::AuthInput auth_input) {
   return AuthSession::AuthenticateAuthFactorRequest{
@@ -163,22 +138,35 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     EXPECT_CALL(system_apis_.hwsec, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
 
+    // Mock the VK factory with some useful default functions to create basic
+    // minimal keysets.
+    ON_CALL(*system_apis_.vault_keyset_factory, New(_, _))
+        .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
+          auto* vk = new VaultKeyset();
+          vk->Initialize(platform, crypto);
+          return vk;
+        });
+    ON_CALL(*system_apis_.vault_keyset_factory, NewBackup(_, _))
+        .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
+          auto* vk = new VaultKeyset();
+          vk->InitializeAsBackup(platform, crypto);
+          return vk;
+        });
+
     system_apis_.crypto.Init();
 
     auth_session_manager_ =
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
-            &keyset_management_, &auth_block_utility_,
-            &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
-            &uss_manager_, &features_.async});
+            &system_apis_.keyset_management, &auth_block_utility_,
+            &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
+            &system_apis_.uss_storage, &system_apis_.uss_manager,
+            &features_.async});
     // Initializing UserData class.
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
-    userdataauth_.set_keyset_management(&keyset_management_);
     userdataauth_.set_auth_factor_driver_manager_for_testing(
         &auth_factor_driver_manager_);
-    userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
-    userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_mount_task_runner(
@@ -353,7 +341,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   const AuthFactorMap& GetAuthFactorMap() {
-    return auth_factor_manager_.GetAuthFactorMap(users_[0].obfuscated);
+    return system_apis_.auth_factor_manager.GetAuthFactorMap(
+        users_[0].obfuscated);
   }
 
   void AddFactorWithMockAuthBlockUtility(AuthSession& auth_session,
@@ -546,20 +535,15 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   // Mocks and fakes for the test AuthSessions to use.
-  MockSystemApis<> system_apis_;
-  UssStorage uss_storage_{&system_apis_.platform};
-  UssManager uss_manager_{uss_storage_};
+  MockSystemApis<WithMockVaultKeysetFactory> system_apis_;
   UserSessionMap user_session_map_;
-  KeysetManagement keyset_management_{&system_apis_.platform,
-                                      &system_apis_.crypto,
-                                      CreateMockVaultKeysetFactory()};
   FakeFeaturesForTesting features_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_,
+      &system_apis_.keyset_management,
       &system_apis_.crypto,
       &system_apis_.platform,
       &features_.async,
@@ -570,19 +554,21 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &system_apis_.platform,
       &system_apis_.crypto,
-      &uss_manager_,
+      &system_apis_.uss_manager,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&system_apis_.platform,
-                                         &keyset_management_, &uss_manager_};
-  AuthSession::BackingApis backing_apis_{
-      &system_apis_.crypto,  &system_apis_.platform,
-      &user_session_map_,    &keyset_management_,
-      &auth_block_utility_,  &auth_factor_driver_manager_,
-      &auth_factor_manager_, &uss_storage_,
-      &uss_manager_,         &features_.async};
+  AuthSession::BackingApis backing_apis_{&system_apis_.crypto,
+                                         &system_apis_.platform,
+                                         &user_session_map_,
+                                         &system_apis_.keyset_management,
+                                         &auth_block_utility_,
+                                         &auth_factor_driver_manager_,
+                                         &system_apis_.auth_factor_manager,
+                                         &system_apis_.uss_storage,
+                                         &system_apis_.uss_manager,
+                                         &features_.async};
 
   // An AuthSession manager for testing managed creation.
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
@@ -744,12 +730,12 @@ TEST_F(AuthSessionTestWithKeysetManagement,
         AuthFactorStorageType::kUserSecretStash));
 
     AuthenticatePasswordFactor(auth_session, kPasswordLabel, kPassword);
-    EXPECT_EQ(nullptr, keyset_management_.GetVaultKeyset(users_[0].obfuscated,
-                                                         kPasswordLabel));
-    EXPECT_NE(nullptr, keyset_management_.GetVaultKeyset(users_[0].obfuscated,
-                                                         kDefaultLabel));
+    EXPECT_EQ(nullptr, system_apis_.keyset_management.GetVaultKeyset(
+                           users_[0].obfuscated, kPasswordLabel));
+    EXPECT_NE(nullptr, system_apis_.keyset_management.GetVaultKeyset(
+                           users_[0].obfuscated, kDefaultLabel));
   }
-  auth_factor_manager_.DiscardAllAuthFactorMaps();
+  system_apis_.auth_factor_manager.DiscardAllAuthFactorMaps();
 
   // Simulate backup keyset.
 
@@ -758,13 +744,14 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // VaultKeyset with the original label is migrated to USS and the regular
   // VaultKeyset is deleted.
   std::unique_ptr<VaultKeyset> vk_backup =
-      keyset_management_.GetVaultKeyset(users_[0].obfuscated, kDefaultLabel);
+      system_apis_.keyset_management.GetVaultKeyset(users_[0].obfuscated,
+                                                    kDefaultLabel);
   EXPECT_NE(nullptr, vk_backup);
   vk_backup->SetKeyDataLabel(kPasswordLabel);
   ASSERT_TRUE(vk_backup->Save(
       users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
-  EXPECT_NE(nullptr, keyset_management_.GetVaultKeyset(users_[0].obfuscated,
-                                                       kPasswordLabel));
+  EXPECT_NE(nullptr, system_apis_.keyset_management.GetVaultKeyset(
+                         users_[0].obfuscated, kPasswordLabel));
 
   // Simulate the mixed configuration.
 
@@ -781,9 +768,11 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       /*is_migrated=*/false, /*is_backup=*/false, auth_input, pin_data, "1");
   // Verify mixed configuration state.
   std::unique_ptr<VaultKeyset> vk_password =
-      keyset_management_.GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
+      system_apis_.keyset_management.GetVaultKeyset(users_[0].obfuscated,
+                                                    kPasswordLabel);
   std::unique_ptr<VaultKeyset> vk_pin =
-      keyset_management_.GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+      system_apis_.keyset_management.GetVaultKeyset(users_[0].obfuscated,
+                                                    kPinLabel);
 
   EXPECT_NE(nullptr, vk_password);
   EXPECT_NE(nullptr, vk_pin);
@@ -800,11 +789,16 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   auto original_backing_apis = std::move(backing_apis_);
   NiceMock<MockKeysetManagement> mock_keyset_management;
   AuthSession::BackingApis backing_api_with_mock_km{
-      &system_apis_.crypto,  &system_apis_.platform,
-      &user_session_map_,    &mock_keyset_management,
-      &auth_block_utility_,  &auth_factor_driver_manager_,
-      &auth_factor_manager_, &uss_storage_,
-      &uss_manager_,         &features_.async};
+      &system_apis_.crypto,
+      &system_apis_.platform,
+      &user_session_map_,
+      &mock_keyset_management,
+      &auth_block_utility_,
+      &auth_factor_driver_manager_,
+      &system_apis_.auth_factor_manager,
+      &system_apis_.uss_storage,
+      &system_apis_.uss_manager,
+      &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
 
   {
@@ -817,7 +811,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
         .WillRepeatedly(
             [&](const ObfuscatedUsername& obfuscated, const std::string&) {
               std::unique_ptr<VaultKeyset> vk_to_mock =
-                  keyset_management_.GetVaultKeyset(obfuscated, kPinLabel);
+                  system_apis_.keyset_management.GetVaultKeyset(obfuscated,
+                                                                kPinLabel);
               vk_to_mock->SetResetSalt(vk_pin->GetResetSalt());
               vk_to_mock->set_backup_vk_for_testing(true);
               return vk_to_mock;
@@ -1013,7 +1008,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   std::map<std::string, AuthFactorType> factor_map =
-      auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
+      system_apis_.auth_factor_manager.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kDefaultLabel), factor_map.end());
   ASSERT_EQ(GetAuthFactorMap().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
@@ -1184,7 +1179,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   std::map<std::string, AuthFactorType> factor_map =
-      auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
+      system_apis_.auth_factor_manager.ListAuthFactors(users_[0].obfuscated);
   ASSERT_NE(factor_map.find(kPasswordLabel), factor_map.end());
   ASSERT_NE(factor_map.find(kPasswordLabel2), factor_map.end());
   ASSERT_EQ(GetAuthFactorMap().Find(kPasswordLabel)->storage_type(),
@@ -1258,9 +1253,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   auto auth_session_manager_mock =
       std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
           &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
-          &keyset_management_, &mock_auth_block_utility_,
-          &auth_factor_driver_manager_, &auth_factor_manager_, &uss_storage_,
-          &uss_manager_, &features_.async});
+          &system_apis_.keyset_management, &mock_auth_block_utility_,
+          &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
+          &system_apis_.uss_storage, &system_apis_.uss_manager,
+          &features_.async});
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
       Username(kUsername), flags, AuthIntent::kDecrypt);

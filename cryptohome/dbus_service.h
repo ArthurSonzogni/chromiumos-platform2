@@ -11,6 +11,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "cryptohome/service_userdataauth.h"
+#include "cryptohome/system_apis.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -19,7 +20,7 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  public:
   UserDataAuthDaemon()
       : DBusServiceDaemon(::user_data_auth::kUserDataAuthServiceName),
-        service_(UserDataAuth::BackingApis::FromSystemApis(system_apis_)) {}
+        service_(system_apis_.ToBackingApis()) {}
   UserDataAuthDaemon(const UserDataAuthDaemon&) = delete;
   UserDataAuthDaemon& operator=(const UserDataAuthDaemon&) = delete;
 
