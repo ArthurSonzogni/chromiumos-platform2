@@ -163,6 +163,13 @@ void DBusWrapperStub::NotifyNameOwnerChanged(const std::string& service_name,
     observer.OnDBusNameOwnerChanged(service_name, old_owner, new_owner);
 }
 
+void DBusWrapperStub::NotifyInterfaceAvailable(
+    const std::string& interface_name, bool available) {
+  if (interfaces_.contains(interface_name)) {
+    std::move(interface_callback_).Run(interface_name, available);
+  }
+}
+
 void DBusWrapperStub::AddObserver(Observer* observer) {
   CHECK(observer);
   observers_.AddObserver(observer);
@@ -286,6 +293,16 @@ void DBusWrapperStub::CallMethodAsync(
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&RunResponseCallback, std::move(callback),
                                 CallMethodSync(proxy, method_call, timeout)));
+}
+
+void DBusWrapperStub::RegisterForInterfaceAvailability(
+    dbus::ObjectManager* object_manager,
+    const std::string& interface_name,
+    InterfaceCallback callback) {
+  if (!interface_callback_) {
+    interface_callback_ = callback;
+  }
+  interfaces_.insert(interface_name);
 }
 
 }  // namespace power_manager::system

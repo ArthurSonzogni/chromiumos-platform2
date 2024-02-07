@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -90,6 +91,10 @@ class DBusWrapperStub : public DBusWrapperInterface {
                               const std::string& old_owner,
                               const std::string& new_owner);
 
+  // Runs callback in |interface_callback|.
+  void NotifyInterfaceAvailable(const std::string& interface_name,
+                                bool available);
+
   // DBusWrapperInterface overrides:
   void AddObserver(Observer* observer) override;
   void RemoveObserver(Observer* observer) override;
@@ -122,6 +127,9 @@ class DBusWrapperStub : public DBusWrapperInterface {
                        dbus::MethodCall* method_call,
                        base::TimeDelta timeout,
                        dbus::ObjectProxy::ResponseCallback callback) override;
+  void RegisterForInterfaceAvailability(dbus::ObjectManager* object_manager,
+                                        const std::string& interface_name,
+                                        InterfaceCallback callback) override;
 
  private:
   // Information about a proxy returned by GetObjectProxy().
@@ -167,6 +175,14 @@ class DBusWrapperStub : public DBusWrapperInterface {
 
   // Invoked to handle calls to CallMethod*().
   MethodCallback method_callback_;
+
+  // Callback to run when an interface tracked with
+  // |RegisterForInterfaceAvailability| is available.
+  InterfaceCallback interface_callback_;
+
+  // Set to store interfaces being tracked with
+  // |RegisterForInterfaceAvailability|.
+  std::set<std::string> interfaces_;
 };
 
 }  // namespace power_manager::system

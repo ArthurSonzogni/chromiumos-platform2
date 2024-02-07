@@ -14,6 +14,7 @@
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
 #include <dbus/exported_object.h>
+#include <dbus/object_manager.h>
 #include <dbus/object_proxy.h>
 
 namespace dbus {
@@ -120,11 +121,25 @@ class DBusWrapperInterface {
       dbus::MethodCall* method_call,
       base::TimeDelta timeout,
       dbus::ObjectProxy::ResponseCallback callback) = 0;
+
+  using InterfaceCallback = base::RepeatingCallback<void(
+      const std::string& interface_name, bool interface_is_available)>;
+
+  // Registers to notify |callback| when an interface |interface_name| is
+  // identified by |object_manager| to be available or unavailable. If the
+  // interface is already available, the callback will run asynchronously
+  // immediately. The callback can be run multiple times, if the interface
+  // repeatedly becomes available/unavailable.
+  virtual void RegisterForInterfaceAvailability(
+      dbus::ObjectManager* object_manager,
+      const std::string& interface_name,
+      InterfaceCallback callback) = 0;
 };
 
 // DBusWrapper implementation that actually communicates with systemwide D-Bus
 // bus.
-class DBusWrapper : public DBusWrapperInterface {
+class DBusWrapper : public DBusWrapperInterface,
+                    public dbus::ObjectManager::Interface {
  public:
   DBusWrapper(const DBusWrapper&) = delete;
   DBusWrapper& operator=(const DBusWrapper&) = delete;
@@ -166,6 +181,9 @@ class DBusWrapper : public DBusWrapperInterface {
                        dbus::MethodCall* method_call,
                        base::TimeDelta timeout,
                        dbus::ObjectProxy::ResponseCallback callback) override;
+  void RegisterForInterfaceAvailability(dbus::ObjectManager* object_manager,
+                                        const std::string& interface_name,
+                                        InterfaceCallback callback) override;
 
  private:
   // Create DBusWrappers using the factory method above.
@@ -174,6 +192,22 @@ class DBusWrapper : public DBusWrapperInterface {
 
   // Handles NameOwnerChanged signals emitted by dbus-daemon.
   void HandleNameOwnerChangedSignal(dbus::Signal* signal);
+
+  // dbus::ObjectManager::Interface overrides:
+  //
+  // Runs when an interface that has been registered with |RegisterInterface|
+  // has been added to D-Bus.
+  void ObjectAdded(const dbus::ObjectPath& object_path,
+                   const std::string& interface_name) override;
+  // Runs when an interface that has been registered with |RegisterInterface|
+  // has been removed from D-Bus.
+  void ObjectRemoved(const dbus::ObjectPath& object_path,
+                     const std::string& interface_name) override;
+  // No-op, since there are no properties to create.
+  dbus::PropertySet* CreateProperties(
+      dbus::ObjectProxy* object_proxy,
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name) override;
 
   // Connection to the D-Bus system bus.
   scoped_refptr<dbus::Bus> bus_;
@@ -186,6 +220,9 @@ class DBusWrapper : public DBusWrapperInterface {
 
   // Trace identifier used to connect async method calls to their responses.
   uint64_t next_async_trace_id_ = reinterpret_cast<uint64_t>(this);
+
+  // Runs when an interface has been added to or removed from D-Bus.
+  InterfaceCallback interface_callback_;
 
   base::WeakPtrFactory<DBusWrapper> weak_ptr_factory_;
 };

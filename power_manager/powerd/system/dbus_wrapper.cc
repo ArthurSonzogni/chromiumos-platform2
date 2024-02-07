@@ -31,6 +31,9 @@ void HandleSignalConnected(const std::string& interface,
     LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
 }
 
+// No-op
+void OnPropertyChanged(const std::string& name) {}
+
 }  // namespace
 
 DBusWrapper::DBusWrapper(scoped_refptr<dbus::Bus> bus,
@@ -216,6 +219,34 @@ void DBusWrapper::HandleNameOwnerChangedSignal(dbus::Signal* signal) {
 
   for (DBusWrapper::Observer& observer : observers_)
     observer.OnDBusNameOwnerChanged(name, old_owner, new_owner);
+}
+
+void DBusWrapper::RegisterForInterfaceAvailability(
+    dbus::ObjectManager* object_manager,
+    const std::string& interface_name,
+    InterfaceCallback callback) {
+  object_manager->RegisterInterface(interface_name, this);
+}
+
+void DBusWrapper::ObjectAdded(const dbus::ObjectPath& object_path,
+                              const std::string& interface_name) {
+  DCHECK(interface_callback_);
+  std::move(interface_callback_).Run(interface_name, true);
+}
+
+void DBusWrapper::ObjectRemoved(const dbus::ObjectPath& object_path,
+                                const std::string& interface_name) {
+  DCHECK(interface_callback_);
+  std::move(interface_callback_).Run(interface_name, false);
+}
+
+// No-op
+dbus::PropertySet* DBusWrapper::CreateProperties(
+    dbus::ObjectProxy* object_proxy,
+    const dbus::ObjectPath& object_path,
+    const std::string& interface_name) {
+  return new dbus::PropertySet(object_proxy, interface_name,
+                               base::BindRepeating(&OnPropertyChanged));
 }
 
 }  // namespace power_manager::system
