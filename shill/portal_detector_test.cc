@@ -26,25 +26,28 @@
 #include "shill/mock_event_dispatcher.h"
 
 using testing::_;
+using testing::AnyOfArray;
 using testing::Eq;
 using testing::Mock;
 using testing::Return;
-using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
 
 namespace {
 const char kInterfaceName[] = "int0";
-const char kHttpUrl[] = "http://www.chromium.org";
-const char kHttpsUrl[] = "https://www.google.com";
-const std::vector<std::string> kFallbackHttpUrls{
-    "http://www.google.com/gen_204",
-    "http://play.googleapis.com/generate_204",
+const net_base::HttpUrl kHttpUrl =
+    *net_base::HttpUrl::CreateFromString("http://www.chromium.org");
+const net_base::HttpUrl kHttpsUrl =
+    *net_base::HttpUrl::CreateFromString("https://www.google.com");
+const std::vector<net_base::HttpUrl> kFallbackHttpUrls{
+    *net_base::HttpUrl::CreateFromString("http://www.google.com/gen_204"),
+    *net_base::HttpUrl::CreateFromString(
+        "http://play.googleapis.com/generate_204"),
 };
-const std::vector<std::string> kFallbackHttpsUrls{
-    "http://url1.com/gen204",
-    "http://url2.com/gen204",
+const std::vector<net_base::HttpUrl> kFallbackHttpsUrls{
+    *net_base::HttpUrl::CreateFromString("http://url1.com/gen204"),
+    *net_base::HttpUrl::CreateFromString("http://url2.com/gen204"),
 };
 constexpr net_base::IPAddress kDNSServer0(net_base::IPv4Address(8, 8, 8, 8));
 constexpr net_base::IPAddress kDNSServer1(net_base::IPv4Address(8, 8, 4, 4));
@@ -64,13 +67,15 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() override = default;
 
-  MOCK_METHOD(void,
-              Start,
-              (std::string_view,
-               const net_base::HttpUrl&,
-               const brillo::http::HeaderList&,
-               base::OnceCallback<void(HttpRequest::Result)>),
-              (override));
+  void Start(std::string_view logging_tag,
+             const net_base::HttpUrl& url,
+             const brillo::http::HeaderList& headers,
+             base::OnceCallback<void(Result result)> callback) override {
+    // We only verify the URL in the test.
+    StartWithUrl(url);
+  }
+
+  MOCK_METHOD(void, StartWithUrl, (const net_base::HttpUrl&), ());
 };
 
 }  // namespace
@@ -115,21 +120,16 @@ class PortalDetectorTest : public Test {
   };
 
   static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
-    PortalDetector::ProbingConfiguration config;
-    config.portal_http_url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
-    config.portal_https_url = *net_base::HttpUrl::CreateFromString(kHttpsUrl);
-    for (const auto& url : kFallbackHttpUrls) {
-      config.portal_fallback_http_urls.push_back(
-          *net_base::HttpUrl::CreateFromString(url));
-    }
-    for (const auto& url : kFallbackHttpsUrls) {
-      config.portal_fallback_https_urls.push_back(
-          *net_base::HttpUrl::CreateFromString(url));
-    }
-    return config;
+    return PortalDetector::ProbingConfiguration{
+        .portal_http_url = kHttpUrl,
+        .portal_https_url = kHttpsUrl,
+        .portal_fallback_http_urls = kFallbackHttpUrls,
+        .portal_fallback_https_urls = kFallbackHttpsUrls,
+    };
   }
 
-  PortalDetector::Result GetPortalRedirectResult(std::string_view probe_url) {
+  PortalDetector::Result GetPortalRedirectResult(
+      const net_base::HttpUrl& probe_url) {
     const PortalDetector::Result r = {
         .num_attempts = 1,
         .http_result = PortalDetector::ProbeResult::kPortalRedirect,
@@ -137,7 +137,7 @@ class PortalDetectorTest : public Test {
         .http_content_length = 0,
         .https_result = PortalDetector::ProbeResult::kConnectionFailure,
         .redirect_url = net_base::HttpUrl::CreateFromString(kPortalSignInURL),
-        .probe_url = net_base::HttpUrl::CreateFromString(probe_url),
+        .probe_url = probe_url,
     };
     EXPECT_TRUE(r.IsHTTPProbeComplete());
     EXPECT_TRUE(r.IsHTTPSProbeComplete());
@@ -147,15 +147,19 @@ class PortalDetectorTest : public Test {
   }
 
   void StartPortalRequest() {
-    http_request_ = new StrictMock<MockHttpRequest>();
-    https_request_ = new StrictMock<MockHttpRequest>();
     // Expect that PortalDetector will create the request of the HTTP probe
     // first.
     EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
-        .WillOnce(Return(std::unique_ptr<MockHttpRequest>(http_request_)))
-        .WillOnce(Return(std::unique_ptr<MockHttpRequest>(https_request_)));
-    EXPECT_CALL(*http_request_, Start);
-    EXPECT_CALL(*https_request_, Start);
+        .WillOnce([]() {
+          auto http_request = std::make_unique<MockHttpRequest>();
+          EXPECT_CALL(*http_request, StartWithUrl);
+          return http_request;
+        })
+        .WillOnce([]() {
+          auto https_request = std::make_unique<MockHttpRequest>();
+          EXPECT_CALL(*https_request, StartWithUrl);
+          return https_request;
+        });
     portal_detector_->Start(
         net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
         base::BindOnce(&CallbackTarget::ResultCallback,
@@ -178,11 +182,7 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(status_code));
     auto response =
         std::make_unique<brillo::http::Response>(http_probe_connection_);
-    portal_detector_->ProcessHTTPProbeResult(std::move(response));
-  }
-
-  void HTTPRequestFailure(HttpRequest::Error error) {
-    portal_detector_->ProcessHTTPProbeResult(base::unexpected(error));
+    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, std::move(response));
   }
 
   void HTTPSRequestSuccess() {
@@ -196,13 +196,11 @@ class PortalDetectorTest : public Test {
   }
 
  protected:
-  StrictMock<MockEventDispatcher> dispatcher_;
+  MockEventDispatcher dispatcher_;
   std::shared_ptr<brillo::http::MockTransport> http_probe_transport_;
   std::shared_ptr<brillo::http::MockConnection> http_probe_connection_;
   std::shared_ptr<brillo::http::MockTransport> https_probe_transport_;
   std::shared_ptr<brillo::http::MockConnection> https_probe_connection_;
-  MockHttpRequest* http_request_ = nullptr;
-  MockHttpRequest* https_request_ = nullptr;
   CallbackTarget callback_target_;
   const std::string interface_name_;
   std::vector<net_base::IPAddress> dns_servers_;
@@ -286,66 +284,74 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   ExpectCleanupTrial();
 }
 
-TEST_F(PortalDetectorTest, Restart) {
-  EXPECT_FALSE(portal_detector_->IsRunning());
-
-  EXPECT_EQ(0, portal_detector_->attempt_count());
-  StartPortalRequest();
-  EXPECT_EQ(portal_detector_->http_url_.ToString(), kHttpUrl);
-  EXPECT_EQ(1, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-
-  const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  portal_detector_->StopTrialIfComplete(result);
-  ExpectCleanupTrial();
-
-  StartPortalRequest();
-  EXPECT_EQ(2, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-
-  portal_detector_->Reset();
-  ExpectReset();
-}
-
 TEST_F(PortalDetectorTest, RestartAfterRedirect) {
-  const std::optional<net_base::HttpUrl> probe_url =
-      *net_base::HttpUrl::CreateFromString(kHttpUrl);
-
   EXPECT_FALSE(portal_detector_->IsRunning());
   EXPECT_EQ(0, portal_detector_->attempt_count());
-  StartPortalRequest();
-  EXPECT_EQ(1, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  portal_detector_->StopTrialIfComplete(result);
+  // Start the 1st attempt that uses the default probing URLs.
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+      .WillOnce([]() {
+        auto http_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*http_request, StartWithUrl(kHttpUrl));
+        return http_request;
+      })
+      .WillOnce([]() {
+        auto https_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
+        return https_request;
+      });
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::DoNothing());
+  EXPECT_EQ(1, portal_detector_->attempt_count());
+
+  // Receive the kPortalRedirect result.
+  portal_detector_->StopTrialIfComplete(GetPortalRedirectResult(kHttpUrl));
   ExpectCleanupTrial();
 
-  StartPortalRequest();
-  EXPECT_EQ(portal_detector_->http_url_, probe_url);
+  // After receiving the kPortalRedirect result, we reuse the same HTTP URL at
+  // the following attempt.
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+      .WillOnce([]() {
+        auto http_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*http_request, StartWithUrl(kHttpUrl));
+        return http_request;
+      })
+      .WillOnce([]() {
+        auto https_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*https_request, StartWithUrl);
+        return https_request;
+      });
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::DoNothing());
   EXPECT_EQ(2, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
 
   portal_detector_->Reset();
   ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
-  const std::optional<net_base::HttpUrl> probe_url =
-      *net_base::HttpUrl::CreateFromString(kHttpUrl);
+  // Start the 1st attempt that uses the default probing URLs.
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+      .WillOnce([]() {
+        auto http_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*http_request, StartWithUrl(kHttpUrl));
+        return http_request;
+      })
+      .WillOnce([]() {
+        auto https_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
+        return https_request;
+      });
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::DoNothing());
 
-  EXPECT_FALSE(portal_detector_->IsRunning());
-  EXPECT_EQ(0, portal_detector_->attempt_count());
-  StartPortalRequest();
-  EXPECT_EQ(1, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-
+  // Receive the kPortalSuspected result.
   const PortalDetector::Result result = {
       .http_result = PortalDetector::ProbeResult::kPortalSuspected,
       .http_status_code = 200,
       .http_content_length = 345,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
-      .probe_url = probe_url,
+      .probe_url = kHttpUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -355,13 +361,20 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
   portal_detector_->StopTrialIfComplete(result);
   ExpectCleanupTrial();
 
-  StartPortalRequest();
-  EXPECT_EQ(portal_detector_->http_url_, probe_url);
-  EXPECT_EQ(2, portal_detector_->attempt_count());
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-
-  portal_detector_->Reset();
-  ExpectReset();
+  // After receiving the kPortalSuspected result, we reuse the same HTTP URL.
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+      .WillOnce([]() {
+        auto http_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*http_request, StartWithUrl(kHttpUrl));
+        return http_request;
+      })
+      .WillOnce([]() {
+        auto https_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*https_request, StartWithUrl);
+        return https_request;
+      });
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::DoNothing());
 }
 
 TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
@@ -395,35 +408,56 @@ TEST_F(PortalDetectorTest, AttemptCount) {
             result.GetValidationState());
 
   // The 1st attempt uses the default probing URLs.
-  EXPECT_FALSE(portal_detector_->IsRunning());
-  StartPortalRequest();
-  EXPECT_EQ(portal_detector_->http_url_.ToString(), kHttpUrl);
-  EXPECT_EQ(portal_detector_->https_url_.ToString(), kHttpsUrl);
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+      .WillOnce([]() {
+        auto http_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*http_request, StartWithUrl(kHttpUrl));
+        return http_request;
+      })
+      .WillOnce([]() {
+        auto https_request = std::make_unique<MockHttpRequest>();
+        EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
+        return https_request;
+      });
+  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+                          base::BindOnce(&CallbackTarget::ResultCallback,
+                                         base::Unretained(&callback_target_)));
+
   result.num_attempts = 1;
   EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
   portal_detector_->StopTrialIfComplete(result);
   EXPECT_EQ(1, portal_detector_->attempt_count());
 
   // The 2nd and so on attempts use the fallback or the default probing URLs.
-  std::set<std::string> expected_retry_http_urls(kFallbackHttpUrls.begin(),
-                                                 kFallbackHttpUrls.end());
-  expected_retry_http_urls.insert(kHttpUrl);
-
-  std::set<std::string> expected_retry_https_urls(kFallbackHttpsUrls.begin(),
-                                                  kFallbackHttpsUrls.end());
-  expected_retry_https_urls.insert(kHttpsUrl);
+  std::vector<net_base::HttpUrl> expected_retry_http_urls = kFallbackHttpUrls;
+  expected_retry_http_urls.push_back(kHttpUrl);
+  std::vector<net_base::HttpUrl> expected_retry_https_urls = kFallbackHttpsUrls;
+  expected_retry_https_urls.push_back(kHttpsUrl);
   for (int i = 2; i < 10; i++) {
     result.num_attempts = i;
     EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
-    StartPortalRequest();
-    EXPECT_EQ(i, portal_detector_->attempt_count());
 
-    EXPECT_NE(
-        expected_retry_http_urls.find(portal_detector_->http_url_.ToString()),
-        expected_retry_http_urls.end());
-    EXPECT_NE(
-        expected_retry_https_urls.find(portal_detector_->https_url_.ToString()),
-        expected_retry_https_urls.end());
+    EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+        .WillOnce([&expected_retry_http_urls]() {
+          auto http_request = std::make_unique<MockHttpRequest>();
+          EXPECT_CALL(*http_request,
+                      StartWithUrl(AnyOfArray(expected_retry_http_urls)))
+              .Times(1);
+          return http_request;
+        })
+        .WillOnce([&expected_retry_https_urls]() {
+          auto https_request = std::make_unique<MockHttpRequest>();
+          EXPECT_CALL(*https_request,
+                      StartWithUrl(AnyOfArray(expected_retry_https_urls)))
+              .Times(1);
+          return https_request;
+        });
+
+    portal_detector_->Start(
+        net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+        base::BindOnce(&CallbackTarget::ResultCallback,
+                       base::Unretained(&callback_target_)));
+    EXPECT_EQ(i, portal_detector_->attempt_count());
 
     portal_detector_->StopTrialIfComplete(result);
     Mock::VerifyAndClearExpectations(&callback_target_);
@@ -555,8 +589,8 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
   Mock::VerifyAndClearExpectations(&callback_target_);
 
-  const PortalDetector::Result result = GetPortalRedirectResult(kHttpUrl);
-  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(callback_target_,
+              ResultCallback(Eq(GetPortalRedirectResult(kHttpUrl))));
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return(std::string(kPortalSignInURL)));
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
@@ -669,7 +703,7 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
       .http_result = PortalDetector::ProbeResult::kPortalSuspected,
       .http_status_code = 200,
       .http_content_length = 768,
-      .probe_url = *net_base::HttpUrl::CreateFromString(kHttpUrl),
+      .probe_url = kHttpUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_FALSE(result.IsHTTPSProbeComplete());
@@ -694,7 +728,7 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
       .http_status_code = 302,
       .http_content_length = 0,
       .redirect_url = std::nullopt,
-      .probe_url = *net_base::HttpUrl::CreateFromString(kHttpUrl),
+      .probe_url = kHttpUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_FALSE(result.IsHTTPSProbeComplete());

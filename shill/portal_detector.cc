@@ -115,22 +115,24 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   // captive portal (redirect or suspected redirect answer, reuse the same HTTP
   // URL probe to ensure the same kPortalRedirect or kPortalSuspected result is
   // returned.
+  net_base::HttpUrl http_url;
   if (previous_result_ &&
       (previous_result_->IsHTTPProbeRedirected() ||
        previous_result_->IsHTTPProbeRedirectionSuspected())) {
-    http_url_ = *previous_result_->probe_url;
+    http_url = *previous_result_->probe_url;
   } else {
-    http_url_ = PickProbeUrl(probing_configuration_.portal_http_url,
-                             probing_configuration_.portal_fallback_http_urls);
+    http_url = PickProbeUrl(probing_configuration_.portal_http_url,
+                            probing_configuration_.portal_fallback_http_urls);
   }
-  https_url_ = PickProbeUrl(probing_configuration_.portal_https_url,
-                            probing_configuration_.portal_fallback_https_urls);
+  const net_base::HttpUrl https_url =
+      PickProbeUrl(probing_configuration_.portal_https_url,
+                   probing_configuration_.portal_fallback_https_urls);
 
   http_request_ = CreateHTTPRequest(ifname_, ip_family, dns_list,
                                     /*allow_non_google_https=*/false);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
-  bool allow_non_google_https = https_url_.ToString() != kDefaultHttpsUrl;
+  bool allow_non_google_https = https_url.ToString() != kDefaultHttpsUrl;
   https_request_ =
       CreateHTTPRequest(ifname_, ip_family, dns_list, allow_non_google_https);
 
@@ -140,12 +142,13 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   last_attempt_start_time_ = base::TimeTicks::Now();
   result_callback_ = std::move(callback);
   LOG(INFO) << LoggingTag()
-            << ": Starting trial. HTTP probe: " << http_url_.host()
-            << ". HTTPS probe: " << https_url_.host();
-  http_request_->Start(LoggingTag() + " HTTP probe", http_url_, kHeaders,
-                       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
-                                      weak_ptr_factory_.GetWeakPtr()));
-  https_request_->Start(LoggingTag() + " HTTPS probe", https_url_, kHeaders,
+            << ": Starting trial. HTTP probe: " << http_url.host()
+            << ". HTTPS probe: " << https_url.host();
+  http_request_->Start(
+      LoggingTag() + " HTTP probe", http_url, kHeaders,
+      base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
+                     weak_ptr_factory_.GetWeakPtr(), http_url));
+  https_request_->Start(LoggingTag() + " HTTPS probe", https_url, kHeaders,
                         base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
                                        weak_ptr_factory_.GetWeakPtr()));
 }
@@ -176,7 +179,8 @@ void PortalDetector::Reset() {
   CleanupTrial();
 }
 
-void PortalDetector::ProcessHTTPProbeResult(HttpRequest::Result result) {
+void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
+                                            HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->http_result = GetProbeResultFromRequestError(result.error());
   } else {
@@ -200,13 +204,13 @@ void PortalDetector::ProcessHTTPProbeResult(HttpRequest::Result result) {
         // strong indication of an evasive portal indirectly redirecting the
         // HTTP probe without a 302 response code.
         // TODO(b/309175584): Validate that the response is a valid HTML page
-        result_->probe_url = http_url_;
+        result_->probe_url = http_url;
         result_->http_result = ProbeResult::kPortalSuspected;
       } else {
         result_->http_result = ProbeResult::kFailure;
       }
     } else if (IsRedirectResponse(status_code)) {
-      result_->probe_url = http_url_;
+      result_->probe_url = http_url;
       result_->redirect_url = net_base::HttpUrl::CreateFromString(
           response->GetHeader(brillo::http::response_header::kLocation));
       result_->http_result = result_->redirect_url.has_value()

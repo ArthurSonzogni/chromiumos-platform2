@@ -290,7 +290,8 @@ class PortalDetector {
       const std::vector<net_base::HttpUrl>& fallback_urls) const;
 
   // Process the HttpRequest Result of the HTTP probe.
-  void ProcessHTTPProbeResult(HttpRequest::Result result);
+  void ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
+                              HttpRequest::Result result);
 
   // Process the HttpRequest Result of the HTTPS probe.
   void ProcessHTTPSProbeResult(HttpRequest::Result result);
@@ -335,8 +336,7 @@ class PortalDetector {
   // attempt. Used to ensure that the same HTTP probe URL is used with a closed
   // captive portal.
   std::optional<Result> previous_result_ = std::nullopt;
-  net_base::HttpUrl http_url_;
-  net_base::HttpUrl https_url_;
+
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 
