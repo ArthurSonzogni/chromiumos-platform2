@@ -318,6 +318,12 @@ class PortalDetector {
   // only if there is an attempt running.
   ResultCallback result_callback_;
 
+  // The HTTP probe URL that found a captive portal in the previous attempt.
+  // If exists, the following attempt will reuse this URL to ensure the same
+  // kPortalRedirect or kPortalSuspected result is returned.
+  // The value will be clear when Reset() is called.
+  std::optional<net_base::HttpUrl> portal_found_http_url_ = std::nullopt;
+
   // The IP family of the current trial. Used for logging.
   std::optional<net_base::IPFamily> ip_family_ = std::nullopt;
   // The total number of detection attempts scheduled so far. Only used in logs
@@ -332,10 +338,6 @@ class PortalDetector {
   // PortalDetector::Result for the current on-going attempt. Undefined if there
   // is no portal detection attempt currently running.
   std::optional<Result> result_;
-  // PortalDetector::Result of the prior attempt. Undefined for the first
-  // attempt. Used to ensure that the same HTTP probe URL is used with a closed
-  // captive portal.
-  std::optional<Result> previous_result_ = std::nullopt;
 
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };

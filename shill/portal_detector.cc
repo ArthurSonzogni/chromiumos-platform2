@@ -111,15 +111,9 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   ip_family_ = ip_family;
   SLOG(this, 3) << "In " << __func__;
 
-  // If this is not the first attempt and if the previous attempt found a
-  // captive portal (redirect or suspected redirect answer, reuse the same HTTP
-  // URL probe to ensure the same kPortalRedirect or kPortalSuspected result is
-  // returned.
   net_base::HttpUrl http_url;
-  if (previous_result_ &&
-      (previous_result_->IsHTTPProbeRedirected() ||
-       previous_result_->IsHTTPProbeRedirectionSuspected())) {
-    http_url = *previous_result_->probe_url;
+  if (portal_found_http_url_.has_value()) {
+    http_url = *portal_found_http_url_;
   } else {
     http_url = PickProbeUrl(probing_configuration_.portal_http_url,
                             probing_configuration_.portal_fallback_http_urls);
@@ -159,8 +153,12 @@ void PortalDetector::StopTrialIfComplete(Result result) {
     return;
   }
 
+  if (result.IsHTTPProbeRedirected() ||
+      result.IsHTTPProbeRedirectionSuspected()) {
+    portal_found_http_url_ = result.probe_url;
+  }
+
   CleanupTrial();
-  previous_result_ = result;
   std::move(result_callback_).Run(result);
 }
 
@@ -174,7 +172,7 @@ void PortalDetector::CleanupTrial() {
 void PortalDetector::Reset() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
-  previous_result_ = std::nullopt;
+  portal_found_http_url_ = std::nullopt;
   result_callback_.Reset();
   CleanupTrial();
 }
