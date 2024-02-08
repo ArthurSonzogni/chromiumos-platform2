@@ -279,10 +279,9 @@ TEST_F(ServerProxyTest, HandlePendingJobs) {
 
   // Resolve |success_count| successful connections.
   for (int i = 0; i < success_count; ++i) {
-    auto fwd = std::make_unique<net_base::SocketForwarder>(
-        "" /* thread name */, net_base::Socket::Create(AF_INET, SOCK_STREAM),
-        net_base::Socket::Create(AF_INET, SOCK_STREAM));
-    fwd->Start();
+    auto fwd = CurlForwarder::Create(
+        net_base::Socket::Create(AF_INET, SOCK_STREAM),
+        net_base::Socket::Create(AF_INET, SOCK_STREAM), nullptr);
     auto job_iter = server_proxy_->pending_connect_jobs_.begin();
     std::move(job_iter->second->setup_finished_callback_)
         .Run(std::move(fwd), job_iter->first);

@@ -24,10 +24,11 @@
 #include <net-base/socket.h>
 #include <net-base/socket_forwarder.h>
 
-#include "system-proxy/curl_socket.h"
+#include "system-proxy/curl_scopers.h"
 #include "system-proxy/http_util.h"
 
 namespace {
+
 // There's no RFC recomandation for the max size of http request headers but
 // popular http server implementations (Apache, IIS, Tomcat) set the lower limit
 // to 8000.
@@ -56,6 +57,24 @@ const std::string_view kHttpProxyAuthRequired =
     "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
 constexpr char kHttpErrorTunnelFailed[] =
     "HTTP/1.1 %s Error creating tunnel - Origin: local proxy\r\n\r\n";
+
+// Creates a new scoped socket from a curl handle. Note that curl still
+// keeps track of a socket FD itself (stored in the handle), so that
+// will also need to be cleaned up by closing the curl handle.
+std::unique_ptr<net_base::Socket> DupSocketFromCurlHandle(
+    CURL* handle, const system_proxy::ProxyConnectJob& job) {
+  curl_socket_t sock = -1;
+  // Extract the socket from the curl handle.
+  CURLcode res = curl_easy_getinfo(handle, CURLINFO_ACTIVESOCKET, &sock);
+  if (res != CURLE_OK) {
+    LOG(ERROR) << job << "Failed to get socket from curl with error: "
+               << curl_easy_strerror(res);
+    return nullptr;
+  }
+
+  return net_base::Socket::CreateFromFd(base::ScopedFD(dup(sock)));
+}
+
 }  // namespace
 
 namespace system_proxy {
@@ -285,8 +304,6 @@ bool ProxyConnectJob::AreAuthCredentialsRequired(CURL* easyhandle) {
 void ProxyConnectJob::DoCurlServerConnection() {
   DCHECK(!proxy_servers_.empty());
   CURL* easyhandle = curl_easy_init();
-  CURLcode res;
-  curl_socket_t new_socket = -1;
 
   if (!easyhandle) {
     // Unfortunately it's not possible to get the failure reason.
@@ -309,12 +326,14 @@ void ProxyConnectJob::DoCurlServerConnection() {
     curl_easy_setopt(easyhandle, CURLOPT_PROXYAUTH, curl_auth_schemes_);
     curl_easy_setopt(easyhandle, CURLOPT_PROXYUSERPWD, credentials_.c_str());
   }
+
   curl_easy_setopt(easyhandle, CURLOPT_CONNECTTIMEOUT_MS,
                    kCurlConnectTimeout.InMilliseconds());
   curl_easy_setopt(easyhandle, CURLOPT_HEADERFUNCTION, WriteHeadersCallback);
   curl_easy_setopt(easyhandle, CURLOPT_HEADERDATA, &http_response_headers);
   curl_easy_setopt(easyhandle, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(easyhandle, CURLOPT_WRITEDATA, &http_response_body);
+
   if (store_headers_for_testing_) {
     curl_easy_setopt(easyhandle, CURLOPT_DEBUGFUNCTION, WriteDebugInfoCallback);
     curl_easy_setopt(easyhandle, CURLOPT_DEBUGDATA,
@@ -322,7 +341,8 @@ void ProxyConnectJob::DoCurlServerConnection() {
     // The DEBUGFUNCTION has no effect until we enable VERBOSE.
     curl_easy_setopt(easyhandle, CURLOPT_VERBOSE, 1L);
   }
-  res = curl_easy_perform(easyhandle);
+
+  CURLcode res = curl_easy_perform(easyhandle);
   curl_easy_getinfo(easyhandle, CURLINFO_HTTP_CONNECTCODE,
                     &http_response_code_);
 
@@ -341,17 +361,12 @@ void ProxyConnectJob::DoCurlServerConnection() {
     return;
   }
   credentials_request_timeout_callback_.Cancel();
-  // Extract the socket from the curl handle.
-  res = curl_easy_getinfo(easyhandle, CURLINFO_ACTIVESOCKET, &new_socket);
-  if (res != CURLE_OK) {
-    LOG(ERROR) << *this << " Failed to get socket from curl with error: "
-               << curl_easy_strerror(res);
+
+  auto server_conn = DupSocketFromCurlHandle(easyhandle, *this);
+  if (!server_conn) {
     OnError(kHttpBadGateway);
     return;
   }
-
-  auto server_conn = std::make_unique<CurlSocket>(base::ScopedFD(new_socket),
-                                                  std::move(scoped_handle));
 
   // Send the server reply to the client. If the connection is successful, the
   // reply headers should be "HTTP/1.1 200 Connection Established".
@@ -367,11 +382,9 @@ void ProxyConnectJob::DoCurlServerConnection() {
     connect_data_.clear();
   }
 
-  auto fwd = std::make_unique<net_base::SocketForwarder>(
-      base::StringPrintf("%d-%d", client_socket_->Get(), server_conn->Get()),
-      std::move(client_socket_), std::move(server_conn));
-  // Start forwarding data between sockets.
-  fwd->Start();
+  auto fwd =
+      CurlForwarder::Create(std::move(client_socket_), std::move(server_conn),
+                            std::move(scoped_handle));
   std::move(setup_finished_callback_).Run(std::move(fwd), this);
 }
 

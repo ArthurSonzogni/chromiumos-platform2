@@ -313,10 +313,9 @@ void ServerProxy::OnConnectionAccept() {
   // Cleanup any defunct forwarders.
   // TODO(acostinas, chromium:1064536) Monitor the client and server sockets
   // and remove the corresponding SocketForwarder when a socket closes.
-  for (auto it = forwarders_.begin(); it != forwarders_.end(); ++it) {
-    if (!(*it)->IsRunning() && (*it)->HasBeenStarted())
-      it = forwarders_.erase(it);
-  }
+  std::erase_if(forwarders_, [](const std::unique_ptr<CurlForwarder>& f) {
+    return f->IsFinished();
+  });
 }
 
 void ServerProxy::OnProxyResolved(const std::string& target_url,
@@ -328,9 +327,8 @@ void ServerProxy::OnProxyResolved(const std::string& target_url,
     std::move(callback).Run(proxy_servers);
 }
 
-void ServerProxy::OnConnectionSetupFinished(
-    std::unique_ptr<net_base::SocketForwarder> fwd,
-    ProxyConnectJob* connect_job) {
+void ServerProxy::OnConnectionSetupFinished(std::unique_ptr<CurlForwarder> fwd,
+                                            ProxyConnectJob* connect_job) {
   if (fwd) {
     // The connection was set up successfully.
     forwarders_.emplace_back(std::move(fwd));

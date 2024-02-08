@@ -20,6 +20,7 @@
 #include <net-base/socket.h>
 #include <net-base/socket_forwarder.h>
 
+#include "system-proxy/curl_scopers.h"
 #include "system-proxy/proxy_connect_job.h"
 
 namespace {
@@ -41,7 +42,7 @@ void NullAuthenticationRequiredCallback(
         on_auth_acquired_callback) {}
 
 void OnConnectionSetupFinished(base::OnceClosure quit_task,
-                               std::unique_ptr<net_base::SocketForwarder>,
+                               std::unique_ptr<system_proxy::CurlForwarder>,
                                system_proxy::ProxyConnectJob*) {
   std::move(quit_task).Run();
 }

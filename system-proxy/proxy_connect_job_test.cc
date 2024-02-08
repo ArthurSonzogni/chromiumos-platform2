@@ -83,9 +83,8 @@ class ProxyConnectJobTest : public ::testing::Test {
   }
 
  protected:
-  virtual void OnConnectionSetupFinished(
-      std::unique_ptr<net_base::SocketForwarder> fwd,
-      ProxyConnectJob* connect_job) {}
+  virtual void OnConnectionSetupFinished(std::unique_ptr<CurlForwarder> fwd,
+                                         ProxyConnectJob* connect_job) {}
   virtual void ResolveProxy(
       const std::string& target_url,
       base::OnceCallback<void(const std::list<std::string>&)> callback) {
@@ -272,7 +271,7 @@ class HttpServerProxyConnectJobTest : public ProxyConnectJobTest {
       std::move(callback).Run(/* credentials = */ "");
     }
   }
-  void OnConnectionSetupFinished(std::unique_ptr<net_base::SocketForwarder> fwd,
+  void OnConnectionSetupFinished(std::unique_ptr<CurlForwarder> fwd,
                                  ProxyConnectJob* connect_job) override {
     ASSERT_EQ(connect_job, connect_job_.get());
     if (fwd) {

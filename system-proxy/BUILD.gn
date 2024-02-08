@@ -89,7 +89,7 @@ static_library("libsystemproxy") {
 # System-proxy worker library (shared between executables and tests).
 static_library("libsystemproxyworker") {
   sources = [
-    "curl_socket.cc",
+    "curl_scopers.cc",
     "http_util.cc",
     "protobuf_util.cc",
     "proxy_connect_job.cc",

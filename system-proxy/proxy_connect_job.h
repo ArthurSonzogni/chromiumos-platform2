@@ -17,7 +17,8 @@
 #include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
+
+#include "system-proxy/curl_scopers.h"
 
 namespace system_proxy {
 // ProxyConnectJob asynchronously sets up a connection to a remote target on
@@ -46,7 +47,7 @@ namespace system_proxy {
 class ProxyConnectJob {
  public:
   using OnConnectionSetupFinishedCallback = base::OnceCallback<void(
-      std::unique_ptr<net_base::SocketForwarder>, ProxyConnectJob*)>;
+      std::unique_ptr<CurlForwarder>, ProxyConnectJob*)>;
 
   // Will be invoked by ProxyConnectJob to resolve the proxy for |target_url_|.
   // The passed |callback| is expected to be called with the list of proxy

@@ -17,7 +17,8 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv4_address.h>
 #include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
+
+#include "system-proxy/curl_scopers.h"
 
 namespace system_proxy {
 
@@ -90,7 +91,7 @@ class ServerProxy {
   // server via the remote proxy server. If the connection is successful, |fwd|
   // corresponds to the tunnel between the client and the server that has
   // started to forward data. In case of failure, |fwd| is empty.
-  void OnConnectionSetupFinished(std::unique_ptr<net_base::SocketForwarder> fwd,
+  void OnConnectionSetupFinished(std::unique_ptr<CurlForwarder> fwd,
                                  ProxyConnectJob* connect_job);
 
   // Called when the proxy resolution result for |target_url| is received via
@@ -132,7 +133,7 @@ class ServerProxy {
   // local client and the remote proxy, forwarding data between the TCP
   // connection initiated by the local client to the local proxy and the TCP
   // connection initiated by the local proxy to the remote proxy.
-  std::list<std::unique_ptr<net_base::SocketForwarder>> forwarders_;
+  std::list<std::unique_ptr<CurlForwarder>> forwarders_;
 
   std::map<ProxyConnectJob*, std::unique_ptr<ProxyConnectJob>>
       pending_connect_jobs_;
