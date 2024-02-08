@@ -82,11 +82,13 @@ ProcessPlugin::ProcessPlugin(
               base::BindRepeating(&GetBatchedEventKey),
               message_sender,
               reporting::Destination::CROS_SECURITY_PROCESS,
-              batch_interval_s)) {
+              batch_interval_s)),
+      bpf_skeleton_helper_(
+          std::make_unique<BpfSkeletonHelper<Types::BpfSkeleton::kProcess>>(
+              bpf_skeleton_factory, batch_interval_s)) {
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
-  factory_ = std::move(bpf_skeleton_factory);
 }
 
 std::string ProcessPlugin::GetName() const {
@@ -149,29 +151,16 @@ void ProcessPlugin::OnDeviceUserRetrieved(
   EnqueueBatchedEvent(std::move(atomic_event));
 }
 
-void ProcessPlugin::HandleBpfRingBufferReadReady() const {
-  skeleton_wrapper_->ConsumeEvent();
-}
-
 absl::Status ProcessPlugin::Activate() {
-  // If already called do nothing and report Ok.
-  if (skeleton_wrapper_) {
-    return absl::OkStatus();
-  }
-
   struct BpfCallbacks callbacks;
   callbacks.ring_buffer_event_callback = base::BindRepeating(
       &ProcessPlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());
-  callbacks.ring_buffer_read_ready_callback =
-      base::BindRepeating(&ProcessPlugin::HandleBpfRingBufferReadReady,
-                          weak_ptr_factory_.GetWeakPtr());
-  skeleton_wrapper_ =
-      factory_->Create(Types::BpfSkeleton::kProcess, std::move(callbacks), 0);
-  if (skeleton_wrapper_ == nullptr) {
-    return absl::InternalError("Process BPF program loading error.");
+
+  absl::Status status = bpf_skeleton_helper_->LoadAndAttach(callbacks);
+  if (status == absl::OkStatus()) {
+    batch_sender_->Start();
   }
-  batch_sender_->Start();
-  return absl::OkStatus();
+  return status;
 }
 
 absl::Status ProcessPlugin::Deactivate() {
@@ -196,7 +185,7 @@ void ProcessPlugin::EnqueueBatchedEvent(
 }
 
 bool ProcessPlugin::IsActive() const {
-  return skeleton_wrapper_ != nullptr;
+  return bpf_skeleton_helper_->IsAttached();
 }
 
 std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(

@@ -87,6 +87,67 @@ using NetworkPluginConfig =
                  Types::BpfSkeleton::kNetwork,
                  reporting::Destination::CROS_SECURITY_NETWORK>;
 
+class BpfSkeletonHelperInterface {
+ public:
+  virtual absl::Status LoadAndAttach(struct BpfCallbacks callbacks) = 0;
+  virtual absl::Status DetachAndUnload() = 0;
+  virtual bool IsAttached() const = 0;
+  virtual ~BpfSkeletonHelperInterface() = default;
+};
+
+template <Types::BpfSkeleton BpfSkeletonType>
+class BpfSkeletonHelper : public BpfSkeletonHelperInterface {
+ public:
+  BpfSkeletonHelper(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      uint32_t batch_interval_s)
+      : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
+    CHECK(bpf_skeleton_factory);
+    factory_ = std::move(bpf_skeleton_factory);
+  }
+
+  void BpfSkeletonConsumeEvent() const { skeleton_wrapper_->ConsumeEvent(); }
+
+  absl::Status LoadAndAttach(struct BpfCallbacks callbacks) override {
+    if (skeleton_wrapper_) {
+      return absl::OkStatus();
+    }
+    // If ring_buffer_read_ready_callback is set by the plugin, then don't
+    // override. If not set, use this default callback
+    if (!callbacks.ring_buffer_read_ready_callback) {
+      callbacks.ring_buffer_read_ready_callback =
+          base::BindRepeating(&BpfSkeletonHelper::BpfSkeletonConsumeEvent,
+                              weak_ptr_factory_.GetWeakPtr());
+    }
+    skeleton_wrapper_ = factory_->Create(BpfSkeletonType, std::move(callbacks),
+                                         batch_interval_s_);
+    if (skeleton_wrapper_ == nullptr) {
+      return absl::InternalError(
+          absl::StrFormat("%s BPF program loading error.", BpfSkeletonType));
+    }
+
+    return absl::OkStatus();
+  }
+
+  absl::Status DetachAndUnload() override {
+    // Unset the skeleton_wrapper_ unloads and cleans up the BPFs.
+    skeleton_wrapper_ = nullptr;
+    return absl::OkStatus();
+  }
+
+  bool IsAttached() const override { return skeleton_wrapper_ != nullptr; }
+
+ private:
+  // friend testing::BpfSkeletonHelperTestFixture;
+
+  uint32_t batch_interval_s_;
+  base::WeakPtrFactory<BpfSkeletonHelper> weak_ptr_factory_;
+  scoped_refptr<BpfSkeletonFactoryInterface> factory_;
+  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
+};
+
+// TODO(b:326311219): Remove this class and use the newly created
+// BpfSkeletonHelper as a composed object in NetworkPlugin
 template <typename Config>
 class BpfPlugin : public PluginInterface {
  public:
@@ -270,7 +331,6 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
       const secagentd::bpf::cros_synthetic_network_flow& flow_event) const;
 };
 
-// TODO(b:283278819): convert this over to use the generic BpfPlugin.
 class ProcessPlugin : public PluginInterface {
  public:
   ProcessPlugin(
@@ -330,9 +390,8 @@ class ProcessPlugin : public PluginInterface {
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
-  scoped_refptr<BpfSkeletonFactoryInterface> factory_;
-  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
   std::unique_ptr<BatchSenderType> batch_sender_;
+  std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
 };
 
 class AuthenticationPlugin : public PluginInterface {
