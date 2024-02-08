@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include <base/cancelable_callback.h>
@@ -77,15 +78,13 @@ class LivenessCheckerImpl : public LivenessChecker {
   // Send a LivenessCheck dbus message to the browser.
   void SendPing(base::TimeDelta dbus_timeout);
 
-  // Opens a file (like "status" or "wchan") in the browser's /proc directory.
-  // Returns a SafeFD if successful, nothing on error. If there is an error,
-  // the error has already been logged and the caller does not need to log
-  // another error.
-  std::optional<brillo::SafeFD> OpenBrowserProcFile(std::string_view file_name);
-
   // Reads /proc/browser_pid/status and returns the state of the browser at
   // the current moment.
   LoginMetrics::BrowserState GetBrowserState();
+
+  // Reads a file from browser's /proc directory and saves the contents in a
+  // string. Uses SafeFD underneath.
+  std::optional<std::string> ReadBrowserProcFile(std::string_view filename);
 
   // Reads /proc/browser_pid/wchan and records the result in some format. (Right
   // now it just logs it; some day will also record in UMA).

@@ -160,62 +160,24 @@ void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
   proc_directory_ = std::move(proc_directory);
 }
 
-std::optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
-    std::string_view file_name) {
-  std::optional<pid_t> browser_pid = manager_->GetBrowserPid();
-  if (!browser_pid.has_value()) {
-    return std::nullopt;
-  }
-
-  base::FilePath file_path(proc_directory_);
-  file_path = file_path.Append(base::NumberToString(browser_pid.value()))
-                  .Append(file_name);
-
-  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
-  if (brillo::SafeFD::IsError(result.second)) {
-    PLOG(WARNING) << "Could not get root directory "
-                  << static_cast<int>(result.second) << ": ";
-    return std::nullopt;
-  }
-
-  result = result.first.OpenExistingFile(file_path, O_RDONLY | O_CLOEXEC);
-  if (brillo::SafeFD::IsError(result.second)) {
-    PLOG(WARNING) << "Could not open " << file_path.value() << " error code "
-                  << static_cast<int>(result.second) << ": ";
-    return std::nullopt;
-  }
-
-  return std::move(result.first);
-}
-
 LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
-  std::optional<brillo::SafeFD> status_fd = OpenBrowserProcFile("status");
-  if (!status_fd.has_value()) {
-    return LoginMetrics::BrowserState::kErrorGettingState;
-  }
-
-  std::pair<std::vector<char>, brillo::SafeFD::Error> read_result =
-      status_fd.value().ReadContents();
-  if (brillo::SafeFD::IsError(read_result.second)) {
-    PLOG(WARNING) << "Could not read status file "
-                  << static_cast<int>(read_result.second) << ": ";
+  std::optional<std::string> state = ReadBrowserProcFile("status");
+  if (!state) {
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
 
   const std::string kStateField = "\nState:\t";
-  std::vector<char>::const_iterator state_begin =
-      std::search(read_result.first.begin(), read_result.first.end(),
-                  kStateField.begin(), kStateField.end());
+  std::string::const_iterator state_begin = std::search(
+      state->begin(), state->end(), kStateField.begin(), kStateField.end());
 
-  if (state_begin == read_result.first.end()) {
+  if (state_begin == state->end()) {
     LOG(WARNING) << "Could not find '\\nState:\\t' in /proc/pid/status";
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
 
-  std::vector<char>::const_iterator state_end =
-      state_begin + kStateField.length();
+  std::string::const_iterator state_end = state_begin + kStateField.length();
 
-  if (state_end == read_result.first.end()) {
+  if (state_end == state->end()) {
     LOG(WARNING) << "State:\\t at very end of file";
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
@@ -237,17 +199,44 @@ LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
   }
 }
 
-void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
-  std::optional<brillo::SafeFD> wchan_fd = OpenBrowserProcFile("wchan");
-  if (!wchan_fd.has_value()) {
-    return;
+std::optional<std::string> LivenessCheckerImpl::ReadBrowserProcFile(
+    std::string_view filename) {
+  std::optional<pid_t> browser_pid = manager_->GetBrowserPid();
+  if (!browser_pid.has_value()) {
+    return std::nullopt;
   }
 
-  std::pair<std::vector<char>, brillo::SafeFD::Error> read_result =
-      wchan_fd.value().ReadContents();
-  if (brillo::SafeFD::IsError(read_result.second)) {
-    PLOG(WARNING) << "Could not read wchan file "
-                  << static_cast<int>(read_result.second) << ": ";
+  base::FilePath file_path(proc_directory_);
+  file_path = file_path.Append(base::NumberToString(browser_pid.value()))
+                  .Append(filename);
+
+  brillo::SafeFD::SafeFDResult fd_result = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(fd_result.second)) {
+    PLOG(WARNING) << "Could not get root directory "
+                  << static_cast<int>(fd_result.second) << ": ";
+    return std::nullopt;
+  }
+
+  fd_result = fd_result.first.OpenExistingFile(file_path, O_RDONLY | O_CLOEXEC);
+  if (brillo::SafeFD::IsError(fd_result.second)) {
+    PLOG(WARNING) << "Could not open " << file_path.value() << " error code "
+                  << static_cast<int>(fd_result.second) << ": ";
+    return std::nullopt;
+  }
+
+  std::pair<std::vector<char>, brillo::SafeFD::Error> result =
+      fd_result.first.ReadContents();
+  if (brillo::SafeFD::IsError(result.second)) {
+    LOG(WARNING) << "Failed to read proc file: " << filename
+                 << " error: " << static_cast<int>(result.second);
+    return std::nullopt;
+  }
+  return std::string(result.first.begin(), result.first.end());
+}
+
+void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
+  std::optional<std::string> wchan = ReadBrowserProcFile("wchan");
+  if (!wchan) {
     return;
   }
 
@@ -260,11 +249,8 @@ void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
   // now, we just dump the contents to the log file. Once we have some logs,
   // I'll add a histogram with a somewhat adhoc list of entries that are showing
   // up most frequently.
-
-  // Strings log better than vector<char>.
-  std::string_view contents(read_result.first.data(), read_result.first.size());
   LOG(WARNING) << "browser wchan for state " << static_cast<int>(state) << ": "
-               << contents;
+               << *wchan;
 }
 
 void LivenessCheckerImpl::RequestKernelTraces() {
