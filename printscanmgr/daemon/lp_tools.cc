@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <brillo/process/process.h>
 
 #include "printscanmgr/cups_uri_helper/cups_uri_helper_utils.h"
@@ -115,9 +116,25 @@ int LpToolsImpl::Lpstat(const std::vector<std::string>& arg_list,
 }
 
 int LpToolsImpl::CupsTestPpd(const std::vector<uint8_t>& ppd_content) const {
-  return RunCommand(kTestPPDCommand,
-                    {"-W", "translations", "-W", "constraints", "-"},
-                    &ppd_content);
+  std::string output;
+  int retval = RunCommand(kTestPPDCommand,
+                          {"-W", "translations", "-W", "constraints", "-"},
+                          &ppd_content, &output);
+  // If there was an error running cupstestppd, log just the failure lines since
+  // logging all of the output can be too noisy.  However, if there are no
+  // failure lines, just log everything.
+  if (retval != 0) {
+    const std::string fail_string = "FAIL";
+    const bool log_everything = output.find(fail_string) == std::string::npos;
+    LOG(ERROR) << "CupsTestPpd failures: ";
+    for (const std::string& line : base::SplitString(
+             output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+      if (log_everything || line.find(fail_string) != std::string::npos) {
+        LOG(ERROR) << line;
+      }
+    }
+  }
+  return retval;
 }
 
 bool LpToolsImpl::CupsUriHelper(const std::string& uri) const {
