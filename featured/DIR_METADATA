@@ -9,4 +9,4 @@
 buganizer {
   component_id: 1096648  # ChromeOS > Data > Engineering > Experimentation
 }
-team_email: "cros-telemetry@google.com"
+team_email: "chromeos-data-eng@google.com"

@@ -9,7 +9,7 @@
 buganizer {
   component_id: 1032705
 }
-team_email: "cros-telemetry@google.com"
+team_email: "chromeos-data-eng@google.com"
 
 chromeos {
   cq {
