@@ -760,7 +760,7 @@ fn report_memory_stats(stats: process_stats::MemStats) -> Result<()> {
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let config_provider = ConfigProvider::from_root(root);
-    let scheduler_context = match qos::create_schedqos_context(&config_provider) {
+    let scheduler_context = match qos::create_schedqos_context(root, &config_provider) {
         Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
         Err(e) => {
             error!("failed to initialize schedqos context: {e}");

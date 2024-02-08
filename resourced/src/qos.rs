@@ -12,8 +12,8 @@ use std::sync::Arc;
 use dbus::MethodErr;
 use log::error;
 use log::info;
-use schedqos::cgroups::open_cpuset_cgroup;
 use schedqos::cgroups::setup_cpu_cgroup;
+use schedqos::cgroups::setup_cpuset_cgroup;
 use schedqos::CgroupContext;
 use schedqos::Config;
 use schedqos::ProcessKey;
@@ -25,6 +25,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::config::ConfigProvider;
+use crate::cpu_utils::Cpuset;
 use crate::proc::load_ruid;
 
 pub type SchedQosContext = schedqos::RestorableSchedQosContext;
@@ -108,6 +109,7 @@ impl Display for Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn create_schedqos_context(
+    root: &Path,
     config_provider: &ConfigProvider,
 ) -> anyhow::Result<SchedQosContext> {
     let mut normal_cpu_share = 1024;
@@ -133,9 +135,11 @@ pub fn create_schedqos_context(
 
     let cpu_normal = setup_cpu_cgroup("resourced/normal", normal_cpu_share)?;
     let cpu_background = setup_cpu_cgroup("resourced/background", background_cpu_share)?;
-    // Note these might be changed to resourced specific folders in the futre
-    let cpuset_all = open_cpuset_cgroup("chrome/urgent")?;
-    let cpuset_efficient = open_cpuset_cgroup("chrome/non-urgent")?;
+    let cpuset_all = Cpuset::all_cores(root)?;
+    let cpuset_all = setup_cpuset_cgroup("resourced/all", &cpuset_all.to_string())?;
+    let cpuset_efficient = Cpuset::little_cores(root)?;
+    let cpuset_efficient =
+        setup_cpuset_cgroup("resourced/efficient", &cpuset_efficient.to_string())?;
 
     let config = Config {
         cgroup_context: CgroupContext {

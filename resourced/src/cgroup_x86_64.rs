@@ -26,22 +26,28 @@ const MEDIA_MIN_ECORE_NUM: u32 = 4;
 static MEDIA_DYNAMIC_CGROUP_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 // List of sysfs, resourced updates during media dynamic cgroup.
-const CGROUP_CPUSET_ALL: [&str; 4] = [
+const CGROUP_CPUSET_ALL: [&str; 6] = [
     "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
     "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus",
     "sys/fs/cgroup/cpuset/chrome/cpus",
+    "sys/fs/cgroup/cpuset/resourced/all/cpus",
+    "sys/fs/cgroup/cpuset/resourced/efficient/cpus",
     "sys/fs/cgroup/cpuset/user_space/media/cpus",
 ];
 
 // List of sysfs, which has no constraint (i.e allowed to use all cpus) at boot.
-const CGROUP_CPUSET_NO_LIMIT: [&str; 3] = [
+const CGROUP_CPUSET_NO_LIMIT: [&str; 4] = [
     "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
     "sys/fs/cgroup/cpuset/chrome/cpus",
+    "sys/fs/cgroup/cpuset/resourced/all/cpus",
     "sys/fs/cgroup/cpuset/user_space/media/cpus",
 ];
 
 // ChromeOS limits non-urgent chrome tasks to use only power efficient cores at boot.
-const CGROUP_CPUSET_NONURGENT: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
+const CGROUP_CPUSET_NONURGENT: [&str; 2] = [
+    "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus",
+    "sys/fs/cgroup/cpuset/resourced/efficient/cpus",
+];
 const SCHEDULER_NONURGENT_PATH: &str = "run/chromeos-config/v1/scheduler-tune/cpuset-nonurgent";
 
 #[derive(PartialEq, Eq)]
@@ -80,20 +86,19 @@ fn get_scheduler_tune_cpuset_nonurgent(root: &Path) -> Result<Option<String>> {
 }
 
 fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
-    let cpuset_path = root.join(CGROUP_CPUSET_NONURGENT);
-
-    match get_scheduler_tune_cpuset_nonurgent(root) {
-        Ok(Some(cpusets)) => {
-            std::fs::write(cpuset_path, cpusets)?;
-        }
-        Ok(None) => {
-            std::fs::write(cpuset_path, Cpuset::little_cores(root)?.to_string())?;
-        }
+    let cpuset_str = match get_scheduler_tune_cpuset_nonurgent(root) {
+        Ok(Some(cpuset_str)) => cpuset_str,
+        Ok(None) => Cpuset::little_cores(root)?.to_string(),
         Err(e) => {
-            std::fs::write(cpuset_path, Cpuset::all_cores(root)?.to_string())?;
-            bail!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
+            info!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
+            Cpuset::all_cores(root)?.to_string()
         }
+    };
+
+    for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
+        std::fs::write(root.join(cpuset_path), &cpuset_str)?;
     }
+
     Ok(())
 }
 
@@ -458,7 +463,9 @@ mod tests {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-7");
         }
-        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-7");
+        for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
+            test_check_file_content(&root.path().join(cpuset_path), "0-7");
+        }
         Ok(())
     }
 
@@ -484,10 +491,11 @@ mod tests {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-7");
         }
-
-        // In the sysfs, the content would be converted to "0-5". But there is no auto conversion
-        // in the test temp files.
-        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-5");
+        for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
+            // In the sysfs, the content would be converted to "0-5". But there
+            // is no auto conversion in the test temp files.
+            test_check_file_content(&root.path().join(cpuset_path), "0-5");
+        }
         Ok(())
     }
 
@@ -513,8 +521,10 @@ mod tests {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-11");
         }
+        for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
+            test_check_file_content(&root.path().join(cpuset_path), "0-7");
+        }
 
-        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-7");
         Ok(())
     }
 

@@ -15,6 +15,7 @@ use crate::ThreadId;
 const CGROUP_CPU_PATH: &str = "/sys/fs/cgroup/cpu";
 const CGROUP_CPUSET_PATH: &str = "/sys/fs/cgroup/cpuset";
 const CPU_SHARE_FILE: &str = "cpu.shares";
+const CPUS_FILE: &str = "cpus";
 const CGROUP_PROCESSES_FILE: &str = "cgroup.procs";
 const CGROUP_THREADS_FILE: &str = "tasks";
 
@@ -46,7 +47,7 @@ impl Display for CgroupSetupError {
 ///
 /// This creates the cgroup if not exist.
 ///
-/// This returns an opened [File] of cgroup.procs of the cgroup.
+/// This returns an opened [File] of "cgroup.procs" of the cgroup.
 ///
 /// TODO(kawasin): Write unit test. The test requires an environment to execute
 /// with cpu cgroup submodule enabled.
@@ -57,31 +58,40 @@ pub fn setup_cpu_cgroup(name: &str, cpu_shares: u16) -> CgroupSetupResult {
             return Err(CgroupSetupError(cgroup_path, e));
         }
     }
-    let share_file = cgroup_path.join(CPU_SHARE_FILE);
-    std::fs::write(&share_file, cpu_shares.to_string())
-        .map_err(|e| CgroupSetupError(share_file, e))?;
-    let cgroup_file = cgroup_path.join(CGROUP_PROCESSES_FILE);
+    let share_file_path = cgroup_path.join(CPU_SHARE_FILE);
+    std::fs::write(&share_file_path, cpu_shares.to_string())
+        .map_err(|e| CgroupSetupError(share_file_path, e))?;
+    let cgroup_file_path = cgroup_path.join(CGROUP_PROCESSES_FILE);
     std::fs::OpenOptions::new()
         .write(true)
-        .open(&cgroup_file)
-        .map_err(|e| CgroupSetupError(cgroup_file, e))
+        .open(&cgroup_file_path)
+        .map_err(|e| CgroupSetupError(cgroup_file_path, e))
 }
 
-/// Opens tasks file of the existing cpuset cgroup
+/// Setup cpuset cgroup
 ///
-/// The cpuset cgroup must be configured.
+/// Cpuset cgroups are used to control cpu cores for managed threads.
 ///
-/// TODO(kawasin): Move cpuset setup into resourced
+/// This creates the cgroup if not exist.
+///
+/// This returns an opened [File] of "tasks" of the cgroup.
+///
 /// TODO(kawasin): Write unit test. The test requires an environment to execute
-/// with cpu cgroup submodule enabled.
-pub fn open_cpuset_cgroup(name: &str) -> CgroupSetupResult {
-    let cgroup_path = Path::new(CGROUP_CPUSET_PATH)
-        .join(name)
-        .join(CGROUP_THREADS_FILE);
+/// with cpuset cgroup submodule enabled.
+pub fn setup_cpuset_cgroup(name: &str, cpus: &str) -> CgroupSetupResult {
+    let cgroup_path = Path::new(CGROUP_CPUSET_PATH).join(name);
+    if !cgroup_path.exists() {
+        if let Err(e) = std::fs::create_dir_all(&cgroup_path) {
+            return Err(CgroupSetupError(cgroup_path, e));
+        }
+    }
+    let cpus_file_path = cgroup_path.join(CPUS_FILE);
+    std::fs::write(&cpus_file_path, cpus).map_err(|e| CgroupSetupError(cpus_file_path, e))?;
+    let cgroup_file_path = cgroup_path.join(CGROUP_THREADS_FILE);
     std::fs::OpenOptions::new()
         .write(true)
-        .open(&cgroup_path)
-        .map_err(|e| CgroupSetupError(cgroup_path, e))
+        .open(&cgroup_file_path)
+        .map_err(|e| CgroupSetupError(cgroup_file_path, e))
 }
 
 /// Set of cgroups used for scheduler settings.
