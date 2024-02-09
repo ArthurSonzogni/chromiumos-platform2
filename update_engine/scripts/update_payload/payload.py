@@ -4,9 +4,6 @@
 
 """Tools for reading, verifying and applying Chrome OS update payloads."""
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import hashlib
 import io
 import struct

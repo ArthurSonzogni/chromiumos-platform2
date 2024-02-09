@@ -5,8 +5,6 @@
 
 """Send an A/B update to an Android device over adb."""
 
-from __future__ import absolute_import
-
 import argparse
 import binascii
 import hashlib

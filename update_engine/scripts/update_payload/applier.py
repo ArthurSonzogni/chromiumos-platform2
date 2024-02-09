@@ -12,9 +12,6 @@ payload. The interface for invoking the applier is as follows:
 
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import array
 import bz2
 import hashlib

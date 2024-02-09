@@ -5,9 +5,6 @@
 
 """Block diff utility."""
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 # pylint: disable=import-error
 import argparse
 import sys

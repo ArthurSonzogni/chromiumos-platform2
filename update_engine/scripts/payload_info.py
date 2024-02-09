@@ -5,9 +5,6 @@
 
 """payload_info: Show information about an update payload."""
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import argparse
 import sys
 import textwrap

@@ -8,8 +8,6 @@
 # Disable check for function names to avoid errors based on old code
 # pylint: disable-msg=invalid-name
 
-from __future__ import absolute_import
-from __future__ import print_function
 
 from contextlib import contextmanager
 import sys

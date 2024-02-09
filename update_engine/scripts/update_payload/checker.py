@@ -12,9 +12,6 @@ follows:
   checker.Run(...)
 """
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import array
 import base64
 import collections

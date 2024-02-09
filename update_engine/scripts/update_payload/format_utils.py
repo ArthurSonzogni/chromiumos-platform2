@@ -4,8 +4,6 @@
 
 """Various formatting functions."""
 
-from __future__ import division
-
 
 def NumToPercent(num, total, min_precision=1, max_precision=5):
     """Returns the percentage (string) of |num| out of |total|.

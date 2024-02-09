@@ -4,9 +4,6 @@
 
 """Utilities for update payload processing."""
 
-from __future__ import absolute_import
-from __future__ import print_function
-
 import base64
 
 from update_payload import update_metadata_pb2
