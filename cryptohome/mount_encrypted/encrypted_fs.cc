@@ -24,6 +24,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
@@ -52,7 +53,7 @@ constexpr gid_t kRootGid = 0;
 constexpr uid_t kChronosUid = 1000;
 constexpr gid_t kChronosGid = 1000;
 
-bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
+bool CheckBind(libstorage::Platform* platform, const BindMount& bind) {
   if (platform->Access(bind.src, R_OK) &&
       !platform->CreateDirectory(bind.src)) {
     PLOG(ERROR) << "mkdir " << bind.src;
@@ -111,7 +112,7 @@ EncryptedFs::EncryptedFs(
     uint64_t fs_size,
     const std::string& dmcrypt_name,
     std::unique_ptr<cryptohome::EncryptedContainer> container,
-    cryptohome::Platform* platform,
+    libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper)
     : rootdir_(rootdir),
       fs_size_(fs_size),
@@ -133,7 +134,7 @@ EncryptedFs::EncryptedFs(
 // static
 std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     const base::FilePath& rootdir,
-    cryptohome::Platform* platform,
+    libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper,
     brillo::LogicalVolumeManager* lvm,
     cryptohome::EncryptedContainerFactory* encrypted_container_factory) {

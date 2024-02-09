@@ -8,8 +8,8 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 
@@ -22,7 +22,7 @@ class FscryptContainer : public EncryptedContainer {
   FscryptContainer(const base::FilePath& backing_dir,
                    const FileSystemKeyReference& key_reference,
                    bool allow_v2,
-                   Platform* platform,
+                   libstorage::Platform* platform,
                    Keyring* keyring);
   ~FscryptContainer() = default;
 
@@ -44,7 +44,7 @@ class FscryptContainer : public EncryptedContainer {
   const base::FilePath backing_dir_;
   FileSystemKeyReference key_reference_;
   bool allow_v2_;
-  Platform* platform_;
+  libstorage::Platform* platform_;
   Keyring* keyring_;
 };
 

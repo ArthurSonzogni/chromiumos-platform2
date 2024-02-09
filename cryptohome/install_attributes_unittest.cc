@@ -6,10 +6,10 @@
 
 #include "cryptohome/install_attributes.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
-#include <algorithm>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -18,10 +18,10 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/lockbox.h"
 #include "cryptohome/mock_lockbox.h"
-#include "cryptohome/mock_platform.h"
 
 using base::FilePath;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -86,7 +86,7 @@ class InstallAttributesTest : public ::testing::Test {
     return data;
   }
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<MockLockbox> lockbox_;
   brillo::Blob lockbox_data_;

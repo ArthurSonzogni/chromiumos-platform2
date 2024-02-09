@@ -75,7 +75,7 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
 const std::vector<FilePath> kDaemonDirPaths = {
     FilePath("session_manager"), FilePath("shill"), FilePath("shill_logs")};
 
-void CleanUpGuestDaemonDirectories(cryptohome::Platform* platform) {
+void CleanUpGuestDaemonDirectories(libstorage::Platform* platform) {
   FilePath root_home_dir =
       brillo::cryptohome::home::GetRootPath(GetGuestUsername());
   if (!platform->DirectoryExists(root_home_dir)) {
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
     return EX_NOINPUT;
   }
 
-  cryptohome::Platform platform;
+  libstorage::Platform platform;
 
   // Before performing any mounts, check whether there are any leftover
   // Guest session daemon directories in /home/root/<hashed username>/.

@@ -132,7 +132,7 @@ StorageStatus OopErrorCodeToStatus(MountError error) {
 //  enter it.
 OutOfProcessMountHelper::OutOfProcessMountHelper(bool legacy_home,
                                                  bool bind_mount_downloads,
-                                                 Platform* platform)
+                                                 libstorage::Platform* platform)
     : legacy_home_(legacy_home),
       bind_mount_downloads_(bind_mount_downloads),
       platform_(platform),

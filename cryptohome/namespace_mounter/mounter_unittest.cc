@@ -23,10 +23,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
+#include <libstorage/platform/platform.h>
 
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -105,27 +106,34 @@ base::FilePath ChronosHashPath(const Username& username) {
       .Append(base::StringPrintf("u-%s", obfuscated_username->c_str()));
 }
 
-void PrepareDirectoryStructure(Platform* platform) {
+void PrepareDirectoryStructure(libstorage::Platform* platform) {
   // Create environment as defined in
   // src/platform2/cryptohome/tmpfiles.d/cryptohome.conf
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRun), 0755, kRootUid, kRootGid));
+      base::FilePath(kRun), 0755, libstorage::kRootUid, libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunCryptohome), 0700, kRootUid, kRootGid));
+      base::FilePath(kRunCryptohome), 0700, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunDaemonStore), 0755, kRootUid, kRootGid));
+      base::FilePath(kRunDaemonStore), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunDaemonStoreCache), 0755, kRootUid, kRootGid));
+      base::FilePath(kRunDaemonStoreCache), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHome), 0755, kRootUid, kRootGid));
+      base::FilePath(kHome), 0755, libstorage::kRootUid, libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronos), 0755, kChronosUid, kChronosGid));
+      base::FilePath(kHomeChronos), 0755, libstorage::kChronosUid,
+      libstorage::kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronosUser), 01755, kChronosUid, kChronosGid));
+      base::FilePath(kHomeChronosUser), 01755, libstorage::kChronosUid,
+      libstorage::kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeUser), 0755, kRootUid, kRootGid));
+      base::FilePath(kHomeUser), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeRoot), 01751, kRootUid, kRootGid));
+      base::FilePath(kHomeRoot), 01751, libstorage::kRootUid,
+      libstorage::kRootGid));
 
   // Setup some skel directories to make sure they are copied over.
   // TODO(dlunev): for now setting permissions is useless, for the code
@@ -164,7 +172,7 @@ void PrepareDirectoryStructure(Platform* platform) {
       base::FilePath(kRunDaemonStoreCache).Append(kAnotherDaemon)));
 }
 
-void CheckExistenceAndPermissions(Platform* platform,
+void CheckExistenceAndPermissions(libstorage::Platform* platform,
                                   const base::FilePath& path,
                                   mode_t expected_mode,
                                   uid_t expected_uid,
@@ -191,7 +199,7 @@ void CheckExistenceAndPermissions(Platform* platform,
   ASSERT_THAT(gid, expected_gid) << "PATH: " << path.value();
 }
 
-void CheckRootAndDaemonStoreMounts(Platform* platform,
+void CheckRootAndDaemonStoreMounts(libstorage::Platform* platform,
                                    const Username& username,
                                    const base::FilePath& vault_mount_point,
                                    bool expect_present) {
@@ -247,9 +255,9 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
     ASSERT_THAT(root_mount_map,
                 ::testing::UnorderedElementsAreArray(expected_root_mount_map));
   }
-  CheckExistenceAndPermissions(platform,
-                               vault_mount_point.Append(kRootHomeSuffix), 01770,
-                               kRootUid, kDaemonStoreGid, expect_present);
+  CheckExistenceAndPermissions(
+      platform, vault_mount_point.Append(kRootHomeSuffix), 01770,
+      libstorage::kRootUid, libstorage::kDaemonStoreGid, expect_present);
   CheckExistenceAndPermissions(
       platform, vault_mount_point.Append(kRootHomeSuffix).Append(kSomeDaemon),
       kSomeDaemonAttributes.mode, kSomeDaemonAttributes.uid,
@@ -280,11 +288,11 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
                 expect_present);
     CheckExistenceAndPermissions(
         platform, brillo::cryptohome::home::GetRootPath(username), 01770,
-        kRootUid, kDaemonStoreGid, expect_present);
+        libstorage::kRootUid, libstorage::kDaemonStoreGid, expect_present);
   }
 }
 
-void CheckUserMountPoints(Platform* platform,
+void CheckUserMountPoints(libstorage::Platform* platform,
                           const Username& username,
                           const base::FilePath& vault_mount_point,
                           bool expect_present,
@@ -334,45 +342,49 @@ void CheckUserMountPoints(Platform* platform,
   }
 }
 
-void CheckUserMountPaths(Platform* platform,
+void CheckUserMountPaths(libstorage::Platform* platform,
                          const base::FilePath& base_path,
                          bool expect_present,
                          bool downloads_bind_mount) {
   // The path itself.
   // TODO(dlunev): the mount paths should be cleaned up upon unmount.
   if (expect_present) {
-    CheckExistenceAndPermissions(platform, base_path, 0750, kChronosUid,
-                                 kChronosAccessGid, expect_present);
+    CheckExistenceAndPermissions(platform, base_path, 0750,
+                                 libstorage::kChronosUid,
+                                 libstorage::kChronosAccessGid, expect_present);
   }
 
   // Subdirectories
   if (downloads_bind_mount) {
     CheckExistenceAndPermissions(platform, base_path.Append(kDownloadsDir),
-                                 0750, kChronosUid, kChronosAccessGid,
-                                 expect_present);
+                                 0750, libstorage::kChronosUid,
+                                 libstorage::kChronosAccessGid, expect_present);
   } else {
     ASSERT_FALSE(platform->DirectoryExists(base_path.Append(kDownloadsDir)));
   }
 
   CheckExistenceAndPermissions(platform, base_path.Append(kMyFilesDir), 0750,
-                               kChronosUid, kChronosAccessGid, expect_present);
+                               libstorage::kChronosUid,
+                               libstorage::kChronosAccessGid, expect_present);
 
   CheckExistenceAndPermissions(
       platform, base_path.Append(kMyFilesDir).Append(kDownloadsDir), 0750,
-      kChronosUid, kChronosAccessGid, expect_present);
+      libstorage::kChronosUid, libstorage::kChronosAccessGid, expect_present);
 
   CheckExistenceAndPermissions(platform, base_path.Append(kCacheDir), 0700,
-                               kChronosUid, kChronosGid, expect_present);
+                               libstorage::kChronosUid, libstorage::kChronosGid,
+                               expect_present);
 
   CheckExistenceAndPermissions(platform, base_path.Append(kGCacheDir), 0750,
-                               kChronosUid, kChronosAccessGid, expect_present);
+                               libstorage::kChronosUid,
+                               libstorage::kChronosAccessGid, expect_present);
 
   CheckExistenceAndPermissions(
       platform, base_path.Append(kGCacheDir).Append(kGCacheVersion2Dir), 0770,
-      kChronosUid, kChronosAccessGid, expect_present);
+      libstorage::kChronosUid, libstorage::kChronosAccessGid, expect_present);
 }
 
-void CheckSkel(Platform* platform,
+void CheckSkel(libstorage::Platform* platform,
                const base::FilePath& base_path,
                bool expect_present) {
   // Presence
@@ -381,21 +393,23 @@ void CheckSkel(Platform* platform,
   // we can not intercept it. We can make that explicit by setting those in
   // the copy skel itself.
   CheckExistenceAndPermissions(platform, base_path.Append(kDir1), 0750,
-                               kChronosUid, kChronosGid, expect_present);
+                               libstorage::kChronosUid, libstorage::kChronosGid,
+                               expect_present);
   CheckExistenceAndPermissions(
       platform, base_path.Append(kFile1),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      kChronosUid, kChronosGid, expect_present);
+      libstorage::kChronosUid, libstorage::kChronosGid, expect_present);
   CheckExistenceAndPermissions(platform, base_path.Append(kDir1Dir2), 0750,
-                               kChronosUid, kChronosGid, expect_present);
+                               libstorage::kChronosUid, libstorage::kChronosGid,
+                               expect_present);
   CheckExistenceAndPermissions(
       platform, base_path.Append(kDir1File2),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      kChronosUid, kChronosGid, expect_present);
+      libstorage::kChronosUid, libstorage::kChronosGid, expect_present);
   CheckExistenceAndPermissions(
       platform, base_path.Append(kDir1Dir2File3),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      kChronosUid, kChronosGid, expect_present);
+      libstorage::kChronosUid, libstorage::kChronosGid, expect_present);
 
   // Content
   if (expect_present) {
@@ -415,6 +429,7 @@ void CheckSkel(Platform* platform,
 
 class MounterTest : public ::testing::Test {
  public:
+  MounterTest() : platform_(std::make_unique<FakePlatform>()) {}
   const Username kUser{"someuser"};
 
   void SetUp() override {
@@ -425,7 +440,7 @@ class MounterTest : public ::testing::Test {
 
  protected:
   // Protected for trivial access.
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<Mounter> mount_helper_;
 
   void VerifyFS(const Username& username,
@@ -642,18 +657,21 @@ TEST_F(MounterTest, MountOrdering) {
   {
     InSequence sequence;
     EXPECT_CALL(platform_,
-                Mount(src, dest0, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
+                Mount(src, dest0, _,
+                      libstorage::kDefaultMountFlags | MS_NOSYMFOLLOW, _))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(src, dest1, _, true)).WillOnce(Return(true));
     EXPECT_CALL(platform_,
-                Mount(src, dest2, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
+                Mount(src, dest2, _,
+                      libstorage::kDefaultMountFlags | MS_NOSYMFOLLOW, _))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Unmount(dest2, _, _)).WillOnce(Return(true));
     EXPECT_CALL(platform_, Unmount(dest1, _, _)).WillOnce(Return(true));
     EXPECT_CALL(platform_, Unmount(dest0, _, _)).WillOnce(Return(true));
 
     EXPECT_TRUE(mount_helper_->MountAndPush(src, dest0, "", ""));
-    EXPECT_TRUE(mount_helper_->BindAndPush(src, dest1, RemountOption::kShared));
+    EXPECT_TRUE(mount_helper_->BindAndPush(src, dest1,
+                                           libstorage::RemountOption::kShared));
     EXPECT_TRUE(mount_helper_->MountAndPush(src, dest2, "", ""));
     mount_helper_->UnmountAll();
   }
@@ -1279,10 +1297,9 @@ TEST_F(
 
 class MounterEphemeral : public ::testing::Test {
  public:
+  MounterEphemeral() : platform_(std::make_unique<FakePlatform>()) {}
+
   const Username kUser{"someuser"};
-
-  MounterEphemeral() = default;
-
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
     mount_helper_ = std::make_unique<Mounter>(
@@ -1291,7 +1308,7 @@ class MounterEphemeral : public ::testing::Test {
 
  protected:
   // Protected for trivial access.
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<Mounter> mount_helper_;
   struct statvfs ephemeral_statvfs_;
 

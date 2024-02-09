@@ -10,8 +10,8 @@
 #include <unordered_map>
 
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
@@ -43,7 +43,7 @@ class CryptohomeVault {
       std::unique_ptr<EncryptedContainer> cache_container,
       std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
           application_containers,
-      Platform* platform);
+      libstorage::Platform* platform);
   ~CryptohomeVault();
 
   // Sets up the cryptohome vault for mounting.
@@ -109,7 +109,7 @@ class CryptohomeVault {
   std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
       application_containers_;
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

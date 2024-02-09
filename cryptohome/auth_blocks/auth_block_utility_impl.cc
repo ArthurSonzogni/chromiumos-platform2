@@ -64,7 +64,7 @@ namespace cryptohome {
 AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     KeysetManagement* keyset_management,
     Crypto* crypto,
-    Platform* platform,
+    libstorage::Platform* platform,
     AsyncInitFeatures* features,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,

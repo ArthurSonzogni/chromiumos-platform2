@@ -15,10 +15,10 @@
 #include <vector>
 
 #include <base/time/time.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
 namespace cryptohome {
@@ -48,7 +48,7 @@ class DiskCleanup {
   };
 
   DiskCleanup() = default;
-  DiskCleanup(Platform* platform,
+  DiskCleanup(libstorage::Platform* platform,
               HomeDirs* homedirs,
               UserOldestActivityTimestampManager* timestamp_manager);
   virtual ~DiskCleanup() = default;
@@ -149,7 +149,7 @@ class DiskCleanup {
       base::Time cutoff, std::vector<HomeDirs::HomeDir>* homedirs);
 
   // Not owned. Must outlive DiskCleanup.
-  Platform* platform_ = nullptr;
+  libstorage::Platform* platform_ = nullptr;
   HomeDirs* homedirs_ = nullptr;
   UserOldestActivityTimestampManager* timestamp_manager_ = nullptr;
 

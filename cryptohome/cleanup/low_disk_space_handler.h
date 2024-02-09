@@ -16,6 +16,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/signalling.h"
 #include "cryptohome/util/async_init.h"
@@ -25,7 +26,6 @@ namespace cryptohome {
 class DiskCleanup;
 class HomeDirs;
 class KeysetManagement;
-class Platform;
 class UserOldestActivityTimestampManager;
 
 inline constexpr base::TimeDelta kAutoCleanupPeriod = base::Hours(1);
@@ -35,7 +35,7 @@ inline constexpr base::TimeDelta kLowDiskNotificationPeriod = base::Minutes(1);
 class LowDiskSpaceHandler {
  public:
   LowDiskSpaceHandler(HomeDirs* homedirs,
-                      Platform* platform,
+                      libstorage::Platform* platform,
                       AsyncInitPtr<SignallingInterface> signalling,
                       UserOldestActivityTimestampManager* timestamp_manager);
   virtual ~LowDiskSpaceHandler();
@@ -75,7 +75,7 @@ class LowDiskSpaceHandler {
   void FreeDiskSpace();
   void LowDiskSpaceCheck();
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   AsyncInitPtr<SignallingInterface> signalling_;
 
   std::unique_ptr<DiskCleanup> default_cleanup_;

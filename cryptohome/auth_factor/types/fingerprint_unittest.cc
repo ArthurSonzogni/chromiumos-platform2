@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
@@ -25,7 +26,6 @@
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
@@ -88,7 +88,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
     ASSERT_THAT(uss.ToStorage(user_uss_storage), IsOk());
   }
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   MockBiometricsCommandProcessor* bio_command_processor_;

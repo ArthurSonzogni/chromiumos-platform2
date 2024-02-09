@@ -11,9 +11,9 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 
@@ -21,7 +21,8 @@ using base::FilePath;
 
 namespace cryptohome {
 
-DiskCleanupRoutines::DiskCleanupRoutines(HomeDirs* homedirs, Platform* platform)
+DiskCleanupRoutines::DiskCleanupRoutines(HomeDirs* homedirs,
+                                         libstorage::Platform* platform)
     : homedirs_(homedirs), platform_(platform) {}
 
 DiskCleanupRoutines::~DiskCleanupRoutines() = default;
@@ -131,8 +132,9 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
   // as the inodes may have been re-used elsewhere if the cache directory was
   // deleted.
   std::set<std::pair<const FilePath, ino_t>> cache_inodes;
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      root, true, base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(root, true,
+                                   base::FileEnumerator::DIRECTORIES));
   FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     ino_t inode = file_enumerator->GetInfo().stat().st_ino;
@@ -208,7 +210,7 @@ bool DiskCleanupRoutines::GetTrackedDirectoryForDirCrypto(
   std::vector<std::string> name_components = tracked_dir_name.GetComponents();
   for (const auto& name_component : name_components) {
     FilePath next_path;
-    std::unique_ptr<FileEnumerator> enumerator(
+    std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(current_path, false /* recursive */,
                                      base::FileEnumerator::DIRECTORIES));
     for (FilePath dir = enumerator->Next(); !dir.empty();
@@ -238,7 +240,7 @@ bool DiskCleanupRoutines::GetTrackedDirectoryForDirCrypto(
 
 bool DiskCleanupRoutines::DeleteDirectoryContents(const FilePath& dir) {
   bool ret = true;
-  std::unique_ptr<FileEnumerator> subdir_enumerator(
+  std::unique_ptr<libstorage::FileEnumerator> subdir_enumerator(
       platform_->GetFileEnumerator(dir, false,
                                    base::FileEnumerator::FILES |
                                        base::FileEnumerator::DIRECTORIES |
@@ -257,7 +259,7 @@ bool DiskCleanupRoutines::DeleteDirectoryContents(const FilePath& dir) {
 bool DiskCleanupRoutines::RemoveAllRemovableFiles(const FilePath& dir) {
   bool ret = true;
 
-  std::unique_ptr<FileEnumerator> file_enumerator(
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(dir, true, base::FileEnumerator::FILES));
   for (FilePath file = file_enumerator->Next(); !file.empty();
        file = file_enumerator->Next()) {
@@ -303,13 +305,15 @@ bool DiskCleanupRoutines::DeleteDaemonStoreCacheMountedUsers() {
   // Daemon store cache dirs that can be completely removed on low disk space.
   const FilePath cache_dir = FilePath(kRunDaemonStoreCacheBaseDir);
 
-  std::unique_ptr<FileEnumerator> daemon_fe(platform_->GetFileEnumerator(
-      cache_dir, false, base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> daemon_fe(
+      platform_->GetFileEnumerator(cache_dir, false,
+                                   base::FileEnumerator::DIRECTORIES));
 
   for (FilePath daemon_dir = daemon_fe->Next(); !daemon_dir.empty();
        daemon_dir = daemon_fe->Next()) {
-    std::unique_ptr<FileEnumerator> user_fe(platform_->GetFileEnumerator(
-        daemon_dir, false, base::FileEnumerator::DIRECTORIES));
+    std::unique_ptr<libstorage::FileEnumerator> user_fe(
+        platform_->GetFileEnumerator(daemon_dir, false,
+                                     base::FileEnumerator::DIRECTORIES));
     for (FilePath user_dir = user_fe->Next(); !user_dir.empty();
          user_dir = user_fe->Next()) {
       VLOG(1) << "Deleting mounted daemon-store-cache:" << user_dir.value();

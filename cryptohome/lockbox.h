@@ -13,8 +13,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 

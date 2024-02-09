@@ -6,18 +6,21 @@
 #define CRYPTOHOME_MOCK_VAULT_KEYSET_FACTORY_H_
 
 #include <gmock/gmock.h>
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 class VaultKeyset;
-class Platform;
 class Crypto;
 
 class MockVaultKeysetFactory : public VaultKeysetFactory {
  public:
   MockVaultKeysetFactory() {}
   virtual ~MockVaultKeysetFactory() {}
-  MOCK_METHOD(VaultKeyset*, New, (Platform*, Crypto*), (override));
-  MOCK_METHOD(VaultKeyset*, NewBackup, (Platform*, Crypto*), (override));
+  MOCK_METHOD(VaultKeyset*, New, (libstorage::Platform*, Crypto*), (override));
+  MOCK_METHOD(VaultKeyset*,
+              NewBackup,
+              (libstorage::Platform*, Crypto*),
+              (override));
 };
 }  // namespace cryptohome
 

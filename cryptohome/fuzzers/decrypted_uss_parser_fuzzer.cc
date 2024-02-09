@@ -16,12 +16,13 @@
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/fuzzers/blob_mutator.h>
+#include <libstorage/platform/mock_platform.h>
 #include <openssl/err.h>
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/username.h"
@@ -184,7 +185,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Use a storage that will behave correctly instead of fuzzed, as we want to
   // prepare the mutated USS container ourselves.
-  testing::NiceMock<cryptohome::MockPlatform> platform;
+  testing::NiceMock<libstorage::MockPlatform> platform(
+      std::make_unique<cryptohome::FakePlatform>());
   cryptohome::UssStorage uss_storage{&platform};
   cryptohome::UserUssStorage user_uss_storage{uss_storage, kObfuscatedUsername};
   ON_CALL(platform, ReadFile(_, _))

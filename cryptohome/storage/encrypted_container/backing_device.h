@@ -12,8 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/lvm.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 

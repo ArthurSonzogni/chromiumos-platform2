@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
 #include "cryptohome/username.h"
 
@@ -90,15 +90,17 @@ base::FilePath LogicalVolumeSnapshotPath(
     const std::string& container_name);
 
 // Gets existing system salt, or creates one if it doesn't exist.
-bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);
+bool GetSystemSalt(libstorage::Platform* platform, brillo::SecureBlob* salt);
 
 // Gets an existing kiosk mount salt, or creates one if it doesn't exist.
-bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt);
+bool GetPublicMountSalt(libstorage::Platform* platform,
+                        brillo::SecureBlob* salt);
 
 // Gets full path for serialized RecoveryId.
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id);
 
-bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt);
+bool InitializeFilesystemLayout(libstorage::Platform* platform,
+                                brillo::SecureBlob* salt);
 
 }  // namespace cryptohome
 

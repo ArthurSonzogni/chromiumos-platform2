@@ -28,17 +28,13 @@ group("all") {
     ":stateful-recovery",
     ":stateful_recovery_lib",
     "libs:install_data_migrator_headers",
-    "libs:install_platform_headers",
     "libs:libcryptohome_data_migrator",
     "libs:libcryptohome_data_migrator_pc",
-    "libs:libcryptohome_platform",
-    "libs:libcryptohome_platform_pc",
   ]
   if (use.test) {
     deps += [
       ":cryptohome_testrunner",
       ":error_location_check",
-      ":fake_platform_unittest",
       ":lockbox-cache-manager_testrunner",
       ":mount_encrypted_unittests",
       ":stateful_recovery_unittests",
@@ -129,7 +125,6 @@ executable("cryptohome") {
   ]
   pkg_deps = [
     "dbus-1",
-    "libecryptfs",
     "libmetrics",
     "libuser_data_auth-client",
   ]
@@ -162,7 +157,6 @@ executable("cryptohomed") {
   pkg_deps = [
     "dbus-1",
     "libbootlockbox-client",
-    "libecryptfs",
     "libmetrics",
   ]
   install_path = "sbin"
@@ -184,11 +178,9 @@ executable("cryptohome-namespace-mounter") {
 
 executable("lockbox-cache") {
   sources = [
-    "dircrypto_util.cc",
     "lockbox-cache-main.cc",
     "lockbox-cache.cc",
     "lockbox.cc",
-    "platform.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
@@ -204,8 +196,8 @@ executable("lockbox-cache") {
   ]
   pkg_deps = [
     "libcrossystem",
-    "libecryptfs",
     "libmetrics",
+    "libstorage_platform",
   ]
   install_path = "sbin"
 }
@@ -316,21 +308,12 @@ install_config("install_tmpfilesd_cryptohome") {
 
 if (use.test || use.fuzzer) {
   static_library("fake_platform-static") {
-    sources = [
-      "fake_platform.cc",
-      "fake_platform/fake_fake_mount_mapping_redirect_factory.cc",
-      "fake_platform/fake_mount_mapper.cc",
-      "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
-      "fake_platform/test_file_path.cc",
-      "mock_platform.cc",
-    ]
+    sources = [ "fake_platform.cc" ]
     configs += [ "//common-mk:test" ]
     libs = [ "hwsec-foundation" ]
-    deps = [ "libs:libcryptohome_platform" ]
     pkg_deps = [
       "libbrillo",
-      "libbrillo-test",
-      "libchrome",
+      "libstorage_fake_platform",
     ]
   }
 }
@@ -379,7 +362,6 @@ if (use.test) {
       "libattestation-client-test",
       "libbrillo-test",
       "libchrome-test",
-      "libecryptfs",
       "libmetrics",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
@@ -488,7 +470,6 @@ if (use.test) {
       "lockbox_unittest.cc",
       "namespace_mounter/mounter.cc",
       "namespace_mounter/mounter_unittest.cc",
-      "platform_unittest.cc",
       "recoverable_key_store/backend_cert_provider_impl_test.cc",
       "recoverable_key_store/backend_cert_verify_test.cc",
       "recoverable_key_store/generate_test.cc",
@@ -553,29 +534,9 @@ if (use.test) {
       "libchrome-test",
       "libecryptfs",
       "libmetrics",
+      "libstorage_fake_platform",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
-    ]
-    run_test = true
-  }
-
-  executable("fake_platform_unittest") {
-    sources = [
-      "fake_platform/fake_mount_mapper_unittest.cc",
-      "fake_platform/real_fake_mount_mapping_redirect_factory_unittest.cc",
-      "fake_platform/test_file_path_unittest.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":fake_platform-static",
-      "//common-mk/testrunner",
-    ]
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
     ]
     run_test = true
   }
@@ -599,6 +560,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libstorage_fake_platform",
     ]
 
     if (use.tpm2) {
@@ -623,6 +585,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libstorage_fake_platform",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
     ]
@@ -631,17 +594,6 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  static_library("fuzz-helpers") {
-    sources = [ "fuzzers/fuzzed_platform.cc" ]
-    configs += [ ":target_defaults" ]
-    libs = [ "hwsec-foundation" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-    ]
-    deps = [ "libs:libcryptohome_platform" ]
-  }
-
   executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {
     sources = [ "fuzzers/cryptolib_blob_to_hex_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
@@ -660,13 +612,16 @@ if (use.fuzzer) {
       "//common-mk:test",
     ]
     deps = [
-      ":fake_platform-static",
-      ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcrostpm",
       "libs:libcryptohome",
     ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libstorage_fake_platform",
+      "libstorage_fuzzer",
+    ]
   }
 
   executable("cryptohome_userdataauth_fuzzer") {
@@ -677,24 +632,33 @@ if (use.fuzzer) {
       "//common-mk:test",
     ]
     deps = [
-      ":fake_platform-static",
-      ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcrostpm",
       "libs:libcryptohome",
     ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libstorage_fake_platform",
+      "libstorage_fuzzer",
+    ]
   }
 
   executable("cryptohome_user_secret_stash_parser_fuzzer") {
     sources = [ "fuzzers/decrypted_uss_parser_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
-    configs += [ "//common-mk/common_fuzzer" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+    ]
     deps = [
       ":fake_platform-static",
-      ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcryptohome",
+    ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libstorage_fake_platform",
     ]
   }
 }

@@ -9,10 +9,10 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/util/async_init.h"
@@ -38,7 +38,7 @@ bool IsDiskSpaceLow(DiskCleanup::FreeSpaceState state) {
 
 LowDiskSpaceHandler::LowDiskSpaceHandler(
     HomeDirs* homedirs,
-    Platform* platform,
+    libstorage::Platform* platform,
     AsyncInitPtr<SignallingInterface> signalling,
     UserOldestActivityTimestampManager* timestamp_manager)
     : platform_(platform),

@@ -16,8 +16,7 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 int main(int argc, char** argv) {
   DEFINE_bool(reboot, true, "Reboot at end of recovery");
@@ -32,7 +31,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  cryptohome::Platform platform;
+  libstorage::Platform platform;
 
   // Setup libbrillo dbus.
   brillo::DBusConnection connection;

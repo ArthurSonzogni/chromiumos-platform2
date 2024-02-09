@@ -14,8 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/loop_device.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 
@@ -28,7 +27,8 @@ class LoopbackDevice : public BackingDevice {
   //         by name.
   // - `size`: Size of the underlying sparse file.
   // - `backing_file_path`: Path of the backing sparse file.
-  LoopbackDevice(const BackingDeviceConfig& config, Platform* platform);
+  LoopbackDevice(const BackingDeviceConfig& config,
+                 libstorage::Platform* platform);
 
   ~LoopbackDevice() = default;
 
@@ -66,7 +66,7 @@ class LoopbackDevice : public BackingDevice {
   const int64_t size_;
   const bool fixed_backing_;
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

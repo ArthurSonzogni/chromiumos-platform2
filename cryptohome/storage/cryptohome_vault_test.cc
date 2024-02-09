@@ -12,9 +12,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
@@ -281,7 +281,7 @@ class CryptohomeVaultTest
   const base::FilePath backing_dir_;
 
   MockHomeDirs homedirs_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   FakeKeyring* keyring_;
   FakeEncryptedContainerFactory encrypted_container_factory_;
   std::unique_ptr<CryptohomeVault> vault_;

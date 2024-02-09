@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
-#include <cryptohome/platform.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -27,7 +27,8 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
  public:
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<RecoveryCryptoImpl> Create(
-      const hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform);
+      const hwsec::RecoveryCryptoFrontend* hwsec_backend,
+      libstorage::Platform* platform);
 
   RecoveryCryptoImpl(const RecoveryCryptoImpl&) = delete;
   RecoveryCryptoImpl& operator=(const RecoveryCryptoImpl&) = delete;
@@ -84,7 +85,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
  private:
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
                      const hwsec::RecoveryCryptoFrontend* hwsec_backend,
-                     Platform* platform);
+                     libstorage::Platform* platform);
   [[nodiscard]] bool GetMediatorPubKeyHash(
       const brillo::Blob& mediator_pub_key_spki_der, brillo::Blob* hash) const;
   [[nodiscard]] bool GenerateRecoveryKey(
@@ -119,7 +120,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   hwsec_foundation::EllipticCurve ec_;
   const hwsec::RecoveryCryptoFrontend* const hwsec_backend_;
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 };
 
 }  // namespace cryptorecovery

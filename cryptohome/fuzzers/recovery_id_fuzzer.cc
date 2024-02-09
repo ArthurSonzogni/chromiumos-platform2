@@ -13,11 +13,11 @@
 #include <brillo/fake_cryptohome.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <libhwsec/factory/fuzzed_factory.h>
+#include <libstorage/platform/fuzzers/fuzzed_platform.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/fuzzers/fuzzed_platform.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 namespace {
@@ -53,7 +53,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   account_id.set_account_id(user_id);
 
   // Prepare Recovery_Id's dependencies.
-  FuzzedPlatform platform(provider);
+  libstorage::FuzzedPlatform platform(provider);
   hwsec::FuzzedFactory hwsec_factory(provider);
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       recovery_crypto_fake_backend = hwsec_factory.GetRecoveryCryptoFrontend();

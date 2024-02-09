@@ -16,8 +16,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
+#include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
@@ -122,7 +122,7 @@ class EncryptedFsTest : public ::testing::Test {
   const base::FilePath mount_point_;
   cryptohome::EncryptedContainerConfig config_;
 
-  NiceMock<cryptohome::MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   cryptohome::FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   cryptohome::FakeBackingDeviceFactory fake_backing_device_factory_;

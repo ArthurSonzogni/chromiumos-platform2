@@ -19,12 +19,12 @@
 #include <brillo/cryptohome.h>
 #include <brillo/syslog_logging.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <libstorage/platform/platform.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 using base::FilePath;
@@ -44,7 +44,7 @@ const char StatefulRecovery::kFlagFile[] =
 const int kDefaultTimeoutMs = 30000;
 
 StatefulRecovery::StatefulRecovery(
-    Platform* platform,
+    libstorage::Platform* platform,
     org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
     policy::PolicyProvider* policy_provider,
     std::string flag_file)

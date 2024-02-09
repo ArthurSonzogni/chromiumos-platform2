@@ -23,8 +23,8 @@
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/namespace_mounter_ipc.pb.h"
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -78,7 +78,7 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
   }
 
  protected:
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
 };
 

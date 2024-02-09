@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_DIRCRYPTO_UTIL_H_
-#define CRYPTOHOME_DIRCRYPTO_UTIL_H_
+#ifndef LIBSTORAGE_PLATFORM_DIRCRYPTO_UTIL_H_
+#define LIBSTORAGE_PLATFORM_DIRCRYPTO_UTIL_H_
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
@@ -61,4 +61,4 @@ int GetDirectoryPolicyVersion(const base::FilePath& dir);
 
 }  // namespace dircrypto
 
-#endif  // CRYPTOHOME_DIRCRYPTO_UTIL_H_
+#endif  // LIBSTORAGE_PLATFORM_DIRCRYPTO_UTIL_H_

@@ -25,13 +25,14 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/fake_features.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -62,6 +63,9 @@ using ::testing::SaveArg;
 using ::testing::UnorderedElementsAre;
 
 class AuthSessionManagerTest : public ::testing::Test {
+ public:
+  AuthSessionManagerTest() : platform_(std::make_unique<FakePlatform>()) {}
+
  protected:
   // Helper function that will try and "take" control of an auth session in a
   // synchronous manner. If the session is in use then it will immediately
@@ -96,7 +100,7 @@ class AuthSessionManagerTest : public ::testing::Test {
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;

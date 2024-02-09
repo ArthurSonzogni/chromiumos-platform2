@@ -11,6 +11,7 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libstorage/platform/platform.h>
 #include <policy/libpolicy.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
@@ -18,7 +19,6 @@
 
 namespace cryptohome {
 
-class Platform;
 class Service;
 
 // This class handles recovery of encrypted data from the stateful partition.
@@ -35,7 +35,7 @@ class Service;
 class StatefulRecovery {
  public:
   explicit StatefulRecovery(
-      Platform* platform,
+      libstorage::Platform* platform,
       org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
       policy::PolicyProvider* policy_provider,
       std::string flag_file);
@@ -90,7 +90,7 @@ class StatefulRecovery {
   bool IsOwner(const std::string& username);
 
   bool requested_;
-  Platform* platform_;
+  libstorage::Platform* platform_;
   org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy_;
   policy::PolicyProvider* policy_provider_;
   base::FilePath flag_file_;

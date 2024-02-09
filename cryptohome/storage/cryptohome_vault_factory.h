@@ -11,8 +11,8 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -23,7 +23,7 @@ namespace cryptohome {
 class CryptohomeVaultFactory {
  public:
   CryptohomeVaultFactory(
-      Platform* platform,
+      libstorage::Platform* platform,
       std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory);
 
   virtual ~CryptohomeVaultFactory();
@@ -59,7 +59,7 @@ class CryptohomeVaultFactory {
       const std::string& container_identifier,
       const DmOptions& dm_options);
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory_;
   bool enable_application_containers_;
   std::shared_ptr<brillo::VolumeGroup> vg_;

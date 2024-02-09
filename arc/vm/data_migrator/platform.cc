@@ -142,7 +142,7 @@ void Platform::InitializeFile(base::File* file,
                               const base::FilePath& path,
                               uint32_t flags) {
   // Try the original implementation first.
-  cryptohome::Platform::InitializeFile(file, path, flags);
+  libstorage::Platform::InitializeFile(file, path, flags);
   if (file->IsValid() ||
       file->error_details() != base::File::FILE_ERROR_ACCESS_DENIED) {
     return;

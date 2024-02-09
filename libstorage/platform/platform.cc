@@ -4,7 +4,7 @@
 
 // Contains the implementation of class Platform
 
-#include "cryptohome/platform.h"
+#include "libstorage/platform/platform.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -77,7 +77,7 @@ extern "C" {
 #include <linux/fs.h>
 }
 
-#include "cryptohome/dircrypto_util.h"
+#include "libstorage/platform/dircrypto_util.h"
 
 using base::FilePath;
 using base::SplitString;
@@ -111,7 +111,7 @@ bool IsDirectory(const base::stat_wrapper_t& file_info) {
  * Return true if the line seems valid.
  */
 bool DecodeProcInfoLine(const std::string& line,
-                        cryptohome::DecodedProcMountInfo* mount_info) {
+                        libstorage::DecodedProcMountInfo* mount_info) {
   auto args =
       SplitString(line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   size_t fs_idx = 6;
@@ -137,7 +137,7 @@ bool DecodeProcInfoLine(const std::string& line,
 
 }  // namespace
 
-namespace cryptohome {
+namespace libstorage {
 
 const char kLoopPrefix[] = "/dev/loop";
 
@@ -1685,4 +1685,4 @@ FileEnumerator::FileInfo FileEnumerator::GetInfo() {
   return FileInfo(enumerator_->GetInfo());
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

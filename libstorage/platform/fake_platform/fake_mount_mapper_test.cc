@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/fake_mount_mapper.h"
+#include "libstorage/platform/fake_platform/fake_mount_mapper.h"
 
 #include <list>
 #include <map>
@@ -12,10 +12,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/fake_platform/fake_fake_mount_mapping_redirect_factory.h"
-#include "cryptohome/fake_platform/test_file_path.h"
+#include "libstorage/platform/fake_platform/fake_fake_mount_mapping_redirect_factory.h"
+#include "libstorage/platform/fake_platform/test_file_path.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 namespace {
 constexpr char kFile[] = "file";
@@ -750,4 +750,4 @@ TEST_F(FakeMountMapperTest, ListMountsBySourcePrefix_Path) {
 
 }  // namespace
 
-}  // namespace cryptohome
+}  // namespace libstorage

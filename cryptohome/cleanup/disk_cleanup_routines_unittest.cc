@@ -16,10 +16,10 @@
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -42,16 +42,16 @@ namespace cryptohome {
 
 namespace {
 
-NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
-  return new NiceMock<MockFileEnumerator>;
+NiceMock<libstorage::MockFileEnumerator>* CreateMockFileEnumerator() {
+  return new NiceMock<libstorage::MockFileEnumerator>;
 }
 
-NiceMock<MockFileEnumerator>* CreateMockFileEnumeratorWithEntries(
+NiceMock<libstorage::MockFileEnumerator>* CreateMockFileEnumeratorWithEntries(
     const std::vector<base::FilePath>& children) {
-  auto* mock = new NiceMock<MockFileEnumerator>;
+  auto* mock = new NiceMock<libstorage::MockFileEnumerator>;
   for (const auto& child : children) {
     base::stat_wrapper_t stat = {};
-    mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
+    mock->entries_.push_back(libstorage::FileEnumerator::FileInfo(child, stat));
   }
   return mock;
 }
@@ -59,7 +59,7 @@ NiceMock<MockFileEnumerator>* CreateMockFileEnumeratorWithEntries(
 }  // namespace
 
 TEST(DiskCleanupRoutinesInitialization, Init) {
-  StrictMock<MockPlatform> platform_;
+  StrictMock<libstorage::MockPlatform> platform_;
   StrictMock<MockHomeDirs> homedirs_;
 
   DiskCleanupRoutines routines(&homedirs_, &platform_);
@@ -115,7 +115,7 @@ class DiskCleanupRoutinesTest
             std::bind(CreateMockFileEnumeratorWithEntries, child_directories)));
   }
 
-  StrictMock<MockPlatform> platform_;
+  StrictMock<libstorage::MockPlatform> platform_;
   StrictMock<MockHomeDirs> homedirs_;
 
   DiskCleanupRoutines routines_;
@@ -309,23 +309,23 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
           .WillOnce(Return(true));
   }
 
-  auto* enumerator = new NiceMock<MockFileEnumerator>;
+  auto* enumerator = new NiceMock<libstorage::MockFileEnumerator>;
 
   ASSERT_EQ(entriesToClean.size(), 2);
   base::stat_wrapper_t stat = {};
 
   stat.st_ino = 1;
   enumerator->entries_.push_back(
-      FileEnumerator::FileInfo(codeCacheInodeFile, stat));
+      libstorage::FileEnumerator::FileInfo(codeCacheInodeFile, stat));
   enumerator->entries_.push_back(
-      FileEnumerator::FileInfo(cacheInodeFile, stat));
+      libstorage::FileEnumerator::FileInfo(cacheInodeFile, stat));
 
   stat.st_ino = codeCacheInode;
   enumerator->entries_.push_back(
-      FileEnumerator::FileInfo(entriesToClean[0], stat));
+      libstorage::FileEnumerator::FileInfo(entriesToClean[0], stat));
   stat.st_ino = cacheInode;
   enumerator->entries_.push_back(
-      FileEnumerator::FileInfo(entriesToClean[1], stat));
+      libstorage::FileEnumerator::FileInfo(entriesToClean[1], stat));
 
   EXPECT_CALL(platform_,
               HasExtendedFileAttribute(codeCacheInodeFile,

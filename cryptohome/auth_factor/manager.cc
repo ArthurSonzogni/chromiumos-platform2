@@ -23,6 +23,7 @@
 #include <flatbuffers/flatbuffers.h>
 #include <libhwsec-foundation/flatbuffers/basic_objects.h>
 #include <libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -32,7 +33,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 namespace {
@@ -89,7 +89,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
 }
 }  // namespace
 
-AuthFactorManager::AuthFactorManager(Platform* platform,
+AuthFactorManager::AuthFactorManager(libstorage::Platform* platform,
                                      KeysetManagement* keyset_management,
                                      UssManager* uss_manager)
     : platform_(platform),
@@ -198,7 +198,7 @@ CryptohomeStatus AuthFactorManager::DeleteAuthFactorFile(
 
   // Remove the checksum file and only log warnings if the removal failed.
   base::FilePath auth_factor_checksum_path =
-      file_path->AddExtension(kChecksumExtension);
+      file_path->AddExtension(libstorage::kChecksumExtension);
   if (!platform_->DeleteFileSecurely(auth_factor_checksum_path)) {
     LOG(WARNING)
         << "Failed to securely delete checksum file from disk for auth factor "
@@ -272,9 +272,10 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
     const ObfuscatedUsername& obfuscated_username) {
   LabelToTypeMap label_to_type_map;
 
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      AuthFactorsDirPath(obfuscated_username), /*recursive=*/false,
-      base::FileEnumerator::FILES));
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(AuthFactorsDirPath(obfuscated_username),
+                                   /*recursive=*/false,
+                                   base::FileEnumerator::FILES));
   base::FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     const base::FilePath base_name = next_path.BaseName();

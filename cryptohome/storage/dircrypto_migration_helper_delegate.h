@@ -9,11 +9,11 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 
@@ -22,7 +22,7 @@ namespace cryptohome {
 class DircryptoMigrationHelperDelegate
     : public data_migrator::MigrationHelperDelegate {
  public:
-  DircryptoMigrationHelperDelegate(Platform* platform,
+  DircryptoMigrationHelperDelegate(libstorage::Platform* platform,
                                    const base::FilePath& to_dir,
                                    MigrationType migration_type);
   ~DircryptoMigrationHelperDelegate() override = default;
@@ -43,7 +43,7 @@ class DircryptoMigrationHelperDelegate
   int64_t FreeSpaceForMigrator() override;
 
  private:
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 
   const base::FilePath to_dir_;
 

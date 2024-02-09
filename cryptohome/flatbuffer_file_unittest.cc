@@ -10,10 +10,10 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 namespace {
@@ -30,7 +30,7 @@ class FlatbufferFileTest : public ::testing::Test {
   const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
   const std::string kTestFile = "FlatbufferTestFile";
 
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   FlatbufferFile flatbuffer_file_{
       &platform_, UserPath(kObfuscatedUsername).Append(kTestFile)};
 };

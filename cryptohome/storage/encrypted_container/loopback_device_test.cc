@@ -10,8 +10,8 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 using testing::DoAll;
@@ -33,7 +33,7 @@ class LoopbackDeviceTest : public ::testing::Test {
 
  protected:
   BackingDeviceConfig config_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   std::unique_ptr<LoopbackDevice> backing_device_;
 };
 

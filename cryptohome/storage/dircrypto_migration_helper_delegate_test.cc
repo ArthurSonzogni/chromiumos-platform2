@@ -6,9 +6,9 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/migration_type.h"
-#include "cryptohome/platform.h"
 
 using base::FilePath;
 
@@ -31,7 +31,7 @@ class DircryptoMigrationHelperDelegateTest : public ::testing::Test {
       const DircryptoMigrationHelperDelegateTest&) = delete;
 
  protected:
-  Platform platform_;
+  libstorage::Platform platform_;
   base::FilePath to_dir_;
 };
 

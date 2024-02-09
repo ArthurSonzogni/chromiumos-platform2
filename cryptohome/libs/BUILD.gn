@@ -17,6 +17,7 @@ pkg_config("target_default_deps") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libstorage_platform",
     "openssl",
     "system_api",
   ]
@@ -33,7 +34,6 @@ config("target_defaults") {
     "PLATFORM_FWMP_INDEX=${use.generic_tpm2}",
     "USE_FUZZER=${use.fuzzer}",
     "USE_PINWEAVER=${use.pinweaver}",
-    "USE_SELINUX=${use.selinux}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_TPM1=${use.tpm}",
@@ -482,53 +482,10 @@ static_library("libcrosplatform") {
     "rootdev",
     "secure_erase_file",
   ]
-  if (use.selinux) {
-    libs += [ "selinux" ]
-  }
   deps = [
     ":cryptohome-flatbuffers-binding",
     ":cryptohome-proto",
-    ":libcryptohome_platform",
   ]
-}
-
-shared_library("libcryptohome_platform") {
-  output_name = "libcryptohome_platform"
-  sources = [
-    "../dircrypto_util.cc",
-    "../platform.cc",
-    "../util/get_random_suffix.cc",
-  ]
-  pkg_deps = [ "libcrossystem" ]
-  configs += [ ":target_defaults" ]
-  libs = [
-    "keyutils",
-    "rootdev",
-    "secure_erase_file",
-  ]
-  if (use.selinux) {
-    libs += [ "selinux" ]
-  }
-  install_path = "lib"
-}
-
-generate_pkg_config("libcryptohome_platform_pc") {
-  name = "libcryptohome_platform"
-  description = "cryptohome Platform library"
-  version = "1.0"
-  requires_private = []
-  requires = []
-  cflags = [ "-I/usr/include/cryptohome" ]
-  libs = [ "-lcryptohome_platform" ]
-  install = true
-}
-
-install_config("install_platform_headers") {
-  sources = [
-    "../dircrypto_util.h",
-    "../platform.h",
-  ]
-  install_path = "/usr/include/cryptohome"
 }
 
 static_library("libcrostpm") {

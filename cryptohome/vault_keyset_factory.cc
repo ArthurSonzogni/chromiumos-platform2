@@ -11,13 +11,15 @@ namespace cryptohome {
 VaultKeysetFactory::VaultKeysetFactory() {}
 VaultKeysetFactory::~VaultKeysetFactory() {}
 
-VaultKeyset* VaultKeysetFactory::New(Platform* platform, Crypto* crypto) {
+VaultKeyset* VaultKeysetFactory::New(libstorage::Platform* platform,
+                                     Crypto* crypto) {
   VaultKeyset* v = new VaultKeyset();
   v->Initialize(platform, crypto);
   return v;
 }
 
-VaultKeyset* VaultKeysetFactory::NewBackup(Platform* platform, Crypto* crypto) {
+VaultKeyset* VaultKeysetFactory::NewBackup(libstorage::Platform* platform,
+                                           Crypto* crypto) {
   VaultKeyset* v = new VaultKeyset();
   v->InitializeAsBackup(platform, crypto);
   return v;

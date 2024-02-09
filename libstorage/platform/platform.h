@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_PLATFORM_H_
-#define CRYPTOHOME_PLATFORM_H_
+#ifndef LIBSTORAGE_PLATFORM_PLATFORM_H_
+#define LIBSTORAGE_PLATFORM_PLATFORM_H_
 
 #include <stdint.h>
 #include <sys/mount.h>
@@ -38,7 +38,7 @@ extern "C" {
 #include <linux/fs.h>
 }
 
-#include "cryptohome/dircrypto_util.h"
+#include "libstorage/platform/dircrypto_util.h"
 
 #ifndef EXT4_EOFBLOCKS_FL
 /*
@@ -59,7 +59,7 @@ namespace crossystem {
 class Crossystem;
 }  // namespace crossystem
 
-namespace cryptohome {
+namespace libstorage {
 
 // The extension for the checksum files.
 inline constexpr char kChecksumExtension[] = "sum";
@@ -986,6 +986,6 @@ class BRILLO_EXPORT Platform {
   FRIEND_TEST(PlatformTest, ReadMountInfoFileGood);
 };
 
-}  // namespace cryptohome
+}  // namespace libstorage
 
-#endif  // CRYPTOHOME_PLATFORM_H_
+#endif  // LIBSTORAGE_PLATFORM_PLATFORM_H_

@@ -27,12 +27,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest_prod.h>
+#include <libstorage/platform/platform.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
 #include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -56,7 +56,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
-  Mount(Platform* platform,
+  Mount(libstorage::Platform* platform,
         HomeDirs* homedirs,
         std::unique_ptr<MountHelperInterface> mount_helper);
   Mount(const Mount&) = delete;
@@ -109,7 +109,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual HomeDirs* homedirs() { return homedirs_; }
 
   // Returns associated platform object
-  virtual Platform* platform() { return platform_; }
+  virtual libstorage::Platform* platform() { return platform_; }
 
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;
@@ -201,7 +201,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::FilePath mount_point_;
 
   // The platform-specific calls
-  Platform* platform_;
+  libstorage::Platform* platform_;
 
   // HomeDirs encapsulates operations on Cryptohomes at rest.
   HomeDirs* homedirs_;

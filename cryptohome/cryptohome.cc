@@ -50,12 +50,12 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/common/print_UserDataAuth_proto.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/pkcs11_init.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/timestamp.pb.h"
@@ -1460,7 +1460,7 @@ int main(int argc, char** argv) {
   org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(bus);
   org::chromium::CryptohomeMiscInterfaceProxy misc_proxy(bus);
 
-  cryptohome::Platform platform;
+  libstorage::Platform platform;
 
   if (!strcmp(switches::kActions[switches::ACTION_REMOVE], action.c_str())) {
     user_data_auth::RemoveRequest req;

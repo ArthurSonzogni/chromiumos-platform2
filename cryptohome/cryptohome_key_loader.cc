@@ -18,7 +18,7 @@ using hwsec_foundation::status::OkStatus;
 namespace cryptohome {
 
 CryptohomeKeyLoader::CryptohomeKeyLoader(const hwsec::CryptohomeFrontend* hwsec,
-                                         Platform* platform,
+                                         libstorage::Platform* platform,
                                          hwsec::KeyAlgoType key_algo,
                                          const base::FilePath& path)
     : hwsec_(hwsec),

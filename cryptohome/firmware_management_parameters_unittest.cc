@@ -13,10 +13,10 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/crc.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
-#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 using brillo::SecureBlob;

@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
@@ -18,7 +19,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -36,7 +36,7 @@ using ::testing::Return;
 class AuthFactorDriverManagerTest : public ::testing::Test {
  protected:
   // Mocks for all of the manager dependencies.
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;

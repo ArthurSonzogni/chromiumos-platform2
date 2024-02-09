@@ -12,18 +12,18 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto.h"
 
 namespace cryptohome {
-class Platform;
 class Crypto;
 
 class MockVaultKeyset : public VaultKeyset {
  public:
   virtual ~MockVaultKeyset() = default;
 
-  MOCK_METHOD(void, Initialize, (Platform*, Crypto*), (override));
+  MOCK_METHOD(void, Initialize, (libstorage::Platform*, Crypto*), (override));
 
   MOCK_METHOD(void, FromKeys, (const VaultKeysetKeys&), (override));
   MOCK_METHOD(bool, FromKeysBlob, (const brillo::SecureBlob&), (override));

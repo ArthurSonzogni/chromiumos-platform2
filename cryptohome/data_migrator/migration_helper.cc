@@ -263,7 +263,7 @@ class MigrationHelper::WorkerPool {
   base::ConditionVariable main_thread_wakeup_condition_;
 };
 
-MigrationHelper::MigrationHelper(Platform* platform,
+MigrationHelper::MigrationHelper(libstorage::Platform* platform,
                                  MigrationHelperDelegate* delegate,
                                  const base::FilePath& from,
                                  const base::FilePath& to,
@@ -438,16 +438,17 @@ bool MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
   total_directory_byte_count_ = 0;
   migrated_byte_count_ = 0;
-  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
-      from, true /* recursive */,
-      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-          base::FileEnumerator::SHOW_SYM_LINKS));
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(from, true /* recursive */,
+                                   base::FileEnumerator::FILES |
+                                       base::FileEnumerator::DIRECTORIES |
+                                       base::FileEnumerator::SHOW_SYM_LINKS));
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
     if (is_cancelled_.IsSet()) {
       return false;
     }
-    const FileEnumerator::FileInfo& info = enumerator->GetInfo();
+    const libstorage::FileEnumerator::FileInfo& info = enumerator->GetInfo();
     total_byte_count_ += info.GetSize();
 
     if (S_ISREG(info.stat().st_mode))
@@ -506,10 +507,11 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
 
   // Dummy child count increment to protect this directory while reading.
   IncrementChildCount(child);
-  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
-      from_dir, false /* is_recursive */,
-      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-          base::FileEnumerator::SHOW_SYM_LINKS));
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(from_dir, false /* is_recursive */,
+                                   base::FileEnumerator::FILES |
+                                       base::FileEnumerator::DIRECTORIES |
+                                       base::FileEnumerator::SHOW_SYM_LINKS));
 
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {

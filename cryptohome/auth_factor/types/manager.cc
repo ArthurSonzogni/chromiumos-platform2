@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
@@ -18,7 +19,6 @@
 #include "cryptohome/auth_factor/types/password.h"
 #include "cryptohome/auth_factor/types/pin.h"
 #include "cryptohome/auth_factor/types/smart_card.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 
 namespace cryptohome {
@@ -27,7 +27,7 @@ namespace {
 // Construct a new driver instance for the given type.
 std::unique_ptr<AuthFactorDriver> CreateDriver(
     AuthFactorType auth_factor_type,
-    Platform* platform,
+    libstorage::Platform* platform,
     Crypto* crypto,
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
@@ -60,7 +60,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
 // Construct a map of drivers for all types.
 std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
 CreateDriverMap(
-    Platform* platform,
+    libstorage::Platform* platform,
     Crypto* crypto,
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
@@ -91,7 +91,7 @@ CreateDriverMap(
 }  // namespace
 
 AuthFactorDriverManager::AuthFactorDriverManager(
-    Platform* platform,
+    libstorage::Platform* platform,
     Crypto* crypto,
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,

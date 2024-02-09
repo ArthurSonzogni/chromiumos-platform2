@@ -16,7 +16,8 @@ using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 }  // namespace
 
-UserPolicyFile::UserPolicyFile(Platform* platform, const base::FilePath& path)
+UserPolicyFile::UserPolicyFile(libstorage::Platform* platform,
+                               const base::FilePath& path)
     : file_(platform, path) {}
 UserPolicyFile::~UserPolicyFile() = default;
 

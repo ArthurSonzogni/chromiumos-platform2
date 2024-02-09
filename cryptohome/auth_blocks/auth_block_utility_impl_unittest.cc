@@ -32,6 +32,7 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -55,6 +56,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/fake_features.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -64,7 +66,6 @@
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
@@ -110,7 +111,8 @@ constexpr int kParallelFactor = 1;
 class AuthBlockUtilityImplTest : public ::testing::Test {
  public:
   AuthBlockUtilityImplTest()
-      : recovery_crypto_fake_backend_(
+      : platform_(std::make_unique<FakePlatform>()),
+        recovery_crypto_fake_backend_(
             hwsec_factory_.GetRecoveryCryptoFrontend()),
         crypto_(&hwsec_,
                 &hwsec_pw_manager_,
@@ -173,7 +175,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunner::GetCurrentDefault();
 
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   MockFingerprintManager fp_manager_;
   brillo::Blob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;

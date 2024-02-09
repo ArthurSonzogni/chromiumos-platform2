@@ -20,8 +20,8 @@
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper_interface.h"
@@ -39,7 +39,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
  public:
   OutOfProcessMountHelper(bool legacy_home,
                           bool bind_mount_downloads,
-                          Platform* platform);
+                          libstorage::Platform* platform);
   OutOfProcessMountHelper(const OutOfProcessMountHelper&) = delete;
   OutOfProcessMountHelper& operator=(const OutOfProcessMountHelper&) = delete;
 
@@ -89,7 +89,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   // Whether to bind mount Downloads/
   bool bind_mount_downloads_;
 
-  Platform* platform_;  // Un-owned.
+  libstorage::Platform* platform_;  // Un-owned.
 
   // Username the mount belongs to, if a mount has been performed.
   // Empty otherwise.

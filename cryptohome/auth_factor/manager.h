@@ -10,6 +10,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -18,7 +19,6 @@
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 
@@ -33,7 +33,7 @@ class AuthFactorManager final {
   // Mapping between auth factor label and type.
   using LabelToTypeMap = std::map<std::string, AuthFactorType>;
 
-  AuthFactorManager(Platform* platform,
+  AuthFactorManager(libstorage::Platform* platform,
                     KeysetManagement* keyset_management,
                     UssManager* uss_manager);
 
@@ -125,7 +125,7 @@ class AuthFactorManager final {
                                   StatusCallback callback,
                                   CryptohomeStatus status);
 
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   UssManager* const uss_manager_;
 
   // Converter used for VK -> AF conversion.

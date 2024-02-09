@@ -30,6 +30,7 @@
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -54,7 +55,6 @@
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
@@ -119,13 +119,13 @@ const brillo::SecureBlob kAdditionalBlob16(16, 'D');
 std::unique_ptr<VaultKeysetFactory> CreateMockVaultKeysetFactory() {
   auto factory = std::make_unique<MockVaultKeysetFactory>();
   ON_CALL(*factory, New(_, _))
-      .WillByDefault([](Platform* platform, Crypto* crypto) {
+      .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
         auto* vk = new VaultKeyset();
         vk->Initialize(platform, crypto);
         return vk;
       });
   ON_CALL(*factory, NewBackup(_, _))
-      .WillByDefault([](Platform* platform, Crypto* crypto) {
+      .WillByDefault([](libstorage::Platform* platform, Crypto* crypto) {
         auto* vk = new VaultKeyset();
         vk->InitializeAsBackup(platform, crypto);
         return vk;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/fake_mount_mapper.h"
+#include "libstorage/platform/fake_platform/fake_mount_mapper.h"
 
 #include <map>
 #include <memory>
@@ -17,10 +17,10 @@
 #include <base/notreached.h>
 #include <brillo/files/file_util.h>
 
-#include "cryptohome/fake_platform/real_fake_mount_mapping_redirect_factory.h"
-#include "cryptohome/fake_platform/test_file_path.h"
+#include "libstorage/platform/fake_platform/real_fake_mount_mapping_redirect_factory.h"
+#include "libstorage/platform/fake_platform/test_file_path.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 FakeMountMapping::FakeMountMapping(const base::FilePath& source,
                                    const base::FilePath& target,
@@ -321,4 +321,4 @@ base::FilePath FakeMountMapper::ResolvePath(const base::FilePath& path) const {
   NOTREACHED();
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

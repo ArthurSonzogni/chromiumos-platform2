@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/util/get_random_suffix.h"
+#include "libstorage/platform/util/get_random_suffix.h"
 
 #include <string>
 
 #include <openssl/rand.h>
 
-namespace cryptohome {
+namespace libstorage {
 
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
@@ -30,4 +30,4 @@ std::string GetRandomSuffix() {
   return suffix;
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

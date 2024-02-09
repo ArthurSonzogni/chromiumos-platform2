@@ -46,6 +46,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libstorage/platform/mock_platform.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -62,6 +63,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/fake_features.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
@@ -74,7 +76,6 @@
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_pkcs11_init.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
@@ -1625,7 +1626,7 @@ const std::vector<Mounts> kLoopDevMounts = {
 const int kEphemeralMountsCount = 5;
 
 // Constants used by CleanUpStaleMounts tests.
-const std::vector<Platform::LoopDevice> kLoopDevices = {
+const std::vector<libstorage::Platform::LoopDevice> kLoopDevices = {
     {FilePath("/mnt/stateful_partition/encrypted.block"),
      FilePath("/dev/loop0")},
     {FilePath("/run/cryptohome/ephemeral_data/1"), FilePath("/dev/loop7")},
@@ -1690,7 +1691,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Dmcrypt) {
 
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kDmcryptMounts.size())
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
 
   for (int i = 0; i < kDmcryptMounts.size(); ++i) {
     EXPECT_CALL(system_apis_.platform, Unmount(kDmcryptMounts[i].dst, true, _))
@@ -1715,12 +1716,12 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt) {
   const int kBusyMountIndex = 4;
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kBusyMountIndex)
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
 
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(kDmcryptMounts[kBusyMountIndex].dst))
       .Times(1)
-      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kBusy));
 
   // Only user 4567's mounts will be unmounted.
   for (int i = 0; i < 2; ++i) {
@@ -1766,7 +1767,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
       .WillOnce(Invoke(EnumerateSparseFiles));
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kEphemeralMountsCount)
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
 
   for (int i = 0; i < kEphemeralMountsCount; ++i) {
     EXPECT_CALL(system_apis_.platform, Unmount(kLoopDevMounts[i].dst, true, _))
@@ -1801,11 +1802,11 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
       .WillOnce(Invoke(EnumerateSparseFiles));
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kEphemeralMountsCount - 1)
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(FilePath("/home/chronos/user")))
       .Times(1)
-      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kBusy));
 
   EXPECT_CALL(system_apis_.platform,
               GetMountsBySourcePrefix(FilePath("/dev/loop7"), _))
@@ -1856,7 +1857,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Invoke(StaleShadowMounts));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
   EXPECT_CALL(
@@ -1866,7 +1867,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
       .WillOnce(Return(false));
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(kShadowMounts.size())
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
   EXPECT_CALL(system_apis_.platform, Unmount(_, true, _))
       .Times(kShadowMounts.size())
       .WillRepeatedly(Return(true));
@@ -1881,7 +1882,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly_Forced) {
   EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Invoke(StaleShadowMounts));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
   EXPECT_CALL(
@@ -1912,7 +1913,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
   EXPECT_CALL(
@@ -1922,19 +1923,19 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       .WillOnce(Return(false));
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(Property(&FilePath::value, EndsWith("/0"))))
-      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kBusy));
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(FilePath("/home/chronos/user")))
-      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kBusy));
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(Property(
                   &FilePath::value,
                   AnyOf(EndsWith("/1"), EndsWith("b/MyFiles/Downloads")))))
       .Times(4)
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
   EXPECT_CALL(system_apis_.platform,
               ExpireMount(FilePath("/daemon-store/server/b")))
-      .WillOnce(Return(ExpireMountResult::kMarked));
+      .WillOnce(Return(libstorage::ExpireMountResult::kMarked));
   // Given /home/chronos/user and a is marked as active, only b mounts should be
   // removed.
   EXPECT_CALL(
@@ -1979,7 +1980,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Return(false));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
 
@@ -1994,7 +1995,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Return(false));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
 
@@ -2042,7 +2043,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
   EXPECT_CALL(
@@ -2057,7 +2058,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // doesn't run on any other mount points.
   EXPECT_CALL(system_apis_.platform, ExpireMount(_))
       .Times(5)
-      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+      .WillRepeatedly(Return(libstorage::ExpireMountResult::kMarked));
 
   EXPECT_CALL(*session_, OwnsMountPoint(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/user/1")))
@@ -2131,7 +2132,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(system_apis_.platform, GetMountsBySourcePrefix(_, _))
       .WillOnce(Return(false));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
 
@@ -2177,7 +2178,7 @@ TEST_F(UserDataAuthTest,
       .Times(4)
       .WillRepeatedly(Invoke(StaleShadowMounts));
   EXPECT_CALL(system_apis_.platform, GetAttachedLoopDevices())
-      .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+      .WillRepeatedly(Return(std::vector<libstorage::Platform::LoopDevice>()));
   EXPECT_CALL(system_apis_.platform, GetLoopDeviceMounts(_))
       .WillOnce(Return(false));
   EXPECT_CALL(
@@ -2771,7 +2772,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       "foo@example.com");
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
   EXPECT_CALL(system_apis_.platform, GetFileEnumerator(_, _, _))
-      .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+      .WillOnce(Return(new NiceMock<libstorage::MockFileEnumerator>));
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
   userdataauth_->StartAuthSession(
       *start_auth_session_req_,
@@ -4720,8 +4721,8 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     userdataauth_->set_mount_factory_for_testing(&mount_factory_);
 
     ON_CALL(mount_factory_, New(_, _, _, _))
-        .WillByDefault(Invoke([this](Platform* platform, HomeDirs* homedirs,
-                                     bool legacy_mount,
+        .WillByDefault(Invoke([this](libstorage::Platform* platform,
+                                     HomeDirs* homedirs, bool legacy_mount,
                                      bool bind_mount_downloads) -> Mount* {
           if (new_mounts_.empty()) {
             ADD_FAILURE() << "Not enough objects in new_mounts_";

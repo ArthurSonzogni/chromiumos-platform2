@@ -12,14 +12,14 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 namespace cryptohome {
 
 LoopbackDevice::LoopbackDevice(const BackingDeviceConfig& config,
-                               Platform* platform)
+                               libstorage::Platform* platform)
     : backing_file_path_(config.loopback.backing_file_path),
       name_(config.name),
       size_(config.size),

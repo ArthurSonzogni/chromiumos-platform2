@@ -10,9 +10,9 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 #include <metrics/metrics_library.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
@@ -22,10 +22,10 @@ namespace cryptohome {
 // `EncryptedContainerFactory` abstracts the creation of encrypted containers.
 class EncryptedContainerFactory {
  public:
-  explicit EncryptedContainerFactory(Platform* platform,
+  explicit EncryptedContainerFactory(libstorage::Platform* platform,
                                      MetricsLibraryInterface* metrics);
   EncryptedContainerFactory(
-      Platform* platform,
+      libstorage::Platform* platform,
       MetricsLibraryInterface* metrics,
       std::unique_ptr<Keyring> keyring,
       std::unique_ptr<BackingDeviceFactory> backing_device_factory);
@@ -41,7 +41,7 @@ class EncryptedContainerFactory {
   }
 
  private:
-  Platform* platform_;
+  libstorage::Platform* platform_;
   MetricsLibraryInterface* metrics_;
   std::unique_ptr<Keyring> keyring_;
   std::unique_ptr<BackingDeviceFactory> backing_device_factory_;

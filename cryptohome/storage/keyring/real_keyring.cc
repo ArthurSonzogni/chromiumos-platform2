@@ -7,8 +7,8 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/dircrypto_util.h>
 
-#include "cryptohome/dircrypto_util.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 #include "cryptohome/storage/keyring/utils.h"

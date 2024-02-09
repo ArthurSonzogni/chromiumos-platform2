@@ -15,9 +15,9 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -118,7 +118,7 @@ TEST(EncryptedUssTest, FromEmptyBlob) {
 }
 
 TEST(EncryptedUssTest, FromMissingFile) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
   UssStorage uss_storage{&platform};
   UserUssStorage user_uss_storage{
       uss_storage, SanitizeUserName(Username("user@example.com"))};
@@ -128,7 +128,7 @@ TEST(EncryptedUssTest, FromMissingFile) {
 }
 
 TEST(EncryptedUssTest, FromValidFile) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
   UssStorage uss_storage{&platform};
   UserUssStorage user_uss_storage{
       uss_storage, SanitizeUserName(Username("user@example.com"))};
@@ -151,7 +151,7 @@ TEST(EncryptedUssTest, FromValidFile) {
 }
 
 TEST(EncryptedUssTest, FromCorruptedFile) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
   UssStorage uss_storage{&platform};
   UserUssStorage user_uss_storage{
       uss_storage, SanitizeUserName(Username("user@example.com"))};
@@ -170,7 +170,7 @@ TEST(EncryptedUssTest, FromCorruptedFile) {
 }
 
 TEST(EncryptedUssTest, ToStorageFails) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
   UssStorage uss_storage{&platform};
   UserUssStorage user_uss_storage{
       uss_storage, SanitizeUserName(Username("user@example.com"))};

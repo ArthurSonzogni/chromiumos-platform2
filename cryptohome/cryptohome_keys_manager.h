@@ -25,7 +25,7 @@ enum class CryptohomeKeyType {
 class CryptohomeKeysManager {
  public:
   CryptohomeKeysManager(const hwsec::CryptohomeFrontend* hwsec,
-                        Platform* platform);
+                        libstorage::Platform* platform);
   CryptohomeKeysManager(const CryptohomeKeysManager&) = delete;
   CryptohomeKeysManager& operator=(const CryptohomeKeysManager&) = delete;
 

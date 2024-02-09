@@ -18,10 +18,10 @@
 #include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/lock.h>
 #include <brillo/brillo_export.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
-#include "cryptohome/platform.h"
 
 namespace base {
 class Thread;
@@ -61,7 +61,7 @@ class BRILLO_EXPORT MigrationHelper {
   // for the desired size of data to transfer at once, but may be reduced if
   // there is not enough free space on disk or the provided max_chunk_size is
   // inefficient.
-  MigrationHelper(Platform* platform,
+  MigrationHelper(libstorage::Platform* platform,
                   MigrationHelperDelegate* delegate,
                   const base::FilePath& from,
                   const base::FilePath& to,
@@ -177,7 +177,7 @@ class BRILLO_EXPORT MigrationHelper {
   // of that total and failed_xattr_size to UMA.
   void ReportTotalXattrSize(const base::FilePath& path, int failed_xattr_size);
 
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   MigrationHelperDelegate* const delegate_;
   const base::FilePath from_base_path_;
   const base::FilePath to_base_path_;

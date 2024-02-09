@@ -22,7 +22,7 @@ class RealUserSessionFactory : public UserSessionFactory {
  public:
   RealUserSessionFactory(
       MountFactory* mount_factory,
-      Platform* platform,
+      libstorage::Platform* platform,
       HomeDirs* homedirs,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory)
@@ -46,7 +46,7 @@ class RealUserSessionFactory : public UserSessionFactory {
 
  private:
   MountFactory* const mount_factory_;
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   HomeDirs* const homedirs_;
   UserOldestActivityTimestampManager* const user_activity_timestamp_manager_;
   Pkcs11TokenFactory* const pkcs11_token_factory_;

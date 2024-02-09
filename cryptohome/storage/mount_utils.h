@@ -10,9 +10,9 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 

@@ -15,9 +15,9 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/mock_lockbox.h"
-#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 using ::brillo::SecureBlob;

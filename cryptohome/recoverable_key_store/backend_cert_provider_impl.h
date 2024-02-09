@@ -15,10 +15,10 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 #include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/backend_cert_verify.h"
 #include "cryptohome/recoverable_key_store/type.h"
 
@@ -28,7 +28,7 @@ class RecoverableKeyStoreBackendCertProviderImpl
     : public RecoverableKeyStoreBackendCertProvider {
  public:
   RecoverableKeyStoreBackendCertProviderImpl(
-      Platform* platform,
+      libstorage::Platform* platform,
       std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher);
 
   RecoverableKeyStoreBackendCertProviderImpl(
@@ -71,7 +71,7 @@ class RecoverableKeyStoreBackendCertProviderImpl
   // Persist the certificate and signature xml files to disk.
   bool PersistCertXmls(const std::string& cert_xml, const std::string& sig_xml);
 
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 
   std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher_;
 

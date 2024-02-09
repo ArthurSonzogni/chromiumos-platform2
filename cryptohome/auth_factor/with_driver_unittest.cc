@@ -15,6 +15,7 @@
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
@@ -32,7 +33,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
@@ -109,7 +109,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   }
 
   // Mocks for all of the manager dependencies.
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;

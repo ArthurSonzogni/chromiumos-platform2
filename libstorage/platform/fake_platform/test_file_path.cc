@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/test_file_path.h"
+#include "libstorage/platform/fake_platform/test_file_path.h"
 
 #include <string>
 #include <vector>
@@ -10,7 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 
-namespace cryptohome {
+namespace libstorage {
 namespace fake_platform {
 
 base::FilePath SpliceTestFilePath(const base::FilePath& tmpfs,
@@ -70,4 +70,4 @@ base::FilePath NormalizePath(const base::FilePath& path) {
 }
 
 }  // namespace fake_platform
-}  // namespace cryptohome
+}  // namespace libstorage

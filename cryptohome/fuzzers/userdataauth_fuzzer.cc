@@ -41,10 +41,10 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <libhwsec/factory/fuzzed_factory.h>
+#include <libstorage/platform/fuzzers/fuzzed_platform.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/fuzzers/fuzzed_platform.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -133,7 +133,7 @@ class PerInputEnvironment {
 };
 
 std::unique_ptr<CryptohomeVaultFactory> CreateVaultFactory(
-    Platform& platform, FuzzedDataProvider& provider) {
+    libstorage::Platform& platform, FuzzedDataProvider& provider) {
   // Only stub out `Keyring`, because unlike other classes its real
   // implementation does platform operations that don't go through `Platform`.
   auto container_factory = std::make_unique<EncryptedContainerFactory>(
@@ -152,7 +152,7 @@ std::unique_ptr<MountFactory> CreateMountFactory() {
   // Configure the usage of in-process mount helper, as out-of-process
   // mounting is not fuzzing-compatible.
   EXPECT_CALL(*mount_factory, New(_, _, _, _))
-      .WillRepeatedly([=](Platform* platform, HomeDirs* homedirs,
+      .WillRepeatedly([=](libstorage::Platform* platform, HomeDirs* homedirs,
                           bool legacy_mount, bool bind_mount_downloads) {
         return mount_factory_ptr->NewConcrete(platform, homedirs, legacy_mount,
                                               bind_mount_downloads);
@@ -348,7 +348,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       /*lsb_release_time=*/base::Time::UnixEpoch());
 
   // Prepare `UserDataAuth`'s dependencies.
-  FuzzedPlatform platform(provider);
+  libstorage::FuzzedPlatform platform(provider);
   std::unique_ptr<CryptohomeVaultFactory> vault_factory =
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();

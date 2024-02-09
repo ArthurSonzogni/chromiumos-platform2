@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -22,7 +23,7 @@ class EphemeralContainer final : public EncryptedContainer {
   // Unlike other containers, it forces a specific backing device type top
   // enforce that only ramdisk backed devices are used.
   EphemeralContainer(std::unique_ptr<RamdiskDevice> backing_device,
-                     Platform* platform);
+                     libstorage::Platform* platform);
 
   ~EphemeralContainer() override;
 
@@ -47,10 +48,10 @@ class EphemeralContainer final : public EncryptedContainer {
  private:
   // A private constructor with FakeBackingDevice for tests.
   EphemeralContainer(std::unique_ptr<FakeBackingDevice> backing_device,
-                     Platform* platform);
+                     libstorage::Platform* platform);
 
   const std::unique_ptr<BackingDevice> backing_device_;
-  Platform* platform_;
+  libstorage::Platform* platform_;
 
   friend class EphemeralContainerTest;
 };

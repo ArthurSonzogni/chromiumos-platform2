@@ -229,7 +229,8 @@ bool EncryptHsmPlainText(const HsmPlainText& plain_text,
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
-    const hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform) {
+    const hwsec::RecoveryCryptoFrontend* hwsec_backend,
+    libstorage::Platform* platform) {
   CHECK(hwsec_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -251,7 +252,7 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
 RecoveryCryptoImpl::RecoveryCryptoImpl(
     EllipticCurve ec,
     const hwsec::RecoveryCryptoFrontend* hwsec_backend,
-    Platform* platform)
+    libstorage::Platform* platform)
     : ec_(std::move(ec)), hwsec_backend_(hwsec_backend), platform_(platform) {
   CHECK(hwsec_backend_);
 }

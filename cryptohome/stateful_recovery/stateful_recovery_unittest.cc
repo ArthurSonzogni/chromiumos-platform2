@@ -15,8 +15,7 @@
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
-
-#include "cryptohome/mock_platform.h"
+#include <libstorage/platform/mock_platform.h>
 
 namespace cryptohome {
 namespace {
@@ -41,7 +40,7 @@ struct MountSuccessParams {
 class StatefulRecoveryTest : public ::testing::Test {
  public:
   void SetUp() override {
-    platform_ = std::make_unique<MockPlatform>();
+    platform_ = std::make_unique<libstorage::MockPlatform>();
     userdataauth_proxy_ = std::make_unique<
         testing::StrictMock<org::chromium::UserDataAuthInterfaceProxyMock>>();
     policy_provider_ =
@@ -56,7 +55,7 @@ class StatefulRecoveryTest : public ::testing::Test {
 
  protected:
   // Mock platform object.
-  std::unique_ptr<MockPlatform> platform_;
+  std::unique_ptr<libstorage::MockPlatform> platform_;
 
   // Mock UserData Authentication interface.
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyMock>
@@ -526,7 +525,7 @@ TEST_F(StatefulRecoveryTest, FilesystemDetailsFailure) {
 }
 
 TEST_F(StatefulRecoveryTest, UsageReportOk) {
-  Platform platform;
+  libstorage::Platform platform;
 
   struct statvfs vfs;
   /* Reporting on a valid location produces output. */

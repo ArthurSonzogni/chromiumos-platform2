@@ -6,8 +6,9 @@
 
 #include <string>
 
+#include <libstorage/platform/mock_platform.h>
+
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 namespace {
@@ -21,7 +22,7 @@ class UserPolicyFileTest : public ::testing::Test {
   const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
   const std::string kTestFile = "FlatbufferTestFile";
 
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   UserPolicyFile user_policy_file_{
       &platform_, UserPath(kObfuscatedUsername).Append(kTestFile)};
 };

@@ -15,9 +15,9 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/factory/factory.h>
+#include <libstorage/platform/fake_platform.h>
 
 #include "cryptohome/cryptohome_keys_manager.h"
-#include "cryptohome/fake_platform.h"
 
 namespace cryptohome {
 
@@ -57,7 +57,7 @@ class TpmLiveTest {
   bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
                              const std::map<uint32_t, brillo::Blob>& pcr_map);
 
-  FakePlatform platform_;
+  libstorage::FakePlatform platform_;
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto_;

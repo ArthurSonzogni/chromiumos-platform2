@@ -5,9 +5,10 @@
 #ifndef CRYPTOHOME_VAULT_KEYSET_FACTORY_H_
 #define CRYPTOHOME_VAULT_KEYSET_FACTORY_H_
 
+#include <libstorage/platform/platform.h>
+
 namespace cryptohome {
 class Crypto;
-class Platform;
 class VaultKeyset;
 // Provide a means for mocks to be injected anywhere that new VaultKeyset
 // objects are created.
@@ -18,8 +19,9 @@ class VaultKeysetFactory {
   VaultKeysetFactory& operator=(const VaultKeysetFactory&) = delete;
 
   virtual ~VaultKeysetFactory();
-  virtual VaultKeyset* New(Platform* platform, Crypto* crypto);
-  virtual VaultKeyset* NewBackup(Platform* platform, Crypto* crypto);
+  virtual VaultKeyset* New(libstorage::Platform* platform, Crypto* crypto);
+  virtual VaultKeyset* NewBackup(libstorage::Platform* platform,
+                                 Crypto* crypto);
 };
 
 }  // namespace cryptohome

@@ -5,16 +5,17 @@
 #ifndef CRYPTOHOME_USER_POLICY_FILE_H_
 #define CRYPTOHOME_USER_POLICY_FILE_H_
 
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/flatbuffer_file.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 
 class UserPolicyFile final {
  public:
-  UserPolicyFile(Platform* platform, const base::FilePath& path);
+  UserPolicyFile(libstorage::Platform* platform, const base::FilePath& path);
 
   UserPolicyFile(const UserPolicyFile&) = delete;
   UserPolicyFile& operator=(const UserPolicyFile&) = delete;

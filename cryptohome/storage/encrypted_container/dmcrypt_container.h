@@ -14,8 +14,8 @@
 
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/loop_device.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
@@ -30,14 +30,14 @@ class DmcryptContainer : public EncryptedContainer {
   DmcryptContainer(const DmcryptConfig& config,
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
-                   Platform* platform,
+                   libstorage::Platform* platform,
                    Keyring* keyring,
                    std::unique_ptr<brillo::DeviceMapper> device_mapper);
 
   DmcryptContainer(const DmcryptConfig& config,
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
-                   Platform* platform,
+                   libstorage::Platform* platform,
                    Keyring* keyring);
 
   ~DmcryptContainer() {}
@@ -81,7 +81,7 @@ class DmcryptContainer : public EncryptedContainer {
   // Key reference for filesystem key.
   FileSystemKeyReference key_reference_;
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   Keyring* keyring_;
   std::unique_ptr<brillo::DeviceMapper> device_mapper_;
 };

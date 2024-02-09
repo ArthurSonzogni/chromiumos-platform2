@@ -16,9 +16,9 @@
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -57,13 +57,13 @@ class EncryptedFs {
               uint64_t fs_size,
               const std::string& dmcrypt_name,
               std::unique_ptr<cryptohome::EncryptedContainer> container,
-              cryptohome::Platform* platform,
+              libstorage::Platform* platform,
               brillo::DeviceMapper* device_mapper);
   ~EncryptedFs() = default;
 
   static std::unique_ptr<EncryptedFs> Generate(
       const base::FilePath& rootdir,
-      cryptohome::Platform* platform,
+      libstorage::Platform* platform,
       brillo::DeviceMapper* device_mapper,
       brillo::LogicalVolumeManager* lvm,
       cryptohome::EncryptedContainerFactory* encrypted_container_factory);
@@ -121,7 +121,7 @@ class EncryptedFs {
 
   // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
   // for mock Platform objects.
-  cryptohome::Platform* platform_;
+  libstorage::Platform* platform_;
   // Device Mapper.
   brillo::DeviceMapper* device_mapper_;
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/platform.h"
+#include "libstorage/platform/platform.h"
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -21,11 +21,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/util/get_random_suffix.h"
+#include "libstorage/platform/util/get_random_suffix.h"
 
 using base::FilePath;
 
-namespace cryptohome {
+namespace libstorage {
 
 class PlatformTest : public ::testing::Test {
  public:
@@ -497,4 +497,4 @@ TEST_F(PlatformTest, CreateSparseFile) {
   platform_.DeleteFile(sparse_name);
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

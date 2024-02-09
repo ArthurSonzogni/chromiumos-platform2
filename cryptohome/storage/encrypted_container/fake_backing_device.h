@@ -11,6 +11,7 @@
 #include <optional>
 
 #include <gmock/gmock.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
 
@@ -79,7 +80,7 @@ class FakeBackingDevice : public BackingDevice {
 
 class FakeBackingDeviceFactory : public BackingDeviceFactory {
  public:
-  explicit FakeBackingDeviceFactory(Platform* platform)
+  explicit FakeBackingDeviceFactory(libstorage::Platform* platform)
       : BackingDeviceFactory(platform) {}
   ~FakeBackingDeviceFactory() {}
 

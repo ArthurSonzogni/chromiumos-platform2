@@ -9,21 +9,21 @@
 
 #include <memory>
 
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 
 // `BackingDeviceFactory` abstracts the creation of backing devices.
 class BackingDeviceFactory {
  public:
-  explicit BackingDeviceFactory(Platform* platform);
+  explicit BackingDeviceFactory(libstorage::Platform* platform);
   virtual ~BackingDeviceFactory() {}
 
   virtual std::unique_ptr<BackingDevice> Generate(
       const BackingDeviceConfig& config);
 
  private:
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

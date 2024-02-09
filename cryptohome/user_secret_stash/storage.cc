@@ -10,10 +10,11 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
@@ -28,7 +29,7 @@ namespace cryptohome {
 // Use rw------- for the USS files.
 constexpr mode_t kUserSecretStashFilePermissions = 0600;
 
-UssStorage::UssStorage(Platform* platform) : platform_(platform) {}
+UssStorage::UssStorage(libstorage::Platform* platform) : platform_(platform) {}
 
 UssStorage::~UssStorage() = default;
 

@@ -12,9 +12,9 @@
 #include <gtest/gtest.h>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/mock_platform.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -53,7 +53,7 @@ class Ext4ContainerTest : public ::testing::Test {
   Ext4FileSystemConfig config_;
   FileSystemKey key_;
   base::FilePath container_name_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   std::unique_ptr<Ext4Container> container_;
   std::unique_ptr<FakeEncryptedContainer> backing_container_;
   FakeEncryptedContainer* backing_container_ptr_;
@@ -129,14 +129,17 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2FsAfterFormatExt4) {
 
 // Tests the failure path on checking the filesystem.
 TEST_F(Ext4ContainerTest, SetupFailedFsck) {
-  EXPECT_CALL(platform_, Fsck(_, FsckOption::kPreen, _))
+  EXPECT_CALL(platform_, Fsck(_, libstorage::FsckOption::kPreen, _))
       .WillOnce(
-          DoAll(SetArgPointee<2>(FSCK_ERRORS_LEFT_UNCORRECTED), Return(false)));
-  EXPECT_CALL(platform_, Fsck(_, FsckOption::kFull, _))
-      .WillOnce(DoAll(SetArgPointee<2>(
-                          FSCK_ERRORS_LEFT_UNCORRECTED | FSCK_SHARED_LIB_ERROR |
-                          FSCK_SYSTEM_SHOULD_REBOOT | FSCK_OPERATIONAL_ERROR),
-                      Return(false)));
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED),
+                Return(false)));
+  EXPECT_CALL(platform_, Fsck(_, libstorage::FsckOption::kFull, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED |
+                                 libstorage::FSCK_SHARED_LIB_ERROR |
+                                 libstorage::FSCK_SYSTEM_SHOULD_REBOOT |
+                                 libstorage::FSCK_OPERATIONAL_ERROR),
+                Return(false)));
   EXPECT_CALL(
       metrics_,
       SendBoolToUMA("Platform.FileSystem.EncStateful_RecoveryNeeded", true))
@@ -170,7 +173,8 @@ TEST_F(Ext4ContainerTest, SetupFailedFsck) {
 TEST_F(Ext4ContainerTest, SetupFailedTune2fsDontCare) {
   EXPECT_CALL(platform_, Fsck(_, _, _))
       .WillOnce(
-          DoAll(SetArgPointee<2>(FSCK_ERRORS_LEFT_UNCORRECTED), Return(false)));
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED),
+                Return(false)));
   EXPECT_CALL(
       metrics_,
       SendBoolToUMA("Platform.FileSystem.EncStateful_RecoveryNeeded", true))
@@ -199,7 +203,8 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFailed) {
   EXPECT_CALL(platform_, Fsck(_, _, _))
       .Times(2)
       .WillRepeatedly(
-          DoAll(SetArgPointee<2>(FSCK_ERRORS_LEFT_UNCORRECTED), Return(false)));
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED),
+                Return(false)));
   EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(false));
   EXPECT_CALL(
       metrics_,
@@ -219,9 +224,10 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFailed) {
 
 // Tests the failure path on failing fsck where purge is enforced.
 TEST_F(Ext4ContainerTest, SetupFailedFsckPurge) {
-  EXPECT_CALL(platform_, Fsck(_, FsckOption::kPreen, _))
+  EXPECT_CALL(platform_, Fsck(_, libstorage::FsckOption::kPreen, _))
       .WillOnce(
-          DoAll(SetArgPointee<2>(FSCK_ERRORS_LEFT_UNCORRECTED), Return(false)));
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED),
+                Return(false)));
 
   // Check we purge and recreate.
   EXPECT_CALL(platform_, FormatExt4(_, _, _)).WillOnce(Return(true));
@@ -239,7 +245,8 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFixed) {
   InSequence s;
   EXPECT_CALL(platform_, Fsck(_, _, _))
       .WillOnce(
-          DoAll(SetArgPointee<2>(FSCK_ERRORS_LEFT_UNCORRECTED), Return(false)));
+          DoAll(SetArgPointee<2>(libstorage::FSCK_ERRORS_LEFT_UNCORRECTED),
+                Return(false)));
   EXPECT_CALL(metrics_,
               SendBoolToUMA("Platform.FileSystem.EncStateful_FsckNeeded", true))
       .WillOnce(Return(true));
@@ -248,7 +255,8 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFixed) {
       SendBoolToUMA("Platform.FileSystem.EncStateful_RecoveryNeeded", true))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Fsck(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(FSCK_ERROR_CORRECTED), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(libstorage::FSCK_ERROR_CORRECTED),
+                      Return(true)));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 3, 10))
       .WillOnce(Return(true));

@@ -16,12 +16,12 @@
 #include <base/memory/ptr_util.h>
 #include <base/rand_util.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 #include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/type.h"
 
 namespace cryptohome {
@@ -37,7 +37,7 @@ constexpr char kSignatureXmlFile[] = "sig.xml";
 
 RecoverableKeyStoreBackendCertProviderImpl::
     RecoverableKeyStoreBackendCertProviderImpl(
-        Platform* platform,
+        libstorage::Platform* platform,
         std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher)
     : platform_(platform),
       fetcher_(std::move(fetcher)),

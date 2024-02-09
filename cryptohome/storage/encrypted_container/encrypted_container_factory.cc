@@ -8,8 +8,8 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
@@ -24,7 +24,7 @@
 namespace cryptohome {
 
 EncryptedContainerFactory::EncryptedContainerFactory(
-    Platform* platform, MetricsLibraryInterface* metrics)
+    libstorage::Platform* platform, MetricsLibraryInterface* metrics)
     : EncryptedContainerFactory(
           platform,
           metrics,
@@ -32,7 +32,7 @@ EncryptedContainerFactory::EncryptedContainerFactory(
           std::make_unique<BackingDeviceFactory>(platform)) {}
 
 EncryptedContainerFactory::EncryptedContainerFactory(
-    Platform* platform,
+    libstorage::Platform* platform,
     MetricsLibraryInterface* metrics,
     std::unique_ptr<Keyring> keyring,
     std::unique_ptr<BackingDeviceFactory> backing_device_factory)

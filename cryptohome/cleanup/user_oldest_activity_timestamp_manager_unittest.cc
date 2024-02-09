@@ -9,9 +9,9 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 
 namespace {
 const base::Time::Exploded feb1st2011_exploded = {2011, 2, 2, 1};
@@ -37,7 +37,7 @@ TEST(UserOldestActivityTimestampManager, Legacy) {
   base::Time time_apr1;
   CHECK(base::Time::FromUTCExploded(apr1st2011_exploded, &time_apr1));
 
-  NiceMock<MockPlatform> mock_platform;
+  NiceMock<libstorage::MockPlatform> mock_platform;
   EXPECT_CALL(mock_platform, GetCurrentTime()).WillOnce(Return(time_mar1));
 
   ASSERT_TRUE(mock_platform.CreateDirectory(
@@ -119,7 +119,7 @@ TEST(UserOldestActivityTimestampManager, Regular) {
   base::Time time_apr1;
   CHECK(base::Time::FromUTCExploded(apr1st2011_exploded, &time_apr1));
 
-  NiceMock<MockPlatform> mock_platform;
+  NiceMock<libstorage::MockPlatform> mock_platform;
   EXPECT_CALL(mock_platform, GetCurrentTime())
       .WillOnce(Return(time_feb1))
       .WillOnce(Return(time_mar1))

@@ -17,6 +17,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -27,7 +28,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 
@@ -92,7 +92,7 @@ class AuthFactorManagerTest : public ::testing::Test {
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunner::GetCurrentDefault();
 
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   StrictMock<MockKeysetManagement> keyset_management_;
@@ -316,7 +316,7 @@ TEST_F(AuthFactorManagerTest, RemoveSuccess) {
   EXPECT_FALSE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)
-          .AddExtension(cryptohome::kChecksumExtension)));
+          .AddExtension(libstorage::kChecksumExtension)));
 }
 
 TEST_F(AuthFactorManagerTest, RemoveFailureWithAuthBlock) {
@@ -411,7 +411,7 @@ TEST_F(AuthFactorManagerTest, RemoveOkWithChecksumFileRemovalFailure) {
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel);
   auto auth_factor_checksum_file_path =
-      auth_factor_file_path.AddExtension(kChecksumExtension);
+      auth_factor_file_path.AddExtension(libstorage::kChecksumExtension);
   // Write out a checksum file. These are no longer automatically produced and
   // so to test it not being removed we need to manually create it.
   ASSERT_TRUE(platform_.TouchFileDurable(auth_factor_checksum_file_path));

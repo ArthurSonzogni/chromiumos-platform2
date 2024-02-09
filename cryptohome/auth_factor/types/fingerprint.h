@@ -10,6 +10,8 @@
 #include <set>
 #include <string>
 
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
@@ -25,7 +27,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 #include "cryptohome/util/async_init.h"
@@ -46,7 +47,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverNoKnowledgeFactor {
  public:
   FingerprintAuthFactorDriver(
-      Platform* platform,
+      libstorage::Platform* platform,
       Crypto* crypto,
       UssManager* uss_manager,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service)

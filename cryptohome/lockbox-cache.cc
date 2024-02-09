@@ -147,7 +147,7 @@ std::optional<SerializedInstallAttributes> SerializedInstallAttributesFromMode(
 
 bool RestoreIfVerificationPasses(const base::FilePath& lockbox_path,
                                  const SerializedInstallAttributes& attrs,
-                                 Platform& platform,
+                                 libstorage::Platform& platform,
                                  LockboxContents& lockbox,
                                  brillo::Blob& lockbox_data) {
   lockbox_data.resize(attrs.ByteSizeLong());
@@ -178,7 +178,7 @@ bool RestoreIfVerificationPasses(const base::FilePath& lockbox_path,
 }
 
 bool RestoreEmptyInstallAttributes(const base::FilePath& lockbox_path,
-                                   Platform& platform,
+                                   libstorage::Platform& platform,
                                    LockboxContents& lockbox,
                                    brillo::Blob& lockbox_data) {
   SerializedInstallAttributes attrs;
@@ -197,7 +197,7 @@ bool RestoreEmptyInstallAttributes(const base::FilePath& lockbox_path,
 bool RestoreEnterpriseInstallAttributes(
     const base::FilePath& lockbox_path,
     const enterprise_management::PolicyData& policy_data,
-    Platform& platform,
+    libstorage::Platform& platform,
     LockboxContents& lockbox,
     brillo::Blob& lockbox_data) {
   for (Mode mode : {
@@ -224,7 +224,7 @@ bool RestoreEnterpriseInstallAttributes(
 }
 
 bool RestoreInstallAttributes(const base::FilePath& lockbox_path,
-                              Platform& platform,
+                              libstorage::Platform& platform,
                               LockboxContents& lockbox,
                               brillo::Blob& lockbox_data) {
   MetricsLibrary metrics;
@@ -261,7 +261,7 @@ bool RestoreInstallAttributes(const base::FilePath& lockbox_path,
 
 }  // namespace
 
-bool CacheLockbox(Platform* platform,
+bool CacheLockbox(libstorage::Platform* platform,
                   const base::FilePath& nvram_path,
                   const base::FilePath& lockbox_path,
                   const base::FilePath& cache_path) {

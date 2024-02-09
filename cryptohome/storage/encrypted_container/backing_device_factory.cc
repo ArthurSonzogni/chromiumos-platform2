@@ -6,14 +6,15 @@
 
 #include <memory>
 
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/logical_volume_backing_device.h"
 #include "cryptohome/storage/encrypted_container/ramdisk_device.h"
 
 namespace cryptohome {
 
-BackingDeviceFactory::BackingDeviceFactory(Platform* platform)
+BackingDeviceFactory::BackingDeviceFactory(libstorage::Platform* platform)
     : platform_(platform) {}
 
 std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(

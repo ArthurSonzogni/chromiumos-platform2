@@ -19,9 +19,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include <libstorage/platform/platform.h>
 #include <metrics/metrics_library.h>
-
-#include "cryptohome/platform.h"
 
 extern "C" {
 #include <ext2fs/ext2fs.h>
@@ -57,13 +56,15 @@ std::vector<UmaFsckResult> MapFsckResultToEnum(int fsck_result) {
   }
 
   const std::map<int, UmaFsckResult> all_fsck_errors = {
-      {FSCK_ERROR_CORRECTED, UmaFsckResult::kErrorsCorrected},
-      {FSCK_SYSTEM_SHOULD_REBOOT, UmaFsckResult::kSystemShouldReboot},
-      {FSCK_ERRORS_LEFT_UNCORRECTED, UmaFsckResult::kErrorsLeftUncorrected},
-      {FSCK_OPERATIONAL_ERROR, UmaFsckResult::kOperationalError},
-      {FSCK_USAGE_OR_SYNTAX_ERROR, UmaFsckResult::kUsageError},
-      {FSCK_USER_CANCELLED, UmaFsckResult::kCancelled},
-      {FSCK_SHARED_LIB_ERROR, UmaFsckResult::kSharedLibraryError},
+      {libstorage::FSCK_ERROR_CORRECTED, UmaFsckResult::kErrorsCorrected},
+      {libstorage::FSCK_SYSTEM_SHOULD_REBOOT,
+       UmaFsckResult::kSystemShouldReboot},
+      {libstorage::FSCK_ERRORS_LEFT_UNCORRECTED,
+       UmaFsckResult::kErrorsLeftUncorrected},
+      {libstorage::FSCK_OPERATIONAL_ERROR, UmaFsckResult::kOperationalError},
+      {libstorage::FSCK_USAGE_OR_SYNTAX_ERROR, UmaFsckResult::kUsageError},
+      {libstorage::FSCK_USER_CANCELLED, UmaFsckResult::kCancelled},
+      {libstorage::FSCK_SHARED_LIB_ERROR, UmaFsckResult::kSharedLibraryError},
   };
   for (auto error : all_fsck_errors) {
     if (fsck_result & error.first) {
@@ -78,7 +79,7 @@ std::vector<UmaFsckResult> MapFsckResultToEnum(int fsck_result) {
   return errors;
 }
 
-bool ReadSuperBlock(Platform* platform,
+bool ReadSuperBlock(libstorage::Platform* platform,
                     const base::FilePath device_file,
                     struct ext2_super_block* super_block) {
   base::File device_raw_file;
@@ -104,7 +105,7 @@ std::string GetMetricsPrefix(const base::FilePath backing) {
   const std::map<std::string, std::string> tracked = {
       {"encstateful", "Platform.FileSystem.EncStateful"},
       {"stateful", "Platform.FileSystem.Stateful"},
-      {"unencrypted", "Platform.FileSystem.Stateful"},
+      {"unencrypted", "lPlatform.FileSystem.Stateful"},
       {"-data", "Platform.FileSystem.UserData"}};
 
   if (backing.empty())
@@ -122,7 +123,7 @@ std::string GetMetricsPrefix(const base::FilePath backing) {
 Ext4Container::Ext4Container(
     const Ext4FileSystemConfig& config,
     std::unique_ptr<EncryptedContainer> backing_container,
-    Platform* platform,
+    libstorage::Platform* platform,
     MetricsLibraryInterface* metrics)
     : mkfs_opts_(config.mkfs_opts),
       tune2fs_opts_(config.tune2fs_opts),
@@ -175,18 +176,19 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
   if (!created) {
     // Check filesystem with e2fsck preen option. Since we are formating with no
     // time or mount count no deep check will be attempted by preen option.
-    bool rc = platform_->Fsck(backing, FsckOption::kPreen, &fsck_err);
+    bool rc =
+        platform_->Fsck(backing, libstorage::FsckOption::kPreen, &fsck_err);
 
     if (rc) {
       // Legacy UMA
-      SendBool("_RecoveryNeeded", fsck_err & FSCK_ERROR_CORRECTED);
+      SendBool("_RecoveryNeeded", fsck_err & libstorage::FSCK_ERROR_CORRECTED);
       SendBool("_FsckNeeded", false);
     } else {
       // Legacy UMA
       SendBool("_FsckNeeded", true);
       SendBool("_RecoveryNeeded", true);
     }
-    if ((!rc) && (fsck_err & FSCK_ERRORS_LEFT_UNCORRECTED)) {
+    if ((!rc) && (fsck_err & libstorage::FSCK_ERRORS_LEFT_UNCORRECTED)) {
       // Only go deeper if when we are sure we have more filesystem error to
       // correct. Skip when we have fsck internal errors, we could slow down
       // boot/mount unnecessarily.
@@ -195,7 +197,7 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
                    << fsck_err;
       switch (recovery_) {
         case RecoveryType::kEnforceCleaning:
-          platform_->Fsck(backing, FsckOption::kFull, &fsck_err);
+          platform_->Fsck(backing, libstorage::FsckOption::kFull, &fsck_err);
           break;
         case RecoveryType::kPurge:
           LOG(WARNING) << backing << ": is beeing recreated";
@@ -210,7 +212,8 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
           break;
       }
     }
-    LOG_IF(ERROR, (fsck_err & ~FSCK_ERROR_CORRECTED) != FSCK_SUCCESS)
+    LOG_IF(ERROR, (fsck_err & ~libstorage::FSCK_ERROR_CORRECTED) !=
+                      libstorage::FSCK_SUCCESS)
         << backing
         << ": fsck found uncorrected errors: error returned: " << fsck_err;
 
@@ -225,7 +228,7 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
       LOG(ERROR) << "Failed to format ext4 filesystem";
       return false;
     }
-    fsck_err = FSCK_SUCCESS;
+    fsck_err = libstorage::FSCK_SUCCESS;
   }
 
   // Modify features depending on whether we already have the following enabled.

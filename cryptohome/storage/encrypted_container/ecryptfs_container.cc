@@ -7,8 +7,8 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 
@@ -17,7 +17,7 @@ namespace cryptohome {
 EcryptfsContainer::EcryptfsContainer(
     const base::FilePath& backing_dir,
     const FileSystemKeyReference& key_reference,
-    Platform* platform,
+    libstorage::Platform* platform,
     Keyring* keyring)
     : backing_dir_(backing_dir),
       key_reference_(key_reference),

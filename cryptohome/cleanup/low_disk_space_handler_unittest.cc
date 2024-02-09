@@ -12,11 +12,11 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/mock_homedirs.h"
@@ -70,7 +70,7 @@ class LowDiskSpaceHandlerTest : public ::testing::Test {
     return task_runner_->PostDelayedTask(from_here, std::move(task), delay);
   }
 
-  StrictMock<MockPlatform> platform_;
+  StrictMock<libstorage::MockPlatform> platform_;
   NiceMock<MockSignalling> signalling_;
   StrictMock<MockHomeDirs> homedirs_;
   StrictMock<MockUserOldestActivityTimestampManager> timestamp_manager_;

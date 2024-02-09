@@ -6,9 +6,9 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/lockbox-cache.h"
-#include "cryptohome/platform.h"
 
 namespace switches {
 static const char* kNvramPath = "nvram";
@@ -32,8 +32,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  cryptohome::Platform platform;
-  bool ok = CacheLockbox(&platform, nvram_path, lockbox_path, cache_path);
+  libstorage::Platform platform;
+  bool ok =
+      cryptohome::CacheLockbox(&platform, nvram_path, lockbox_path, cache_path);
   if (cl->HasSwitch(switches::kUnlinkNvram))
     platform.DeleteFile(nvram_path);
   if (!ok)

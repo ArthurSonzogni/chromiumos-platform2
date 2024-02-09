@@ -57,6 +57,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
+#include <libstorage/platform/platform.h>
 #include <metrics/timer.h>
 #include <pca_agent-client/pca_agent/dbus-proxies.h>
 
@@ -1339,14 +1340,15 @@ bool UserDataAuth::FilterActiveMounts(
       if (!keep && !include_busy_mount) {
         // Mark the mount points that are not in use as 'expired'. Add the mount
         // points to the |active_mounts| list if they are not expired.
-        ExpireMountResult expire_mount_result =
+        libstorage::ExpireMountResult expire_mount_result =
             platform_->ExpireMount(match->second);
-        if (expire_mount_result == ExpireMountResult::kBusy) {
+        if (expire_mount_result == libstorage::ExpireMountResult::kBusy) {
           LOG(WARNING) << "Stale mount " << match->second.value() << " from "
                        << match->first.value() << " has active holders.";
           keep = true;
           skipped = true;
-        } else if (expire_mount_result == ExpireMountResult::kError) {
+        } else if (expire_mount_result ==
+                   libstorage::ExpireMountResult::kError) {
           // To avoid unloading any pkcs11 token that is in use, add mount point
           // to the |active_mounts| if it is failed to be expired.
           LOG(ERROR) << "Stale mount " << match->second.value() << " from "
@@ -1508,7 +1510,7 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
     platform_->Unmount(match.second, true, nullptr);
     // Clean up destination directory for ephemeral mounts under ephemeral
     // cryptohome dir.
-    if (base::StartsWith(match.first.value(), kLoopPrefix,
+    if (base::StartsWith(match.first.value(), libstorage::kLoopPrefix,
                          base::CompareCase::SENSITIVE) &&
         FilePath(kEphemeralCryptohomeDir).IsParent(match.second)) {
       platform_->DeletePathRecursively(match.second);
@@ -1521,7 +1523,7 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   // Note that some mounts are backed by loop devices, and loop devices are
   // backed by sparse files.
 
-  std::vector<Platform::LoopDevice> loop_devices =
+  std::vector<libstorage::Platform::LoopDevice> loop_devices =
       platform_->GetAttachedLoopDevices();
   const FilePath sparse_dir =
       FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir);

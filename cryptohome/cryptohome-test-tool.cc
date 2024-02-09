@@ -32,6 +32,7 @@
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libstorage/platform/platform.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "cryptohome/auth_factor/types/password.h"
@@ -43,7 +44,6 @@
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 using base::FilePath;
@@ -220,7 +220,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path,
     const FilePath& recovery_id_file_path,
-    cryptohome::Platform* platform) {
+    libstorage::Platform* platform) {
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
       RecoveryCryptoImpl::Create(GetRecoveryCryptoFrontend(), platform);
   if (!recovery_crypto) {
@@ -295,7 +295,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& ephemeral_pub_key_out_file_path,
     const FilePath& recovery_request_out_file_path,
-    Platform* platform) {
+    libstorage::Platform* platform) {
   brillo::Blob rsa_priv_key;
   brillo::Blob channel_pub_key;
   brillo::Blob channel_priv_key;
@@ -430,7 +430,7 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& ledger_info_in_file_path,
     const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& recovery_secret_out_file_path,
-    Platform* platform) {
+    libstorage::Platform* platform) {
   brillo::Blob recovery_response, ephemeral_pub_key, channel_priv_key,
       destination_share, extended_pcr_bound_destination_share,
       serialized_hsm_payload;
@@ -581,7 +581,7 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
                          const std::string& public_key_spki_der,
                          bool disable_key_data,
                          bool use_public_mount_salt,
-                         Platform* platform) {
+                         libstorage::Platform* platform) {
   brillo::DBusConnection connection;
   scoped_refptr<dbus::Bus> bus = connection.Connect();
   CHECK(bus) << "Failed to connect to system bus through libbrillo";
@@ -657,7 +657,7 @@ int main(int argc, char* argv[]) {
   using cryptohome::CheckMandatoryFlag;
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::AtExitManager exit_manager;
-  cryptohome::Platform platform;
+  libstorage::Platform platform;
 
   DEFINE_string(
       action, "",

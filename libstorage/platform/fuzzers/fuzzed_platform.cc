@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fuzzers/fuzzed_platform.h"
+#include "libstorage/platform/fuzzers/fuzzed_platform.h"
 
 #include <linux/fs.h>
 #include <memory.h>
@@ -42,10 +42,10 @@
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/fuzzers/blob_mutator.h>
 
-#include "cryptohome/dircrypto_util.h"
-#include "cryptohome/platform.h"
+#include "libstorage/platform/dircrypto_util.h"
+#include "libstorage/platform/platform.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 using ::brillo::Blob;
 using ::brillo::BlobFromString;
@@ -1832,4 +1832,4 @@ bool FuzzedPlatform::GetLoopDeviceMountsImpl(
   return !mounts->empty();
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

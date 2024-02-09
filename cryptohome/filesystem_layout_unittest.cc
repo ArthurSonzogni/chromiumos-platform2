@@ -8,9 +8,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 
@@ -29,7 +29,7 @@ TEST(FileSystemLayoutTest, UserSecretStashPath) {
 }
 
 TEST(FileSystemLayout, CreateNewSalt) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
   brillo::SecureBlob salt;
   brillo::SecureBlob salt2;
 
@@ -50,7 +50,7 @@ TEST(FileSystemLayout, CreateNewSalt) {
 }
 
 TEST(FileSystemLayout, LegacySaltExists) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
 
   brillo::SecureBlob salt;
   brillo::SecureBlob local_salt =
@@ -76,7 +76,7 @@ TEST(FileSystemLayout, LegacySaltExists) {
 }
 
 TEST(FileSystemLayout, LegacySaltPreferred) {
-  NiceMock<MockPlatform> platform;
+  NiceMock<libstorage::MockPlatform> platform;
 
   brillo::SecureBlob salt;
   brillo::SecureBlob legacy_salt =

@@ -27,6 +27,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -56,7 +57,6 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/pkcs11_init.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -75,7 +75,7 @@ namespace cryptohome {
 // Collection of APIs for accessing various aspects of the system. Used to
 // populate the BackingApis parameter on non-test constructions of UserDataAuth.
 struct SystemApis {
-  Platform platform;
+  libstorage::Platform platform;
   hwsec::FactoryImpl hwsec_factory;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec{
       hwsec_factory.GetCryptohomeFrontend()};
@@ -127,7 +127,7 @@ class UserDataAuth {
     // Construct a BackingApis from SystemApis.
     static BackingApis FromSystemApis(SystemApis& apis);
 
-    Platform* platform;
+    libstorage::Platform* platform;
     const hwsec::CryptohomeFrontend* hwsec;
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager;
     const hwsec::RecoveryCryptoFrontend* recovery_crypto;
@@ -997,7 +997,7 @@ class UserDataAuth {
   brillo::SecureBlob system_salt_;
 
   // Object for accessing platform related functionalities.
-  Platform* platform_;
+  libstorage::Platform* platform_;
   // Object for accessing the HWSec related functions.
   const hwsec::CryptohomeFrontend* hwsec_;
   // Object for accessing the pinweaver manager related functions.

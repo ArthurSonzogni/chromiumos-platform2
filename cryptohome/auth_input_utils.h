@@ -10,18 +10,18 @@
 
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
 // Converts the AuthInput D-Bus proto into the cryptohome struct.
 std::optional<AuthInput> CreateAuthInput(
-    Platform* platform,
+    libstorage::Platform* platform,
     const user_data_auth::AuthInput& auth_input_proto,
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,

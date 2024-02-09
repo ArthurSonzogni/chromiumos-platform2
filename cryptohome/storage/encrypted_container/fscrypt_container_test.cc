@@ -10,8 +10,8 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
@@ -38,7 +38,7 @@ class FscryptContainerTest : public ::testing::Test {
   base::FilePath backing_dir_;
   FileSystemKeyReference key_reference_;
   FileSystemKey key_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   FakeKeyring keyring_;
   std::unique_ptr<EncryptedContainer> container_;
 };

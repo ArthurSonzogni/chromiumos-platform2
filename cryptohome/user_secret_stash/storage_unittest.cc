@@ -9,8 +9,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <libstorage/platform/mock_platform.h>
+
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -29,7 +30,7 @@ class UssStorageTest : public ::testing::Test {
  protected:
   const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
 
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   UssStorage uss_storage_{&platform_};
 };
 

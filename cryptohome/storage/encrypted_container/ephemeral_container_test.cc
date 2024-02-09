@@ -9,8 +9,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "cryptohome/mock_platform.h"
+#include <libstorage/platform/mock_platform.h>
 
 namespace cryptohome {
 
@@ -30,7 +29,7 @@ class EphemeralContainerTest : public ::testing::Test {
             BackingDeviceType::kRamdiskDevice, base::FilePath(kDevice))) {}
 
  protected:
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<FakeBackingDevice> backing_device_;
 
   std::unique_ptr<EphemeralContainer> CreateContainer() {

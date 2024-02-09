@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_
-#define CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_
+#ifndef LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_
+#define LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_
 
 #include <map>
 #include <memory>
@@ -12,10 +12,11 @@
 #include <unordered_map>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
-#include "cryptohome/fake_platform/real_fake_mount_mapping_redirect_factory.h"
+#include "libstorage/platform/fake_platform/real_fake_mount_mapping_redirect_factory.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 // A wrapper class for a single mount mapping.
 class FakeMountMapping final {
@@ -60,7 +61,7 @@ class FakeMountMapping final {
 // source within tmpfs.
 // In the case of Mount, redirect is a newly created /tmp/<unique id> directory,
 // to simulate a persistent storage within a block device or encrypted fs.
-class FakeMountMapper final {
+class BRILLO_EXPORT FakeMountMapper final {
  public:
   FakeMountMapper(
       const base::FilePath& tmpfs_rootfs,
@@ -116,6 +117,6 @@ class FakeMountMapper final {
       const base::FilePath& target) const;
 };
 
-}  // namespace cryptohome
+}  // namespace libstorage
 
-#endif  // CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_
+#endif  // LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPER_H_

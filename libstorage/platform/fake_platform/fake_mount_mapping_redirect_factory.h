@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_
-#define CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_
+#ifndef LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_
+#define LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_
 
 #include <base/files/file_path.h>
 
-namespace cryptohome {
+namespace libstorage {
 
 // An interface for generating redirects for FakeMoountMapping.
 class FakeMountMappingRedirectFactory {
@@ -18,6 +18,6 @@ class FakeMountMappingRedirectFactory {
   virtual base::FilePath Create() = 0;
 };
 
-}  // namespace cryptohome
+}  // namespace libstorage
 
-#endif  // CRYPTOHOME_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_
+#endif  // LIBSTORAGE_PLATFORM_FAKE_PLATFORM_FAKE_MOUNT_MAPPING_REDIRECT_FACTORY_H_

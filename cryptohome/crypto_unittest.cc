@@ -6,6 +6,8 @@
 
 #include "cryptohome/crypto.h"
 
+#include <vector>
+
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -23,12 +25,11 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <vector>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -147,7 +148,7 @@ class CryptoTest : public ::testing::Test {
   }
 
  protected:
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
 };
 
 TEST_F(CryptoTest, BlobToHexTest) {

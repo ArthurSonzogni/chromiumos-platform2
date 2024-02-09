@@ -12,14 +12,14 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_install_attributes.h"
-#include "cryptohome/mock_platform.h"
-#include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
 
@@ -42,7 +42,7 @@ struct MockSystemApis {
     };
   }
 
-  MockType<MockPlatform> platform;
+  MockType<libstorage::MockPlatform> platform{std::make_unique<FakePlatform>()};
   MockType<hwsec::MockCryptohomeFrontend> hwsec;
   MockType<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   MockType<hwsec::MockRecoveryCryptoFrontend> recovery_crypto;

@@ -24,6 +24,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libstorage/platform/platform.h>
 #include <vboot/crossystem.h>
 #include <vboot/tlcl.h>
 
@@ -32,7 +33,6 @@
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 #include "cryptohome/mount_encrypted/tpm.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -156,7 +156,7 @@ static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
 // Return code indicates if every thing is successful.
 static result_code set_system_key(const base::FilePath& rootdir,
                                   const char* key_material_file,
-                                  cryptohome::Platform* platform) {
+                                  libstorage::Platform* platform) {
   if (!key_material_file) {
     LOG(ERROR) << "Key material file not provided.";
     return RESULT_FAIL_FATAL;
@@ -215,7 +215,7 @@ bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
                          const std::string& filename,
                          uid_t user_id,
                          gid_t group_id,
-                         cryptohome::Platform* platform) {
+                         libstorage::Platform* platform) {
   brillo::SecureBlob tpm_seed = key.GetDerivedSystemKey(salt);
   if (tpm_seed.empty()) {
     LOG(ERROR) << "TPM Seed provided for " << filename << " is empty";
@@ -252,7 +252,7 @@ bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
 // available, via a tmpfs file which will be read by bio_crypto_init. The tmpfs
 // directory will be created if it doesn't exist.
 bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
-                             cryptohome::Platform* platform) {
+                             libstorage::Platform* platform) {
   // If there isn't a bio-sensor, don't bother.
   if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
     LOG(INFO)
@@ -269,7 +269,7 @@ bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
 // tmpfs file which will be read by hiberman. The tmpfs directory will be
 // created if it doesn't exist.
 bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
-                                 cryptohome::Platform* platform) {
+                                 libstorage::Platform* platform) {
   if (!base::PathExists(base::FilePath(kHibermanPath))) {
     LOG(INFO) << "There is no hiberman binary, so skip sending TPM seed.";
     return true;
@@ -285,7 +285,7 @@ bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
 // tmpfs file which will be read by featured. The tmpfs directory will be
 // created if it doesn't exist.
 bool SendSecretToFeaturedTmpFile(const mount_encrypted::EncryptionKey& key,
-                                 cryptohome::Platform* platform) {
+                                 libstorage::Platform* platform) {
   return SendSecretToTmpFile(key, std::string(kFeaturedTpmSeedSalt),
                              base::FilePath(kFeaturedTpmSeedTmpDir),
                              kFeaturedTpmSeedFile, kRootUid, kRootGid,
@@ -317,7 +317,7 @@ bool migrate_tpm_owership_state_file() {
 static result_code mount_encrypted_partition(
     mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
-    cryptohome::Platform* platform,
+    libstorage::Platform* platform,
     bool safe_mount) {
   result_code rc;
 
@@ -422,7 +422,7 @@ int main(int argc, const char* argv[]) {
 
   char* rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
   base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
-  cryptohome::Platform platform;
+  libstorage::Platform platform;
   mount_encrypted::ScopedMountEncryptedMetricsSingleton scoped_metrics(
       kMountEncryptedMetricsPath);
 

@@ -14,18 +14,18 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
-DiskCleanup::DiskCleanup(Platform* platform,
+DiskCleanup::DiskCleanup(libstorage::Platform* platform,
                          HomeDirs* homedirs,
                          UserOldestActivityTimestampManager* timestamp_manager)
     : platform_(platform),

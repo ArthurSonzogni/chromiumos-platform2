@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 

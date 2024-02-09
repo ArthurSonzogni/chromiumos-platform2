@@ -33,10 +33,6 @@ executable("cryptohome-tpm-live-test") {
   # of listing all their sources here.
   sources = [
     "../cryptohome-tpm-live-test.cc",
-    "../fake_platform.cc",
-    "../fake_platform/fake_mount_mapper.cc",
-    "../fake_platform/real_fake_mount_mapping_redirect_factory.cc",
-    "../fake_platform/test_file_path.cc",
     "../tpm_live_test.cc",
   ]
   configs += [ "//common-mk:test" ]
@@ -52,5 +48,6 @@ executable("cryptohome-tpm-live-test") {
     "libchrome",
     "libchrome-test",
     "libmetrics",
+    "libstorage_fake_platform",
   ]
 }

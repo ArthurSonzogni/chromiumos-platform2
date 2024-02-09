@@ -11,13 +11,13 @@
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/mock_platform.h"
 
 using brillo::SecureBlob;
 
@@ -28,7 +28,7 @@ class AuthInputUtilsPlatformTest : public ::testing::Test {
   const Username kUserName{"someusername"};
   const ObfuscatedUsername kObfuscatedUsername{"fake-user@example.org"};
 
-  testing::NiceMock<MockPlatform> platform_;
+  testing::NiceMock<libstorage::MockPlatform> platform_;
 };
 
 // Test the conversion from the password AuthInput proto into the cryptohome
@@ -169,7 +169,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
 
 TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInput) {
   // SETUP
-  testing::NiceMock<MockPlatform> platform;
+  testing::NiceMock<libstorage::MockPlatform> platform;
   // Generate a valid passkey from the users id and public salt.
   brillo::SecureBlob public_mount_salt;
   // Mock platform takes care of creating the salt file if needed.

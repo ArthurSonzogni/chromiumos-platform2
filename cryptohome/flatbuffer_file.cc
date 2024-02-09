@@ -12,10 +12,10 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 namespace {
@@ -32,7 +32,8 @@ constexpr mode_t kOwnerReadWritePermissions = 0600;
 
 }  // namespace
 
-FlatbufferFile::FlatbufferFile(Platform* platform, const base::FilePath& path)
+FlatbufferFile::FlatbufferFile(libstorage::Platform* platform,
+                               const base::FilePath& path)
     : platform_(platform), path_(path) {}
 
 FlatbufferFile::~FlatbufferFile() = default;

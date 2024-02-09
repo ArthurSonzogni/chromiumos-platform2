@@ -14,10 +14,10 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
@@ -32,7 +32,7 @@ CryptohomeVault::CryptohomeVault(
     std::unique_ptr<EncryptedContainer> cache_container,
     std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
         application_containers,
-    Platform* platform)
+    libstorage::Platform* platform)
     : obfuscated_username_(obfuscated_username),
       container_(std::move(container)),
       migrating_container_(std::move(migrating_container)),

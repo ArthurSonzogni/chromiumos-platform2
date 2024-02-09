@@ -32,7 +32,7 @@ namespace cryptohome {
 class RecoverableKeyStoreBackendProviderPeer {
  public:
   RecoverableKeyStoreBackendProviderPeer(
-      Platform* platform,
+      libstorage::Platform* platform,
       std::unique_ptr<org::chromium::RksAgentProxyInterface> fetcher)
       : provider_(
             base::WrapUnique(new RecoverableKeyStoreBackendCertProviderImpl(

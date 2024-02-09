@@ -17,8 +17,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -39,7 +39,7 @@ DmcryptContainer::DmcryptContainer(
     const DmcryptConfig& config,
     std::unique_ptr<BackingDevice> backing_device,
     const FileSystemKeyReference& key_reference,
-    Platform* platform,
+    libstorage::Platform* platform,
     Keyring* keyring,
     std::unique_ptr<brillo::DeviceMapper> device_mapper)
     : dmcrypt_device_name_(config.dmcrypt_device_name),
@@ -56,7 +56,7 @@ DmcryptContainer::DmcryptContainer(
     const DmcryptConfig& config,
     std::unique_ptr<BackingDevice> backing_device,
     const FileSystemKeyReference& key_reference,
-    Platform* platform,
+    libstorage::Platform* platform,
     Keyring* keyring)
     : DmcryptContainer(config,
                        std::move(backing_device),

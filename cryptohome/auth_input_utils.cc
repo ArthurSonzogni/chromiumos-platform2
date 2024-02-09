@@ -12,13 +12,13 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::SecureBlob;
@@ -98,7 +98,7 @@ AuthInput FromSmartCardAuthInput(
 }
 
 std::optional<AuthInput> FromKioskAuthInput(
-    Platform* platform,
+    libstorage::Platform* platform,
     const user_data_auth::KioskAuthInput& proto,
     const Username& username) {
   brillo::SecureBlob public_mount_salt;
@@ -126,7 +126,7 @@ AuthInput FromFingerprintAuthInput(
 }  // namespace
 
 std::optional<AuthInput> CreateAuthInput(
-    Platform* platform,
+    libstorage::Platform* platform,
     const user_data_auth::AuthInput& auth_input_proto,
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,

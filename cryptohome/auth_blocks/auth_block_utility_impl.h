@@ -13,6 +13,7 @@
 
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -29,7 +30,6 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -45,7 +45,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl(
       KeysetManagement* keyset_management,
       Crypto* crypto,
-      Platform* platform,
+      libstorage::Platform* platform,
       AsyncInitFeatures* features,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
@@ -111,7 +111,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // Non-owned platform object used in this class. Must be alive for the entire
   // lifecycle of the class.
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 
   // Non-owned features object used in this class. Must be alive for the entire
   // lifetime of the class.

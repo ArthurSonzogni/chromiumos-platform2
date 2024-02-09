@@ -25,6 +25,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/structures/explicit_init.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -46,7 +47,6 @@
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -124,7 +124,7 @@ class AuthSession final {
   // the AuthSession object.
   struct BackingApis {
     Crypto* crypto = nullptr;
-    Platform* platform = nullptr;
+    libstorage::Platform* platform = nullptr;
     UserSessionMap* user_session_map = nullptr;
     KeysetManagement* keyset_management = nullptr;
     AuthBlockUtility* auth_block_utility = nullptr;
@@ -887,7 +887,7 @@ class AuthSession final {
   std::optional<UssManager::DecryptToken> decrypt_token_;
 
   Crypto* const crypto_;
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   // The user session map and a verifier forwarder associated with it.
   UserSessionMap* const user_session_map_;
   UserSessionMap::VerifierForwarder verifier_forwarder_;

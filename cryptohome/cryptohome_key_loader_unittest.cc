@@ -11,8 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-
-#include "cryptohome/mock_platform.h"
+#include <libstorage/platform/mock_platform.h>
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMRetryAction;
@@ -55,7 +54,7 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
 
   void TearDown() override {}
 
-  Platform* GetPlatform() { return &platform_; }
+  libstorage::Platform* GetPlatform() { return &platform_; }
 
  protected:
   brillo::Blob kTestKeyBlob = brillo::BlobFromString("test_key_blob");
@@ -92,7 +91,7 @@ class CryptohomeKeyLoaderTest : public ::testing::Test {
   bool is_hwsec_ready_ = false;
   std::map<base::FilePath, brillo::Blob> files_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
 
   // Declare cryptohome_key_loader_ last, so it gets destroyed before all the
   // mocks.

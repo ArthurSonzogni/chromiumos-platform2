@@ -20,10 +20,10 @@
 #include <base/unguessable_token.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_session.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

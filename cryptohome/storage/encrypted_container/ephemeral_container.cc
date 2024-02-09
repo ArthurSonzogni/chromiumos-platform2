@@ -14,8 +14,8 @@
 #include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/ramdisk_device.h"
@@ -23,11 +23,13 @@
 namespace cryptohome {
 
 EphemeralContainer::EphemeralContainer(
-    std::unique_ptr<RamdiskDevice> backing_device, Platform* platform)
+    std::unique_ptr<RamdiskDevice> backing_device,
+    libstorage::Platform* platform)
     : backing_device_(std::move(backing_device)), platform_(platform) {}
 
 EphemeralContainer::EphemeralContainer(
-    std::unique_ptr<FakeBackingDevice> backing_device, Platform* platform)
+    std::unique_ptr<FakeBackingDevice> backing_device,
+    libstorage::Platform* platform)
     : backing_device_(std::move(backing_device)), platform_(platform) {}
 
 EphemeralContainer::~EphemeralContainer() {

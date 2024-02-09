@@ -25,6 +25,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -34,7 +35,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
@@ -52,7 +52,7 @@ using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 KeysetManagement::KeysetManagement(
-    Platform* platform,
+    libstorage::Platform* platform,
     Crypto* crypto,
     std::unique_ptr<VaultKeysetFactory> vault_keyset_factory)
     : platform_(platform),
@@ -171,8 +171,9 @@ bool KeysetManagement::GetVaultKeysets(const ObfuscatedUsername& obfuscated,
   CHECK(keysets);
   base::FilePath user_dir = UserPath(obfuscated);
 
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      user_dir, false, base::FileEnumerator::FILES));
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(user_dir, false,
+                                   base::FileEnumerator::FILES));
   base::FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     base::FilePath file_name = next_path.BaseName();

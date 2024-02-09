@@ -10,16 +10,16 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/timestamp.pb.h"
 
 namespace cryptohome {
 
 namespace {
 
-base::Time GetTimestampFileData(Platform* platform,
+base::Time GetTimestampFileData(libstorage::Platform* platform,
                                 const ObfuscatedUsername& obfuscated) {
   brillo::Blob tcontents;
   if (!platform->ReadFile(UserActivityTimestampPath(obfuscated), &tcontents)) {
@@ -38,7 +38,7 @@ base::Time GetTimestampFileData(Platform* platform,
 }  // namespace
 
 UserOldestActivityTimestampManager::UserOldestActivityTimestampManager(
-    Platform* platform)
+    libstorage::Platform* platform)
     : platform_(platform) {}
 
 void UserOldestActivityTimestampManager::UpdateCachedTimestamp(

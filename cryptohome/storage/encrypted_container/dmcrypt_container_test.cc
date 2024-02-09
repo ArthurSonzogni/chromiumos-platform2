@@ -15,8 +15,8 @@
 #include <base/functional/bind.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -62,7 +62,7 @@ class DmcryptContainerTest : public ::testing::Test {
 
   FileSystemKey key_;
   FileSystemKeyReference key_reference_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   std::unique_ptr<BackingDevice> backing_device_;

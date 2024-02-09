@@ -17,8 +17,8 @@
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_stack.h"
@@ -34,7 +34,9 @@ extern const char kBindMountMigratedStage[];
 
 class Mounter {
  public:
-  Mounter(bool legacy_mount, bool bind_mount_downloads, Platform* platform);
+  Mounter(bool legacy_mount,
+          bool bind_mount_downloads,
+          libstorage::Platform* platform);
   Mounter(const Mounter&) = delete;
   Mounter& operator=(const Mounter&) = delete;
 
@@ -134,7 +136,8 @@ class Mounter {
   //   is_shared - bind mount as MS_SHARED
   bool BindAndPush(const base::FilePath& src,
                    const base::FilePath& dest,
-                   RemountOption remount = RemountOption::kNoRemount);
+                   libstorage::RemountOption remount =
+                       libstorage::RemountOption::kNoRemount);
 
   // If |bind_mount_downloads_| flag is set, bind mounts |user_home|/Downloads
   // to |user_home|/MyFiles/Downloads so Files app can manage MyFiles as user
@@ -153,7 +156,7 @@ class Mounter {
   void CopySkeleton(const base::FilePath& destination) const;
 
   // Ensures that a specified directory exists, with all path components owned
-  // by kRootUid:kRootGid.
+  // by libstorage::kRootUid:libstorage::kRootGid.
   //
   // Parameters
   //   dir - Directory to check
@@ -246,7 +249,7 @@ class Mounter {
   // Stack of mounts (in the mount(2) sense) that have been made.
   MountStack stack_;
 
-  Platform* platform_;  // Un-owned.
+  libstorage::Platform* platform_;  // Un-owned.
 
   FRIEND_TEST(MounterTest, MountOrdering);
 };

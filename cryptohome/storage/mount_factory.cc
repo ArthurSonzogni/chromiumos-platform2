@@ -6,7 +6,8 @@
 
 #include <memory>
 
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/out_of_process_mount_helper.h"
@@ -16,7 +17,7 @@ namespace cryptohome {
 MountFactory::MountFactory() {}
 MountFactory::~MountFactory() {}
 
-Mount* MountFactory::New(Platform* platform,
+Mount* MountFactory::New(libstorage::Platform* platform,
                          HomeDirs* homedirs,
                          bool legacy_mount,
                          bool bind_mount_downloads) {

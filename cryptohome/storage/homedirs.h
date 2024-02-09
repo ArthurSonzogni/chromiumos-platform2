@@ -26,12 +26,12 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gtest/gtest_prod.h>
+#include <libstorage/platform/platform.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/device_management_client_proxy.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
@@ -77,7 +77,7 @@ class HomeDirs {
   // |remove_callback| is executed in Remove() to make sure LE Credentials of
   // the corresponding |obfuscated_username| is also removed when user's
   // cryptohome is removed from the device.
-  HomeDirs(Platform* platform,
+  HomeDirs(libstorage::Platform* platform,
            std::unique_ptr<policy::PolicyProvider> policy_provider,
            const RemoveCallback& remove_callback,
            CryptohomeVaultFactory* vault_factory);
@@ -255,7 +255,7 @@ class HomeDirs {
   // able to cache its result.
   bool IsAesKeylockerSupported();
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool enterprise_owned_;
   // lvm migration flag is temporary, it will be removed when defaulted to

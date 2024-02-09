@@ -14,6 +14,7 @@
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -36,7 +37,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -144,7 +144,7 @@ class GenericAuthBlockFunctions {
 
  public:
   GenericAuthBlockFunctions(
-      Platform* platform,
+      libstorage::Platform* platform,
       AsyncInitFeatures* features,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
@@ -197,7 +197,7 @@ class GenericAuthBlockFunctions {
   // can never be null. If it's possible for the parameter to be null then you
   // must instead use a pointer, and auth block functions that consume it MUST
   // check it for null and gracefully (i.e. no CHECK) fail.
-  std::tuple<Platform&,
+  std::tuple<libstorage::Platform&,
              AsyncInitFeatures&,
              AsyncInitPtr<ChallengeCredentialsHelper>,
              KeyChallengeServiceFactory*,

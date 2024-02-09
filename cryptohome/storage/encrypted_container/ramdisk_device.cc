@@ -11,14 +11,14 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/loopback_device.h"
 
 namespace cryptohome {
 RamdiskDevice::RamdiskDevice(const BackingDeviceConfig& config,
 
-                             Platform* platform)
+                             libstorage::Platform* platform)
     : LoopbackDevice(config, platform), platform_(platform) {}
 
 bool RamdiskDevice::Create() {
@@ -48,7 +48,7 @@ bool RamdiskDevice::Purge() {
 }
 
 std::unique_ptr<RamdiskDevice> RamdiskDevice::Generate(
-    const base::FilePath& backing_file_path, Platform* platform) {
+    const base::FilePath& backing_file_path, libstorage::Platform* platform) {
   // Determine ephemeral cryptohome size.
   struct statfs fs;
   if (!platform->StatFS(base::FilePath(backing_file_path.DirName().DirName()),

@@ -6,8 +6,8 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 
@@ -16,7 +16,7 @@ namespace cryptohome {
 FscryptContainer::FscryptContainer(const base::FilePath& backing_dir,
                                    const FileSystemKeyReference& key_reference,
                                    bool allow_v2,
-                                   Platform* platform,
+                                   libstorage::Platform* platform,
                                    Keyring* keyring)
     : backing_dir_(backing_dir),
       key_reference_(key_reference),

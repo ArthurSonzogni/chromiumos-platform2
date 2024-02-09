@@ -9,8 +9,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/loopback_device.h"
@@ -33,12 +32,13 @@ class RamdiskDevice final : public LoopbackDevice {
   BackingDeviceType GetType() override { return LoopbackDevice::GetType(); }
 
   static std::unique_ptr<RamdiskDevice> Generate(
-      const base::FilePath& backing_file_path, Platform* platform);
+      const base::FilePath& backing_file_path, libstorage::Platform* platform);
 
  private:
-  RamdiskDevice(const BackingDeviceConfig& config, Platform* platform);
+  RamdiskDevice(const BackingDeviceConfig& config,
+                libstorage::Platform* platform);
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

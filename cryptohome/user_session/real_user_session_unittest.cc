@@ -22,13 +22,13 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_device_management_client_proxy.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -124,7 +124,7 @@ class RealUserSessionTest : public ::testing::Test {
 
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
@@ -132,8 +132,8 @@ class RealUserSessionTest : public ::testing::Test {
       user_activity_timestamp_manager_;
   std::unique_ptr<HomeDirs> homedirs_;
   std::unique_ptr<RealUserSession> session_;
-  // TODO(dlunev): Replace with real mount when FakePlatform is mature enough
-  // to support it mock-less.
+  // TODO(dlunev): Replace with real mount when FakePlatform is mature enough to
+  // support it mock-less.
   scoped_refptr<MockMount> mount_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -440,8 +440,9 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
 
 class RealUserSessionReAuthTest : public ::testing::Test {
  public:
-  // MockPlatform will provide environment with system salt.
-  MockPlatform platform_;
+  // libstorage::libstorage::MockPlatform will provide environment with system
+  // salt.
+  libstorage::MockPlatform platform_;
   const Username kFakeUsername{"test_username"};
 };
 

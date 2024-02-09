@@ -20,6 +20,7 @@
 #include <libhwsec-foundation/crypto/hkdf.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/revocation.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
@@ -92,7 +93,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> CryptohomeRecoveryAuthBlock::New(
-    Platform& platform,
+    libstorage::Platform& platform,
     const hwsec::CryptohomeFrontend& hwsec,
     const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
     const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
@@ -103,14 +104,14 @@ std::unique_ptr<AuthBlock> CryptohomeRecoveryAuthBlock::New(
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     const hwsec::CryptohomeFrontend* hwsec,
     const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-    Platform* platform)
+    libstorage::Platform* platform)
     : CryptohomeRecoveryAuthBlock(hwsec, recovery_hwsec, nullptr, platform) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     const hwsec::CryptohomeFrontend* hwsec,
     const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-    Platform* platform)
+    libstorage::Platform* platform)
     : AuthBlock(/*derivation_type=*/kCryptohomeRecovery),
       hwsec_(hwsec),
       recovery_hwsec_(recovery_hwsec),

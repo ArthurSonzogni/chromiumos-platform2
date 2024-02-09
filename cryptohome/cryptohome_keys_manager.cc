@@ -40,7 +40,7 @@ KeyLoaderInfo kKeyLoadersList[] = {
 }  // namespace
 
 CryptohomeKeysManager::CryptohomeKeysManager(
-    const hwsec::CryptohomeFrontend* hwsec, Platform* platform)
+    const hwsec::CryptohomeFrontend* hwsec, libstorage::Platform* platform)
     : hwsec_(hwsec) {
   CHECK(hwsec);
 

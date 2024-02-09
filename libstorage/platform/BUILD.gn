@@ -1,0 +1,187 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("platform") {
+  deps = [
+    ":install_fuzzer_headers",
+    ":install_platform_fake_headers",
+    ":install_platform_headers",
+    ":libstorage_fake_platform",
+    ":libstorage_fuzzer",
+    ":libstorage_platform",
+    ":libstorage_platform_static",
+  ]
+  if (use.test) {
+    deps += [
+      ":fake_platform_test",
+      ":platform_testrunner",
+    ]
+  }
+}
+
+pkg_config("target_defaults") {
+  # This is a list of pkg-config dependencies
+  pkg_deps = [
+    "absl",
+    "libbrillo",
+    "libchrome",
+    "libcrossystem",
+    "libecryptfs",
+    "openssl",
+    "system_api",
+  ]
+  libs = [
+    "hwsec-foundation",
+    "keyutils",
+    "rootdev",
+    "secure_erase_file",
+  ]
+  if (use.selinux) {
+    libs += [ "selinux" ]
+  }
+}
+
+generate_pkg_config("libstorage_platform_pc") {
+  name = "libstorage_platform"
+  description = "Storage Platform library"
+  version = "1.0"
+  cflags = [ "-I/usr/include/libstorage" ]
+  libs = [ "-lstorage_platform" ]
+  install = true
+}
+
+source_set("libstorage_sources") {
+  sources = [
+    "dircrypto_util.cc",
+    "platform.cc",
+  ]
+  defines = [ "USE_SELINUX=${use.selinux}" ]
+  all_dependent_configs = [ ":target_defaults" ]
+  configs += [ "//common-mk:pic" ]
+}
+
+static_library("libstorage_platform_static") {
+  deps = [ ":libstorage_sources" ]
+}
+
+shared_library("libstorage_platform") {
+  deps = [
+    ":libstorage_platform_pc",
+    ":libstorage_sources",
+  ]
+  install_path = "lib"
+}
+
+install_config("install_platform_headers") {
+  sources = [
+    "dircrypto_util.h",
+    "fake_platform.h",
+    "mock_platform.h",
+    "platform.h",
+  ]
+  install_path = "/usr/include/libstorage/platform"
+}
+
+install_config("install_platform_fake_headers") {
+  sources = [
+    "fake_platform/fake_fake_mount_mapping_redirect_factory.h",
+    "fake_platform/fake_mount_mapper.h",
+    "fake_platform/fake_mount_mapping_redirect_factory.h",
+    "fake_platform/real_fake_mount_mapping_redirect_factory.h",
+    "fake_platform/test_file_path.h",
+  ]
+  install_path = "/usr/include/libstorage/platform/fake_platform"
+}
+
+generate_pkg_config("libstorage_fake_platform_pc") {
+  name = "libstorage_fake_platform"
+  description = "Fake Storage Platform library"
+  version = "1.0"
+  libs = [ "-lstorage_fake_platform" ]
+  install = true
+}
+
+shared_library("libstorage_fake_platform") {
+  sources = [
+    "fake_platform.cc",
+    "fake_platform/fake_fake_mount_mapping_redirect_factory.cc",
+    "fake_platform/fake_mount_mapper.cc",
+    "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
+    "fake_platform/test_file_path.cc",
+    "mock_platform.cc",
+    "util/get_random_suffix.cc",
+  ]
+  libs = [ "hwsec-foundation" ]
+  pkg_deps = [ "libbrillo-test" ]
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+  deps = [ ":libstorage_fake_platform_pc" ]
+
+  # We want to install this shared lib on the test image.
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/usr/local/lib"
+}
+
+install_config("install_fuzzer_headers") {
+  sources = [ "fuzzers/fuzzed_platform.h" ]
+  install_path = "/usr/include/libstorage/platform/fuzzers"
+}
+
+generate_pkg_config("libstorage_fuzzer_pc") {
+  name = "libstorage_fuzzer"
+  description = "Fuzzer Platform library"
+  version = "1.0"
+  cflags = [ "-I/usr/include/libstorage" ]
+  libs = [ "-lstorage_fuzzer" ]
+  install = true
+}
+
+shared_library("libstorage_fuzzer") {
+  sources = [ "fuzzers/fuzzed_platform.cc" ]
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+  libs = [ "hwsec-foundation" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  deps = [ ":libstorage_fuzzer_pc" ]
+  install_path = "/build/lib"
+}
+
+if (use.test) {
+  executable("platform_testrunner") {
+    sources = [ "platform_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libbrillo-test" ]
+    deps = [
+      ":libstorage_fake_platform",
+      ":libstorage_platform_static",
+      "//common-mk/testrunner",
+    ]
+    run_test = true
+  }
+
+  executable("fake_platform_test") {
+    sources = [
+      "fake_platform/fake_mount_mapper_test.cc",
+      "fake_platform/real_fake_mount_mapping_redirect_factory_test.cc",
+      "fake_platform/test_file_path_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libbrillo-test" ]
+    deps = [
+      ":libstorage_fake_platform",
+      ":libstorage_platform_static",
+      "//common-mk/testrunner",
+    ]
+    run_test = true
+  }
+}

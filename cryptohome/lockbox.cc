@@ -27,8 +27,7 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 using base::FilePath;
 using brillo::SecureBlob;

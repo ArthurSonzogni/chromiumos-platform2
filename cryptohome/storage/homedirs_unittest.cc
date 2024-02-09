@@ -18,12 +18,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
@@ -88,7 +89,9 @@ struct test_homedir {
 class HomeDirsTest
     : public ::testing::TestWithParam<bool /* should_test_ecryptfs */> {
  public:
-  HomeDirsTest() : mock_device_policy_(new policy::MockDevicePolicy()) {}
+  HomeDirsTest()
+      : platform_(std::make_unique<FakePlatform>()),
+        mock_device_policy_(new policy::MockDevicePolicy()) {}
   ~HomeDirsTest() override {}
 
   // Not copyable or movable
@@ -151,7 +154,7 @@ class HomeDirsTest
   bool ShouldTestEcryptfs() const { return GetParam(); }
 
  protected:
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   MockKeysetManagement keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
@@ -590,7 +593,7 @@ class HomeDirsVaultTest : public ::testing::Test {
   ~HomeDirsVaultTest() override = default;
 
   void ExpectLogicalVolumeStatefulPartition(
-      MockPlatform* platform,
+      libstorage::MockPlatform* platform,
       HomeDirs* homedirs,
       const ObfuscatedUsername& obfuscated_username,
       bool existing_cryptohome) {
@@ -631,7 +634,7 @@ class HomeDirsVaultTest : public ::testing::Test {
   const FileSystemKeyReference key_reference_;
 
   void PrepareTestCase(const HomedirsTestCase& test_case,
-                       MockPlatform* platform,
+                       libstorage::MockPlatform* platform,
                        HomeDirs* homedirs) {
     if (test_case.lvm_supported) {
       auto type = test_case.existing_container_type;
@@ -870,7 +873,7 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
       }};
 
   for (const auto& test_case : test_cases) {
-    NiceMock<MockPlatform> platform;
+    NiceMock<libstorage::MockPlatform> platform;
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform, /* metrics */ nullptr, std::make_unique<FakeKeyring>(),

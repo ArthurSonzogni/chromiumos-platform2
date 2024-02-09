@@ -9,17 +9,17 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
 class FlatbufferFile final {
  public:
-  FlatbufferFile(Platform* platform, const base::FilePath& path);
+  FlatbufferFile(libstorage::Platform* platform, const base::FilePath& path);
 
   FlatbufferFile(const FlatbufferFile&) = delete;
   FlatbufferFile& operator=(const FlatbufferFile&) = delete;
@@ -37,7 +37,7 @@ class FlatbufferFile final {
   CryptohomeStatusOr<brillo::Blob> LoadFile(const TimerType& timer_type) const;
 
  private:
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   base::FilePath const path_;
 };
 

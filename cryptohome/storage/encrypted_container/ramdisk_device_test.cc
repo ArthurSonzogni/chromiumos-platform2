@@ -9,9 +9,9 @@
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 #include <linux/magic.h>
 
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 namespace cryptohome {
@@ -46,7 +46,7 @@ class RamdiskDeviceTest : public ::testing::Test {
             DoAll(SetArgPointee<1>(ephemeral_statfs_), Return(true)));
   }
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   struct statfs ephemeral_statfs_;
 };
 

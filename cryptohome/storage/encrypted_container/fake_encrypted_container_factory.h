@@ -12,8 +12,8 @@
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
@@ -28,7 +28,7 @@ namespace cryptohome {
 // Fake for generating fake encrypted containers.
 class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
  public:
-  explicit FakeEncryptedContainerFactory(Platform* platform,
+  explicit FakeEncryptedContainerFactory(libstorage::Platform* platform,
                                          std::unique_ptr<Keyring> keyring)
       : EncryptedContainerFactory(platform, /* metrics */ nullptr),
         platform_(platform),
@@ -84,7 +84,7 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
   }
 
  private:
-  Platform* platform_;
+  libstorage::Platform* platform_;
   std::unique_ptr<Keyring> keyring_;
   FakeBackingDeviceFactory backing_device_factory_;
 };

@@ -13,9 +13,9 @@
 #include <base/logging.h>
 #include <brillo/key_value_store.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/dircrypto_util.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/dircrypto_util.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
 #include "cryptohome/storage/keyring/real_keyring.h"

@@ -27,13 +27,14 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 #include <linux/magic.h>
 #include <policy/libpolicy.h>
 #include <sys/statfs.h>
 
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
@@ -116,27 +117,34 @@ MATCHER_P(DirCryptoReferenceMatcher, reference, "") {
   return true;
 }
 
-void PrepareDirectoryStructure(Platform* platform) {
+void PrepareDirectoryStructure(libstorage::Platform* platform) {
   // Create environment as defined in
   // src/platform2/cryptohome/tmpfiles.d/cryptohome.conf
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRun), 0755, kRootUid, kRootGid));
+      base::FilePath(kRun), 0755, libstorage::kRootUid, libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunCryptohome), 0700, kRootUid, kRootGid));
+      base::FilePath(kRunCryptohome), 0700, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunDaemonStore), 0755, kRootUid, kRootGid));
+      base::FilePath(kRunDaemonStore), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunDaemonStoreCache), 0755, kRootUid, kRootGid));
+      base::FilePath(kRunDaemonStoreCache), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHome), 0755, kRootUid, kRootGid));
+      base::FilePath(kHome), 0755, libstorage::kRootUid, libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronos), 0755, kChronosUid, kChronosGid));
+      base::FilePath(kHomeChronos), 0755, libstorage::kChronosUid,
+      libstorage::kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronosUser), 01755, kChronosUid, kChronosGid));
+      base::FilePath(kHomeChronosUser), 01755, libstorage::kChronosUid,
+      libstorage::kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeUser), 0755, kRootUid, kRootGid));
+      base::FilePath(kHomeUser), 0755, libstorage::kRootUid,
+      libstorage::kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeRoot), 01751, kRootUid, kRootGid));
+      base::FilePath(kHomeRoot), 01751, libstorage::kRootUid,
+      libstorage::kRootGid));
 
   // Setup some skel directories to make sure they are copied over.
   // TODO(dlunev): for now setting permissions is useless, for the code
@@ -212,7 +220,7 @@ class PersistentSystemTest : public ::testing::Test {
 
  protected:
   // Protected for trivial access.
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
@@ -600,7 +608,7 @@ class EphemeralSystemTest : public ::testing::Test {
  public:
   const Username kUser{"someuser"};
 
-  EphemeralSystemTest() = default;
+  EphemeralSystemTest() : platform_(std::make_unique<FakePlatform>()) {}
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
@@ -626,7 +634,7 @@ class EphemeralSystemTest : public ::testing::Test {
 
  protected:
   // Protected for trivial access.
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;

@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_STORAGE_FILE_SYSTEM_KEYSET_H_
 #define CRYPTOHOME_STORAGE_FILE_SYSTEM_KEYSET_H_
 
-#include <brillo/secure_blob.h>
-
 #include <string>
+
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/vault_keyset.h"

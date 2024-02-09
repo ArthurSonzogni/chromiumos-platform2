@@ -21,11 +21,11 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 
@@ -62,7 +62,7 @@ FilePath GetMountedEphemeralUserHomePath(
 }
 
 // Sets up the SELinux context for a freshly mounted ephemeral cryptohome.
-bool SetUpSELinuxContextForEphemeralCryptohome(Platform* platform,
+bool SetUpSELinuxContextForEphemeralCryptohome(libstorage::Platform* platform,
                                                const FilePath& source_path) {
   // Note that this is needed because the newly mounted ephemeral cryptohome is
   // a new file system, and thus the SELinux context that applies to the
@@ -90,33 +90,37 @@ struct DirectoryACL {
 
 std::vector<DirectoryACL> GetCacheSubdirectories(const FilePath& dir) {
   return std::vector<DirectoryACL>{
-      {dir.Append(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, kChronosUid,
-       kChronosAccessGid},
+      {dir.Append(kUserHomeSuffix).Append(kGCacheDir), kAccessMode,
+       libstorage::kChronosUid, libstorage::kChronosAccessGid},
       {dir.Append(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode,
-       kChronosUid, kChronosGid},
+       libstorage::kChronosUid, libstorage::kChronosGid},
       {dir.Append(kUserHomeSuffix)
            .Append(kGCacheDir)
            .Append(kGCacheVersion2Dir),
-       kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid},
+       kAccessMode | kGroupWriteAccess, libstorage::kChronosUid,
+       libstorage::kChronosAccessGid},
       {dir.Append(kRootHomeSuffix).Append(kDaemonStoreCacheDir),
-       kAccessMode | kGroupWriteAccess, kRootUid, kDaemonStoreGid},
+       kAccessMode | kGroupWriteAccess, libstorage::kRootUid,
+       libstorage::kDaemonStoreGid},
   };
 }
 
 std::vector<DirectoryACL> GetCommonSubdirectories(const FilePath& dir,
                                                   bool bind_mount_downloads) {
   auto result = std::vector<DirectoryACL>{
-      {dir.Append(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
-      {dir.Append(kUserHomeSuffix), kAccessMode, kChronosUid,
-       kChronosAccessGid},
+      {dir.Append(kRootHomeSuffix), kRootDirMode, libstorage::kRootUid,
+       libstorage::kDaemonStoreGid},
+      {dir.Append(kUserHomeSuffix), kAccessMode, libstorage::kChronosUid,
+       libstorage::kChronosAccessGid},
       {dir.Append(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode,
-       kChronosUid, kChronosAccessGid},
+       libstorage::kChronosUid, libstorage::kChronosAccessGid},
       {dir.Append(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
-       kAccessMode, kChronosUid, kChronosAccessGid},
+       kAccessMode, libstorage::kChronosUid, libstorage::kChronosAccessGid},
   };
   if (bind_mount_downloads) {
     result.push_back({dir.Append(kUserHomeSuffix).Append(kDownloadsDir),
-                      kAccessMode, kChronosUid, kChronosAccessGid});
+                      kAccessMode, libstorage::kChronosUid,
+                      libstorage::kChronosAccessGid});
   }
   auto cache_subdirs = GetCacheSubdirectories(dir);
   result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
@@ -138,8 +142,9 @@ std::vector<DirectoryACL> GetDmcryptSubdirectories(const FilePath& dir,
 
 // Returns true if the directory should be root owned, but is missing or has
 // wrong attributes.
-bool IsRootDirectoryAndTampered(Platform* platform, DirectoryACL dir) {
-  if (dir.uid != kRootUid) {
+bool IsRootDirectoryAndTampered(libstorage::Platform* platform,
+                                DirectoryACL dir) {
+  if (dir.uid != libstorage::kRootUid) {
     // Shouldn't be owned by root - ignore.
     return false;
   }
@@ -161,10 +166,11 @@ bool IsRootDirectoryAndTampered(Platform* platform, DirectoryACL dir) {
   return true;
 }
 
-void MaybeCorrectUserDirectoryAttrs(Platform* platform, DirectoryACL dir) {
+void MaybeCorrectUserDirectoryAttrs(libstorage::Platform* platform,
+                                    DirectoryACL dir) {
   // Ignore root owned directories - those are recreated if they have wrong
   // attributes.
-  if (dir.uid == kRootUid) {
+  if (dir.uid == libstorage::kRootUid) {
     return;
   }
   // The check is intended to correct, report and fix a group mismatch for the
@@ -185,7 +191,8 @@ void MaybeCorrectUserDirectoryAttrs(Platform* platform, DirectoryACL dir) {
 }
 
 bool CreateVaultDirectoryStructure(
-    Platform* platform, const std::vector<DirectoryACL>& directories) {
+    libstorage::Platform* platform,
+    const std::vector<DirectoryACL>& directories) {
   bool success = true;
   for (const auto& subdir : directories) {
     if (platform->DirectoryExists(subdir.path) &&
@@ -212,7 +219,7 @@ bool CreateVaultDirectoryStructure(
   return success;
 }
 
-bool SetTrackingXattr(Platform* platform,
+bool SetTrackingXattr(libstorage::Platform* platform,
                       const std::vector<DirectoryACL>& directories) {
   bool success = true;
   for (const auto& subdir : directories) {
@@ -237,7 +244,7 @@ enum class BindMountMigrationStage {
 };
 
 BindMountMigrationStage GetDownloadsBindMountMigrationXattr(
-    Platform* platform, const FilePath& path) {
+    libstorage::Platform* platform, const FilePath& path) {
   std::string xattr;
   if (!platform->GetExtendedFileAttributeAsString(
           path, kBindMountMigrationXattrName, &xattr)) {
@@ -253,7 +260,7 @@ BindMountMigrationStage GetDownloadsBindMountMigrationXattr(
   return BindMountMigrationStage::UNKNOWN;
 }
 
-bool SetDownloadsBindMountMigrationXattr(Platform* platform,
+bool SetDownloadsBindMountMigrationXattr(libstorage::Platform* platform,
                                          const FilePath& path,
                                          BindMountMigrationStage stage) {
   std::string stage_xattr;
@@ -311,7 +318,7 @@ constexpr char kBindMountMigratedStage[] = "migrated";
 
 Mounter::Mounter(bool legacy_mount,
                  bool bind_mount_downloads,
-                 Platform* platform)
+                 libstorage::Platform* platform)
     : legacy_mount_(legacy_mount),
       bind_mount_downloads_(bind_mount_downloads),
       platform_(platform) {}
@@ -377,7 +384,8 @@ bool Mounter::EnsureMountPointPath(const FilePath& dir) const {
   }
   for (size_t i = 1; i < path_parts.size(); i++) {
     check_path = check_path.Append(path_parts[i]);
-    if (!EnsurePathComponent(check_path, kRootUid, kRootGid)) {
+    if (!EnsurePathComponent(check_path, libstorage::kRootUid,
+                             libstorage::kRootGid)) {
       return false;
     }
   }
@@ -413,26 +421,29 @@ bool Mounter::EnsureUserMountPoints(const Username& username) const {
   if (!EnsureMountPointPath(multi_home_user.DirName()) ||
       !EnsureMountPointPath(multi_home_root.DirName()) ||
       !EnsureMountPointPath(new_user_path.DirName().DirName()) ||
-      !EnsurePathComponent(new_user_path.DirName(), kChronosUid, kChronosGid)) {
+      !EnsurePathComponent(new_user_path.DirName(), libstorage::kChronosUid,
+                           libstorage::kChronosGid)) {
     LOG(ERROR) << "The paths to mountpoints are inconsistent";
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          multi_home_user, kUserMountPointMode, kChronosUid,
-          kChronosAccessGid)) {
+          multi_home_user, kUserMountPointMode, libstorage::kChronosUid,
+          libstorage::kChronosAccessGid)) {
     PLOG(ERROR) << "Can't create: " << multi_home_user;
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          new_user_path, kUserMountPointMode, kChronosUid, kChronosAccessGid)) {
+          new_user_path, kUserMountPointMode, libstorage::kChronosUid,
+          libstorage::kChronosAccessGid)) {
     PLOG(ERROR) << "Can't create: " << new_user_path;
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          multi_home_root, kRootMountPointMode, kRootUid, kRootGid)) {
+          multi_home_root, kRootMountPointMode, libstorage::kRootUid,
+          libstorage::kRootGid)) {
     PLOG(ERROR) << "Can't create: " << multi_home_root;
     return false;
   }
@@ -445,7 +456,7 @@ bool Mounter::EnsureUserMountPoints(const Username& username) const {
 
 void Mounter::RecursiveCopy(const FilePath& source,
                             const FilePath& destination) const {
-  std::unique_ptr<FileEnumerator> file_enumerator(
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source, false, base::FileEnumerator::FILES));
   FilePath next_path;
 
@@ -455,16 +466,17 @@ void Mounter::RecursiveCopy(const FilePath& source,
     FilePath destination_file = destination.Append(file_name);
 
     if (!platform_->Copy(next_path, destination_file) ||
-        !platform_->SetOwnership(destination_file, kChronosUid, kChronosGid,
-                                 false)) {
-      LOG(ERROR) << "Couldn't change owner (" << kChronosUid << ":"
-                 << kChronosGid
+        !platform_->SetOwnership(destination_file, libstorage::kChronosUid,
+                                 libstorage::kChronosGid, false)) {
+      LOG(ERROR) << "Couldn't change owner (" << libstorage::kChronosUid << ":"
+                 << libstorage::kChronosGid
                  << ") of destination path: " << destination_file.value();
     }
   }
 
-  std::unique_ptr<FileEnumerator> dir_enumerator(platform_->GetFileEnumerator(
-      source, false, base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> dir_enumerator(
+      platform_->GetFileEnumerator(source, false,
+                                   base::FileEnumerator::DIRECTORIES));
 
   while (!(next_path = dir_enumerator->Next()).empty()) {
     FilePath dir_name = FilePath(next_path).BaseName();
@@ -473,7 +485,8 @@ void Mounter::RecursiveCopy(const FilePath& source,
     VLOG(1) << "RecursiveCopy: " << destination_dir.value();
 
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            destination_dir, kSkeletonSubDirMode, kChronosUid, kChronosGid)) {
+            destination_dir, kSkeletonSubDirMode, libstorage::kChronosUid,
+            libstorage::kChronosGid)) {
       LOG(ERROR) << "SafeCreateDirAndSetOwnership() failed: "
                  << destination_dir.value();
     }
@@ -500,9 +513,10 @@ bool Mounter::IsFirstMountComplete(
        GetCommonSubdirectories(mount_point, bind_mount_downloads_)) {
     initial_nodes.insert(dir.path);
   }
-  std::unique_ptr<FileEnumerator> skel_enumerator(platform_->GetFileEnumerator(
-      SkelDir(), false,
-      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> skel_enumerator(
+      platform_->GetFileEnumerator(
+          SkelDir(), false,
+          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
   for (FilePath next = skel_enumerator->Next(); !next.empty();
        next = skel_enumerator->Next()) {
     initial_nodes.insert(user_home.Append(next.BaseName()));
@@ -510,9 +524,10 @@ bool Mounter::IsFirstMountComplete(
 
   // If we have any nodes within the vault that are not in the set created
   // above - it means we have successfully entered a user session prior.
-  std::unique_ptr<FileEnumerator> vault_enumerator(platform_->GetFileEnumerator(
-      user_home, false,
-      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> vault_enumerator(
+      platform_->GetFileEnumerator(
+          user_home, false,
+          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
   for (FilePath next = vault_enumerator->Next(); !next.empty();
        next = vault_enumerator->Next()) {
     if (initial_nodes.count(next) == 0) {
@@ -535,7 +550,7 @@ bool Mounter::MountLegacyHome(const FilePath& from) {
   }
 
   if (!BindAndPush(from, FilePath(kDefaultHomeDir),
-                   RemountOption::kMountsFlowIn))
+                   libstorage::RemountOption::kMountsFlowIn))
     return false;
 
   return true;
@@ -700,7 +715,7 @@ bool Mounter::MountAndPush(const base::FilePath& src,
                            const base::FilePath& dest,
                            const std::string& type,
                            const std::string& options) {
-  uint32_t mount_flags = kDefaultMountFlags | MS_NOSYMFOLLOW;
+  uint32_t mount_flags = libstorage::kDefaultMountFlags | MS_NOSYMFOLLOW;
 
   if (!platform_->Mount(src, dest, type, mount_flags, options)) {
     PLOG(ERROR) << "Mount failed: " << src.value() << " -> " << dest.value();
@@ -713,7 +728,7 @@ bool Mounter::MountAndPush(const base::FilePath& src,
 
 bool Mounter::BindAndPush(const FilePath& src,
                           const FilePath& dest,
-                          RemountOption remount) {
+                          libstorage::RemountOption remount) {
   if (!platform_->Bind(src, dest, remount, /*nosymfollow=*/true)) {
     std::string remount_strs[] = {"kNoRemount", "kPrivate", "kShared",
                                   "kMountsFlowIn", "kUnbindable"};
@@ -750,9 +765,10 @@ bool Mounter::InternalMountDaemonStoreDirectories(
   // on rootfs, so it's tamper-proof and nobody can sneak in additional
   // directories that we blindly mount. The actual mounts happen on
   // |run_daemon_store_base_dir|, though.
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      FilePath(etc_daemon_store_base_dir), false /* recursive */,
-      base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(FilePath(etc_daemon_store_base_dir),
+                                   false /* recursive */,
+                                   base::FileEnumerator::DIRECTORIES));
 
   // |etc_daemon_store_base_dir|/<daemon-name>
   FilePath etc_daemon_store_path;
@@ -817,9 +833,10 @@ int Mounter::MigrateDirectory(const base::FilePath& dst,
                               const base::FilePath& src) const {
   VLOG(1) << "Migrating directory " << src << " -> " << dst;
   int num_items = 0;
-  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
-      src, false /* recursive */,
-      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(
+          src, false /* recursive */,
+          base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
   for (base::FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
     base::FilePath dst_obj = dst.Append(src_obj.BaseName());
@@ -844,12 +861,12 @@ bool Mounter::MountHomesAndDaemonStores(
   // Bind mount user directory as a shared bind mount.
   // This allows us to set up user mounts as subsidiary mounts without needing
   // to replicate that across multiple mount points.
-  if (!BindAndPush(user_home, user_home, RemountOption::kShared))
+  if (!BindAndPush(user_home, user_home, libstorage::RemountOption::kShared))
     return false;
 
   // Same as above for |root_home|, to ensure submounts are propagated
   // correctly.
-  if (!BindAndPush(root_home, root_home, RemountOption::kShared))
+  if (!BindAndPush(root_home, root_home, libstorage::RemountOption::kShared))
     return false;
 
   // Mount /home/chronos/user.
@@ -858,17 +875,20 @@ bool Mounter::MountHomesAndDaemonStores(
 
   // Mount /home/chronos/u-<user_hash>
   const FilePath new_user_path = GetNewUserPath(username);
-  if (!BindAndPush(user_home, new_user_path, RemountOption::kMountsFlowIn))
+  if (!BindAndPush(user_home, new_user_path,
+                   libstorage::RemountOption::kMountsFlowIn))
     return false;
 
   // Mount /home/user/<user_hash>.
   const FilePath user_multi_home = GetUserPath(username);
-  if (!BindAndPush(user_home, user_multi_home, RemountOption::kMountsFlowIn))
+  if (!BindAndPush(user_home, user_multi_home,
+                   libstorage::RemountOption::kMountsFlowIn))
     return false;
 
   // Mount /home/root/<user_hash>.
   const FilePath root_multi_home = GetRootPath(username);
-  if (!BindAndPush(root_home, root_multi_home, RemountOption::kMountsFlowIn))
+  if (!BindAndPush(root_home, root_multi_home,
+                   libstorage::RemountOption::kMountsFlowIn))
     return false;
 
   // Mount Downloads to MyFiles/Downloads in the user shadow directory.
@@ -898,7 +918,8 @@ bool Mounter::MountCacheSubdirectories(
     FilePath src_dir = cache_directory.Append(tracked_dir);
     FilePath dst_dir = data_directory.Append(tracked_dir);
 
-    if (!BindAndPush(src_dir, dst_dir, RemountOption::kMountsFlowIn)) {
+    if (!BindAndPush(src_dir, dst_dir,
+                     libstorage::RemountOption::kMountsFlowIn)) {
       LOG(ERROR) << "Failed to bind mount " << src_dir;
       return false;
     }

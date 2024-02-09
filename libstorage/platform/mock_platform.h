@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_MOCK_PLATFORM_H_
-#define CRYPTOHOME_MOCK_PLATFORM_H_
+#ifndef LIBSTORAGE_PLATFORM_MOCK_PLATFORM_H_
+#define LIBSTORAGE_PLATFORM_MOCK_PLATFORM_H_
 
 #include <map>
 #include <memory>
@@ -17,13 +17,14 @@
 #include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
+#include <brillo/brillo_export.h>
 #include <brillo/process/process_mock.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/fake_platform.h"
-#include "cryptohome/platform.h"
+#include "libstorage/platform/fake_platform.h"
+#include "libstorage/platform/platform.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 class MockFileEnumerator : public FileEnumerator {
  public:
@@ -69,9 +70,13 @@ ACTION(CallFindFilesystemDevice) {
   return Platform().FindFilesystemDevice(arg0);
 }
 
-class MockPlatform : public Platform {
+class BRILLO_EXPORT MockPlatform : public Platform {
  public:
-  MockPlatform();
+  // Fake plaform can be overriden: for instance, cryptohome needs to have
+  // a salt populated before its unit tests can work.
+  explicit MockPlatform(std::unique_ptr<FakePlatform>);
+  MockPlatform() : MockPlatform(std::make_unique<FakePlatform>()) {}
+
   virtual ~MockPlatform();
 
   MOCK_METHOD(FileEnumerator*,
@@ -413,6 +418,6 @@ class MockPlatform : public Platform {
   std::unique_ptr<FakePlatform> fake_platform_;
 };
 
-}  // namespace cryptohome
+}  // namespace libstorage
 
-#endif  // CRYPTOHOME_MOCK_PLATFORM_H_
+#endif  // LIBSTORAGE_PLATFORM_MOCK_PLATFORM_H_

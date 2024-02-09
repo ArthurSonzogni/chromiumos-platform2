@@ -11,15 +11,14 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome {
 
 class CryptohomeKeyLoader {
  public:
   CryptohomeKeyLoader(const hwsec::CryptohomeFrontend* frontend,
-                      Platform* platform,
+                      libstorage::Platform* platform,
                       hwsec::KeyAlgoType key_algo,
                       const base::FilePath& path);
   CryptohomeKeyLoader(const CryptohomeKeyLoader&) = delete;
@@ -52,7 +51,7 @@ class CryptohomeKeyLoader {
   hwsec::StatusOr<hwsec::ScopedKey> LoadOrCreateCryptohomeKey();
 
   const hwsec::CryptohomeFrontend* const hwsec_;
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
   const hwsec::KeyAlgoType key_algo_;
   const base::FilePath cryptohome_key_path_;
   std::optional<hwsec::ScopedKey> cryptohome_key_;

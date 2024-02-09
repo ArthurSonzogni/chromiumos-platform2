@@ -14,15 +14,16 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
-#include "cryptohome/platform.h"
 
 namespace cryptohome::data_migrator {
 
 class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
  public:
-  FakeMigrationHelperDelegate(Platform* platform, const base::FilePath& to_dir);
+  FakeMigrationHelperDelegate(libstorage::Platform* platform,
+                              const base::FilePath& to_dir);
   ~FakeMigrationHelperDelegate() override;
 
   FakeMigrationHelperDelegate(const FakeMigrationHelperDelegate&) = delete;
@@ -63,7 +64,7 @@ class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
   std::map<std::string, std::string> xattr_mappings_;
   std::map<uid_t, std::optional<uid_t>> uid_mappings_;
   std::optional<int64_t> free_disk_space_for_migrator_;
-  const Platform* platform_;
+  const libstorage::Platform* platform_;
   const base::FilePath to_dir_;
 };
 

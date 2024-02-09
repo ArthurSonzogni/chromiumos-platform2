@@ -8,8 +8,7 @@
 
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
-
-#include "cryptohome/platform.h"
+#include <libstorage/platform/platform.h>
 
 namespace cryptohome::data_migrator {
 
@@ -21,7 +20,7 @@ constexpr char kAtimeXattrName[] = "user.atime";
 }  // namespace
 
 FakeMigrationHelperDelegate::FakeMigrationHelperDelegate(
-    Platform* platform, const base::FilePath& to_dir)
+    libstorage::Platform* platform, const base::FilePath& to_dir)
     : platform_(platform), to_dir_(to_dir) {}
 
 FakeMigrationHelperDelegate::~FakeMigrationHelperDelegate() = default;

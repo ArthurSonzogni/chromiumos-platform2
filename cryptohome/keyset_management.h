@@ -15,6 +15,7 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libstorage/platform/platform.h>
 
 #include "base/files/file_path.h"
 #include "cryptohome/crypto.h"
@@ -23,7 +24,6 @@
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
@@ -44,7 +44,7 @@ class KeysetManagement {
       base::OnceCallback<CryptohomeStatus(VaultKeyset* vk)>;
 
   KeysetManagement() = default;
-  KeysetManagement(Platform* platform,
+  KeysetManagement(libstorage::Platform* platform,
                    Crypto* crypto,
                    std::unique_ptr<VaultKeysetFactory> vault_keyset_factory);
   virtual ~KeysetManagement() = default;
@@ -193,7 +193,7 @@ class KeysetManagement {
   void RecordVaultKeysetMetrics(const VaultKeyset& vk,
                                 VaultKeysetMetrics& keyset_metrics) const;
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   Crypto* crypto_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
 };

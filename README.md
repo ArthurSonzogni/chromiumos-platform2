@@ -111,6 +111,7 @@ copies.
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
 | [libsar](./libsar/) | Utility library to read the config file of IIO Sar sensors |
 | [libsegmentation](./libsegmentation/) | Library to check which software features are allowed |
+| [libstorage](./libstorage/) | Library presenting files, block devices and filesystems |
 | [libtouchraw](./libtouchraw/) | Library for processing HID raw touch data |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |

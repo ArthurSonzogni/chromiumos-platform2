@@ -8,8 +8,8 @@
 #include "cryptohome/storage/mount_factory.h"
 
 #include <gmock/gmock.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
@@ -25,10 +25,13 @@ class MockMountFactory : public MountFactory {
   }
 
   virtual ~MockMountFactory() {}
-  MOCK_METHOD(Mount*, New, (Platform*, HomeDirs*, bool, bool), (override));
+  MOCK_METHOD(Mount*,
+              New,
+              (libstorage::Platform*, HomeDirs*, bool, bool),
+              (override));
 
   // Backdoor to access real method, for delegating calls to parent class
-  Mount* NewConcrete(Platform* platform,
+  Mount* NewConcrete(libstorage::Platform* platform,
                      HomeDirs* homedirs,
                      bool legacy_mount,
                      bool bind_mount_downloads) {

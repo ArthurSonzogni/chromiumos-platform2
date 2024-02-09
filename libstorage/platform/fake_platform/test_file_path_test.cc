@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/test_file_path.h"
+#include "libstorage/platform/fake_platform/test_file_path.h"
 
 #include <list>
 #include <string>
@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace cryptohome {
+namespace libstorage {
 namespace fake_platform {
 
 class TestFilePathTest : public ::testing::Test {};
@@ -81,4 +81,4 @@ TEST_F(TestFilePathTest, NormalizePath_NoOp) {
 }  // namespace
 
 }  // namespace fake_platform
-}  // namespace cryptohome
+}  // namespace libstorage

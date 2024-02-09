@@ -11,9 +11,9 @@
 
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/mock_cryptohome_key_loader.h"
-#include "cryptohome/mock_platform.h"
 
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
@@ -47,7 +47,7 @@ class CryptohomeKeysManagerTest : public ::testing::Test {
 
  protected:
   hwsec::MockCryptohomeFrontend hwsec_;
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   std::unique_ptr<CryptohomeKeysManager> cryptohome_keys_manager_;
 
  private:

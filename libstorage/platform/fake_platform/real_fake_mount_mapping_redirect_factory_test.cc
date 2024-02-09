@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/real_fake_mount_mapping_redirect_factory.h"
+#include "libstorage/platform/fake_platform/real_fake_mount_mapping_redirect_factory.h"
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
-namespace cryptohome {
+namespace libstorage {
 
 class RealFakeMountMappingRedirectFactoryTest : public ::testing::Test {};
 
@@ -31,4 +31,4 @@ TEST_F(RealFakeMountMappingRedirectFactoryTest, ReturnsAChildOfTmpFs) {
 
 }  // namespace
 
-}  // namespace cryptohome
+}  // namespace libstorage

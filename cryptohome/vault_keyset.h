@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
@@ -23,7 +24,6 @@
 namespace cryptohome {
 
 class FileSystemKeyset;
-class Platform;
 
 // Defines the actual physical layout of a keyset.
 struct VaultKeysetKeys {
@@ -48,12 +48,12 @@ class VaultKeyset {
 
   // Does not take ownership of platform and crypto. The objects pointed to by
   // them must outlive this object.
-  virtual void Initialize(Platform* platform, Crypto* crypto);
+  virtual void Initialize(libstorage::Platform* platform, Crypto* crypto);
 
   // This function initializes the VaultKeyset as a backup keyset by setting the
   // |backup_vk_| field to true. Does not take ownership of platform and crypto.
   // The objects pointed to by them must outlive this object.
-  void InitializeAsBackup(Platform* platform, Crypto* crypto);
+  void InitializeAsBackup(libstorage::Platform* platform, Crypto* crypto);
 
   // Populates the fields from a SerializedVaultKeyset.
   void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
@@ -325,7 +325,7 @@ class VaultKeyset {
   CryptoStatus DecryptVaultKeysetEx(const KeyBlobs& key_blobs);
 
   // These store run time state for the class.
-  Platform* platform_;
+  libstorage::Platform* platform_;
   Crypto* crypto_;
   bool loaded_;
   bool encrypted_;

@@ -11,8 +11,8 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/username.h"
 
@@ -20,7 +20,7 @@ namespace cryptohome {
 
 class DiskCleanupRoutines {
  public:
-  DiskCleanupRoutines(HomeDirs* homedirs, Platform* platform);
+  DiskCleanupRoutines(HomeDirs* homedirs, libstorage::Platform* platform);
   virtual ~DiskCleanupRoutines();
 
   // Remove the users Cache directory.
@@ -61,7 +61,7 @@ class DiskCleanupRoutines {
 
   // Not owned. Must outlive DiskCleanupRoutines.
   HomeDirs* homedirs_;
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

@@ -24,6 +24,7 @@
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
@@ -38,7 +39,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
@@ -83,13 +83,14 @@ VaultKeyset::VaultKeyset()
       legacy_index_(-1),
       auth_locked_(false) {}
 
-void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
+void VaultKeyset::Initialize(libstorage::Platform* platform, Crypto* crypto) {
   platform_ = platform;
   crypto_ = crypto;
   backup_vk_ = false;
 }
 
-void VaultKeyset::InitializeAsBackup(Platform* platform, Crypto* crypto) {
+void VaultKeyset::InitializeAsBackup(libstorage::Platform* platform,
+                                     Crypto* crypto) {
   platform_ = platform;
   crypto_ = crypto;
   backup_vk_ = true;

@@ -12,9 +12,9 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
@@ -64,7 +64,7 @@ uint32_t GetContainerIVOffset(const std::string& container_name) {
 namespace cryptohome {
 
 CryptohomeVaultFactory::CryptohomeVaultFactory(
-    Platform* platform,
+    libstorage::Platform* platform,
     std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory)
     : platform_(platform),
       encrypted_container_factory_(std::move(encrypted_container_factory)) {}

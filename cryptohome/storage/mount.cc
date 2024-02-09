@@ -36,11 +36,11 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
@@ -66,7 +66,7 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
 
 namespace cryptohome {
 
-Mount::Mount(Platform* platform,
+Mount::Mount(libstorage::Platform* platform,
              HomeDirs* homedirs,
              std::unique_ptr<MountHelperInterface> mount_helper)
     : platform_(platform),

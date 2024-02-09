@@ -15,11 +15,11 @@
 #include <brillo/cryptohome.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/cleanup/mock_disk_cleanup_routines.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/username.h"
 
@@ -145,7 +145,7 @@ class DiskCleanupTest : public ::testing::Test {
     return queries;
   }
 
-  StrictMock<MockPlatform> platform_;
+  StrictMock<libstorage::MockPlatform> platform_;
   StrictMock<MockHomeDirs> homedirs_;
   StrictMock<MockUserOldestActivityTimestampManager> timestamp_manager_;
   StrictMock<MockDiskCleanupRoutines>* cleanup_routines_;

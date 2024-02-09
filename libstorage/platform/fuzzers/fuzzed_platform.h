@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_FUZZERS_FUZZED_PLATFORM_H_
-#define CRYPTOHOME_FUZZERS_FUZZED_PLATFORM_H_
+#ifndef LIBSTORAGE_PLATFORM_FUZZERS_FUZZED_PLATFORM_H_
+#define LIBSTORAGE_PLATFORM_FUZZERS_FUZZED_PLATFORM_H_
 
 #include <stdint.h>
 #include <stdio.h>
@@ -24,15 +24,16 @@
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
+#include <brillo/brillo_export.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/dircrypto_util.h"
-#include "cryptohome/platform.h"
+#include "libstorage/platform/dircrypto_util.h"
+#include "libstorage/platform/platform.h"
 
-namespace cryptohome {
+namespace libstorage {
 
 // Platform implementation for use in fuzzers.
 //
@@ -44,7 +45,7 @@ namespace cryptohome {
 // reasons.
 //
 // Must be used from a single sequence only (concurrent usage is forbidden).
-class FuzzedPlatform : public Platform {
+class BRILLO_EXPORT FuzzedPlatform : public Platform {
  public:
   struct VirtualFsEntry {
     bool is_dir = false;
@@ -288,6 +289,6 @@ class FuzzedPlatform : public Platform {
   SEQUENCE_CHECKER(sequence_checker_);
 };
 
-}  // namespace cryptohome
+}  // namespace libstorage
 
-#endif  // CRYPTOHOME_FUZZERS_FUZZED_PLATFORM_H_
+#endif  // LIBSTORAGE_PLATFORM_FUZZERS_FUZZED_PLATFORM_H_

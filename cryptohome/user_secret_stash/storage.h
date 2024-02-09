@@ -8,16 +8,16 @@
 #include <utility>
 
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
 class UssStorage final {
  public:
-  explicit UssStorage(Platform* platform);
+  explicit UssStorage(libstorage::Platform* platform);
 
   UssStorage(const UssStorage&) = delete;
   UssStorage& operator=(const UssStorage&) = delete;
@@ -25,8 +25,8 @@ class UssStorage final {
   ~UssStorage();
 
   // Persists the serialized USS container, as created by
-  // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory
-  // in the shadow root. Returns a status on failure.
+  // `UserSecretStash::GetEncryptedContainer()`, in the given user's
+  // directory in the shadow root. Returns a status on failure.
   CryptohomeStatus Persist(const brillo::Blob& uss_container_flatbuffer,
                            const ObfuscatedUsername& obfuscated_username);
   // Loads the serialized USS container flatbuffer (to be used with
@@ -36,7 +36,7 @@ class UssStorage final {
       const ObfuscatedUsername& obfuscated_username) const;
 
  private:
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 };
 
 // Wrapper around UssStorage that binds it to a specific user. Individual

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fake_platform/fake_fake_mount_mapping_redirect_factory.h"
+#include "libstorage/platform/fake_platform/fake_fake_mount_mapping_redirect_factory.h"
 
 #include <list>
 
 #include <base/files/file_path.h>
 
-namespace cryptohome {
+namespace libstorage {
 
 FakeFakeMountMappingRedirectFactory::FakeFakeMountMappingRedirectFactory(
     std::list<base::FilePath> redirects)
@@ -25,4 +25,4 @@ base::FilePath FakeFakeMountMappingRedirectFactory::Create() {
   return result;
 }
 
-}  // namespace cryptohome
+}  // namespace libstorage

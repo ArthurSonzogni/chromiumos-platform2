@@ -65,7 +65,7 @@ struct PathTypeMapping {
 }  // namespace
 
 DircryptoMigrationHelperDelegate::DircryptoMigrationHelperDelegate(
-    Platform* platform,
+    libstorage::Platform* platform,
     const base::FilePath& to_dir,
     MigrationType migration_type)
     : platform_(platform),

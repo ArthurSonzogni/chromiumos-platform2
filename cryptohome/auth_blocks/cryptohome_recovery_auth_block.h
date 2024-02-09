@@ -9,6 +9,7 @@
 
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -31,7 +32,7 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   using StateType = CryptohomeRecoveryAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
-      Platform& platform,
+      libstorage::Platform& platform,
       const hwsec::CryptohomeFrontend& hwsec,
       const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
       const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
@@ -40,12 +41,12 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   explicit CryptohomeRecoveryAuthBlock(
       const hwsec::CryptohomeFrontend* hwsec,
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-      Platform* platform);
+      libstorage::Platform* platform);
   explicit CryptohomeRecoveryAuthBlock(
       const hwsec::CryptohomeFrontend* hwsec,
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-      Platform* platform);
+      libstorage::Platform* platform);
 
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
@@ -76,7 +77,7 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   const hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
   // Low Entropy credentials manager, needed for revocation support.
-  Platform* const platform_;
+  libstorage::Platform* const platform_;
 };
 
 }  // namespace cryptohome

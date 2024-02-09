@@ -32,6 +32,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "base/test/test_future.h"
 #include "cryptohome/auth_blocks/auth_block.h"
@@ -44,7 +45,6 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
@@ -142,7 +142,7 @@ class VaultKeysetTest : public ::testing::Test {
   }
 
  protected:
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
@@ -1114,7 +1114,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
   LeCredentialsManagerTest& operator=(LeCredentialsManagerTest&&) = delete;
 
  protected:
-  MockPlatform platform_;
+  libstorage::MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;

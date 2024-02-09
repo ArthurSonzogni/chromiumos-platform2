@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mock_platform.h"
+#include "libstorage/platform/mock_platform.h"
 
-#include "cryptohome/fake_platform.h"
+#include "libstorage/platform/fake_platform.h"
 
 using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 
-namespace cryptohome {
+namespace libstorage {
 
-MockPlatform::MockPlatform()
+MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
     : mock_process_(new NiceMock<brillo::ProcessMock>()),
-      fake_platform_(new FakePlatform()) {
+      fake_platform_(std::move(fake_platform)) {
   ON_CALL(*this, Rename(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Rename));
   ON_CALL(*this, Copy(_, _))
@@ -236,4 +236,4 @@ MockPlatform::MockPlatform()
 
 MockPlatform::~MockPlatform() {}
 
-}  // namespace cryptohome
+}  // namespace libstorage

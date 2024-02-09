@@ -20,10 +20,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/data_migrator/fake_migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/mock_platform.h"
 
 extern "C" {
 #include <linux/fs.h>
@@ -75,7 +75,7 @@ class MigrationHelperTest : public ::testing::Test {
   base::FilePath from_dir_;
   base::FilePath to_dir_;
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   FakeMigrationHelperDelegate delegate_{&platform_, to_dir_};
 
   std::vector<uint64_t> migrated_values_;

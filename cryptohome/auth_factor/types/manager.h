@@ -8,6 +8,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/type.h"
@@ -15,7 +17,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_challenge_service_factory.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/util/async_init.h"
 
@@ -28,7 +29,7 @@ namespace cryptohome {
 class AuthFactorDriverManager {
  public:
   AuthFactorDriverManager(
-      Platform* platform,
+      libstorage::Platform* platform,
       Crypto* crypto,
       UssManager* uss_manager,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,

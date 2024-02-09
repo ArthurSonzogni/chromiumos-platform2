@@ -14,11 +14,11 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_factor/label.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 using ::hwsec_foundation::CreateSecureRandomBlob;
@@ -45,7 +45,7 @@ constexpr char kLogicalVolumeSnapshotSuffix[] = "-rw";
 // Storage for serialized RecoveryId.
 constexpr char kRecoveryIdFile[] = "recovery_id";
 
-bool GetOrCreateSalt(Platform* platform,
+bool GetOrCreateSalt(libstorage::Platform* platform,
                      const base::FilePath& salt_file,
                      brillo::SecureBlob* salt,
                      bool can_create) {
@@ -218,7 +218,7 @@ base::FilePath LogicalVolumeSnapshotPath(
   return base::FilePath(kDeviceMapperDir).Append(name);
 }
 
-bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt) {
+bool GetSystemSalt(libstorage::Platform* platform, brillo::SecureBlob* salt) {
   // Only new installations get the system salt file in the new location.
   // If the legacy salt file exists, the system should keep using it.
   if (platform->FileExists(LegacySystemSaltFile())) {
@@ -228,7 +228,8 @@ bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt) {
   return GetOrCreateSalt(platform, SystemSaltFile(), salt, /*can_create=*/true);
 }
 
-bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
+bool GetPublicMountSalt(libstorage::Platform* platform,
+                        brillo::SecureBlob* salt) {
   return GetOrCreateSalt(platform, PublicMountSaltFile(), salt,
                          /*can_create=*/true);
 }
@@ -243,7 +244,8 @@ base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
       .Append(kRecoveryIdFile);
 }
 
-bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt) {
+bool InitializeFilesystemLayout(libstorage::Platform* platform,
+                                brillo::SecureBlob* salt) {
   const base::FilePath shadow_root = ShadowRoot();
   if (!platform->DirectoryExists(shadow_root)) {
     platform->CreateDirectory(shadow_root);

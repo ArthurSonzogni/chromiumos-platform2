@@ -26,10 +26,10 @@
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libstorage/platform/dircrypto_util.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
@@ -47,7 +47,7 @@ namespace cryptohome {
 const char kForceKeylockerForTestingFlag[] =
     "/run/cryptohome/.force_keylocker_for_testing";
 
-HomeDirs::HomeDirs(Platform* platform,
+HomeDirs::HomeDirs(libstorage::Platform* platform,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback,
                    CryptohomeVaultFactory* vault_factory)
@@ -306,7 +306,7 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
   std::vector<std::string> name_components = tracked_dir_name.GetComponents();
   for (const auto& name_component : name_components) {
     FilePath next_path;
-    std::unique_ptr<FileEnumerator> enumerator(
+    std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(current_path, false /* recursive */,
                                      base::FileEnumerator::DIRECTORIES));
     for (FilePath dir = enumerator->Next(); !dir.empty();
@@ -478,7 +478,7 @@ bool HomeDirs::IsOrWillBeOwner(const Username& account_id) {
 }
 
 bool HomeDirs::Create(const Username& username) {
-  brillo::ScopedUmask scoped_umask(kDefaultUmask);
+  brillo::ScopedUmask scoped_umask(libstorage::kDefaultUmask);
   ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
   // Create the user's entry in the shadow root
@@ -626,8 +626,9 @@ bool HomeDirs::MayContainAndroidData(
     const base::FilePath& root_home_dir) const {
   // The root home directory is considered to contain Android data if its
   // grandchild (supposedly android-data/data) is owned by android's system UID.
-  std::unique_ptr<FileEnumerator> dir_enum(platform_->GetFileEnumerator(
-      root_home_dir, false, base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> dir_enum(
+      platform_->GetFileEnumerator(root_home_dir, false,
+                                   base::FileEnumerator::DIRECTORIES));
   for (base::FilePath subdirectory = dir_enum->Next(); !subdirectory.empty();
        subdirectory = dir_enum->Next()) {
     if (LooksLikeAndroidData(subdirectory)) {
@@ -638,8 +639,9 @@ bool HomeDirs::MayContainAndroidData(
 }
 
 bool HomeDirs::LooksLikeAndroidData(const base::FilePath& directory) const {
-  std::unique_ptr<FileEnumerator> dir_enum(platform_->GetFileEnumerator(
-      directory, false, base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<libstorage::FileEnumerator> dir_enum(
+      platform_->GetFileEnumerator(directory, false,
+                                   base::FileEnumerator::DIRECTORIES));
 
   for (base::FilePath subdirectory = dir_enum->Next(); !subdirectory.empty();
        subdirectory = dir_enum->Next()) {

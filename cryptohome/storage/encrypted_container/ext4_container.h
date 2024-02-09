@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
+#include <libstorage/platform/platform.h>
 #include <metrics/metrics_library.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 
@@ -29,7 +29,7 @@ class Ext4Container : public EncryptedContainer {
  public:
   Ext4Container(const Ext4FileSystemConfig& config,
                 std::unique_ptr<EncryptedContainer> backing_container,
-                Platform* platform,
+                libstorage::Platform* platform,
                 MetricsLibraryInterface* metrics);
 
   ~Ext4Container() {}
@@ -83,7 +83,7 @@ class Ext4Container : public EncryptedContainer {
   // Backing device for the file system container.
   std::unique_ptr<EncryptedContainer> backing_container_;
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
 
   MetricsLibraryInterface* metrics_;
 

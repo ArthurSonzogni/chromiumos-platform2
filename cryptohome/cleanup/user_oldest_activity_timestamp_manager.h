@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/time/time.h>
+#include <libstorage/platform/platform.h>
 
-#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -18,7 +18,7 @@ namespace cryptohome {
 // Manages last access timestamp for users.
 class UserOldestActivityTimestampManager {
  public:
-  explicit UserOldestActivityTimestampManager(Platform* platform);
+  explicit UserOldestActivityTimestampManager(libstorage::Platform* platform);
   UserOldestActivityTimestampManager(
       const UserOldestActivityTimestampManager&) = delete;
   UserOldestActivityTimestampManager& operator=(
@@ -55,7 +55,7 @@ class UserOldestActivityTimestampManager {
   bool WriteTimestamp(const ObfuscatedUsername& obfuscated,
                       base::Time timestamp);
 
-  Platform* platform_;
+  libstorage::Platform* platform_;
   std::map<ObfuscatedUsername, base::Time> users_timestamp_lookup_;
 };
 
