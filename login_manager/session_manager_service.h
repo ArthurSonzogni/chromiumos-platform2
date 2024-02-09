@@ -328,8 +328,8 @@ class SessionManagerService
   std::unique_ptr<ChromeFeaturesServiceClient> chrome_features_service_client_;
 
   // Whether to use long kill timeout for child jobs. This is updated when
-  // chrome starts and check the 'SessionManaagerLongKillTimeout' feature
-  // enabled state via ChromeFeaturesService.
+  // chrome starts and check the 'SessionManagerLongKillTimeout' feature enabled
+  // state via ChromeFeaturesService.
   bool use_long_kill_timeout_ = false;
 };
 }  // namespace login_manager

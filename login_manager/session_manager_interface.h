@@ -12,10 +12,10 @@ namespace login_manager {
 
 class SessionManagerInterface {
  public:
-  SessionManagerInterface() {}
+  SessionManagerInterface() = default;
   virtual ~SessionManagerInterface() {}
 
-  // Intializes policy subsystems.  Failure to initialize must be fatal.
+  // Initializes policy subsystems. Failure to initialize must be fatal.
   // Note: Initialize() does not start D-Bus service, yet.
   virtual bool Initialize() = 0;
   virtual void Finalize() = 0;

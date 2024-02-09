@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
 
   // Checks magic file that causes the session_manager to stop managing the
   // browser process. Devs and tests can use this to keep the session_manager
-  // running while stopping and starting the browser manaually.
+  // running while stopping and starting the browser manually.
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())

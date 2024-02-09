@@ -582,9 +582,9 @@ class SessionManagerImplTest : public ::testing::Test,
     }
 
     StartArcInstanceExpectationsBuilder& SetHostUreadaheadMode(
-      arc::StartArcMiniInstanceRequest_HostUreadaheadMode v) {
-        host_ureadahead_mode_ = v;
-        return *this;
+        arc::StartArcMiniInstanceRequest_HostUreadaheadMode v) {
+      host_ureadahead_mode_ = v;
+      return *this;
     }
 
     StartArcInstanceExpectationsBuilder& SetUseDevCaches(bool v) {

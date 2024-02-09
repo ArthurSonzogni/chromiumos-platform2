@@ -101,7 +101,7 @@ constexpr base::TimeDelta kLongKillTimeout = base::Seconds(12);
 constexpr char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
-constexpr char kFeatureNamelSessionManagerLongKillTimeout[] =
+constexpr char kFeatureNameSessionManagerLongKillTimeout[] =
     "SessionManagerLongKillTimeout";
 
 // This needs to match exactly the name of feature kSessionManagerLivenessCheck
@@ -312,7 +312,7 @@ void SessionManagerService::RunBrowser() {
   // |chrome_features_service_client_| is null in test.
   if (chrome_features_service_client_) {
     chrome_features_service_client_->IsFeatureEnabled(
-        kFeatureNamelSessionManagerLongKillTimeout,
+        kFeatureNameSessionManagerLongKillTimeout,
         base::BindOnce(&SessionManagerService::OnLongKillTimeoutEnabled,
                        base::Unretained(this)));
 
