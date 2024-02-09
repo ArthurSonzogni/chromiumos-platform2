@@ -300,6 +300,7 @@ void WiFiProvider::Stop() {
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
   netlink_manager_->RemoveBroadcastHandler(broadcast_handler_);
   wifi_phys_.clear();
+  manager_->RefreshTetheringCapabilities();
   p2p_manager_->Stop();
   running_ = false;
 }
@@ -1203,6 +1204,7 @@ void WiFiProvider::HandleNetlinkBroadcast(
 
   if ((nl80211_message.command() == DelWiphyMessage::kCommand)) {
     wifi_phys_.erase(phy_index);
+    manager_->RefreshTetheringCapabilities();
     return;
   }
   // The NL80211 message includes a phy index for which we have no associated
@@ -1511,6 +1513,7 @@ void WiFiProvider::OnGetPhyInfoAuxMessage(
   }
   // Signal the end of dump.
   PhyDumpComplete(phy_index);
+  manager_->RefreshTetheringCapabilities();
 
   if (!phy_update_timeout_cb_.IsCancelled()) {
     phy_update_timeout_cb_.Cancel();

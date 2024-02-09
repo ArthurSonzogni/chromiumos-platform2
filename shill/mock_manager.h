@@ -139,6 +139,7 @@ class MockManager : public Manager {
               FilterByTechnology,
               (Technology tech),
               (const, override));
+  MOCK_METHOD(void, RefreshTetheringCapabilities, (), ());
   MOCK_METHOD(void, TetheringStatusChanged, (), ());
   MOCK_METHOD(DHCPProvider::Options,
               CreateDefaultDHCPOption,

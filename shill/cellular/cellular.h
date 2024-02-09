@@ -286,7 +286,9 @@ class Cellular : public Device,
 
   // Returns true if the FW version supports tethering. Only FWs that were
   // fully validated will return true.
-  mockable bool FirmwareSupportsTethering();
+  mockable bool FirmwareSupportsTethering() {
+    return firmware_supports_tethering_;
+  }
 
   // Asynchronously acquires the Network to be used in tethering, which may be
   // the same one as used for default connection or a new one.
@@ -773,6 +775,7 @@ class Cellular : public Device,
   void TriggerEntitlementCheckCallbacks(
       TetheringManager::EntitlementStatus result);
 
+  void UpdateFirmwareSupportsTethering();
   // Single tethering operation context, whenever any connection setup is
   // required (i.e. not used when reusing the default network for tethering).
   struct TetheringOperationInfo {
@@ -1019,6 +1022,8 @@ class Cellular : public Device,
   // When set in tests, a connection attempt doesn't attempt link establishment
   bool skip_establish_link_for_testing_ = false;
 
+  // If the modem FW version supports the hotspot feature.
+  bool firmware_supports_tethering_ = true;
   std::unique_ptr<net_base::RTNLListener> link_listener_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};

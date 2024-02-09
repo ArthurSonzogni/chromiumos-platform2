@@ -140,6 +140,9 @@ class TetheringManager : public Network::EventHandler {
   // DBus property getters
   // This property is temporary and will be removed when the feature is mature.
   bool allowed() { return allowed_; }
+  KeyValueStore GetCapabilities(Error* error);
+  // Refresh the list of tethering capabilities
+  void RefreshCapabilities();
 
  private:
   friend class TetheringManagerTest;
@@ -184,9 +187,9 @@ class TetheringManager : public Network::EventHandler {
   }
 
   // Tethering properties get handlers.
-  KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetConfig(Error* error);
   KeyValueStore GetStatus(Error* error) { return GetStatus(); }
+  void SetCapabilities(const KeyValueStore& value);
 
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details. TetheringManager only cares about
@@ -320,6 +323,8 @@ class TetheringManager : public Network::EventHandler {
   WiFiBand band_;
   // Preferred upstream technology to use.
   Technology upstream_technology_;
+  // The supported tethering capabilities.
+  KeyValueStore capabilities_;
   // The assigned downstream device, only used for testing. This property is
   // never persisted.
   std::optional<std::string> downstream_device_for_test_;

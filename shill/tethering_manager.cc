@@ -442,6 +442,18 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
 }
 
 KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
+  return capabilities_;
+}
+
+void TetheringManager::SetCapabilities(const KeyValueStore& value) {
+  if (capabilities_ == value) {
+    return;
+  }
+  capabilities_ = value;
+  manager_->TetheringCapabilitiesChanged(capabilities_);
+}
+
+void TetheringManager::RefreshCapabilities() {
   KeyValueStore caps;
   std::vector<std::string> upstream_technologies;
   std::vector<std::string> downstream_technologies;
@@ -471,8 +483,7 @@ KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
 
   caps.Set<Strings>(kTetheringCapUpstreamProperty, upstream_technologies);
   caps.Set<Strings>(kTetheringCapDownstreamProperty, downstream_technologies);
-
-  return caps;
+  SetCapabilities(caps);
 }
 
 KeyValueStore TetheringManager::GetStatus() {
@@ -1425,6 +1436,7 @@ bool TetheringManager::SetExperimentalTetheringFunctionality(const bool& value,
 
   LOG(INFO) << __func__ << " set to " << std::boolalpha << value;
   experimental_tethering_functionality_ = value;
+  RefreshCapabilities();
   return true;
 }
 

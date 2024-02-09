@@ -532,7 +532,12 @@ class Manager {
   }
 #endif  // DISABLE_FLOSS
 
-  // Emit TetheringStatus dbus property change signal.
+  // Refresh tethering capabilities in TetheringManager.
+  mockable void RefreshTetheringCapabilities();
+
+  // Emit kTetheringCapabilitiesProperty dbus property change signal.
+  mockable void TetheringCapabilitiesChanged(const KeyValueStore& capabilities);
+  // Emit kTetheringStatusProperty dbus property change signal.
   mockable void TetheringStatusChanged();
 
   // Get the active cellular service operator two-letter country code defined in

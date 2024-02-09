@@ -537,6 +537,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
   SetAllowed(tethering_manager_, true);
+  tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
   auto upstream_technologies =
@@ -566,6 +567,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
       .WillOnce(Return(true));
   SetAllowed(tethering_manager_, true);
 
+  tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
   auto upstream_technologies =
@@ -594,6 +596,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
       .WillOnce(Return(false));
   SetAllowed(tethering_manager_, true);
 
+  tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
   auto upstream_technologies =

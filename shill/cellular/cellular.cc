@@ -3669,6 +3669,7 @@ void Cellular::SetFirmwareRevision(const std::string& firmware_revision) {
 
   firmware_revision_ = firmware_revision;
   adaptor()->EmitStringChanged(kFirmwareRevisionProperty, firmware_revision_);
+  UpdateFirmwareSupportsTethering();
 }
 
 void Cellular::SetHardwareRevision(const std::string& hardware_revision) {
@@ -3684,23 +3685,25 @@ void Cellular::SetDeviceId(std::unique_ptr<DeviceId> device_id) {
   if (!device_id_) {
     SLOG(2) << "device_id: {}";
     modem_type_ = ModemType::kUnknown;
-    return;
-  }
-  SLOG(2) << "device_id: " << device_id_->AsString();
-  if (device_id_->Match(DeviceId(cellular::kL850GLBusType, cellular::kL850GLVid,
-                                 cellular::kL850GLPid))) {
-    modem_type_ = ModemType::kL850GL;
-  } else if (device_id_->Match(DeviceId(cellular::kFM101BusType,
-                                        cellular::kFM101Vid,
-                                        cellular::kFM101Pid))) {
-    modem_type_ = ModemType::kFM101;
-  } else if (device_id_->Match(DeviceId(cellular::kFM350BusType,
-                                        cellular::kFM350Vid,
-                                        cellular::kFM350Pid))) {
-    modem_type_ = ModemType::kFM350;
   } else {
-    modem_type_ = ModemType::kOther;
+    SLOG(2) << "device_id: " << device_id_->AsString();
+    if (device_id_->Match(DeviceId(cellular::kL850GLBusType,
+                                   cellular::kL850GLVid,
+                                   cellular::kL850GLPid))) {
+      modem_type_ = ModemType::kL850GL;
+    } else if (device_id_->Match(DeviceId(cellular::kFM101BusType,
+                                          cellular::kFM101Vid,
+                                          cellular::kFM101Pid))) {
+      modem_type_ = ModemType::kFM101;
+    } else if (device_id_->Match(DeviceId(cellular::kFM350BusType,
+                                          cellular::kFM350Vid,
+                                          cellular::kFM350Pid))) {
+      modem_type_ = ModemType::kFM350;
+    } else {
+      modem_type_ = ModemType::kOther;
+    }
   }
+  UpdateFirmwareSupportsTethering();
 }
 
 void Cellular::SetImei(const std::string& imei) {
@@ -4197,7 +4200,10 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
   }
 }
 
-bool Cellular::FirmwareSupportsTethering() {
+void Cellular::UpdateFirmwareSupportsTethering() {
+  // This function should be called anytime one of the member variables used in
+  // the function changes value (i.e. SetFirmwareRevision).
+
   // This list should only include FW versions in which hotspot was fully
   // validated on.
   static constexpr auto blocklist =
@@ -4209,6 +4215,7 @@ bool Cellular::FirmwareSupportsTethering() {
           {Cellular::ModemType::kFM350, "^81600.0000.00.29.19.*"},
       });
 
+  firmware_supports_tethering_ = true;
   const auto it = blocklist.find(modem_type_);
   if (it != blocklist.end()) {
     // Use PartialMatch instead of FullMatch because some modems report FW
@@ -4216,10 +4223,14 @@ bool Cellular::FirmwareSupportsTethering() {
     if (RE2::PartialMatch(firmware_revision_, re2::RE2(it->second))) {
       SLOG(2) << LoggingTag() << ": " << __func__ << " : Firmware doesn't "
               << "support tethering: " << firmware_revision_;
-      return false;
+      firmware_supports_tethering_ = false;
     }
   }
-  return true;
+
+  // We call this unconditionally because tethering manager can set its
+  // capabilities before a Cellular object even exists, and needs to refresh
+  // them the first time we get the modem properties.
+  manager()->RefreshTetheringCapabilities();
 }
 
 void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,

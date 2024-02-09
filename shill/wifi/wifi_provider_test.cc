@@ -773,6 +773,7 @@ TEST_F(WiFiProviderTest, Stop) {
   EXPECT_CALL(*service1, ResetWiFi()).Times(1);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service1))).Times(1);
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
   provider_->Stop();
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
@@ -2470,6 +2471,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_DeletePresentPhy) {
   net_base::NetlinkPacket packet(kDelWiphyNlMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   EXPECT_NE(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities());
   // The phy should be deleted.
   HandleNetlinkBroadcast(msg);
   EXPECT_EQ(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
@@ -2480,6 +2482,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_DeleteAbsentPhy) {
   net_base::NetlinkPacket packet(kDelWiphyNlMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   EXPECT_EQ(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities());
   HandleNetlinkBroadcast(msg);
   EXPECT_EQ(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
 }
@@ -2516,6 +2519,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesAbsentPhy) {
 TEST_F(WiFiProviderTest, RemoveNetlinkHandler) {
   provider_->Start();
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_));
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities());
   provider_->Stop();
 }
 
@@ -2677,6 +2681,7 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
       netlink_manager_,
       SendOrPostMessage(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
   provider_->RegionChanged("US");
   OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), net_base::NetlinkManager::kDone,
                          nullptr);
@@ -2698,6 +2703,7 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularCountry) {
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
 
   // Now simulate reception of region change, expect phy dump and simulate
   // reception of "Done" message (signaling the end of "split messages" dump).
@@ -2733,6 +2739,7 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
   provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
 
   // Now simulate reception of expect phy dump and simulate reception of "Done"
   // message (signaling the end of "split messages" dump).
@@ -2750,12 +2757,14 @@ TEST_F(WiFiProviderTest, PhyDumpComplete) {
   // Only call PhyDumpComplete on the phy which receives the done signal.
   EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
   EXPECT_CALL(*phy1, PhyDumpComplete()).Times(0);
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
   OnGetPhyInfoAuxMessage(phy0->GetPhyIndex(), net_base::NetlinkManager::kDone,
                          nullptr);
 
   // Call PhyDumpComplete on all phys.
   EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
   EXPECT_CALL(*phy1, PhyDumpComplete()).Times(1);
+  EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
   OnGetPhyInfoAuxMessage(kAllPhys, net_base::NetlinkManager::kDone, nullptr);
 }
 
