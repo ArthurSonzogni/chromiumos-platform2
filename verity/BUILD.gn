@@ -36,6 +36,7 @@ shared_library("libdm-bht") {
   sources = [
     "blake2b/blake2b.cc",
     "dm-bht.cc",
+    "dm_verity_table.cc",
     "file_hasher.cc",
     "hasher.cc",
   ]
@@ -59,6 +60,7 @@ install_config("install_headers") {
   sources = [
     "dm-bht-userspace.h",
     "dm-bht.h",
+    "dm_verity_table.h",
     "file_hasher.h",
   ]
   install_path = "/usr/include/verity"
@@ -94,6 +96,7 @@ if (use.test) {
   executable("verity_tests") {
     sources = [
       "dm-bht_test.cc",
+      "dm_verity_table_test.cc",
       "file_hasher_test.cc",
     ]
     configs += [
