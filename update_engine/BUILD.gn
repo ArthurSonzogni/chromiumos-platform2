@@ -163,189 +163,191 @@ static_library("libpayload_consumer") {
 
 # The main daemon static_library with all the code used to check for updates
 # with Omaha and expose a DBus daemon.
-static_library("libupdate_engine") {
-  sources = [
-    "certificate_checker.cc",
-    "common/call_wrapper.cc",
-    "common/connection_utils.cc",
-    "common/system_state.cc",
-    "cros/boot_control_chromeos.cc",
-    "cros/common_service.cc",
-    "cros/connection_manager.cc",
-    "cros/daemon_chromeos.cc",
-    "cros/dbus_connection.cc",
-    "cros/dbus_service.cc",
-    "cros/download_action_chromeos.cc",
-    "cros/hardware_chromeos.cc",
-    "cros/image_properties_chromeos.cc",
-    "cros/install_action.cc",
-    "cros/logging.cc",
-    "cros/metrics_reporter_omaha.cc",
-    "cros/omaha_parser_data.cc",
-    "cros/omaha_parser_xml.cc",
-    "cros/omaha_request_action.cc",
-    "cros/omaha_request_builder_xml.cc",
-    "cros/omaha_request_params.cc",
-    "cros/omaha_response_handler_action.cc",
-    "cros/omaha_utils.cc",
-    "cros/p2p_manager.cc",
-    "cros/payload_state.cc",
-    "cros/power_manager_chromeos.cc",
-    "cros/real_system_state.cc",
-    "cros/shill_proxy.cc",
-    "cros/update_attempter.cc",
-    "libcurl_http_fetcher.cc",
-    "metrics_utils.cc",
-    "update_boot_flags_action.cc",
-    "update_manager/boxed_value.cc",
-    "update_manager/deferred_update_policy_impl.cc",
-    "update_manager/enough_slots_ab_updates_policy_impl.cc",
-    "update_manager/enterprise_device_policy_impl.cc",
-    "update_manager/enterprise_rollback_policy_impl.cc",
-    "update_manager/enterprise_update_disabled_policy_impl.cc",
-    "update_manager/evaluation_context.cc",
-    "update_manager/installation_policy_impl.cc",
-    "update_manager/interactive_update_policy_impl.cc",
-    "update_manager/minimum_version_policy_impl.cc",
-    "update_manager/next_update_check_policy_impl.cc",
-    "update_manager/official_build_check_policy_impl.cc",
-    "update_manager/omaha_request_params_policy.cc",
-    "update_manager/out_of_box_experience_policy_impl.cc",
-    "update_manager/p2p_enabled_policy.cc",
-    "update_manager/policy_evaluator.cc",
-    "update_manager/policy_test_utils.cc",
-    "update_manager/policy_utils.cc",
-    "update_manager/real_config_provider.cc",
-    "update_manager/real_device_policy_provider.cc",
-    "update_manager/real_random_provider.cc",
-    "update_manager/real_shill_provider.cc",
-    "update_manager/real_system_provider.cc",
-    "update_manager/real_time_provider.cc",
-    "update_manager/real_updater_provider.cc",
-    "update_manager/recovery_policy.cc",
-    "update_manager/staging_utils.cc",
-    "update_manager/state_factory.cc",
-    "update_manager/update_can_be_applied_policy.cc",
-    "update_manager/update_can_start_policy.cc",
-    "update_manager/update_check_allowed_policy.cc",
-    "update_manager/update_in_hibernate_resume_policy_impl.cc",
-    "update_manager/update_manager.cc",
-    "update_manager/update_time_restrictions_monitor.cc",
-    "update_manager/update_time_restrictions_policy_impl.cc",
-    "update_manager/weekly_time.cc",
-    "update_status_utils.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  libs = [
-    "bz2",
-    "policy",
-    "rootdev",
-    "rt",
-    "vpd",
-  ]
-  all_dependent_pkg_deps = [
-    "dbus-1",
-    "expat",
-    "libcrossystem",
-    "libcurl",
-    "libdebugd-client",
-    "libenterprise_rollback_metrics",
-    "libmetrics",
-    "libpower_manager-client",
-    "libsession_manager-client",
-    "libshill-client",
-    "libssl",
-    "libupdate_engine-client",
-    "vboot_host",
-  ]
-  pkg_deps = [ "re2" ]
-  deps = [
-    ":libpayload_consumer",
-    ":update_engine-dbus-adaptor",
-    ":update_engine-dbus-kiosk-app-client",
-    ":update_metadata-protos",
-  ]
+if (!use.cros_host) {
+  static_library("libupdate_engine") {
+    sources = [
+      "certificate_checker.cc",
+      "common/call_wrapper.cc",
+      "common/connection_utils.cc",
+      "common/system_state.cc",
+      "cros/boot_control_chromeos.cc",
+      "cros/common_service.cc",
+      "cros/connection_manager.cc",
+      "cros/daemon_chromeos.cc",
+      "cros/dbus_connection.cc",
+      "cros/dbus_service.cc",
+      "cros/download_action_chromeos.cc",
+      "cros/hardware_chromeos.cc",
+      "cros/image_properties_chromeos.cc",
+      "cros/install_action.cc",
+      "cros/logging.cc",
+      "cros/metrics_reporter_omaha.cc",
+      "cros/omaha_parser_data.cc",
+      "cros/omaha_parser_xml.cc",
+      "cros/omaha_request_action.cc",
+      "cros/omaha_request_builder_xml.cc",
+      "cros/omaha_request_params.cc",
+      "cros/omaha_response_handler_action.cc",
+      "cros/omaha_utils.cc",
+      "cros/p2p_manager.cc",
+      "cros/payload_state.cc",
+      "cros/power_manager_chromeos.cc",
+      "cros/real_system_state.cc",
+      "cros/shill_proxy.cc",
+      "cros/update_attempter.cc",
+      "libcurl_http_fetcher.cc",
+      "metrics_utils.cc",
+      "update_boot_flags_action.cc",
+      "update_manager/boxed_value.cc",
+      "update_manager/deferred_update_policy_impl.cc",
+      "update_manager/enough_slots_ab_updates_policy_impl.cc",
+      "update_manager/enterprise_device_policy_impl.cc",
+      "update_manager/enterprise_rollback_policy_impl.cc",
+      "update_manager/enterprise_update_disabled_policy_impl.cc",
+      "update_manager/evaluation_context.cc",
+      "update_manager/installation_policy_impl.cc",
+      "update_manager/interactive_update_policy_impl.cc",
+      "update_manager/minimum_version_policy_impl.cc",
+      "update_manager/next_update_check_policy_impl.cc",
+      "update_manager/official_build_check_policy_impl.cc",
+      "update_manager/omaha_request_params_policy.cc",
+      "update_manager/out_of_box_experience_policy_impl.cc",
+      "update_manager/p2p_enabled_policy.cc",
+      "update_manager/policy_evaluator.cc",
+      "update_manager/policy_test_utils.cc",
+      "update_manager/policy_utils.cc",
+      "update_manager/real_config_provider.cc",
+      "update_manager/real_device_policy_provider.cc",
+      "update_manager/real_random_provider.cc",
+      "update_manager/real_shill_provider.cc",
+      "update_manager/real_system_provider.cc",
+      "update_manager/real_time_provider.cc",
+      "update_manager/real_updater_provider.cc",
+      "update_manager/recovery_policy.cc",
+      "update_manager/staging_utils.cc",
+      "update_manager/state_factory.cc",
+      "update_manager/update_can_be_applied_policy.cc",
+      "update_manager/update_can_start_policy.cc",
+      "update_manager/update_check_allowed_policy.cc",
+      "update_manager/update_in_hibernate_resume_policy_impl.cc",
+      "update_manager/update_manager.cc",
+      "update_manager/update_time_restrictions_monitor.cc",
+      "update_manager/update_time_restrictions_policy_impl.cc",
+      "update_manager/weekly_time.cc",
+      "update_status_utils.cc",
+    ]
+    configs += [ ":target_defaults" ]
+    libs = [
+      "bz2",
+      "policy",
+      "rootdev",
+      "rt",
+      "vpd",
+    ]
+    all_dependent_pkg_deps = [
+      "dbus-1",
+      "expat",
+      "libcrossystem",
+      "libcurl",
+      "libdebugd-client",
+      "libenterprise_rollback_metrics",
+      "libmetrics",
+      "libpower_manager-client",
+      "libsession_manager-client",
+      "libshill-client",
+      "libssl",
+      "libupdate_engine-client",
+      "vboot_host",
+    ]
+    pkg_deps = [ "re2" ]
+    deps = [
+      ":libpayload_consumer",
+      ":update_engine-dbus-adaptor",
+      ":update_engine-dbus-kiosk-app-client",
+      ":update_metadata-protos",
+    ]
 
-  if (use.hw_details) {
-    sources += [
-      "common/cros_healthd.cc",
-      "common/telemetry_info.cc",
+    if (use.hw_details) {
+      sources += [
+        "common/cros_healthd.cc",
+        "common/telemetry_info.cc",
+      ]
+      pkg_deps += [
+        "cros_healthd-client",
+        "libmojo",
+        "mojo_service_manager",
+      ]
+    } else {
+      sources += [
+        "common/cros_healthd_stub.cc",
+        "common/telemetry_info.cc",
+      ]
+    }
+
+    if (use.dlc) {
+      all_dependent_pkg_deps += [
+        "libdlcservice-client",
+        "libdlcservice-utils",
+      ]
+    }
+
+    if (use.hibernate) {
+      sources += [ "cros/hibernate_chromeos.cc" ]
+      all_dependent_pkg_deps += [ "libhibernate-client" ]
+    } else {
+      sources += [ "common/hibernate_stub.cc" ]
+    }
+
+    if (use.chrome_network_proxy) {
+      sources += [ "cros/chrome_browser_proxy_resolver.cc" ]
+    }
+
+    if (use.dlc) {
+      sources += [
+        "cros/dlcservice_chromeos.cc",
+        "cros/excluder_chromeos.cc",
+      ]
+    } else {
+      sources += [
+        "common/dlcservice_stub.cc",
+        "common/excluder_stub.cc",
+      ]
+    }
+  }
+
+  # update_engine daemon.
+  executable("update_engine") {
+    sources = [ "main.cc" ]
+    configs += [ ":target_defaults" ]
+    deps = [ ":libupdate_engine" ]
+    install_path = "sbin"
+  }
+
+  # update_engine client library.
+  static_library("libupdate_engine_client") {
+    sources = [
+      "client_library/client_dbus.cc",
+      "update_status_utils.cc",
     ]
-    pkg_deps += [
-      "cros_healthd-client",
-      "libmojo",
-      "mojo_service_manager",
-    ]
-  } else {
-    sources += [
-      "common/cros_healthd_stub.cc",
-      "common/telemetry_info.cc",
+    include_dirs = [ "client_library/include" ]
+    configs += [ ":target_defaults" ]
+    pkg_deps = [
+      "dbus-1",
+      "libupdate_engine-client",
     ]
   }
 
-  if (use.dlc) {
-    all_dependent_pkg_deps += [
-      "libdlcservice-client",
-      "libdlcservice-utils",
+  # update_engine console client.
+  executable("update_engine_client") {
+    sources = [
+      "common/error_code_utils.cc",
+      "cros/omaha_utils.cc",
+      "cros/update_engine_client.cc",
     ]
+    configs += [ ":target_defaults" ]
+    deps = [ ":libupdate_engine_client" ]
+    install_path = "bin"
   }
-
-  if (use.hibernate) {
-    sources += [ "cros/hibernate_chromeos.cc" ]
-    all_dependent_pkg_deps += [ "libhibernate-client" ]
-  } else {
-    sources += [ "common/hibernate_stub.cc" ]
-  }
-
-  if (use.chrome_network_proxy) {
-    sources += [ "cros/chrome_browser_proxy_resolver.cc" ]
-  }
-
-  if (use.dlc) {
-    sources += [
-      "cros/dlcservice_chromeos.cc",
-      "cros/excluder_chromeos.cc",
-    ]
-  } else {
-    sources += [
-      "common/dlcservice_stub.cc",
-      "common/excluder_stub.cc",
-    ]
-  }
-}
-
-# update_engine daemon.
-executable("update_engine") {
-  sources = [ "main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libupdate_engine" ]
-  install_path = "sbin"
-}
-
-# update_engine client library.
-static_library("libupdate_engine_client") {
-  sources = [
-    "client_library/client_dbus.cc",
-    "update_status_utils.cc",
-  ]
-  include_dirs = [ "client_library/include" ]
-  configs += [ ":target_defaults" ]
-  pkg_deps = [
-    "dbus-1",
-    "libupdate_engine-client",
-  ]
-}
-
-# update_engine console client.
-executable("update_engine_client") {
-  sources = [
-    "common/error_code_utils.cc",
-    "cros/omaha_utils.cc",
-    "cros/update_engine_client.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libupdate_engine_client" ]
-  install_path = "bin"
 }
 
 # server-side code. This is used for delta_generator and unittests but not
