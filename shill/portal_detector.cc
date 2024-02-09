@@ -417,15 +417,7 @@ bool PortalDetector::Result::IsHTTPProbeRedirectionSuspected() const {
   // Any 200 response including some content in the response body is a strong
   // indication of an evasive portal indirectly redirecting the HTTP probe
   // without a 302 response code.
-  if (http_result == ProbeResult::kPortalSuspected) {
-    return true;
-  }
-  // Any incomplete redirect 302 or 307 response without a Location header
-  // is considered as misbehaving captive portal.
-  if (http_result == ProbeResult::kPortalInvalidRedirect) {
-    return true;
-  }
-  return false;
+  return http_result == ProbeResult::kPortalSuspected;
 }
 
 bool PortalDetector::Result::IsHTTPProbeRedirected() const {

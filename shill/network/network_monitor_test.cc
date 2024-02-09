@@ -411,7 +411,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
   };
-  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
@@ -422,10 +422,14 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
               SendSparseToUMA(
                   Metrics::kPortalDetectorHTTPResponseCode, Technology::kWiFi,
                   Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect));
-  EXPECT_CALL(
-      metrics_,
-      SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength, _, _))
-      .Times(0);
+
+  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
+  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
+    auto mock_connection_diagnostics =
+        std::make_unique<MockConnectionDiagnostics>();
+    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    return mock_connection_diagnostics;
+  });
 
   StartWithPortalDetectorResultReturned(result);
 }

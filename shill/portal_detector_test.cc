@@ -730,12 +730,13 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
       .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
       .http_status_code = 302,
       .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kTLSFailure,
       .redirect_url = std::nullopt,
       .probe_url = kHttpUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
-  ASSERT_FALSE(result.IsHTTPSProbeComplete());
-  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+  ASSERT_TRUE(result.IsHTTPSProbeComplete());
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
 
   EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
@@ -744,7 +745,7 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
   EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
       .WillOnce(Return("invalid_url"));
   ExpectHttpRequestSuccessWithStatus(302);
-  // The trial has been completed, even if the HTTPS probe did not complete.
+  HTTPSRequestFailure(HttpRequest::Error::kTLSFailure);
   ExpectCleanupTrial();
 }
 
@@ -862,7 +863,7 @@ TEST(PortalDetectorResultTest, PortalInvalidRedirect) {
   };
 
   EXPECT_EQ(result.GetValidationState(),
-            PortalDetector::ValidationState::kPortalSuspected);
+            PortalDetector::ValidationState::kNoConnectivity);
   EXPECT_EQ(result.GetResultMetric(),
             Metrics::kPortalDetectorResultRedirectNoUrl);
 }
