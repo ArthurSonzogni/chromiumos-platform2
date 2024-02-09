@@ -464,7 +464,6 @@ int Main(int argc, char** argv) {
   if (FLAGS_major_version < kMinSupportedMajorPayloadVersion ||
       FLAGS_major_version > kMaxSupportedMajorPayloadVersion) {
     LOG(FATAL) << "Unsupported major version " << FLAGS_major_version;
-    return 1;
   }
 
   if (!FLAGS_new_partitions.empty()) {
@@ -585,7 +584,6 @@ int Main(int argc, char** argv) {
       }
       if (!minor_version_found) {
         LOG(FATAL) << "Failed to detect the minor version.";
-        return 1;
       }
     } else {
       payload_config.version.minor = kFullPayloadMinorVersion;
@@ -601,7 +599,6 @@ int Main(int argc, char** argv) {
       (payload_config.version.minor < kMinSupportedMinorPayloadVersion ||
        payload_config.version.minor > kMaxSupportedMinorPayloadVersion)) {
     LOG(FATAL) << "Unsupported minor version " << payload_config.version.minor;
-    return 1;
   }
 
   payload_config.max_timestamp = FLAGS_max_timestamp;

@@ -211,7 +211,6 @@ bool DBusUpdateEngineClient::RegisterStatusUpdateHandler(
     StatusUpdateHandler* handler) {
   if (!base::CurrentThread::IsSet()) {
     LOG(FATAL) << "Cannot get UpdateEngineClient outside of message loop.";
-    return false;
   }
 
   handlers_.push_back(handler);
