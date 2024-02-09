@@ -654,13 +654,13 @@ void Datapath::Stop() {
   }
 
   // Disable packet forwarding
-  if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "0"))
+  if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "0")) {
     LOG(ERROR) << "Failed to restore net.ipv6.conf.all.forwarding.";
+  }
 
-  if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "0"))
+  if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "0")) {
     LOG(ERROR) << "Failed to restore net.ipv4.ip_forward.";
-
-  ResetIptables();
+  }
 }
 
 void Datapath::ResetIptables() {
