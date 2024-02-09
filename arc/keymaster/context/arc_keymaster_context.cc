@@ -201,9 +201,7 @@ std::optional<std::string> ExtractBase64Spki(
 
   // Encode subject public key info to base 64.
   std::string der_spki_string(der_spki.begin(), der_spki.end());
-  std::string base64_spki;
-  base::Base64Encode(der_spki_string, &base64_spki);
-  return base64_spki;
+  return base::Base64Encode(der_spki_string);
 }
 
 }  // anonymous namespace
