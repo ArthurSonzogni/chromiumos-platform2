@@ -12,6 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <net-base/network_config.h>
 #include <net-base/ip_address.h>
 
@@ -41,6 +42,7 @@ bool ShouldScheduleNetworkValidationImmediately(
     case NetworkMonitor::ValidationReason::kEthernetGatewayReachable:
     case NetworkMonitor::ValidationReason::kNetworkConnectionUpdate:
     case NetworkMonitor::ValidationReason::kServiceReorder:
+    case NetworkMonitor::ValidationReason::kCapportTimeOver:
       return true;
     case NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable:
     case NetworkMonitor::ValidationReason::kManagerPropertyUpdate:
@@ -273,6 +275,17 @@ void NetworkMonitor::OnCapportStatusReceived(
     validation_log_->AddCAPPORTStatus(*status);
   }
 
+  if (status->seconds_remaining.has_value()) {
+    // Cancel the previous posted task if exists.
+    weak_ptr_factory_for_capport_.InvalidateWeakPtrs();
+    dispatcher_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&NetworkMonitor::Start,
+                       weak_ptr_factory_for_capport_.GetWeakPtr(),
+                       ValidationReason::kCapportTimeOver),
+        *status->seconds_remaining + kCapportRemainingExtraDelay);
+  }
+
   // Use the attempt count from |portal_detector_| to keep the count of the
   // results from both side the same.
   const int num_attempts = portal_detector_->attempt_count();
@@ -429,6 +442,8 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "EthernetGatewayReachable";
     case NetworkMonitor::ValidationReason::kRetryValidation:
       return stream << "RetryValidation";
+    case NetworkMonitor::ValidationReason::kCapportTimeOver:
+      return stream << "CapportTimeOver";
   }
 }
 

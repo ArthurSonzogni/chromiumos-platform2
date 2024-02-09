@@ -125,6 +125,27 @@ TEST(CapportStatusTest, ParseFromJsonInvalidVenueInfoUrl) {
   EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
 }
 
+TEST(CapportStatusTest, ClearRemainingFieldWhenPortalClose) {
+  const std::string json_str = R"({
+   "captive": true,
+   "user-portal-url": "https://example.org/portal.html",
+   "seconds-remaining": 326,
+   "bytes-remaining": 65536
+})";
+
+  // seconds_remaining and bytes_remaining should be std::nullopt when
+  // the portal is captive.
+  const CapportStatus expected{
+      .is_captive = true,
+      .user_portal_url =
+          net_base::HttpUrl::CreateFromString(kUserPortalUrl).value(),
+      .seconds_remaining = std::nullopt,
+      .bytes_remaining = std::nullopt,
+  };
+
+  EXPECT_EQ(CapportStatus::ParseFromJson(json_str).value(), expected);
+}
+
 class CapportProxyTest : public testing::Test {
  protected:
   CapportProxyTest()

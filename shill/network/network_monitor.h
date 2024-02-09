@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <base/functional/callback.h>
+#include <base/time/time.h>
 #include <base/memory/weak_ptr.h>
 #include <net-base/http_url.h>
 #include <net-base/network_config.h>
@@ -34,6 +35,10 @@ class ValidationLog;
 // TODO(b/305129516): Integrate the CapportClient into this class.
 class NetworkMonitor {
  public:
+  // The extra delay that we wait for the CAPPORT becoming captive state again.
+  static constexpr base::TimeDelta kCapportRemainingExtraDelay =
+      base::Seconds(5);
+
   // Indicates the type of network validation to conduct on a connected Network.
   // TODO(b/318370676): Add "HTTP probe only" mode.
   enum class ValidationMode {
@@ -67,6 +72,9 @@ class NetworkMonitor {
     kEthernetGatewayReachable,
     // Retry the validation when the previous one fails.
     kRetryValidation,
+    // Retry the validation when the remaining time with external network access
+    // from CAPPORT (is_captive==false) is over.
+    kCapportTimeOver,
   };
 
   // Indicates the source of the CAPPORT API.
@@ -257,6 +265,8 @@ class NetworkMonitor {
 
   std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
+
+  base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_for_capport_{this};
 };
 
 class NetworkMonitorFactory {

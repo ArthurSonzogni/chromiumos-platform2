@@ -279,6 +279,24 @@ TEST_F(NetworkMonitorTest, IsRunning) {
   EXPECT_TRUE(network_monitor_->IsRunning());
 }
 
+TEST_F(NetworkMonitorTest, RetryWhenCapportTimeOver) {
+  const base::TimeDelta seconds_remaining = base::Seconds(30);
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
+
+  const CapportStatus capport_status{
+      .is_captive = false,
+      .user_portal_url = kUserPortalUrl,
+      .seconds_remaining = seconds_remaining,
+  };
+  network_monitor_->OnCapportStatusReceivedForTesting(capport_status);
+
+  // After receiving the CAPPORT status with seconds_remaining, NetworkMonitor
+  // should query the CAPPORT server again after time is over.
+  EXPECT_CALL(*mock_capport_proxy, SendRequest);
+  task_environment_.FastForwardBy(seconds_remaining +
+                                  NetworkMonitor::kCapportRemainingExtraDelay);
+}
+
 TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
   const PortalDetector::Result result{
       .http_result = PortalDetector::ProbeResult::kSuccess,

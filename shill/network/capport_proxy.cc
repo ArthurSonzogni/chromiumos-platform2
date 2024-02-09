@@ -83,6 +83,16 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
     status->bytes_remaining = *value;
   }
 
+  // Clear the fields for the open state when the portal is captive.
+  if (status->is_captive && status->seconds_remaining.has_value()) {
+    LOG(WARNING) << "seconds_remaining should be empty when is_captive is true";
+    status->seconds_remaining = std::nullopt;
+  }
+  if (status->is_captive && status->bytes_remaining.has_value()) {
+    LOG(WARNING) << "bytes_remaining should be empty when is_captive is true";
+    status->bytes_remaining = std::nullopt;
+  }
+
   return status;
 }
 
