@@ -26,27 +26,48 @@
 
 import filecmp
 import os
+from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 
 
 class PaycheckTest(unittest.TestCase):
     """Test paycheck functions."""
 
+    @classmethod
+    def setUpClass(cls):
+        cls._datadir = tempfile.TemporaryDirectory(prefix="update_engine-")
+        cls.datadir = Path(cls._datadir.name)
+
+        sample_dir = Path(__file__).resolve().parent.parent / "sample_images"
+        for f in ("sample_images.tar.bz2", "sample_payloads.tar.xz"):
+            subprocess.run(
+                ["tar", "xf", sample_dir / f], cwd=cls.datadir, check=True
+            )
+
+        cls._full_payload = os.path.join(cls.datadir, "full_payload.bin")
+        cls._delta_payload = os.path.join(cls.datadir, "delta_payload.bin")
+
+        cls._new_kernel = os.path.join(cls.datadir, "disk_ext2_4k.img")
+        cls._new_root = os.path.join(cls.datadir, "disk_sqfs_default.img")
+        cls._old_kernel = os.path.join(cls.datadir, "disk_ext2_4k_empty.img")
+        cls._old_root = os.path.join(cls.datadir, "disk_sqfs_empty.img")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._datadir.cleanup()
+
     def setUp(self):
-        self.tmpdir = os.getenv("T")
-
-        self._full_payload = os.path.join(self.tmpdir, "full_payload.bin")
-        self._delta_payload = os.path.join(self.tmpdir, "delta_payload.bin")
-
-        self._new_kernel = os.path.join(self.tmpdir, "disk_ext2_4k.img")
-        self._new_root = os.path.join(self.tmpdir, "disk_sqfs_default.img")
-        self._old_kernel = os.path.join(self.tmpdir, "disk_ext2_4k_empty.img")
-        self._old_root = os.path.join(self.tmpdir, "disk_sqfs_empty.img")
+        self._tmpdir = tempfile.TemporaryDirectory(prefix="update_engine-")
+        self.tmpdir = self._tmpdir.name
 
         # Temp output files.
         self._kernel_part = os.path.join(self.tmpdir, "kern.part")
         self._root_part = os.path.join(self.tmpdir, "root.part")
+
+    def tearDown(self):
+        self._tmpdir.cleanup()
 
     def checkPayload(self, type_arg, payload):
         """Checks Payload."""
