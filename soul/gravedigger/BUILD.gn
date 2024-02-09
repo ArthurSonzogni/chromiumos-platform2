@@ -1,0 +1,80 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/cxxbridge.gni")
+
+group("all") {
+  deps = [
+    ":gravedigger_pc",
+    ":install_header",
+    ":libgravedigger_cc",
+  ]
+  if (use.test) {
+    deps += [ ":gravedigger_test" ]
+  }
+}
+
+cxxbridge_header("gravedigger_bridge_header") {
+  sources = [ "src/ffi.rs" ]
+  deps = []
+}
+
+cxxbridge_cc("gravedigger_bridge_code") {
+  sources = [ "src/ffi.rs" ]
+  deps = [
+    ":cxxlibheader",
+    ":gravedigger_bridge_header",
+  ]
+}
+
+cxxbridge_libheader("cxxlibheader") {
+  deps = []
+}
+
+static_library("libgravedigger_cc") {
+  sources = [
+    "cc/gravedigger.cc",
+    "cc/gravedigger.h",
+  ]
+  complete_static_lib = true
+  lib_dirs = [ getenv("RUST_BUILD_DIR") ]
+  libs = [ "gravedigger_rs" ]
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [ "//common-mk:nouse_thin_archive" ]
+  install_path = "lib"
+  pkg_deps = [ "libchrome" ]
+  deps = [
+    ":gravedigger_bridge_code",
+    ":gravedigger_bridge_header",
+  ]
+}
+
+install_config("install_header") {
+  sources = [ "cc/gravedigger.h" ]
+  install_path = "/usr/include/soul"
+}
+
+generate_pkg_config("gravedigger_pc") {
+  name = "libgravedigger"
+  description = "Utility library for log files"
+  version = getenv("PVR")
+  requires = [ "libchrome" ]
+  libs = [
+    "-lgravedigger_cc",
+    "-lgravedigger_rs",
+  ]
+  install = true
+}
+
+if (use.test) {
+  executable("gravedigger_test") {
+    sources = [ "cc/gravedigger_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [
+      ":libgravedigger_cc",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
