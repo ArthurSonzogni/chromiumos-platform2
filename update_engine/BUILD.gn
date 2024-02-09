@@ -354,7 +354,6 @@ static_library("libpayload_generator") {
   sources = [
     "common/file_fetcher.cc",
     "common/system_state.cc",
-    "cros/real_system_state.cc",
     "download_action.cc",
     "payload_generator/ab_generator.cc",
     "payload_generator/annotated_operation.cc",
