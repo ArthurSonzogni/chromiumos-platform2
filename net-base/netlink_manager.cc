@@ -275,7 +275,6 @@ uint16_t NetlinkManager::GetFamily(
   }
   if (!sock_) {
     LOG(FATAL) << "Must call |Init| before this method.";
-    return false;
   }
 
   GetFamilyMessage msg;

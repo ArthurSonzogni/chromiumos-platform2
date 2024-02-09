@@ -722,7 +722,6 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
           !nested_attribute) {
         LOG(FATAL) << "Couldn't get attribute " << attribute_name
                    << " which we just created.";
-        return false;
       }
 
       if (!InitNestedFromValue(nested_attribute, nested_template.deeper_nesting,
