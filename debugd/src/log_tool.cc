@@ -1585,8 +1585,7 @@ string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
     return output;
   }
 
-  base::Base64Encode(value, &value);
-  return "<base64>: " + value;
+  return "<base64>: " + base::Base64Encode(value);
 }
 
 }  // namespace debugd

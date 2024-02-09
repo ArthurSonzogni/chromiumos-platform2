@@ -327,9 +327,8 @@ std::string StorageTool::NvmeLog(const uint32_t& page_id,
   process.GetOutput(&output);
 
   if (raw_binary) {
-    std::string input = std::move(output);
     // Encode output as base64 in case D-Bus drops invalid UTF8 string.
-    base::Base64Encode(input, &output);
+    return base::Base64Encode(output);
   }
 
   return output;
