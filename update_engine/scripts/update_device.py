@@ -8,6 +8,7 @@
 import argparse
 import binascii
 import hashlib
+import http.server
 import logging
 import os
 import socket
@@ -18,7 +19,6 @@ import threading
 import xml.etree.ElementTree
 import zipfile
 
-from six.moves import BaseHTTPServer
 import update_payload.payload
 
 
@@ -127,7 +127,7 @@ class AndroidOTAPackage(object):
         self.properties = otazip.read(property_entry)
 
 
-class UpdateHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class UpdateHandler(http.server.BaseHTTPRequestHandler):
     """A HTTPServer that supports single-range requests.
 
     Attributes:
@@ -302,7 +302,7 @@ class ServerThread(threading.Thread):
         # UpdateHandler class is instantiated with every request.
         UpdateHandler.serving_payload = ota_filename
         UpdateHandler.serving_range = serving_range
-        self._httpd = BaseHTTPServer.HTTPServer(("127.0.0.1", 0), UpdateHandler)
+        self._httpd = http.server.HTTPServer(("127.0.0.1", 0), UpdateHandler)
         self.port = self._httpd.server_port
 
     def run(self):

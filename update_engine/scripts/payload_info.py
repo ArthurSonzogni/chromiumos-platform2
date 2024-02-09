@@ -9,7 +9,6 @@ import argparse
 import sys
 import textwrap
 
-from six.moves import range
 import update_payload
 
 

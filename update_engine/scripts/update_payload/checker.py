@@ -20,7 +20,6 @@ import itertools
 import os
 import subprocess
 
-from six.moves import range
 from update_payload import common
 from update_payload import error
 from update_payload import format_utils

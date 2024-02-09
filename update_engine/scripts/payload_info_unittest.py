@@ -10,12 +10,12 @@
 
 
 from contextlib import contextmanager
+import io
 import sys
 import unittest
 from unittest import mock
 
 import payload_info
-from six.moves import StringIO
 import update_payload
 from update_payload import update_metadata_pb2
 
@@ -205,7 +205,7 @@ class PayloadCommandTest(unittest.TestCase):
         """A tool for capturing the sys.stdout"""
         stdout = sys.stdout
         try:
-            sys.stdout = StringIO()
+            sys.stdout = io.StringIO()
             yield sys.stdout
         finally:
             sys.stdout = stdout

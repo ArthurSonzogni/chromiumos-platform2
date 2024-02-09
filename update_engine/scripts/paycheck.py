@@ -12,7 +12,6 @@ import os
 import sys
 import tempfile
 
-from six.moves import zip
 from update_payload import error
 
 
