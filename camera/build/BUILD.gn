@@ -29,8 +29,9 @@ config("cros_camera_common") {
 
   if (use.camera_angle_backend) {
     ldflags += [
-      # Link to the ANGLE GL library distributed by Chrome on the device.
-      "-Wl,-rpath=/opt/google/chrome/",
+      # Link with the camera GL Loader library to be able to select to correct
+      # GL library depending on the camera-angle-backend chrome flag.
+      "-Wl,-rpath=${libdir}/camera_gl_loader",
     ]
   }
 

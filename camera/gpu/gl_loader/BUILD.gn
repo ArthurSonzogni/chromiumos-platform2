@@ -1,0 +1,38 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":install_egl_loader_so",
+    ":install_gles_loader_so",
+  ]
+}
+
+shared_library("libcamera_egl_loader") {
+  output_name = "libcamera_egl_loader"
+  sources = [ "//camera/gpu/gl_loader/egl_loader.cc" ]
+  public_configs = [ "//camera/build:cros_camera_common" ]
+  libs = [ "dl" ]
+  install_path = "lib"
+}
+
+shared_library("libcamera_gles_loader") {
+  output_name = "libcamera_gles_loader"
+  sources = [ "//camera/gpu/gl_loader/gles_loader.cc" ]
+  public_configs = [ "//camera/build:cros_camera_common" ]
+  libs = [ "dl" ]
+  install_path = "lib"
+}
+
+install_config("install_egl_loader_so") {
+  sources = [ "${root_out_dir}/lib/libcamera_egl_loader.so" ]
+  install_path = "${libdir}"
+  deps = [ ":libcamera_egl_loader" ]
+}
+
+install_config("install_gles_loader_so") {
+  sources = [ "${root_out_dir}/lib/libcamera_gles_loader.so" ]
+  install_path = "${libdir}"
+  deps = [ ":libcamera_gles_loader" ]
+}

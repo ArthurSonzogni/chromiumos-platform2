@@ -32,6 +32,9 @@ pkg_config("target_defaults") {
     "mojo_service_manager",
     "re2",
   ]
+  if (use.camera_angle_backend) {
+    pkg_deps += [ "libfeatures" ]
+  }
 }
 
 executable("cros_camera_service") {
@@ -55,6 +58,9 @@ executable("cros_camera_service") {
   ]
   if (use.camera_feature_diagnostics) {
     sources += [ "camera_diagnostics_client.cc" ]
+  }
+  if (use.camera_angle_backend) {
+    sources += [ "camera_angle_backend.cc" ]
   }
   configs += [ ":target_defaults" ]
   install_path = "bin"

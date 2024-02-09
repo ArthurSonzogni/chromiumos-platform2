@@ -21,6 +21,12 @@
 #include "hal_adapter/camera_hal_adapter.h"
 #include "hal_adapter/camera_hal_server_impl.h"
 
+#if USE_CAMERA_ANGLE_BACKEND
+#include <base/task/thread_pool/thread_pool_instance.h>
+
+#include "hal_adapter/camera_angle_backend.h"
+#endif  // USE_CAMERA_ANGLE_BACKEND
+
 static void SetLogItems() {
   const bool kOptionPID = true;
   const bool kOptionTID = true;
@@ -52,6 +58,11 @@ int main(int argc, char* argv[]) {
 
   cros::CameraHalServerImpl service_provider;
   service_provider.Start();
+
+#if USE_CAMERA_ANGLE_BACKEND
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("CameraThreadPool");
+  cros::FetchAngleStateAndSetupListener();
+#endif  // USE_CAMERA_ANGLE_BACKEND
 
   // The process runs until an error happens which will terminate the process.
   LOGF(INFO) << "Started camera HAL v3 adapter";

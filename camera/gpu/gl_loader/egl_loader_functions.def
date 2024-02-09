@@ -1,0 +1,16 @@
+/*
+ * Copyright 2024 The ChromiumOS Authors
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+MACRO(EGLBoolean, eglBindAPI, EGLenum, api)
+MACRO(EGLContext, eglCreateContext, EGLDisplay, display, EGLConfig, config, EGLContext, share_context, EGLint const*, attrib_list)
+MACRO(EGLBoolean, eglDestroyContext, EGLDisplay, display, EGLContext, context)
+MACRO(EGLContext, eglGetCurrentContext, void)
+MACRO(EGLDisplay, eglGetCurrentDisplay, void)
+MACRO(EGLint, eglGetError, void)
+MACRO(EGLDisplay, eglGetPlatformDisplay, EGLenum, platform, void*, native_display, const EGLAttrib*, attrib_list)
+MACRO(EGLBoolean, eglInitialize, EGLDisplay, display, EGLint*, major, EGLint*, minor)
+MACRO(EGLBoolean, eglMakeCurrent, EGLDisplay, display, EGLSurface, draw, EGLSurface, read, EGLContext, context)
+MACRO(EGLBoolean, eglReleaseThread, void)
