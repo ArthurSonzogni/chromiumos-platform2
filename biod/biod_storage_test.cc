@@ -108,8 +108,8 @@ class BiodStorageBaseTest : public ::testing::Test {
     base::Value::Dict record_dictionary;
     std::string validation_value_str(validation_val.begin(),
                                      validation_val.end());
-    base::Base64Encode(validation_value_str, &validation_value_str);
-    record_dictionary.Set("match_validation_value", validation_value_str);
+    record_dictionary.Set("match_validation_value",
+                          base::Base64Encode(validation_value_str));
     return record_dictionary;
   }
 

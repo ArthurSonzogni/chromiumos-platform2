@@ -245,13 +245,9 @@ void CrosFpRecordManager::RemoveRecordsFromMemory() {
 
 std::string CrosFpRecordManager::TemplateToBase64(
     std::unique_ptr<VendorTemplate> templ) {
-  std::string tmpl_base64;
-
   std::string_view tmpl_sp(reinterpret_cast<char*>(templ->data()),
                            templ->size());
-  base::Base64Encode(tmpl_sp, &tmpl_base64);
-
-  return tmpl_base64;
+  return base::Base64Encode(tmpl_sp);
 }
 
 }  // namespace biod

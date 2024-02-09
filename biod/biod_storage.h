@@ -53,10 +53,9 @@ class BiodStorageInterface {
     bool operator!=(const RecordMetadata& rhs) const { return !(*this == rhs); }
 
     const std::string GetValidationValBase64() const {
-      std::string validation_val_base64(validation_val.begin(),
-                                        validation_val.end());
-      base::Base64Encode(validation_val_base64, &validation_val_base64);
-      return validation_val_base64;
+      std::string validation_val_str(validation_val.begin(),
+                                     validation_val.end());
+      return base::Base64Encode(validation_val_str);
     }
 
     bool IsValidUTF8() const {
