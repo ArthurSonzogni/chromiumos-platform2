@@ -79,7 +79,7 @@ string GetBootDevice() {
 }
 
 // ExecCallback called when the execution of setgoodkernel finishes. Notifies
-// the caller of MarkBootSuccessfullAsync() by calling |callback| with the
+// the caller of MarkBootSuccessfulAsync() by calling |callback| with the
 // result.
 void OnMarkBootSuccessfulDone(base::OnceCallback<void(bool)> callback,
                               int return_code,
