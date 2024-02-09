@@ -39,7 +39,7 @@ void ClearMetricsLibraryForTesting() {
   g_metrics = nullptr;
 }
 
-void ReportIntMetric(const std::string& metric, int sample, int max) {
+void ReportEnumMetric(const std::string& metric, int sample, int max) {
   if (!g_metrics)
     return;
 

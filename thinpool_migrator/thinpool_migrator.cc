@@ -186,9 +186,9 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       migration_cleanup.ReplaceClosure(base::DoNothing());
       LOG(INFO) << "Migration complete";
       // Report the number of tries taken for the migration to succeed.
-      ReportIntMetric(kTriesHistogram, status_.tries(), kMaxTries);
-      ReportIntMetric(kResultHistogram, MigrationResult::SUCCESS,
-                      MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
+      ReportEnumMetric(kTriesHistogram, status_.tries(), kMaxTries);
+      ReportEnumMetric(kResultHistogram, MigrationResult::SUCCESS,
+                       MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
       return true;
 
     default:
@@ -347,8 +347,8 @@ bool ThinpoolMigrator::PersistLvmMetadata() {
 
 // 'Tis a sad day, but it must be done.
 bool ThinpoolMigrator::RevertMigration() {
-  ReportIntMetric(kResultHistogram, result_,
-                  MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
+  ReportEnumMetric(kResultHistogram, result_,
+                   MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
 
   ScopedTimerReporter timer(kRevertTimeHistogram);
   switch (status_.state()) {
@@ -537,8 +537,8 @@ bool ThinpoolMigrator::CheckFilesystemState() {
   // Make sure that there are no errors on the filesystem.
   if (sb->s_error_count > 0 || sb->s_state & EXT2_ERROR_FS) {
     LOG(ERROR) << "Errors detected in the filesystem";
-    ReportIntMetric(kResultHistogram, MigrationResult::FSCK_NEEDED,
-                    static_cast<int>(MigrationResult::SUCCESS) + 1);
+    ReportEnumMetric(kResultHistogram, MigrationResult::FSCK_NEEDED,
+                     MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
     return false;
   }
 
@@ -550,8 +550,8 @@ bool ThinpoolMigrator::CheckFilesystemState() {
 
   if (free_blocks < total_blocks / 10) {
     LOG(ERROR) << "Insufficient free space for migration";
-    ReportIntMetric(kResultHistogram, MigrationResult::INSUFFICIENT_FREE_SPACE,
-                    static_cast<int>(MigrationResult::SUCCESS) + 1);
+    ReportEnumMetric(kResultHistogram, MigrationResult::INSUFFICIENT_FREE_SPACE,
+                     MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
 
     return false;
   }

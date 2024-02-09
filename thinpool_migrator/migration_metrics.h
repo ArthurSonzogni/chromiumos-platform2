@@ -13,6 +13,8 @@
 
 namespace thinpool_migrator {
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum MigrationResult {
   SUCCESS = 0,
   FSCK_NEEDED = 1,
@@ -60,8 +62,11 @@ void OverrideMetricsLibraryForTestign(MetricsLibraryInterface* lib);
 // Reset internally used MetricsLibrary for testing.
 void ClearMetricsLibraryForTesting();
 
-// Reports an integer metric. Used for result and tries.
-void BRILLO_EXPORT ReportIntMetric(const std::string& metric, int val, int max);
+// Reports an enum metric. Used for result and tries. |max| should be
+// the largest valid enum value plus one.
+void BRILLO_EXPORT ReportEnumMetric(const std::string& metric,
+                                    int val,
+                                    int max);
 
 class ScopedTimerReporter : public chromeos_metrics::TimerReporter {
  public:
