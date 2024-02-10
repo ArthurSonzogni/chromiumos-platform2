@@ -249,16 +249,16 @@ void LogPipeManager::OnVmStartingUpSignal(dbus::Signal* signal) {
   DCHECK_EQ(signal->GetInterface(), concierge::kVmConciergeInterface);
   DCHECK_EQ(signal->GetMember(), concierge::kVmStartingUpSignal);
 
-  concierge::VmStartedSignal vm_started_signal;
+  concierge::VmStartingUpSignal vm_starting_up_signal;
   dbus::MessageReader reader(signal);
-  if (!reader.PopArrayOfBytesAsProto(&vm_started_signal)) {
+  if (!reader.PopArrayOfBytesAsProto(&vm_starting_up_signal)) {
     PLOG(ERROR) << "Failed to parse proto from DBus Signal";
     return;
   }
-  VmId vm_id(vm_started_signal.owner_id(), vm_started_signal.name());
-  int64_t cid = vm_started_signal.vm_info().cid();
-  auto vm_type = static_cast<VmKernelLogRequest::VmType>(
-      vm_started_signal.vm_info().vm_type());
+  VmId vm_id(vm_starting_up_signal.owner_id(), vm_starting_up_signal.name());
+  int64_t cid = vm_starting_up_signal.cid();
+  auto vm_type =
+      static_cast<VmKernelLogRequest::VmType>(vm_starting_up_signal.vm_type());
 
   LOG(INFO) << "Received VmStartingUpSignal for " << vm_id << ", cid " << cid
             << ", type " << VmKernelLogRequest::VmType_Name(vm_type);

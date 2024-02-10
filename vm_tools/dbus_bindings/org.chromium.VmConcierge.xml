@@ -744,7 +744,7 @@
       </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::concierge::ExtendedVmInfo"/>
+                    value="vm_tools::concierge::VmStartingUpSignal"/>
       </arg>
     </signal>
     <signal name="VmStoppedSignal">

@@ -4096,11 +4096,11 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
 void Service::SendVmStartingUpSignal(const VmId& vm_id,
                                      apps::VmType vm_type,
                                      uint64_t cid) {
-  vm_tools::concierge::ExtendedVmInfo proto;
+  vm_tools::concierge::VmStartingUpSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
-  proto.mutable_vm_info()->set_vm_type(ToLegacyVmType(vm_type));
-  proto.mutable_vm_info()->set_cid(cid);
+  proto.set_vm_type(ToLegacyVmType(vm_type));
+  proto.set_cid(cid);
   concierge_adaptor_.SendVmStartingUpSignalSignal(proto);
 }
 
