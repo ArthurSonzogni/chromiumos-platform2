@@ -1860,7 +1860,7 @@ StartVmResponse Service::StartVmInternal(
                      static_cast<int32_t>(request.cpus()));
 
   // Notify VmLogForwarder that a vm is starting up.
-  SendVmStartingUpSignal(vm_id, *vm_info);
+  SendVmStartingUpSignal(vm_id, classification, vsock_cid);
 
   VmBuilder vm_builder;
   vm_builder.SetKernel(std::move(image_spec.kernel))
@@ -4131,12 +4131,14 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
   concierge_adaptor_.SendVmStartedSignalSignal(proto);
 }
 
-void Service::SendVmStartingUpSignal(
-    const VmId& vm_id, const vm_tools::concierge::VmInfo& vm_info) {
+void Service::SendVmStartingUpSignal(const VmId& vm_id,
+                                     apps::VmType vm_type,
+                                     uint64_t cid) {
   vm_tools::concierge::ExtendedVmInfo proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
-  proto.mutable_vm_info()->CopyFrom(vm_info);
+  proto.mutable_vm_info()->set_vm_type(ToLegacyVmType(vm_type));
+  proto.mutable_vm_info()->set_cid(cid);
   concierge_adaptor_.SendVmStartingUpSignalSignal(proto);
 }
 

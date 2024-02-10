@@ -419,7 +419,8 @@ class Service final : public org::chromium::VmConciergeInterface,
                            const vm_tools::concierge::VmInfo& vm_info,
                            vm_tools::concierge::VmStatus status);
   void SendVmStartingUpSignal(const VmId& vm_id,
-                              const vm_tools::concierge::VmInfo& vm_info);
+                              apps::VmType vm_type,
+                              uint64_t cid);
   void SendVmGuestUserlandReadySignal(
       const VmId& vm_id, const vm_tools::concierge::GuestUserlandReady ready);
   void NotifyVmStopping(const VmId& vm_id, int64_t cid);

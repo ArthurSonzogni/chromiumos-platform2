@@ -483,7 +483,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   VmId vm_id(request.owner_id(), request.name());
-  SendVmStartingUpSignal(vm_id, *vm_info);
+  SendVmStartingUpSignal(vm_id, apps::VmType::ARCVM, vsock_cid);
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
   SharedDataParam shared_data{.data_dir = data_dir,

@@ -234,7 +234,7 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
       std::make_move_iterator(request.mutable_params()->end()));
 
   // Now start the VM.
-  SendVmStartingUpSignal(vm_id, *vm_info);
+  SendVmStartingUpSignal(vm_id, apps::VmType::PLUGIN_VM, 0 /* cid */);
 
   VmBuilder vm_builder;
   vm_builder.SetCpus(request.cpus());
