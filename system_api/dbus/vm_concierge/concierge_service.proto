@@ -162,6 +162,9 @@ message VmInfo {
 
   // Whether the VM is using storage ballooning.
   bool storage_ballooning = 7;
+
+  // Status of the VM.
+  VmStatus status = 8;
 }
 
 // Optional fields for network configuration.
@@ -1373,6 +1376,7 @@ message ListVmsRequest {
 }
 
 // Message used for listing VMs.
+// TODO(b/325620275): remove in favor of extending VmInfo directly.
 message ExtendedVmInfo {
   // The name of the VM which has started.
   string name = 1;
