@@ -285,8 +285,6 @@ void Service::StartArcVm(
 StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                                             StartVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_vm_type(VmInfo::ARC_VM);
 
   // Log how long it takes to start the VM.
   metrics::DurationRecorder duration_recorder(
@@ -395,7 +393,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     response.set_failure_reason("Unable to allocate vsock cid");
     return response;
   }
-  vm_info->set_cid(vsock_cid);
 
   std::unique_ptr<ArcNetwork> network = ArcNetwork::Create(bus_, vsock_cid);
   if (!network) {
@@ -418,9 +415,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     response.set_failure_reason("Unable to start shared directory server");
     return response;
   }
-
-  uint32_t seneschal_server_handle = server_proxy->handle();
-  vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
   crossystem::Crossystem cros_system;
   std::vector<std::string> params =
@@ -673,10 +667,13 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   // ARCVM is ready.
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
+  VmBaseImpl::Info info = vm->GetInfo();
+
   response.set_success(true);
   response.set_status(VM_STATUS_RUNNING);
-  vm_info->set_ipv4_address(vm->IPv4Address());
-  vm_info->set_pid(vm->pid());
+
+  VmInfo* vm_info = response.mutable_vm_info();
+  *vm_info = ToVmInfo(vm->GetInfo(), true);
 
   vms_[vm_id] = std::move(vm);
 

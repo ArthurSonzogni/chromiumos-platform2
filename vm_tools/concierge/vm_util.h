@@ -27,6 +27,7 @@
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 
 namespace base {
 class FilePath;
@@ -217,6 +218,17 @@ std::optional<AsyncExecutor> StringToAsyncExecutor(
 // Convert the given |type| to the legacy VM type defined in
 // vm_concierge/concierge.pb
 VmInfo_VmType ToLegacyVmType(apps::VmType type);
+
+// Convert the given VM |status| to public protobuf variant
+// vm_tools::concierge::VmStatus
+VmStatus ToVmStatus(VmBaseImpl::Status status);
+
+// Converts VM |info| to public protobuf variant vm_tools::concierge::VmInfo.
+// If |fill_sensitive_info| is true then sensitive data, such as permission
+// token, will be included in the result. Typically sensitive data is excluded
+// when result of the conversion is used in DBus signals, and included in
+// results of DBus method calls.
+VmInfo ToVmInfo(const VmBaseImpl::Info& info, bool fill_sensitive_info);
 
 class CustomParametersForDev {
  public:

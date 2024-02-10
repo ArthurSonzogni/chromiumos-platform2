@@ -66,28 +66,9 @@ bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
 
     VmBaseImpl::Info vm = iter->second->GetInfo();
 
-    VmInfo* vm_info = response->mutable_vm_info();
-    vm_info->set_ipv4_address(vm.ipv4_address);
-    vm_info->set_pid(vm.pid);
-    vm_info->set_cid(vm.cid);
-    vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
-    vm_info->set_vm_type(ToLegacyVmType(vm.type));
-    switch (vm.status) {
-      case VmBaseImpl::Status::STARTING: {
-        response->set_status(VM_STATUS_STARTING);
-        break;
-      }
-      case VmBaseImpl::Status::RUNNING: {
-        response->set_status(VM_STATUS_RUNNING);
-        break;
-      }
-      default: {
-        response->set_status(VM_STATUS_UNKNOWN);
-        break;
-      }
-    }
+    *response->mutable_vm_info() = ToVmInfo(vm, false);
+    response->set_status(ToVmStatus(vm.status));
     response->set_success(true);
-
     return false;
   }
   return true;

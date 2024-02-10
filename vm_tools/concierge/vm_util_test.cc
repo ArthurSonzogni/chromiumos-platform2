@@ -13,6 +13,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "net-base/ipv4_address.h"
 
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
@@ -789,6 +790,53 @@ TEST(VMUtilTest, GetCpuPackageIdAndCapacity) {
   auto valid_capacity = GetCpuCapacity(0, cpu_info_dir.GetPath());
   EXPECT_TRUE(valid_capacity);
   EXPECT_EQ(*valid_capacity, 741);
+}
+
+TEST(VMUtilTest, VmStatusConversion) {
+  ASSERT_EQ(ToVmStatus(VmBaseImpl::Status::STARTING), VM_STATUS_STARTING);
+  ASSERT_EQ(ToVmStatus(VmBaseImpl::Status::RUNNING), VM_STATUS_RUNNING);
+  ASSERT_EQ(ToVmStatus(VmBaseImpl::Status::STOPPED), VM_STATUS_STOPPED);
+}
+
+namespace {
+
+const VmBaseImpl::Info test_info = {
+    .ipv4_address = net_base::IPv4Address(127, 0, 0, 1).ToInAddr().s_addr,
+    .pid = 123,
+    .cid = 22,
+    .seneschal_server_handle = 1,
+    .permission_token = "secret token",
+    .status = VmBaseImpl::Status::RUNNING,
+    .type = apps::VmType::TERMINA,
+    .storage_ballooning = true,
+};
+
+}  // namespace
+
+TEST(VMUtilTest, VmInfoConversioniWithSensitive) {
+  VmInfo vm_info = ToVmInfo(test_info, true);
+
+  ASSERT_EQ(vm_info.ipv4_address(),
+            net_base::IPv4Address(127, 0, 0, 1).ToInAddr().s_addr);
+  ASSERT_EQ(vm_info.pid(), 123);
+  ASSERT_EQ(vm_info.cid(), 22);
+  ASSERT_EQ(vm_info.seneschal_server_handle(), 1);
+  ASSERT_EQ(vm_info.permission_token(), "secret token");
+  ASSERT_EQ(vm_info.vm_type(), VmInfo::TERMINA);
+  ASSERT_TRUE(vm_info.storage_ballooning());
+}
+
+TEST(VMUtilTest, VmInfoConversionWithoutSensitive) {
+  VmInfo vm_info = ToVmInfo(test_info, false);
+
+  ASSERT_EQ(vm_info.ipv4_address(),
+            net_base::IPv4Address(127, 0, 0, 1).ToInAddr().s_addr);
+  ASSERT_EQ(vm_info.pid(), 123);
+  ASSERT_EQ(vm_info.cid(), 22);
+  ASSERT_EQ(vm_info.seneschal_server_handle(), 1);
+  ASSERT_EQ(vm_info.permission_token(), "");
+  ASSERT_EQ(vm_info.vm_type(), VmInfo::TERMINA);
+  ASSERT_TRUE(vm_info.storage_ballooning());
 }
 
 }  // namespace concierge

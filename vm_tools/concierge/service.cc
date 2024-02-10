@@ -1506,8 +1506,6 @@ StartVmResponse Service::StartVmInternal(
   VmId vm_id(request.owner_id(), request.name());
 
   apps::VmType classification = internal::ClassifyVm(request);
-  VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_vm_type(ToLegacyVmType(classification));
 
   // Log how long it takes to start the VM.
   metrics::DurationRecorder duration_recorder(
@@ -1783,7 +1781,6 @@ StartVmResponse Service::StartVmInternal(
     response.set_failure_reason("Unable to allocate vsock cid");
     return response;
   }
-  vm_info->set_cid(vsock_cid);
 
   std::unique_ptr<GuestOsNetwork> network;
   if (classification == apps::BRUSCHETTA) {
@@ -1811,9 +1808,6 @@ StartVmResponse Service::StartVmInternal(
     response.set_failure_reason("Unable to start shared directory server");
     return response;
   }
-
-  uint32_t seneschal_server_handle = server_proxy->handle();
-  vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
   // Set up a "checker" that will wait until the VM is ready or a signal is
   // received while waiting for the VM to start or we timeout.
@@ -2034,11 +2028,8 @@ StartVmResponse Service::StartVmInternal(
   // Notify cicerone that we have started a VM.
   // We must notify cicerone now before calling StartTermina, but we will only
   // send the VmStartedSignal on success.
-  {
-    auto vm_info = vm->GetInfo();
-    NotifyCiceroneOfVmStarted(vm_id, vm->cid(), vm_info.pid, vm_token,
-                              vm_info.type);
-  }
+  NotifyCiceroneOfVmStarted(vm_id, vm->cid(), vm->pid(), vm_token,
+                            classification);
 
   vm_tools::StartTerminaResponse::MountResult mount_result =
       vm_tools::StartTerminaResponse::UNKNOWN;
@@ -2090,10 +2081,9 @@ StartVmResponse Service::StartVmInternal(
   response.set_success(true);
   response.set_status(request.start_termina() ? VM_STATUS_STARTING
                                               : VM_STATUS_RUNNING);
-  vm_info->set_ipv4_address(vm->IPv4Address().ToInAddr().s_addr);
-  vm_info->set_pid(vm->pid());
-  vm_info->set_permission_token(vm->PermissionToken());
-  vm_info->set_storage_ballooning(storage_ballooning);
+
+  VmInfo* vm_info = response.mutable_vm_info();
+  *vm_info = ToVmInfo(vm->GetInfo(), true);
 
   const std::string& socket_path = vm->GetVmSocketPath();
 
@@ -2387,17 +2377,7 @@ void Service::GetVmInfo(
     return;
   }
 
-  VmBaseImpl::Info vm = iter->second->GetInfo();
-
-  VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_ipv4_address(vm.ipv4_address);
-  vm_info->set_pid(vm.pid);
-  vm_info->set_cid(vm.cid);
-  vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
-  vm_info->set_permission_token(vm.permission_token);
-  vm_info->set_vm_type(ToLegacyVmType(vm.type));
-  vm_info->set_storage_ballooning(vm.storage_ballooning);
-
+  *response.mutable_vm_info() = ToVmInfo(iter->second->GetInfo(), true);
   response.set_success(true);
   response_cb->Return(response);
   return;
@@ -3824,33 +3804,15 @@ void Service::ListVms(
     }
 
     VmBaseImpl::Info info = vm->GetInfo();
-    ExtendedVmInfo* proto = response.add_vms();
-    VmInfo* proto_info = proto->mutable_vm_info();
-    proto->set_name(id.name());
-    proto->set_owner_id(id.owner_id());
-    proto_info->set_ipv4_address(info.ipv4_address);
-    proto_info->set_pid(info.pid);
-    proto_info->set_cid(info.cid);
-    proto_info->set_seneschal_server_handle(info.seneschal_server_handle);
-    proto_info->set_vm_type(ToLegacyVmType(info.type));
-    proto_info->set_storage_ballooning(info.storage_ballooning);
     // The vms_ member only contains VMs with running crosvm instances. So the
     // STOPPED case below should not be possible.
-    switch (info.status) {
-      case VmBaseImpl::Status::STARTING: {
-        proto->set_status(VM_STATUS_STARTING);
-        break;
-      }
-      case VmBaseImpl::Status::RUNNING: {
-        proto->set_status(VM_STATUS_RUNNING);
-        break;
-      }
-      case VmBaseImpl::Status::STOPPED: {
-        NOTREACHED();
-        proto->set_status(VM_STATUS_STOPPED);
-        break;
-      }
-    }
+    DCHECK(info.status != VmBaseImpl::Status::STOPPED);
+
+    ExtendedVmInfo* proto = response.add_vms();
+    proto->set_name(id.name());
+    proto->set_owner_id(id.owner_id());
+    *proto->mutable_vm_info() = ToVmInfo(info, false);
+    proto->set_status(ToVmStatus(info.status));
   }
   response.set_success(true);
   response_cb->Return(response);

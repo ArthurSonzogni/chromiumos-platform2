@@ -124,9 +124,6 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   VmId vm_id(request.owner_id(), request.name());
 
-  VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_vm_type(VmInfo::PLUGIN_VM);
-
   // Log how long it takes to start the VM.
   metrics::DurationRecorder duration_recorder(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
@@ -267,30 +264,13 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
     return response;
   }
 
-  VmBaseImpl::Info info = vm->GetInfo();
-
-  vm_info->set_ipv4_address(info.ipv4_address);
-  vm_info->set_pid(info.pid);
-  vm_info->set_cid(info.cid);
-  vm_info->set_seneschal_server_handle(info.seneschal_server_handle);
-  vm_info->set_permission_token(info.permission_token);
-  switch (info.status) {
-    case VmBaseImpl::Status::STARTING: {
-      response.set_status(VM_STATUS_STARTING);
-      break;
-    }
-    case VmBaseImpl::Status::RUNNING: {
-      response.set_status(VM_STATUS_RUNNING);
-      break;
-    }
-    default: {
-      response.set_status(VM_STATUS_UNKNOWN);
-      break;
-    }
-  }
   response.set_success(true);
+  response.set_status(VM_STATUS_RUNNING);
 
-  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, info.pid, std::move(vm_token),
+  VmInfo* vm_info = response.mutable_vm_info();
+  *vm_info = ToVmInfo(vm->GetInfo(), true);
+
+  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, vm->pid(), std::move(vm_token),
                             apps::VmType::PLUGIN_VM);
 
   vms_[vm_id] = std::move(vm);

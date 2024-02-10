@@ -1311,4 +1311,32 @@ VmInfo_VmType ToLegacyVmType(apps::VmType type) {
   }
 }
 
+VmStatus ToVmStatus(VmBaseImpl::Status status) {
+  switch (status) {
+    case VmBaseImpl::Status::STARTING:
+      return VM_STATUS_STARTING;
+    case VmBaseImpl::Status::RUNNING:
+      return VM_STATUS_RUNNING;
+    case VmBaseImpl::Status::STOPPED:
+      return VM_STATUS_STOPPED;
+  }
+}
+
+VmInfo ToVmInfo(const VmBaseImpl::Info& info, bool fill_sensitive_info) {
+  VmInfo vm_info;
+
+  vm_info.set_ipv4_address(info.ipv4_address);
+  vm_info.set_pid(info.pid);
+  vm_info.set_cid(info.cid);
+  vm_info.set_seneschal_server_handle(info.seneschal_server_handle);
+  vm_info.set_vm_type(ToLegacyVmType(info.type));
+  vm_info.set_storage_ballooning(info.storage_ballooning);
+
+  if (fill_sensitive_info) {
+    vm_info.set_permission_token(info.permission_token);
+  }
+
+  return vm_info;
+}
+
 }  // namespace vm_tools::concierge
