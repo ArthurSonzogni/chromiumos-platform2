@@ -574,6 +574,21 @@ message VmStartedSignal {
   VmStatus status = 4;
 }
 
+// Message used in the signal for when a VM is about to start.
+message VmStartingUpSignal {
+  // The name of the VM which is starting.
+  string name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+
+  // Type of the VM which is starting.
+  VmInfo.VmType vm_type = 3;
+
+  // The virtual socket context id assigned to the VM that is starting.
+  int64 cid = 4;
+}
+
 enum GuestUserlandReady {
   // Userland unknown status.
   USERLAND_UNKNOWN = 0;
