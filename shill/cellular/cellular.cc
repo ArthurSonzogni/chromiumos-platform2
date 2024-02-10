@@ -4301,33 +4301,28 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
   // link-local address to configure before running host SLAAC. In both those
   // cases, the modem will receive DNS information via PCOs from the network,
   // which should be considered in the setup.
-  if (bearer->ipv6_config_method() == CellularBearer::IPConfigMethod::kStatic ||
-      bearer->ipv6_config_method() == CellularBearer::IPConfigMethod::kDHCP) {
+  if (bearer->ipv6_config_method() == CellularBearer::IPConfigMethod::kStatic) {
+    CHECK(bearer->ipv6_config());
     SLOG(2) << LoggingTag()
             << ": Assign static IPv6 configuration from bearer.";
-    CHECK(bearer->ipv6_config());
+    start_opts_.accept_ra = false;
     ipv6_config =
         std::make_unique<net_base::NetworkConfig>(*bearer->ipv6_config());
-    start_opts_.accept_ra = true;
-
-    // TODO(b/285205946): Currently IPv6 method is always set to static so we
-    // need to look into the actual address to tell whether it's a link local
-    // address to be used for SLAAC or it's already a global address reported by
-    // modem SLAAC. After we revert the ModemManager patch we should be able to
-    // simply check IPv6 method here instead.
-    const auto link_local_mask =
-        *net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10);
+    ipv6_configured = true;
+  } else if (bearer->ipv6_config_method() ==
+             CellularBearer::IPConfigMethod::kDHCP) {
+    SLOG(2) << LoggingTag()
+            << ": Assign IPv6 configuration from bearer using kernel SLAAC.";
+    ipv6_config =
+        std::make_unique<net_base::NetworkConfig>(*bearer->ipv6_config());
     if (ipv6_config->ipv6_addresses.empty()) {
-      LOG(ERROR) << LoggingTag() << ": IPv6 address is not set";
+      LOG(WARNING) << LoggingTag() << ": IPv6 address is not set";
     } else {
       const auto& local = ipv6_config->ipv6_addresses[0].address();
-      if (link_local_mask.InSameSubnetWith(local)) {
-        ipv6_config->ipv6_addresses.clear();
-        start_opts_.link_local_address = local;
-      } else {
-        start_opts_.accept_ra = false;
-      }
+      ipv6_config->ipv6_addresses.clear();
+      start_opts_.link_local_address = local;
     }
+    start_opts_.accept_ra = true;
     ipv6_configured = true;
   }
 
