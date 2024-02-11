@@ -18,6 +18,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome",
     "libdlcservice-client",
+    "libmetrics",
     "protobuf",
     "system_api",
   ]
@@ -27,6 +28,7 @@ static_library("dlc_client") {
   sources = [
     "dlc_client.cc",
     "dlc_loader.cc",
+    "dlc_metrics.cc",
   ]
-  configs += [ ":target_defaults" ]
+  public_configs = [ ":target_defaults" ]
 }

@@ -5,15 +5,18 @@
 #include "ml_core/dlc/dlc_client.h"
 
 #include <memory>
+#include <string_view>
 #include <utility>
-#include "base/files/file_path.h"
-#include "base/functional/bind.h"
 
+#include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/strings/strcat.h>
 #include <dbus/bus.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <dlcservice/dbus-constants.h>
 #include <dlcservice/dbus-proxies.h>
+
+#include "ml_core/dlc/dlc_metrics.h"
 
 namespace {
 constexpr char kDlcId[] = "ml-core-internal";
@@ -65,6 +68,8 @@ class DlcClientImpl : public cros::DlcClient {
 
     switch (dlc_state.state()) {
       case dlcservice::DlcState::INSTALLED:
+        metrics_.RecordFinalInstallResult(
+            cros::DlcFinalInstallResult::kSuccess);
         LOG(INFO) << "Successfully installed DLC " << kDlcId << " at "
                   << dlc_state.root_path();
         InvokeSuccessCb(base::FilePath(dlc_state.root_path()));
@@ -74,6 +79,10 @@ class DlcClientImpl : public cros::DlcClient {
                   << "% installing DLC: " << kDlcId;
         break;
       case dlcservice::DlcState::NOT_INSTALLED: {
+        metrics_.RecordFinalInstallResult(
+            cros::DlcFinalInstallResult::kDlcServiceError);
+        metrics_.RecordFinalInstallDlcServiceError(
+            cros::DlcErrorCodeEnumFromString(dlc_state.last_error_code()));
         InvokeErrorCb(base::StrCat({"Failed to install DLC: ", kDlcId,
                                     " Error: ", dlc_state.last_error_code()}));
         break;
@@ -96,14 +105,22 @@ class DlcClientImpl : public cros::DlcClient {
     }
   }
 
+  void SetMetricsBaseName(const std::string& metrics_base_name) override {
+    metrics_.SetMetricsBaseName(metrics_base_name);
+  }
+
   void InstallDlc() override { Install(/*attempt=*/1); }
 
   void Install(int attempt) {
     LOG(INFO) << "InstallDlc called for " << kDlcId << ", attempt: " << attempt;
     if (!bus_->IsConnected()) {
+      metrics_.RecordBeginInstallResult(
+          cros::DlcBeginInstallResult::kDBusNotConnected);
       InvokeErrorCb("Error calling dlcservice: DBus not connected");
       return;
     }
+
+    metrics_.RecordInstallAttemptCount(attempt, kMaxInstallAttempts);
 
     brillo::ErrorPtr error;
     dlcservice::InstallRequest install_request;
@@ -113,16 +130,22 @@ class DlcClientImpl : public cros::DlcClient {
                                      kDlcInstallTimeout)) {
       LOG(ERROR) << "Error calling dlcservice_client_->Install for " << kDlcId;
       if (error == nullptr) {
+        metrics_.RecordBeginInstallResult(
+            cros::DlcBeginInstallResult::kUnknownDlcServiceFailure);
         InvokeErrorCb("Error calling dlcservice: unknown");
         return;
       }
 
+      metrics_.RecordBeginInstallDlcServiceError(
+          cros::DlcErrorCodeEnumFromString(error->GetCode()));
       LOG(ERROR) << "Error code: " << error->GetCode()
                  << " msg: " << error->GetMessage();
 
       if (error->GetCode() == dlcservice::kErrorBusy) {
         attempt++;
         if (attempt > kMaxInstallAttempts) {
+          metrics_.RecordBeginInstallResult(
+              cros::DlcBeginInstallResult::kDlcServiceBusyWillAbort);
           auto err = base::StrCat(
               {"Install attempts for ", kDlcId, " exhausted, aborting."});
           LOG(ERROR) << err;
@@ -130,6 +153,8 @@ class DlcClientImpl : public cros::DlcClient {
           return;
         }
 
+        metrics_.RecordBeginInstallResult(
+            cros::DlcBeginInstallResult::kDlcServiceBusyWillRetry);
         auto retry_delay = kRetryDelays[attempt - 1];
         LOG(ERROR) << "dlcservice is busy. Retrying in " << retry_delay;
 
@@ -139,12 +164,18 @@ class DlcClientImpl : public cros::DlcClient {
                            attempt),
             retry_delay);
         return;
+      } else {
+        metrics_.RecordBeginInstallResult(
+            cros::DlcBeginInstallResult::kOtherDlcServiceError);
       }
+
       InvokeErrorCb(
           base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
                         "): ", error->GetMessage()}));
       return;
     }
+
+    metrics_.RecordBeginInstallResult(cros::DlcBeginInstallResult::kSuccess);
     LOG(INFO) << "InstallDlc successfully initiated for " << kDlcId;
   }
 
@@ -162,6 +193,8 @@ class DlcClientImpl : public cros::DlcClient {
     }
   }
 
+  cros::DlcMetrics metrics_;
+  std::string metrics_base_name_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
       dlcservice_client_;
   scoped_refptr<dbus::Bus> bus_;
@@ -179,6 +212,9 @@ class DlcClientForTest : public cros::DlcClient {
       : dlc_root_path_cb_(std::move(dlc_root_path_cb)),
         error_cb_(std::move(error_cb)),
         path_(path) {}
+
+  // Metrics not emitted in DlcClientForTest.
+  void SetMetricsBaseName(const std::string& /*unused*/) override {}
 
   void InstallDlc() override {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(

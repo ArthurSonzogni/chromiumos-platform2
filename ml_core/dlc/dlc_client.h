@@ -19,11 +19,22 @@ class DlcClient {
   static std::unique_ptr<DlcClient> Create(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
       base::OnceCallback<void(const std::string&)> error_cb);
+  virtual ~DlcClient() = default;
+
+  // Asks DLC Service to start installing the ML Core DLC. Retries a limited
+  // number of times if DLC Service is busy.
+  virtual void InstallDlc() = 0;
+
+  // Causes UMA histograms for this object to be emitted, with the specified
+  // base name. Emitted histograms are named as follows:
+  // {metrics_base_name}.MlCore.{specific histogram name}
+  // If this function is not called before InstallDlc(), histograms will not be
+  // emitted.
+  virtual void SetMetricsBaseName(const std::string& metrics_base_name) = 0;
+
   // For Unit Tests, allow using a fixed path instead of DLC, eg
   // /build/share/ml_core
   static void SetDlcPathForTest(const base::FilePath* path);
-  virtual void InstallDlc() = 0;
-  virtual ~DlcClient() = default;
 };
 
 }  // namespace cros
