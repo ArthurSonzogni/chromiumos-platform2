@@ -199,7 +199,6 @@ void CameraServiceConnector::InitOnThread(IntOnceCallback init_callback) {
 void CameraServiceConnector::OnDispatcherError() {
   // TODO(b/151047930): Attempt to reconnect on dispatcher error.
   LOGF(FATAL) << "Connection to camera dispatcher lost";
-  dispatcher_.reset();
 }
 
 }  // namespace cros

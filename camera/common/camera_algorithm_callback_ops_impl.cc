@@ -41,7 +41,6 @@ void CameraAlgorithmCallbackOpsImpl::Update(
 
   if (callback_ops_->update == nullptr) {
     LOGF(FATAL) << "Algorithm calls unregistered update callback";
-    return;
   }
   base::ScopedPlatformFile fd;
   MojoResult mojo_result = mojo::UnwrapPlatformFile(std::move(buffer_fd), &fd);
