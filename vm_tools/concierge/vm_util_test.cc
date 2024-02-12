@@ -824,6 +824,7 @@ TEST(VMUtilTest, VmInfoConversioniWithSensitive) {
   ASSERT_EQ(vm_info.permission_token(), "secret token");
   ASSERT_EQ(vm_info.vm_type(), VmInfo::TERMINA);
   ASSERT_TRUE(vm_info.storage_ballooning());
+  ASSERT_EQ(vm_info.status(), VM_STATUS_RUNNING);
 }
 
 TEST(VMUtilTest, VmInfoConversionWithoutSensitive) {
@@ -837,6 +838,7 @@ TEST(VMUtilTest, VmInfoConversionWithoutSensitive) {
   ASSERT_EQ(vm_info.permission_token(), "");
   ASSERT_EQ(vm_info.vm_type(), VmInfo::TERMINA);
   ASSERT_TRUE(vm_info.storage_ballooning());
+  ASSERT_EQ(vm_info.status(), VM_STATUS_RUNNING);
 }
 
 }  // namespace concierge

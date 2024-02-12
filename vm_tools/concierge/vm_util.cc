@@ -1336,6 +1336,8 @@ VmInfo ToVmInfo(const VmBaseImpl::Info& info, bool fill_sensitive_info) {
     vm_info.set_permission_token(info.permission_token);
   }
 
+  vm_info.set_status(ToVmStatus(info.status));
+
   return vm_info;
 }
 
