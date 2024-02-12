@@ -36,8 +36,14 @@ std::string ScreenError::GetErrorMessage() {
       return "MiniOS_connection_error";
     case ScreenType::kGeneralError:
       return "MiniOS_general_error";
-    default:
-      LOG(FATAL) << "Not a valid error screen.";
+    // List out all other types explicitly to catch `ScreenType` changes.
+    case ScreenType::kWelcomeScreen:
+    case ScreenType::kNetworkDropDownScreen:
+    case ScreenType::kLanguageDropDownScreen:
+    case ScreenType::kUserPermissionScreen:
+    case ScreenType::kStartDownload:
+    case ScreenType::kDebugOptionsScreen:
+    case ScreenType::kLogScreen:
       return "";
   }
 }
@@ -52,7 +58,7 @@ void ScreenError::Show() {
   base::FilePath error_path_desc =
       draw_utils_->GetScreensPath().Append("en-US").Append(
           "desc_" + error_message + ".png");
-  if (!base::PathExists(error_path_title) ||
+  if (error_message.empty() || !base::PathExists(error_path_title) ||
       !base::PathExists(error_path_desc)) {
     LOG(WARNING) << "Could not find error " << error_message;
     error_message = "MiniOS_general_error";

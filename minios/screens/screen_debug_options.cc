@@ -249,8 +249,6 @@ void ScreenDebugOptions::HandleButtonSelection() {
       break;
     default:
       LOG(FATAL) << "Index " << index_ << " is not valid.";
-      Reset();
-      Show();
   }
 }
 

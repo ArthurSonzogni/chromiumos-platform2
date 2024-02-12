@@ -125,7 +125,6 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
       return std::make_unique<ScreenLog>(draw_utils_, this);
     default:
       LOG(FATAL) << "Invalid screen.";
-      return nullptr;
   }
 }
 
