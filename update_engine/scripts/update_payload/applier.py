@@ -439,25 +439,14 @@ class PayloadApplier(object):
                 common.OpType.BROTLI_BSDIFF,
             ):
                 # Invoke bspatch on partition file with extents args.
-                if (
-                    sum(len(x) for x in (in_extents_arg, out_extents_arg))
-                    > 4096 * 31
-                ):
-                    bspatch_cmd = [
-                        self.bspatch_path,
-                        old_file_name,
-                        new_file_name,
-                        patch_file_name,
-                    ]
-                else:
-                    bspatch_cmd = [
-                        self.bspatch_path,
-                        old_file_name,
-                        new_file_name,
-                        patch_file_name,
-                        in_extents_arg,
-                        out_extents_arg,
-                    ]
+                bspatch_cmd = [
+                    self.bspatch_path,
+                    old_file_name,
+                    new_file_name,
+                    patch_file_name,
+                    in_extents_arg,
+                    out_extents_arg,
+                ]
                 subprocess.check_call(bspatch_cmd, close_fds=False)
             elif op.type == common.OpType.PUFFDIFF:
                 # Invoke puffpatch on partition file with extents args.

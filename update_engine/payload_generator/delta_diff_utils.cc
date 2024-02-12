@@ -61,9 +61,9 @@ namespace {
 // The maximum destination size allowed for bsdiff. In general, bsdiff should
 // work for arbitrary big files, but the payload generation and payload
 // application requires a significant amount of RAM. We put a hard-limit of
-// 200 MiB that should not affect any released board, but will limit the
+// 180 MiB that should not affect any released board, but will limit the
 // Chrome binary in ASan builders.
-const uint64_t kMaxBsdiffDestinationSize = 200 * 1024 * 1024;  // bytes
+const uint64_t kMaxBsdiffDestinationSize = 180 * 1024 * 1024;  // bytes
 
 // The maximum destination size allowed for puffdiff. In general, puffdiff
 // should work for arbitrary big files, but the payload application is quite
