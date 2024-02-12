@@ -667,24 +667,19 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   // ARCVM is ready.
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
-  VmBaseImpl::Info info = vm->GetInfo();
-
-  response.set_success(true);
-  response.set_status(VM_STATUS_RUNNING);
-
-  VmInfo* vm_info = response.mutable_vm_info();
-  *vm_info = ToVmInfo(vm->GetInfo(), true);
-
   vms_[vm_id] = std::move(vm);
 
-  HandleControlSocketReady(vm_id, apps::VmType::ARCVM, *vm_info,
-                           vms_[vm_id]->GetVmSocketPath(), response.status());
+  HandleControlSocketReady(vm_id);
 
   double vm_boost = topology.GlobalVMBoost();
   if (vm_boost > 0.0) {
     if (!BoostArcVmCgroups(vm_boost))
       LOG(WARNING) << "Failed to boost the ARCVM to " << vm_boost;
   }
+
+  response.set_success(true);
+  response.set_status(VM_STATUS_RUNNING);
+  *response.mutable_vm_info() = ToVmInfo(vms_[vm_id]->GetInfo(), true);
 
   return response;
 }

@@ -264,19 +264,16 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
     return response;
   }
 
-  response.set_success(true);
-  response.set_status(VM_STATUS_RUNNING);
-
-  VmInfo* vm_info = response.mutable_vm_info();
-  *vm_info = ToVmInfo(vm->GetInfo(), true);
-
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, vm->pid(), std::move(vm_token),
                             apps::VmType::PLUGIN_VM);
 
   vms_[vm_id] = std::move(vm);
 
-  HandleControlSocketReady(vm_id, apps::VmType::PLUGIN_VM, *vm_info,
-                           vms_[vm_id]->GetVmSocketPath(), response.status());
+  HandleControlSocketReady(vm_id);
+
+  response.set_success(true);
+  response.set_status(VM_STATUS_RUNNING);
+  *response.mutable_vm_info() = ToVmInfo(vms_[vm_id]->GetInfo(), true);
 
   return response;
 }

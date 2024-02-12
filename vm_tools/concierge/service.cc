@@ -2078,21 +2078,16 @@ StartVmResponse Service::StartVmInternal(
     }
   }
 
-  response.set_success(true);
-  response.set_status(request.start_termina() ? VM_STATUS_STARTING
-                                              : VM_STATUS_RUNNING);
-
-  VmInfo* vm_info = response.mutable_vm_info();
-  *vm_info = ToVmInfo(vm->GetInfo(), true);
-
-  const std::string& socket_path = vm->GetVmSocketPath();
-
   vms_[vm_id] = std::move(vm);
 
   // While VmStartedSignal is delayed, the return of StartVM does not wait for
   // the control socket to avoid a delay in boot time. Ref: b:316491142.
-  HandleControlSocketReady(vm_id, classification, *vm_info, socket_path,
-                           response.status());
+  HandleControlSocketReady(vm_id);
+
+  response.set_success(true);
+  response.set_status(request.start_termina() ? VM_STATUS_STARTING
+                                              : VM_STATUS_RUNNING);
+  *response.mutable_vm_info() = ToVmInfo(vms_[vm_id]->GetInfo(), true);
   return response;
 }
 
@@ -4046,31 +4041,33 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   }
 }
 
-void Service::HandleControlSocketReady(
-    const VmId& vm_id,
-    apps::VmType classification,
-    const vm_tools::concierge::VmInfo& vm_info,
-    const std::string& vm_socket,
-    vm_tools::concierge::VmStatus status) {
+void Service::HandleControlSocketReady(const VmId& vm_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&WaitUntilControlSocketPathExist,
-                     base::FilePath(vm_socket),
+                     base::FilePath(vms_[vm_id]->GetVmSocketPath()),
                      base::BindOnce(&Service::OnControlSocketReady,
-                                    weak_ptr_factory_.GetWeakPtr(), vm_id,
-                                    classification, vm_info, vm_socket, status),
+                                    weak_ptr_factory_.GetWeakPtr(), vm_id),
                      kControlSocketPathPollingTimeout));
 }
 
-void Service::OnControlSocketReady(const VmId& vm_id,
-                                   apps::VmType classification,
-                                   const vm_tools::concierge::VmInfo& vm_info,
-                                   const std::string& vm_socket,
-                                   vm_tools::concierge::VmStatus status) {
+void Service::OnControlSocketReady(const VmId& vm_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "VM " << vm_id.name() << " stopped prematurely";
+    return;
+  }
+
+  std::unique_ptr<VmBaseImpl>& vm = iter->second;
+  VmBaseImpl::Info info = vm->GetInfo();
+
   if (vm_memory_management_service_) {
-    vm_memory_management_service_->NotifyVmStarted(classification,
-                                                   vm_info.cid(), vm_socket);
+    vm_memory_management_service_->NotifyVmStarted(info.type, info.cid,
+                                                   vm->GetVmSocketPath());
   }
 
   if (BalloonTimerShouldRun() && !balloon_resizing_timer_.IsRunning()) {
@@ -4079,17 +4076,16 @@ void Service::OnControlSocketReady(const VmId& vm_id,
                                   &Service::RunBalloonPolicy);
   }
 
-  SendVmStartedSignal(vm_id, vm_info, status);
+  SendVmStartedSignal(vm_id, info);
 }
 
 void Service::SendVmStartedSignal(const VmId& vm_id,
-                                  const vm_tools::concierge::VmInfo& vm_info,
-                                  vm_tools::concierge::VmStatus status) {
+                                  const VmBaseImpl::Info& vm_info) {
   vm_tools::concierge::VmStartedSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
-  proto.mutable_vm_info()->CopyFrom(vm_info);
-  proto.set_status(status);
+  *proto.mutable_vm_info() = ToVmInfo(vm_info, false);
+  proto.set_status(ToVmStatus(vm_info.status));
   concierge_adaptor_.SendVmStartedSignalSignal(proto);
 }
 
