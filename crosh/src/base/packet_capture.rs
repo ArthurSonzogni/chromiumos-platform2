@@ -150,7 +150,12 @@ fn execute_packet_capture(_cmd: &Command, args: &Arguments) -> Result<(), dispat
             // and String for other options.
             let variant_value: Variant<Box<dyn arg::RefArg>> =
                 if argument_name == "frequency" || argument_name == "max-size" {
-                    Variant(Box::new(value.parse::<i32>().unwrap()))
+                    if let Ok(parsed_value) = value.parse::<i32>() {
+                        Variant(Box::new(parsed_value))
+                    } else {
+                        eprintln!("--{} value must be an integer.", argument_name);
+                        return Err(dispatcher::Error::CommandReturnedError);
+                    }
                 } else {
                     Variant(Box::new(value))
                 };
