@@ -32,7 +32,7 @@ use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
 use system_api::dlcservice::*;
 
-use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType};
+use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState};
 use crate::proto::system_api::cicerone_service::*;
 use crate::proto::system_api::launch::*;
 use crate::proto::system_api::seneschal_service::*;
@@ -2384,23 +2384,41 @@ impl Methods {
         let (images, total_size) = self.list_disk_images(user_id_hash, None, None)?;
         let out_images: Vec<DiskInfo> = images
             .into_iter()
-            .map(|e| DiskInfo {
-                name: e.name,
-                size: e.size,
-                min_size: if e.min_size != 0 {
-                    Some(e.min_size)
-                } else {
-                    None
-                },
-                image_type: match e.image_type.enum_value_or_default() {
-                    DiskImageType::DISK_IMAGE_RAW => VmDiskImageType::Raw,
-                    DiskImageType::DISK_IMAGE_QCOW2 => VmDiskImageType::Qcow2,
-                    DiskImageType::DISK_IMAGE_AUTO => VmDiskImageType::Auto,
-                    DiskImageType::DISK_IMAGE_PLUGINVM => VmDiskImageType::PluginVm,
-                },
-                user_chosen_size: e.user_chosen_size,
+            .map(|e| -> Result<DiskInfo, Box<dyn Error>> {
+                let state = match self.get_vm_info(&e.name, user_id_hash) {
+                    Ok(vm_info) => match vm_info.status.enum_value() {
+                        Ok(VmStatus::VM_STATUS_STARTING) => VmState::Starting,
+                        Ok(VmStatus::VM_STATUS_RUNNING) => VmState::Running,
+                        _ => VmState::Stopped,
+                    },
+                    Err(e) => match e.downcast::<ChromeOSError>() {
+                        Ok(e) => match *e {
+                            FailedGetVmInfo => VmState::Stopped,
+                            _ => return Err(e),
+                        },
+                        Err(e) => return Err(e),
+                    },
+                };
+                let info = DiskInfo {
+                    name: e.name,
+                    size: e.size,
+                    min_size: if e.min_size != 0 {
+                        Some(e.min_size)
+                    } else {
+                        None
+                    },
+                    image_type: match e.image_type.enum_value_or_default() {
+                        DiskImageType::DISK_IMAGE_RAW => VmDiskImageType::Raw,
+                        DiskImageType::DISK_IMAGE_QCOW2 => VmDiskImageType::Qcow2,
+                        DiskImageType::DISK_IMAGE_AUTO => VmDiskImageType::Auto,
+                        DiskImageType::DISK_IMAGE_PLUGINVM => VmDiskImageType::PluginVm,
+                    },
+                    user_chosen_size: e.user_chosen_size,
+                    state: state,
+                };
+                Ok(info)
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
         Ok((out_images, total_size))
     }
 

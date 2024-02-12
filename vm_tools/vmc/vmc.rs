@@ -16,7 +16,7 @@ use std::io::{stdin, stdout, BufRead, Write};
 
 use getopts::Options;
 
-use crate::disk::DiskOpType;
+use crate::disk::{DiskOpType, VmState};
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
 use crate::proto::system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use crate::proto::system_api::cicerone_service::VmDeviceAction;
@@ -683,7 +683,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             if !disk.user_chosen_size {
                 extra_info.push_str(", sparse");
             }
-            println!("{} ({} bytes{})", disk.name, disk.size, extra_info);
+            let state_str = match disk.state {
+                VmState::Starting | VmState::Running => format!(" {}", disk.state),
+                _ => String::new(),
+            };
+            println!(
+                "{} ({} bytes{}){}",
+                disk.name, disk.size, extra_info, state_str
+            );
         }
         println!("Total Size (bytes): {}", total_size);
         Ok(())

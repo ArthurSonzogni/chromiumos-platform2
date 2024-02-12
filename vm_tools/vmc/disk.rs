@@ -31,6 +31,24 @@ impl fmt::Display for VmDiskImageType {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub enum VmState {
+    Starting,
+    Running,
+    #[default]
+    Stopped,
+}
+
+impl fmt::Display for VmState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VmState::Starting => write!(f, "starting"),
+            VmState::Running => write!(f, "running"),
+            VmState::Stopped => write!(f, "stopped"),
+        }
+    }
+}
+
 /// Information about a single VM disk image.
 #[derive(Default, Debug)]
 pub struct DiskInfo {
@@ -44,4 +62,6 @@ pub struct DiskInfo {
     pub image_type: VmDiskImageType,
     /// Whether the disk size is user-specified (true) or automatically sized (false).
     pub user_chosen_size: bool,
+    /// Indicates state of the VM owning this disk.
+    pub state: VmState,
 }
