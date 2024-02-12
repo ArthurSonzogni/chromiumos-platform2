@@ -25,9 +25,6 @@ bool IsTestImage(const base::FilePath& lsb_file);
 bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
                        const base::FilePath& base_dir);
 
-// Determines if the device is in factory installer mode.
-bool IsFactoryInstallMode(const base::FilePath& base_dir);
-
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
 bool IsFactoryMode(const crossystem::Crossystem& cros_system,

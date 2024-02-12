@@ -328,10 +328,14 @@ bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
   return false;
 }
 
-// Return if the device is in factory installer mode.
-bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
-  std::string cmdline;
+// Return if the device is in either in factory test mode or in factory
+// installer mode.
+bool IsFactoryMode(const crossystem::Crossystem& cros_system,
+                   const base::FilePath& base_dir) {
+  if (IsFactoryTestMode(cros_system, base_dir))
+    return true;
 
+  std::string cmdline;
   if (!base::ReadFileToStringWithMaxSize(base_dir.Append(kProcCmdLine),
                                          &cmdline, kMaxReadSize)) {
     PLOG(ERROR) << "Failed to read proc command line";
@@ -349,14 +353,6 @@ bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
     return true;
   }
   return false;
-}
-
-// Return if the device is in either in factory test mode or in factory
-// installer mode.
-bool IsFactoryMode(const crossystem::Crossystem& cros_system,
-                   const base::FilePath& base_dir) {
-  return (IsFactoryTestMode(cros_system, base_dir) ||
-          IsFactoryInstallerMode(base_dir));
 }
 
 }  // namespace startup
