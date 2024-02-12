@@ -4161,7 +4161,20 @@ bool WiFi::RequestRoam(const std::string& addr, Error* error) {
 
 // TODO(b/184395063): determine this at runtime.
 bool WiFi::SupportsWPA3() const {
-#if !defined(DISABLE_WPA3_SAE)
+#if !defined(DISABLE_WPA3_OWE)
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool WiFi::SupportsOWE() const {
+  // Support for OWE is not easily checked via driver features (unlike SAE) so
+  // for now we'll rely on DISABLE_WPA3_OWE which is defined only on Marvell
+  // based boards, where neither WAP3 nor OWE is supported.  The other option
+  // would be to use GetWiFiHardwareIds() and check for vendor ID: 0x02df or
+  // 0x1b4b.
+#if !defined(DISABLE_WPA3_OWE)
   return true;
 #else
   return false;

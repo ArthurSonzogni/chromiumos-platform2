@@ -101,7 +101,9 @@ pkg_config("target_defaults") {
   }
 
   if (!use.wpa3_sae) {
-    defines += [ "DISABLE_WPA3_SAE" ]
+    # Currently only Marvell based boards do not support WPA3.  These
+    # also do not support OWE so this define reflects both.
+    defines += [ "DISABLE_WPA3_OWE" ]
   }
 
   pkg_deps = [

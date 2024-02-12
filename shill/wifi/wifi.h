@@ -252,7 +252,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool RequestRoam(const std::string& addr, Error* error) override;
 
+  // Two helpers indicating WiFi driver support for WPA3 and OWE.
   bool SupportsWPA3() const;
+  bool SupportsOWE() const;
 
   void GetDeviceHardwareIds(int* vendor, int* product, int* subsystem) const;
 

@@ -237,8 +237,8 @@ WiFiService::WiFiService(Manager* manager,
 
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetDefaultStorageIdentifier();
-  UpdateConnectable();
   UpdateSecurity();
+  UpdateConnectable();
 
   // Now that |this| is a fully constructed WiFiService, synchronize observers
   // with our current state, and emit the appropriate change notifications.
@@ -364,20 +364,21 @@ void WiFiService::SetSecurityProperties() {
 
 void WiFiService::UpdateKeyManagement() {
   if (security_class() == kSecurityClassPsk) {
-#if !defined(DISABLE_WPA3_SAE)
-    // WPA/WPA2-PSK or WPA3-SAE.
-    SetEAPKeyManagement(
-        base::StringPrintf("%s %s %s", WPASupplicant::kKeyManagementWPAPSK,
-                           WPASupplicant::kKeyManagementWPAPSKSHA256,
-                           WPASupplicant::kKeyManagementSAE));
-#else
-    // WPA/WPA2-PSK.
-    SetEAPKeyManagement(
-        base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
-                           WPASupplicant::kKeyManagementWPAPSKSHA256));
-#endif  // DISABLE_WPA3_SAE
-  } else if (security_ == WiFiSecurity::kOwe ||
-             security_ == WiFiSecurity::kTransOwe) {
+    // WPA/WPA2-PSK is a minimum supported.
+    auto km = base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
+                                 WPASupplicant::kKeyManagementWPAPSKSHA256);
+    if (wifi_ && wifi_->SupportsWPA3()) {
+      km += " ";
+      km += WPASupplicant::kKeyManagementSAE;
+    }
+    SetEAPKeyManagement(km);
+  } else if (security_ == WiFiSecurity::kTransOwe) {
+    if (wifi_ && wifi_->SupportsOWE()) {
+      SetEAPKeyManagement(WPASupplicant::kKeyManagementOWE);
+    } else {
+      SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
+    }
+  } else if (security_ == WiFiSecurity::kOwe) {
     SetEAPKeyManagement(WPASupplicant::kKeyManagementOWE);
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
@@ -1434,7 +1435,8 @@ void WiFiService::UpdateConnectable() {
   if (security_class() == kSecurityClassNone) {
     DCHECK(passphrase_.empty());
     need_passphrase_ = false;
-    is_connectable = true;
+    is_connectable =
+        security() != WiFiSecurity::kOwe || (wifi_ && wifi_->SupportsOWE());
   } else if (Is8021x()) {
     is_connectable = Is8021xConnectable();
   } else if (security_class() == kSecurityClassWep ||
@@ -1536,7 +1538,7 @@ void WiFiService::UpdateFromEndpoints() {
   }
 
   UpdateSecurity();
-  // WPA2/3 info may change this.
+  // WPA2/3 or OWE info may change this.
   UpdateConnectable();
 
   NotifyIfVisibilityChanged();
@@ -2010,6 +2012,8 @@ void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
                                         DBusControl::NullRpcIdentifier());
   }
   wifi_ = new_wifi;
+  // KeyMgmt used depends on the wifi support for WPA3/OWE so let's update it.
+  UpdateKeyManagement();
 }
 
 std::string WiFiService::CalculateRoamState(Error* /*error*/) {

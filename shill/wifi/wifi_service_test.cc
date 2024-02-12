@@ -183,7 +183,7 @@ class WiFiServiceTest : public testing::Test {
     WiFiServiceRefPtr service = security.IsValid()
                                     ? MakeSimpleService(security)
                                     : MakeSimpleService(security_class);
-    SetWiFiForService(service, wifi_);
+    SetWiFi(service, wifi_);
     scoped_refptr<MockProfile> mock_profile(
         new NiceMock<MockProfile>(manager()));
     service->set_profile(mock_profile);
@@ -646,13 +646,13 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
 TEST_F(WiFiServiceTest, ConnectTaskFT) {
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassPsk);
-#if !defined(DISABLE_WPA3_SAE)
+#if !defined(DISABLE_WPA3_OWE)
     std::string ft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 SAE FT-PSK FT-SAE";
     std::string noft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 SAE";
 #else
     std::string ft_key_mgmt = "WPA-PSK WPA-PSK-SHA256 FT-PSK";
     std::string noft_key_mgmt = "WPA-PSK WPA-PSK-SHA256";
-#endif  // DISABLE_WPA3_SAE
+#endif  // DISABLE_WPA3_OWE
 
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
