@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include "compositor/sommelier-linux-dmabuf.h"  // NOLINT(build/include_directory)
-#include "sommelier.h"              // NOLINT(build/include_directory)
+#include "sommelier.h"  // NOLINT(build/include_directory)
+#include <cstdint>
+#include <cstring>
 #include "sommelier-scope-timer.h"  // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"      // NOLINT(build/include_directory)
 #include "sommelier-transform.h"    // NOLINT(build/include_directory)
@@ -1438,8 +1440,7 @@ void sl_handle_map_request(struct sl_context* ctx,
   if (!(window->size_flags & (US_POSITION | P_POSITION)))
     sl_adjust_window_position_for_screen_size(window);
 
-  values[0] = window->width;
-  values[1] = window->height;
+  sl_window_get_width_height(window, &values[0], &values[1]);
   values[2] = 0;
   xcb()->configure_window(ctx->connection, window->id,
                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
@@ -1480,10 +1481,9 @@ void sl_handle_map_request(struct sl_context* ctx,
                             XCB_CONFIG_WINDOW_STACK_MODE, values);
     xcb()->reparent_window(ctx->connection, window->id, window->frame_id, 0, 0);
   } else {
-    values[0] = window->x;
-    values[1] = window->y;
-    values[2] = window->width;
-    values[3] = window->height;
+    // Populate values[0~3] with x,y,w,h
+    sl_window_get_x_y(window, &values[0], &values[1]);
+    sl_window_get_width_height(window, &values[2], &values[3]);
     values[4] = XCB_STACK_MODE_BELOW;
     xcb()->configure_window(
         ctx->connection, window->frame_id,
@@ -1615,10 +1615,9 @@ void sl_handle_configure_request(struct sl_context* ctx,
   else
     sl_adjust_window_position_for_screen_size(window);
 
-  values[0] = window->x;
-  values[1] = window->y;
-  values[2] = window->width;
-  values[3] = window->height;
+  // Populate values[0~3] with x,y,w,h
+  sl_window_get_x_y(window, &values[0], &values[1]);
+  sl_window_get_width_height(window, &values[2], &values[3]);
   values[4] = 0;
   xcb_configure_window(ctx->connection, window->frame_id,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
@@ -2397,21 +2396,85 @@ void sl_handle_property_notify(struct sl_context* ctx,
                                    frame_color);
   } else if (event->atom ==
              ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value) {
-    TRACE_EVENT(
-        "x11wm", "XCB_PROPERTY_NOTIFY: _XWAYLAND_RANDR_EMU_MONITOR_RECTS",
-        [&](perfetto::EventContext p) {
-          xcb_get_property_cookie_t cookie = xcb()->get_property(
-              ctx->connection, 0, event->window,
-              ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value,
-              XCB_ATOM_ANY, 0, 2048);
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
 
-          perfetto_annotate_window(ctx, p, "window", event->window);
+    if (!window) {
+      TRACE_EVENT("x11wm",
+                  "XCB_PROPERTY_NOTIFY: _XWAYLAND_RANDR_EMU_MONITOR_RECTS",
+                  [&](perfetto::EventContext p) {
+                    perfetto_annotate_window(ctx, p, "window", event->window);
+                  });
+      return;
+    }
 
-          xcb_get_property_reply_t* reply =
-              xcb()->get_property_reply(ctx->connection, cookie, nullptr);
-          perfetto_annotate_cardinal_list(p, "value", reply);
-          free(reply);
-        });
+    xcb_get_property_reply_t* reply = xcb()->get_property_reply(
+        ctx->connection,
+        xcb()->get_property(
+            ctx->connection, 0, window->id,
+            ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value,
+            XCB_ATOM_CARDINAL, 0, 2048),
+        nullptr);
+
+    xcb_get_property_reply_t* reply_for_trace =
+        static_cast<xcb_get_property_reply_t*>(
+            malloc(sizeof(xcb_get_property_reply_t)));
+    memcpy(reply_for_trace, reply, sizeof(*reply));
+    TRACE_EVENT("x11wm",
+                "XCB_PROPERTY_NOTIFY: _XWAYLAND_RANDR_EMU_MONITOR_RECTS",
+                [&](perfetto::EventContext p) {
+                  perfetto_annotate_window(ctx, p, "window", event->window);
+                  perfetto_annotate_cardinal_list(p, "value", reply_for_trace);
+                  free(reply_for_trace);
+                });
+
+    if (!ctx->allow_xwayland_emulate_screen_pos_size) {
+      return;
+    }
+
+    if (!reply || reply->value_len == 0 || reply->value_len % 4 != 0) {
+      // Stop using emulated rects when:
+      // - the window property is unset (ie. len == 0), we are back to native
+      // - the window property length is not a multiple of 4 (property invalid)
+      //   resolution
+      // - we failed to get reply
+      window->use_emulated_rects = false;
+      free(reply);
+      return;
+    }
+
+    uint32_t* xywh = static_cast<uint32_t*>(xcb()->get_property_value(reply));
+    if (!xywh) {
+      // The values are probably incorrectly set by XWayland, consider it as
+      // buggy and do not proceed further.
+      window->use_emulated_rects = false;
+      free(reply);
+      return;
+    }
+
+    // TODO(b/191224463): Support multiple monitors by selecting the correct
+    // xywh indexes.
+    uint32_t window_screen_x = 0;
+    uint32_t window_screen_y = 0;
+    for (uint32_t i = 0; i < reply->value_len; i += 4) {
+      if (xywh[i] == window_screen_x && xywh[i + 1] == window_screen_y) {
+        // NOTE: XWayland will send a wp_viewport.set_source request based on
+        // ConfigureNotify request. ConfigureNotify with emulated values will be
+        // sent in the next sl_host_surface_commit().
+        window->use_emulated_rects = true;
+        window->emulated_x = xywh[i];
+        window->emulated_y = xywh[i + 1];
+        window->emulated_width = xywh[i + 2];
+        window->emulated_height = xywh[i + 3];
+        free(reply);
+        return;
+      }
+    }
+
+    fprintf(stderr, "failed to find screen with position %u,%u\n",
+            window_screen_x, window_screen_y);
+    window->use_emulated_rects = false;
+    free(reply);
+
   } else if (event->atom == ctx->atoms[ATOM_WL_SELECTION].value) {
     if (event->window == ctx->selection_window &&
         event->state == XCB_PROPERTY_NEW_VALUE &&
@@ -3956,6 +4019,8 @@ int real_main(int argc, char** argv) {
       ctx.stable_scaling = true;
     } else if (strstr(arg, "--viewport-resize") == arg) {
       ctx.viewport_resize = true;
+    } else if (strstr(arg, "--allow-xwayland-emulate-screen-pos-size") == arg) {
+      ctx.allow_xwayland_emulate_screen_pos_size = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

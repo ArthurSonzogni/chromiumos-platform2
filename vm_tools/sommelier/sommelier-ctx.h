@@ -219,6 +219,7 @@ struct sl_context {
   bool use_virtgpu_channel;
   bool use_direct_scale;
   bool viewport_resize;
+  bool allow_xwayland_emulate_screen_pos_size;
 
   // Experimental feature flags to be cleaned up.
   bool enable_x11_move_windows;  // TODO(b/247452928): Clean this up.

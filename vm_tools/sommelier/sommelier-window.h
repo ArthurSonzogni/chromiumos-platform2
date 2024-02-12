@@ -8,6 +8,7 @@
 #include <pixman.h>
 #include <wayland-client-protocol.h>
 #include <wayland-server-core.h>
+#include <cstdint>
 #include <set>
 #include <string>
 #include <xcb/xcb.h>
@@ -57,6 +58,16 @@ struct sl_window {
   int y = 0;
   int width = 0;
   int height = 0;
+
+  // Emulated x,y,width,height are 'faked' position and size by XWayland. We
+  // only need to set and return this value to the clients (X11 windows). We
+  // should continue doing normal window position and sizing operations with Exo
+  // with real x,y,width,height.
+  bool use_emulated_rects = false;
+  int emulated_x = 0;
+  int emulated_y = 0;
+  int emulated_width = 0;
+  int emulated_height = 0;
 
   int border_width = 0;
   int depth = 0;
@@ -249,8 +260,15 @@ bool sl_window_should_log_quirk(struct sl_window* window, int feature_enum);
 // This "latches"; if a quirk has ever been enabled, it will stay in this list,
 // even if the quirk is no longer enabled.
 std::set<int> sl_window_logged_quirks(struct sl_window* window);
-#endif
+#endif  // QUIRKS_SUPPORT
 
 bool sl_window_is_client_positioned(struct sl_window* window);
+
+// Get position of the window, taking account of emulated status.
+void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y);
+// Get size of the window, taking account of emulated status.
+void sl_window_get_width_height(struct sl_window* window,
+                                uint32_t* w,
+                                uint32_t* h);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_

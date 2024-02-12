@@ -65,7 +65,6 @@ void sl_configure_window(struct sl_window* window) {
   assert(!window->pending_config.serial);
 
   if (window->next_config.mask) {
-    int values[5];
     int x = window->x;
     int y = window->y;
     int i = 0;
@@ -87,10 +86,17 @@ void sl_configure_window(struct sl_window* window) {
 
     // Set x/y to origin in case window gravity is not northwest as expected.
     assert(window->managed);
+
+    uint32_t values[5];
+    // Populate values[0~3] with x,y,w,h
+    // x and y need to be 0. We are configuring the child window, not the frame
+    // window, and the child window should always have a zero offset from its
+    // frame (parent) window. See
+    // https://en.wikipedia.org/wiki/Re-parenting_window_manager
     values[0] = 0;
     values[1] = 0;
-    values[2] = window->width;
-    values[3] = window->height;
+    sl_window_get_width_height(window, &values[2], &values[3]);
+
     values[4] = window->border_width;
     xcb()->configure_window(
         window->ctx->connection, window->id,
@@ -129,11 +135,14 @@ void sl_send_configure_notify(struct sl_window* window) {
 
   // Per ICCCM, synthetic ConfigureNotify events use root coordinates
   // even if the window has been reparented.
-  event.x = static_cast<int16_t>(window->x);
-  event.y = static_cast<int16_t>(window->y);
+  uint32_t xywh[4];
+  sl_window_get_x_y(window, &xywh[0], &xywh[1]);
+  sl_window_get_width_height(window, &xywh[2], &xywh[3]);
+  event.x = static_cast<int16_t>(xywh[0]);
+  event.y = static_cast<int16_t>(xywh[1]);
+  event.width = static_cast<uint16_t>(xywh[2]);
+  event.height = static_cast<uint16_t>(xywh[3]);
 
-  event.width = static_cast<uint16_t>(window->width);
-  event.height = static_cast<uint16_t>(window->height);
   event.border_width = static_cast<uint16_t>(window->border_width);
   event.override_redirect = 0;
   event.pad1 = 0;
@@ -499,10 +508,11 @@ static void sl_internal_zaura_toplevel_origin_change(
   int32_t guest_y = y;
   sl_transform_host_position_to_guest_position(
       window->ctx, window->paired_surface, &guest_x, &guest_y);
-  uint32_t values[] = {static_cast<uint32_t>(guest_x),
-                       static_cast<uint32_t>(guest_y)};
   window->x = guest_x;
   window->y = guest_y;
+
+  uint32_t values[2];
+  sl_window_get_x_y(window, &values[0], &values[1]);
   xcb()->configure_window(window->ctx->connection, window->frame_id,
                           XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, values);
 }
@@ -866,4 +876,42 @@ bool sl_window_is_client_positioned(struct sl_window* window) {
   }
 #endif
   return window->ctx->enable_x11_move_windows;
+}
+
+void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y) {
+  if (window->use_emulated_rects) {
+    if (x != nullptr) {
+      *x = window->emulated_x;
+    }
+    if (y != nullptr) {
+      *y = window->emulated_y;
+    }
+  } else {
+    if (x != nullptr) {
+      *x = window->x;
+    }
+    if (y != nullptr) {
+      *y = window->y;
+    }
+  }
+}
+
+void sl_window_get_width_height(struct sl_window* window,
+                                uint32_t* w,
+                                uint32_t* h) {
+  if (window->use_emulated_rects) {
+    if (w != nullptr) {
+      *w = window->emulated_width;
+    }
+    if (h != nullptr) {
+      *h = window->emulated_height;
+    }
+  } else {
+    if (w != nullptr) {
+      *w = window->width;
+    }
+    if (h != nullptr) {
+      *h = window->height;
+    }
+  }
 }

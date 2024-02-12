@@ -737,6 +737,11 @@ void sl_host_surface_commit(struct wl_client* client,
           width = viewport->dst_width;
           height = viewport->dst_height;
         }
+      } else {
+        // Reset the host viewport if client viewport does not exist
+        wl_fixed_t negative_one = wl_fixed_from_int(-1);
+        wp_viewport_set_source(host->viewport, negative_one, negative_one,
+                               negative_one, negative_one);
       }
 
       int32_t vp_width = width;
