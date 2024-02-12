@@ -154,7 +154,6 @@ static_library("libpayload_consumer") {
   all_dependent_pkg_deps = [
     "libbspatch",
     "libcrypto",
-    "libimageloader-manifest",
     "libpuffpatch",
     "xz-embedded",
   ]
@@ -251,6 +250,7 @@ if (!use.cros_host) {
       "libcurl",
       "libdebugd-client",
       "libenterprise_rollback_metrics",
+      "libimageloader-manifest",
       "libmetrics",
       "libpower_manager-client",
       "libsession_manager-client",
