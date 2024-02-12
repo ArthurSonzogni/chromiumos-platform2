@@ -10,6 +10,7 @@ group("all") {
     ":install_init_config",
     ":install_init_scripts",
     ":install_rsyslog",
+    ":install_tmpfiles",
   ]
 }
 
@@ -22,7 +23,6 @@ install_config("install_android-sh") {
 install_config("install_init_scripts") {
   sources = [
     "init/arcvm-fsverity-certs.conf",
-    "init/arcvm-host.conf",
     "init/arcvm-post-login-services.conf",
     "init/arcvm-post-vm-start-services.conf",
     "init/arcvm-pre-login-services.conf",
@@ -53,4 +53,9 @@ install_config("install_certs") {
 install_config("install_rsyslog") {
   sources = [ "rsyslog.arc.conf" ]
   install_path = "/etc/rsyslog.d"
+}
+
+install_config("install_tmpfiles") {
+  sources = [ "init/tmpfiles.d/arcvm-host.conf" ]
+  install_path = "tmpfilesd"
 }
