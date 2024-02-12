@@ -1045,7 +1045,18 @@ void WiFiEndpoint::ParseAdvertisementProtocolList(
         // +------------+--------+-----+-----------------+
         // | Element ID | Length | OUI | Vendor specific |
         // +------------+--------+-----+-----------------+
+        if (std::distance(ie, end) < 2) {
+          LOG(WARNING) << __func__
+                       << "No room for vendor specific element length.";
+          break;
+        }
         uint8_t element_len = *(ie + 1);
+        if (std::distance(ie, end) < element_len) {
+          LOG(WARNING) << __func__
+                       << ": Advertisement protocol element extends past "
+                          "containing PDU.";
+          break;
+        }
         // Skip the vendor specific element.
         ie += element_len;
         break;
