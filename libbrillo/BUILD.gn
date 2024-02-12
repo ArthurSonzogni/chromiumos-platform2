@@ -101,35 +101,6 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-storage"
-    deps = [ ":libbrillo-core" ]
-    sources = [
-      "brillo/blkdev_utils/disk_iostat.cc",
-      "brillo/blkdev_utils/emmc.cc",
-      "brillo/blkdev_utils/loop_device.cc",
-      "brillo/blkdev_utils/storage_device.cc",
-      "brillo/blkdev_utils/storage_utils.cc",
-      "brillo/blkdev_utils/ufs.cc",
-    ]
-    libs = [ "rootdev" ]
-    if (use.udev) {
-      sources += [ "brillo/blkdev_utils/get_backing_block_device.cc" ]
-      deps += [ ":libbrillo-udev" ]
-    }
-    if (use.device_mapper) {
-      libs += [ "lvm2cmd" ]
-      pkg_deps = [ "devmapper" ]
-      sources += [
-        "brillo/blkdev_utils/device_mapper.cc",
-        "brillo/blkdev_utils/device_mapper_task.cc",
-        "brillo/blkdev_utils/lvm.cc",
-        "brillo/blkdev_utils/lvm_device.cc",
-      ]
-    }
-    sources += [ "brillo/storage_balloon.cc" ]
-  },
-
-  {
     library_name = "brillo-http"
     deps = [
       ":libbrillo-core",
@@ -257,6 +228,39 @@ if (use.dbus) {
         "brillo/dbus/exported_property_set.cc",
         "brillo/dbus/utils.cc",
       ]
+    },
+  ]
+}
+
+if (!use.cros_host) {
+  libbrillo_sublibs += [
+    {
+      library_name = "brillo-storage"
+      deps = [ ":libbrillo-core" ]
+      sources = [
+        "brillo/blkdev_utils/disk_iostat.cc",
+        "brillo/blkdev_utils/emmc.cc",
+        "brillo/blkdev_utils/loop_device.cc",
+        "brillo/blkdev_utils/storage_device.cc",
+        "brillo/blkdev_utils/storage_utils.cc",
+        "brillo/blkdev_utils/ufs.cc",
+        "brillo/storage_balloon.cc",
+      ]
+      libs = [ "rootdev" ]
+      if (use.udev) {
+        sources += [ "brillo/blkdev_utils/get_backing_block_device.cc" ]
+        deps += [ ":libbrillo-udev" ]
+      }
+      if (use.device_mapper) {
+        libs += [ "lvm2cmd" ]
+        pkg_deps = [ "devmapper" ]
+        sources += [
+          "brillo/blkdev_utils/device_mapper.cc",
+          "brillo/blkdev_utils/device_mapper_task.cc",
+          "brillo/blkdev_utils/lvm.cc",
+          "brillo/blkdev_utils/lvm_device.cc",
+        ]
+      }
     },
   ]
 }
@@ -395,7 +399,6 @@ generate_pkg_config("libbrillo-test_pc") {
 
 shared_library("libbrillo-test") {
   sources = [
-    "brillo/blkdev_utils/loop_device_fake.cc",
     "brillo/fake_cryptohome.cc",
     "brillo/http/http_connection_fake.cc",
     "brillo/http/http_transport_fake.cc",
@@ -403,6 +406,9 @@ shared_library("libbrillo-test") {
     "brillo/streams/fake_stream.cc",
     "brillo/unittest_utils.cc",
   ]
+  if (!use.cros_host) {
+    sources += [ "brillo/blkdev_utils/loop_device_fake.cc" ]
+  }
   if (use.device_mapper) {
     sources += [ "brillo/blkdev_utils/device_mapper_fake.cc" ]
   }
@@ -417,12 +423,13 @@ shared_library("libbrillo-test") {
   deps = [
     ":libbrillo-cryptohome",
     ":libbrillo-http",
-    ":libbrillo-storage",
     ":libbrillo-test_pc",
   ]
   if (use.cros_host) {
     install_path = "lib"
   } else {
+    deps += [ ":libbrillo-storage" ]
+
     # We want to install this shared lib on the test image.
     # gnlint: disable=GnLintInstallPathAlias
     install_path = "/usr/local/lib"
@@ -505,9 +512,6 @@ if (use.test) {
     sources = [
       "brillo/asynchronous_signal_handler_test.cc",
       "brillo/backoff_entry_test.cc",
-      "brillo/blkdev_utils/disk_iostat_test.cc",
-      "brillo/blkdev_utils/loop_device_test.cc",
-      "brillo/blkdev_utils/storage_utils_test.cc",
       "brillo/compression/compressor_test.cc",
       "brillo/cpuinfo_test.cc",
       "brillo/cryptohome_test.cc",
@@ -539,7 +543,6 @@ if (use.test) {
       "brillo/scoped_umask_test.cc",
       "brillo/secure_blob_test.cc",
       "brillo/secure_string_test.cc",
-      "brillo/storage_balloon_test.cc",
       "brillo/streams/fake_stream_test.cc",
       "brillo/streams/file_stream_test.cc",
       "brillo/streams/input_stream_set_test.cc",
@@ -573,6 +576,14 @@ if (use.test) {
         "brillo/http/http_proxy_test.cc",
         "brillo/type_name_undecorate_test.cc",
         "brillo/variant_dictionary_test.cc",
+      ]
+    }
+    if (!use.cros_host) {
+      sources += [
+        "brillo/blkdev_utils/disk_iostat_test.cc",
+        "brillo/blkdev_utils/loop_device_test.cc",
+        "brillo/blkdev_utils/storage_utils_test.cc",
+        "brillo/storage_balloon_test.cc",
       ]
     }
     if (use.device_mapper) {
