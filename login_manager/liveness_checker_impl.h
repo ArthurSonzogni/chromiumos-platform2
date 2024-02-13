@@ -86,6 +86,12 @@ class LivenessCheckerImpl : public LivenessChecker {
   // string. Uses SafeFD underneath.
   std::optional<std::string> ReadBrowserProcFile(std::string_view filename);
 
+  // Tries to read /proc/browser_pid/stack and records the result.
+  // The recorded stack comes from kernel space of the browser process,
+  // so recording it only makes sense if the browser itself is waiting
+  // for something in the kernel.
+  void RecordKernelStack(LoginMetrics::BrowserState state);
+
   // Reads /proc/browser_pid/wchan and records the result in some format. (Right
   // now it just logs it; some day will also record in UMA).
   void RecordWchanState(LoginMetrics::BrowserState state);
@@ -95,11 +101,11 @@ class LivenessCheckerImpl : public LivenessChecker {
   // logs, and not read by this process.
   void RequestKernelTraces();
 
-  // Updates UMA stat recording the state of the browser process (running,
-  // sleeping, uninterruptible wait, zombie, traced-or-stopped) at the moment
-  // the liveness check times out. For sleep and wait states, also records what
-  // the process was waiting for.
-  void RecordStateForTimeout();
+  // Record browser and system state on ping timeout. Output is passed directly
+  // to the log with the warning severity. With the verbose option set full
+  // system state dump is produced, without it we're focused more on the
+  // browser state.
+  void RecordStateForTimeout(bool verbose);
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   dbus::ObjectProxy* dbus_proxy_;            // Owned by the caller.

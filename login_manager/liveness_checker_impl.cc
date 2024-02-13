@@ -101,7 +101,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     LOG(WARNING) << "Top output (trimmed):";
     LOG(WARNING) << top_output;
 
-    RecordStateForTimeout();
+    RecordStateForTimeout(/*verbose=*/true);
 
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
@@ -135,9 +135,7 @@ void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
     return;
   }
   if (remaining_retries_) {
-    // TODO(b/324016659): Add browser state logging here.
-    // No point in logging additional data on last attempt, when the watchdog
-    // is about to fire.
+    RecordStateForTimeout(/*verbose=*/false);
     remaining_retries_--;
     base::TimeDelta dbus_timeout =
         std::min(interval_ - response_time, interval_ / (retry_limit_ + 1));
@@ -234,6 +232,15 @@ std::optional<std::string> LivenessCheckerImpl::ReadBrowserProcFile(
   return std::string(result.first.begin(), result.first.end());
 }
 
+void LivenessCheckerImpl::RecordKernelStack(LoginMetrics::BrowserState state) {
+  std::optional<std::string> stack = ReadBrowserProcFile("stack");
+  if (!stack) {
+    return;
+  }
+  LOG(WARNING) << "browser stack for state " << static_cast<int>(state) << ": "
+               << *stack;
+}
+
 void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
   std::optional<std::string> wchan = ReadBrowserProcFile("wchan");
   if (!wchan) {
@@ -293,13 +300,20 @@ void LivenessCheckerImpl::RequestKernelTraces() {
   }
 }
 
-void LivenessCheckerImpl::RecordStateForTimeout() {
+void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
   LoginMetrics::BrowserState state = GetBrowserState();
-  if (state == LoginMetrics::BrowserState::kSleeping ||
-      state == LoginMetrics::BrowserState::kUninterruptibleWait ||
-      state == LoginMetrics::BrowserState::kTracedOrStopped) {
+  // If the browser is currently running there's no point in trying to dump its
+  // state.
+  if (state != LoginMetrics::BrowserState::kSleeping &&
+      state != LoginMetrics::BrowserState::kUninterruptibleWait &&
+      state != LoginMetrics::BrowserState::kTracedOrStopped) {
+    return;
+  }
+  if (verbose) {
     RecordWchanState(state);
     RequestKernelTraces();
+  } else {
+    RecordKernelStack(state);
   }
 }
 
