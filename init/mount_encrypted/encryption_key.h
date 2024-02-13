@@ -13,8 +13,6 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 
-#include "init/mount_encrypted/mount_encrypted.h"
-
 namespace mount_encrypted {
 
 class SystemKeyLoader;
@@ -53,22 +51,22 @@ class EncryptionKey {
   EncryptionKey(SystemKeyLoader* loader, const base::FilePath& rootdir);
 
   // Loads the system key from TPM NVRAM via |loader_|.
-  result_code SetTpmSystemKey();
+  bool SetTpmSystemKey();
 
   // Determines the system key to use in a production image on Chrome OS
   // hardware. Attempts to load the system key from TPM NVRAM via |loader_| or
   // generates a new system key. As a last resort, allows to continue without a
   // system key to cover systems where the NVRAM space is yet to be created by
   // cryptohomed.
-  result_code LoadChromeOSSystemKey();
+  bool LoadChromeOSSystemKey();
 
   // While ChromeOS devices can store the system key in the NVRAM area, all the
   // rest will fallback through various places (kernel command line, BIOS UUID,
   // and finally a static value) for a system key.
-  result_code SetInsecureFallbackSystemKey();
+  bool SetInsecureFallbackSystemKey();
 
   // Load the encryption key from disk using the previously loaded system key.
-  result_code LoadEncryptionKey();
+  bool LoadEncryptionKey();
 
   // Get a key derived from |system_key_| by performing an HMAC256 operation on
   // it with |label| being the data to do the HMAC operation on.

@@ -9,8 +9,6 @@
 #define _FILE_OFFSET_BITS 64
 #define CHROMEOS_ENVIRONMENT
 
-#include "init/mount_encrypted/mount_encrypted.h"
-
 #include <fcntl.h>
 #include <sys/time.h>
 
@@ -66,14 +64,12 @@ constexpr char kMountEncryptedMetricsPath[] =
     "/run/mount_encrypted/metrics.mount-encrypted";
 }  // namespace
 
-static result_code get_system_property(const char* prop,
-                                       char* buf,
-                                       size_t length) {
+static bool get_system_property(const char* prop, char* buf, size_t length) {
   int rc = VbGetSystemPropertyString(prop, buf, length);
   LOG(INFO) << "Got System Property '" << prop
             << "': " << ((rc == 0) ? buf : "FAIL");
 
-  return rc == 0 ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
+  return rc == 0;
 }
 
 static int has_chromefw() {
@@ -84,7 +80,7 @@ static int has_chromefw() {
   if (state != -1)
     return state;
 
-  if (get_system_property("mainfw_type", fw, sizeof(fw)) != RESULT_SUCCESS)
+  if (!get_system_property("mainfw_type", fw, sizeof(fw)))
     state = 0;
   else
     state = strcmp(fw, "nonchrome") != 0;
@@ -109,24 +105,23 @@ static bool shall_use_tpm_for_system_key() {
   return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
 }
 
-static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
-                               const base::FilePath& rootdir) {
+static bool report_info(mount_encrypted::EncryptedFs* encrypted_fs,
+                        const base::FilePath& rootdir) {
   mount_encrypted::Tpm tpm;
 
   printf("TPM: %s\n", tpm.available() ? "yes" : "no");
   if (tpm.available()) {
     bool owned = false;
-    printf("TPM Owned: %s\n", tpm.IsOwned(&owned) == RESULT_SUCCESS
-                                  ? (owned ? "yes" : "no")
-                                  : "fail");
+    printf("TPM Owned: %s\n",
+           tpm.IsOwned(&owned) ? (owned ? "yes" : "no") : "fail");
   }
   printf("ChromeOS: %s\n", has_chromefw() ? "yes" : "no");
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (shall_use_tpm_for_system_key()) {
     brillo::SecureBlob system_key;
     auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
-    result_code rc = loader->Load(&system_key);
-    if (rc != RESULT_SUCCESS) {
+    bool rc = loader->Load(&system_key);
+    if (!rc) {
       printf("NVRAM: missing.\n");
     } else {
       printf("NVRAM: available.\n");
@@ -137,7 +132,7 @@ static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
   // Report info from the encrypted mount.
   encrypted_fs->ReportInfo();
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
 // Reads key material from the file |key_material_file|, creates a system key
@@ -148,18 +143,18 @@ static result_code report_info(mount_encrypted::EncryptedFs* encrypted_fs,
 //
 // Doesn't take ownership of |platform|.
 // Return code indicates if every thing is successful.
-static result_code set_system_key(const base::FilePath& rootdir,
-                                  const char* key_material_file,
-                                  libstorage::Platform* platform) {
+static bool set_system_key(const base::FilePath& rootdir,
+                           const char* key_material_file,
+                           libstorage::Platform* platform) {
   if (!key_material_file) {
     LOG(ERROR) << "Key material file not provided.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   mount_encrypted::Tpm tpm;
   if (!tpm.is_tpm2()) {
     LOG(WARNING) << "Custom system key is not supported in TPM 1.2.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   brillo::SecureBlob key_material;
@@ -167,24 +162,24 @@ static result_code set_system_key(const base::FilePath& rootdir,
                                       &key_material)) {
     LOG(ERROR) << "Failed to read custom system key material from file "
                << key_material_file;
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
 
-  result_code rc = loader->Initialize(key_material, nullptr);
-  if (rc != RESULT_SUCCESS) {
+  bool rc = loader->Initialize(key_material, nullptr);
+  if (!rc) {
     LOG(ERROR) << "Failed to initialize system key NV space contents.";
-    return rc;
+    return false;
   }
 
   rc = loader->Persist();
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Failed to persist custom system key material in NVRAM.";
-    return rc;
+    return false;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
 /* Exports NVRAM contents to tmpfs for use by install attributes */
@@ -308,18 +303,18 @@ bool migrate_tpm_owership_state_file() {
   return true;
 }
 
-static result_code mount_encrypted_partition(
+static bool mount_encrypted_partition(
     mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
     libstorage::Platform* platform,
     bool safe_mount) {
-  result_code rc;
+  bool rc;
 
-  // For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
+  // For the mount operation at boot, return false to trigger
   // chromeos_startup do the stateful wipe.
   rc = encrypted_fs->CheckStates();
-  if (rc != RESULT_SUCCESS)
-    return rc;
+  if (!rc)
+    return false;
 
   if (!migrate_tpm_owership_state_file()) {
     LOG(ERROR) << "Failed to migrate tpm owership state file to" << kTpmOwned;
@@ -333,7 +328,7 @@ static result_code mount_encrypted_partition(
       // The TPM should be available before we load the system_key.
       LOG(ERROR) << "TPM not available.";
       // We shouldn't continue to load the system_key.
-      return RESULT_FAIL_FATAL;
+      return false;
     }
     rc = key.LoadChromeOSSystemKey();
   } else {
@@ -341,15 +336,15 @@ static result_code mount_encrypted_partition(
   }
   mount_encrypted::MountEncryptedMetrics::Get()->ReportSystemKeyStatus(
       key.system_key_status());
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  if (!rc) {
+    return false;
   }
 
   rc = key.LoadEncryptionKey();
   mount_encrypted::MountEncryptedMetrics::Get()->ReportEncryptionKeyStatus(
       key.encryption_key_status());
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  if (!rc) {
+    return false;
   }
 
   /* Log errors during sending seed to biod, but don't stop execution. */
@@ -375,11 +370,11 @@ static result_code mount_encrypted_partition(
   libstorage::FileSystemKey encryption_key;
   encryption_key.fek = key.encryption_key();
   rc = encrypted_fs->Setup(encryption_key, key.is_fresh());
-  if (rc == RESULT_SUCCESS) {
+  if (rc) {
     /* Only check the lockbox when we are using TPM for system key. */
     if (shall_use_tpm_for_system_key()) {
       bool lockbox_valid = false;
-      if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
+      if (loader->CheckLockbox(&lockbox_valid)) {
         mount_encrypted::NvramSpace* lockbox_space = tpm.GetLockboxSpace();
         if (lockbox_valid && lockbox_space->is_valid()) {
           LOG(INFO) << "Lockbox is valid, exporting.";
@@ -394,7 +389,7 @@ static result_code mount_encrypted_partition(
   LOG(INFO) << "Done.";
 
   // Continue boot.
-  return rc;
+  return true;
 }
 
 static void print_usage(const char process_name[]) {
@@ -429,14 +424,14 @@ int main(int argc, const char* argv[]) {
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";
-    return RESULT_FAIL_FATAL;
+    return 1;
   }
 
   LOG(INFO) << "Starting.";
 
   if (args.size() >= 1) {
     if (args[0] == "umount") {
-      return encrypted_fs->Teardown();
+      return encrypted_fs->Teardown() ? 0 : 1;
     } else if (args[0] == "info") {
       // Report info from the encrypted mount.
       return report_info(encrypted_fs.get(), rootdir);
@@ -445,14 +440,18 @@ int main(int argc, const char* argv[]) {
           rootdir, args.size() >= 2 ? args[1].c_str() : nullptr, &platform);
     } else if (args[0] == "mount") {
       return mount_encrypted_partition(encrypted_fs.get(), rootdir, &platform,
-                                       !FLAGS_unsafe);
+                                       !FLAGS_unsafe)
+                 ? 0
+                 : 1;
     } else {
       print_usage(argv[0]);
-      return RESULT_FAIL_FATAL;
+      return 1;
     }
   }
 
   // default operation is mount encrypted partition.
   return mount_encrypted_partition(encrypted_fs.get(), rootdir, &platform,
-                                   !FLAGS_unsafe);
+                                   !FLAGS_unsafe)
+             ? 0
+             : 1;
 }

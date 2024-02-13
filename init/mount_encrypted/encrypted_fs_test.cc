@@ -136,7 +136,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
   ExpectCreate();
 
   // Check if dm device is mounted and has the correct key.
-  EXPECT_EQ(encrypted_fs_->Setup(key_, true), RESULT_SUCCESS);
+  EXPECT_TRUE(encrypted_fs_->Setup(key_, true));
 
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
@@ -145,7 +145,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
-  EXPECT_EQ(encrypted_fs_->Teardown(), RESULT_SUCCESS);
+  EXPECT_TRUE(encrypted_fs_->Teardown());
 
   // Make sure no devmapper device is left.
   EXPECT_EQ(device_mapper_.GetTable(dmcrypt_name_).CryptGetKey(),
@@ -162,7 +162,7 @@ TEST_F(EncryptedFsTest, OldStateful) {
   ASSERT_TRUE(backing_device_->Create());
 
   // Expect setup to succeed.
-  EXPECT_EQ(encrypted_fs_->Setup(key_, false), RESULT_SUCCESS);
+  EXPECT_TRUE(encrypted_fs_->Setup(key_, false));
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
       encrypted_fs_->device_mapper_->GetTable(dmcrypt_name_);
@@ -170,7 +170,7 @@ TEST_F(EncryptedFsTest, OldStateful) {
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
-  EXPECT_EQ(encrypted_fs_->Teardown(), RESULT_SUCCESS);
+  EXPECT_TRUE(encrypted_fs_->Teardown());
   // Make sure no devmapper device is left.
   EXPECT_EQ(device_mapper_.GetTable(dmcrypt_name_).CryptGetKey(),
             brillo::SecureBlob());
@@ -186,7 +186,7 @@ TEST_F(EncryptedFsTest, LoopdevTeardown) {
   // Create the fake backing device.
   ASSERT_TRUE(backing_device_->Create());
   // Expect setup to fail.
-  EXPECT_EQ(encrypted_fs_->Setup(key_, false), RESULT_FAIL_FATAL);
+  EXPECT_FALSE(encrypted_fs_->Setup(key_, false));
   // Make sure that the backing device is not left attached.
   EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
@@ -199,7 +199,7 @@ TEST_F(EncryptedFsTest, DevmapperTeardown) {
   // Create the fake backing device.
   ASSERT_TRUE(backing_device_->Create());
   // Expect setup to fail.
-  EXPECT_EQ(encrypted_fs_->Setup(key_, false), RESULT_FAIL_FATAL);
+  EXPECT_FALSE(encrypted_fs_->Setup(key_, false));
   // Make sure that the backing device is no left attached.
   EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }

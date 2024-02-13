@@ -21,8 +21,8 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <openssl/sha.h>
 
-#include "init/mount_encrypted/mount_encrypted.h"
 #include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {
@@ -63,9 +63,9 @@ bool ReadKeyFile(const base::FilePath& path,
   }
 
   // The decryption is succeed when the plaintext size is correct.
-  if (plaintext->size() != DIGEST_LENGTH) {
+  if (plaintext->size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "Decryption result size mismatch for data from " << path
-               << ", expected size:" << DIGEST_LENGTH
+               << ", expected size:" << SHA256_DIGEST_LENGTH
                << ", actual size:" << plaintext->size();
     return false;
   }
@@ -202,9 +202,9 @@ EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
       stateful_mount.AppendASCII(paths::kPreservedPreviousKey);
 }
 
-result_code EncryptionKey::SetTpmSystemKey() {
-  result_code rc = loader_->Load(&system_key_);
-  if (rc == RESULT_SUCCESS) {
+bool EncryptionKey::SetTpmSystemKey() {
+  bool rc = loader_->Load(&system_key_);
+  if (rc) {
     LOG(INFO) << "Using NVRAM as system key; already populated.";
   } else {
     LOG(INFO) << "Using NVRAM as system key; finalization needed.";
@@ -213,12 +213,12 @@ result_code EncryptionKey::SetTpmSystemKey() {
   return rc;
 }
 
-result_code EncryptionKey::SetInsecureFallbackSystemKey() {
+bool EncryptionKey::SetInsecureFallbackSystemKey() {
   system_key_ = GetKeyFromKernelCmdline();
   if (!system_key_.empty()) {
     LOG(INFO) << "Using kernel command line argument as system key.";
     system_key_status_ = SystemKeyStatus::kKernelCommandLine;
-    return RESULT_SUCCESS;
+    return true;
   }
 
   std::string product_uuid;
@@ -227,16 +227,16 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
     system_key_ = Sha256(base::ToUpperASCII(product_uuid));
     LOG(INFO) << "Using UUID as system key.";
     system_key_status_ = SystemKeyStatus::kProductUUID;
-    return RESULT_SUCCESS;
+    return true;
   }
 
   LOG(INFO) << "Using default insecure system key.";
   system_key_ = Sha256(kStaticKeyDefault);
   system_key_status_ = SystemKeyStatus::kStaticFallback;
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code EncryptionKey::LoadChromeOSSystemKey() {
+bool EncryptionKey::LoadChromeOSSystemKey() {
   SetTpmSystemKey();
 
   // Check and handle potential requests to preserve an already existing
@@ -272,14 +272,14 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
     LOG(INFO) << "Attempting to generate fresh NVRAM system key.";
 
     const auto key_material =
-        hwsec_foundation::CreateSecureRandomBlob(DIGEST_LENGTH);
-    result_code rc = loader_->Initialize(key_material, &system_key_);
-    if (rc != RESULT_SUCCESS) {
+        hwsec_foundation::CreateSecureRandomBlob(SHA256_DIGEST_LENGTH);
+    bool rc = loader_->Initialize(key_material, &system_key_);
+    if (!rc) {
       LOG(ERROR) << "Failed to initialize system key NV space contents.";
-      return rc;
+      return false;
     }
 
-    if (!system_key_.empty() && loader_->Persist() != RESULT_SUCCESS) {
+    if (!system_key_.empty() && !loader_->Persist()) {
       system_key_.clear();
     }
   }
@@ -296,14 +296,14 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
     system_key_status_ = SystemKeyStatus::kNVRAMEncstateful;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code EncryptionKey::LoadEncryptionKey() {
+bool EncryptionKey::LoadEncryptionKey() {
   if (!system_key_.empty()) {
     if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
       encryption_key_status_ = EncryptionKeyStatus::kKeyFile;
-      return RESULT_SUCCESS;
+      return true;
     }
     LOG(INFO) << "Failed to load encryption key from disk.";
   } else {
@@ -321,7 +321,8 @@ result_code EncryptionKey::LoadEncryptionKey() {
                    GetUselessKey())) {
     // This is a brand new system with no keys, so generate a fresh one.
     LOG(INFO) << "Generating new encryption key.";
-    encryption_key_ = hwsec_foundation::CreateSecureRandomBlob(DIGEST_LENGTH);
+    encryption_key_ =
+        hwsec_foundation::CreateSecureRandomBlob(SHA256_DIGEST_LENGTH);
     encryption_key_status_ = EncryptionKeyStatus::kFresh;
   } else {
     encryption_key_status_ = EncryptionKeyStatus::kNeedsFinalization;
@@ -348,13 +349,13 @@ result_code EncryptionKey::LoadEncryptionKey() {
         LOG(ERROR) << "Failed to write " << needs_finalization_path_;
       }
     }
-    return RESULT_SUCCESS;
+    return true;
   }
 
   // We have a system key, so finalize now.
   Finalize();
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
 brillo::SecureBlob EncryptionKey::GetDerivedSystemKey(
@@ -402,8 +403,8 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
   // encryption key.
   brillo::SecureBlob fresh_system_key;
   brillo::SecureBlob previous_system_key;
-  if (loader_->GenerateForPreservation(&previous_system_key,
-                                       &fresh_system_key) != RESULT_SUCCESS) {
+  if (!loader_->GenerateForPreservation(&previous_system_key,
+                                        &fresh_system_key)) {
     return false;
   }
 
@@ -426,7 +427,7 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
   // encryption key has been re-wrapped). Otherwise, a crash would lead to a
   // situation where the new system key has already replaced the old one,
   // leaving us with no way to recover the preserved encryption key.
-  if (loader_->Persist() != RESULT_SUCCESS) {
+  if (!loader_->Persist()) {
     return false;
   }
 

@@ -23,7 +23,6 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <vboot/tpm1_tss_constants.h>
 
-#include "init/mount_encrypted/mount_encrypted.h"
 #include "init/mount_encrypted/mount_encrypted_metrics.h"
 #include "init/mount_encrypted/tpm.h"
 
@@ -80,8 +79,8 @@ struct EncStatefulArea {
 
   uint32_t magic;
   uint32_t ver_flags;
-  uint8_t key_material[DIGEST_LENGTH];
-  uint8_t lockbox_mac[DIGEST_LENGTH];
+  uint8_t key_material[SHA256_DIGEST_LENGTH];
+  uint8_t lockbox_mac[SHA256_DIGEST_LENGTH];
 
   bool is_valid() const {
     return magic == kMagic && (ver_flags & kVersionMask) == kCurrentVersion;
@@ -95,19 +94,19 @@ struct EncStatefulArea {
   void set_flag(Flag flag) { ver_flags |= flag_value(flag); }
   void clear_flag(Flag flag) { ver_flags &= ~flag_value(flag); }
 
-  result_code Init(const brillo::SecureBlob& new_key_material) {
+  bool Init(const brillo::SecureBlob& new_key_material) {
     magic = kMagic;
     ver_flags = kCurrentVersion;
 
     size_t key_material_size = new_key_material.size();
     if (key_material_size != sizeof(key_material)) {
       LOG(ERROR) << "Invalid key material size " << key_material_size;
-      return RESULT_FAIL_FATAL;
+      return false;
     }
     memcpy(key_material, new_key_material.data(), key_material_size);
 
     memset(lockbox_mac, 0, sizeof(lockbox_mac));
-    return RESULT_SUCCESS;
+    return true;
   }
 
   brillo::SecureBlob DeriveKey(const std::string& label) const {
@@ -142,34 +141,34 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   Tpm1SystemKeyLoader(const Tpm1SystemKeyLoader&) = delete;
   Tpm1SystemKeyLoader& operator=(const Tpm1SystemKeyLoader&) = delete;
 
-  result_code Load(brillo::SecureBlob* key) override;
-  result_code Initialize(const brillo::SecureBlob& key_material,
-                         brillo::SecureBlob* derived_system_key) override;
-  result_code Persist() override;
+  bool Load(brillo::SecureBlob* key) override;
+  bool Initialize(const brillo::SecureBlob& key_material,
+                  brillo::SecureBlob* derived_system_key) override;
+  bool Persist() override;
   void Lock() override;
-  result_code SetupTpm() override;
-  result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
-                                      brillo::SecureBlob* fresh_key) override;
-  result_code CheckLockbox(bool* valid) override;
+  bool SetupTpm() override;
+  bool GenerateForPreservation(brillo::SecureBlob* previous_key,
+                               brillo::SecureBlob* fresh_key) override;
+  bool CheckLockbox(bool* valid) override;
   bool UsingLockboxKey() override;
 
  private:
   // Gets a pointer to the EncStatefulArea structure backed by NVRAM.
-  result_code LoadEncStatefulArea(const EncStatefulArea** area);
+  bool LoadEncStatefulArea(const EncStatefulArea** area);
 
   // Loads the key from the encstateful NVRAM space.
-  result_code LoadEncStatefulKey(brillo::SecureBlob* key);
+  bool LoadEncStatefulKey(brillo::SecureBlob* key);
 
   // Loads the key from the lockbox NVRAM space.
-  result_code LoadLockboxKey(brillo::SecureBlob* key);
+  bool LoadLockboxKey(brillo::SecureBlob* key);
 
   // Define the encstateful space if it is not defined yet, or re-define it if
   // its attributes are bad, or the PCR binding is not correct. If necessary,
   // takes TPM ownership, which is necessary for defining the space.
-  result_code PrepareEncStatefulSpace();
+  bool PrepareEncStatefulSpace();
 
   // Prunes the stale files from the last TPM ownership.
-  result_code PruneOwnershipStateFilesIfNotOwned();
+  bool PruneOwnershipStateFilesIfNotOwned();
 
   enum class EncStatefulSpaceValidity {
     // The space is not defined, too short, or attributes are bad.
@@ -180,8 +179,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
     kWritable,
   };
   // Validates the encstateful space is defined with correct parameters.
-  result_code IsEncStatefulSpaceProperlyDefined(
-      EncStatefulSpaceValidity* validity);
+  bool IsEncStatefulSpaceProperlyDefined(EncStatefulSpaceValidity* validity);
 
   // Obtains and formats TPM version info as key-value pairs.
   std::string FormatVersionInfo();
@@ -226,11 +224,11 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
 //  - *system_key populated with NVRAM area entropy.
 // In case of failure: (NVRAM missing or error)
 //  - *system_key untouched.
-result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
+bool Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   EncStatefulSpaceValidity space_validity = EncStatefulSpaceValidity::kInvalid;
-  result_code rc = IsEncStatefulSpaceProperlyDefined(&space_validity);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = IsEncStatefulSpaceProperlyDefined(&space_validity);
+  if (!rc) {
+    return false;
   }
 
   // Prefer the encstateful space if it is set up correctly.
@@ -242,82 +240,81 @@ result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
     // flag on TPM clear).
     bool system_key_initialized = false;
     rc = tpm_->HasSystemKeyInitializedFlag(&system_key_initialized);
-    if (rc != RESULT_SUCCESS) {
-      return rc;
+    if (!rc) {
+      return false;
     }
 
     if (system_key_initialized) {
       rc = LoadEncStatefulKey(system_key);
-      if (rc == RESULT_SUCCESS) {
-        return RESULT_SUCCESS;
+      if (rc) {
+        return true;
       }
     }
   } else {
     // The lockbox NVRAM space is created by cryptohomed and only valid after
     // TPM ownership has been established.
     bool owned = false;
-    result_code rc = tpm_->IsOwned(&owned);
-    if (rc != RESULT_SUCCESS) {
+    bool rc = tpm_->IsOwned(&owned);
+    if (!rc) {
       LOG(ERROR) << "Failed to determine TPM ownership.";
-      return rc;
+      return false;
     }
 
     if (owned) {
       rc = LoadLockboxKey(system_key);
-      if (rc == RESULT_SUCCESS) {
+      if (rc) {
         using_lockbox_key_ = true;
-        return RESULT_SUCCESS;
+        return true;
       }
     }
   }
 
-  return RESULT_FAIL_FATAL;
+  return false;
 }
 
-result_code Tpm1SystemKeyLoader::Initialize(
-    const brillo::SecureBlob& key_material,
-    brillo::SecureBlob* derived_system_key) {
+bool Tpm1SystemKeyLoader::Initialize(const brillo::SecureBlob& key_material,
+                                     brillo::SecureBlob* derived_system_key) {
   provisional_contents_ =
       std::make_unique<brillo::SecureBlob>(sizeof(EncStatefulArea));
   EncStatefulArea* area =
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
 
-  result_code rc = area->Init(key_material);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = area->Init(key_material);
+  if (!rc) {
+    return false;
   }
 
   if (derived_system_key) {
     *derived_system_key = area->DeriveKey(kLabelSystemKey);
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::Persist() {
+bool Tpm1SystemKeyLoader::Persist() {
   CHECK(provisional_contents_);
 
-  result_code rc = PrepareEncStatefulSpace();
-  if (rc != RESULT_SUCCESS) {
+  bool rc = PrepareEncStatefulSpace();
+  if (!rc) {
     LOG(ERROR) << "Failed to preapare encstateful space.";
-    return rc;
+    return false;
   }
 
   NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
   rc = encstateful_space->Write(*provisional_contents_);
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Failed to write NVRAM area";
-    return rc;
+    return false;
   }
 
   rc = tpm_->SetSystemKeyInitializedFlag();
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Failed to create placeholder delegation entry.";
-    return rc;
+    return false;
   }
 
   using_lockbox_key_ = false;
-  return RESULT_SUCCESS;
+  return true;
 }
 
 void Tpm1SystemKeyLoader::Lock() {
@@ -326,52 +323,52 @@ void Tpm1SystemKeyLoader::Lock() {
     return;
   }
 
-  if (encstateful_space->WriteLock() != RESULT_SUCCESS) {
+  if (!encstateful_space->WriteLock()) {
     LOG(ERROR) << "Failed to write-lock NVRAM area.";
   }
-  if (encstateful_space->ReadLock() != RESULT_SUCCESS) {
+  if (!encstateful_space->ReadLock()) {
     LOG(ERROR) << "Failed to read-lock NVRAM area.";
   }
 }
 
-result_code Tpm1SystemKeyLoader::SetupTpm() {
+bool Tpm1SystemKeyLoader::SetupTpm() {
   return PrepareEncStatefulSpace();
 }
 
-result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
+bool Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
   EncStatefulSpaceValidity space_validity = EncStatefulSpaceValidity::kInvalid;
-  result_code rc = IsEncStatefulSpaceProperlyDefined(&space_validity);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = IsEncStatefulSpaceProperlyDefined(&space_validity);
+  if (!rc) {
+    return false;
   }
 
   bool owned = false;
   rc = tpm_->IsOwned(&owned);
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Can't determine TPM ownership.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // The encryptied stateful space is prepared iff the TPM is owned and has
   // valid space.
   if (owned && space_validity != EncStatefulSpaceValidity::kInvalid) {
-    return RESULT_SUCCESS;
+    return true;
   }
 
   // We need to take ownership and redefine the space.
   LOG(INFO) << "Redefining encrypted stateful space.";
 
   if (!owned) {
-    result_code rc = PruneOwnershipStateFilesIfNotOwned();
-    if (rc != RESULT_SUCCESS) {
+    bool rc = PruneOwnershipStateFilesIfNotOwned();
+    if (!rc) {
       LOG(ERROR) << "Failed to prune ownership state files.";
-      return rc;
+      return false;
     }
 
     rc = tpm_->TakeOwnership();
-    if (rc != RESULT_SUCCESS) {
+    if (!rc) {
       LOG(ERROR) << "Failed to ensure TPM ownership.";
-      return rc;
+      return false;
     }
   } else {
     const base::FilePath tpm_owned_path =
@@ -379,32 +376,32 @@ result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
     if (base::PathExists(tpm_owned_path)) {
       LOG(ERROR)
           << "Unable to define space because TPM is already fully initialized.";
-      return RESULT_FAIL_FATAL;
+      return false;
     }
   }
 
   uint32_t pcr_selection = (1 << kPCRBootMode);
   rc = tpm_->GetEncStatefulSpace()->Define(kAttributes, sizeof(EncStatefulArea),
                                            pcr_selection);
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Failed to define encrypted stateful NVRAM space.";
-    return rc;
+    return false;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
+bool Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
   bool owned = false;
-  result_code rc = tpm_->IsOwned(&owned);
-  if (rc != RESULT_SUCCESS) {
+  bool rc = tpm_->IsOwned(&owned);
+  if (!rc) {
     LOG(ERROR) << "Can't determine TPM ownership.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // If it's owned already, it is not necessary to clean up the files.
   if (owned) {
-    return RESULT_SUCCESS;
+    return true;
   }
 
   // Reset ownership state files to make them consistent with TPM ownership.
@@ -424,13 +421,13 @@ result_code Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
                                    false) ||
       !brillo::DeleteFile(attestation_database_path)) {
     PLOG(ERROR) << "Failed to update ownership state files.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::GenerateForPreservation(
+bool Tpm1SystemKeyLoader::GenerateForPreservation(
     brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) {
   // Determine whether we may preserve the encryption key that was in use before
   // the TPM got cleared. Preservation is allowed if either (1) a TPM firmware
@@ -441,21 +438,20 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   // an update, but there's no trustworthy post-factum signal to tell us.
   const EncStatefulArea* area = nullptr;
   bool tpm_firmware_update_pending = false;
-  result_code rc = LoadEncStatefulArea(&area);
-  if (rc != RESULT_SUCCESS ||
-      !area->test_flag(EncStatefulArea::Flag::kAnticipatingTPMClear)) {
+  bool rc = LoadEncStatefulArea(&area);
+  if (!rc || !area->test_flag(EncStatefulArea::Flag::kAnticipatingTPMClear)) {
     tpm_firmware_update_pending = IsTPMFirmwareUpdatePending();
     if (!tpm_firmware_update_pending) {
-      return RESULT_FAIL_FATAL;
+      return false;
     }
   }
 
   // Load the previous system key.
   rc = LoadEncStatefulKey(previous_key);
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     rc = LoadLockboxKey(previous_key);
-    if (rc != RESULT_SUCCESS) {
-      return RESULT_FAIL_FATAL;
+    if (!rc) {
+      return false;
     }
   }
 
@@ -466,10 +462,10 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
 
   const auto key_material =
-      hwsec_foundation::CreateSecureRandomBlob(DIGEST_LENGTH);
+      hwsec_foundation::CreateSecureRandomBlob(SHA256_DIGEST_LENGTH);
   rc = provisional_area->Init(key_material);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  if (!rc) {
+    return false;
   }
 
   // Set the flag to anticipate another TPM clear for the case where we're
@@ -495,95 +491,93 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
 
   *fresh_key = provisional_area->DeriveKey(kLabelSystemKey);
   using_lockbox_key_ = false;
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::LoadEncStatefulArea(
-    const EncStatefulArea** area) {
+bool Tpm1SystemKeyLoader::LoadEncStatefulArea(const EncStatefulArea** area) {
   NvramSpace* space = tpm_->GetEncStatefulSpace();
   if (!space->is_valid()) {
     LOG(ERROR) << "Invalid encstateful space.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   *area = reinterpret_cast<const EncStatefulArea*>(space->contents().data());
   if (!(*area)->is_valid()) {
     LOG(ERROR) << "Invalid encstateful contents.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::LoadEncStatefulKey(
-    brillo::SecureBlob* system_key) {
+bool Tpm1SystemKeyLoader::LoadEncStatefulKey(brillo::SecureBlob* system_key) {
   const EncStatefulArea* area = nullptr;
-  result_code rc = LoadEncStatefulArea(&area);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = LoadEncStatefulArea(&area);
+  if (!rc) {
+    return false;
   }
 
   *system_key = area->DeriveKey(kLabelSystemKey);
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::LoadLockboxKey(
-    brillo::SecureBlob* system_key) {
+bool Tpm1SystemKeyLoader::LoadLockboxKey(brillo::SecureBlob* system_key) {
   brillo::SecureBlob key_material;
   NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
   const brillo::SecureBlob& lockbox_contents = lockbox_space->contents();
   if (!lockbox_space->is_valid()) {
-    return RESULT_FAIL_FATAL;
+    return false;
   } else if (lockbox_contents.size() == kLockboxSizeV1) {
     key_material = lockbox_contents;
-  } else if (kLockboxSaltOffset + DIGEST_LENGTH <= lockbox_contents.size()) {
+  } else if (kLockboxSaltOffset + SHA256_DIGEST_LENGTH <=
+             lockbox_contents.size()) {
     const uint8_t* begin = lockbox_contents.data() + kLockboxSaltOffset;
-    key_material.assign(begin, begin + DIGEST_LENGTH);
+    key_material.assign(begin, begin + SHA256_DIGEST_LENGTH);
   } else {
     LOG(INFO) << "Impossibly small NVRAM area size (" << lockbox_contents.size()
               << ").";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   *system_key = hwsec_foundation::Sha256(key_material);
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code Tpm1SystemKeyLoader::IsEncStatefulSpaceProperlyDefined(
+bool Tpm1SystemKeyLoader::IsEncStatefulSpaceProperlyDefined(
     EncStatefulSpaceValidity* validity) {
   *validity = EncStatefulSpaceValidity::kInvalid;
 
   NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
   if (!encstateful_space->is_valid() && !encstateful_space->is_writable()) {
     LOG(ERROR) << "encstateful space is neither valid nor writable.";
-    return RESULT_SUCCESS;
+    return true;
   }
   if (encstateful_space->contents().size() < sizeof(EncStatefulArea)) {
     LOG(ERROR) << "encstateful space contents too short.";
-    return RESULT_SUCCESS;
+    return true;
   }
 
   uint32_t attributes;
-  result_code rc = encstateful_space->GetAttributes(&attributes);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = encstateful_space->GetAttributes(&attributes);
+  if (!rc) {
+    return false;
   }
 
   if ((attributes & kAttributesMask) != kAttributes) {
     LOG(ERROR) << "Bad encstateful space attributes.";
-    return rc;
+    return true;
   }
 
   uint32_t pcr_selection = (1 << kPCRBootMode);
   bool pcr_binding_correct = false;
   rc = encstateful_space->CheckPCRBinding(pcr_selection, &pcr_binding_correct);
-  if (rc != RESULT_SUCCESS) {
+  if (!rc) {
     LOG(ERROR) << "Bad encstateful PCR binding.";
-    return rc;
+    return false;
   }
   if (!pcr_binding_correct) {
     LOG(ERROR) << "Incorrect PCR binding.";
-    return RESULT_SUCCESS;
+    return true;
   }
 
   // At this point, the space is confirmed to be defined with correct attributes
@@ -597,7 +591,7 @@ result_code Tpm1SystemKeyLoader::IsEncStatefulSpaceProperlyDefined(
     *validity = EncStatefulSpaceValidity::kWritable;
   }
 
-  return RESULT_SUCCESS;
+  return true;
 }
 
 std::string Tpm1SystemKeyLoader::FormatVersionInfo() {
@@ -710,18 +704,18 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   return true;
 }
 
-result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
+bool Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   *valid = false;
 
-  result_code rc = PruneOwnershipStateFilesIfNotOwned();
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  bool rc = PruneOwnershipStateFilesIfNotOwned();
+  if (!rc) {
+    return false;
   }
 
   EncStatefulSpaceValidity space_validity = EncStatefulSpaceValidity::kInvalid;
   rc = IsEncStatefulSpaceProperlyDefined(&space_validity);
-  if (rc != RESULT_SUCCESS) {
-    return rc;
+  if (!rc) {
+    return false;
   }
 
   if (space_validity == EncStatefulSpaceValidity::kValid) {
@@ -743,24 +737,17 @@ result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
     // prevented by locking the encstateful space after boot.
     const EncStatefulArea* area = nullptr;
     rc = LoadEncStatefulArea(&area);
-    switch (rc) {
-      case RESULT_SUCCESS:
-        if (area->test_flag(EncStatefulArea::Flag::kLockboxMacValid)) {
-          NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
-          if (lockbox_space->is_valid()) {
-            brillo::SecureBlob mac = hwsec_foundation::HmacSha256(
-                area->DeriveKey(kLabelLockboxMAC), lockbox_space->contents());
-            *valid = brillo::SecureMemcmp(area->lockbox_mac, mac.data(),
-                                          mac.size()) == 0;
-            return RESULT_SUCCESS;
-          }
+    if (rc) {
+      if (area->test_flag(EncStatefulArea::Flag::kLockboxMacValid)) {
+        NvramSpace* lockbox_space = tpm_->GetLockboxSpace();
+        if (lockbox_space->is_valid()) {
+          brillo::SecureBlob mac = hwsec_foundation::HmacSha256(
+              area->DeriveKey(kLabelLockboxMAC), lockbox_space->contents());
+          *valid = brillo::SecureMemcmp(area->lockbox_mac, mac.data(),
+                                        mac.size()) == 0;
+          return true;
         }
-        break;
-      case RESULT_FAIL_FATAL:
-        // Encstateful contents invalid, so lockbox MAC doesn't apply.
-        break;
-      default:
-        return rc;
+      }
     }
   }
 
@@ -768,7 +755,7 @@ result_code Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   // tpm manager has initialized TPM with random password and recreated the
   // space.
   *valid = base::PathExists(rootdir_.AppendASCII(paths::cryptohome::kTpmOwned));
-  return RESULT_SUCCESS;
+  return true;
 }
 
 bool Tpm1SystemKeyLoader::UsingLockboxKey() {

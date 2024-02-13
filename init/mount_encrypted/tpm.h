@@ -15,9 +15,8 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <openssl/sha.h>
 #include <vboot/tlcl.h>
-
-#include "init/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {
 const uint32_t kLockboxSizeV1 = 0x2c;
@@ -86,36 +85,34 @@ class NvramSpace {
   void Reset();
 
   // Retrieves the space attributes.
-  result_code GetAttributes(uint32_t* attributes);
+  bool GetAttributes(uint32_t* attributes);
 
   // Attempts to read the NVRAM space.
-  result_code Read(uint32_t size);
+  bool Read(uint32_t size);
 
   // Writes to the NVRAM space.
-  result_code Write(const brillo::SecureBlob& contents);
+  bool Write(const brillo::SecureBlob& contents);
 
   // Sets the read lock on the space.
-  result_code ReadLock();
+  bool ReadLock();
 
   // Sets write lock on the space.
-  result_code WriteLock();
+  bool WriteLock();
 
   // Attempt to define the space with the given attributes and size.
-  result_code Define(uint32_t attributes,
-                     uint32_t size,
-                     uint32_t pcr_selection);
+  bool Define(uint32_t attributes, uint32_t size, uint32_t pcr_selection);
 
   // Check whether the space is bound to the specified PCR selection.
-  result_code CheckPCRBinding(uint32_t pcr_selection, bool* match);
+  bool CheckPCRBinding(uint32_t pcr_selection, bool* match);
 
  private:
   // Reads space definition parameters from the TPM.
-  result_code GetSpaceInfo();
+  bool GetSpaceInfo();
 
   // Get the binding policy for the current PCR values of the given PCR
   // selection.
-  result_code GetPCRBindingPolicy(uint32_t pcr_selection,
-                                  std::vector<uint8_t>* policy);
+  bool GetPCRBindingPolicy(uint32_t pcr_selection,
+                           std::vector<uint8_t>* policy);
 
   Tpm* tpm_;
   uint32_t index_;
@@ -146,12 +143,12 @@ class Tpm {
   bool available() const { return available_; }
   bool is_tpm2() const { return is_tpm2_; }
 
-  result_code IsOwned(bool* owned);
+  bool IsOwned(bool* owned);
 
-  result_code GetRandomBytes(uint8_t* buffer, int wanted);
+  bool GetRandomBytes(uint8_t* buffer, int wanted);
 
   // Returns the PCR value for PCR |index|, possibly from the cache.
-  result_code ReadPCR(uint32_t index, std::vector<uint8_t>* value);
+  bool ReadPCR(uint32_t index, std::vector<uint8_t>* value);
 
   // Returns TPM version info.
   bool GetVersionInfo(uint32_t* vendor,
@@ -168,15 +165,15 @@ class Tpm {
   NvramSpace* GetEncStatefulSpace();
 
   // Take TPM ownership using an all-zeros password.
-  result_code TakeOwnership();
+  bool TakeOwnership();
 
   // Set a flag in the TPM to indicate that the system key has been
   // re-initialized after the last TPM clear. The TPM automatically clears the
   // flag as a side effect of the TPM clear operation.
-  result_code SetSystemKeyInitializedFlag();
+  bool SetSystemKeyInitializedFlag();
 
   // Check the system key initialized flag.
-  result_code HasSystemKeyInitializedFlag(bool* flag_value);
+  bool HasSystemKeyInitializedFlag(bool* flag_value);
 
  private:
   bool available_ = false;
@@ -224,22 +221,22 @@ class SystemKeyLoader {
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
   // fills in key, false if the key is not available or there is an error.
-  virtual result_code Load(brillo::SecureBlob* key) = 0;
+  virtual bool Load(brillo::SecureBlob* key) = 0;
 
   // Initializes system key NV space contents using |key_material|.
-  // The size of |key_material| must equal DIGEST_LENGTH. If
+  // The size of |key_material| must equal SHA256_DIGEST_LENGTH. If
   // |derived_system_key| is not null, stores the derived system key into it.
   //
   // This function does not store the contents in NVRAM yet.
   //
-  // Returns RESULT_SUCCESS if successful or RESULT_FAIL_FATAL otherwise.
-  virtual result_code Initialize(const brillo::SecureBlob& key_material,
-                                 brillo::SecureBlob* derived_system_key) = 0;
+  // Returns true if successful or false otherwise.
+  virtual bool Initialize(const brillo::SecureBlob& key_material,
+                          brillo::SecureBlob* derived_system_key) = 0;
 
   // Persist a previously generated system key in NVRAM. This may not be
   // possible in case the TPM is not in a state where the NVRAM spaces can be
   // manipulated.
-  virtual result_code Persist() = 0;
+  virtual bool Persist() = 0;
 
   // Lock the system key to prevent further manipulation.
   virtual void Lock() = 0;
@@ -247,17 +244,17 @@ class SystemKeyLoader {
   // Set up the TPM to allow generation of a system key. This is an expensive
   // operation that can take dozens of seconds depending on hardware so this
   // can't be used routinely.
-  virtual result_code SetupTpm() = 0;
+  virtual bool SetupTpm() = 0;
 
   // Checks whether the system is eligible for encryption key preservation. If
   // so, sets up a new system key to wrap the existing encryption key. On
   // success, |previous_key| and |fresh_key| will be filled in. Returns false if
   // the system is not eligible or there is an error.
-  virtual result_code GenerateForPreservation(
-      brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) = 0;
+  virtual bool GenerateForPreservation(brillo::SecureBlob* previous_key,
+                                       brillo::SecureBlob* fresh_key) = 0;
 
   // Checks whether the lockbox space contents are considered valid.
-  virtual result_code CheckLockbox(bool* valid) = 0;
+  virtual bool CheckLockbox(bool* valid) = 0;
 
   // Whether the lockbox salt is used as the system key.
   virtual bool UsingLockboxKey() = 0;
@@ -269,22 +266,22 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
  public:
   explicit FixedSystemKeyLoader(const brillo::SecureBlob& key) : key_(key) {}
 
-  result_code Load(brillo::SecureBlob* key) override {
+  bool Load(brillo::SecureBlob* key) override {
     *key = key_;
-    return RESULT_SUCCESS;
+    return true;
   }
-  result_code Initialize(const brillo::SecureBlob& key_material,
-                         brillo::SecureBlob* derived_system_key) override {
-    return RESULT_FAIL_FATAL;
+  bool Initialize(const brillo::SecureBlob& key_material,
+                  brillo::SecureBlob* derived_system_key) override {
+    return false;
   }
-  result_code Persist() override { return RESULT_FAIL_FATAL; }
+  bool Persist() override { return false; }
   void Lock() override {}
-  result_code SetupTpm() override { return RESULT_FAIL_FATAL; }
-  result_code GenerateForPreservation(brillo::SecureBlob* previous_key,
-                                      brillo::SecureBlob* fresh_key) override {
-    return RESULT_FAIL_FATAL;
+  bool SetupTpm() override { return false; }
+  bool GenerateForPreservation(brillo::SecureBlob* previous_key,
+                               brillo::SecureBlob* fresh_key) override {
+    return false;
   }
-  result_code CheckLockbox(bool* valid) override { return RESULT_FAIL_FATAL; }
+  bool CheckLockbox(bool* valid) override { return false; }
   bool UsingLockboxKey() override { return false; }
 
  private:

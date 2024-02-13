@@ -30,8 +30,6 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
-#include "init/mount_encrypted/mount_encrypted.h"
-
 namespace mount_encrypted {
 
 namespace {
@@ -247,14 +245,14 @@ bool EncryptedFs::Purge() {
 }
 
 // Do all the work needed to actually set up the encrypted partition.
-result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
-                               bool rebuild) {
+bool EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
+                        bool rebuild) {
   // Get stateful partition statistics. This acts as an indicator of how large
   // we want the encrypted stateful partition to be.
   struct statvfs stateful_statbuf;
   if (!platform_->StatVFS(stateful_mount_, &stateful_statbuf)) {
     PLOG(ERROR) << "stat() failed on: " << stateful_mount_;
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   if (rebuild) {
@@ -266,13 +264,13 @@ result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
   } else if (!container_->Exists()) {
     // If not rebuilding, we expect the container to be present.
     LOG(ERROR) << "Encrypted container doesn't exist";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   if (!container_->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to set up encrypted container";
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // Trigger filesystem resizer, in case growth was interrupted.
@@ -284,7 +282,7 @@ result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
   if (stateful_statbuf.f_bfree > kMinBlocksAvailForResize &&
       !container_->Resize(0)) {
     LOG(ERROR) << "Failed to resize stateful";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // Mount the dm-crypt partition finally.
@@ -295,7 +293,7 @@ result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
                                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))) {
     PLOG(ERROR) << dmcrypt_dev_;
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return RESULT_FAIL_FATAL;
+    return false;
   }
   if (!platform_->Mount(dmcrypt_dev_, encrypted_mount_, kEncryptedFSType,
                         MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
@@ -308,7 +306,7 @@ result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
     platform_->ReportFilesystemDetails(dmcrypt_dev_,
                                        base::FilePath(kDumpe2fsLogPath));
     TeardownByStage(TeardownStage::kTeardownContainer, true);
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // Perform bind mounts.
@@ -316,29 +314,28 @@ result_code EncryptedFs::Setup(const libstorage::FileSystemKey& encryption_key,
     LOG(INFO) << "Bind mounting " << bind.src << " onto " << bind.dst;
     if (!CheckBind(platform_, bind)) {
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
-      return RESULT_FAIL_FATAL;
+      return false;
     }
     if (!platform_->Bind(bind.src, bind.dst)) {
       PLOG(ERROR) << "mount: " << bind.src << ", " << bind.dst;
       TeardownByStage(TeardownStage::kTeardownUnbind, true);
-      return RESULT_FAIL_FATAL;
+      return false;
     }
   }
 
   // Everything completed without error.
-  return RESULT_SUCCESS;
+  return true;
 }
 
 // Clean up all bind mounts, mounts, attaches, etc. Only the final
 // action informs the return value. This makes it so that failures
 // can be cleaned up from, and continue the shutdown process on a
 // second call. If the loopback cannot be found, claim success.
-result_code EncryptedFs::Teardown() {
+bool EncryptedFs::Teardown() {
   return TeardownByStage(TeardownStage::kTeardownUnbind, false);
 }
 
-result_code EncryptedFs::TeardownByStage(TeardownStage stage,
-                                         bool ignore_errors) {
+bool EncryptedFs::TeardownByStage(TeardownStage stage, bool ignore_errors) {
   switch (stage) {
     case TeardownStage::kTeardownUnbind:
       for (auto& bind : bind_mounts_) {
@@ -348,7 +345,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
         if (!platform_->Unmount(bind.dst, false, nullptr) && !ignore_errors) {
           if (errno != EINVAL) {
             PLOG(ERROR) << "umount " << bind.dst;
-            return RESULT_FAIL_FATAL;
+            return false;
           }
         }
       }
@@ -360,7 +357,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
           !ignore_errors) {
         if (errno != EINVAL) {
           PLOG(ERROR) << "umount " << encrypted_mount_;
-          return RESULT_FAIL_FATAL;
+          return false;
         }
       }
 
@@ -374,21 +371,21 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
       LOG(INFO) << "Removing " << dmcrypt_dev_;
       if (!container_->Teardown() && !ignore_errors) {
         LOG(ERROR) << "Failed to teardown encrypted container";
-        return RESULT_FAIL_FATAL;
+        return false;
       }
       platform_->Sync();
-      return RESULT_SUCCESS;
+      return true;
   }
 
   LOG(ERROR) << "Teardown failed.";
-  return RESULT_FAIL_FATAL;
+  return false;
 }
 
-result_code EncryptedFs::CheckStates() {
+bool EncryptedFs::CheckStates() {
   // Verify stateful partition exists.
   if (platform_->Access(stateful_mount_, R_OK)) {
     LOG(INFO) << stateful_mount_ << "does not exist.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
   // Verify stateful is either a separate mount, or that the
   // root directory is writable (i.e. a factory install, dev mode
@@ -396,21 +393,21 @@ result_code EncryptedFs::CheckStates() {
   if (platform_->SameVFS(stateful_mount_, rootdir_) &&
       platform_->Access(rootdir_, W_OK)) {
     LOG(INFO) << stateful_mount_ << " is not mounted.";
-    return RESULT_FAIL_FATAL;
+    return false;
   }
 
   // Verify encrypted partition is missing or not already mounted.
   if (platform_->Access(encrypted_mount_, R_OK) == 0 &&
       !platform_->SameVFS(encrypted_mount_, stateful_mount_)) {
     LOG(INFO) << encrypted_mount_ << " already appears to be mounted.";
-    return RESULT_SUCCESS;
+    return true;
   }
 
   // Verify that bind mount targets exist.
   for (auto& bind : bind_mounts_) {
     if (platform_->Access(bind.dst, R_OK)) {
       PLOG(ERROR) << bind.dst << " mount point is missing.";
-      return RESULT_FAIL_FATAL;
+      return false;
     }
   }
 
@@ -421,15 +418,15 @@ result_code EncryptedFs::CheckStates() {
 
     if (platform_->SameVFS(bind.dst, stateful_mount_)) {
       LOG(INFO) << bind.dst << " already bind mounted.";
-      return RESULT_FAIL_FATAL;
+      return false;
     }
   }
 
   LOG(INFO) << "VFS mount state validity check ok.";
-  return RESULT_SUCCESS;
+  return true;
 }
 
-result_code EncryptedFs::ReportInfo() const {
+bool EncryptedFs::ReportInfo() const {
   printf("rootdir: %s\n", rootdir_.value().c_str());
   printf("stateful_mount: %s\n", stateful_mount_.value().c_str());
   printf("block_path: %s\n", block_path_.value().c_str());
@@ -445,6 +442,6 @@ result_code EncryptedFs::ReportInfo() const {
     printf("\tsubmount:%d\n", mnt.submount);
     printf("\n");
   }
-  return RESULT_SUCCESS;
+  return true;
 }
 }  // namespace mount_encrypted

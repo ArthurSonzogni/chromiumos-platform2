@@ -305,20 +305,18 @@ class EncryptionKeyTest : public testing::Test {
     EXPECT_TRUE(base::PathExists(key_->key_path()));
   }
 
-  void ExpectSystemKeyFailed() {
-    EXPECT_EQ(key_->LoadChromeOSSystemKey(), RESULT_FAIL_FATAL);
-  }
+  void ExpectSystemKeyFailed() { EXPECT_FALSE(key_->LoadChromeOSSystemKey()); }
 
   void ExpectFreshKey() {
-    EXPECT_EQ(key_->LoadChromeOSSystemKey(), RESULT_SUCCESS);
-    EXPECT_EQ(key_->LoadEncryptionKey(), RESULT_SUCCESS);
+    EXPECT_TRUE(key_->LoadChromeOSSystemKey());
+    EXPECT_TRUE(key_->LoadEncryptionKey());
     EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     EXPECT_TRUE(key_->is_fresh());
   }
 
   void ExpectExistingKey(const uint8_t* expected_key) {
-    EXPECT_EQ(key_->LoadChromeOSSystemKey(), RESULT_SUCCESS);
-    EXPECT_EQ(key_->LoadEncryptionKey(), RESULT_SUCCESS);
+    EXPECT_TRUE(key_->LoadChromeOSSystemKey());
+    EXPECT_TRUE(key_->LoadEncryptionKey());
     EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     if (expected_key) {
       EXPECT_EQ(
@@ -330,7 +328,7 @@ class EncryptionKeyTest : public testing::Test {
 
   void ExpectLockboxValid(bool valid_expected) {
     bool valid_actual = !valid_expected;
-    EXPECT_EQ(RESULT_SUCCESS, loader_->CheckLockbox(&valid_actual));
+    EXPECT_TRUE(loader_->CheckLockbox(&valid_actual));
     EXPECT_EQ(valid_expected, valid_actual);
   }
 
@@ -562,7 +560,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   bool initialized = false;
-  EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
+  EXPECT_TRUE(tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
@@ -586,7 +584,7 @@ TEST_F(EncryptionKeyTest, TpmClearExistingLockboxV2UnownedStaleOwnershipFlag) {
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   bool initialized = false;
-  EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
+  EXPECT_TRUE(tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
@@ -610,7 +608,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearWritableAllZeros) {
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   bool initialized = false;
-  EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
+  EXPECT_TRUE(tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
@@ -634,7 +632,7 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearWritableAllOnes) {
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   bool initialized = false;
-  EXPECT_EQ(RESULT_SUCCESS, tpm_->HasSystemKeyInitializedFlag(&initialized));
+  EXPECT_TRUE(tpm_->HasSystemKeyInitializedFlag(&initialized));
   EXPECT_TRUE(initialized);
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);

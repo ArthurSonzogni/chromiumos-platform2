@@ -22,8 +22,6 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
-#include "init/mount_encrypted/mount_encrypted.h"
-
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
 
@@ -82,18 +80,17 @@ class EncryptedFs {
   // Parameters
   //   encryption_key - dmcrypt encryption key.
   //   rebuild - cleanup and recreate the encrypted mount.
-  result_code Setup(const libstorage::FileSystemKey& encryption_key,
-                    bool rebuild);
+  bool Setup(const libstorage::FileSystemKey& encryption_key, bool rebuild);
   // Purge - obliterate the sparse file. This should be called only
   // when the encrypted fs is not mounted.
   bool Purge();
   // Teardown - stepwise unmounts the | ext4 | dmcrypt | loopback | tower
   // on top of the sparse file.
-  result_code Teardown();
+  bool Teardown();
   // CheckStates - Checks validity for the stateful mount before mounting.
-  result_code CheckStates();
+  bool CheckStates();
   // ReportInfo - Reports the paths and bind mounts.
-  result_code ReportInfo() const;
+  bool ReportInfo() const;
 
  private:
   friend class EncryptedFsTest;
@@ -104,7 +101,7 @@ class EncryptedFs {
 
   // TeardownByStage allows higher granularity over teardown
   // processes.
-  result_code TeardownByStage(TeardownStage stage, bool ignore_errors);
+  bool TeardownByStage(TeardownStage stage, bool ignore_errors);
 
   // Root directory to use for the encrypted stateful filesystem.
   const base::FilePath rootdir_;
