@@ -548,13 +548,12 @@ int BPF_PROG(cros_handle_ip_protocol_deliver_rcu_enter,
   return 0;
 }
 
-#ifdef CROS_FENTRY_FEXIT_SUPPORTED
-SEC("fexit/__ip_local_out")
-int BPF_PROG(cros_handle__ip_local_out_exit,
+#if CROS_FENTRY_FEXIT_SUPPORTED
+SEC("fentry/ip_output")
+int BPF_PROG(cros_handle_ip_output,
              struct net* net,
              struct sock* sk,
-             struct sk_buff* skb,
-             int rv)
+             struct sk_buff* skb)
 #else
 SEC("raw_tracepoint/cros__ip_local_out_exit")
 int BPF_PROG(cros_handle__ip_local_out_exit,
@@ -567,7 +566,7 @@ int BPF_PROG(cros_handle__ip_local_out_exit,
   // IPv4 transmit path.
   cros_handle_tx_rx(/* skb */ skb,
                     /* is_ipv6 */ false,
-                    /* is_tx */ true, "__ip_local_out");
+                    /* is_tx */ true, "ip_output");
   return 0;
 }
 
