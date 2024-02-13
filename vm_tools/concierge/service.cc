@@ -37,6 +37,7 @@
 #include <base/base64url.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -645,7 +646,7 @@ base::FilePath GetVmLogPath(const VmId& vm_id, const std::string& extension) {
 std::string GetMd5HashForFilename(const std::string& str) {
   std::string result;
   base::MD5Digest digest;
-  base::MD5Sum(str.data(), str.size(), &digest);
+  base::MD5Sum(base::as_byte_span(str), &digest);
   std::string_view hash_piece(reinterpret_cast<char*>(&digest.a[0]),
                               sizeof(digest.a));
   // Note, we can not have '=' symbols in this path or it will break crosvm's
