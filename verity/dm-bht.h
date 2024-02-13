@@ -14,7 +14,8 @@
 #include <string>
 
 #include <brillo/brillo_export.h>
-#include <openssl/evp.h>
+
+#include "verity/hasher.h"
 
 /* To avoid allocating memory for digest tests, we just setup a
  * max to use for now.
@@ -99,7 +100,6 @@ typedef int (*dm_bht_callback)(void*,    /* external context */
  * entire branch has been verified.
  */
 struct dm_bht {
-  dm_bht() : digest_ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free) {}
   /* Configured values */
   int depth;                /* Depth of the tree including the root */
   unsigned int block_count; /* Number of blocks hashed */
@@ -115,8 +115,7 @@ struct dm_bht {
   unsigned int node_count_shift; /* first bit set - 1 */
   /* There is one per CPU so that verified can be simultaneous. */
   /* We assume we only have one CPU in userland. */
-  std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX*)> digest_ctx;
-  const EVP_MD* digest_alg;
+  std::unique_ptr<Hasher> hasher;
   unsigned int digest_size;
   sector_t sectors; /* Number of disk sectors used */
 

@@ -102,24 +102,9 @@ void dm_bht_log_mismatch(struct dm_bht* bht,
 }
 
 static bool set_digest_params(struct dm_bht* bht, const char* alg_name) {
-  // Transfer alg name into what openssl understands.
-  if (!strcasecmp(alg_name, "blake2b-512")) {
-    bht->digest_alg = EVP_get_digestbyname("blake2b512");
-  } else if (!strcasecmp(alg_name, "blake2b-256")) {
-    bht->digest_alg = EVP_get_digestbyname("blake2b256");
-  } else if (!strcasecmp(alg_name, "blake2s-256")) {
-    bht->digest_alg = EVP_get_digestbyname("blake2s256");
-  } else {
-    bht->digest_alg = EVP_get_digestbyname(alg_name);
-  }
-
-  if (!bht->digest_alg) {
-    return false;
-  }
-
-  bht->digest_size = EVP_MD_size(bht->digest_alg);
-
-  return true;
+  bht->hasher = std::make_unique<OpenSSLHasher>(alg_name);
+  bht->digest_size = bht->hasher->DigestSize();
+  return bht->digest_size > 0;
 }
 
 /*-----------------------------------------------
@@ -141,12 +126,27 @@ int dm_bht_read_callback_stub(void* ctx,
 int dm_bht_compute_hash(struct dm_bht* bht,
                         const uint8_t* buffer,
                         uint8_t* digest) {
-  EVP_DigestInit(bht->digest_ctx.get(), bht->digest_alg);
-  EVP_DigestUpdate(bht->digest_ctx.get(), buffer, PAGE_SIZE);
-  if (bht->have_salt) {
-    EVP_DigestUpdate(bht->digest_ctx.get(), bht->salt, sizeof(bht->salt));
+  if (!bht->hasher->Init()) {
+    LOG(ERROR) << "Couldn't Init hasher.";
+    return -1;
   }
-  EVP_DigestFinal_ex(bht->digest_ctx.get(), digest, NULL);
+
+  if (!bht->hasher->Update(buffer, PAGE_SIZE)) {
+    LOG(ERROR) << "Couldn't hash-in block.";
+    return -1;
+  }
+
+  if (bht->have_salt &&
+      !bht->hasher->Update(bht->salt, sizeof(bht->salt))) {
+    LOG(ERROR) << "Couldn't hash-in salt.";
+    return -1;
+  }
+
+  if (!bht->hasher->Final(digest)) {
+    LOG(ERROR) << "Couldn't finalize digest.";
+    return -1;
+  }
+
   return 0;
 }
 
@@ -168,12 +168,6 @@ int dm_bht_create(struct dm_bht* bht,
                   unsigned int block_count,
                   const char* alg_name) {
   int status = 0;
-
-  if (!bht->digest_ctx) {
-    status = -ENOMEM;
-    LOG(ERROR) << "Could not allocate context";
-    goto bad_hash_alg;
-  }
 
   if (!set_digest_params(bht, alg_name)) {
     status = -EINVAL;

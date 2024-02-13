@@ -33,6 +33,7 @@ shared_library("libdm-bht") {
   sources = [
     "dm-bht.cc",
     "file_hasher.cc",
+    "hasher.cc",
   ]
   install_path = "lib"
   configs += [ ":target_defaults" ]
