@@ -440,17 +440,18 @@ static void sl_bind_host_xdg_shell(struct wl_client* client,
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_xdg_shell* host = new sl_host_xdg_shell();
   host->ctx = ctx;
-  host->resource = wl_resource_create(client, &xdg_wm_base_interface,
-                                      std::min(version, XDG_SHELL_VERSION), id);
+  host->resource =
+      wl_resource_create(client, &xdg_wm_base_interface, version, id);
   wl_resource_set_implementation(host->resource, &sl_xdg_shell_implementation,
                                  host, sl_destroy_host_xdg_shell);
-  host->proxy = static_cast<xdg_wm_base*>(wl_registry_bind(
-      wl_display_get_registry(ctx->display), ctx->xdg_shell->id,
-      &xdg_wm_base_interface, std::min(version, XDG_SHELL_VERSION)));
+  host->proxy = static_cast<xdg_wm_base*>(
+      wl_registry_bind(wl_display_get_registry(ctx->display),
+                       ctx->xdg_shell->id, &xdg_wm_base_interface, version));
   xdg_wm_base_shim()->add_listener(host->proxy, &sl_xdg_shell_listener, host);
 }
 
-struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx) {
-  return sl_global_create(ctx, &xdg_wm_base_interface, XDG_SHELL_VERSION, ctx,
+struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx,
+                                             uint32_t version) {
+  return sl_global_create(ctx, &xdg_wm_base_interface, version, ctx,
                           sl_bind_host_xdg_shell);
 }

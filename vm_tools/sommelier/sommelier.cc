@@ -10,6 +10,7 @@
 #include "sommelier-tracing.h"      // NOLINT(build/include_directory)
 #include "sommelier-transform.h"    // NOLINT(build/include_directory)
 #include "sommelier-window.h"       // NOLINT(build/include_directory)
+#include "sommelier-xdg-shell.h"    // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"       // NOLINT(build/include_directory)
 #ifdef GAMEPAD_SUPPORT
 #include "libevdev/libevdev-shim.h"
@@ -597,17 +598,19 @@ void sl_registry_handler(void* data,
     assert(xdg_shell);
     xdg_shell->ctx = ctx;
     xdg_shell->id = id;
+    xdg_shell->version = MIN(SL_XDG_SHELL_MAX_VERSION, version);
     xdg_shell->internal = nullptr;
     xdg_shell->host_global = nullptr;
     assert(!ctx->xdg_shell);
     ctx->xdg_shell = xdg_shell;
     if (ctx->xwayland) {
       xdg_shell->internal = static_cast<xdg_wm_base*>(wl_registry_bind(
-          registry, id, &xdg_wm_base_interface, XDG_SHELL_VERSION));
+          registry, id, &xdg_wm_base_interface, xdg_shell->version));
       xdg_wm_base_add_listener(xdg_shell->internal,
                                &sl_internal_xdg_shell_listener, nullptr);
     } else {
-      xdg_shell->host_global = sl_xdg_shell_global_create(ctx);
+      xdg_shell->host_global =
+          sl_xdg_shell_global_create(ctx, xdg_shell->version);
     }
   } else if (strcmp(interface, "zaura_shell") == 0) {
     if (version >= MIN_AURA_SHELL_VERSION) {

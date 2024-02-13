@@ -22,7 +22,6 @@
 #include "weak-resource-ptr.h"          // NOLINT(build/include_directory)
 
 #define SOMMELIER_VERSION "0.20"
-#define XDG_SHELL_VERSION 3u
 #define APPLICATION_ID_FORMAT_PREFIX "org.chromium.guest_os.%s"
 #define NATIVE_WAYLAND_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wayland.%s"
@@ -401,6 +400,7 @@ struct sl_viewporter {
 struct sl_xdg_shell {
   struct sl_context* ctx;
   uint32_t id;
+  uint32_t version;
   struct sl_global* host_global;
   struct xdg_wm_base* internal;
 };
@@ -565,7 +565,8 @@ struct sl_global* sl_data_device_manager_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_viewporter_global_create(struct sl_context* ctx);
 
-struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
+struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx,
+                                             uint32_t version);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 

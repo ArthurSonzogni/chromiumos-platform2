@@ -11,6 +11,8 @@
 #include "sommelier-util.h"             // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
 
+#define SL_XDG_SHELL_MAX_VERSION 3u
+
 struct sl_host_xdg_shell {
   struct sl_context* ctx;
   struct wl_resource* resource;
