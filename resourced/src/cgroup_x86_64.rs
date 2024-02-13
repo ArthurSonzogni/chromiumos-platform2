@@ -18,7 +18,7 @@ use log::info;
 use once_cell::sync::Lazy;
 
 use crate::common::read_from_file;
-use crate::cpu_utils;
+use crate::cpu_utils::Cpuset;
 use crate::feature;
 
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
@@ -87,10 +87,10 @@ fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
             std::fs::write(cpuset_path, cpusets)?;
         }
         Ok(None) => {
-            std::fs::write(cpuset_path, cpu_utils::get_little_cores(root)?)?;
+            std::fs::write(cpuset_path, Cpuset::little_cores(root)?.to_string())?;
         }
         Err(e) => {
-            std::fs::write(cpuset_path, cpu_utils::get_cpuset_all_cpus(root)?)?;
+            std::fs::write(cpuset_path, Cpuset::all_cores(root)?.to_string())?;
             bail!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
         }
     }
@@ -104,11 +104,11 @@ fn write_default_cpusets(root: &Path) -> Result<()> {
     write_default_nonurgent_cpusets(root)?;
 
     // Other cpusets
-    let all_cpus = cpu_utils::get_cpuset_all_cpus(root)?;
+    let all_cpus = Cpuset::all_cores(root)?;
 
     for cpus in CGROUP_CPUSET_NO_LIMIT {
         let cpus_path = root.join(cpus);
-        std::fs::write(cpus_path, all_cpus.as_bytes())?;
+        std::fs::write(cpus_path, all_cpus.to_string())?;
     }
 
     Ok(())
@@ -487,7 +487,7 @@ mod tests {
 
         // In the sysfs, the content would be converted to "0-5". But there is no auto conversion
         // in the test temp files.
-        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0,1,2,3,4,5");
+        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-5");
         Ok(())
     }
 
@@ -514,10 +514,7 @@ mod tests {
             test_check_file_content(&path, "0-11");
         }
 
-        test_check_file_content(
-            &root.path().join(CGROUP_CPUSET_NONURGENT),
-            "0,1,2,3,4,5,6,7",
-        );
+        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-7");
         Ok(())
     }
 

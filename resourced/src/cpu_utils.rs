@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::fs::read_to_string;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
+use std::slice::Iter;
 use std::str::FromStr;
 
 use anyhow::bail;
@@ -17,6 +19,7 @@ use glob::glob;
 use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
+const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HotplugCpuAction {
@@ -32,6 +35,94 @@ pub enum HotplugCpuAction {
     OfflineHalf { min_active_threads: u32 },
 }
 
+/// The set of cpu core numbers
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Cpuset(Vec<usize>);
+
+impl Cpuset {
+    pub fn all_cores(root: &Path) -> Result<Self> {
+        let cpuset_str = read_to_string(root.join(ROOT_CPUSET_CPUS_PATH))
+            .context("Failed to get root cpuset cpus")?;
+        let range_parts: Vec<&str> = cpuset_str.split('-').collect();
+        if range_parts.len() == 2 {
+            let start: usize = range_parts[0].trim().parse()?;
+            let end: usize = range_parts[1].trim().parse()?;
+            if start > end {
+                bail!("Invalid CPU range: {}-{}", start, end);
+            }
+            Ok((start..=end).collect())
+        } else {
+            let cores = cpuset_str
+                .split(',')
+                .map(|value| value.trim().parse::<usize>().context("parse core number"))
+                .collect::<Result<Self>>()?;
+            Ok(cores)
+        }
+    }
+
+    pub fn little_cores(root: &Path) -> Result<Self> {
+        if !is_big_little_supported(root)? {
+            return Self::all_cores(root);
+        }
+
+        let cpu0_capacity = root.join("sys/bus/cpu/devices/cpu0/cpu_capacity");
+
+        if cpu0_capacity.exists() {
+            // If cpu0/cpu_capacity exists, all cpus should have the cpu_capacity file.
+            get_cpus_with_min_property(root, "cpu_capacity")
+        } else {
+            get_cpus_with_min_property(root, "cpufreq/cpuinfo_max_freq")
+        }
+    }
+
+    /// The number of cpu cores in this [Cpuset].
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn iter(&self) -> Iter<usize> {
+        self.0.iter()
+    }
+}
+
+impl FromIterator<usize> for Cpuset {
+    fn from_iter<T>(cpus: T) -> Self
+    where
+        T: IntoIterator<Item = usize>,
+    {
+        Self(cpus.into_iter().collect())
+    }
+}
+
+impl Display for Cpuset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut iter = self.iter();
+        if let Some(first_cpu) = iter.next() {
+            let mut c = *first_cpu;
+            let mut is_consecutive = true;
+            for cpu in iter {
+                c += 1;
+                if c != *cpu {
+                    is_consecutive = false;
+                    break;
+                }
+            }
+            if is_consecutive && *first_cpu != c {
+                return write!(f, "{}-{}", first_cpu, c);
+            }
+        }
+
+        let mut iter = self.iter();
+        if let Some(cpu) = iter.next() {
+            write!(f, "{}", cpu)?;
+        }
+        for cpu in iter {
+            write!(f, ",{}", cpu)?;
+        }
+        Ok(())
+    }
+}
+
 // Returns cpus string containing cpus with the minimal value of the property.
 // The properties are read from /sys/bus/cpu/devices/cpu*/{property name}.
 // E.g., this function returns "0,1" for the following cpu properties.
@@ -41,7 +132,7 @@ pub enum HotplugCpuAction {
 // |   1   |       512      |
 // |   2   |      1024      |
 // |   3   |      1024      |
-fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<String> {
+fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Cpuset> {
     let cpu_pattern = root
         .join("sys/bus/cpu/devices/cpu*")
         .to_str()
@@ -56,7 +147,7 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<String> {
     let cpu_properties = glob(&cpu_pattern)?
         .map(|cpu_dir| {
             let cpu_dir = cpu_dir?;
-            let cpu_number: u64 = cpu_dir
+            let cpu_number: usize = cpu_dir
                 .to_str()
                 .context("Failed to convert cpu path to string")?
                 .strip_prefix(&cpu_pattern_prefix)
@@ -65,37 +156,21 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<String> {
             let property_path = Path::new(&cpu_dir).join(property);
             Ok((cpu_number, read_from_file(&property_path)?))
         })
-        .collect::<Result<Vec<(u64, u64)>, anyhow::Error>>()?;
-    let min_property = cpu_properties
+        .collect::<Result<Vec<(usize, u64)>, anyhow::Error>>()?;
+    let min_property = *cpu_properties
         .iter()
         .map(|(_, prop)| prop)
         .min()
         .context("cpu properties vector is empty")?;
-    let cpus = cpu_properties
-        .iter()
-        .filter(|(_, prop)| prop == min_property)
-        .map(|(cpu, _)| cpu.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
-    Ok(cpus)
+    let cpuset = cpu_properties
+        .into_iter()
+        .filter(|(_, prop)| *prop == min_property)
+        .map(|(cpu, _)| cpu)
+        .collect::<Cpuset>();
+    Ok(cpuset)
 }
 
-pub fn get_little_cores(root: &Path) -> Result<String> {
-    if !is_big_little_supported(root)? {
-        return get_cpuset_all_cpus(root);
-    }
-
-    let cpu0_capacity = root.join("sys/bus/cpu/devices/cpu0/cpu_capacity");
-
-    if cpu0_capacity.exists() {
-        // If cpu0/cpu_capacity exists, all cpus should have the cpu_capacity file.
-        get_cpus_with_min_property(root, "cpu_capacity")
-    } else {
-        get_cpus_with_min_property(root, "cpufreq/cpuinfo_max_freq")
-    }
-}
-
-pub fn is_big_little_supported(root: &Path) -> Result<bool> {
+fn is_big_little_supported(root: &Path) -> Result<bool> {
     const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
     let reader = BufReader::new(std::fs::File::open(root.join(UI_USE_FLAGS_PATH))?);
     for line in reader.lines() {
@@ -106,35 +181,15 @@ pub fn is_big_little_supported(root: &Path) -> Result<bool> {
     Ok(false)
 }
 
-pub fn get_cpuset_all_cpus(root: &Path) -> Result<String> {
-    const ROOT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/cpus";
-    let root_cpuset_cpus = root.join(ROOT_CPUSET_CPUS);
-    std::fs::read_to_string(root_cpuset_cpus).context("Failed to get root cpuset cpus")
-}
-
 // Change a group of CPU online status through sysfs.
 // * `cpus_fmt` -  The format string of the target CPUs in either of the format:
 //   1. a list separated by comma (,). e.g. 0,1,2,3 to set CPU 0,1,2,3
 //   2. a range represented by hyphen (-). e.g. 0-3 to set CPU 0,1,2,3
 // * `online` - Set true to online CUPs. Set false to offline CPUs.
-fn update_cpu_online_status(root: &Path, cpus_fmt: &str, online: bool) -> Result<()> {
+fn update_cpu_online_status(root: &Path, cpuset: &Cpuset, online: bool) -> Result<()> {
     let online_value = if online { "1" } else { "0" };
-    let range_parts: Vec<&str> = cpus_fmt.split('-').collect();
-    let mut cpus = Vec::new();
-    if range_parts.len() == 2 {
-        if let (Ok(start), Ok(end)) = (range_parts[0].trim().parse(), range_parts[1].trim().parse())
-        {
-            cpus = (start..=end).collect();
-        }
-    } else {
-        cpus = cpus_fmt
-            .split(',')
-            .map(|value| value.trim().parse::<i32>())
-            .filter_map(Result::ok)
-            .collect();
-    }
 
-    for cpu in cpus {
+    for cpu in cpuset.iter() {
         let pattern = format!("sys/devices/system/cpu/cpu{}/online", cpu);
         let cpu_path = root.join(pattern);
 
@@ -233,29 +288,18 @@ fn get_physical_cores(root: &Path) -> Result<u32> {
     Ok(core_cpus.len() as u32)
 }
 
-fn get_last_core(root: &Path) -> Result<u32> {
-    Ok(get_cpuset_all_cpus(root)?
-        .split('-')
-        .last()
-        .context("can't get number of cores")?
-        .trim()
-        .parse()?)
-}
-
 pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
     match action {
         HotplugCpuAction::OnlineAll => {
-            let all_cores: String = get_cpuset_all_cpus(root)?;
+            let all_cores = Cpuset::all_cores(root)?;
             update_cpu_smt_control(root, true)?;
             update_cpu_online_status(root, &all_cores, true)?;
         }
         HotplugCpuAction::OfflineSmallCore { min_active_threads } => {
             if is_big_little_supported(root)? {
-                let little_cores: String = get_little_cores(root)?;
-                let little_cores_count: u32 =
-                    little_cores.split(',').collect::<Vec<_>>().len() as u32;
-                let all_cores_count: u32 = get_last_core(root)? + 1;
-                if all_cores_count - little_cores_count >= min_active_threads {
+                let little_cores = Cpuset::little_cores(root)?;
+                let all_cores = Cpuset::all_cores(root)?;
+                if all_cores.len() - little_cores.len() >= min_active_threads as usize {
                     update_cpu_online_status(root, &little_cores, false)?;
                 }
             }
@@ -267,10 +311,13 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             }
         }
         HotplugCpuAction::OfflineHalf { min_active_threads } => {
-            let last_core: u32 = get_last_core(root)?;
-            if last_core + 1 > min_active_threads {
-                let first_core = std::cmp::max((last_core / 2) + 1, min_active_threads);
-                update_cpu_online_status(root, &format!("{}-{}", first_core, last_core), false)?;
+            let all_cores = Cpuset::all_cores(root)?;
+            let n_all_cores = all_cores.len();
+            let last_core = n_all_cores - 1;
+            if n_all_cores > min_active_threads as usize {
+                let first_core = std::cmp::max((last_core / 2) + 1, min_active_threads as usize);
+                let half_cores = (first_core..=last_core).collect();
+                update_cpu_online_status(root, &half_cores, false)?;
             }
         }
     }
@@ -284,6 +331,52 @@ mod tests {
 
     use super::*;
     use crate::test_utils::*;
+
+    #[test]
+    fn test_cpuset_all_cores() {
+        let root_dir = tempfile::tempdir().unwrap();
+        let root_path = root_dir.path();
+        let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH);
+        std::fs::create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
+
+        // root cpuset cgroup is not found.
+        assert!(Cpuset::all_cores(root_path).is_err());
+
+        std::fs::write(&root_cpus_path, "1,2,3,100").unwrap();
+        assert_eq!(
+            Cpuset::all_cores(root_path).unwrap(),
+            Cpuset(vec![1, 2, 3, 100])
+        );
+
+        std::fs::write(&root_cpus_path, "100").unwrap();
+        assert_eq!(Cpuset::all_cores(root_path).unwrap(), Cpuset(vec![100]));
+
+        std::fs::write(&root_cpus_path, "2-10").unwrap();
+        assert_eq!(
+            Cpuset::all_cores(root_path).unwrap(),
+            Cpuset(vec![2, 3, 4, 5, 6, 7, 8, 9, 10])
+        );
+
+        std::fs::write(&root_cpus_path, "2-2").unwrap();
+        assert_eq!(Cpuset::all_cores(root_path).unwrap(), Cpuset(vec![2]));
+
+        std::fs::write(&root_cpus_path, "3-2").unwrap();
+        assert!(Cpuset::all_cores(root_path).is_err());
+        std::fs::write(&root_cpus_path, "a").unwrap();
+        assert!(Cpuset::all_cores(root_path).is_err());
+        std::fs::write(&root_cpus_path, "a-1").unwrap();
+        assert!(Cpuset::all_cores(root_path).is_err());
+        std::fs::write(&root_cpus_path, "a,100").unwrap();
+        assert!(Cpuset::all_cores(root_path).is_err());
+    }
+
+    #[test]
+    fn test_cpuset_to_string() {
+        assert_eq!(&Cpuset(vec![1, 2]).to_string(), "1-2");
+        assert_eq!(&Cpuset(vec![1, 2, 3]).to_string(), "1-3");
+        assert_eq!(&Cpuset(vec![1, 2, 3, 100]).to_string(), "1,2,3,100");
+        assert_eq!(&Cpuset(vec![100]).to_string(), "100");
+    }
 
     #[test]
     fn test_hotplug_cpus() {
