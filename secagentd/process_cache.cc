@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_replace.h"
 #include "base/containers/lru_cache.h"
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -56,7 +57,7 @@ static const char kRedactMessage[] = "(EMAIL_REDACTED)";
 
 std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
   base::MD5Digest md5;
-  base::MD5Sum(&seed, sizeof(seed), &md5);
+  base::MD5Sum(base::byte_span_from_ref(seed), &md5);
   // Convert the hash to a UUID string. Pretend to be version 4, variant 1.
   md5.a[4] = (md5.a[4] & 0x0f) | 0x40;
   md5.a[6] = (md5.a[6] & 0x3f) | 0x80;
