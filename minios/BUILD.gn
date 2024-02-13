@@ -13,6 +13,7 @@ group("all") {
     ":minios_adaptors",
     ":minios_client",
     ":minios_proxies",
+    ":minios_util",
   ]
   if (use.test) {
     deps += [ ":minios_test" ]
@@ -97,6 +98,13 @@ executable("minios") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libminios" ]
+}
+
+executable("minios_util") {
+  sources = [ "minios_util.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libminios" ]
+  install_path = "bin"
 }
 
 executable("minios_client") {
