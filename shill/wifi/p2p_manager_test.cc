@@ -331,6 +331,8 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultSuccess);
+  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID),
+            expected_shill_id);
   ASSERT_EQ(p2p_manager_->p2p_clients_[expected_shill_id], p2p_device);
 
   EXPECT_CALL(*p2p_device, GetClientInfo()).WillOnce(Return(info_pattern));
@@ -389,6 +391,8 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
+  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID),
+            expected_shill_id);
   ASSERT_EQ(p2p_manager_->p2p_group_owners_[expected_shill_id], p2p_device);
 
   EXPECT_CALL(*p2p_device, GetGroupInfo()).WillOnce(Return(info_pattern));

@@ -642,7 +642,7 @@ void P2PManager::P2PNetworkStarted(P2PDeviceRefPtr device) {
       device->iface_type() == LocalDevice::IfaceType::kP2PGO
           ? kCreateP2PGroupResultSuccess
           : kConnectToP2PGroupResultSuccess;
-  PostResult(result_code, std::nullopt, std::move(result_callback_));
+  PostResult(result_code, device->shill_id(), std::move(result_callback_));
   return;
 }
 
