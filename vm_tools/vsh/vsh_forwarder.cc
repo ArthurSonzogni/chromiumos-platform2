@@ -522,6 +522,9 @@ void VshForwarder::HandleVsockReadable() {
       DataMessage data_message = guest_message.data_message();
       DCHECK_EQ(data_message.stream(), STDIN_STREAM);
 
+      if (!interactive_ && !stdio_pipes_[STDIN_FILENO].is_valid())
+        return;
+
       int target_fd =
           interactive_ ? ptm_fd_.get() : stdio_pipes_[STDIN_FILENO].get();
 
@@ -541,7 +544,14 @@ void VshForwarder::HandleVsockReadable() {
       }
 
       if (!base::WriteFileDescriptor(target_fd, data)) {
-        PLOG(ERROR) << "Failed to write data to stdin";
+        if (interactive_) {
+          PLOG(ERROR) << "Failed to write data to stdin";
+        } else {
+          if (errno != EPIPE) {
+            PLOG(ERROR) << "Failed to write data to stdin";
+          }
+          stdio_pipes_[STDIN_FILENO].reset();
+        }
         return;
       }
       break;
