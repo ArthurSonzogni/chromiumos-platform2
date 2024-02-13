@@ -125,12 +125,8 @@ shared_library("libpatchpanel-util") {
 }
 
 static_library("libpatchpanel") {
-  # NIC hotplug is only enabled on ARCVM with x86_64 architecture.
-  if (use.amd64 && use.arcvm) {
-    nic_hotplug = true
-  } else {
-    nic_hotplug = false
-  }
+  # NIC hotplug is temporarily disabled while being stabilized.
+  nic_hotplug = false
 
   sources = [
     "adb_proxy.cc",
