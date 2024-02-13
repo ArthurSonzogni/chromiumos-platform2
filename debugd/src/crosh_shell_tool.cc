@@ -4,11 +4,10 @@
 
 #include "debugd/src/crosh_shell_tool.h"
 
-#include <base/files/file_util.h>
-
 #include "debugd/src/error_utils.h"
 
 #include <fcntl.h>
+#include <span>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/select.h>
@@ -16,6 +15,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/userdb_utils.h>
@@ -36,6 +36,8 @@ constexpr char kCroshIoctlErrorString[] =
     "ioctl failed for crosh shell process";
 constexpr char kCroshSyscallErrorString[] = "failed for crosh shell process";
 constexpr char kCroshToolErrorString[] = "org.chromium.debugd.error.CroshShell";
+constexpr char kCroshWriteErrorString[] =
+    "Write fd failed for crosh shell process";
 
 const size_t kBufSize = 4096;
 const base::TimeDelta kReapDelay = base::Seconds(1);
@@ -176,7 +178,7 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
   // Handle pseudo terminal IO.
   // TODO(b/323557951): determine if there’s a better way to do this with
   // splice().
-  char buf[kBufSize];
+  uint8_t buf[kBufSize];
   ssize_t ret;
   fd_set set;
   FD_ZERO(&set);
@@ -198,15 +200,23 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
       ret = read(fd, buf, sizeof(buf));
       if (ret < 0)
         break;
-      if (ret > 0)
-        write(primary_fd, buf, ret);
+      if (ret > 0) {
+        if (!base::WriteFileDescriptor(primary_fd, std::span(buf, ret))) {
+          PLOG(ERROR) << kCroshWriteErrorString;
+          exit(1);
+        }
+      }
     }
     if (FD_ISSET(primary_fd, &set)) {
       ret = read(primary_fd, buf, sizeof(buf));
       if (ret < 0)
         break;
-      if (ret > 0)
-        write(fd, buf, ret);
+      if (ret > 0) {
+        if (!base::WriteFileDescriptor(fd, std::span(buf, ret))) {
+          PLOG(ERROR) << kCroshWriteErrorString;
+          exit(1);
+        }
+      }
     }
   }
 
