@@ -16,7 +16,10 @@ group("all") {
     deps += [ ":install_subtool" ]
   }
   if (use.test) {
-    deps += [ ":verity_tests" ]
+    deps += [
+      ":blake2b_hasher_test",
+      ":verity_tests",
+    ]
   }
 }
 
@@ -31,6 +34,7 @@ pkg_config("target_defaults") {
 
 shared_library("libdm-bht") {
   sources = [
+    "blake2b/blake2b.cc",
     "dm-bht.cc",
     "file_hasher.cc",
     "hasher.cc",
@@ -71,6 +75,22 @@ install_config("install_subtool") {
 }
 
 if (use.test) {
+  executable("blake2b_hasher_test") {
+    sources = [
+      "blake2b/blake2b.cc",
+      "hasher.cc",
+      "hasher_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+    run_test = true
+  }
+
   executable("verity_tests") {
     sources = [
       "dm-bht_test.cc",

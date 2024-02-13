@@ -10,6 +10,8 @@
 
 #include <openssl/evp.h>
 
+#include "verity/blake2b/blake2b.h"
+
 namespace verity {
 
 OpenSSLHasher::OpenSSLHasher(const char* alg_name)
@@ -38,6 +40,25 @@ bool OpenSSLHasher::Update(const uint8_t* buf, size_t buflen) {
 
 bool OpenSSLHasher::Final(uint8_t* out) {
   return EVP_DigestFinal_ex(digest_ctx_.get(), out, NULL) == 1;
+}
+
+Blake2bHasher::Blake2bHasher(ssize_t digest_size)
+  : Hasher(), digest_size_(digest_size) {}
+
+ssize_t Blake2bHasher::DigestSize() const {
+  return digest_size_;
+}
+
+bool Blake2bHasher::Init() {
+  return blake2b_init(&state_, digest_size_) == 0;
+}
+
+bool Blake2bHasher::Update(const uint8_t* buf, size_t buflen) {
+  return blake2b_update(&state_, buf, buflen) == 0;
+}
+
+bool Blake2bHasher::Final(uint8_t* out) {
+  return blake2b_final(&state_, out, digest_size_) == 0;
 }
 
 }  // namespace verity

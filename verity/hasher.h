@@ -10,6 +10,8 @@
 
 #include <openssl/evp.h>
 
+#include "verity/blake2b/blake2b.h"
+
 namespace verity {
 
 class Hasher {
@@ -42,6 +44,20 @@ class OpenSSLHasher : public Hasher {
  private:
   std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX*)> digest_ctx_;
   const EVP_MD* digest_alg_;
+};
+
+class Blake2bHasher : public Hasher {
+ public:
+  explicit Blake2bHasher(ssize_t digest_size);
+  ~Blake2bHasher() override = default;
+
+  ssize_t DigestSize() const override;
+  bool Init() override;
+  bool Update(const uint8_t* buf, size_t buflen) override;
+  bool Final(uint8_t* out) override;
+ private:
+  blake2b_state state_;
+  ssize_t digest_size_;
 };
 
 }  // namespace verity

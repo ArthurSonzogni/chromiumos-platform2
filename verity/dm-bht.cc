@@ -102,7 +102,11 @@ void dm_bht_log_mismatch(struct dm_bht* bht,
 }
 
 static bool set_digest_params(struct dm_bht* bht, const char* alg_name) {
-  bht->hasher = std::make_unique<OpenSSLHasher>(alg_name);
+  if (!strcasecmp(alg_name, "blake2b-256")) {
+    bht->hasher = std::make_unique<Blake2bHasher>(32);
+  } else {
+    bht->hasher = std::make_unique<OpenSSLHasher>(alg_name);
+  }
   bht->digest_size = bht->hasher->DigestSize();
   return bht->digest_size > 0;
 }
