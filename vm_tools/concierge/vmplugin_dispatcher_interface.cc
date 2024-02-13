@@ -96,16 +96,15 @@ bool GetVmInfo(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  auto dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(ERROR) << "Failed to send ListVm message to dispatcher service: "
-               << dbus_response.error().name() << ", "
-               << dbus_response.error().message();
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send ListVm message to dispatcher service";
     return false;
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::plugin_dispatcher::ListVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse ListVmResponse protobuf";
@@ -167,16 +166,15 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  auto dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(ERROR) << "Failed to send RegisterVm message to dispatcher service: "
-               << dbus_response.error().name() << ", "
-               << dbus_response.error().message();
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send RegisterVm message to dispatcher service";
     return false;
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::plugin_dispatcher::RegisterVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse RegisterVmResponse protobuf";
@@ -212,16 +210,15 @@ bool UnregisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  auto dbus_response = proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(ERROR) << "Failed to send UnregisterVm message to dispatcher service: "
-               << dbus_response.error().name() << ", "
-               << dbus_response.error().message();
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send UnregisterVm message to dispatcher service";
     return false;
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::plugin_dispatcher::UnregisterVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse UnregisterVmResponse protobuf";
@@ -289,10 +286,12 @@ VmOpResult ShutdownVm(scoped_refptr<dbus::Bus> bus,
     return VmOpResult::INTERNAL_ERROR;
   }
 
-  auto dbus_response = proxy->CallMethodAndBlock(
-      &method_call, kVmShutdownTimeout.InMilliseconds());
-  if (!dbus_response.has_value()) {
-    auto dbus_error = std::move(dbus_response.error());
+  dbus::Error dbus_error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+          bus, proxy, &method_call, kVmShutdownTimeout.InMilliseconds(),
+          &dbus_error);
+  if (!dbus_response) {
     if (dbus_error.IsValid() &&
         dbus_error.name() == DBUS_ERROR_SERVICE_UNKNOWN) {
       LOG(ERROR) << "Failed to send ShutdownVm request to dispatcher: service "
@@ -308,7 +307,7 @@ VmOpResult ShutdownVm(scoped_refptr<dbus::Bus> bus,
     }
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::plugin_dispatcher::StopVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse StopVmResponse protobuf";
@@ -338,10 +337,12 @@ VmOpResult SuspendVm(scoped_refptr<dbus::Bus> bus,
     return VmOpResult::INTERNAL_ERROR;
   }
 
-  auto dbus_response = proxy->CallMethodAndBlock(
-      &method_call, kVmSuspendTimeout.InMilliseconds());
-  if (!dbus_response.has_value()) {
-    auto dbus_error = std::move(dbus_response.error());
+  dbus::Error dbus_error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+          bus, proxy, &method_call, kVmSuspendTimeout.InMilliseconds(),
+          &dbus_error);
+  if (!dbus_response) {
     if (dbus_error.IsValid() &&
         dbus_error.name() == DBUS_ERROR_SERVICE_UNKNOWN) {
       return VmOpResult::DISPATCHER_NOT_AVAILABLE;
@@ -354,7 +355,7 @@ VmOpResult SuspendVm(scoped_refptr<dbus::Bus> bus,
     }
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::plugin_dispatcher::SuspendVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse SuspendVmResponse protobuf";

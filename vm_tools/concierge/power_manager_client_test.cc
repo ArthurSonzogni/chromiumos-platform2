@@ -67,6 +67,10 @@ class PowerManagerClientTest : public ::testing::Test {
                     power_manager::kPowerManagerServiceName,
                     dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
         .WillOnce(Return(power_manager_proxy_.get()));
+
+    EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
+        .WillRepeatedly(
+            Return(base::SequencedTaskRunner::GetCurrentDefault().get()));
   }
 
  protected:

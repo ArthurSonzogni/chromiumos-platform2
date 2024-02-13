@@ -19,16 +19,16 @@ std::unique_ptr<SeneschalServerProxy>
 SeneschalServerProxy::SeneschalCreateProxy(scoped_refptr<dbus::Bus> bus,
                                            dbus::ObjectProxy* seneschal_proxy,
                                            dbus::MethodCall* method_call) {
-  auto dbus_response = seneschal_proxy->CallMethodAndBlock(
-      method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(ERROR) << "Failed to send StartServer message to seneschal service: "
-               << dbus_response.error().name() << ", "
-               << dbus_response.error().message();
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus, seneschal_proxy, method_call,
+          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send StartServer message to seneschal service";
     return nullptr;
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::seneschal::StartServerResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse StartServerResponse protobuf";
@@ -121,16 +121,16 @@ SeneschalServerProxy::~SeneschalServerProxy() {
     return;
   }
 
-  auto dbus_response = seneschal_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(ERROR) << "Failed to send StopServer message to seneschal service: "
-               << dbus_response.error().name() << ", "
-               << dbus_response.error().message();
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethod(
+          bus_, seneschal_proxy_, &method_call,
+          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send StopServer message to seneschal service";
     return;
   }
 
-  dbus::MessageReader reader(dbus_response->get());
+  dbus::MessageReader reader(dbus_response.get());
   vm_tools::seneschal::StopServerResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse StopServerResponse protobuf";
