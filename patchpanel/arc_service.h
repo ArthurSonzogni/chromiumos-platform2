@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_ARC_SERVICE_H_
 #define PATCHPANEL_ARC_SERVICE_H_
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <optional>
@@ -382,10 +383,11 @@ class ArcService {
   void RefreshMacAddressesInConfigs();
 
   // Reserve a configuration for an interface.
-  std::unique_ptr<ArcConfig> AcquireConfig();
+  std::unique_ptr<ArcConfig> AcquireConfig(ShillClient::Device::Type type);
 
   // Returns a configuration to the pool.
-  void ReleaseConfig(std::unique_ptr<ArcConfig> config);
+  void ReleaseConfig(ShillClient::Device::Type type,
+                     std::unique_ptr<ArcConfig> config);
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
@@ -405,9 +407,10 @@ class ArcService {
   // Interface for notifying DBus client about ARC virtual device creation and
   // removal events.
   DbusClientNotifier* dbus_client_notifier_;
-  // A set of preallocated ARC interface configurations used for setting up
-  // ARCVM TAP devices at VM booting time.
-  std::vector<std::unique_ptr<ArcConfig>> available_configs_;
+  // A set of preallocated ARC interface configurations keyed by technology type
+  // and used for setting up ARCVM TAP devices at VM booting time.
+  std::map<ShillClient::Device::Type, std::deque<std::unique_ptr<ArcConfig>>>
+      available_configs_;
   // The list of all ARC static IPv4 and interface configurations. Also includes
   // the ARC management interface arc0 for ARCVM.
   std::vector<ArcConfig*> all_configs_;
