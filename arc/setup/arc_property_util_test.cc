@@ -947,36 +947,16 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesCannotOpenMachineFile) {
   EXPECT_EQ(dest, "");
 }
 
-TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkSocinfo) {
-  auto socinfo_devices_dir = GetTempDir();
-  auto soc0_path = socinfo_devices_dir.Append("soc0");
-  auto soc_id0_path = soc0_path.Append("soc_id");
-  auto family0_path = soc0_path.Append("machine");
-  auto soc1_path = socinfo_devices_dir.Append("soc1");
-  auto machine1_path = soc1_path.Append("machine");
-  auto family1_path = soc1_path.Append("family");
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesHardCodedPlatformMapping) {
+  auto temp_dir = GetTempDir();
+  auto socinfo_path = temp_dir.Append("directory.nothere");
 
-  // soc0 will exist, but _not_ have a machine file. It will represent the
-  // generic version of the driver that directly exposes the firmware.
-  ASSERT_TRUE(base::CreateDirectory(soc0_path));
-  ASSERT_TRUE(base::WriteFile(soc_id0_path, "jep106:0426:8195\n"));
-  ASSERT_TRUE(base::WriteFile(family0_path, "jep106:0426\n"));
+  config()->SetString("/identity", "platform-name", "Kukui");
+  std::string dest;
+  AppendArmSocProperties(socinfo_path, config(), &dest);
 
-  // soc1 will be exposing a "nicer" SoC-specific driver.
-  ASSERT_TRUE(base::CreateDirectory(soc1_path));
-  ASSERT_TRUE(base::WriteFile(machine1_path, "Kompanio 1380 (MT8195)\n"));
-  ASSERT_TRUE(base::WriteFile(family1_path, "MediaTek\n"));
-
-  // Make sure the file is opened read-only by turning off the writable perms.
-  ASSERT_EQ(chmod(machine1_path.value().c_str(), 0444), 0);
-  ASSERT_EQ(chmod(family1_path.value().c_str(), 0444), 0);
-
-  std::string dest = "mtk=socinfo\n";
-  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
-  EXPECT_EQ(dest,
-            "mtk=socinfo\n"
-            "ro.soc.manufacturer=Mediatek\n"
-            "ro.soc.model=Kompanio 1380 MT8195\n");
+  EXPECT_THAT(dest, HasSubstr("ro.soc.manufacturer=Mediatek\n"));
+  EXPECT_THAT(dest, HasSubstr("ro.soc.model=MT8183\n"));
 }
 
 }  // namespace
