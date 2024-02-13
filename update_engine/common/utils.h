@@ -23,7 +23,6 @@
 #include <base/time/time.h>
 #include <brillo/key_value_store.h>
 #include <brillo/secure_blob.h>
-#include <libimageloader/manifest.h>
 
 #include "update_engine/common/action.h"
 #include "update_engine/common/action_processor.h"

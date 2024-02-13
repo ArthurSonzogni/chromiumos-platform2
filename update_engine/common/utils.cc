@@ -39,7 +39,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/data_encoding.h>
-#include <libimageloader/manifest.h>
 
 #include "update_engine/common/constants.h"
 #include "update_engine/common/platform_constants.h"
