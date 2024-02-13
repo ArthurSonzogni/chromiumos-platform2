@@ -97,8 +97,8 @@ bool ApplyOverrideLogConfig(const base::FilePath& path) {
   if (!override_value) {
     if (error_code != logging_override.JSON_NO_SUCH_FILE) {
       LOG(WARNING) << "Failed to parse: " << path << ", error: " << error_msg;
+      brillo::DeleteFile(path);
     }
-    brillo::DeleteFile(path);
     return false;
   }
   if (!override_value->is_dict()) {
