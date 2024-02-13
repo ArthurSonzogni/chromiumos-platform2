@@ -127,8 +127,6 @@ int main(int argc, char** argv) {
   if (mode == VERITY_CREATE) {
     return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
                          FLAGS_hashtree, FLAGS_salt, FLAGS_vanilla);
-  } else {
-    LOG(FATAL) << "Verification not done yet";
   }
-  return -1;
+  LOG(FATAL) << "Unsupported mode passed in";
 }
