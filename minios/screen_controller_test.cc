@@ -17,7 +17,7 @@
 #include "minios/mock_log_store_manager.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_process_manager.h"
-#include "minios/mock_screen_interface.h"
+#include "minios/mock_screen.h"
 #include "minios/mock_state_reporter_interface.h"
 #include "minios/mock_update_engine_proxy.h"
 #include "minios/screen_controller.h"
@@ -70,7 +70,7 @@ class ScreenControllerTest : public ::testing::Test {
   std::shared_ptr<MockDraw> mock_draw_ = std::make_shared<NiceMock<MockDraw>>();
   std::shared_ptr<MockUpdateEngineProxy> mock_update_engine_proxy_ =
       std::make_shared<NiceMock<MockUpdateEngineProxy>>();
-  MockScreenInterface mock_screen_;
+  MockScreen mock_screen_;
   std::shared_ptr<NetworkManagerInterface> mock_network_manager_ =
       std::make_shared<NiceMock<MockNetworkManager>>();
   std::shared_ptr<MockProcessManager> process_manager_ =
@@ -286,16 +286,14 @@ TEST_F(ScreenControllerTest, DebugOptionsBackInvalid) {
 
 TEST_F(ScreenControllerTest, GetState) {
   State state;
-  std::unique_ptr<MockScreenInterface> mock_screen =
-      std::make_unique<MockScreenInterface>();
+  std::unique_ptr<MockScreen> mock_screen = std::make_unique<MockScreen>();
   EXPECT_CALL(*mock_screen, GetState);
   screen_controller_.SetCurrentScreenForTest(std::move(mock_screen));
   screen_controller_.GetState(&state);
 }
 
 TEST_F(ScreenControllerTest, MoveBackward) {
-  std::unique_ptr<MockScreenInterface> mock_screen =
-      std::make_unique<MockScreenInterface>();
+  std::unique_ptr<MockScreen> mock_screen = std::make_unique<MockScreen>();
   EXPECT_CALL(*mock_screen, MoveBackward(nullptr))
       .WillOnce(testing::Return(true));
   screen_controller_.SetCurrentScreenForTest(std::move(mock_screen));
@@ -303,8 +301,7 @@ TEST_F(ScreenControllerTest, MoveBackward) {
 }
 
 TEST_F(ScreenControllerTest, MoveForward) {
-  std::unique_ptr<MockScreenInterface> mock_screen =
-      std::make_unique<MockScreenInterface>();
+  std::unique_ptr<MockScreen> mock_screen = std::make_unique<MockScreen>();
   EXPECT_CALL(*mock_screen, MoveForward(nullptr))
       .WillOnce(testing::Return(true));
   screen_controller_.SetCurrentScreenForTest(std::move(mock_screen));
@@ -312,8 +309,7 @@ TEST_F(ScreenControllerTest, MoveForward) {
 }
 
 TEST_F(ScreenControllerTest, PressKey) {
-  std::unique_ptr<MockScreenInterface> mock_screen =
-      std::make_unique<MockScreenInterface>();
+  std::unique_ptr<MockScreen> mock_screen = std::make_unique<MockScreen>();
   EXPECT_CALL(*mock_screen, OnKeyPress(KEY_ENTER));
   screen_controller_.SetCurrentScreenForTest(std::move(mock_screen));
   screen_controller_.PressKey(KEY_ENTER);
@@ -385,8 +381,7 @@ TEST_P(GoToScreenTest, ChangeScreens) {
 }
 
 TEST_P(GoToScreenTest, ChangeScreensSavePrevious) {
-  auto mock_screen =
-      std::make_unique<testing::StrictMock<MockScreenInterface>>();
+  auto mock_screen = std::make_unique<testing::StrictMock<MockScreen>>();
   EXPECT_CALL(*mock_screen, GetType)
       .WillRepeatedly(testing::Return(starting_screen_));
   const auto expected_prev_screen = mock_screen.get();

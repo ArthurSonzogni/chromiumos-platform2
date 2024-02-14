@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MINIOS_MOCK_SCREEN_INTERFACE_H_
-#define MINIOS_MOCK_SCREEN_INTERFACE_H_
+#ifndef MINIOS_MOCK_SCREEN_H_
+#define MINIOS_MOCK_SCREEN_H_
 
 #include <string>
 
@@ -16,13 +16,13 @@
 
 namespace minios {
 
-class MockScreenInterface : public ScreenInterface {
+class MockScreen : public ScreenInterface {
  public:
-  MockScreenInterface() = default;
-  ~MockScreenInterface() = default;
+  MockScreen() = default;
+  ~MockScreen() = default;
 
-  MockScreenInterface(const MockScreenInterface&) = delete;
-  MockScreenInterface& operator=(const MockScreenInterface&) = delete;
+  MockScreen(const MockScreen&) = delete;
+  MockScreen& operator=(const MockScreen&) = delete;
 
   MOCK_METHOD(void, Show, ());
   MOCK_METHOD(void, OnKeyPress, (int key_changed));
@@ -36,4 +36,4 @@ class MockScreenInterface : public ScreenInterface {
 
 }  // namespace minios
 
-#endif  // MINIOS_MOCK_SCREEN_INTERFACE_H_
+#endif  // MINIOS_MOCK_SCREEN_H_
