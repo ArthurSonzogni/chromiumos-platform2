@@ -71,7 +71,6 @@
 #include <base/uuid.h>
 #include <base/version.h>
 #include <blkid/blkid.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/osrelease_reader.h>
@@ -96,7 +95,6 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/byte_unit.h"
-#include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/mm/resize_priority.h"
@@ -792,14 +790,15 @@ base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
 std::optional<int64_t> Service::GetAvailableMemory() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetAvailableMemoryKBMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get available memory size from resourced";
+  auto dbus_response = resource_manager_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed to get available memory size from resourced: "
+               << dbus_response.error().name() << ", "
+               << dbus_response.error().message();
     return std::nullopt;
   }
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   uint64_t available_kb;
   if (!reader.PopUint64(&available_kb)) {
     LOG(ERROR)
@@ -813,15 +812,16 @@ std::optional<int64_t> Service::GetForegroundAvailableMemory() {
   dbus::MethodCall method_call(
       resource_manager::kResourceManagerInterface,
       resource_manager::kGetForegroundAvailableMemoryKBMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
+  auto dbus_response = resource_manager_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
     LOG(ERROR)
-        << "Failed to get foreground available memory size from resourced";
+        << "Failed to get foreground available memory size from resourced: "
+        << dbus_response.error().name() << ", "
+        << dbus_response.error().message();
     return std::nullopt;
   }
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   uint64_t available_kb;
   if (!reader.PopUint64(&available_kb)) {
     LOG(ERROR) << "Failed to read foreground available memory size from the "
@@ -834,14 +834,15 @@ std::optional<int64_t> Service::GetForegroundAvailableMemory() {
 std::optional<MemoryMargins> Service::GetMemoryMargins() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get critical margin size from resourced";
+  auto dbus_response = resource_manager_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed to get critical margin size from resourced: "
+               << dbus_response.error().name() << ", "
+               << dbus_response.error().message();
     return std::nullopt;
   }
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   MemoryMargins margins;
   if (!reader.PopUint64(&margins.critical)) {
     LOG(ERROR)
@@ -871,15 +872,16 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
   dbus::MethodCall method_call(
       resource_manager::kResourceManagerInterface,
       resource_manager::kGetComponentMemoryMarginsKBMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get component margin sizes from resourced.";
+  auto dbus_response = resource_manager_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed to get component margin sizes from resourced: "
+               << dbus_response.error().name() << ", "
+               << dbus_response.error().message();
     return std::nullopt;
   }
 
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   dbus::MessageReader array_reader(nullptr);
   if (!reader.PopArray(&array_reader)) {
     LOG(ERROR) << "Failed parsing component memory margins";
@@ -927,14 +929,15 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
 std::optional<resource_manager::GameMode> Service::GetGameMode() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetGameModeMethod);
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, resource_manager_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get geme mode from resourced";
+  auto dbus_response = resource_manager_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed to get geme mode from resourced: "
+               << dbus_response.error().name() << ", "
+               << dbus_response.error().message();
     return std::nullopt;
   }
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   uint8_t game_mode;
   if (!reader.PopByte(&game_mode)) {
     LOG(ERROR) << "Failed to read game mode from the D-Bus response";
@@ -1046,15 +1049,16 @@ std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
   writer.AppendString(feature_name);
 
   dbus::Error error;
-  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-      bus_, chrome_features_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (error.IsValid()) {
-    *error_out = error.message();
+  auto dbus_response = chrome_features_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    if (dbus_response.error().IsValid()) {
+      *error_out = dbus_response.error().message();
+    }
     return std::nullopt;
   }
 
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   bool result;
   if (!reader.PopBool(&result)) {
     *error_out = "Failed to read bool from D-Bus response";
@@ -1173,64 +1177,26 @@ bool Service::ListVmDisksInLocation(const std::string& cryptohome_id,
 }
 
 // static
-void Service::CreateAndHost(
-    int signal_fd,
-    base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
+std::unique_ptr<Service> Service::Create(int signal_fd) {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
-  opts.dbus_task_runner =
-      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(opts));
-
-  dbus::Bus* bus_ptr = bus.get();
-  bus->GetDBusTaskRunner()->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&dbus::Bus::Connect, base::Unretained(bus_ptr)),
-      base::BindOnce(
-          [](scoped_refptr<dbus::Bus> bus, int signal_fd,
-             base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted,
-             bool connected) {
-            if (!connected) {
-              LOG(ERROR) << "Failed to connect to system bus";
-              std::move(on_hosted).Run(nullptr);
-              return;
-            }
-            CreateAndHost(std::move(bus), signal_fd, std::move(on_hosted));
-          },
-          std::move(bus), signal_fd, std::move(on_hosted)));
-}
-
-// static
-void Service::CreateAndHost(
-    scoped_refptr<dbus::Bus> bus,
-    int signal_fd,
-    base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
-  // Bus should be connected when using this API.
-  CHECK(bus->IsConnected());
-  auto service = base::WrapUnique(new Service(signal_fd, std::move(bus)));
-  if (!service->Init()) {
-    std::move(on_hosted).Run(nullptr);
-    return;
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(opts);
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system bus";
+    return nullptr;
   }
-  Service* service_ptr = service.get();
-  DbusAdaptor::Create(
-      service_ptr->bus_, service_ptr,
-      base::BindOnce(
-          [](std::unique_ptr<Service> owned_service,
-             base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted,
-             std::unique_ptr<DbusAdaptor> adaptor) {
-            if (!adaptor) {
-              std::move(on_hosted).Run(nullptr);
-              return;
-            }
-            owned_service->concierge_adaptor_ = std::move(adaptor);
-            std::move(on_hosted).Run(std::move(owned_service));
-          },
-          std::move(service), std::move(on_hosted)));
+
+  std::unique_ptr<Service> service(new Service(signal_fd, std::move(bus)));
+  if (!service->Init()) {
+    return nullptr;
+  }
+  return service;
 }
 
 Service::Service(int signal_fd, scoped_refptr<dbus::Bus> bus)
     : signal_fd_(signal_fd),
       bus_(std::move(bus)),
+      dbus_object_(nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath)),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       weak_ptr_factory_(this) {
   // The service should run on the thread that *created* the bus, not the
@@ -1344,12 +1310,7 @@ bool Service::Init() {
     LOG(WARNING) << "Failed to initialize file watcher for timezone change";
   }
 
-  int64_t root_device_size = PostTaskAndWaitForResult(
-      bus_->GetDBusTaskRunner(), base::BindOnce(
-                                     [](spaced::DiskUsageProxy* proxy) {
-                                       return proxy->GetRootDeviceSize();
-                                     },
-                                     disk_usage_proxy_.get()));
+  int64_t root_device_size = disk_usage_proxy_->GetRootDeviceSize();
   if (root_device_size < 0) {
     LOG(WARNING) << "Failed to determine disk size, defaulting to minimum 16GB";
     root_device_size = 16ull * 1000 * 1000 * 1000;
@@ -1367,6 +1328,17 @@ bool Service::Init() {
   // is safe to continue using regardless of the result.
   vmm_swap_tbw_policy_->Init();
 
+  // Start the D-Bus service.
+  concierge_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAndBlock();
+
+  // Note that this needs to happen *after* all methods are exported
+  // (http://crbug.com/331431).
+  if (!bus_->RequestOwnershipAndBlock(kVmConciergeServiceName,
+                                      dbus::Bus::REQUIRE_PRIMARY)) {
+    LOG(ERROR) << "Failed to take ownership of " << kVmConciergeServiceName;
+    return false;
+  }
   return true;
 }
 
@@ -1554,27 +1526,36 @@ StartVmResponse Service::StartVmInternal(
   if (!vm_start_image_fds->bios_fd.has_value() &&
       !request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
-    biosDlcPath = GetVmImagePath(kBruschettaBiosDlcId, failure_reason);
-    if (!failure_reason.empty() || !biosDlcPath.has_value()) {
+    auto path =
+        dlcservice_client_->GetRootPath(kBruschettaBiosDlcId, &failure_reason);
+    if (!failure_reason.empty() || !path.has_value()) {
+      LOG(ERROR) << "Failed to find Bruschetta Biod DLC: " << failure_reason;
       response.set_failure_reason(failure_reason);
       return response;
     }
+    biosDlcPath.emplace(path.value());
   }
 
   if (!request.vm().dlc_id().empty()) {
-    vmDlcPath = GetVmImagePath(request.vm().dlc_id(), failure_reason);
-    if (!failure_reason.empty() || !vmDlcPath.has_value()) {
+    auto path =
+        dlcservice_client_->GetRootPath(request.vm().dlc_id(), &failure_reason);
+    if (!failure_reason.empty() || !path.has_value()) {
+      LOG(ERROR) << "Failed to find requested VM: " << failure_reason;
       response.set_failure_reason(failure_reason);
       return response;
     }
+    vmDlcPath.emplace(path.value());
   }
 
   if (!request.vm().tools_dlc_id().empty()) {
-    toolsDlcPath = GetVmImagePath(request.vm().tools_dlc_id(), failure_reason);
-    if (!failure_reason.empty() || !toolsDlcPath.has_value()) {
+    auto path = dlcservice_client_->GetRootPath(request.vm().tools_dlc_id(),
+                                                &failure_reason);
+    if (!failure_reason.empty() || !path.has_value()) {
+      LOG(ERROR) << "Failed to find requested_tools DLC: " << failure_reason;
       response.set_failure_reason(failure_reason);
       return response;
     }
+    toolsDlcPath.emplace(path.value());
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
@@ -3430,7 +3411,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
     // Send the D-Bus signal out updating progress of the operation.
     DiskImageStatusResponse status;
     FormatDiskImageStatus(op, &status);
-    concierge_adaptor_->SendDiskImageProgressSignal(status);
+    concierge_adaptor_.SendDiskImageProgressSignal(status);
 
     // Note the time we sent out the notification.
     iter->last_report_time = base::TimeTicks::Now();
@@ -4047,7 +4028,7 @@ void Service::OnResolvConfigChanged(std::vector<std::string> nameservers,
 
   // Broadcast DnsSettingsChanged signal so Plugin VM dispatcher is aware as
   // well.
-  concierge_adaptor_->SendDnsSettingsChangedSignal(ComposeDnsResponse());
+  concierge_adaptor_.SendDnsSettingsChangedSignal(ComposeDnsResponse());
 }
 
 void Service::OnDefaultNetworkServiceChanged() {
@@ -4078,10 +4059,11 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   request.set_pid(pid);
   request.set_vm_type(vm_type);
   writer.AppendProtoAsArrayOfBytes(request);
-  if (!brillo::dbus_utils::CallDBusMethod(
-          bus_, cicerone_service_proxy_, &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of VM startup";
+  auto response = cicerone_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response.has_value()) {
+    LOG(ERROR) << "Failed notifying cicerone of VM startup: "
+               << response.error().name() << ", " << response.error().message();
   }
 }
 
@@ -4129,7 +4111,7 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
   proto.set_status(status);
-  concierge_adaptor_->SendVmStartedSignalSignal(proto);
+  concierge_adaptor_.SendVmStartedSignalSignal(proto);
 }
 
 void Service::SendVmStartingUpSignal(
@@ -4138,7 +4120,7 @@ void Service::SendVmStartingUpSignal(
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
-  concierge_adaptor_->SendVmStartingUpSignalSignal(proto);
+  concierge_adaptor_.SendVmStartingUpSignalSignal(proto);
 }
 
 void Service::SendVmGuestUserlandReadySignal(
@@ -4147,7 +4129,7 @@ void Service::SendVmGuestUserlandReadySignal(
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_ready(ready);
-  concierge_adaptor_->SendVmGuestUserlandReadySignalSignal(proto);
+  concierge_adaptor_.SendVmGuestUserlandReadySignalSignal(proto);
 }
 
 void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
@@ -4165,10 +4147,11 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   request.set_owner_id(vm_id.owner_id());
   request.set_vm_name(vm_id.name());
   writer.AppendProtoAsArrayOfBytes(request);
-  if (!brillo::dbus_utils::CallDBusMethod(
-          bus_, cicerone_service_proxy_, &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of stopping VM";
+  auto response = cicerone_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response.has_value()) {
+    LOG(ERROR) << "Failed notifying cicerone of stopping VM: "
+               << response.error().name() << ", " << response.error().message();
   }
 
   // Send the D-Bus signal out to notify everyone that we are stopping a VM.
@@ -4176,7 +4159,7 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
-  concierge_adaptor_->SendVmStoppingSignalSignal(proto);
+  concierge_adaptor_.SendVmStoppingSignalSignal(proto);
 }
 
 void Service::NotifyVmStopped(const VmId& vm_id,
@@ -4200,10 +4183,11 @@ void Service::NotifyVmStopped(const VmId& vm_id,
   request.set_owner_id(vm_id.owner_id());
   request.set_vm_name(vm_id.name());
   writer.AppendProtoAsArrayOfBytes(request);
-  if (!brillo::dbus_utils::CallDBusMethod(
-          bus_, cicerone_service_proxy_, &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of VM stopped";
+  auto response = cicerone_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response.has_value()) {
+    LOG(ERROR) << "Failed notifying cicerone of VM stopped: "
+               << response.error().name() << ", " << response.error().message();
   }
 
   // Send the D-Bus signal out to notify everyone that we have stopped a VM.
@@ -4212,7 +4196,7 @@ void Service::NotifyVmStopped(const VmId& vm_id,
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
   proto.set_reason(reason);
-  concierge_adaptor_->SendVmStoppedSignalSignal(proto);
+  concierge_adaptor_.SendVmStoppedSignalSignal(proto);
 }
 
 std::string Service::GetContainerToken(const VmId& vm_id,
@@ -4222,20 +4206,22 @@ std::string Service::GetContainerToken(const VmId& vm_id,
                                vm_tools::cicerone::kGetContainerTokenMethod);
   dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::ContainerTokenRequest request;
-  vm_tools::cicerone::ContainerTokenResponse response;
   request.set_owner_id(vm_id.owner_id());
   request.set_vm_name(vm_id.name());
   request.set_container_name(container_name);
   writer.AppendProtoAsArrayOfBytes(request);
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethod(
-          bus_, cicerone_service_proxy_, &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed getting container token from cicerone";
+
+  auto dbus_response = cicerone_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    LOG(ERROR) << "Failed getting container token from cicerone: "
+               << dbus_response.error().name() << ", "
+               << dbus_response.error().message();
     return "";
   }
-  dbus::MessageReader reader(dbus_response.get());
+
+  dbus::MessageReader reader(dbus_response->get());
+  vm_tools::cicerone::ContainerTokenResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed parsing proto response";
     return "";
@@ -4647,7 +4633,7 @@ void Service::NotifyVmSwapping(const VmId& vm_id,
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_state(swapping_state);
-  concierge_adaptor_->SendVmSwappingSignalSignal(proto);
+  concierge_adaptor_.SendVmSwappingSignalSignal(proto);
 }
 
 void Service::InstallPflash(

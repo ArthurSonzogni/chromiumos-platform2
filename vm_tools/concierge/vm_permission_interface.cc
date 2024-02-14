@@ -45,12 +45,10 @@ bool QueryVmPermission(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::Error dbus_error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          &dbus_error);
-  if (!dbus_response) {
+  auto dbus_response = proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    auto dbus_error = std::move(dbus_response.error());
     if (dbus_error.IsValid()) {
       LOG(ERROR) << "Getpermissions call failed: " << dbus_error.name() << " ("
                  << dbus_error.message() << ")";
@@ -61,7 +59,7 @@ bool QueryVmPermission(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   vm_permission_service::GetPermissionsResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse GetPermissionsResponse protobuf";
@@ -117,12 +115,10 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::Error dbus_error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          &dbus_error);
-  if (!dbus_response) {
+  auto dbus_response = proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    auto dbus_error = std::move(dbus_response.error());
     if (!dbus_error.IsValid()) {
       LOG(ERROR) << "Failed to send RegisterVm message to permission service";
     } else if (dbus_error.name() == DBUS_ERROR_NOT_SUPPORTED) {
@@ -137,7 +133,7 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response->get());
   vm_permission_service::RegisterVmResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse RegisterVmResponse protobuf";
@@ -172,12 +168,10 @@ bool UnregisterVm(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
-  dbus::Error dbus_error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-          bus, proxy, &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          &dbus_error);
-  if (!dbus_response) {
+  auto dbus_response = proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    auto dbus_error = std::move(dbus_response.error());
     if (dbus_error.IsValid()) {
       LOG(ERROR) << "UnregisterVm call failed: " << dbus_error.name() << " ("
                  << dbus_error.message() << ")";

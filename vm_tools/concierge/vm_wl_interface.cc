@@ -60,12 +60,10 @@ ScopedWlSocket::~ScopedWlSocket() {
     return;
   }
 
-  dbus::Error dbus_error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-          bus_, vm_wl_proxy_, &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
-  if (!dbus_response) {
+  auto dbus_response = vm_wl_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    auto dbus_error = std::move(dbus_response.error());
     // Failing to close the server is not critical, so just log an
     // error. This probably can only happen during shutdown anyway.
     if (dbus_error.IsValid()) {
@@ -138,12 +136,10 @@ VmWlInterface::Result VmWlInterface::CreateWaylandServer(
   }
   writer.AppendFileDescriptor(socket_fd.get());
 
-  dbus::Error dbus_error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-          bus, GetVmWlProxy(bus.get()), &method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
-  if (!dbus_response) {
+  auto dbus_response = GetVmWlProxy(bus.get())->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    auto dbus_error = std::move(dbus_response.error());
     if (dbus_error.IsValid()) {
       return base::unexpected(std::string("ListenOnSocket call failed: ") +
                               dbus_error.name() + " (" + dbus_error.message() +
