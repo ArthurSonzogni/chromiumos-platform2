@@ -904,6 +904,7 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     return;
   }
+  ml_core_dlc_client_->SetMetricsBaseName("MachineLearningService");
   ml_core_dlc_client_->InstallDlc();
 }
 
