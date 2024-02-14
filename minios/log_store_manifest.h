@@ -13,11 +13,34 @@
 #include <gtest/gtest_prod.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/log_store_manifest_interface.h"
-
 namespace minios {
 
 extern const uint64_t kBlockSize;
+
+// Interface for a log store manifest helper class.
+class LogStoreManifestInterface {
+ public:
+  virtual ~LogStoreManifestInterface() = default;
+
+  // Generate a manifest with the given `entry`.
+  virtual bool Generate(const LogManifest::Entry& entry) = 0;
+
+  // Retrieve a previously written manifest from disk. This is done by
+  // inspecting the first `sizeof(kLogStoreMagic)` bytes of every block on
+  // `disk_path` until a magic value is found. If no manifest is found on disk,
+  // a `nullopt` is returned.
+  virtual std::optional<LogManifest> Retreive() = 0;
+
+  // Write a manifest in the `manifest_store_offset_block` of the current disk.
+  // Note that the first `sizeof(kLogStoreMagic)` bytes will be a magic value,
+  // followed by the serialized protobuf.
+  virtual bool Write() = 0;
+
+  // Clear any manifest stores found on disk. Similar to `Retrieve` we first
+  // seek the manifest store, and then write `0` until the end of the partition.
+  virtual void Clear() = 0;
+};
+
 class LogStoreManifest : public LogStoreManifestInterface {
  public:
   LogStoreManifest(base::FilePath disk_path,

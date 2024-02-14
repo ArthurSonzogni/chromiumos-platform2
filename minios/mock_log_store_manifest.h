@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/log_store_manifest_interface.h"
+#include "minios/log_store_manifest.h"
 
 namespace minios {
 

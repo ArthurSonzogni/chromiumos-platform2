@@ -19,7 +19,7 @@
 
 #include "minios/cgpt_wrapper.h"
 #include "minios/disk_util.h"
-#include "minios/log_store_manifest_interface.h"
+#include "minios/log_store_manifest.h"
 #include "minios/process_manager.h"
 
 namespace minios {
