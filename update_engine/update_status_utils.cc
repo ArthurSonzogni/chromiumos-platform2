@@ -14,6 +14,7 @@
 #include <update_engine/dbus-constants.h>
 
 #include "update_engine/common/error_code_utils.h"
+#include "update_engine/cros/omaha_utils.h"
 
 using brillo::KeyValueStore;
 using std::string;
@@ -37,6 +38,8 @@ const char kWillPowerwashAfterReboot[] = "WILL_POWERWASH_AFTER_REBOOT";
 const char kLastAttemptError[] = "LAST_ATTEMPT_ERROR";
 const char kIsInteractive[] = "IS_INTERACTIVE";
 const char kWillDeferUpdate[] = "WILL_DEFER_UPDATE";
+const char kEolDate[] = "EOL_DATE";
+const char kExtendedDate[] = "EXTENDED_DATE";
 
 }  // namespace
 
@@ -94,6 +97,9 @@ string UpdateEngineStatusToString(const UpdateEngineStatus& status) {
                                 status.last_attempt_error)));
   key_value_store.SetBoolean(kIsInteractive, status.is_interactive);
   key_value_store.SetBoolean(kWillDeferUpdate, status.will_defer_update);
+  key_value_store.SetString(kEolDate, base::NumberToString(status.eol_date));
+  key_value_store.SetString(kExtendedDate,
+                            base::NumberToString(status.extended_date));
 
   return key_value_store.SaveToString();
 }

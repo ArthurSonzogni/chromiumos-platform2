@@ -12,6 +12,28 @@ using std::string;
 
 namespace chromeos_update_engine {
 
+TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringDefaultTest) {
+  // Keep field assignments in same order as they were declared,
+  // to prevent compiler warning, -Wreorder-init-fields.
+  update_engine::UpdateEngineStatus update_engine_status;
+  string print =
+      R"(CURRENT_OP=UPDATE_STATUS_IDLE
+EOL_DATE=-9999
+EXTENDED_DATE=-9999
+IS_ENTERPRISE_ROLLBACK=false
+IS_INSTALL=false
+IS_INTERACTIVE=false
+LAST_ATTEMPT_ERROR=ErrorCode::kSuccess
+LAST_CHECKED_TIME=0
+NEW_SIZE=0
+NEW_VERSION=
+PROGRESS=0
+WILL_DEFER_UPDATE=false
+WILL_POWERWASH_AFTER_REBOOT=false
+)";
+  EXPECT_EQ(print, UpdateEngineStatusToString(update_engine_status));
+}
+
 TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringTest) {
   // Keep field assignments in same order as they were declared,
   // to prevent compiler warning, -Wreorder-init-fields.
@@ -23,6 +45,8 @@ TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringTest) {
       .new_version = "12345.0.0",
       .is_enterprise_rollback = true,
       .is_install = true,
+      .eol_date = 123,
+      .extended_date = 234,
       .will_powerwash_after_reboot = true,
       .last_attempt_error = 0,
       .is_interactive = true,
@@ -30,6 +54,8 @@ TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringTest) {
   };
   string print =
       R"(CURRENT_OP=UPDATE_STATUS_CHECKING_FOR_UPDATE
+EOL_DATE=123
+EXTENDED_DATE=234
 IS_ENTERPRISE_ROLLBACK=true
 IS_INSTALL=true
 IS_INTERACTIVE=true

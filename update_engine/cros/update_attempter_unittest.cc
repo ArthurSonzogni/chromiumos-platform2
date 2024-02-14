@@ -2335,16 +2335,16 @@ TEST_F(UpdateAttempterTest, CriticalUpdate) {
 }
 
 TEST_F(UpdateAttempterTest, FutureEolTest) {
-  EolDate eol_date = std::numeric_limits<int64_t>::max();
-  EXPECT_TRUE(prefs_->SetString(kPrefsOmahaEolDate, EolDateToString(eol_date)));
+  DateType eol_date = std::numeric_limits<int64_t>::max();
+  EXPECT_TRUE(prefs_->SetString(kPrefsOmahaEolDate, DateToString(eol_date)));
   UpdateEngineStatus status;
   attempter_.GetStatus(&status);
   EXPECT_EQ(eol_date, status.eol_date);
 }
 
 TEST_F(UpdateAttempterTest, PastEolTest) {
-  EolDate eol_date = 1;
-  EXPECT_TRUE(prefs_->SetString(kPrefsOmahaEolDate, EolDateToString(eol_date)));
+  DateType eol_date = 1;
+  EXPECT_TRUE(prefs_->SetString(kPrefsOmahaEolDate, DateToString(eol_date)));
   UpdateEngineStatus status;
   attempter_.GetStatus(&status);
   EXPECT_EQ(eol_date, status.eol_date);
@@ -2353,7 +2353,13 @@ TEST_F(UpdateAttempterTest, PastEolTest) {
 TEST_F(UpdateAttempterTest, MissingEolTest) {
   UpdateEngineStatus status;
   attempter_.GetStatus(&status);
-  EXPECT_EQ(kEolDateInvalid, status.eol_date);
+  EXPECT_EQ(kInvalidDate, status.eol_date);
+}
+
+TEST_F(UpdateAttempterTest, MissingExtendedDateTest) {
+  UpdateEngineStatus status;
+  attempter_.GetStatus(&status);
+  EXPECT_EQ(kInvalidDate, status.extended_date);
 }
 
 TEST_F(UpdateAttempterTest, LastAttemptError) {

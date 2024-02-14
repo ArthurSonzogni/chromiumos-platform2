@@ -9,16 +9,16 @@
 
 namespace chromeos_update_engine {
 
-const EolDate kEolDateInvalid = -9999;
+const DateType kInvalidDate = -9999;
 
-std::string EolDateToString(EolDate eol_date) {
-  return base::NumberToString(eol_date);
+std::string DateToString(DateType date) {
+  return base::NumberToString(date);
 }
 
-EolDate StringToEolDate(const std::string& eol_date) {
-  EolDate date = kEolDateInvalid;
-  if (!base::StringToInt64(eol_date, &date))
-    return kEolDateInvalid;
+DateType StringToDate(const std::string& date_str) {
+  DateType date;
+  if (!base::StringToInt64(date_str, &date))
+    return kInvalidDate;
   return date;
 }
 

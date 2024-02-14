@@ -2,26 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "update_engine/cros/omaha_utils.h"
+#include <vector>
 
 #include <gtest/gtest.h>
-#include <vector>
+
+#include "update_engine/cros/omaha_utils.h"
 
 namespace chromeos_update_engine {
 
 class OmahaUtilsTest : public ::testing::Test {};
 
-TEST(OmahaUtilsTest, EolDateTest) {
+TEST(OmahaUtilsTest, DateTest) {
   // Supported values are converted back and forth properly.
-  const std::vector<EolDate> tests = {kEolDateInvalid, -1, 0, 1};
-  for (EolDate eol_date : tests) {
-    EXPECT_EQ(eol_date, StringToEolDate(EolDateToString(eol_date)))
-        << "The StringToEolDate() was " << EolDateToString(eol_date);
+  const std::vector<DateType> tests = {kInvalidDate, -1, 0, 1};
+  for (const auto& eol_date : tests) {
+    EXPECT_EQ(eol_date, StringToDate(DateToString(eol_date)))
+        << "The StringToDate() was " << DateToString(eol_date);
   }
 
-  // Invalid values are assumed as "supported".
-  EXPECT_EQ(kEolDateInvalid, StringToEolDate(""));
-  EXPECT_EQ(kEolDateInvalid, StringToEolDate("hello, world!"));
+  // Invalid values are converted to `kInvalidDate`.
+  EXPECT_EQ(kInvalidDate, StringToDate(""));
+  EXPECT_EQ(kInvalidDate, StringToDate("hello, world!"));
 }
 
 }  // namespace chromeos_update_engine

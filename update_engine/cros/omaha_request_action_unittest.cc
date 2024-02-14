@@ -3148,7 +3148,61 @@ TEST_F(OmahaRequestActionTest, PersistEolBadDateTest) {
   string eol_date;
   EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetString(kPrefsOmahaEolDate,
                                                          &eol_date));
-  EXPECT_EQ(kEolDateInvalid, StringToEolDate(eol_date));
+  EXPECT_EQ(kInvalidDate, StringToDate(eol_date));
+}
+
+TEST_F(OmahaRequestActionTest, PersistExtendedDateTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_extended_date=\"123\" foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  string extended_date;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetString(
+      kPrefsOmahaExtendedDate, &extended_date));
+  EXPECT_EQ("123", extended_date);
+}
+
+TEST_F(OmahaRequestActionTest, PersistMissingExtendedDateTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  const string kDate = "123";
+  FakeSystemState::Get()->prefs()->SetString(kPrefsOmahaExtendedDate, kDate);
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  string extended_date;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetString(
+      kPrefsOmahaExtendedDate, &extended_date));
+  EXPECT_EQ(kDate, extended_date);
+}
+
+TEST_F(OmahaRequestActionTest, PersistExtendedDateBadTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_extended_date=\"bad\" foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  string extended_date;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetString(
+      kPrefsOmahaExtendedDate, &extended_date));
+  EXPECT_EQ(kInvalidDate, StringToDate(extended_date));
 }
 
 TEST_F(OmahaRequestActionDlcPingTest, StorePingReplyNoPing) {

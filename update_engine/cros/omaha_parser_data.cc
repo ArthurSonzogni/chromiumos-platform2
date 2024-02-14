@@ -25,6 +25,7 @@ const char kAttrVersion[] = "version";
 // |updatecheck| attributes.
 // Deprecated: "eol"
 const char kAttrEolDate[] = "_eol_date";
+const char kAttrExtendedDate[] = "_extended_date";
 const char kAttrRollback[] = "_rollback";
 const char kAttrFirmwareVersion[] = "_firmware_version";
 const char kAttrKernelVersion[] = "_kernel_version";

@@ -79,36 +79,38 @@ DECLARE_FLAGS_ENUM(UpdateAttemptFlags);
 
 struct UpdateEngineStatus {
   // Update engine last checked update (time_t: seconds from unix epoch).
-  int64_t last_checked_time;
+  int64_t last_checked_time = 0;
   // Current status/operation of the update_engine.
-  UpdateStatus status;
+  UpdateStatus status = UpdateStatus::IDLE;
   // Current product version (oem bundle id).
   std::string current_version;
   // Current progress (0.0f-1.0f).
-  double progress;
+  double progress = 0.;
   // Size of the update in bytes.
-  uint64_t new_size_bytes;
+  uint64_t new_size_bytes = 0;
   // New product version.
   std::string new_version;
   // Whether the update is an enterprise rollback. The value is valid only if
   // the current operation is passed CHECKING_FOR_UPDATE.
-  bool is_enterprise_rollback;
+  bool is_enterprise_rollback = false;
   // Indication of install for DLC(s).
-  bool is_install;
+  bool is_install = false;
   // The end-of-life date of the device in the number of days since Unix Epoch.
-  int64_t eol_date;
+  int64_t eol_date = -9999;
+  // The extended date of the device in the number of days since Unix Epoch.
+  int64_t extended_date = -9999;
   // The system will powerwash once the update is applied.
-  bool will_powerwash_after_reboot;
+  bool will_powerwash_after_reboot = false;
   // The last update attempt error.
-  int32_t last_attempt_error;
+  int32_t last_attempt_error = 0;
   // How urgent an update is, critical or regular.
   UpdateUrgencyInternal update_urgency_internal;
   // Features managed by update_engine.
   FeatureInternalList features;
   // Whether the update is interactive.
-  bool is_interactive;
+  bool is_interactive = false;
   // The update will be downloaded but deferred.
-  bool will_defer_update;
+  bool will_defer_update = false;
 };
 
 }  // namespace update_engine

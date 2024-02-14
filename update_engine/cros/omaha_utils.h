@@ -9,18 +9,17 @@
 
 namespace chromeos_update_engine {
 
-using EolDate = int64_t;
+using DateType = int64_t;
 
-// |EolDate| indicating an invalid end-of-life date.
-extern const EolDate kEolDateInvalid;
+// Indicate invalid date.
+extern const DateType kInvalidDate;
 
-// Returns the string representation of the |eol_date|.
-std::string EolDateToString(EolDate eol_date);
+// Returns the string representation of `DateType`.
+std::string DateToString(DateType date);
 
-// Converts the end-of-life date string to an EolDate numeric value. In case
-// of an invalid string, the default |kEolDateInvalid| value will be used
-// instead.
-EolDate StringToEolDate(const std::string& eol_date);
+// Converts the Unix Epoch date string to `DateType` value.
+// In case of an invalid string, the default `kInvalidDate` value will be used.
+DateType StringToDate(const std::string& date);
 
 }  // namespace chromeos_update_engine
 

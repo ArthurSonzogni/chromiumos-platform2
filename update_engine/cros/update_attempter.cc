@@ -1920,7 +1920,14 @@ bool UpdateAttempter::GetStatus(UpdateEngineStatus* out_status) {
       !SystemState::Get()->prefs()->GetString(kPrefsOmahaEolDate,
                                               &str_eol_date))
     LOG(ERROR) << "Failed to retrieve kPrefsOmahaEolDate pref.";
-  out_status->eol_date = StringToEolDate(str_eol_date);
+  out_status->eol_date = StringToDate(str_eol_date);
+
+  string str_extended_date;
+  if (SystemState::Get()->prefs()->Exists(kPrefsOmahaExtendedDate) &&
+      !SystemState::Get()->prefs()->GetString(kPrefsOmahaExtendedDate,
+                                              &str_extended_date))
+    LOG(ERROR) << "Failed to retrieve kPrefsOmahaExtendedDate pref.";
+  out_status->extended_date = StringToDate(str_extended_date);
 
   // A powerwash will take place either if the install plan says it is required
   // or if an enterprise rollback is happening.

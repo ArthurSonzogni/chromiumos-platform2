@@ -447,6 +447,15 @@ void OmahaRequestAction::PersistEolInfo(
   }
 }
 
+void OmahaRequestAction::PersistExtendedDate(
+    const OmahaParserData::App& platform_app) {
+  if (!platform_app.updatecheck.extended_date.empty() &&
+      !SystemState::Get()->prefs()->SetString(
+          kPrefsOmahaExtendedDate, platform_app.updatecheck.extended_date)) {
+    LOG(ERROR) << "Setting extended date failed.";
+  }
+}
+
 void OmahaRequestAction::PersistDisableMarketSegment(const string& value) {
   auto prefs = SystemState::Get()->prefs();
   if (ParseBool(value)) {
@@ -494,6 +503,7 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
                       &response_.poll_interval);
 
     PersistEolInfo(*platform_app);
+    PersistExtendedDate(*platform_app);
 
     // Parses the rollback versions of the current image. If the fields do not
     // exist they default to 0xffff for the 4 key versions.

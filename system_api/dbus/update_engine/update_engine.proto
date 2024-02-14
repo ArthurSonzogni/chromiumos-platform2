@@ -116,6 +116,9 @@ message StatusResult {
 
   // If true, the update will be downloaded but deferred.
   bool will_defer_update = 15;
+
+  // The extended date of the device in the number of days since Unix Epoch.
+  int64 extended_date = 16;
 }
 
 // This is the message flags that influences how updates are performed.
