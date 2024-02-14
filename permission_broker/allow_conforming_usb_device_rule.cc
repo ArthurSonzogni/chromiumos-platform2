@@ -225,7 +225,7 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessLegacyDevice(
     std::optional<CrosUsbLocationProperty> cros_usb_location) {
   bool found_claimed_interface = false;
   bool found_unclaimed_interface = false;
-  bool found_only_safe_interfaces = false;
+  bool found_only_safe_interfaces = true;
   bool found_adb_interface = false;
 
   // udev_device_get_udev does NOT increase ref count on udev object, so we must
