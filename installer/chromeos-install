@@ -436,17 +436,6 @@ umount_from_loop_dev() {
   mount | grep -q " on ${TMPMNT} " && tracked_umount "${TMPMNT}"
 }
 
-# Check if all arguments are non-empty values
-check_non_empty_values() {
-  local value
-  for value in "$@"; do
-    if [ -z "$value" ]; then
-      return ${FLAGS_FALSE}
-    fi
-  done
-  return ${FLAGS_TRUE}
-}
-
 # Undo all mounts and loops and runs hw diagnostics on failure.
 cleanup_on_failure() {
   set +e
