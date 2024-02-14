@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
@@ -69,6 +70,9 @@ class Partner : public Peripheral {
   // Return the AltMode with index |index|, and nullptr if such an AltMode
   // doesn't exist.
   AltMode* GetAltMode(int index);
+
+  // Return a vector of alternate modes supported by the partner.
+  std::vector<AltMode*> GetAltModes();
 
   // Checks whether partner PD discovery is complete (and we have all the PD
   // information that the kernel can provide). To determine this, we check

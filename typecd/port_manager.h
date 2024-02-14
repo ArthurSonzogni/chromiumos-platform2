@@ -57,6 +57,24 @@ class PortManager : public UdevMonitor::TypecObserver,
 
   void SetPortsUsingDisplays(const std::vector<uint32_t>& port_nums);
 
+  uint32_t GetPortCount() { return ports_.size(); }
+
+  Panel GetPanel(uint32_t port);
+
+  HorizontalPosition GetHorizontalPosition(uint32_t port);
+
+  VerticalPosition GetVerticalPosition(uint32_t port);
+
+  bool HasPartner(uint32_t port);
+
+  TypeCMode GetCurrentMode(uint32_t port);
+
+  std::vector<AltMode*> GetAltModes(uint32_t port, uint32_t recipient);
+
+  std::vector<uint32_t> GetIdentity(uint32_t port, uint32_t recipient);
+
+  PDRevision GetPDRevision(uint32_t port, uint32_t recipient);
+
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }
   void SetPeripheralDataAccess(bool val) { peripheral_data_access_ = val; }

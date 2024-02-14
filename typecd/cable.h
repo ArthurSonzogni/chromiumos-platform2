@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
@@ -69,6 +70,9 @@ class Cable : public Peripheral {
   // Return the alternate modes with index |index|, and nullptr if such an
   // alternate modes doesn't exist.
   AltMode* GetAltMode(int index);
+
+  // Return a vector of alternate modes supported by the cable.
+  std::vector<AltMode*> GetAltModes();
 
   // Check whether the cable supports DPAltMode requirements.
   bool DPPDIdentityCheck();

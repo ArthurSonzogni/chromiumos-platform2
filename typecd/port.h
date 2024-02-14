@@ -9,8 +9,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/cancelable_callback.h>
+#include <dbus/typecd/dbus-constants.h>
 #include <gtest/gtest_prod.h>
 
 #include "typecd/cable.h"
@@ -116,6 +118,15 @@ class Port {
   bool GetActiveStateOnModeEntry() { return user_active_on_mode_entry_; }
 
   void SetECUtil(ECUtil* ec_util) { ec_util_ = ec_util; }
+
+  // Returns a list of alternate modes supported by the partner or cable.
+  std::vector<AltMode*> GetAltModes(uint32_t recipient);
+
+  // Returns the discover identity response of the partner or cable.
+  std::vector<uint32_t> GetIdentity(uint32_t recipient);
+
+  // Returns the USB PD revision of the partner or cable.
+  PDRevision GetPDRevision(uint32_t recipient);
 
   // Returns the current data role for the port.
   virtual DataRole GetDataRole();

@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
@@ -63,6 +64,7 @@ class Peripheral {
   uint32_t GetProductTypeVDO2() { return product_type_vdo2_; }
   uint32_t GetProductTypeVDO3() { return product_type_vdo3_; }
   PDRevision GetPDRevision() { return pd_revision_; }
+  std::vector<uint32_t> GetIdentity();
 
  protected:
   base::FilePath GetSysPath() { return syspath_; }

@@ -4,6 +4,8 @@
 
 #include "typecd/port.h"
 
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -157,6 +159,54 @@ void Port::PartnerChanged() {
 void Port::PortChanged() {
   ParseDataRole();
   ParsePowerRole();
+}
+
+std::vector<AltMode*> Port::GetAltModes(uint32_t recipient) {
+  switch (recipient) {
+    case ((uint32_t)Recipient::kPartner):
+      if (partner_)
+        return partner_->GetAltModes();
+      break;
+    case ((uint32_t)Recipient::kCable):
+      if (cable_)
+        return cable_->GetAltModes();
+      break;
+    default:
+      break;
+  }
+  return {};
+}
+
+std::vector<uint32_t> Port::GetIdentity(uint32_t recipient) {
+  switch (recipient) {
+    case ((uint32_t)Recipient::kPartner):
+      if (partner_)
+        return partner_->GetIdentity();
+      break;
+    case ((uint32_t)Recipient::kCable):
+      if (cable_)
+        return cable_->GetIdentity();
+      break;
+    default:
+      break;
+  }
+  return {};
+}
+
+PDRevision Port::GetPDRevision(uint32_t recipient) {
+  switch (recipient) {
+    case ((uint32_t)Recipient::kPartner):
+      if (partner_)
+        return partner_->GetPDRevision();
+      break;
+    case ((uint32_t)Recipient::kCable):
+      if (cable_)
+        return cable_->GetPDRevision();
+      break;
+    default:
+      break;
+  }
+  return PDRevision::kNone;
 }
 
 DataRole Port::GetDataRole() {

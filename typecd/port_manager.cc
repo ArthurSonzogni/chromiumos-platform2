@@ -660,4 +660,70 @@ void PortManager::SetPortsUsingDisplays(
   }
 }
 
+Panel PortManager::GetPanel(uint32_t port) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return Panel::kUnknown;
+
+  return ports_[port]->GetPanel();
+}
+
+HorizontalPosition PortManager::GetHorizontalPosition(uint32_t port) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return HorizontalPosition::kUnknown;
+
+  return ports_[port]->GetHorizontalPosition();
+}
+
+VerticalPosition PortManager::GetVerticalPosition(uint32_t port) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return VerticalPosition::kUnknown;
+
+  return ports_[port]->GetVerticalPosition();
+}
+
+bool PortManager::HasPartner(uint32_t port) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return false;
+
+  return ports_[port]->HasPartner();
+}
+
+TypeCMode PortManager::GetCurrentMode(uint32_t port) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return TypeCMode::kNone;
+
+  return ports_[port]->GetCurrentMode();
+}
+
+std::vector<AltMode*> PortManager::GetAltModes(uint32_t port,
+                                               uint32_t recipient) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return {};
+
+  return ports_[port]->GetAltModes(recipient);
+}
+
+std::vector<uint32_t> PortManager::GetIdentity(uint32_t port,
+                                               uint32_t recipient) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return {};
+
+  return ports_[port]->GetIdentity(recipient);
+}
+
+PDRevision PortManager::GetPDRevision(uint32_t port, uint32_t recipient) {
+  auto it = ports_.find(port);
+  if (it == ports_.end())
+    return PDRevision::kNone;
+
+  return ports_[port]->GetPDRevision(recipient);
+}
+
 }  // namespace typecd

@@ -5,6 +5,7 @@
 #include "typecd/partner.h"
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -150,6 +151,14 @@ AltMode* Partner::GetAltMode(int index) {
     return nullptr;
 
   return alt_modes_.find(index)->second.get();
+}
+
+std::vector<AltMode*> Partner::GetAltModes() {
+  std::vector<AltMode*> ret = {};
+  for (int i = 0; i < num_alt_modes_; i++)
+    ret.push_back(GetAltMode(i));
+
+  return ret;
 }
 
 bool Partner::DiscoveryComplete() {

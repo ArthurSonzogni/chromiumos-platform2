@@ -6,6 +6,7 @@
 
 #include <iomanip>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -120,6 +121,11 @@ void Peripheral::UpdatePDRevision() {
   }
 
   LOG(INFO) << "PD revision: " << val_str;
+}
+
+std::vector<uint32_t> Peripheral::GetIdentity() {
+  return {id_header_vdo_,     cert_stat_vdo_,     product_vdo_,
+          product_type_vdo1_, product_type_vdo2_, product_type_vdo3_};
 }
 
 }  // namespace typecd
