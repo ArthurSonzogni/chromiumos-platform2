@@ -20,15 +20,10 @@ sending the data, the following checking steps are required:
 
 2.  Confirm user permission
     The utility needs to check if the user permission is granted. In the
-    unmanaged case, the tool will check if permission has been granted
-    via the OOBE. In the managed case, the utility needs to check that
-    the following device management policies are enabled:
-    * ReportDeviceSystemInfo
-    * ReportDeviceCpuInfo
-    * ReportDeviceGraphicsStatus
-    * ReportDeviceMemoryInfo
-    * ReportDeviceVersionInfo
-    * ReportDeviceNetworkConfiguration
+    unenrolled case, the tool will check if permission has been granted
+    via the OOBE. In the enrolled case, the utility needs to check that
+    the following device management policy is enabled:
+    * DeviceFlexHwDataForProductImprovementEnabled
 
 3.  Read and check the UUID
     The utility should read the UUID from `/proc/sys/kernel/random/uuid`

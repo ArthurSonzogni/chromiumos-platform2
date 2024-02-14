@@ -124,14 +124,14 @@ PermissionInfo FlexHwisCheck::CheckPermission() {
   info.loaded = true;
 
   const policy::DevicePolicy& policy = policy_provider_.GetDevicePolicy();
-  info.managed = policy.IsEnterpriseEnrolled();
+  info.enrolled = policy.IsEnterpriseEnrolled();
 
   std::optional<bool> policy_result;
-  if (info.managed) {
-    LOG(INFO) << "The device is managed";
+  if (info.enrolled) {
+    LOG(INFO) << "The device is enrolled";
     policy_result = policy.GetEnrolledHwDataUsageEnabled();
   } else {
-    LOG(INFO) << "The device is not managed";
+    LOG(INFO) << "The device is not enrolled";
     policy_result = policy.GetUnenrolledHwDataUsageEnabled();
   }
 

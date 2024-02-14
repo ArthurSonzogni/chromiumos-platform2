@@ -18,7 +18,7 @@ void SendPermissionMetric(PermissionInfo info,
   PermissionResult result;
   if (!info.loaded) {
     result = PermissionResult::kError;
-  } else if (info.managed) {
+  } else if (info.enrolled) {
     if (info.permission) {
       result = PermissionResult::kPolicySuccess;
     } else {
@@ -52,8 +52,10 @@ void SendServerMetric(std::string metric_name,
 // are enabled to send hardware information.
 bool CheckPermission(flex_hwis::FlexHwisCheck& check,
                      HttpSender& sender,
+                     hwis_proto::Device& hardware_info,
                      MetricsLibraryInterface& metrics) {
   PermissionInfo permission_info = check.CheckPermission();
+  hardware_info.set_enrolled(permission_info.enrolled);
   SendPermissionMetric(permission_info, metrics);
   if (permission_info.permission) {
     return true;
@@ -149,7 +151,7 @@ Result FlexHwisSender::MaybeSend(hwis_proto::Device& hardware_info,
   }
 
   // Exit if the device does not have permission to send data to the server.
-  if (!CheckPermission(check_, sender_, metrics)) {
+  if (!CheckPermission(check_, sender_, hardware_info, metrics)) {
     return Result::NotAuthorized;
   }
 

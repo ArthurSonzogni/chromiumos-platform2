@@ -27,15 +27,16 @@ enum class Result {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class [[nodiscard]] PermissionResult {
-  // The device is managed and all required device management policies
+  // The device is enrolled and all required device management policies
   // are enabled.
   kPolicySuccess = 0,
-  // The device is managed but not all the required device management
+  // The device is enrolled but not all the required device management
   // policies are enabled.
   kPolicyDenial = 1,
-  // The device is not managed but the consent has been granted via the OOBE.
+  // The device is not enrolled but the consent has been granted via the OOBE.
   kOptInSuccess = 2,
-  // The device is not managed and the consent hasn't been granted via the OOBE.
+  // The device is not enrolled and the consent hasn't been granted via
+  // the OOBE.
   kOptInDenial = 3,
   // An error occurred while getting the policy value.
   kError = 4,

@@ -37,8 +37,8 @@ ACTION_P(SetEnabled, enabled) {
   return true;
 }
 
-ACTION_P(SetEnterpriseEnrolled, managed) {
-  return managed;
+ACTION_P(SetEnterpriseEnrolled, enrolled) {
+  return enrolled;
 }
 
 class FlexHwisTest : public ::testing::Test {
@@ -47,7 +47,7 @@ class FlexHwisTest : public ::testing::Test {
     CHECK(test_dir_.CreateUniqueTempDir());
     test_path_ = test_dir_.GetPath();
 
-    // The default setting is for the device to be managed and
+    // The default setting is for the device to be enrolled and
     // all device policies to be enabled.
     EXPECT_CALL(mock_device_policy_, LoadPolicy(false))
         .Times(AtMost(1))
@@ -138,7 +138,7 @@ TEST_F(FlexHwisTest, HasRunRecently) {
             Result::HasRunRecently);
 }
 
-TEST_F(FlexHwisTest, ManagedWithoutPermission) {
+TEST_F(FlexHwisTest, EnrolledWithoutPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
 
@@ -151,7 +151,7 @@ TEST_F(FlexHwisTest, ManagedWithoutPermission) {
             Result::NotAuthorized);
 }
 
-TEST_F(FlexHwisTest, ManagedWithPermission) {
+TEST_F(FlexHwisTest, EnrolledWithPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
 
@@ -163,7 +163,7 @@ TEST_F(FlexHwisTest, ManagedWithPermission) {
   EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_), Result::Sent);
 }
 
-TEST_F(FlexHwisTest, ManagedFailToReadPermission) {
+TEST_F(FlexHwisTest, EnrolledFailToReadPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
 
@@ -175,7 +175,7 @@ TEST_F(FlexHwisTest, ManagedFailToReadPermission) {
             Result::NotAuthorized);
 }
 
-TEST_F(FlexHwisTest, UnmanagedWithoutPermission) {
+TEST_F(FlexHwisTest, UnenrolledWithoutPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);
@@ -187,7 +187,7 @@ TEST_F(FlexHwisTest, UnmanagedWithoutPermission) {
             Result::NotAuthorized);
 }
 
-TEST_F(FlexHwisTest, UnmanagedWithPermission) {
+TEST_F(FlexHwisTest, UnenrolledWithPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);
@@ -198,7 +198,7 @@ TEST_F(FlexHwisTest, UnmanagedWithPermission) {
   EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_), Result::Sent);
 }
 
-TEST_F(FlexHwisTest, UnmanagedFailToReadPermission) {
+TEST_F(FlexHwisTest, UnenrolledFailToReadPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
   ExpectEnrolled(false);

@@ -15,14 +15,14 @@
 namespace flex_hwis {
 class PermissionInfo {
  public:
-  // If the device is managed, the value of this field is true.
-  bool managed = false;
+  // If the device is enrolled, the value of this field is true.
+  bool enrolled = false;
   // If the device policy is successfully loaded to this device,
   // the value of this field is true.
   bool loaded = false;
   // The value of this field is true if all required device management
-  // policies are enabled in managed devices, or consent has been granted
-  // through OOBE in unmanaged devices.
+  // policies are enabled in enrolled devices, or consent has been granted
+  // through OOBE in unenrolled devices.
   bool permission = false;
 };
 
@@ -32,10 +32,9 @@ class FlexHwisCheck {
   explicit FlexHwisCheck(const base::FilePath& base_path,
                          policy::PolicyProvider& provider);
   // Verify if the device is authorized to send hardware data to the server.
-  // In the managed case, management policies should be checked. In the
-  // current version, there is no fine-grained control. If one of the policies
-  // is disabled, hardware data will not be uploaded. In the unmanaged case,
-  // hardware_data_usage_enabled should be checked.
+  // In the enrolled case, device_flex_hw_data_for_product_improvement_enabled
+  // should be checked. In the unenrolled case, hardware_data_usage_enabled
+  // should be checked.
   PermissionInfo CheckPermission();
 
   // Check if the HWIS has run in the last 24 hours.
