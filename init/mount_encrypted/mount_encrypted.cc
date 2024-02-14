@@ -25,18 +25,15 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libcrossystem/crossystem.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
 #include <libstorage/storage_container/storage_container_factory.h>
-#include <vboot/crossystem.h>
-#include <vboot/tlcl.h>
 
 #include "init/mount_encrypted/encrypted_fs.h"
 #include "init/mount_encrypted/encryption_key.h"
 #include "init/mount_encrypted/mount_encrypted_metrics.h"
 #include "init/mount_encrypted/tpm.h"
-
-#define PROP_SIZE 64
 
 #if DEBUG_ENABLED
 struct timeval tick = {};
@@ -64,26 +61,21 @@ constexpr char kMountEncryptedMetricsPath[] =
     "/run/mount_encrypted/metrics.mount-encrypted";
 }  // namespace
 
-static bool get_system_property(const char* prop, char* buf, size_t length) {
-  int rc = VbGetSystemPropertyString(prop, buf, length);
-  LOG(INFO) << "Got System Property '" << prop
-            << "': " << ((rc == 0) ? buf : "FAIL");
-
-  return rc == 0;
-}
-
 static int has_chromefw() {
   static int state = -1;
-  char fw[PROP_SIZE];
 
   /* Cache the state so we don't have to perform the query again. */
   if (state != -1)
     return state;
 
-  if (!get_system_property("mainfw_type", fw, sizeof(fw)))
+  auto crossystem = crossystem::Crossystem();
+
+  auto fw = crossystem.VbGetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType);
+  if (!fw)
     state = 0;
   else
-    state = strcmp(fw, "nonchrome") != 0;
+    state = (fw != crossystem::Crossystem::kMainfwTypeNonchrome);
   return state;
 }
 
