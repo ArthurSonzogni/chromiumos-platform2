@@ -10,7 +10,7 @@
 
 #include "minios/draw_utils.h"
 #include "minios/minios_interface.h"
-#include "minios/network_manager_interface.h"
+#include "minios/network_manager.h"
 #include "minios/process_manager.h"
 #include "minios/screen_controller.h"
 #include "minios/state_reporter_interface.h"

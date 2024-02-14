@@ -12,7 +12,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "minios/key_reader.h"
-#include "minios/network_manager_interface.h"
+#include "minios/network_manager.h"
 #include "minios/screens/screen_base.h"
 
 namespace minios {

@@ -14,7 +14,7 @@
 
 #include "minios/dbus_adaptors/org.chromium.MiniOsInterface.h"
 #include "minios/minios_interface.h"
-#include "minios/network_manager_interface.h"
+#include "minios/network_manager.h"
 #include "minios/state_reporter_interface.h"
 
 namespace minios {

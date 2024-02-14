@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/network_manager_interface.h"
+#include "minios/network_manager.h"
 
 namespace minios {
 
