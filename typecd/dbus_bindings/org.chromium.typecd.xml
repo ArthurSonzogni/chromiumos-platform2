@@ -31,6 +31,118 @@
         </tp:docstring>
       </arg>
     </signal>
+    <method name="GetAltModes">
+      <tp:docstring>
+        Method to request a list of alternate modes supported by a partner or
+        cable from typecd.
+      </tp:docstring>
+      <arg name="port" type="u" direction="in">
+        <tp:docstring>
+          Port number.
+        </tp:docstring>
+      </arg>
+      <arg name="recipient" type="u" direction="in">
+        <tp:docstring>
+          Recipient (partner/cable).
+        </tp:docstring>
+      </arg>
+      <arg name="alt_modes" type="a(qu)" direction="out">
+        <tp:docstring>
+          Returned list of supported alternate modes. Alternate modes are
+          represented by a tuple with a uint16_t value containing the SVID
+          and a uint32_t value containing the VDO.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetCurrentMode">
+      <tp:docstring>
+        Method to request the current mode of a USB-C port on the system.
+      </tp:docstring>
+      <arg name="port" type="u" direction="in">
+        <tp:docstring>
+          Port number.
+        </tp:docstring>
+      </arg>
+      <arg name="mode" type="u" direction="out">
+        <tp:docstring>
+          Current mode of the port. This value can contain one of the supported
+          alternate modes (DPAM, TBT3), USB4 or signal that the port is not
+          currently using a mode or connected to a partner device.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetIdentity">
+      <tp:docstring>
+        Method to request the Discover Identity response from a currently
+        connected partner or cable.
+      </tp:docstring>
+      <arg name="port" type="u" direction="in">
+        <tp:docstring>
+          Port number.
+        </tp:docstring>
+      </arg>
+      <arg name="recipient" type="u" direction="in">
+        <tp:docstring>
+          Recipient (partner/cable).
+        </tp:docstring>
+      </arg>
+      <arg name="identity" type="au" direction="out">
+        <tp:docstring>
+          Discovery Identity response from the partner or cable. This includes
+          the ID Header VDO, Cert Stat VDO, Product VDO and Product Type VDOs
+          stored sequentially in an vector.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetPLD">
+      <tp:docstring>
+        Method to request the Physical Location of Device (PLD) for a port.
+      </tp:docstring>
+      <arg name="port" type="u" direction="in">
+        <tp:docstring>
+          Port number.
+        </tp:docstring>
+      </arg>
+      <arg name="pld" type="(yyy)" direction="out">
+        <tp:docstring>
+          Physical location of device stored in a tuple of 3 uint8_t variables.
+          They are ordered Panel, Horizontal Location, then Vertical Location.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetPortCount">
+      <tp:docstring>
+        Method to request the number of USB-C ports on a system.
+      </tp:docstring>
+      <arg name="port_count" type="u" direction="out">
+        <tp:docstring>
+          Unsigned integer containing the number of USB-C ports on the system.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetRevision">
+      <tp:docstring>
+        Method to request the USB PD revision of a currently connected partner
+        or cable.
+      </tp:docstring>
+      <arg name="port" type="u" direction="in">
+        <tp:docstring>
+          Port number.
+        </tp:docstring>
+      </arg>
+      <arg name="recipient" type="u" direction="in">
+        <tp:docstring>
+          Recipient (partner/cable).
+        </tp:docstring>
+      </arg>
+      <arg name="revision" type="q" direction="out">
+        <tp:docstring>
+          USB PD Revision of the connected partner or cable in BCD format. The
+          upper 8 bits contain major revision and the lower 8 bits contain minor
+          revision.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SetPeripheralDataAccess">
       <tp:docstring>
         Sets value in typecd to track the user's peripheral data access setting.

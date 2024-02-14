@@ -16,6 +16,12 @@ constexpr char kTypecdDeviceConnected[] = "DeviceConnected";
 constexpr char kTypecdCableWarning[] = "CableWarning";
 
 // Methods.
+constexpr char kTypecdGetAltModesMethod[] = "GetAltModes";
+constexpr char kTypecdGetCurrentModeMethod[] = "GetCurrentMode";
+constexpr char kTypecdGetIdentityMethod[] = "GetIdentity";
+constexpr char kTypecdGetPLDMethod[] = "GetPLD";
+constexpr char kTypecdGetPortCountMethod[] = "GetPortCount";
+constexpr char kTypecdGetRevisionMethod[] = "GetRevision";
 constexpr char kTypecdSetPeripheralDataAccessMethod[] =
     "SetPeripheralDataAccess";
 constexpr char kTypecdSetPortsUsingDisplaysMethod[] = "SetPortsUsingDisplays";

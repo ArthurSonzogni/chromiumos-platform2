@@ -5,6 +5,7 @@
 #ifndef TYPECD_DBUS_MANAGER_H_
 #define TYPECD_DBUS_MANAGER_H_
 
+#include <tuple>
 #include <vector>
 
 #include <brillo/daemons/dbus_daemon.h>
@@ -28,6 +29,27 @@ class DBusManager : public org::chromium::typecdAdaptor,
 
   virtual void NotifyConnected(DeviceConnectedType type);
   virtual void NotifyCableWarning(CableWarningType type);
+
+  bool GetAltModes(
+      brillo::ErrorPtr* err,
+      uint32_t port,
+      uint32_t recipient,
+      std::vector<std::tuple<uint16_t, uint32_t>>* alt_modes) override;
+  bool GetCurrentMode(brillo::ErrorPtr* err,
+                      uint32_t port,
+                      uint32_t* mode) override;
+  bool GetIdentity(brillo::ErrorPtr* err,
+                   uint32_t port,
+                   uint32_t recipient,
+                   std::vector<uint32_t>* identity) override;
+  bool GetPLD(brillo::ErrorPtr* err,
+              uint32_t port,
+              std::tuple<uint8_t, uint8_t, uint8_t>* pld) override;
+  bool GetPortCount(brillo::ErrorPtr* err, uint32_t* port_count) override;
+  bool GetRevision(brillo::ErrorPtr* err,
+                   uint32_t port,
+                   uint32_t recipient,
+                   uint16_t* revision) override;
 
   bool SetPeripheralDataAccess(brillo::ErrorPtr* err, bool enabled) override;
   bool SetPortsUsingDisplays(brillo::ErrorPtr* err,
