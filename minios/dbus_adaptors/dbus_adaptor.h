@@ -13,7 +13,7 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/dbus_adaptors/org.chromium.MiniOsInterface.h"
-#include "minios/minios_interface.h"
+#include "minios/minios.h"
 #include "minios/network_manager.h"
 #include "minios/state_reporter_interface.h"
 
