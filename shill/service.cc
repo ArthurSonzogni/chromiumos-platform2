@@ -1645,8 +1645,24 @@ void Service::RefreshTrafficCounters(
 
   // 2: Compute the delta compared to the last snapshot.
   TrafficCounterMap delta = new_snapshot;
+  // 2.1: If any counter decreased it means that there has been a counter reset,
+  // maybe because of patchpanel restart. If that's the case simply take the new
+  // snapshot instead of computing delta. See b/324992164.
+  bool counter_reset = false;
   for (const auto& [source, traffic] : traffic_counter_snapshot_) {
-    delta[source] -= traffic;
+    const auto& new_traffic = new_snapshot[source];
+    if (new_traffic.rx_bytes < traffic.rx_bytes ||
+        new_traffic.tx_bytes < traffic.tx_bytes ||
+        new_traffic.rx_packets < traffic.rx_packets ||
+        new_traffic.tx_packets < traffic.tx_packets) {
+      counter_reset = true;
+      break;
+    }
+  }
+  if (!counter_reset) {
+    for (const auto& [source, traffic] : traffic_counter_snapshot_) {
+      delta[source] -= traffic;
+    }
   }
 
   // 3: Update the current counters.

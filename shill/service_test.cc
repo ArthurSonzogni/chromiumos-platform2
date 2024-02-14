@@ -2807,6 +2807,55 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
             user_counters_diff);
 }
 
+TEST_F(ServiceTest, TrafficCountersRefreshCounterDecreasing) {
+  patchpanel::Client::TrafficCounter ipv4_counters;
+  ipv4_counters.source = patchpanel::Client::TrafficSource::kChrome;
+  ipv4_counters.traffic.rx_bytes = 2345;
+  ipv4_counters.traffic.tx_bytes = 723;
+  ipv4_counters.traffic.rx_packets = 10;
+  ipv4_counters.traffic.tx_packets = 20;
+
+  patchpanel::Client::TrafficCounter ipv6_counters;
+  ipv6_counters.source = patchpanel::Client::TrafficSource::kChrome;
+  ipv6_counters.traffic.rx_bytes = 4592;
+  ipv6_counters.traffic.tx_bytes = 489;
+  ipv6_counters.traffic.rx_packets = 73;
+  ipv6_counters.traffic.tx_packets = 34;
+
+  service_->InitializeTrafficCounterSnapshot({ipv4_counters, ipv6_counters});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 1);
+  patchpanel::Client::TrafficVector chrome_counters = {
+      .rx_bytes = 6937, .tx_bytes = 1212, .rx_packets = 83, .tx_packets = 54};
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 0);
+
+  ipv4_counters.traffic.rx_bytes = 3000;
+  ipv4_counters.traffic.tx_bytes = 800;
+  ipv4_counters.traffic.rx_packets = 30;
+  ipv4_counters.traffic.tx_packets = 20;
+  ipv6_counters.traffic.rx_bytes = 1000;
+  ipv6_counters.traffic.tx_bytes = 500;
+  ipv6_counters.traffic.rx_packets = 60;
+  ipv6_counters.traffic.tx_packets = 40;
+
+  service_->RefreshTrafficCounters({ipv4_counters, ipv6_counters});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 1);
+  chrome_counters = {4000, 1300, 90, 60};
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 1);
+  // If any of the packet counters decreased from last snapshot, assume a
+  // counter reset happened, and treat all new counters as diff from 0.
+  patchpanel::Client::TrafficVector chrome_counters_diff = {
+      .rx_bytes = 4000, .tx_bytes = 1300, .rx_packets = 90, .tx_packets = 60};
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
+}
+
 TEST_F(ServiceTest, UpdateLinkSpeed) {
   EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kUplinkSpeedPropertyKbps, 10))
       .Times(1);
