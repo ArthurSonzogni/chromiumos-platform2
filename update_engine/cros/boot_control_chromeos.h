@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -95,6 +96,9 @@ class BootControlChromeOS : public BootControlInterface {
   bool ParseDlcPartitionName(const std::string partition_name,
                              std::string* dlc_id,
                              std::string* dlc_package) const;
+
+  // Get primary user's cryptohome daemon store path for DLCs.
+  bool GetCryptohomeDlcPath(base::FilePath* dlc_path) const;
 
   // Cached values for GetNumSlots() and GetCurrentSlot().
   BootControlInterface::Slot num_slots_{1};

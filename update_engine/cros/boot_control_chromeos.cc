@@ -21,17 +21,20 @@
 #endif  // USE_LVM_STATEFUL_PARTITION
 #include <chromeos/constants/imageloader.h>
 #include <rootdev/rootdev.h>
+#include <session_manager/dbus-proxies.h>
 
 extern "C" {
 #include <vboot/vboot_host.h>
 }
 
 #include "update_engine/common/boot_control.h"
+#include "update_engine/common/dlcservice_interface.h"
 #include "update_engine/common/dynamic_partition_control_stub.h"
 #include "update_engine/common/hardware_interface.h"
 #include "update_engine/common/subprocess.h"
 #include "update_engine/common/system_state.h"
 #include "update_engine/common/utils.h"
+#include "update_engine/cros/dbus_connection.h"
 
 using std::string;
 using std::vector;
@@ -55,6 +58,8 @@ const char kPartitionNameDlcImage[] = "dlc.img";
 const char kMiniOSLabelA[] = "MINIOS-A";
 
 constexpr char kSetGoodKernel[] = "/usr/sbin/chromeos-setgoodkernel";
+
+constexpr char kDlcDaemonStorePath[] = "/run/daemon-store-cache/dlcservice";
 
 // Returns the currently booted rootfs partition. "/dev/sda3", for example.
 string GetBootDevice() {
@@ -232,6 +237,28 @@ bool BootControlChromeOS::ParseDlcPartitionName(
   return true;
 }
 
+bool BootControlChromeOS::GetCryptohomeDlcPath(base::FilePath* dlc_path) const {
+  org::chromium::SessionManagerInterfaceProxy session_manager(
+      DBusConnection::Get()->GetDBus());
+  std::string username;
+  std::string sanitized_username;
+  brillo::ErrorPtr err;
+  if (!session_manager.RetrievePrimarySession(&username, &sanitized_username,
+                                              &err)) {
+    const char* error_msg = err ? err->GetMessage().c_str() : "Unknown";
+    LOG(ERROR) << "Failed to RetrievePrimarySession, err=" << error_msg;
+    return false;
+  }
+  if (sanitized_username.empty()) {
+    LOG(ERROR) << "Primary session is not available.";
+    return false;
+  }
+  *dlc_path = base::FilePath(kDlcDaemonStorePath)
+                  .Append(sanitized_username)
+                  .Append(kPartitionNamePrefixDlc);
+  return true;
+}
+
 bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
                                              BootControlInterface::Slot slot,
                                              bool not_in_payload,
@@ -244,13 +271,21 @@ bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
     if (!ParseDlcPartitionName(partition_name, &dlc_id, &dlc_package))
       return false;
 
-    *device = base::FilePath(imageloader::kDlcImageRootpath)
-                  .Append(dlc_id)
+    auto manifest = SystemState::Get()->dlc_utils()->GetDlcManifest(
+        dlc_id, base::FilePath(imageloader::kDlcManifestRootpath));
+    base::FilePath dlc_path(imageloader::kDlcImageRootpath);
+    if (manifest->user_tied() && !GetCryptohomeDlcPath(&dlc_path)) {
+      LOG(ERROR) << "Unable to get cryptohome DLC path.";
+      return false;
+    }
+    *device = dlc_path.Append(dlc_id)
                   .Append(dlc_package)
                   .Append(slot == 0 ? kPartitionNameDlcA : kPartitionNameDlcB)
                   .Append(kPartitionNameDlcImage)
                   .value();
 #if USE_LVM_STATEFUL_PARTITION
+    if (manifest->user_tied() || !manifest->use_logical_volume())
+      return true;
     // Override with logical volume path if valid.
     // DLC logical volumes follow a specific naming scheme.
     brillo::LogicalVolumeManager lvm;
