@@ -47,14 +47,22 @@
 #include <libstorage/storage_container/backing_device_factory.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
+#include "cryptohome/auth_factor/manager.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/firmware_management_parameters_proxy.h"
+#include "cryptohome/install_attributes_proxy.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
-#include "cryptohome/system_apis.h"
+#include "cryptohome/user_secret_stash/manager.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -351,24 +359,44 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       /*lsb_release_time=*/base::Time::UnixEpoch());
 
   // Prepare `UserDataAuth`'s dependencies.
-  libstorage::FuzzedPlatform platform(provider);
+  libstorage::FuzzedPlatform platform{provider};
+  hwsec::FuzzedFactory hwsec_factory{provider};
+  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec{
+      hwsec_factory.GetCryptohomeFrontend()};
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager{
+      hwsec_factory.GetPinWeaverManagerFrontend()};
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto{
+      hwsec_factory.GetRecoveryCryptoFrontend()};
+  CryptohomeKeysManager cryptohome_keys_manager{hwsec.get(), &platform};
+  Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
+                recovery_crypto.get()};
+  FirmwareManagementParametersProxy firmware_management_parameters;
+  InstallAttributesProxy install_attrs;
+  UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
+  KeysetManagement keyset_management{&platform, &crypto,
+                                     std::make_unique<VaultKeysetFactory>()};
+  UssStorage uss_storage{&platform};
+  UssManager uss_manager{uss_storage};
+  AuthFactorManager auth_factor_manager{&platform, &keyset_management,
+                                        &uss_manager};
+  UserDataAuth::BackingApis backing_apis = {
+      .platform = &platform,
+      .hwsec = hwsec.get(),
+      .hwsec_pw_manager = hwsec_pw_manager.get(),
+      .recovery_crypto = recovery_crypto.get(),
+      .cryptohome_keys_manager = &cryptohome_keys_manager,
+      .crypto = &crypto,
+      .firmware_management_parameters = &firmware_management_parameters,
+      .install_attrs = &install_attrs,
+      .user_activity_timestamp_manager = &user_activity_timestamp_manager,
+      .keyset_management = &keyset_management,
+      .uss_storage = &uss_storage,
+      .uss_manager = &uss_manager,
+      .auth_factor_manager = &auth_factor_manager,
+  };
   std::unique_ptr<CryptohomeVaultFactory> vault_factory =
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
-  hwsec::FuzzedFactory hwsec_factory(provider);
-  auto hwsec = hwsec_factory.GetCryptohomeFrontend();
-  auto hwsec_pw_manager = hwsec_factory.GetPinWeaverManagerFrontend();
-  auto recovery_crypto = hwsec_factory.GetRecoveryCryptoFrontend();
-
-  // Create a standard set of system API dependencies for UserDataAuth but then
-  // override some of them with our fuzzed versions.
-  SystemApis system_apis;
-  auto backing_apis = system_apis.ToBackingApis();
-  backing_apis.platform = &platform;
-  backing_apis.hwsec = hwsec.get();
-  backing_apis.hwsec_pw_manager = hwsec_pw_manager.get();
-  backing_apis.recovery_crypto = recovery_crypto.get();
-
   MockDbusWithProxies bus, mount_thread_bus;
   NiceMock<MockRecoverableKeyStoreBackendCertProvider> key_store_cert_provider;
 

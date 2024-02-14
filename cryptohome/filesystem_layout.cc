@@ -5,6 +5,7 @@
 #include "cryptohome/filesystem_layout.h"
 
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -45,37 +46,84 @@ constexpr char kLogicalVolumeSnapshotSuffix[] = "-rw";
 // Storage for serialized RecoveryId.
 constexpr char kRecoveryIdFile[] = "recovery_id";
 
+// Attempt to get an existing salt from the specified path. Returns false if the
+// salt does not exist or is invalid. If the salt does exist but is invalid, it
+// will also attempt to remove the file.
+bool GetOrRemoveSalt(libstorage::Platform* platform,
+                     const base::FilePath& salt_file,
+                     brillo::SecureBlob* salt) {
+  // If the file doesn't exist, fail immediately. This isn't logged as this can
+  // be an expected condition.
+  if (!platform->FileExists(salt_file)) {
+    return false;
+  }
+
+  int64_t file_len = 0;
+  if (!platform->GetFileSize(salt_file, &file_len)) {
+    LOG(ERROR) << "Can't get file len for " << salt_file.value();
+    return false;
+  }
+
+  if (file_len > 0 && file_len <= kSystemSaltMaxSize) {
+    brillo::SecureBlob local_salt(file_len);
+    if (platform->ReadFileToSecureBlob(salt_file, &local_salt)) {
+      // This is the success case: the size is valid and the file is readable.
+      if (salt) {
+        *salt = std::move(local_salt);
+      }
+      return true;
+    }
+    LOG(ERROR) << "Could not read salt file " << salt_file << " of length "
+               << file_len;
+  }
+
+  // If we get here then the file exists but is invalid or unreadable for some
+  // reason. Try to remove it. If the removal fails we log it, but we return
+  // false either way.
+  LOG(ERROR) << "Existing salt file at " << salt_file
+             << " is invalid or unreadable, attempting to delete it";
+  if (!platform->DeleteFile(salt_file)) {
+    LOG(ERROR) << "Salt file at " << salt_file << " could not be deleted";
+  }
+  return false;
+}
+
+// Attempt to get an existing salt from the specified path. If the file does not
+// exist or does not contain a valid salt, this will attempt to generate a new
+// salt. If that also fails, this will return false. Otherwise, it will return
+// true with the salt (existing or newly created).
 bool GetOrCreateSalt(libstorage::Platform* platform,
                      const base::FilePath& salt_file,
-                     brillo::SecureBlob* salt,
-                     bool can_create) {
+                     brillo::SecureBlob* salt) {
   int64_t file_len = 0;
   if (platform->FileExists(salt_file)) {
     if (!platform->GetFileSize(salt_file, &file_len)) {
-      LOG(ERROR) << "Can't get file len for " << salt_file.value();
+      LOG(ERROR) << "Can't get file len for " << salt_file;
       return false;
     }
   }
+
   brillo::SecureBlob local_salt;
-  if (can_create && (file_len == 0 || file_len > kSystemSaltMaxSize)) {
-    LOG(ERROR) << "Creating new salt at " << salt_file.value() << " ("
-               << file_len << ")";
+  if (file_len == 0 || file_len > kSystemSaltMaxSize) {
+    LOG(INFO) << "Creating new salt at " << salt_file << " (existing length "
+              << file_len << ")";
     // If this salt doesn't exist, automatically create it.
     local_salt = CreateSecureRandomBlob(kCryptohomeDefaultSaltLength);
     if (!platform->WriteSecureBlobToFileAtomicDurable(salt_file, local_salt,
                                                       kSaltFilePermissions)) {
-      LOG(ERROR) << "Could not write user salt";
+      LOG(ERROR) << "Could not write new salt to " << salt_file;
       return false;
     }
   } else {
     local_salt.resize(file_len);
     if (!platform->ReadFileToSecureBlob(salt_file, &local_salt)) {
-      LOG(ERROR) << "Could not read salt file of length " << file_len;
+      LOG(ERROR) << "Could not read salt file " << salt_file << " of length "
+                 << file_len;
       return false;
     }
   }
   if (salt) {
-    salt->swap(local_salt);
+    *salt = std::move(local_salt);
   }
   return true;
 }
@@ -220,18 +268,14 @@ base::FilePath LogicalVolumeSnapshotPath(
 
 bool GetSystemSalt(libstorage::Platform* platform, brillo::SecureBlob* salt) {
   // Only new installations get the system salt file in the new location.
-  // If the legacy salt file exists, the system should keep using it.
-  if (platform->FileExists(LegacySystemSaltFile())) {
-    return GetOrCreateSalt(platform, LegacySystemSaltFile(), salt,
-                           /*can_create=*/false);
-  }
-  return GetOrCreateSalt(platform, SystemSaltFile(), salt, /*can_create=*/true);
+  // If the legacy salt file can be loaded, the system should keep using it.
+  return GetOrRemoveSalt(platform, LegacySystemSaltFile(), salt) ||
+         GetOrCreateSalt(platform, SystemSaltFile(), salt);
 }
 
 bool GetPublicMountSalt(libstorage::Platform* platform,
                         brillo::SecureBlob* salt) {
-  return GetOrCreateSalt(platform, PublicMountSaltFile(), salt,
-                         /*can_create=*/true);
+  return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
 }
 
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {

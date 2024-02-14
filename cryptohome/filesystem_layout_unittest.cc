@@ -105,4 +105,32 @@ TEST(FileSystemLayout, LegacySaltPreferred) {
   ASSERT_EQ(salt.to_string(), legacy_salt.to_string());
 }
 
+TEST(FileSystemLayout, LegacySaltTooLarge) {
+  NiceMock<libstorage::MockPlatform> platform;
+
+  // It should be an error if a salt is this large (2 MiB).
+  static constexpr int64_t kTooLargeSaltSize = 2 * (1 << 20);
+
+  brillo::SecureBlob salt1, salt2;
+  brillo::SecureBlob big_salt = CreateSecureRandomBlob(kTooLargeSaltSize);
+
+  // Fake platform initializer call into layout initialization.
+  // Clean the relevant state up.
+  std::ignore = platform.DeleteFile(LegacySystemSaltFile());
+  std::ignore = platform.DeleteFile(SystemSaltFile());
+
+  ASSERT_TRUE(platform.WriteSecureBlobToFileAtomicDurable(
+      LegacySystemSaltFile(), big_salt, 0644));
+  ASSERT_TRUE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_FALSE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt1));
+  ASSERT_FALSE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_TRUE(GetSystemSalt(&platform, &salt2));
+  ASSERT_FALSE(platform.FileExists(LegacySystemSaltFile()));
+  ASSERT_TRUE(platform.FileExists(SystemSaltFile()));
+  ASSERT_EQ(salt1, salt2);
+  ASSERT_NE(salt1, big_salt);
+}
+
 }  // namespace cryptohome
