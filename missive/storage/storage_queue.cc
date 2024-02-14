@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <base/containers/adapters.h>
+#include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -617,8 +618,9 @@ Status StorageQueue::ScanLastFile() {
       break;
     }
     // Verify record hash.
+    auto read_result_data = base::as_byte_span(read_result.value());
     uint32_t actual_record_hash =
-        base::PersistentHash(read_result.value().data(), header.record_size);
+        base::PersistentHash(read_result_data.subspan(0, header.record_size));
     if (header.record_hash != actual_record_hash) {
       LOG(ERROR) << "Hash mismatch, seq=" << header.record_sequencing_id
                  << " actual_hash=" << std::hex << actual_record_hash
@@ -713,7 +715,7 @@ Status StorageQueue::WriteHeaderAndBlock(
   RecordHeader header;
   // Assign sequencing id.
   header.record_sequencing_id = next_sequencing_id_++;
-  header.record_hash = base::PersistentHash(data.data(), data.size());
+  header.record_hash = base::PersistentHash(base::as_byte_span(data));
   header.record_size = data.size();
   // Store last record digest.
   last_record_digest_.emplace(current_record_digest);
@@ -1474,8 +1476,9 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
                " expected=", base::NumberToString(data_size)})));
     }
     // Verify record hash.
+    auto read_result_data = base::as_byte_span(read_result.value());
     uint32_t actual_record_hash =
-        base::PersistentHash(read_result.value().data(), header.record_size);
+        base::PersistentHash(read_result_data.subspan(0, header.record_size));
     if (header.record_hash != actual_record_hash) {
       return base::unexpected(Status(
           error::INTERNAL,
