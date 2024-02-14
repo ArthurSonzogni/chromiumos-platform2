@@ -75,3 +75,4 @@ clock_gettime: 1
 madvise: 1
 sendmmsg: 1
 sysinfo: 1
+clock_nanosleep: 1
