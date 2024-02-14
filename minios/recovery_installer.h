@@ -8,9 +8,15 @@
 #include <memory>
 
 #include "minios/process_manager.h"
-#include "minios/recovery_installer_interface.h"
 
 namespace minios {
+
+class RecoveryInstallerInterface {
+ public:
+  virtual ~RecoveryInstallerInterface() = default;
+
+  virtual bool RepartitionDisk() = 0;
+};
 
 class RecoveryInstaller : public RecoveryInstallerInterface {
  public:

@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/recovery_installer_interface.h"
+#include "minios/recovery_installer.h"
 
 namespace minios {
 
