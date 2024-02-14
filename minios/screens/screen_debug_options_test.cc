@@ -24,7 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "minios/mock_blkid_wrapper.h"
-#include "minios/mock_draw_interface.h"
+#include "minios/mock_draw.h"
 #include "minios/mock_log_store_manager.h"
 #include "minios/mock_process_manager.h"
 #include "minios/mock_screen_controller.h"
@@ -41,9 +41,8 @@ namespace minios {
 
 class ScreenDebugOptionsTest : public ::testing::Test {
  protected:
-  std::shared_ptr<MockDrawInterface> mock_draw_interface_ =
-      std::make_shared<NiceMock<MockDrawInterface>>();
-  MockDrawInterface* mock_draw_interface_ptr_ = mock_draw_interface_.get();
+  std::shared_ptr<MockDraw> mock_draw_ = std::make_shared<NiceMock<MockDraw>>();
+  MockDraw* mock_draw_ptr_ = mock_draw_.get();
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
   std::shared_ptr<MockLogStoreManager> mock_log_store_manager =
       std::make_shared<StrictMock<MockLogStoreManager>>();
@@ -57,8 +56,9 @@ class ScreenDebugOptionsTest : public ::testing::Test {
       std::make_shared<StrictMock<brillo::MockPlatform>>();
 
   ScreenDebugOptions screen_debug_options_{
-      mock_draw_interface_,     mock_log_store_manager, process_manager,
-      &mock_screen_controller_, mock_blkid_wrapper_,    mock_platform_};
+      mock_draw_,          mock_log_store_manager,
+      process_manager,     &mock_screen_controller_,
+      mock_blkid_wrapper_, mock_platform_};
 };
 
 TEST_F(ScreenDebugOptionsTest, GetState) {
@@ -168,7 +168,7 @@ TEST_F(ScreenDebugOptionsTest, DrawSaveResultSuccess) {
   EXPECT_CALL(*mock_log_store_manager,
               SaveLogs(LogStoreManagerInterface::LogDirection::Disk, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_draw_interface_,
+  EXPECT_CALL(*mock_draw_,
               ShowText(StrEq("Logs successfully saved to Disk"), _, _, _));
   EXPECT_CALL(mock_screen_controller_, OnStateChanged(_));
 
@@ -182,7 +182,7 @@ TEST_F(ScreenDebugOptionsTest, DrawSaveResultFailure) {
   EXPECT_CALL(*mock_log_store_manager,
               SaveLogs(LogStoreManagerInterface::LogDirection::Disk, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*mock_draw_interface_,
+  EXPECT_CALL(*mock_draw_,
               ShowText(StrEq("Failed to save logs to Disk"), _, _, _));
   EXPECT_CALL(mock_screen_controller_, OnStateChanged(_));
   screen_debug_options_.HandleDeviceSelection();

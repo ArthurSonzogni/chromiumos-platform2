@@ -10,7 +10,7 @@
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
 
-#include "minios/mock_draw_interface.h"
+#include "minios/mock_draw.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_screen_controller.h"
 #include "minios/test_utils.h"
@@ -33,11 +33,11 @@ class ScreenNetworkTest : public ::testing::Test {
   std::shared_ptr<MockNetworkManager> mock_network_manager_ =
       std::make_shared<NiceMock<MockNetworkManager>>();
   MockNetworkManager* mock_network_manager_ptr_ = mock_network_manager_.get();
-  std::shared_ptr<DrawInterface> mock_draw_interface_ =
-      std::make_shared<NiceMock<MockDrawInterface>>();
+  std::shared_ptr<DrawInterface> mock_draw_ =
+      std::make_shared<NiceMock<MockDraw>>();
   NiceMock<MockScreenControllerInterface> mock_screen_controller_;
-  ScreenNetwork screen_network_{mock_draw_interface_, mock_network_manager_,
-                                nullptr, &mock_screen_controller_};
+  ScreenNetwork screen_network_{mock_draw_, mock_network_manager_, nullptr,
+                                &mock_screen_controller_};
 };
 
 TEST_F(ScreenNetworkTest, GetNetworks) {

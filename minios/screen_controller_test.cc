@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "minios/mock_draw_interface.h"
+#include "minios/mock_draw.h"
 #include "minios/mock_log_store_manager.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_process_manager.h"
@@ -67,8 +67,7 @@ class ScreenControllerTest : public ::testing::Test {
   }
 
  protected:
-  std::shared_ptr<MockDrawInterface> draw_interface_ =
-      std::make_shared<NiceMock<MockDrawInterface>>();
+  std::shared_ptr<MockDraw> mock_draw_ = std::make_shared<NiceMock<MockDraw>>();
   std::shared_ptr<MockUpdateEngineProxy> mock_update_engine_proxy_ =
       std::make_shared<NiceMock<MockUpdateEngineProxy>>();
   MockScreenInterface mock_screen_;
@@ -79,7 +78,7 @@ class ScreenControllerTest : public ::testing::Test {
   std::shared_ptr<MockLogStoreManager> mock_log_store_manager_ =
       std::make_shared<MockLogStoreManager>();
   ScreenController screen_controller_{
-      draw_interface_, mock_update_engine_proxy_, mock_network_manager_,
+      mock_draw_, mock_update_engine_proxy_, mock_network_manager_,
       mock_log_store_manager_, process_manager_};
 
   base::SimpleTestClock clock_;
@@ -91,7 +90,7 @@ TEST_F(ScreenControllerTest, VerifyInitFailueNoDrawUtil) {
   base::test::MockLog mock_log;
   mock_log.StartCapturingLogs();
 
-  EXPECT_CALL(*draw_interface_, Init()).WillOnce(testing::Return(false));
+  EXPECT_CALL(*mock_draw_, Init()).WillOnce(testing::Return(false));
 
   // Logger expectation.
   EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
@@ -368,7 +367,7 @@ class GoToScreenTest
   std::shared_ptr<MockLogStoreManager> mock_log_store_manager_ =
       std::make_shared<MockLogStoreManager>();
   ScreenController screen_controller_{
-      std::make_shared<NiceMock<MockDrawInterface>>(), update_engine_proxy_,
+      std::make_shared<NiceMock<MockDraw>>(), update_engine_proxy_,
       std::make_shared<NiceMock<MockNetworkManager>>(), mock_log_store_manager_,
       process_manager_};
   const ScreenType starting_screen_ = std::get<0>(GetParam()),

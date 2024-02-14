@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "minios/mock_draw_interface.h"
+#include "minios/mock_draw.h"
 #include "minios/mock_screen_controller.h"
 
 using ::testing::NiceMock;
@@ -16,12 +16,12 @@ namespace minios {
 
 class ScreenWelcomeTest : public ::testing::Test {
  protected:
-  std::shared_ptr<MockDrawInterface> mock_draw_interface_ =
-      std::make_shared<NiceMock<MockDrawInterface>>();
-  MockDrawInterface* mock_draw_interface_ptr_ = mock_draw_interface_.get();
+  std::shared_ptr<MockDraw> mock_draw_ =
+      std::make_shared<NiceMock<MockDraw>>();
+  MockDraw* mock_draw_ptr_ = mock_draw_.get();
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
 
-  ScreenWelcome screen_welcome_{mock_draw_interface_, &mock_screen_controller_};
+  ScreenWelcome screen_welcome_{mock_draw_, &mock_screen_controller_};
 };
 
 TEST_F(ScreenWelcomeTest, GetState) {

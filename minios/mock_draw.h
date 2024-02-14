@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MINIOS_MOCK_DRAW_INTERFACE_H_
-#define MINIOS_MOCK_DRAW_INTERFACE_H_
+#ifndef MINIOS_MOCK_DRAW_H_
+#define MINIOS_MOCK_DRAW_H_
 
 #include <string>
 #include <vector>
@@ -15,13 +15,13 @@
 
 namespace minios {
 
-class MockDrawInterface : public DrawInterface {
+class MockDraw : public DrawInterface {
  public:
-  MockDrawInterface() = default;
-  ~MockDrawInterface() = default;
+  MockDraw() = default;
+  ~MockDraw() = default;
 
-  MockDrawInterface(const MockDrawInterface&) = delete;
-  MockDrawInterface& operator=(const MockDrawInterface&) = delete;
+  MockDraw(const MockDraw&) = delete;
+  MockDraw& operator=(const MockDraw&) = delete;
 
   MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(bool,
@@ -97,4 +97,4 @@ class MockDrawInterface : public DrawInterface {
 
 }  // namespace minios
 
-#endif  // MINIOS_MOCK_DRAW_INTERFACE_H_
+#endif  // MINIOS_MOCK_DRAW_H_

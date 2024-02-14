@@ -12,7 +12,7 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/log_store_manager.h"
-#include "minios/mock_draw_interface.h"
+#include "minios/mock_draw.h"
 #include "minios/mock_log_store_manager.h"
 #include "minios/mock_metrics_reporter.h"
 #include "minios/mock_process_manager.h"
@@ -40,9 +40,8 @@ class ScreenDownloadTest : public ::testing::Test {
   MockUpdateEngineProxy* mock_update_engine_ptr_ =
       mock_update_engine_proxy_.get();
 
-  std::shared_ptr<MockDrawInterface> mock_draw_interface_ =
-      std::make_shared<NiceMock<MockDrawInterface>>();
-  MockDrawInterface* mock_draw_interface_ptr_ = mock_draw_interface_.get();
+  std::shared_ptr<MockDraw> mock_draw_ = std::make_shared<NiceMock<MockDraw>>();
+  MockDraw* mock_draw_ptr_ = mock_draw_.get();
 
   std::unique_ptr<MockMetricsReporter> mock_metrics_reporter_ =
       std::make_unique<MockMetricsReporter>();
@@ -58,7 +57,7 @@ class ScreenDownloadTest : public ::testing::Test {
 
   ScreenDownload screen_download_{std::move(mock_recovery_installer_),
                                   std::move(mock_update_engine_proxy_),
-                                  mock_draw_interface_,
+                                  mock_draw_,
                                   std::move(mock_metrics_reporter_),
                                   mock_log_store_manager,
                                   process_manager_,
@@ -154,7 +153,7 @@ TEST_F(ScreenDownloadTest, ShowUpdateProgress) {
       .WillOnce(testing::Return(true));
   EXPECT_CALL(*mock_update_engine_ptr_, StartUpdate())
       .WillOnce(testing::Return(true));
-  EXPECT_CALL(*mock_draw_interface_ptr_, ShowProgressPercentage(::testing::_));
+  EXPECT_CALL(*mock_draw_ptr_, ShowProgressPercentage(::testing::_));
   EXPECT_CALL(mock_screen_controller_,
               OnStateChanged(CheckState(State::RECOVERING)));
   screen_download_.OnProgressChanged(status);
