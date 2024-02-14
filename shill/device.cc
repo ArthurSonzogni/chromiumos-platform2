@@ -333,11 +333,15 @@ void Device::ForceIPConfigUpdate() {
 
 void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
                                   const ServiceRefPtr& new_service) {
-  std::set<std::string> devices{link_name_};
   patchpanel::Client* client = manager_->patchpanel_client();
   if (!client) {
     return;
   }
+  auto primary_network = GetPrimaryNetwork();
+  if (!primary_network) {
+    return;
+  }
+  std::set<std::string> devices{primary_network->interface_name()};
   traffic_counter_callback_id_++;
   traffic_counters_callback_map_[traffic_counter_callback_id_] =
       base::BindOnce(&Device::GetTrafficCountersCallback, AsWeakPtr(),
