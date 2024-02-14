@@ -16,7 +16,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "minios/network_manager_interface.h"
-#include "minios/shill_proxy_interface.h"
+#include "minios/shill_proxy.h"
 
 namespace minios {
 

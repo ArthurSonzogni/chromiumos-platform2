@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/shill_proxy_interface.h"
+#include "minios/shill_proxy.h"
 
 namespace minios {
 
