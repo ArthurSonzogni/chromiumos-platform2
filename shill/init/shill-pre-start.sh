@@ -41,6 +41,11 @@ echo 1024 > /proc/sys/net/ipv6/neigh/default/gc_thresh1
 echo 4096 > /proc/sys/net/ipv6/neigh/default/gc_thresh2
 echo 8192 > /proc/sys/net/ipv6/neigh/default/gc_thresh3
 
+# The default max size of expect table is 1024, which is not enough in the lab
+# environment. The main purpose here is to reduce the number of "nf_conntrack:
+# expectation table full" log in the lab environment.
+echo 4096 > /proc/sys/net/netfilter/nf_conntrack_expect_max
+
 # Increase the maximum size that processes can request with setsockopt
 # SOL_SOCKET SO_RCVBUF for controlling the size of socket receive buffers.
 echo 524288 > /proc/sys/net/core/rmem_max
