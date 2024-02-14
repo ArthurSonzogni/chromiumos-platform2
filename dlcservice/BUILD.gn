@@ -34,11 +34,6 @@ group("all") {
   }
 }
 
-install_config("install_minijail_conf") {
-  sources = [ "minijail/dlcservice.conf" ]
-  install_path = "minijail_conf"
-}
-
 pkg_config("target_defaults") {
   defines = [ "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}" ]
 
@@ -82,10 +77,9 @@ generate_dbus_adaptors("dlcservice_adaptors") {
   sources = [ "dbus_adaptors/org.chromium.DlcServiceInterface.xml" ]
 }
 
-shared_library("libdlcservice-utils") {
-  sources = [ "utils/utils.cc" ]
-  configs += [ ":target_defaults" ]
-  install_path = "lib"
+install_config("install_minijail_conf") {
+  sources = [ "minijail/dlcservice.conf" ]
+  install_path = "minijail_conf"
 }
 
 install_config("install_utils_pkgconfig") {
@@ -118,6 +112,12 @@ install_config("install_upstart_conf") {
 install_config("install_dbus_config") {
   sources = [ "org.chromium.DlcService.conf" ]
   install_path = "dbus_system_d"
+}
+
+shared_library("libdlcservice-utils") {
+  sources = [ "utils/utils.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
 }
 
 # DLC utils related files.
@@ -168,6 +168,13 @@ static_library("libdlcservice") {
   }
 }
 
+# For dlctool:
+install_config("install_dlctool") {
+  sources = [ "tools/dlctool" ]
+  install_path = "/usr/local/bin"
+  type = "executable"
+}
+
 # For dlcservice:
 executable("dlcservice") {
   sources = [ "main.cc" ]
@@ -193,13 +200,6 @@ executable("dlcverify") {
   configs += [ ":target_defaults" ]
   deps = [ ":libdlcverify" ]
   install_path = "/usr/local/bin"
-}
-
-# For dlctool:
-install_config("install_dlctool") {
-  sources = [ "tools/dlctool" ]
-  install_path = "/usr/local/bin"
-  type = "executable"
 }
 
 # For dlc_metadata_util:
