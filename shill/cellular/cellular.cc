@@ -920,6 +920,9 @@ void Cellular::ConfigureAttachApn() {
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Modem not enabled, skip attach APN configuration.";
+    // Even though the request to configure the attach APN is ignored here, the
+    // same attach APN logic will be executed automatically when the modem
+    // reaches the Enabled state.
     return;
   }
 
