@@ -12,8 +12,7 @@
 
 #include <base/files/file_path.h>
 
-#include "minios/cgpt_util_interface.h"
-#include "minios/cgpt_wrapper_interface.h"
+#include "minios/cgpt_wrapper.h"
 
 namespace minios {
 

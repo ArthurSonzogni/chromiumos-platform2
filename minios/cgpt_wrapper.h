@@ -5,12 +5,19 @@
 #ifndef MINIOS_CGPT_WRAPPER_H_
 #define MINIOS_CGPT_WRAPPER_H_
 
+#include <vboot/cgpt_params.h>
 #include <vboot/crossystem.h>
 #include <vboot/vboot_host.h>
 
-#include "minios/cgpt_wrapper_interface.h"
-
 namespace minios {
+
+// Abstract wrapper to intercept cgpt calls.
+class CgptWrapperInterface {
+ public:
+  virtual ~CgptWrapperInterface() = default;
+  virtual void CgptFind(CgptFindParams* params) const = 0;
+  virtual int CgptGetPartitionDetails(CgptAddParams* params) const = 0;
+};
 
 class CgptWrapper : public CgptWrapperInterface {
  public:

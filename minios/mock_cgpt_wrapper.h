@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/cgpt_wrapper_interface.h"
+#include "minios/cgpt_wrapper.h"
 
 namespace minios {
 

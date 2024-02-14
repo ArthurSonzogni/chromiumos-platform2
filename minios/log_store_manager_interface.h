@@ -12,7 +12,6 @@
 #include <libcrossystem/crossystem.h>
 
 #include "minios/cgpt_wrapper.h"
-#include "minios/cgpt_wrapper_interface.h"
 #include "minios/disk_util.h"
 
 namespace minios {
