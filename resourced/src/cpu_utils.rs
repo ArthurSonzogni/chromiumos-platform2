@@ -15,11 +15,13 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
+use log::info;
 
 use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
+const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HotplugCpuAction {
@@ -61,18 +63,20 @@ impl Cpuset {
     }
 
     pub fn little_cores(root: &Path) -> Result<Self> {
-        if !is_big_little_supported(root)? {
-            return Self::all_cores(root);
+        if is_big_little_supported(root)? {
+            for property in [
+                "cpu_capacity",
+                "cpufreq/cpuinfo_max_freq",
+                "acpi_cppc/highest_perf",
+            ] {
+                if let Some(cpuset) = get_cpus_with_min_property(root, property)? {
+                    return Ok(cpuset);
+                }
+            }
+            info!("not able to determine the little cores while big/little is supported.");
         }
 
-        let cpu0_capacity = root.join("sys/bus/cpu/devices/cpu0/cpu_capacity");
-
-        if cpu0_capacity.exists() {
-            // If cpu0/cpu_capacity exists, all cpus should have the cpu_capacity file.
-            get_cpus_with_min_property(root, "cpu_capacity")
-        } else {
-            get_cpus_with_min_property(root, "cpufreq/cpuinfo_max_freq")
-        }
+        Self::all_cores(root)
     }
 
     /// The number of cpu cores in this [Cpuset].
@@ -123,16 +127,30 @@ impl Display for Cpuset {
     }
 }
 
-// Returns cpus string containing cpus with the minimal value of the property.
-// The properties are read from /sys/bus/cpu/devices/cpu*/{property name}.
-// E.g., this function returns "0,1" for the following cpu properties.
-// | cpu # | property value |
-// |-------|----------------|
-// |   0   |       512      |
-// |   1   |       512      |
-// |   2   |      1024      |
-// |   3   |      1024      |
-fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Cpuset> {
+/// Returns [Cpuset] containing cpus with the minimal value of the property.
+///
+/// Returns [None] if:
+///
+/// * The property file does not exist or
+/// * All cpus have the same property value.
+///
+/// The properties are read from /sys/bus/cpu/devices/cpu*/{property name}.
+/// E.g., this function returns "0,1" for the following cpu properties.
+/// | cpu # | property value |
+/// |-------|----------------|
+/// |   0   |       512      |
+/// |   1   |       512      |
+/// |   2   |      1024      |
+/// |   3   |      1024      |
+fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Option<Cpuset>> {
+    if !root
+        .join("sys/bus/cpu/devices/cpu0")
+        .join(property)
+        .exists()
+    {
+        return Ok(None);
+    }
+
     let cpu_pattern = root
         .join("sys/bus/cpu/devices/cpu*")
         .to_str()
@@ -162,16 +180,23 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Cpuset> {
         .map(|(_, prop)| prop)
         .min()
         .context("cpu properties vector is empty")?;
+
+    let num_all_cpus = cpu_properties.len();
+
     let cpuset = cpu_properties
         .into_iter()
         .filter(|(_, prop)| *prop == min_property)
         .map(|(cpu, _)| cpu)
         .collect::<Cpuset>();
-    Ok(cpuset)
+
+    if cpuset.len() == num_all_cpus {
+        return Ok(None);
+    }
+
+    Ok(Some(cpuset))
 }
 
 fn is_big_little_supported(root: &Path) -> Result<bool> {
-    const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
     let reader = BufReader::new(std::fs::File::open(root.join(UI_USE_FLAGS_PATH))?);
     for line in reader.lines() {
         if line? == "big_little" {
@@ -327,6 +352,8 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::create_dir_all;
+
     use tempfile::TempDir;
 
     use super::*;
@@ -337,7 +364,7 @@ mod tests {
         let root_dir = tempfile::tempdir().unwrap();
         let root_path = root_dir.path();
         let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH);
-        std::fs::create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
+        create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
 
         // root cpuset cgroup is not found.
         assert!(Cpuset::all_cores(root_path).is_err());
@@ -368,6 +395,66 @@ mod tests {
         assert!(Cpuset::all_cores(root_path).is_err());
         std::fs::write(&root_cpus_path, "a,100").unwrap();
         assert!(Cpuset::all_cores(root_path).is_err());
+    }
+
+    fn create_cpus_property(root: &Path, property: &str, values: &[u64]) {
+        for (i, v) in values.iter().enumerate() {
+            let property_path = root.join(format!("sys/bus/cpu/devices/cpu{i}/{property}"));
+            create_dir_all(property_path.parent().unwrap()).unwrap();
+
+            std::fs::write(property_path, format!("{v}")).unwrap();
+        }
+    }
+
+    fn update_big_little_support(root_path: &Path, supported: bool) {
+        let flag_path = root_path.join(UI_USE_FLAGS_PATH);
+        create_dir_all(flag_path.parent().unwrap()).unwrap();
+        if supported {
+            std::fs::write(flag_path, "big_little").unwrap();
+        } else {
+            std::fs::write(flag_path, "").unwrap();
+        }
+    }
+
+    #[test]
+    fn test_cpuset_little_cores() {
+        let root_dir = tempfile::tempdir().unwrap();
+        let root_path = root_dir.path();
+        let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH);
+        create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
+        std::fs::write(&root_cpus_path, "0-3").unwrap();
+        update_big_little_support(root_path, true);
+
+        // Even if property files are not found, fallbacks to little cores.
+        assert_eq!(
+            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset(vec![0, 1, 2, 3])
+        );
+
+        create_cpus_property(root_path, "cpu_capacity", &[10, 10, 10, 10]);
+        create_cpus_property(root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 20, 20]);
+        create_cpus_property(root_path, "acpi_cppc/highest_perf", &[30, 30, 30, 30]);
+
+        // Fallback to all cores
+        assert_eq!(
+            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset(vec![0, 1, 2, 3])
+        );
+
+        create_cpus_property(root_path, "acpi_cppc/highest_perf", &[10, 10, 30, 30]);
+        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![0, 1]));
+
+        create_cpus_property(root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 10, 10]);
+        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![2, 3]));
+
+        create_cpus_property(root_path, "cpu_capacity", &[1, 10, 1, 10]);
+        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![0, 2]));
+
+        update_big_little_support(root_path, false);
+        assert_eq!(
+            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset(vec![0, 1, 2, 3])
+        );
     }
 
     #[test]
