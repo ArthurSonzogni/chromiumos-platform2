@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/metrics_reporter_interface.h"
+#include "minios/metrics_reporter.h"
 
 namespace minios {
 

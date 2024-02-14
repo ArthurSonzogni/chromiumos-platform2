@@ -11,7 +11,6 @@
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
-#include "minios/metrics_reporter_interface.h"
 #include "minios/utils.h"
 
 namespace minios {
@@ -26,6 +25,19 @@ extern const int kRecoveryDurationMinutes_Buckets;
 extern const int kRecoveryDurationMinutes_MAX;
 extern const int kRecoveryReasonCode_NBR;
 extern const int kRecoveryReasonCode_MAX;
+
+class MetricsReporterInterface {
+ public:
+  virtual ~MetricsReporterInterface() = default;
+
+  // Record the NBR start time.
+  virtual void RecordNBRStart() = 0;
+
+  // Report the recovery reason to be NBR, and the duration for it to complete.
+  // The metrics will be written to the stateful partition to be reported after
+  // next boot. See: init/upstart/send-recovery-metrics.conf
+  virtual void ReportNBRComplete() = 0;
+};
 
 class MetricsReporter : public MetricsReporterInterface {
  public:

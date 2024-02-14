@@ -9,7 +9,7 @@
 #include <string>
 
 #include "minios/log_store_manager.h"
-#include "minios/metrics_reporter_interface.h"
+#include "minios/metrics_reporter.h"
 #include "minios/process_manager.h"
 #include "minios/recovery_installer.h"
 #include "minios/screens/screen_base.h"
