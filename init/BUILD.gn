@@ -219,6 +219,7 @@ static_library("mount_encrypted_lib") {
     "mount_encrypted/encryption_key.cc",
     "mount_encrypted/mount_encrypted_metrics.cc",
     "mount_encrypted/tpm.cc",
+    "mount_encrypted/tpm_setup.cc",
   ]
   configs += [ ":target_defaults" ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
