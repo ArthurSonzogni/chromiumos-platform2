@@ -471,6 +471,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // File containing the number of wakeup events.
   base::FilePath wakeup_count_path_;
 
+  // File containing the option to sync() the filesystem on suspend.
+  base::FilePath sync_on_suspend_path_;
+
   // File that's created once the out-of-box experience has been completed.
   base::FilePath oobe_completed_path_;
 

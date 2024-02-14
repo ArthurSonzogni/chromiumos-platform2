@@ -96,6 +96,7 @@ const char kDefaultSuspendedStatePath[] =
 const char kDefaultHibernatedStatePath[] =
     "/var/lib/power_manager/powerd_hibernated";
 const char kDefaultWakeupCountPath[] = "/sys/power/wakeup_count";
+const char kDefaultSyncOnSuspendPath[] = "/sys/power/sync_on_suspend";
 const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 
 // Directory checked for lockfiles indicating that powerd shouldn't suspend or
@@ -212,6 +213,18 @@ std::string PrivacyScreenStateToString(
       return base::StringPrintf("unknown (%d)", static_cast<int>(state));
   }
 }
+
+#if USE_KEY_EVICTION
+// Disable the kernel's sync_on_suspend if we are evicting the user's
+// encryption key to prevent deadlocking on suspend.
+bool DisableSyncOnSuspend(const base::FilePath& path) {
+  if (!util::WriteInt64File(path, 0)) {
+    LOG(ERROR) << "Couldn't write to file: " << path;
+    return false;
+  }
+  return true;
+}
+#endif  // USE_KEY_EVICTION
 
 }  // namespace
 
@@ -339,6 +352,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       metrics_collector_(new metrics::MetricsCollector),
       arc_timer_manager_(std::make_unique<system::ArcTimerManager>()),
       wakeup_count_path_(kDefaultWakeupCountPath),
+      sync_on_suspend_path_(kDefaultSyncOnSuspendPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
       cros_ec_path_(ec::kCrosEcPath),
       run_dir_(run_dir),
@@ -962,7 +976,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 #if USE_KEY_EVICTION
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
-  if (cryptohome_client_)
+  if (DisableSyncOnSuspend(sync_on_suspend_path_) && cryptohome_client_)
     cryptohome_client_->EvictDeviceKey(suspend_request_id);
 #endif  // USE_KEY_EVICTION
 

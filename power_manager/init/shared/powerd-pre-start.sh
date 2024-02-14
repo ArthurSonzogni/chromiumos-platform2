@@ -38,6 +38,7 @@ for FILE in \
     /sys/class/power_supply/*/charge_control_limit_max \
     /sys/module/printk/parameters/console_suspend \
     /sys/power/mem_sleep \
+    /sys/power/sync_on_suspend \
     /dev/snapshot \
     $(find /sys/devices/ -path "*/power/wakeup"); do
   # Test for existence to skip over wildcards that didn't match anything.
