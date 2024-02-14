@@ -20,7 +20,7 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/cgpt_util.h"
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 
 namespace minios {
 

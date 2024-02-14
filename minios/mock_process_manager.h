@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 
 class MockProcessManager : public ProcessManagerInterface {
  public:

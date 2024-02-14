@@ -20,7 +20,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "minios/draw_utils.h"
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 
 namespace minios {
 

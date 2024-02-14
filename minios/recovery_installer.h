@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 #include "minios/recovery_installer_interface.h"
 
 namespace minios {

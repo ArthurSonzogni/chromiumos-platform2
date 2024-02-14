@@ -9,9 +9,37 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <brillo/errors/error.h>
 #include <brillo/process/process.h>
 
-#include "minios/process_manager_interface.h"
+class ProcessManagerInterface {
+ public:
+  virtual ~ProcessManagerInterface() = default;
+
+  ProcessManagerInterface(const ProcessManagerInterface&) = delete;
+  ProcessManagerInterface& operator=(const ProcessManagerInterface&) = delete;
+
+  struct IORedirection {
+    base::FilePath input;
+    base::FilePath output;
+  };
+
+  virtual int RunCommand(const std::vector<std::string>& cmd,
+                         const IORedirection& io_redirection) = 0;
+
+  virtual bool RunBackgroundCommand(const std::vector<std::string>& cmd,
+                                    const IORedirection& io_redirection,
+                                    pid_t* pid) = 0;
+
+  virtual bool RunCommandWithOutput(const std::vector<std::string>& cmd,
+                                    int* return_code,
+                                    std::string* stdout_out,
+                                    std::string* stderr_out) = 0;
+
+ protected:
+  ProcessManagerInterface() = default;
+};
 
 class ProcessManager : public ProcessManagerInterface {
  public:

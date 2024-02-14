@@ -18,7 +18,7 @@
 #include "minios/key_reader.h"
 #include "minios/log_store_manager_interface.h"
 #include "minios/network_manager.h"
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
 #include "minios/state_reporter_interface.h"

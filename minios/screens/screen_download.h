@@ -10,7 +10,7 @@
 
 #include "minios/log_store_manager_interface.h"
 #include "minios/metrics_reporter_interface.h"
-#include "minios/process_manager_interface.h"
+#include "minios/process_manager.h"
 #include "minios/recovery_installer_interface.h"
 #include "minios/screens/screen_base.h"
 #include "minios/update_engine_proxy.h"
