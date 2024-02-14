@@ -17,8 +17,8 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <minios/proto_bindings/minios.pb.h>
 
+#include "minios/cgpt_wrapper.h"
 #include "minios/disk_util.h"
-#include "minios/log_store_manager_interface.h"
 #include "minios/log_store_manifest_interface.h"
 #include "minios/process_manager.h"
 
@@ -27,6 +27,41 @@ namespace minios {
 extern const uint64_t kLogStoreOffset;
 extern const uint64_t kMaxLogSize;
 extern const base::FilePath kStatefulArchivePath;
+
+// Interface for a log store manager class.
+class LogStoreManagerInterface {
+ public:
+  enum class LogDirection {
+    Disk,
+    Stateful,
+    RemovableDevice,
+  };
+
+  virtual ~LogStoreManagerInterface() = default;
+
+  virtual bool Init(
+      std::shared_ptr<DiskUtil> disk_util = std::make_shared<DiskUtil>(),
+      std::shared_ptr<crossystem::Crossystem> cros_system =
+          std::make_shared<crossystem::Crossystem>(),
+      std::shared_ptr<CgptWrapperInterface> cgpt_wrapper =
+          std::make_shared<CgptWrapper>()) = 0;
+
+  // Save logs to a specified direction. If the direction is not `Disk`, logs
+  // will be written to `path`.
+  virtual bool SaveLogs(
+      LogDirection direction,
+      const std::optional<base::FilePath>& path = std::nullopt) = 0;
+
+  // Fetch logs from a specified direction and put them at
+  // `unencrypted_archive_path`. True on success, false on failure.
+  virtual bool FetchLogs(LogDirection direction,
+                         const base::FilePath& unencrypted_archive_path,
+                         const std::optional<base::FilePath>&
+                             encrypted_archive_path = std::nullopt) const = 0;
+
+  // Clear logs on disk.
+  virtual bool ClearLogs() const = 0;
+};
 
 class LogStoreManager : public LogStoreManagerInterface {
  public:

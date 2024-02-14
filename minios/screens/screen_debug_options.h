@@ -16,7 +16,7 @@
 #include <brillo/udev/udev.h>
 
 #include "minios/blkid_wrapper.h"
-#include "minios/log_store_manager_interface.h"
+#include "minios/log_store_manager.h"
 #include "minios/process_manager.h"
 #include "minios/screens/screen_base.h"
 

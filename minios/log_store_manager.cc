@@ -24,7 +24,6 @@
 
 #include "minios/cgpt_util.h"
 #include "minios/disk_util.h"
-#include "minios/log_store_manager_interface.h"
 #include "minios/log_store_manifest.h"
 #include "minios/utils.h"
 

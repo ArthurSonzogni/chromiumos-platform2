@@ -22,7 +22,6 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "libcrossystem/crossystem_fake.h"
-#include "minios/log_store_manager_interface.h"
 #include "minios/mock_cgpt_wrapper.h"
 #include "minios/mock_disk_util.h"
 #include "minios/mock_log_store_manifest.h"

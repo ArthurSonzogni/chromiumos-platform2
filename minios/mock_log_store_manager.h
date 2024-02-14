@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/log_store_manager_interface.h"
+#include "minios/log_store_manager.h"
 
 namespace minios {
 
