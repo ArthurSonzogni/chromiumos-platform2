@@ -19,25 +19,6 @@ group("all") {
   }
 }
 
-install_config("install_minijail_conf") {
-  sources = [ "minijail/syslog.conf" ]
-  install_path = "minijail_conf"
-}
-
-generate_dbus_adaptors("minios_adaptors") {
-  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
-  dbus_adaptors_out_dir = "include/minios/dbus_adaptors"
-  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
-}
-
-generate_dbus_proxies("minios_proxies") {
-  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
-  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
-  mock_output_file = "include/minios/client/dbus-proxy-mocks.h"
-  proxy_output_file = "include/minios/client/dbus-proxies.h"
-  proxy_path_in_mocks = "minios/client/dbus-proxies.h"
-}
-
 pkg_config("target_defaults") {
   pkg_deps = [
     "absl",
@@ -54,6 +35,25 @@ pkg_config("target_defaults") {
     "xkbcommon",
   ]
   defines = [ "ARCH_" + getenv("ARCH") ]
+}
+
+generate_dbus_adaptors("minios_adaptors") {
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/minios/dbus_adaptors"
+  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
+}
+
+generate_dbus_proxies("minios_proxies") {
+  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
+  mock_output_file = "include/minios/client/dbus-proxy-mocks.h"
+  proxy_output_file = "include/minios/client/dbus-proxies.h"
+  proxy_path_in_mocks = "minios/client/dbus-proxies.h"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/syslog.conf" ]
+  install_path = "minijail_conf"
 }
 
 static_library("libminios") {
