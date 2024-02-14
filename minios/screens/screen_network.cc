@@ -12,6 +12,7 @@
 
 #include "minios/draw_utils.h"
 #include "minios/error.h"
+#include "minios/screen_controller.h"
 #include "minios/utils.h"
 
 namespace minios {

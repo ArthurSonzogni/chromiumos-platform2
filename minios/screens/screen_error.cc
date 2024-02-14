@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "minios/screen_controller.h"
 #include "minios/utils.h"
 
 namespace minios {

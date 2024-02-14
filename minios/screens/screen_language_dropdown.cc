@@ -6,6 +6,8 @@
 
 #include <linux/input-event-codes.h>
 
+#include "minios/screen_controller.h"
+
 namespace minios {
 
 ScreenLanguageDropdown::ScreenLanguageDropdown(

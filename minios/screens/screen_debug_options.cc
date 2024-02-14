@@ -26,6 +26,7 @@
 #include "minios/draw_utils.h"
 #include "minios/log_store_manager_interface.h"
 #include "minios/process_manager.h"
+#include "minios/screen_controller.h"
 #include "minios/screen_types.h"
 #include "minios/utils.h"
 

@@ -14,6 +14,7 @@
 #include "minios/log_store_manager.h"
 #include "minios/log_store_manager_interface.h"
 #include "minios/process_manager.h"
+#include "minios/screen_controller.h"
 #include "minios/utils.h"
 
 namespace minios {

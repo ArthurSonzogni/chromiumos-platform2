@@ -6,6 +6,7 @@
 
 #include <linux/input.h>
 
+#include "minios/screen_controller.h"
 #include "minios/utils.h"
 
 namespace minios {

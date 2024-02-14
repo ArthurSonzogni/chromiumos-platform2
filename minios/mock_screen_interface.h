@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/screen_interface.h"
 #include "minios/screen_types.h"
+#include "minios/screens/screen_base.h"
 
 namespace minios {
 

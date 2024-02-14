@@ -19,8 +19,8 @@
 #include "minios/log_store_manager_interface.h"
 #include "minios/network_manager.h"
 #include "minios/process_manager.h"
-#include "minios/screen_controller_interface.h"
-#include "minios/screen_interface.h"
+#include "minios/screen_types.h"
+#include "minios/screens/screen_base.h"
 #include "minios/state_reporter_interface.h"
 #include "minios/update_engine_proxy.h"
 
@@ -28,6 +28,36 @@ namespace minios {
 
 // Minimal set of keys supported by MiniOS. Keys 200 and above are dropped.
 constexpr int kKeyMax = 200;
+
+class ScreenControllerInterface {
+ public:
+  ScreenControllerInterface() = default;
+  virtual ~ScreenControllerInterface() = default;
+
+  // Displays locale menu.
+  virtual void SwitchLocale(ScreenInterface* screen) = 0;
+
+  // Returns to previous screen and updates locale and related constants.
+  virtual void UpdateLocale(ScreenInterface* screen, int locale_index) = 0;
+
+  // Changes to the next action in flow and shows UI.
+  virtual void OnForward(ScreenInterface* screen) = 0;
+
+  // Changes to the previous action in flow and shows UI.
+  virtual void OnBackward(ScreenInterface* screen) = 0;
+
+  // Changes the screen to the specified screen.
+  virtual void GoToScreen(ScreenType type, bool save_previous = false) = 0;
+
+  // Changes the screen to the given error.
+  virtual void OnError(ScreenType error_screen) = 0;
+
+  // Returns the current screen in flow.
+  virtual ScreenType GetCurrentScreen() = 0;
+
+  // Handle Screen state changes.
+  virtual void OnStateChanged(State state) = 0;
+};
 
 class ScreenController : public ScreenControllerInterface,
                          public KeyReader::Delegate {

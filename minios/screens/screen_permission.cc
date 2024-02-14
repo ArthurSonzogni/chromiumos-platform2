@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 
+#include "minios/screen_controller.h"
 #include "minios/utils.h"
 
 namespace minios {

@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include "minios/error.h"
+#include "minios/screen_controller.h"
 
 namespace minios {
 
