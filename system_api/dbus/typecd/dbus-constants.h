@@ -41,6 +41,22 @@ enum class CableWarningType {
   kSpeedLimitingCable = 5,
 };
 
+// USB-C modes supported by ChromeOS.
+enum class USBCMode {
+  kDisconnected = 0,
+  kNone = 1,
+  kDP = 2,
+  kTBT = 3,
+  kUSB4 = 4,
+};
+
+// Recipient options for Type-C daemon data requests.
+enum class Recipient {
+  kPort = 0,
+  kPartner = 1,
+  kCable = 2,
+};
+
 }  // namespace typecd
 
 #endif  // SYSTEM_API_DBUS_TYPECD_DBUS_CONSTANTS_H_
