@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>
 
-#include "minios/draw_interface.h"
+#include "minios/draw_utils.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
 

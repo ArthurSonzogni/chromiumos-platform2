@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
-#include "minios/draw_interface.h"
+#include "minios/draw_utils.h"
 
 namespace minios {
 
