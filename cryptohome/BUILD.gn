@@ -192,7 +192,6 @@ executable("lockbox-cache") {
     "//common-mk/external_dependencies:user_policy-protos",
   ]
   pkg_deps = [
-    "libcrossystem",
     "libmetrics",
     "libstorage_platform",
   ]
