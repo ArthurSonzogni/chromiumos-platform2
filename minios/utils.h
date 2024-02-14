@@ -19,7 +19,7 @@
 #include <libcrossystem/crossystem.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/cgpt_util_interface.h"
+#include "minios/cgpt_util.h"
 #include "minios/process_manager_interface.h"
 
 namespace minios {

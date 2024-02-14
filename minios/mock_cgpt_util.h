@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "minios/cgpt_util_interface.h"
+#include "minios/cgpt_util.h"
 
 namespace minios {
 
