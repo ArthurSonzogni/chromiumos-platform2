@@ -7,8 +7,8 @@
 
 #include <memory>
 
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_creator_interface.h"
-#include "dlcservice/dlc_interface.h"
 #include "dlcservice/utils/utils.h"
 #include "dlcservice/utils/utils_interface.h"
 

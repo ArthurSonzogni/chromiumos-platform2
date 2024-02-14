@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "dlcservice/dlc_base.h"
-#include "dlcservice/dlc_interface.h"
 
 namespace dlcservice {
 

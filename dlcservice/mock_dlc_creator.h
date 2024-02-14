@@ -9,8 +9,8 @@
 
 #include <gmock/gmock.h>
 
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_creator_interface.h"
-#include "dlcservice/dlc_interface.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {

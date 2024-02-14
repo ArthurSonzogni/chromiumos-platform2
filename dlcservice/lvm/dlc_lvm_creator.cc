@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "dlcservice/dlc_interface.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/lvm/dlc_lvm.h"
 
 namespace dlcservice {
