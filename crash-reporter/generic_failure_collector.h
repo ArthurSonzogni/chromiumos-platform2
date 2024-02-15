@@ -68,6 +68,7 @@ class GenericFailureCollector : public CrashCollector {
     std::string arc_service_failure;
     std::string service_failure;
     bool guest_oom_event = false;
+    bool tethering_failure = false;
     int32_t weight;
   };
 
@@ -105,6 +106,7 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kModemfwdFailure;
   static const char* const kGuestOomEvent;
   static const char* const kHermesFailure;
+  static const char* const kTetheringFailure;
 
   // Generic failure dump consists only of the signature.
   bool LoadGenericFailure(std::string* content, std::string* signature);

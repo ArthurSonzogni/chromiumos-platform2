@@ -1,0 +1,11 @@
+2024-02-15T19:34:58.442663Z NOTICE wpa_supplicant[1020]: ap0: AP-DISABLED 
+2024-02-15T19:34:58.444199Z WARNING shill[1131]: WARNING shill: [nl80211_message.cc(601)] Unknown/unhandled netlink nl80211 message 0x06
+2024-02-15T19:34:58.444328Z NOTICE wpa_supplicant[1020]: ap0: CTRL-EVENT-DISCONNECTED bssid=66:5e:08:3f:f6:76 reason=3 locally_generated=1
+2024-02-15T19:34:58.451142Z INFO shill[1131]: INFO shill: [hotspot_device.cc(227)] Interface ap0 state changed from completed to interface_disabled
+2024-02-15T19:34:58.451247Z INFO shill[1131]: INFO shill: [tethering_manager.cc(1003)] TetheringManager received downstream device ap0 event: InterfaceDisabled
+2024-02-15T19:34:58.451262Z ERR shill[1131]: ERROR shill: [tethering_manager.cc(857)] Tethering stopped unexpectly due to reason: downstream_link_disconnect
+2024-02-15T19:34:58.451275Z INFO shill[1131]: INFO shill: [tethering_manager.cc(524)] State changed from active to stopping
+2024-02-15T19:34:58.451735Z INFO patchpaneld[2565]: INFO patchpaneld: [guest_ipv6_service.cc(218)] StopForwarding: uplink: wwan0, downlink: ap0
+2024-02-15T19:34:58.453115Z INFO shill[1131]: INFO shill: [local_device.cc(47)] Disable device: ap0
+2024-02-15T19:34:58.453788Z NOTICE wpa_supplicant[1020]: ap0: CTRL-EVENT-DSCP-POLICY clear_all
+2024-02-15T19:34:58.455803Z WARNING patchpaneld[2565]: WARNING patchpaneld: [minijailed_process_runner.cc(223)] '/bin/ip -6 neighbor del proxy 2607:fb90:3709:4150:4c24:9df0:980e:8ba dev ap0' exited with code 2

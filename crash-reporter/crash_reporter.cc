@@ -376,6 +376,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(hermes_failure, false, "Report hermes failure");
   DEFINE_bool(guest_oom_event, false,
               "OOM event in Crostini (captured via stdin)");
+  DEFINE_bool(tethering_failure, false, "Report tethering failure");
 
   OpenStandardFileDescriptors();
 
@@ -677,6 +678,7 @@ int main(int argc, char* argv[]) {
       .arc_service_failure = FLAGS_arc_service_failure,
       .service_failure = FLAGS_service_failure,
       .guest_oom_event = FLAGS_guest_oom_event,
+      .tethering_failure = FLAGS_tethering_failure,
       .weight = FLAGS_weight};
 
   collectors.push_back(GenericFailureCollector::GetHandlerInfo(

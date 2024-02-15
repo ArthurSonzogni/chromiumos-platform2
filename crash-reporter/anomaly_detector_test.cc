@@ -880,6 +880,15 @@ TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
              &parser);
 }
 
+TEST(AnomalyDetectorTest, TetheringFailure) {
+  ParserRun tethering_failure = {
+      .expected_substr = "TetheringFailure",
+      .expected_flags = {
+          {"--tethering_failure", base::StringPrintf("--weight=%d", 50)}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_TETHERING_FAILURE", {tethering_failure}, &parser);
+}
+
 TEST(AnomalyDetectorTest, ESimInstallSendHttpsFailure) {
   ParserRun install_failure = {
       .expected_substr = "SendHttpsFailure",

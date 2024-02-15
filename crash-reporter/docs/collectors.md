@@ -430,6 +430,11 @@ TODO(chingkang): Expand on this section
 When the modem rejects a user request to perform an operation on the modem, we
 generate a report (For e.g. Failure to connect to a network)
 
+### tethering failures
+
+When the tethering failed due to an unexpected error, generate a report
+(e.g. session closed due to internal error or downstream link down).
+
 ## kernel_warning_collector
 
 Collects WARN() messages from anywhere in the depths of the kernel.

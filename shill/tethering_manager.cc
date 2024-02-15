@@ -69,6 +69,12 @@ static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 static constexpr base::TimeDelta kUpstreamNetworkValidationTimeout =
     base::Minutes(1);
 
+// Prefix used by tethering logging messages when the tethering session is
+// stopped due to unexpected errors. This prefix is used by the anomaly detector
+// to identify these events.
+constexpr std::string_view kTetheringStopAnomalyDetectorPrefix =
+    "Tethering stopped unexpectly due to reason: ";
+
 bool StoreToConfigBool(const StoreInterface* storage,
                        const std::string& storage_id,
                        KeyValueStore* config,
@@ -857,7 +863,13 @@ void TetheringManager::StopTetheringSession(StopReason reason,
     return;
   }
 
-  LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
+  if (reason == StopReason::kError ||
+      reason == StopReason::kDownstreamLinkDisconnect) {
+    LOG(ERROR) << kTetheringStopAnomalyDetectorPrefix
+               << StopReasonToString(reason);
+  } else {
+    LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
+  }
   stop_reason_ = reason;
   if (reason == StopReason::kConfigChange) {
     // Restart the tethering session due to config change.

@@ -769,6 +769,9 @@ constexpr LazyRE2 sim_not_inserted_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.Core.WrongState.*)"};
 // logged by shill/cellular.cc after an entitlement check fails
 constexpr LazyRE2 entitlement_check_failure = {R"(Entitlement check failed:)"};
+// logged by shill/tethering_manager.cc after an unexpected tethering stop
+constexpr LazyRE2 tethering_failure = {
+    R"(Tethering stopped unexpectly due to reason:)"};
 
 MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string error_code;
@@ -776,6 +779,7 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string carrier;
   std::string modem;
   std::string trigger_mode;
+  std::string flag = "--modem_failure";
   int weight = 1;
   if (RE2::PartialMatch(line, *connect_failure, &modem, &trigger_mode, &carrier,
                         &error_message)) {
@@ -791,6 +795,10 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   } else if (RE2::PartialMatch(line, *entitlement_check_failure)) {
     error_code = "EntitlementCheckFailure";
     // No weight. Send all.
+  } else if (RE2::PartialMatch(line, *tethering_failure)) {
+    error_code = "TetheringFailure";
+    flag = "--tethering_failure";
+    weight = 50;
   }
   if (error_code.empty()) {
     return std::nullopt;
@@ -819,7 +827,7 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
   return CrashReport(
       std::move(text),
-      {"--modem_failure", base::StringPrintf("--weight=%d", weight)});
+      {std::move(flag), base::StringPrintf("--weight=%d", weight)});
 }
 
 ModemfwdParser::ModemfwdParser(bool testonly_send_all)

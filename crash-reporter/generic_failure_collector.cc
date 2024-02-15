@@ -39,6 +39,8 @@ const char* const GenericFailureCollector::kModemfwdFailure =
     "modemfwd_failure";
 const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
 const char* const GenericFailureCollector::kHermesFailure = "hermes_failure";
+const char* const GenericFailureCollector::kTetheringFailure =
+    "tethering-failure";
 
 GenericFailureCollector::GenericFailureCollector(
     const scoped_refptr<
@@ -193,6 +195,12 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
                   &GenericFailureCollector::CollectWithWeight,
                   generic_failure_collector, kCryptohome,
                   util::GetRecoveryFailureWeight()),
+          },
+          {
+              .should_handle = options.tethering_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kTetheringFailure, options.weight),
           },
       }};
 }
