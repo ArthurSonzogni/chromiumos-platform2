@@ -37,7 +37,7 @@ pub enum Error {
     Create(io::Error),
     CreateDirAll(io::Error),
     Generate(String),
-    MissingCodegen(which::Error),
+    MissingCodegen(which::Error, &'static str),
     Open(io::Error),
     SourceDoesntExist(PathBuf),
     Spawn(io::Error),
@@ -58,7 +58,7 @@ impl Display for Error {
             Create(e) => write!(f, "create failed: {}", e),
             CreateDirAll(e) => write!(f, "create_dir_all failed: {}", e),
             Generate(s) => write!(f, "generate failed: {}", s),
-            MissingCodegen(e) => write!(f, "dbus-codegen-rust required, but not found: {:?}", e),
+            MissingCodegen(e, n) => write!(f, "{} required, but not found: {:?}", n, e),
             Open(e) => write!(f, "open failed: {}", e),
             SourceDoesntExist(file) => match file.to_str() {
                 None => write!(f, "empty path"),
@@ -193,7 +193,9 @@ pub mod server {{"#
 }
 
 fn get_dbus_codgen() -> Result<PathBuf> {
-    let mut ret = which::which("dbus-codegen-rust").map_err(Error::MissingCodegen);
+    const DBUS_CODEGEN_RUST: &str = "dbus-codegen-rust";
+    let mut ret =
+        which::which(DBUS_CODEGEN_RUST).map_err(|e| Error::MissingCodegen(e, DBUS_CODEGEN_RUST));
     if ret.is_err() {
         if let Some(dir) = std::env::var_os("HOME") {
             let alternative = Path::new(&dir).join(".cargo/bin/dbus-codegen-rust");
