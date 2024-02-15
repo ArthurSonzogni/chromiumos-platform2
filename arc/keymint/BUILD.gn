@@ -106,7 +106,6 @@ config("support_config") {
     "${libcutils_src}/include",
     "${libcppbor_src}/include/cppbor",
   ]
-  cflags_cc = [ "-std=c++17" ]
   cflags = [
     "-Wno-defaulted-function-deleted",
     "-Wno-format-nonliteral",
