@@ -369,7 +369,7 @@ TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
   FakeBalloonBlocker::fake_balloon_blockers_[6]->BlockAt(
       ResizeDirection::kDeflate, ResizePriority::kCachedApp);
   ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
-            ResizePriority::kCachedTab);
+            ResizePriority::kCachedApp - 1);
 
   // Check that when every balloon is fully blocked, UNSPECIFIED is returned.
   FakeBalloonBlocker::fake_balloon_blockers_[5]->BlockAt(

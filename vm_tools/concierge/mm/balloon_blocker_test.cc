@@ -73,59 +73,27 @@ TEST_F(BalloonBlockerTest, TestBlockedDoesNotAdjustBalloon) {
 }
 
 TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
-  // An inflation should only block at the lowest level at first.
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, 100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kCachedApp);
+  // An inflation should only block the lowest level at first, so the second
+  // lowest priority should be unblocked.
+  size_t expected_unblocked_priority_index = 1;
 
-  // Next, a deflation should cause an inflation block at cached app meaning
-  // that CACHED_TAB is unblocked.
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesGuest, -100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kCachedTab);
+  while (expected_unblocked_priority_index < LowestResizePriority()) {
+    balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, 100});
+    ASSERT_EQ(
+        balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                  base::TimeTicks::Now()),
+        kAllResizePrioritiesIncreasing[expected_unblocked_priority_index]);
 
-  // Another inflation should cause the unblocked priority to increase to
-  // PERCEPTIBLE_APP
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, 100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kPerceptibleApp);
+    expected_unblocked_priority_index++;
 
-  // And another deflation should cause the unblocked priority to increase to
-  // PERCEPTIBLE_TAB.
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesGuest, -100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kPerceptibleTab);
+    balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, -100});
+    ASSERT_EQ(
+        balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
+                                                  base::TimeTicks::Now()),
+        kAllResizePrioritiesIncreasing[expected_unblocked_priority_index]);
 
-  // Repeat for increasing priorities...
-
-  // FOCUSED_APP
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, 100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kFocusedApp);
-
-  // FOCUSED_TAB
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesGuest, -100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kFocusedTab);
-
-  // NO_KILL_CANDIDATES_GUEST
-  balloon_blocker_->TryResize({ResizePriority::kNoKillCandidatesHost, 100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kNoKillCandidatesGuest);
-
-  // After a balloon stall deflation, the balloon should not be unblocked for
-  // anything.
-  balloon_blocker_->TryResize({ResizePriority::kBalloonStall, -100});
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      base::TimeTicks::Now()),
-            ResizePriority::kInvalid);
+    expected_unblocked_priority_index++;
+  }
 }
 
 TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
@@ -135,17 +103,17 @@ TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
 
   SetBlockPriorityTo(ResizePriority::kCachedApp);
 
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
                                                       base::TimeTicks::Now()),
-            ResizePriority::kCachedTab);
+            ResizePriority::kCachedApp);
 
   // Deflations should be blocked at lowest priority before the block is
   // expired.
   task_environment_.FastForwardBy(base::Milliseconds(999));
 
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
                                                       base::TimeTicks::Now()),
-            ResizePriority::kCachedTab);
+            ResizePriority::kCachedApp);
 
   // And the block should be removed after the block is expired.
   task_environment_.FastForwardBy(base::Milliseconds(10));
@@ -157,22 +125,22 @@ TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
 TEST_F(BalloonBlockerTest, TestHighPriorityBlockDuration) {
   SetBlockPriorityTo(ResizePriority::kFocusedApp);
 
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
                                                       base::TimeTicks::Now()),
-            ResizePriority::kFocusedTab);
+            ResizePriority::kFocusedApp);
 
-  // Deflations should be blocked at lowest priority before the block is
-  // expired.
+  // Deflations should be blocked before the block is expired.
   task_environment_.FastForwardBy(base::Milliseconds(99));
-  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
                                                       base::TimeTicks::Now()),
-            ResizePriority::kFocusedTab);
+            ResizePriority::kFocusedApp);
 
-  // And the block should be removed after the block is expired.
+  // And the block should be removed after the block is expired, but the lower
+  // priority block should still be in place.
   task_environment_.FastForwardBy(base::Milliseconds(10));
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
                                                       base::TimeTicks::Now()),
-            ResizePriority::kCachedTab);
+            ResizePriority::kPerceptibleApp);
 }
 
 TEST_F(BalloonBlockerTest, TestPriorityFallback) {

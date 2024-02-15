@@ -3932,7 +3932,7 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
           },
           std::move(response_cb));
       vm_memory_management_service_->ReclaimUntilBlocked(
-          cid, mm::ResizePriority::kCachedTab, std::move(cb));
+          cid, mm::ResizePriority::kAggressiveBalloon, std::move(cb));
     } else {
       LOG(INFO) << "Stopping Aggressive Baloon for CID: " << cid;
       vm_memory_management_service_->StopReclaimUntilBlocked(cid);

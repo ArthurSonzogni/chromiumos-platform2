@@ -20,8 +20,9 @@ enum ResizePriority {
   kPerceptibleTab = 6,
   kPerceptibleApp = 7,
   kCachedTab = 8,
-  kCachedApp = 9,
-  kMglruReclaim = 10,
+  kAggressiveBalloon = 9,
+  kCachedApp = 10,
+  kMglruReclaim = 11,
 };
 
 // Returns the highest priority ResizePriority.
@@ -44,6 +45,7 @@ constexpr const char* kResizePriorityNames[] = {
     "PerceptibleTab",
     "PerceptibleApp",
     "CachedTab",
+    "AggressiveBalloon",
     "CachedApp",
     "MglruReclaim",
 };
@@ -56,6 +58,7 @@ static_assert(
 constexpr ResizePriority kAllResizePrioritiesIncreasing[] = {
     ResizePriority::kMglruReclaim,
     ResizePriority::kCachedApp,
+    ResizePriority::kAggressiveBalloon,
     ResizePriority::kCachedTab,
     ResizePriority::kPerceptibleApp,
     ResizePriority::kPerceptibleTab,
