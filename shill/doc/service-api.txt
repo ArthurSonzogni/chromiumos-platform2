@@ -391,14 +391,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			"apn"  The APN to use for making connections
 
-			There are three optional properties. The first is
-
-			"network_id" The network ID (MCC/MNC pair) of the
-				     network for which the APN should be used.
-				     If not specified, then the network ID of
-				     the currently registered network is used.
-
-			The other two optional properties are "username"
+			There are two optional properties "username"
 			and "password", which, if specified, will be supplied
 			to the connect operation on the modem along with the
 			APN.
