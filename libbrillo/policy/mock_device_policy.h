@@ -84,6 +84,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetEphemeralSettings,
               (EphemeralSettings*),
               (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetDeviceExtendedAutoUpdateEnabled,
+              (),
+              (const, override));
   MOCK_METHOD(bool, GetReleaseChannel, (std::string*), (const, override));
   MOCK_METHOD(bool, GetReleaseChannelDelegated, (bool*), (const, override));
   MOCK_METHOD(bool, GetReleaseLtsTag, (std::string*), (const, override));

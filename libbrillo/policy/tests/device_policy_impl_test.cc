@@ -396,16 +396,17 @@ TEST_F(DevicePolicyImplTest, GetChannelDowngradeBehaviorSet) {
   em::AutoUpdateSettingsProto* auto_update_settings =
       device_policy_proto.mutable_auto_update_settings();
   auto_update_settings->set_channel_downgrade_behavior(
-      em::AutoUpdateSettingsProto::ChannelDowngradeBehavior
-        ::AutoUpdateSettingsProto_ChannelDowngradeBehavior_ROLLBACK);
+      em::AutoUpdateSettingsProto::ChannelDowngradeBehavior ::
+          AutoUpdateSettingsProto_ChannelDowngradeBehavior_ROLLBACK);
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
   int value = -1;
   EXPECT_TRUE(device_policy_.GetChannelDowngradeBehavior(&value));
   EXPECT_EQ(static_cast<int>(
-      em::AutoUpdateSettingsProto::ChannelDowngradeBehavior
-        ::AutoUpdateSettingsProto_ChannelDowngradeBehavior_ROLLBACK), value);
+                em::AutoUpdateSettingsProto::ChannelDowngradeBehavior ::
+                    AutoUpdateSettingsProto_ChannelDowngradeBehavior_ROLLBACK),
+            value);
 }
 
 TEST_F(DevicePolicyImplTest, GetChannelDowngradeBehaviorNotSet) {
@@ -659,6 +660,27 @@ TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_EphemeralMode_Unset) {
   EXPECT_TRUE(ephemeral_settings.global_ephemeral_users_enabled);
   EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
   EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceExtendedAutoUpdateEnabled_Set) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_deviceextendedautoupdateenabled()->set_value(
+      true);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  EXPECT_TRUE(*device_policy_.GetDeviceExtendedAutoUpdateEnabled());
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceExtendedAutoUpdateEnabled_Unset) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.clear_deviceextendedautoupdateenabled();
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  EXPECT_FALSE(device_policy_.GetDeviceExtendedAutoUpdateEnabled());
 }
 
 }  // namespace policy

@@ -169,6 +169,10 @@ class DevicePolicy {
   virtual bool GetEphemeralSettings(
       EphemeralSettings* ephemeral_settings) const = 0;
 
+  // Returns value of the `DeviceExtendedAutoUpdateEnabled` policy/device owner
+  // setting or `std::nullopt` if unset.
+  virtual std::optional<bool> GetDeviceExtendedAutoUpdateEnabled() const = 0;
+
   // Writes the value of the release channel policy in |release_channel|.
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const = 0;

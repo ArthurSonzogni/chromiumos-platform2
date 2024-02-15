@@ -474,6 +474,21 @@ bool DevicePolicyImpl::GetEphemeralSettings(
   return true;
 }
 
+std::optional<bool> DevicePolicyImpl::GetDeviceExtendedAutoUpdateEnabled()
+    const {
+  if (!device_policy_->has_deviceextendedautoupdateenabled()) {
+    return std::nullopt;
+  }
+
+  const em::BooleanPolicyProto& proto(
+      device_policy_->deviceextendedautoupdateenabled());
+  if (!proto.has_value()) {
+    return std::nullopt;
+  }
+
+  return proto.value();
+}
+
 bool DevicePolicyImpl::GetReleaseChannel(std::string* release_channel) const {
   if (!device_policy_->has_release_channel())
     return false;

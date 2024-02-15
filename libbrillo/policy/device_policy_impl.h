@@ -80,6 +80,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetReportBootMode(bool* report_boot_mode) const override;
   bool GetEphemeralSettings(
       EphemeralSettings* ephemeral_settings) const override;
+  std::optional<bool> GetDeviceExtendedAutoUpdateEnabled() const override;
   bool GetReleaseChannel(std::string* release_channel) const override;
   bool GetReleaseChannelDelegated(
       bool* release_channel_delegated) const override;
