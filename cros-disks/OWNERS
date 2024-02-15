@@ -1,8 +1,1 @@
-alexbn@chromium.org
-austinct@chromium.org
-benreich@chromium.org
-fdegros@chromium.org
-jboulic@chromium.org
-nigeltao@chromium.org
-petermarshall@chromium.org
-simmonsjosh@google.com
+include chromiumos/owners:v1:/filesandstorage/OWNERS.filesandstorage
