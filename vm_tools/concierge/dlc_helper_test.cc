@@ -39,11 +39,9 @@ TEST_F(DlcHelperTest, FailureImpliesNulloptAndError) {
              int /*timeout_ms*/) -> bool { return false; }));
 
   DlcHelper helper(std::move(handle));
-  std::string error;
-
-  EXPECT_TRUE(error.empty());
-  EXPECT_FALSE(helper.GetRootPath("foobar", &error).has_value());
-  EXPECT_FALSE(error.empty());
+  auto result = helper.GetRootPath("foobar");
+  ASSERT_FALSE(result.has_value());
+  EXPECT_FALSE(result.error().empty());
 }
 
 TEST_F(DlcHelperTest, NotInstalledImpliesNulloptAndError) {
@@ -57,11 +55,9 @@ TEST_F(DlcHelperTest, NotInstalledImpliesNulloptAndError) {
           }));
 
   DlcHelper helper(std::move(handle));
-  std::string error;
-
-  EXPECT_TRUE(error.empty());
-  EXPECT_FALSE(helper.GetRootPath("foobar", &error).has_value());
-  EXPECT_FALSE(error.empty());
+  auto result = helper.GetRootPath("foobar");
+  ASSERT_FALSE(result.has_value());
+  EXPECT_FALSE(result.error().empty());
 }
 
 TEST_F(DlcHelperTest, InstalledReturnsRootPath) {
@@ -77,12 +73,10 @@ TEST_F(DlcHelperTest, InstalledReturnsRootPath) {
           }));
 
   DlcHelper helper(std::move(handle));
-  std::string error;
-  std::optional<std::string> root_path = helper.GetRootPath("foobar", &error);
+  auto result = helper.GetRootPath("foobar");
 
-  EXPECT_TRUE(error.empty());
-  EXPECT_TRUE(root_path.has_value());
-  EXPECT_EQ(root_path.value(), "/path/to/dlc/root");
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result->value(), "/path/to/dlc/root");
 }
 
 }  // namespace

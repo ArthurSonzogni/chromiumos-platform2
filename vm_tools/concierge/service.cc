@@ -1513,9 +1513,6 @@ StartVmResponse Service::StartVmInternal(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
       classification, metrics::DurationRecorder::Event::kVmStart);
 
-  std::string failure_reason;
-  std::optional<base::FilePath> biosDlcPath, vmDlcPath, toolsDlcPath;
-
   std::optional<VmStartImageFds> vm_start_image_fds =
       GetVmStartImageFds(reader, request.fds());
   if (!vm_start_image_fds) {
@@ -1523,39 +1520,39 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
+  std::optional<base::FilePath> bios_dlc_path;
   if (!vm_start_image_fds->bios_fd.has_value() &&
       !request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
-    auto path =
-        dlcservice_client_->GetRootPath(kBruschettaBiosDlcId, &failure_reason);
-    if (!failure_reason.empty() || !path.has_value()) {
-      LOG(ERROR) << "Failed to find Bruschetta Biod DLC: " << failure_reason;
-      response.set_failure_reason(failure_reason);
+    auto result = dlcservice_client_->GetRootPath(kBruschettaBiosDlcId);
+    if (!result.has_value()) {
+      LOG(ERROR) << "Failed to find Bruschetta Biod DLC: " << result.error();
+      response.set_failure_reason(result.error());
       return response;
     }
-    biosDlcPath.emplace(path.value());
+    bios_dlc_path = std::move(result.value());
   }
 
+  std::optional<base::FilePath> vm_dlc_path;
   if (!request.vm().dlc_id().empty()) {
-    auto path =
-        dlcservice_client_->GetRootPath(request.vm().dlc_id(), &failure_reason);
-    if (!failure_reason.empty() || !path.has_value()) {
-      LOG(ERROR) << "Failed to find requested VM: " << failure_reason;
-      response.set_failure_reason(failure_reason);
+    auto result = dlcservice_client_->GetRootPath(request.vm().dlc_id());
+    if (!result.has_value()) {
+      LOG(ERROR) << "Failed to find requested VM: " << result.error();
+      response.set_failure_reason(result.error());
       return response;
     }
-    vmDlcPath.emplace(path.value());
+    vm_dlc_path = std::move(result.value());
   }
 
+  std::optional<base::FilePath> tools_dlc_path;
   if (!request.vm().tools_dlc_id().empty()) {
-    auto path = dlcservice_client_->GetRootPath(request.vm().tools_dlc_id(),
-                                                &failure_reason);
-    if (!failure_reason.empty() || !path.has_value()) {
-      LOG(ERROR) << "Failed to find requested_tools DLC: " << failure_reason;
-      response.set_failure_reason(failure_reason);
+    auto result = dlcservice_client_->GetRootPath(request.vm().tools_dlc_id());
+    if (!result.has_value()) {
+      LOG(ERROR) << "Failed to find requested_tools DLC: " << result.error();
+      response.set_failure_reason(result.error());
       return response;
     }
-    toolsDlcPath.emplace(path.value());
+    tools_dlc_path = std::move(result.value());
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
@@ -1585,11 +1582,12 @@ StartVmResponse Service::StartVmInternal(
   }
   auto root_fd = std::move(root_fd_result.first);
 
+  std::string failure_reason;
   VMImageSpec image_spec = internal::GetImageSpec(
       request.vm(), vm_start_image_fds->kernel_fd,
       vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
-      vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd, biosDlcPath,
-      vmDlcPath, toolsDlcPath, classification == apps::VmType::TERMINA,
+      vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd, bios_dlc_path,
+      vm_dlc_path, tools_dlc_path, classification == apps::VmType::TERMINA,
       failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
