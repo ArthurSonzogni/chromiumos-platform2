@@ -915,7 +915,7 @@ void Cellular::OnConnectionUpdated(int interface_index) {
                << ": Unexpected network connection update: " << interface_index;
 }
 
-void Cellular::ConfigureAttachApn() {
+void Cellular::ConfigureAttachApn(bool user_triggered) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
@@ -926,7 +926,7 @@ void Cellular::ConfigureAttachApn() {
     return;
   }
 
-  capability_->ConfigureAttachApn();
+  capability_->ConfigureAttachApn(user_triggered);
 }
 
 void Cellular::CancelPendingConnect() {

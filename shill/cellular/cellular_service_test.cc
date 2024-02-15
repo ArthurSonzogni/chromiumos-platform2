@@ -719,7 +719,7 @@ TEST_F(CellularServiceTest, SetCustomApnListWhileConnectedNoReattach) {
   EXPECT_CALL(*adaptor_,
               EmitStringmapsChanged(kCellularCustomApnListProperty, _));
   EXPECT_CALL(*device_, Disconnect(_, _));
-  EXPECT_CALL(*device_, ConfigureAttachApn()).Times(0);
+  EXPECT_CALL(*device_, ConfigureAttachApn(/*user_triggered*/ true)).Times(0);
   service_->SetCustomApnList(custom_list, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
@@ -744,7 +744,7 @@ TEST_F(CellularServiceTest, SetCustomApnListWhileConnectedReattachNewIA) {
   EXPECT_CALL(*adaptor_,
               EmitStringmapsChanged(kCellularCustomApnListProperty, _));
   EXPECT_CALL(*device_, Disconnect(_, _));
-  EXPECT_CALL(*device_, ConfigureAttachApn());
+  EXPECT_CALL(*device_, ConfigureAttachApn(/*user_triggered*/ true));
   service_->SetCustomApnList(custom_list, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
@@ -770,7 +770,7 @@ TEST_F(CellularServiceTest,
   EXPECT_CALL(*adaptor_,
               EmitStringmapsChanged(kCellularCustomApnListProperty, _));
   EXPECT_CALL(*device_, Disconnect(_, _));
-  EXPECT_CALL(*device_, ConfigureAttachApn());
+  EXPECT_CALL(*device_, ConfigureAttachApn(/*user_triggered*/ true));
   service_->SetCustomApnList(custom_list, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
@@ -799,7 +799,7 @@ TEST_F(CellularServiceTest,
   EXPECT_CALL(*adaptor_,
               EmitStringmapsChanged(kCellularCustomApnListProperty, _));
   EXPECT_CALL(*device_, Disconnect(_, _));
-  EXPECT_CALL(*device_, ConfigureAttachApn());
+  EXPECT_CALL(*device_, ConfigureAttachApn(/*user_triggered*/ true));
   service_->SetCustomApnList(custom_list, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);

@@ -925,7 +925,7 @@ bool CellularService::CustomApnUpdated(bool configure_attach_apn,
   if (configure_attach_apn) {
     // If we were using an attach APN, and we are no longer using it, we should
     // re-configure the attach APN to clear the attach APN in the modem.
-    cellular_->ConfigureAttachApn();
+    cellular_->ConfigureAttachApn(/*user_triggered=*/true);
     return true;
   }
   if (is_connected) {

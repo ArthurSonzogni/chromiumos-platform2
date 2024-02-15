@@ -510,6 +510,8 @@ void CellularCapability3gpp::StopModem(ResultCallback callback) {
     try_next_attach_apn_callback_.Cancel();
     SLOG(this, 2) << __func__ << " Cancelled next attach APN retry.";
   }
+  pending_non_user_attach_request_ = false;
+  pending_user_attach_request_ = false;
 
   if (!modem_proxy_) {
     Error error;
@@ -792,6 +794,7 @@ void CellularCapability3gpp::ReleaseProxies() {
 
   proxies_initialized_ = false;
   modem_3gpp_proxy_.reset();
+  is_set_initial_eps_bearer_settings_in_progress_ = false;
   modem_3gpp_profile_manager_proxy_.reset();
   modem_proxy_.reset();
   modem_location_proxy_.reset();
@@ -1536,6 +1539,8 @@ void CellularCapability3gpp::SetInitialEpsBearer(
     return;
   }
 
+  DCHECK(!is_set_initial_eps_bearer_settings_in_progress_);
+  is_set_initial_eps_bearer_settings_in_progress_ = true;
   modem_3gpp_proxy_->SetInitialEpsBearerSettings(
       properties,
       base::BindOnce(&CellularCapability3gpp::OnSetInitialEpsBearerReply,
@@ -1545,6 +1550,7 @@ void CellularCapability3gpp::SetInitialEpsBearer(
 void CellularCapability3gpp::OnSetInitialEpsBearerReply(ResultCallback callback,
                                                         const Error& error) {
   SLOG(this, 3) << __func__;
+  is_set_initial_eps_bearer_settings_in_progress_ = false;
 
   CellularServiceRefPtr service = cellular()->service();
   if (error.IsFailure()) {
@@ -2316,20 +2322,30 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     return;
   }
 
-  ConfigureAttachApn();
+  ConfigureAttachApn(/*user_triggered=*/false);
 }
 
 void CellularCapability3gpp::DelayedFallbackAttach() {
   SLOG(this, 3) << __func__;
-  ConfigureAttachApn();
+  ConfigureAttachApn(/*user_triggered=*/false);
 }
 
-void CellularCapability3gpp::ConfigureAttachApn() {
+void CellularCapability3gpp::ConfigureAttachApn(bool user_triggered) {
   SLOG(this, 3) << __func__;
   deferred_fallback_attach_needed_ = false;
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
+
+  if (is_set_initial_eps_bearer_settings_in_progress_) {
+    if (user_triggered)
+      pending_user_attach_request_ = true;
+    else
+      pending_non_user_attach_request_ = true;
+
+    LOG(INFO) << "Request to set attach APN in progress. Delay next attempt";
+    return;
+  }
 
   // The modem could be already registered at this point, but shill needs to
   // set the attach APN at least once to ensure the following:
@@ -2342,6 +2358,7 @@ void CellularCapability3gpp::ConfigureAttachApn() {
 
 void CellularCapability3gpp::SetNextAttachApn() {
   SLOG(this, 3) << __func__;
+  DCHECK(!pending_user_attach_request_ && !pending_non_user_attach_request_);
   if (!modem_3gpp_proxy_) {
     SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
     return;
@@ -2366,17 +2383,28 @@ void CellularCapability3gpp::ScheduleNextAttach(const Error& error) {
   // that were copied when creating the callback.
   try_next_attach_apn_callback_.Cancel();
 
-  if (attach_apn_try_list_.size() > 0)
-    attach_apn_try_list_.pop_front();
-
   // Check if the modem was already registered before shill called
   // |SetInitialEpsBearerSettings|.
-  if (IsRegistered()) {
+  if (IsRegistered() && !pending_user_attach_request_) {
     SLOG(this, 2)
         << "Modem is already registered. Skipping next attach APN try.";
     UpdateLastConnectedAttachApnOnRegistered();
+    // Ignore pending request when not triggered by the user, as being
+    // registered with any APN is enough.
+    pending_non_user_attach_request_ = false;
     return;
   }
+
+  if (pending_user_attach_request_ || pending_non_user_attach_request_) {
+    SLOG(this, 2) << "Pending Attach request exists. Restarting round robin";
+    pending_user_attach_request_ = false;
+    pending_non_user_attach_request_ = false;
+    SetNextAttachApn();
+    return;
+  }
+
+  if (attach_apn_try_list_.size() > 0)
+    attach_apn_try_list_.pop_front();
 
   if (attach_apn_try_list_.size() > 0) {
     SLOG(this, 2) << "Posted deferred Attach APN retry";

@@ -220,7 +220,7 @@ class Cellular : public Device,
   virtual void Disconnect(Error* error, const char* reason);
 
   // Configures the attach APN in the modem.
-  virtual void ConfigureAttachApn();
+  virtual void ConfigureAttachApn(bool user_triggered);
 
   // Called when the Modem object is created to set the initial properties.
   void SetInitialProperties(const InterfaceToProperties& properties);

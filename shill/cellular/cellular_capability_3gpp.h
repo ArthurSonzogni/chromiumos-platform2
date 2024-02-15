@@ -152,13 +152,19 @@ class CellularCapability3gpp {
             ResultStringmapsCallback finished_callback);
 
   // Builds the Attach APN try list and configures the APN on the modem.
-  void ConfigureAttachApn();
+  void ConfigureAttachApn(bool user_triggered);
 
   // Sets the parameters specified by |properties| for the LTE initial EPS
   // bearer used at registration, particularly the 'Attach' APN settings.
   // specified by |properties|.
   void SetInitialEpsBearer(const KeyValueStore& properties,
                            ResultCallback callback);
+
+  // Whether a request to set the initial EPS bearer settings is currently in
+  // progress.
+  bool IsSetInitialEpsBearerSettingsInProgress() {
+    return is_set_initial_eps_bearer_settings_in_progress_;
+  }
 
   // Registers on a network with |network_id|.
   void RegisterOnNetwork(const std::string& network_id,
@@ -572,7 +578,17 @@ class CellularCapability3gpp {
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::optional<std::vector<MobileAPN>> profiles_;
+  // Used to indicate if the attach round robin needs to be restarted when
+  // the current |SetInitialEpsBearerSettings| call is completed because of a
+  // user request to change the attach APN.
+  bool pending_user_attach_request_ = false;
+  // Same as |pending_user_attach_request_|, but for non user
+  // requests.
+  bool pending_non_user_attach_request_ = false;
   bool deferred_fallback_attach_needed_ = true;
+  // The value is true while the dbus call to set the initial EPS bearer
+  // settings is in progress.
+  bool is_set_initial_eps_bearer_settings_in_progress_ = false;
 
   // SIM properties
   RpcIdentifier sim_path_;
