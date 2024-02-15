@@ -13,6 +13,13 @@
 
 namespace shill {
 
+namespace {
+// Maximum size of an event buffer to ensure that the total memory taken by
+// ValidationLog is bounded.
+static constexpr size_t kValidationLogMaxSize = 128;
+
+}  // namespace
+
 ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
     : technology_(technology),
       metrics_(metrics),
@@ -20,12 +27,19 @@ ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
 
 ValidationLog::~ValidationLog() = default;
 
-void ValidationLog::AddResult(const PortalDetector::Result& result) {
-  // Make sure that the total memory taken by ValidationLog is bounded.
-  static constexpr size_t kValidationLogMaxSize = 128;
-  if (results_.size() < kValidationLogMaxSize) {
-    results_.emplace_back(base::TimeTicks::Now(), result.GetValidationState(),
-                          result.GetResultMetric());
+void ValidationLog::AddPortalDetectorResult(
+    const PortalDetector::Result& result) {
+  if (probe_results_.size() < kValidationLogMaxSize) {
+    probe_results_.emplace_back(base::TimeTicks::Now(),
+                                result.GetValidationState(),
+                                result.GetResultMetric());
+  }
+}
+
+void ValidationLog::AddCAPPORTStatus(const CapportStatus& status) {
+  if (capport_results_.size() < kValidationLogMaxSize) {
+    capport_results_.emplace_back(base::TimeTicks::Now(), status.is_captive,
+                                  status.user_portal_url.has_value());
   }
 }
 
@@ -41,16 +55,17 @@ void ValidationLog::SetHasTermsAndConditions() {
   has_terms_and_conditions_ = true;
 }
 
-void ValidationLog::RecordMetrics() const {
-  if (results_.empty()) {
-    return;
+bool ValidationLog::RecordProbeMetrics() const {
+  if (probe_results_.empty()) {
+    return false;
   }
 
   int total_attempts = 0;
   bool has_internet = false;
   bool has_redirect = false;
   bool has_suspected_redirect = false;
-  for (const auto& result_data : results_) {
+
+  for (const auto& result_data : probe_results_) {
     total_attempts++;
     metrics_->SendEnumToUMA(total_attempts == 1
                                 ? Metrics::kPortalDetectorInitialResult
@@ -120,6 +135,61 @@ void ValidationLog::RecordMetrics() const {
   metrics_->SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, technology_,
                           netval_result);
 
+  // Return as true both 302/307 redirect cases and spoofed 200 answer cases.
+  return has_redirect || has_suspected_redirect;
+}
+
+void ValidationLog::RecordCAPPORTMetrics() const {
+  if (capport_results_.empty()) {
+    return;
+  }
+
+  std::optional<bool> is_captive = std::nullopt;
+  bool has_user_portal_url = false;
+  for (const auto& result_data : capport_results_) {
+    // Ensure |is_captive| is initialized based on the first status seen.
+    if (!is_captive.has_value()) {
+      if (result_data.is_captive) {
+        is_captive = true;
+      } else {
+        // Ignore CAPPORT network connection where the captive portal was never
+        // closed. This can happen if the device reconnects to the captive
+        // portal network after having cleared the sign-in flow once and the
+        // network remembers that the portal is open for the device.
+        return;
+      }
+    }
+
+    // Check if the portal is now open.
+    if (*is_captive && !result_data.is_captive) {
+      is_captive = false;
+      const base::TimeDelta time_to_not_captive =
+          result_data.timestamp - connection_start_;
+      metrics_->SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTNotCaptive,
+                          technology_, time_to_not_captive.InMilliseconds());
+
+      // Ignore the user portal URL if the portal becomes open without
+      // having seen first the user portal URL with is_captive==true.
+      break;
+    }
+
+    // Check if the portal advertises a user portal URL.
+    if (!has_user_portal_url && result_data.has_user_portal_url) {
+      has_user_portal_url = true;
+      const base::TimeDelta time_to_user_portal_url =
+          result_data.timestamp - connection_start_;
+      metrics_->SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL,
+                          technology_,
+                          time_to_user_portal_url.InMilliseconds());
+    }
+  }
+}
+
+void ValidationLog::RecordMetrics() const {
+  bool has_redirect = RecordProbeMetrics();
+
+  RecordCAPPORTMetrics();
+
   std::optional<Metrics::CapportSupported> capport_support = std::nullopt;
   if (capport_dhcp_supported_ && capport_ra_supported_) {
     capport_support = Metrics::kCapportSupportedByDHCPv4AndRA;
@@ -133,20 +203,21 @@ void ValidationLog::RecordMetrics() const {
     metrics_->SendEnumToUMA(Metrics::kMetricCapportAdvertised, technology_,
                             *capport_support);
   }
+
   if (has_redirect) {
     metrics_->SendEnumToUMA(
         Metrics::kMetricCapportSupported, technology_,
         capport_support.value_or(Metrics::kCapportNotSupported));
   }
 
-  if (technology_ == Technology::kWiFi) {
+  if (technology_ == Technology::kWiFi && !probe_results_.empty()) {
     Metrics::TermsAndConditionsAggregateResult tc_result =
         Metrics::kTermsAndConditionsAggregateResultUnknown;
-    if (has_terms_and_conditions_ && (has_redirect || has_suspected_redirect)) {
+    if (has_terms_and_conditions_ && has_redirect) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultPortalWithURL;
     } else if (has_terms_and_conditions_) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalWithURL;
-    } else if (has_redirect || has_suspected_redirect) {
+    } else if (has_redirect) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultPortalNoURL;
     } else {
       tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalNoURL;

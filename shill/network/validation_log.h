@@ -11,6 +11,7 @@
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/capport_proxy.h"
 #include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
@@ -25,23 +26,41 @@ class ValidationLog {
   ValidationLog(Technology technology, Metrics* metrics);
   virtual ~ValidationLog();
 
-  mockable void AddResult(const PortalDetector::Result& result);
+  mockable void AddPortalDetectorResult(const PortalDetector::Result& result);
+  mockable void AddCAPPORTStatus(const CapportStatus& status);
   mockable void SetCapportDHCPSupported();
   mockable void SetCapportRASupported();
   mockable void SetHasTermsAndConditions();
   mockable void RecordMetrics() const;
 
  private:
-  struct ResultData {
-    base::TimeTicks timestamp;
-    PortalDetector::ValidationState validation_state;
-    Metrics::PortalDetectorResult metric_result;
+  // Summary of a CAPPORT::Status event.
+  struct CAPPORTResultData {
+    base::TimeTicks timestamp = base::TimeTicks();
+    bool is_captive = false;
+    bool has_user_portal_url = false;
   };
+
+  // Summary of a PortalDetector::Result event.
+  struct ProbeResultData {
+    base::TimeTicks timestamp = base::TimeTicks();
+    PortalDetector::ValidationState validation_state =
+        PortalDetector::ValidationState::kNoConnectivity;
+    Metrics::PortalDetectorResult metric_result =
+        Metrics::kPortalDetectorResultUnknown;
+  };
+
+  // Records metrics related to CAPPORT query results.
+  void RecordCAPPORTMetrics() const;
+  // Records metrics related to portal detector probes and returns true if a
+  // redirect was found.
+  bool RecordProbeMetrics() const;
 
   Technology technology_;
   Metrics* metrics_;
   base::TimeTicks connection_start_;
-  std::vector<ResultData> results_;
+  std::vector<ProbeResultData> probe_results_;
+  std::vector<CAPPORTResultData> capport_results_;
   bool capport_dhcp_supported_ = false;
   bool capport_ra_supported_ = false;
   bool has_terms_and_conditions_ = false;

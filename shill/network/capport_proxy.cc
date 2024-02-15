@@ -56,7 +56,7 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
     const auto url = net_base::HttpUrl::CreateFromString(*value);
     if (!url.has_value() ||
         url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
-      LOG(WARNING) << "User portal URL is not invalid: " << *value;
+      LOG(WARNING) << "User portal URL is not valid: " << *value;
       return std::nullopt;
     }
     status->user_portal_url = *url;
@@ -65,7 +65,7 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
       value != nullptr) {
     const auto url = net_base::HttpUrl::CreateFromString(*value);
     if (!url.has_value()) {
-      LOG(WARNING) << "Venue info URL is not invalid: " << *value;
+      LOG(WARNING) << "Venue info URL is not valid: " << *value;
       return std::nullopt;
     }
     status->venue_info_url = *url;
@@ -93,7 +93,7 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
   if (api_url.protocol() != net_base::HttpUrl::Protocol::kHttps) {
-    LOG(ERROR) << "The URL of CAPPORT API is invalid: " << api_url.ToString();
+    LOG(ERROR) << "The URL of CAPPORT API is not valid: " << api_url.ToString();
     return nullptr;
   }
 

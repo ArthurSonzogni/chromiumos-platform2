@@ -1611,6 +1611,29 @@ class Metrics {
           .num_buckets = kTimerHistogramNumBuckets,
   };
 
+  // Duration in milliseconds from the initial network connection to the first
+  // CAPPORT query result advertising the user portal URL.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorTimeToCAPPORTUserPortalURL = {
+          .n = {"PortalDetector.TimeToCAPPORTUserPortalURL",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = base::Minutes(2).InMilliseconds(),
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
+  // Duration in milliseconds from the initial network connection to the first
+  // CAPPORT query result indicating "is_captive" transitioned from true to
+  // false (Access to the external network was granted).
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorTimeToCAPPORTNotCaptive = {
+          .n = {"PortalDetector.TimeToCAPPORTNotCaptive",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = base::Minutes(5).InMilliseconds(),
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
 

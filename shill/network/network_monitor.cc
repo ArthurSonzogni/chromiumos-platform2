@@ -211,7 +211,7 @@ void NetworkMonitor::SetTermsAndConditions(const net_base::HttpUrl& url) {
 void NetworkMonitor::OnPortalDetectorResult(
     const PortalDetector::Result& result) {
   if (validation_log_) {
-    validation_log_->AddResult(result);
+    validation_log_->AddPortalDetectorResult(result);
   }
 
   const int64_t total_duration =
@@ -267,6 +267,10 @@ void NetworkMonitor::OnCapportStatusReceived(
     const std::optional<CapportStatus>& status) {
   if (!status.has_value()) {
     return;
+  }
+
+  if (validation_log_) {
+    validation_log_->AddCAPPORTStatus(*status);
   }
 
   // Use the attempt count from |portal_detector_| to keep the count of the

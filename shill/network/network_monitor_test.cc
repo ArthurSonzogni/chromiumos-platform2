@@ -143,7 +143,7 @@ class NetworkMonitorTest : public ::testing::Test {
             [result](PortalDetector::ResultCallback callback) {
               std::move(callback).Run(result);
             }));
-    EXPECT_CALL(*mock_validation_log_, AddResult(result));
+    EXPECT_CALL(*mock_validation_log_, AddPortalDetectorResult(result));
     EXPECT_CALL(client_,
                 OnNetworkMonitorResult(
                     NetworkMonitor::Result::FromPortalDetectorResult(result)))
