@@ -735,7 +735,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optopt(
             "p",
             PRIVILEGED_FLAG,
-            "is the container privileged. only takes effect on boards that support privileged containers",
+            "is the container privileged.",
             "true / false",
         );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
@@ -970,11 +970,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 }
 
-const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
+const USAGE: &str = "
+   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] \
+           [--enable-virtgpu-native-context] [--enable-audio-capture] [--extra-disk PATH] \
+           [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] \
+           [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
-     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters] |
+     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] \
+            [-- additional parameters] |
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
      adjust <name> <operation> [additional parameters] |
      destroy [-y] <name> |
@@ -986,14 +990,16 @@ const USAGE: &str = r#"
      logs <vm name> |
      share <vm name> <path> |
      unshare <vm name> <path> |
-     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM] |
+     container <vm name> <container name> [ (<image server> <image alias>) | \
+                                            (<rootfs path> <metadata path>) ] \
+                                          [--privileged <true/false>] [--timeout PARAM] |
      update-container-devices <vm_name> <container_name> (<vm device>:<enable/disable>)... |
      usb-attach <vm name> <bus>:<device> [<container name>] |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
      --help | -h ]
-"#;
+";
 
 /// `vmc` (Virtual Machine Controller) command line interface.
 /// This is the interface accessible from crosh (Ctrl-Alt-T in the browser to access).
