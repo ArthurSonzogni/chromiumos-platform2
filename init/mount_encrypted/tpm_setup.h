@@ -15,7 +15,7 @@
 #include <base/files/file_path.h>
 #include <libstorage/platform/platform.h>
 
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/metrics/metrics.h"
 #include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {
@@ -24,7 +24,7 @@ namespace mount_encrypted {
 class TpmSystemKey {
  public:
   TpmSystemKey(libstorage::Platform* platform,
-               MountEncryptedMetrics* metrics,
+               init_metrics::InitMetrics* metrics,
                base::FilePath rootdir);
 
   // Reads key material from the file |key_material_file|, creates a system key
@@ -49,7 +49,7 @@ class TpmSystemKey {
 
  private:
   libstorage::Platform* platform_;
-  MountEncryptedMetrics* metrics_;
+  init_metrics::InitMetrics* metrics_;
   base::FilePath rootdir_;
   Tpm tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;

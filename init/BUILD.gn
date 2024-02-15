@@ -213,11 +213,15 @@ static_library("usermode-helper_lib") {
   configs += [ ":target_defaults" ]
 }
 
+static_library("init_metrics_lib") {
+  sources = [ "metrics/metrics.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
 static_library("mount_encrypted_lib") {
   sources = [
     "mount_encrypted/encrypted_fs.cc",
     "mount_encrypted/encryption_key.cc",
-    "mount_encrypted/mount_encrypted_metrics.cc",
     "mount_encrypted/tpm.cc",
     "mount_encrypted/tpm_setup.cc",
   ]
@@ -234,6 +238,7 @@ static_library("mount_encrypted_lib") {
     sources += [ "mount_encrypted/tpm1.cc" ]
   }
   libs = [ "hwsec-foundation" ]
+  deps = [ ":init_metrics_lib" ]
 }
 
 executable("mount-encrypted") {

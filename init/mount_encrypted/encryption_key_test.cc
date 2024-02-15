@@ -15,7 +15,7 @@
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/metrics/metrics.h"
 #include "init/mount_encrypted/tlcl_stub.h"
 #include "init/mount_encrypted/tpm.h"
 
@@ -191,8 +191,9 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII(paths::cryptohome::kTpmOwned).DirName()));
 
-    metrics_singleton_ = std::make_unique<ScopedMountEncryptedMetricsSingleton>(
-        tmpdir_.GetPath().AppendASCII("metrics").value());
+    metrics_singleton_ =
+        std::make_unique<init_metrics::ScopedInitMetricsSingleton>(
+            tmpdir_.GetPath().AppendASCII("metrics").value());
 
     ClearTPM();
     ResetLoader();
@@ -369,7 +370,7 @@ class EncryptionKeyTest : public testing::Test {
   std::unique_ptr<SystemKeyLoader> loader_;
   std::unique_ptr<EncryptionKey> key_;
 
-  std::unique_ptr<ScopedMountEncryptedMetricsSingleton> metrics_singleton_;
+  std::unique_ptr<init_metrics::ScopedInitMetricsSingleton> metrics_singleton_;
 };
 
 #if USE_TPM2

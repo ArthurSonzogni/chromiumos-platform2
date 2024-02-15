@@ -23,7 +23,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <vboot/tpm1_tss_constants.h>
 
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/metrics/metrics.h"
 #include "init/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {

@@ -2,62 +2,65 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
+#include "init/metrics/metrics.h"
 
 #include <base/check_op.h>
 #include <base/time/time.h>
 
-namespace mount_encrypted {
+namespace init_metrics {
 
 namespace {
-static MountEncryptedMetrics* g_metrics = nullptr;
+static InitMetrics* g_metrics = nullptr;
 
+// UMA stats supported by the metrics subsystem
 constexpr char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
 constexpr char kEncryptionKeyStatus[] =
     "Platform.MountEncrypted.EncryptionKeyStatus";
 
 }  // namespace
 
-MountEncryptedMetrics::MountEncryptedMetrics(const std::string& output_file) {
+InitMetrics::InitMetrics(const std::string& output_file) {
   metrics_library_.SetOutputFile(output_file);
 }
 
 // static
-void MountEncryptedMetrics::Initialize(const std::string& output_file) {
+void InitMetrics::Initialize(const std::string& output_file) {
   CHECK(!g_metrics);
-  g_metrics = new MountEncryptedMetrics(output_file);
+  g_metrics = new InitMetrics(output_file);
 }
 
 // static
-MountEncryptedMetrics* MountEncryptedMetrics::Get() {
+InitMetrics* InitMetrics::Get() {
   CHECK(g_metrics);
   return g_metrics;
 }
 
-MetricsLibrary* MountEncryptedMetrics::GetInternal() {
+MetricsLibrary* InitMetrics::GetInternal() {
   CHECK(g_metrics);
   return &g_metrics->metrics_library_;
 }
 
 // static
-void MountEncryptedMetrics::Reset() {
+void InitMetrics::Reset() {
   CHECK(g_metrics);
   delete g_metrics;
   g_metrics = nullptr;
 }
 
-void MountEncryptedMetrics::ReportSystemKeyStatus(
-    EncryptionKey::SystemKeyStatus status) {
+void InitMetrics::ReportSystemKeyStatus(
+    mount_encrypted::EncryptionKey::SystemKeyStatus status) {
   metrics_library_.SendEnumToUMA(
       kSystemKeyStatus, static_cast<int>(status),
-      static_cast<int>(EncryptionKey::SystemKeyStatus::kCount));
+      static_cast<int>(
+          mount_encrypted::EncryptionKey::SystemKeyStatus::kCount));
 }
 
-void MountEncryptedMetrics::ReportEncryptionKeyStatus(
-    EncryptionKey::EncryptionKeyStatus status) {
+void InitMetrics::ReportEncryptionKeyStatus(
+    mount_encrypted::EncryptionKey::EncryptionKeyStatus status) {
   metrics_library_.SendEnumToUMA(
       kEncryptionKeyStatus, static_cast<int>(status),
-      static_cast<int>(EncryptionKey::EncryptionKeyStatus::kCount));
+      static_cast<int>(
+          mount_encrypted::EncryptionKey::EncryptionKeyStatus::kCount));
 }
 
-}  // namespace mount_encrypted
+}  // namespace init_metrics

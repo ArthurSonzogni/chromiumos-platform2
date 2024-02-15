@@ -29,9 +29,9 @@
 #include <libstorage/storage_container/filesystem_key.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
+#include "init/metrics/metrics.h"
 #include "init/mount_encrypted/encrypted_fs.h"
 #include "init/mount_encrypted/encryption_key.h"
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
 #include "init/mount_encrypted/tpm_setup.h"
 
 #if DEBUG_ENABLED
@@ -64,18 +64,18 @@ int main(int argc, const char* argv[]) {
   char* rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
   base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
   libstorage::Platform platform;
-  mount_encrypted::ScopedMountEncryptedMetricsSingleton scoped_metrics(
+  init_metrics::ScopedInitMetricsSingleton scoped_metrics(
       kMountEncryptedMetricsPath);
 
   libstorage::StorageContainerFactory storage_container_factory(
-      &platform, mount_encrypted::MountEncryptedMetrics::GetInternal());
+      &platform, init_metrics::InitMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
   brillo::LogicalVolumeManager lvm;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
       rootdir, &platform, &device_mapper, &lvm, &storage_container_factory);
 
   auto tpm_system_key = mount_encrypted::TpmSystemKey(
-      &platform, mount_encrypted::MountEncryptedMetrics::Get(), rootdir);
+      &platform, init_metrics::InitMetrics::Get(), rootdir);
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";

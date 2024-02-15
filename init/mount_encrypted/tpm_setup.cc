@@ -28,8 +28,8 @@
 #include <libstorage/storage_container/filesystem_key.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
+#include "init/metrics/metrics.h"
 #include "init/mount_encrypted/encryption_key.h"
-#include "init/mount_encrypted/mount_encrypted_metrics.h"
 #include "init/mount_encrypted/tpm.h"
 #include "init/mount_encrypted/tpm_setup.h"
 
@@ -177,7 +177,7 @@ bool MigrateTpmOwnerShipStateFile() {
 }  // namespace
 
 TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
-                           MountEncryptedMetrics* metrics,
+                           init_metrics::InitMetrics* metrics,
                            base::FilePath rootdir)
     : platform_(platform),
       metrics_(metrics),
