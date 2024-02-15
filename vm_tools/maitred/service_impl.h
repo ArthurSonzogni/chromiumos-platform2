@@ -10,9 +10,9 @@
 #include <string>
 #include <utility>
 
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
-#include "brillo/storage_balloon.h"
+#include <brillo/storage_balloon.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #include <grpcpp/grpcpp.h>
@@ -33,7 +33,7 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   ~ServiceImpl() override = default;
 
   // Initializes ServiceImpl for first use.
-  bool Init(scoped_refptr<base::SequencedTaskRunner> dbus_task_runner);
+  bool Init();
 
   void set_shutdown_cb(base::OnceCallback<bool(void)> cb) {
     shutdown_cb_ = std::move(cb);

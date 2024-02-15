@@ -34,8 +34,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/files/file_path.h"
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -43,12 +43,12 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/safe_strerror.h>
 #include <base/process/process_iterator.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/system/sys_info.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <dbus/message.h>
@@ -228,33 +228,12 @@ ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init,
       localtime_file_path_(kLocaltimePath),
       zoneinfo_file_path_(kZoneInfoPath) {}
 
-bool ServiceImpl::Init(
-    scoped_refptr<base::SequencedTaskRunner> dbus_task_runner) {
+bool ServiceImpl::Init() {
   if (!maitred_is_pid1_) {
     dbus::Bus::Options opts;
     opts.bus_type = dbus::Bus::SYSTEM;
-    opts.dbus_task_runner = dbus_task_runner;
     bus_ = new dbus::Bus(std::move(opts));
-    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                              base::WaitableEvent::InitialState::NOT_SIGNALED);
-    bool success;
-    bool ret = dbus_task_runner->PostTask(
-        FROM_HERE, base::BindOnce(
-                       [](scoped_refptr<dbus::Bus> bus,
-                          base::WaitableEvent* event, bool* success) {
-                         if (!bus->Connect()) {
-                           *success = false;
-                         }
-                         *success = true;
-                         event->Signal();
-                       },
-                       bus_, &event, &success));
-    if (!ret) {
-      LOG(ERROR) << "Failed to schedule D-Bus connection";
-      return false;
-    }
-    event.Wait();
-    if (!success) {
+    if (!bus_->Connect()) {
       LOG(ERROR) << "Failed to connect to system bus";
       return false;
     }
@@ -268,7 +247,6 @@ bool ServiceImpl::Init(
   }
 
   string error;
-
   return WriteResolvConf(kDefaultNameservers, {}, &error);
 }
 
@@ -427,12 +405,14 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
   dbus::MethodCall method_call(kLogindManagerInterface, "PowerOff");
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(false);  // interactive = false
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, logind_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    return grpc::Status(grpc::INTERNAL,
-                        "failed to send power off request to logind");
+  auto dbus_response = logind_service_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    return grpc::Status(
+        grpc::INTERNAL,
+        base::StrCat({"failed to send power off request to logind: ",
+                      dbus_response.error().name(), ", ",
+                      dbus_response.error().message()}));
   }
 
   return grpc::Status::OK;
