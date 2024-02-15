@@ -1,12 +1,12 @@
 [package]
-name = "crostini_client"
+name = "vmc"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 build = "build.rs"
 edition = "2018"
 
 [[bin]]
-name = "crostini_client"
+name = "vmc"
 path = "main.rs"
 
 [profile.release]

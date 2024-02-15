@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .collect();
 
     if args.is_empty() {
-        print_usage("crostini_client", &make_options());
+        print_usage("vmc", &make_options());
         return Ok(());
     }
 

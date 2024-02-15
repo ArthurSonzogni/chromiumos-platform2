@@ -150,7 +150,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let system_api_root = match env::var("SYSROOT") {
         Ok(path) => PathBuf::from(path).join("usr/include/chromeos"),
-        // Make this work when typing "cargo build" in platform2/vm_tools/crostini_client
+        // Make this work when typing "cargo build" in platform2/vm_tools/vmc
         Err(_) => PathBuf::from("../../system_api"),
     };
     let system_api_dbus_source_root = system_api_root.join("dbus");
