@@ -4,6 +4,7 @@
 
 #include "login_manager/liveness_checker_impl.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -46,16 +47,20 @@ class LivenessCheckerImplTest : public ::testing::Test {
     manager_.reset(new StrictMock<MockProcessManagerService>);
     object_proxy_ =
         new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/path"));
+    stats_object_proxy_ =
+        new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/path"));
 
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
 
     metrics_.reset(new MockMetrics());
 
-    checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
-                                           true, base::Seconds(10), 0,
-                                           metrics_.get()));
+    checker_.reset(new LivenessCheckerImpl(
+        manager_.get(), object_proxy_.get(), stats_object_proxy_.get(), true,
+        base::Seconds(10), 0, metrics_.get()));
     base::FilePath fake_proc_path(tmpdir_.GetPath());
     checker_->SetProcForTests(std::move(fake_proc_path));
+    EXPECT_CALL(*stats_object_proxy_.get(), CallMethodAndBlock(_, _))
+        .WillRepeatedly(Invoke(this, &LivenessCheckerImplTest::DbusStats));
   }
 
   void ExpectUnAckedLivenessPing() {
@@ -88,12 +93,15 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
   scoped_refptr<dbus::MockObjectProxy> object_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> stats_object_proxy_;
   std::unique_ptr<StrictMock<MockProcessManagerService>> manager_;
 
   std::unique_ptr<LivenessCheckerImpl> checker_;
 
   base::ScopedTempDir tmpdir_;
   std::unique_ptr<MockMetrics> metrics_;
+
+  std::map<std::string, uint32_t> stats_;
 
  private:
   void Respond(dbus::MethodCall* method_call,
@@ -105,6 +113,27 @@ class LivenessCheckerImplTest : public ::testing::Test {
                int timeout_ms,
                dbus::ObjectProxy::ResponseCallback* callback) {
     std::move(*callback).Run(nullptr);
+  }
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> DbusStats(
+      dbus::MethodCall* method_call, int timeout_ms) {
+    if (stats_.empty()) {
+      return base::unexpected(
+          dbus::Error(DBUS_ERROR_NOT_SUPPORTED, "Not implemented"));
+    }
+
+    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    dbus::MessageWriter array_writer(nullptr);
+    writer.OpenArray("{sv}", &array_writer);
+    for (auto const& [key, val] : stats_) {
+      dbus::MessageWriter dict_writer(nullptr);
+      array_writer.OpenDictEntry(&dict_writer);
+      dict_writer.AppendString(key);
+      dict_writer.AppendVariantOfUint32(val);
+      array_writer.CloseContainer(&dict_writer);
+    }
+    writer.CloseContainer(&array_writer);
+    return base::ok(std::move(response));
   }
 };
 
@@ -123,9 +152,9 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
 
 TEST_F(LivenessCheckerImplTest, CheckDbusRetries) {
   int retry_count = 9;
-  checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
-                                         true, base::Seconds(10), retry_count,
-                                         metrics_.get()));
+  checker_.reset(new LivenessCheckerImpl(
+      manager_.get(), object_proxy_.get(), stats_object_proxy_.get(), true,
+      base::Seconds(10), retry_count, metrics_.get()));
   base::FilePath fake_proc_path(tmpdir_.GetPath());
   checker_->SetProcForTests(std::move(fake_proc_path));
 
@@ -155,6 +184,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
+                                         stats_object_proxy_.get(),
                                          false,  // Disable aborting
                                          base::Seconds(10), 0, metrics_.get()));
   base::FilePath fake_proc_path(tmpdir_.GetPath());
@@ -173,6 +203,32 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
       .WillRepeatedly(Return(std::nullopt));
   checker_->CheckAndSendLivenessPing(base::Seconds(1));
   fake_loop_.Run();  // Runs until the message loop is empty.
+}
+
+// Construct DBus connection stats message and check the logs.
+TEST_F(LivenessCheckerImplTest, CheckDbusStats) {
+  stats_ = {{"IncomingMessages", 0}, {"OutgoingMessages", 1},
+            {"IncomingBytes", 2},    {"PeakIncomingBytes", 3},
+            {"OutgoingBytes", 4},    {"PeakOutgoingBytes", 5}};
+  ExpectUnAckedLivenessPing();
+  EXPECT_CALL(*manager_.get(), GetBrowserPid())
+      .WillRepeatedly(Return(std::nullopt));
+  EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
+
+  brillo::InitLog(brillo::kLogToStderr);
+  brillo::ClearLog();
+  brillo::LogToString(true);
+
+  checker_->CheckAndSendLivenessPing(TimeDelta());
+  fake_loop_.Run();  // Runs until the message loop is empty.
+
+  EXPECT_TRUE(brillo::FindLog("LivenessService DBus stats:"));
+  for (auto const& [key, val] : stats_) {
+    std::string expected_string = key + std::string(": ") + std::to_string(val);
+    EXPECT_TRUE(brillo::FindLog(expected_string.c_str()));
+  }
+  brillo::LogToString(false);
+  brillo::ClearLog();
 }
 
 TEST_F(LivenessCheckerImplTest, StartStop) {

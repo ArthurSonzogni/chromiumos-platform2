@@ -220,11 +220,13 @@ bool SessionManagerService::Initialize() {
       bus_->GetObjectProxy(InitDaemonControllerImpl::kServiceName,
                            dbus::ObjectPath(InitDaemonControllerImpl::kPath));
 
+  dbus::ObjectProxy* dbus_daemon_proxy = bus_->GetObjectProxy(
+      dbus::kDBusServiceName, dbus::ObjectPath(dbus::kDBusServicePath));
   dbus::ObjectProxy* liveness_proxy =
       bus_->GetObjectProxy(chromeos::kLivenessServiceName,
                            dbus::ObjectPath(chromeos::kLivenessServicePath));
   liveness_checker_.reset(new LivenessCheckerImpl(
-      this, liveness_proxy, enable_browser_abort_on_hang_,
+      this, liveness_proxy, dbus_daemon_proxy, enable_browser_abort_on_hang_,
       liveness_checking_interval_, liveness_checking_retries_, login_metrics_));
 
 #if USE_ARC_ADB_SIDELOADING

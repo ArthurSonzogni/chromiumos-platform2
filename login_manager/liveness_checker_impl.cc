@@ -7,6 +7,8 @@
 #include <signal.h>
 
 #include <algorithm>
+#include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -34,17 +36,26 @@
 
 #include "login_manager/process_manager_service_interface.h"
 
+namespace {
+// Set a 0.5s timeout for DBus stats collection.
+// The stats need to be collected in a blocking call, since we might end up
+// restarting the browser right after they're collected.
+constexpr base::TimeDelta kDbusStatsTimeout = base::Milliseconds(500);
+};  // namespace
+
 namespace login_manager {
 
 LivenessCheckerImpl::LivenessCheckerImpl(
     ProcessManagerServiceInterface* manager,
-    dbus::ObjectProxy* dbus_proxy,
+    dbus::ObjectProxy* liveness_proxy,
+    dbus::ObjectProxy* dbus_daemon_proxy,
     bool enable_aborting,
     base::TimeDelta interval,
     int retries,
     LoginMetrics* metrics)
     : manager_(manager),
-      dbus_proxy_(dbus_proxy),
+      liveness_proxy_(liveness_proxy),
+      dbus_daemon_proxy_(dbus_daemon_proxy),
       proc_directory_("/proc"),
       enable_aborting_(enable_aborting),
       interval_(interval),
@@ -149,9 +160,9 @@ void LivenessCheckerImpl::SendPing(base::TimeDelta dbus_timeout) {
   last_ping_acked_ = false;
   dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
                         chromeos::kLivenessServiceCheckLivenessMethod);
-  dbus_proxy_->CallMethod(&ping, dbus_timeout.InMilliseconds(),
-                          base::BindOnce(&LivenessCheckerImpl::HandleAck,
-                                         weak_ptr_factory_.GetWeakPtr()));
+  liveness_proxy_->CallMethod(&ping, dbus_timeout.InMilliseconds(),
+                              base::BindOnce(&LivenessCheckerImpl::HandleAck,
+                                             weak_ptr_factory_.GetWeakPtr()));
 }
 
 void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
@@ -232,6 +243,66 @@ std::optional<std::string> LivenessCheckerImpl::ReadBrowserProcFile(
   return std::string(result.first.begin(), result.first.end());
 }
 
+void LivenessCheckerImpl::RecordDBusStats() {
+  // We're interested in the DBus connection used by the Liveness service,
+  // which should be provided by chrome/ash. Note that the stats dumped here
+  // will also cover other services that share this connection.
+  dbus::MethodCall method_call(dbus::kDBusDebugStatsInterface,
+                               dbus::kDBusDebugStatsGetConnectionStats);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(chromeos::kLivenessServiceName);
+  std::unique_ptr<dbus::Response> response =
+      dbus_daemon_proxy_
+          ->CallMethodAndBlock(&method_call, kDbusStatsTimeout.InMilliseconds())
+          .value_or(nullptr);
+  if (!response) {
+    LOG(WARNING) << "Failed to read DBus connection stats";
+    return;
+  }
+
+  dbus::MessageReader reader(response.get());
+  dbus::MessageReader dict_reader(nullptr);
+  if (!reader.PopArray(&dict_reader)) {
+    LOG(WARNING) << "Unexpected response format";
+    return;
+  }
+  std::map<std::string, uint32_t> dict;
+  while (dict_reader.HasMoreData()) {
+    dbus::MessageReader dict_entry(nullptr);
+    std::string key;
+    uint32_t value;
+
+    if (!dict_reader.PopDictEntry(&dict_entry)) {
+      LOG(WARNING) << "Failed to extract dict entry";
+      continue;
+    }
+    // Key is expected to always be a string,
+    if (!dict_entry.PopString(&key)) {
+      LOG(WARNING) << "Failed to extract dict key";
+      continue;
+    }
+    // but value is not always an int. For now just ignore entries with values
+    // of different types.
+    if (!dict_entry.PopVariantOfUint32(&value)) {
+      continue;
+    }
+    dict[key] = value;
+  }
+  // List of stats we're interested in.
+  std::vector<std::string> stats = {"IncomingMessages", "OutgoingMessages",
+                                    "IncomingBytes",    "PeakIncomingBytes",
+                                    "OutgoingBytes",    "PeakOutgoingBytes"};
+  std::stringstream log_message;
+  for (auto& stat : stats) {
+    if (dict.contains(stat)) {
+      log_message << stat << ": " << dict[stat] << " ";
+    }
+  }
+  if (log_message.tellp() != std::streampos(0)) {
+    LOG(WARNING) << "LivenessService DBus stats: " << log_message.view();
+  }
+}
+
 void LivenessCheckerImpl::RecordKernelStack(LoginMetrics::BrowserState state) {
   std::optional<std::string> stack = ReadBrowserProcFile("stack");
   if (!stack) {
@@ -301,6 +372,8 @@ void LivenessCheckerImpl::RequestKernelTraces() {
 }
 
 void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
+  RecordDBusStats();
+
   LoginMetrics::BrowserState state = GetBrowserState();
   // If the browser is currently running there's no point in trying to dump its
   // state.

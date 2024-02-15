@@ -14,6 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/liveness_checker.h"
 #include "login_manager/login_metrics.h"
@@ -40,7 +41,8 @@ class ProcessManagerServiceInterface;
 class LivenessCheckerImpl : public LivenessChecker {
  public:
   LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
-                      dbus::ObjectProxy* dbus_proxy,
+                      dbus::ObjectProxy* liveness_proxy,
+                      dbus::ObjectProxy* dbus_daemon_proxy,
                       bool enable_aborting,
                       base::TimeDelta interval,
                       int retries,
@@ -96,6 +98,11 @@ class LivenessCheckerImpl : public LivenessChecker {
   // now it just logs it; some day will also record in UMA).
   void RecordWchanState(LoginMetrics::BrowserState state);
 
+  // Reads selected metrics of the DBus connection that the Liveness service
+  // is using. This works by sending a DBus message to dbus-daemon over a
+  // blocking call, with a relatively short, 0.5s timeout.
+  void RecordDBusStats();
+
   // Send requests to the kernel (via /proc/sysrq-trigger) asking that the
   // kernel dump info about what why processes are stuck. Results are in dmesg
   // logs, and not read by this process.
@@ -108,7 +115,8 @@ class LivenessCheckerImpl : public LivenessChecker {
   void RecordStateForTimeout(bool verbose);
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
-  dbus::ObjectProxy* dbus_proxy_;            // Owned by the caller.
+  dbus::ObjectProxy* liveness_proxy_;        // Owned by the caller.
+  dbus::ObjectProxy* dbus_daemon_proxy_;     // Owned by the caller.
 
   // Normally "/proc". Allows overriding of the /proc directory in tests.
   base::FilePath proc_directory_;
