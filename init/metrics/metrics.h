@@ -10,7 +10,7 @@
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
-#include "init/mount_encrypted/encryption_key.h"
+#include "init/tpm_encryption/encryption_key.h"
 
 namespace init_metrics {
 
@@ -31,11 +31,10 @@ class InitMetrics {
 
   virtual ~InitMetrics() = default;
 
-  void ReportSystemKeyStatus(
-      mount_encrypted::EncryptionKey::SystemKeyStatus status);
+  void ReportSystemKeyStatus(encryption::EncryptionKey::SystemKeyStatus status);
 
   void ReportEncryptionKeyStatus(
-      mount_encrypted::EncryptionKey::EncryptionKeyStatus status);
+      encryption::EncryptionKey::EncryptionKeyStatus status);
 
  private:
   explicit InitMetrics(const std::string& output_file);

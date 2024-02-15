@@ -31,8 +31,8 @@
 
 #include "init/metrics/metrics.h"
 #include "init/mount_encrypted/encrypted_fs.h"
-#include "init/mount_encrypted/encryption_key.h"
-#include "init/mount_encrypted/tpm_setup.h"
+#include "init/tpm_encryption/encryption_key.h"
+#include "init/tpm_encryption/tpm_setup.h"
 
 #if DEBUG_ENABLED
 struct timeval tick = {};
@@ -74,7 +74,7 @@ int main(int argc, const char* argv[]) {
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
       rootdir, &platform, &device_mapper, &lvm, &storage_container_factory);
 
-  auto tpm_system_key = mount_encrypted::TpmSystemKey(
+  auto tpm_system_key = encryption::TpmSystemKey(
       &platform, init_metrics::InitMetrics::Get(), rootdir);
 
   if (!encrypted_fs) {

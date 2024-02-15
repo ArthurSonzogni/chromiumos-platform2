@@ -4,8 +4,8 @@
  *
  * Private header file for mount-encrypted helper tool.
  */
-#ifndef INIT_MOUNT_ENCRYPTED_TPM_SETUP_H_
-#define INIT_MOUNT_ENCRYPTED_TPM_SETUP_H_
+#ifndef INIT_TPM_ENCRYPTION_TPM_SETUP_H_
+#define INIT_TPM_ENCRYPTION_TPM_SETUP_H_
 
 #include <memory>
 #include <optional>
@@ -16,9 +16,9 @@
 #include <libstorage/platform/platform.h>
 
 #include "init/metrics/metrics.h"
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 
 // Interface to communicate with outside world
 class TpmSystemKey {
@@ -39,7 +39,7 @@ class TpmSystemKey {
 
   // Load key from TPM, spread to susbsystem that need it.
   // If |safe_mount| is set, fails if the TPM is not avaible when needed.
-  std::optional<mount_encrypted::EncryptionKey> Load(bool safe_mount);
+  std::optional<encryption::EncryptionKey> Load(bool safe_mount);
 
   // Print encrypted data information.
   void ReportInfo();
@@ -62,5 +62,5 @@ class TpmSystemKey {
   bool ShallUseTpmForSystemKey();
 };
 
-}  // namespace mount_encrypted
-#endif  // INIT_MOUNT_ENCRYPTED_TPM_SETUP_H_
+}  // namespace encryption
+#endif  // INIT_TPM_ENCRYPTION_TPM_SETUP_H_

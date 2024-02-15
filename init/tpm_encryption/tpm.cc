@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -20,7 +20,7 @@
 #include <openssl/rsa.h>
 #include <vboot/tlcl.h>
 
-namespace mount_encrypted {
+namespace encryption {
 namespace {
 
 #if !USE_TPM2
@@ -604,4 +604,4 @@ bool Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
 }
 
 #endif
-}  // namespace mount_encrypted
+}  // namespace encryption

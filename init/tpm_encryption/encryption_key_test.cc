@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/mount_encrypted/encryption_key.h"
+#include "init/tpm_encryption/encryption_key.h"
 
 #include <memory>
 
@@ -16,10 +16,10 @@
 #include <vboot/tlcl.h>
 
 #include "init/metrics/metrics.h"
-#include "init/mount_encrypted/tlcl_stub.h"
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tlcl_stub.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 namespace {
 
 // Size of the encryption key (256 bit AES) in bytes.
@@ -894,4 +894,4 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
 
 #endif  // !USE_TPM2
 
-}  // namespace mount_encrypted
+}  // namespace encryption

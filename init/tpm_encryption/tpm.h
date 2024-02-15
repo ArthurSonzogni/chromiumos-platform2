@@ -4,8 +4,8 @@
 //
 // Interface used by "mount-encrypted" to interface with the TPM.
 
-#ifndef INIT_MOUNT_ENCRYPTED_TPM_H_
-#define INIT_MOUNT_ENCRYPTED_TPM_H_
+#ifndef INIT_ENCRYPTION_TPM_H_
+#define INIT_ENCRYPTION_TPM_H_
 
 #include <stdint.h>
 
@@ -18,7 +18,7 @@
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
-namespace mount_encrypted {
+namespace encryption {
 const uint32_t kLockboxSizeV1 = 0x2c;
 const uint32_t kLockboxSizeV2 = 0x45;
 
@@ -288,5 +288,5 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
   brillo::SecureBlob key_;
 };
 
-}  // namespace mount_encrypted
-#endif  // INIT_MOUNT_ENCRYPTED_TPM_H_
+}  // namespace encryption
+#endif  // INIT_ENCRYPTION_TPM_H_

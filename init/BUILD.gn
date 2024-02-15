@@ -17,6 +17,7 @@ group("all") {
     ":process_killer",
     ":sbin_init_scripts",
     ":static_node_tool",
+    ":tpm_encryption_lib",
     ":usermode-helper",
     ":usr_share_cros_init_scripts",
   ]
@@ -39,6 +40,7 @@ group("all") {
       ":file_attrs_cleaner_test",
       ":periodic_scheduler_test",
       ":process_killer_test",
+      ":tpm_encryption_tests",
       ":usermode-helper_test",
       ":utils_test",
     ]
@@ -218,27 +220,37 @@ static_library("init_metrics_lib") {
   configs += [ ":target_defaults" ]
 }
 
-static_library("mount_encrypted_lib") {
+static_library("tpm_encryption_lib") {
   sources = [
-    "mount_encrypted/encrypted_fs.cc",
-    "mount_encrypted/encryption_key.cc",
-    "mount_encrypted/tpm.cc",
-    "mount_encrypted/tpm_setup.cc",
+    "tpm_encryption/encryption_key.cc",
+    "tpm_encryption/tpm.cc",
+    "tpm_encryption/tpm_setup.cc",
   ]
   configs += [ ":target_defaults" ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
   pkg_deps = [ "vboot_host" ]
 
   if (use.tpm2) {
-    sources += [ "mount_encrypted/tpm2.cc" ]
+    sources += [ "tpm_encryption/tpm2.cc" ]
 
     # This selects TPM2 code in vboot_host headers.
     defines += [ "TPM2_MODE=1" ]
   } else {
-    sources += [ "mount_encrypted/tpm1.cc" ]
+    sources += [ "tpm_encryption/tpm1.cc" ]
   }
   libs = [ "hwsec-foundation" ]
   deps = [ ":init_metrics_lib" ]
+}
+
+static_library("mount_encrypted_lib") {
+  sources = [ "mount_encrypted/encrypted_fs.cc" ]
+  configs += [ ":target_defaults" ]
+  defines = [ "CHROMEOS_ENVIRONMENT=1" ]
+
+  deps = [
+    ":init_metrics_lib",
+    ":tpm_encryption_lib",
+  ]
 }
 
 executable("mount-encrypted") {
@@ -363,12 +375,33 @@ if (use.test) {
     ]
   }
 
-  executable("mount_encrypted_tests") {
+  executable("tpm_encryption_tests") {
     sources = [
-      "mount_encrypted/encrypted_fs_test.cc",
-      "mount_encrypted/encryption_key_test.cc",
-      "mount_encrypted/tlcl_stub.cc",
+      "tpm_encryption/encryption_key_test.cc",
+      "tpm_encryption/tlcl_stub.cc",
     ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":tpm_encryption_lib",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libstorage_fake_platform",
+    ]
+
+    if (use.tpm2) {
+      defines = [ "TPM2_MODE=1" ]
+    }
+    run_test = true
+  }
+
+  executable("mount_encrypted_tests") {
+    sources = [ "mount_encrypted/encrypted_fs_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -383,9 +416,6 @@ if (use.test) {
       "libstorage_fake_platform",
     ]
 
-    if (use.tpm2) {
-      defines = [ "TPM2_MODE=1" ]
-    }
     run_test = true
   }
 

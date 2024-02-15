@@ -14,9 +14,9 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <vboot/tlcl.h>
 
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 namespace {
 
 // TPM2 NVRAM area and related constants.
@@ -245,4 +245,4 @@ std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
 
-}  // namespace mount_encrypted
+}  // namespace encryption

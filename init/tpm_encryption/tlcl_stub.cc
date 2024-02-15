@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/mount_encrypted/tlcl_stub.h"
+#include "init/tpm_encryption/tlcl_stub.h"
 
 #include <algorithm>
 
@@ -13,9 +13,9 @@
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 namespace {
 
 #if !USE_TPM2
@@ -481,4 +481,4 @@ uint32_t TlclReadDelegationFamilyTable(TPM_FAMILY_TABLE_ENTRY* table,
 
 }  // extern "C"
 
-}  // namespace mount_encrypted
+}  // namespace encryption

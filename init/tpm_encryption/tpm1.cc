@@ -24,9 +24,9 @@
 #include <vboot/tpm1_tss_constants.h>
 
 #include "init/metrics/metrics.h"
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 namespace {
 
 const uint32_t kLockboxSaltOffset = 0x5;
@@ -767,4 +767,4 @@ std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
   return std::make_unique<Tpm1SystemKeyLoader>(tpm, rootdir);
 }
 
-}  // namespace mount_encrypted
+}  // namespace encryption

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_
-#define INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_
+#ifndef INIT_ENCRYPTION_TLCL_STUB_H_
+#define INIT_ENCRYPTION_TLCL_STUB_H_
 
 #include <stdint.h>
 
@@ -12,7 +12,7 @@
 
 #include <vboot/tlcl.h>
 
-namespace mount_encrypted {
+namespace encryption {
 
 class TlclStub {
  public:
@@ -125,6 +125,6 @@ class TlclStub {
   static TlclStub* g_instance;
 };
 
-}  // namespace mount_encrypted
+}  // namespace encryption
 
-#endif  // INIT_MOUNT_ENCRYPTED_TLCL_STUB_H_
+#endif  // INIT_ENCRYPTION_TLCL_STUB_H_

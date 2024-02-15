@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/mount_encrypted/encryption_key.h"
+#include "init/tpm_encryption/encryption_key.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -23,9 +23,9 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/sha.h>
 
-#include "init/mount_encrypted/tpm.h"
+#include "init/tpm_encryption/tpm.h"
 
-namespace mount_encrypted {
+namespace encryption {
 namespace paths {
 const char kStatefulMount[] = "mnt/stateful_partition";
 const char kEncryptedKey[] = "encrypted.key";
@@ -439,4 +439,4 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
   return true;
 }
 
-}  // namespace mount_encrypted
+}  // namespace encryption

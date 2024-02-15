@@ -29,13 +29,13 @@
 #include <libstorage/storage_container/storage_container_factory.h>
 
 #include "init/metrics/metrics.h"
-#include "init/mount_encrypted/encryption_key.h"
-#include "init/mount_encrypted/tpm.h"
-#include "init/mount_encrypted/tpm_setup.h"
+#include "init/tpm_encryption/encryption_key.h"
+#include "init/tpm_encryption/tpm.h"
+#include "init/tpm_encryption/tpm_setup.h"
 
-using mount_encrypted::paths::cryptohome::kTpmOwned;
+using encryption::paths::cryptohome::kTpmOwned;
 
-namespace mount_encrypted {
+namespace encryption {
 
 namespace {
 constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
@@ -69,7 +69,7 @@ void NvramExport(const brillo::SecureBlob& contents) {
   close(fd);
 }
 
-bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
+bool SendSecretToTmpFile(const encryption::EncryptionKey& key,
                          const std::string& salt,
                          const base::FilePath& tmp_dir,
                          const std::string& filename,
@@ -111,7 +111,7 @@ bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
 // Send a secret derived from the system key to the biometric managers, if
 // available, via a tmpfs file which will be read by bio_crypto_init. The tmpfs
 // directory will be created if it doesn't exist.
-bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
+bool SendSecretToBiodTmpFile(const encryption::EncryptionKey& key,
                              libstorage::Platform* platform) {
   // If there isn't a bio-sensor, don't bother.
   if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
@@ -128,7 +128,7 @@ bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
 // Send a secret derived from the system key to hiberman, if available, via a
 // tmpfs file which will be read by hiberman. The tmpfs directory will be
 // created if it doesn't exist.
-bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
+bool SendSecretToHibermanTmpFile(const encryption::EncryptionKey& key,
                                  libstorage::Platform* platform) {
   if (!base::PathExists(base::FilePath(kHibermanPath))) {
     LOG(INFO) << "There is no hiberman binary, so skip sending TPM seed.";
@@ -144,7 +144,7 @@ bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
 // Send a secret derived from the system key to featured, if available, via a
 // tmpfs file which will be read by featured. The tmpfs directory will be
 // created if it doesn't exist.
-bool SendSecretToFeaturedTmpFile(const mount_encrypted::EncryptionKey& key,
+bool SendSecretToFeaturedTmpFile(const encryption::EncryptionKey& key,
                                  libstorage::Platform* platform) {
   return SendSecretToTmpFile(key, std::string(kFeaturedTpmSeedSalt),
                              base::FilePath(kFeaturedTpmSeedTmpDir),
@@ -183,7 +183,7 @@ TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
       metrics_(metrics),
       rootdir_(rootdir),
       tpm_(),
-      loader_(mount_encrypted::SystemKeyLoader::Create(&tpm_, rootdir_)),
+      loader_(encryption::SystemKeyLoader::Create(&tpm_, rootdir_)),
       has_chromefw_(HasChromeFw()) {}
 
 bool TpmSystemKey::Set(base::FilePath key_material_file) {
@@ -214,15 +214,14 @@ bool TpmSystemKey::Set(base::FilePath key_material_file) {
   return true;
 }
 
-std::optional<mount_encrypted::EncryptionKey> TpmSystemKey::Load(
-    bool safe_mount) {
+std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
   bool rc;
 
   if (!MigrateTpmOwnerShipStateFile()) {
     LOG(ERROR) << "Failed to migrate tpm owership state file to" << kTpmOwned;
   }
 
-  mount_encrypted::EncryptionKey key(loader_.get(), rootdir_);
+  encryption::EncryptionKey key(loader_.get(), rootdir_);
   if (ShallUseTpmForSystemKey() && safe_mount) {
     if (!tpm_.available()) {
       // The TPM should be available before we load the system_key.
@@ -295,7 +294,7 @@ bool TpmSystemKey::Export() {
   if (ShallUseTpmForSystemKey()) {
     bool lockbox_valid = false;
     if (loader_->CheckLockbox(&lockbox_valid)) {
-      mount_encrypted::NvramSpace* lockbox_space = tpm_.GetLockboxSpace();
+      encryption::NvramSpace* lockbox_space = tpm_.GetLockboxSpace();
       if (lockbox_valid && lockbox_space->is_valid()) {
         LOG(INFO) << "Lockbox is valid, exporting.";
         NvramExport(lockbox_space->contents());
@@ -337,4 +336,4 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
   return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
 }
 
-}  // namespace mount_encrypted
+}  // namespace encryption

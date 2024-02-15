@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_MOUNT_ENCRYPTED_ENCRYPTION_KEY_H_
-#define INIT_MOUNT_ENCRYPTED_ENCRYPTION_KEY_H_
+#ifndef INIT_ENCRYPTION_ENCRYPTION_KEY_H_
+#define INIT_ENCRYPTION_ENCRYPTION_KEY_H_
 
 #include <stdint.h>
 
@@ -13,7 +13,7 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 
-namespace mount_encrypted {
+namespace encryption {
 
 class SystemKeyLoader;
 
@@ -130,6 +130,6 @@ class EncryptionKey {
   EncryptionKeyStatus encryption_key_status_ = EncryptionKeyStatus::kUnknown;
 };
 
-}  // namespace mount_encrypted
+}  // namespace encryption
 
-#endif  // INIT_MOUNT_ENCRYPTED_ENCRYPTION_KEY_H_
+#endif  // INIT_ENCRYPTION_ENCRYPTION_KEY_H_

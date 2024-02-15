@@ -48,19 +48,17 @@ void InitMetrics::Reset() {
 }
 
 void InitMetrics::ReportSystemKeyStatus(
-    mount_encrypted::EncryptionKey::SystemKeyStatus status) {
+    encryption::EncryptionKey::SystemKeyStatus status) {
   metrics_library_.SendEnumToUMA(
       kSystemKeyStatus, static_cast<int>(status),
-      static_cast<int>(
-          mount_encrypted::EncryptionKey::SystemKeyStatus::kCount));
+      static_cast<int>(encryption::EncryptionKey::SystemKeyStatus::kCount));
 }
 
 void InitMetrics::ReportEncryptionKeyStatus(
-    mount_encrypted::EncryptionKey::EncryptionKeyStatus status) {
+    encryption::EncryptionKey::EncryptionKeyStatus status) {
   metrics_library_.SendEnumToUMA(
       kEncryptionKeyStatus, static_cast<int>(status),
-      static_cast<int>(
-          mount_encrypted::EncryptionKey::EncryptionKeyStatus::kCount));
+      static_cast<int>(encryption::EncryptionKey::EncryptionKeyStatus::kCount));
 }
 
 }  // namespace init_metrics

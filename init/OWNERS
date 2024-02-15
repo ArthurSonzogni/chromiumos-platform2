@@ -10,3 +10,4 @@ per-file upstart/preload-network.conf=grundler@chromium.org,briannorris@chromium
 per-file upstart/udev*.conf=grundler@chromium.org,briannorris@chromium.org
 per-file mount-encrypted/...=apronin@chromium.org
 per-file metrics/...=apronin@chromium.org
+per-file tpm_encryption/...=apronin@chromium.org
