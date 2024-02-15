@@ -13,12 +13,17 @@
       },
       {
         "name": "WriteFile",
-        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_waking/enable",
-        "value": "1"
+        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_switch/trigger",
+        "value": "stacktrace if prev_state & 7"
       },
       {
         "name": "WriteFile",
         "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_migrate_task/enable",
+        "value": "1"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/kernel/tracing/instances/schedtrace/events/sched/sched_waking/enable",
         "value": "1"
       }
     ],
