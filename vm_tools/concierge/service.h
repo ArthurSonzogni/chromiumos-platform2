@@ -62,6 +62,18 @@ namespace vm_tools::concierge {
 class DlcHelper;
 class ServiceTest;
 
+namespace internal {
+// Fds to all the images required while starting a VM.
+struct VmStartImageFds {
+  std::optional<base::ScopedFD> kernel_fd;
+  std::optional<base::ScopedFD> rootfs_fd;
+  std::optional<base::ScopedFD> initrd_fd;
+  std::optional<base::ScopedFD> storage_fd;
+  std::optional<base::ScopedFD> bios_fd;
+  std::optional<base::ScopedFD> pflash_fd;
+};
+}  // namespace internal
+
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
 class Service final : public org::chromium::VmConciergeInterface,
@@ -126,11 +138,17 @@ class Service final : public org::chromium::VmConciergeInterface,
   bool CheckExistingVm(const StartXXRequest& request,
                        StartVmResponse* response);
 
-  // Handles a request to start a VM.
+  // Handles a request to start a VM. ARCVM and PITA has separate methods, this
+  // handles crostini, bruschetta and borealis.
   StartVmResponse StartVmInternal(StartVmRequest request,
-                                  std::unique_ptr<dbus::MessageReader> reader);
+                                  internal::VmStartImageFds vm_start_image_fds);
   void StartVm(dbus::MethodCall* method_call,
                dbus::ExportedObject::ResponseSender sender) override;
+  void StartVm2(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+          response_cb,
+      const StartVmRequest& request,
+      const std::vector<base::ScopedFD>& FileHandles) override;
 
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVmInternal(StartPluginVmRequest request,

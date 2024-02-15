@@ -281,20 +281,10 @@ constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
 const VariationsFeature kVmMemoryManagementServiceFeature{
     kVmMemoryManagementServiceFeatureName, FEATURE_ENABLED_BY_DEFAULT};
 
-// Fds to all the images required while starting a VM.
-struct VmStartImageFds {
-  std::optional<base::ScopedFD> kernel_fd;
-  std::optional<base::ScopedFD> rootfs_fd;
-  std::optional<base::ScopedFD> initrd_fd;
-  std::optional<base::ScopedFD> storage_fd;
-  std::optional<base::ScopedFD> bios_fd;
-  std::optional<base::ScopedFD> pflash_fd;
-};
-
-std::optional<VmStartImageFds> GetVmStartImageFds(
+std::optional<internal::VmStartImageFds> GetVmStartImageFds(
     const std::unique_ptr<dbus::MessageReader>& reader,
     const google::protobuf::RepeatedField<int>& fds) {
-  struct VmStartImageFds result;
+  struct internal::VmStartImageFds result;
   for (const auto& fdType : fds) {
     base::ScopedFD fd;
     if (!reader->PopFileDescriptor(&fd)) {
@@ -319,6 +309,47 @@ std::optional<VmStartImageFds> GetVmStartImageFds(
         break;
       case StartVmRequest_FdType_PFLASH:
         result.pflash_fd = std::move(fd);
+        break;
+      default:
+        LOG(WARNING) << "received request with unknown FD type " << fdType
+                     << ". Ignoring.";
+    }
+  }
+  return result;
+}
+
+std::optional<internal::VmStartImageFds> GetVmStartImageFds2(
+    const google::protobuf::RepeatedField<int>& fds,
+    const std::vector<base::ScopedFD>& file_handles) {
+  if (file_handles.size() != fds.size()) {
+    return std::nullopt;
+  }
+  struct internal::VmStartImageFds result;
+  size_t count = 0;
+  for (const auto& fdType : fds) {
+    std::optional<base::ScopedFD> fd(dup(file_handles[count].get()));
+    if (!fd) {
+      LOG(ERROR) << "Failed to get VM start image file descriptor";
+      return std::nullopt;
+    }
+    switch (fdType) {
+      case StartVmRequest_FdType_KERNEL:
+        result.kernel_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_ROOTFS:
+        result.rootfs_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_INITRD:
+        result.initrd_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_STORAGE:
+        result.storage_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_BIOS:
+        result.bios_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_PFLASH:
+        result.pflash_fd = std::move(*fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType
@@ -1466,13 +1497,51 @@ void Service::StartVm(dbus::MethodCall* method_call,
     return;
   }
 
-  response = StartVmInternal(std::move(request), std::move(reader));
+  std::optional<internal::VmStartImageFds> vm_start_image_fds =
+      GetVmStartImageFds(reader, request.fds());
+  if (!vm_start_image_fds) {
+    response.set_failure_reason("failed to get a VmStartImage fd");
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+
+  response =
+      StartVmInternal(std::move(request), std::move(*vm_start_image_fds));
   SendDbusResponse(std::move(response_sender), method_call, response);
   return;
 }
 
+void Service::StartVm2(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+        response_cb,
+    const StartVmRequest& request,
+    const std::vector<base::ScopedFD>& file_handles) {
+  ASYNC_SERVICE_METHOD();
+
+  StartVmResponse response;
+  // We change to a success status later if necessary.
+  response.set_status(VM_STATUS_FAILURE);
+
+  if (!CheckStartVmPreconditions(request, &response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  std::optional<internal::VmStartImageFds> vm_start_image_fds =
+      GetVmStartImageFds2(request.fds(), file_handles);
+  if (!vm_start_image_fds) {
+    response.set_failure_reason("failed to get a VmStartImage fd");
+    response_cb->Return(response);
+    return;
+  }
+
+  response = StartVmInternal(request, std::move(*vm_start_image_fds));
+  response_cb->Return(response);
+  return;
+}
+
 StartVmResponse Service::StartVmInternal(
-    StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
+    StartVmRequest request, internal::VmStartImageFds vm_start_image_fds) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -1488,15 +1557,7 @@ StartVmResponse Service::StartVmInternal(
 
   std::string failure_reason;
   std::optional<base::FilePath> biosDlcPath, vmDlcPath, toolsDlcPath;
-
-  std::optional<VmStartImageFds> vm_start_image_fds =
-      GetVmStartImageFds(reader, request.fds());
-  if (!vm_start_image_fds) {
-    response.set_failure_reason("failed to get a VmStartImage fd");
-    return response;
-  }
-
-  if (!vm_start_image_fds->bios_fd.has_value() &&
+  if (!vm_start_image_fds.bios_fd.has_value() &&
       !request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
     auto path =
@@ -1559,11 +1620,10 @@ StartVmResponse Service::StartVmInternal(
   auto root_fd = std::move(root_fd_result.first);
 
   VMImageSpec image_spec = internal::GetImageSpec(
-      request.vm(), vm_start_image_fds->kernel_fd,
-      vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
-      vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd, biosDlcPath,
-      vmDlcPath, toolsDlcPath, classification == apps::VmType::TERMINA,
-      failure_reason);
+      request.vm(), vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
+      vm_start_image_fds.initrd_fd, vm_start_image_fds.bios_fd,
+      vm_start_image_fds.pflash_fd, biosDlcPath, vmDlcPath, toolsDlcPath,
+      classification == apps::VmType::TERMINA, failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1675,8 +1735,8 @@ StartVmResponse Service::StartVmInternal(
   }
 
   // Check if an opened storage image was passed over D-BUS.
-  if (vm_start_image_fds->storage_fd.has_value()) {
-    int raw_fd = vm_start_image_fds->storage_fd.value().get();
+  if (vm_start_image_fds.storage_fd.has_value()) {
+    int raw_fd = vm_start_image_fds.storage_fd.value().get();
     std::string failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
@@ -2038,7 +2098,7 @@ StartVmResponse Service::StartVmInternal(
 
   // Mount an extra disk in the VM. We mount them after calling StartTermina
   // because /mnt/external is set up there.
-  if (vm_start_image_fds->storage_fd.has_value()) {
+  if (vm_start_image_fds.storage_fd.has_value()) {
     const std::string external_disk_path =
         base::StringPrintf("/dev/vd%c", disk_letter++);
 
