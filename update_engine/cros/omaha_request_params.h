@@ -253,6 +253,9 @@ class OmahaRequestParams {
   inline void set_hw_details(bool hw_details) { hw_details_ = hw_details; }
   inline bool hw_details() const { return hw_details_; }
 
+  inline void set_extended_okay(bool okay) { extended_okay_ = okay; }
+  inline bool extended_okay() const { return extended_okay_; }
+
   // Returns the App ID corresponding to the current value of the
   // download channel.
   virtual std::string GetAppId() const;
@@ -475,6 +478,9 @@ class OmahaRequestParams {
 
   // Whether the device is in OOBE and was managed before being reset.
   bool managed_device_in_oobe_ = false;
+
+  // Determine if extended auto updates are okay.
+  bool extended_okay_ = false;
 
   // Whether to include <hw> element.
 #if USE_HW_DETAILS

@@ -302,6 +302,8 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
   string delta_okay_str =
       params->delta_okay() && !params->is_install() ? "true" : "false";
 
+  string extended_okay_str = params->extended_okay() ? "true" : "false";
+
   // If install_date_days is not set (e.g. its value is -1 ), don't
   // include the attribute.
   string install_date_in_days_str = "";
@@ -385,6 +387,7 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
       "board=\"" + XmlEncodeWithDefault(params->os_board()) + "\" " +
       "hardware_class=\"" + XmlEncodeWithDefault(params->hwid()) + "\" " +
       "delta_okay=\"" + delta_okay_str + "\" " +
+      "extended_okay=\"" + extended_okay_str + "\" " +
       install_date_in_days_str +
       ">\n" +
          app_body +

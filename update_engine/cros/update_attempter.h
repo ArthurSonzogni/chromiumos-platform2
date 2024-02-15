@@ -400,6 +400,13 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest, AfterUpdateSkipsUpdateInvalidationIfNonIdle);
   FRIEND_TEST(UpdateAttempterTest, AfterRepeatedUpdateInvalidatesUpdate);
   FRIEND_TEST(UpdateAttempterTest, AfterRepeatedInvalidatesUpdateOnError);
+  FRIEND_TEST(UpdateAttempterTest,
+              DetermineExtendedUpdateValueNoDevicePolicyTest);
+  FRIEND_TEST(UpdateAttempterTest,
+              DetermineExtendedUpdateValuePolicyNotAllowedTest);
+  FRIEND_TEST(UpdateAttempterTest,
+              DetermineExtendedUpdateValuePolicyAllowedTest);
+
   // Returns the special flags to be added to ErrorCode values based on the
   // parameters used in the current update attempt.
   uint32_t GetErrorCodeFlags();
@@ -443,6 +450,9 @@ class UpdateAttempter : public ActionProcessorDelegate,
   // Checks if a full update is needed and forces it by updating the Omaha
   // request params.
   void DisableDeltaUpdateIfNeeded();
+
+  // Determine if extended auto updates are okay.
+  void DetermineExtendedUpdateValue();
 
   // If this was a delta update attempt that failed, count it so that a full
   // update can be tried when needed.

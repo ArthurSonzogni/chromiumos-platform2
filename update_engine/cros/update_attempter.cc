@@ -580,6 +580,7 @@ bool UpdateAttempter::CalculateUpdateParams(const UpdateCheckParams& params) {
       << "proxy settings and using direct connections.";
 
   DisableDeltaUpdateIfNeeded();
+  DetermineExtendedUpdateValue();
   return true;
 }
 
@@ -2144,6 +2145,17 @@ void UpdateAttempter::DisableDeltaUpdateIfNeeded() {
     LOG(WARNING) << "Too many delta update failures, forcing full update.";
     omaha_request_params_->set_delta_okay(false);
   }
+}
+
+void UpdateAttempter::DetermineExtendedUpdateValue() {
+  const policy::DevicePolicy* device_policy =
+      SystemState::Get()->device_policy();
+  if (!device_policy)
+    return;
+  // Always default `extended_okay` to false in case retrieval fails.
+  bool extend_okay =
+      device_policy->GetDeviceExtendedAutoUpdateEnabled().value_or(false);
+  omaha_request_params_->set_extended_okay(extend_okay);
 }
 
 void UpdateAttempter::MarkDeltaUpdateFailure() {

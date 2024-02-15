@@ -762,6 +762,34 @@ TEST_F(UpdateAttempterTest, DisableDeltaUpdateIfNeededTest) {
   EXPECT_FALSE(attempter_.omaha_request_params_->delta_okay());
 }
 
+TEST_F(UpdateAttempterTest, DetermineExtendedUpdateValueNoDevicePolicyTest) {
+  EXPECT_FALSE(attempter_.omaha_request_params_->extended_okay());
+  attempter_.DetermineExtendedUpdateValue();
+  EXPECT_FALSE(attempter_.omaha_request_params_->extended_okay());
+}
+
+TEST_F(UpdateAttempterTest, DetermineExtendedUpdateValuePolicyNotAllowedTest) {
+  auto device_policy = std::make_unique<policy::MockDevicePolicy>();
+  EXPECT_CALL(*device_policy, GetDeviceExtendedAutoUpdateEnabled())
+      .WillOnce(Return(std::optional<bool>(false)));
+  FakeSystemState::Get()->set_device_policy(device_policy.get());
+
+  EXPECT_FALSE(attempter_.omaha_request_params_->extended_okay());
+  attempter_.DetermineExtendedUpdateValue();
+  EXPECT_FALSE(attempter_.omaha_request_params_->extended_okay());
+}
+
+TEST_F(UpdateAttempterTest, DetermineExtendedUpdateValuePolicyAllowedTest) {
+  auto device_policy = std::make_unique<policy::MockDevicePolicy>();
+  EXPECT_CALL(*device_policy, GetDeviceExtendedAutoUpdateEnabled())
+      .WillOnce(Return(std::optional<bool>(true)));
+  FakeSystemState::Get()->set_device_policy(device_policy.get());
+
+  EXPECT_FALSE(attempter_.omaha_request_params_->extended_okay());
+  attempter_.DetermineExtendedUpdateValue();
+  EXPECT_TRUE(attempter_.omaha_request_params_->extended_okay());
+}
+
 TEST_F(UpdateAttempterTest, MarkDeltaUpdateFailureTest) {
   attempter_.MarkDeltaUpdateFailure();
 

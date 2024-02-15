@@ -804,7 +804,8 @@ TEST_F(OmahaRequestBuilderXmlTest, ManagedInOobeIsSentOnEnrolledInOobe) {
 
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
-  EXPECT_EQ(1, CountSubstringInString(request_xml, "managed_device_in_oobe=\"true\""))
+  EXPECT_EQ(
+      1, CountSubstringInString(request_xml, "managed_device_in_oobe=\"true\""))
       << request_xml;
 }
 
@@ -815,6 +816,22 @@ TEST_F(OmahaRequestBuilderXmlTest, ManagedInOobeNotSentWhenParamIsFalse) {
   const string request_xml = omaha_request.GetRequest();
   EXPECT_EQ(0, CountSubstringInString(request_xml, "managed_in_oobe"))
       << request_xml;
+}
+
+TEST_F(OmahaRequestBuilderXmlTest, ExtendedOkayTest) {
+  {
+    OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
+    const string request_xml = omaha_request.GetRequest();
+    EXPECT_EQ(1, CountSubstringInString(request_xml, "extended_okay=\"false\""))
+        << request_xml;
+  }
+  {
+    params_.set_extended_okay(true);
+    OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
+    const string request_xml = omaha_request.GetRequest();
+    EXPECT_EQ(1, CountSubstringInString(request_xml, "extended_okay=\"true\""))
+        << request_xml;
+  }
 }
 
 }  // namespace chromeos_update_engine
