@@ -26,10 +26,6 @@ namespace patchpanel {
 namespace {
 
 // /proc/sys/ paths used for System::SysNetSet() and System::SysNetGet().
-// Defines the local port range that is used by TCP and UDP traffic to choose
-// the local port (IPv4 and IPv6).
-constexpr char kSysNetIPLocalPortRangePath[] =
-    "/proc/sys/net/ipv4/ip_local_port_range";
 // Enables/Disables IPv4 forwarding between interfaces.
 constexpr char kSysNetIPv4ForwardingPath[] = "/proc/sys/net/ipv4/ip_forward";
 // /proc/sys path for controlling connection tracking helper modules
@@ -122,11 +118,9 @@ std::string System::SysNetPath(SysNet target, std::string_view iface) const {
   switch (target) {
     case SysNet::kIPv4Forward:
       return kSysNetIPv4ForwardingPath;
-    case SysNet::kIPLocalPortRange:
-      return kSysNetIPLocalPortRangePath;
     case SysNet::kIPv4RouteLocalnet:
       if (iface.empty()) {
-        LOG(ERROR) << "IPv4LocalPortRange requires a valid interface";
+        LOG(ERROR) << "IPv4RouteLocalnet requires a valid interface";
         return "";
       }
       return base::StringPrintf(kSysNetIPv4RouteLocalnetPath, iface.data());

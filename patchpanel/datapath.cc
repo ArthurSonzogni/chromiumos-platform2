@@ -250,14 +250,6 @@ void Datapath::Start() {
                << " Guest connectivity will not work correctly.";
   }
 
-  // Limit local port range: Android owns 47104-61000.
-  // TODO(garrick): The original history behind this tweak is gone. Some
-  // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::kIPLocalPortRange, "32768 47103")) {
-    LOG(ERROR) << "Failed to limit local port range. Some Android features or"
-               << " apps may not work correctly.";
-  }
-
   // Enable IPv6 packet forwarding and cross-interface proxying
   if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
@@ -646,13 +638,6 @@ void Datapath::Start() {
 }
 
 void Datapath::Stop() {
-  // Restore original local port range.
-  // TODO(garrick): The original history behind this tweak is gone. Some
-  // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::kIPLocalPortRange, "32768 61000")) {
-    LOG(ERROR) << "Failed to restore local port range";
-  }
-
   // Disable packet forwarding
   if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "0")) {
     LOG(ERROR) << "Failed to restore net.ipv6.conf.all.forwarding.";

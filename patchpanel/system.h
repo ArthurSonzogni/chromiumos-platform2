@@ -39,8 +39,6 @@ class System {
   enum class SysNet {
     // Used for modifying "net.ipv4.ip_forward"
     kIPv4Forward = 1,
-    // Used for modifying "net.ipv4.ip_local_port_range"
-    kIPLocalPortRange,
     // Used for modifying "net.ipv4.conf.%s.route_localnet", requires an
     // interface
     // argument

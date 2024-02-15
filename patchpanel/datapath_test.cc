@@ -288,8 +288,6 @@ class DatapathTest : public testing::Test {
 TEST_F(DatapathTest, Start) {
   // Asserts for sysctl modifications
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "1", ""));
-  EXPECT_CALL(system_,
-              SysNetSet(System::SysNet::kIPLocalPortRange, "32768 47103", ""));
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "1", ""));
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6ProxyNDP, "1", ""));
 
@@ -647,8 +645,6 @@ TEST_F(DatapathTest, Start) {
 TEST_F(DatapathTest, Stop) {
   // Asserts for sysctl modifications
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
-  EXPECT_CALL(system_,
-              SysNetSet(System::SysNet::kIPLocalPortRange, "32768 61000", ""));
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
 
   datapath_.Stop();
