@@ -757,7 +757,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 required_args[1].as_str(),
                 ContainerSource::ImageServer {
                     image_server: "https://storage.googleapis.com/cros-containers/%d".to_string(),
-                    image_alias: "debian/buster".to_string(),
+                    image_alias: "debian/bookworm".to_string(),
                 },
             ),
             4 => (
