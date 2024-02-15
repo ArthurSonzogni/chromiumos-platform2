@@ -137,6 +137,30 @@ TEST_F(BalloonBrokerTest, TestNoConnections) {
   ExpectNoResizes();
 }
 
+TEST_F(BalloonBrokerTest, TestNoConnectionsClearBlockersUpToInclusive) {
+  ASSERT_FALSE(
+      balloon_broker_->ClearBlockersUpToInclusive(1, HighestResizePriority()));
+}
+
+TEST_F(BalloonBrokerTest, TestBlockersAreCleared) {
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket);
+
+  Client host_client{VMADDR_CID_LOCAL, 0,
+                     ConnectionType::CONNECTION_TYPE_KILLS};
+
+  Client connected_client{6, 1, ConnectionType::CONNECTION_TYPE_KILLS};
+
+  client_connection_handler_.Run(host_client);
+  client_connection_handler_.Run(connected_client);
+
+  ASSERT_TRUE(balloon_broker_->ClearBlockersUpToInclusive(
+      6, ResizePriority::kCachedApp));
+
+  ASSERT_EQ(
+      FakeBalloonBlocker::fake_balloon_blockers_[6]->clear_blockers_priority_,
+      ResizePriority::kCachedApp);
+}
+
 TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
   balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
   balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);

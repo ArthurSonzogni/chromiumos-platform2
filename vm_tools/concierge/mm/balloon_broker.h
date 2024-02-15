@@ -89,6 +89,10 @@ class BalloonBroker {
   // Stops the ongoing ReclaimUntilBlocked() operation.
   void StopReclaimUntilBlocked(int vm_cid);
 
+  // Clears all blockers for the balloon with CID |vm_cid| at or below
+  // |priority|. Returns true iff the blockers were successfully cleared.
+  bool ClearBlockersUpToInclusive(int vm_cid, ResizePriority priority);
+
  private:
   // Contains state related to a client that is connected to the VM memory
   // management service (i.e. resourced, ARCVM's LMKD).

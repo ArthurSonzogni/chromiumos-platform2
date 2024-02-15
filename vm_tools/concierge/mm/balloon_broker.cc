@@ -236,6 +236,20 @@ void BalloonBroker::StopReclaimUntilBlocked(int vm_cid) {
   reclaim_until_blocked_params_.reset();
 }
 
+bool BalloonBroker::ClearBlockersUpToInclusive(int vm_cid,
+                                               ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!contexts_.contains(vm_cid) || !contexts_[vm_cid].balloon) {
+    LOG(ERROR) << "Cannot clear blockers for non-existant balloon: " << vm_cid;
+    return false;
+  }
+
+  contexts_[vm_cid].balloon->ClearBlockersUpToInclusive(priority);
+
+  return true;
+}
+
 ResizePriority BalloonBroker::LowestUnblockedPriority() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 

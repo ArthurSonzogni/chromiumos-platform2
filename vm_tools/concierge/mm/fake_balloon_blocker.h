@@ -26,6 +26,8 @@ class FakeBalloonBlocker : public BalloonBlocker {
   ResizePriority LowestUnblockedPriority(
       ResizeDirection direction, base::TimeTicks check_time) const override;
 
+  void ClearBlockersUpToInclusive(ResizePriority priority) override;
+
   int Cid();
 
   void BlockAt(ResizeDirection direction, ResizePriority priority);
@@ -34,6 +36,7 @@ class FakeBalloonBlocker : public BalloonBlocker {
   std::vector<int64_t> try_resize_results_;
   base::flat_map<ResizeDirection, base::flat_map<ResizePriority, bool>>
       blocks_{};
+  ResizePriority clear_blockers_priority_ = ResizePriority::kInvalid;
 };
 
 }  // namespace vm_tools::concierge::mm

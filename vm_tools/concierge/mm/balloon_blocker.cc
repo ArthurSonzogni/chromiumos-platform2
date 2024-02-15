@@ -58,15 +58,8 @@ BalloonBlocker::BalloonBlocker(int vm_cid,
       metrics_(std::move(metrics)),
       low_priority_block_duration_(low_priority_block_duration),
       high_priority_block_duration_(high_priority_block_duration) {
-  // Initialize all the request lists to the unblocked state.
-  RequestList fully_unblocked{};
-
-  for (ResizePriority priority : kAllResizePrioritiesIncreasing) {
-    fully_unblocked[priority] = {};
-  }
-
-  request_lists_[ResizeDirection::kInflate] = fully_unblocked;
-  request_lists_[ResizeDirection::kDeflate] = fully_unblocked;
+  // Initial state should have no blockers.
+  ClearBlockersUpToInclusive(HighestResizePriority());
 
   balloon_->SetStallCallback(base::BindRepeating(
       &BalloonBlocker::OnBalloonStall, weak_ptr_factory_.GetWeakPtr()));
@@ -144,6 +137,21 @@ void BalloonBlocker::SetShouldLogBalloonTrace(bool do_log) {
     LOG(INFO) << "Disabling BalloonTrace logs for CID: " << GetCid();
   }
   should_log_balloon_trace_ = do_log;
+}
+
+void BalloonBlocker::ClearBlockersUpToInclusive(ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  for (ResizePriority check_priority : kAllResizePrioritiesIncreasing) {
+    if (check_priority < priority) {
+      break;
+    }
+
+    request_lists_[ResizeDirection::kInflate][check_priority] =
+        base::TimeTicks();
+    request_lists_[ResizeDirection::kDeflate][check_priority] =
+        base::TimeTicks();
+  }
 }
 
 apps::VmType BalloonBlocker::GetVmType() const {

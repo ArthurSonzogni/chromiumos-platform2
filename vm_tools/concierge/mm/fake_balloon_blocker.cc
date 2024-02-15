@@ -71,4 +71,8 @@ int FakeBalloonBlocker::Cid() {
   return GetCid();
 }
 
+void FakeBalloonBlocker::ClearBlockersUpToInclusive(ResizePriority priority) {
+  clear_blockers_priority_ = priority;
+}
+
 }  // namespace vm_tools::concierge::mm

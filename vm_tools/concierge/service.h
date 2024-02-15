@@ -357,6 +357,14 @@ class Service final : public org::chromium::VmConciergeInterface,
                              AggressiveBalloonResponse>> response_cb,
                          const AggressiveBalloonRequest& request) override;
 
+  // Run when the aggressive balloon operation finishes.
+  void OnAggressiveBalloonFinished(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          AggressiveBalloonResponse>> response_sender,
+      int cid,
+      bool success,
+      const char* err_msg);
+
   using GetVmmmsKillsConnectionResponseSender =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           GetVmMemoryManagementKillsConnectionResponse,

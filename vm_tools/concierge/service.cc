@@ -65,6 +65,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
@@ -3919,18 +3920,9 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
     auto cid = iter->second->GetInfo().cid;
     if (request.enable()) {
       LOG(INFO) << "Starting Aggressive Baloon for CID: " << cid;
-      auto cb = base::BindOnce(
-          [](AggressiveBalloonResponder response_sender, bool success,
-             const char* err_msg) {
-            LOG(INFO) << "Aggressive Balloon finished.";
-            AggressiveBalloonResponse response;
-            response.set_success(success);
-            if (!success) {
-              response.set_failure_reason(err_msg);
-            }
-            std::move(response_sender)->Return(response);
-          },
-          std::move(response_cb));
+      auto cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &Service::OnAggressiveBalloonFinished, weak_ptr_factory_.GetWeakPtr(),
+          std::move(response_cb), cid));
       vm_memory_management_service_->ReclaimUntilBlocked(
           cid, mm::ResizePriority::kAggressiveBalloon, std::move(cb));
     } else {
@@ -3952,6 +3944,30 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
       response_cb->Return(response);
     }
   }
+}
+
+void Service::OnAggressiveBalloonFinished(
+    AggressiveBalloonResponder response_sender,
+    int cid,
+    bool success,
+    const char* err_msg) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "Aggressive Balloon finished for VM: " << cid;
+
+  // After aggressive balloon finishes, clear the blockers on the ARCVM balloon
+  // so cached apps aren't immediately killed when they become cached.
+  if (vm_memory_management_service_) {
+    LOG(INFO) << "Clearing balloon blockers for VM: " << cid;
+    vm_memory_management_service_->ClearBlockersUpToInclusive(
+        cid, mm::ResizePriority::kAggressiveBalloon);
+  }
+
+  AggressiveBalloonResponse response;
+  response.set_success(success);
+  if (!success) {
+    response.set_failure_reason(err_msg);
+  }
+  std::move(response_sender)->Return(response);
 }
 
 void Service::GetVmMemoryManagementKillsConnection(

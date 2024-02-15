@@ -82,6 +82,9 @@ class BalloonBlocker {
   virtual ResizePriority LowestUnblockedPriority(
       ResizeDirection direction, base::TimeTicks check_time) const;
 
+  // Clears all blockers for this balloon at or below |priority|.
+  virtual void ClearBlockersUpToInclusive(ResizePriority priority);
+
   // Returns the type of VM this blocker is for. Used for logging and metrics.
   apps::VmType GetVmType() const;
 
@@ -147,11 +150,9 @@ class BalloonBlocker {
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Tracks the unblock time for a direction and priority.
-  // TODO(b/307462723): This relies on the ResizePriority enum being dense which
-  // makes it difficult to add a new priority. Refactor this to allow for a
-  // non-dense ResizePriority enum.
   base::flat_map<ResizeDirection, RequestList> request_lists_
-      GUARDED_BY_CONTEXT(sequence_checker_){};
+      GUARDED_BY_CONTEXT(sequence_checker_){{ResizeDirection::kInflate, {}},
+                                            {ResizeDirection::kDeflate, {}}};
 
   // Controls whether the "BalloonTrace" logs should be printed.
   bool should_log_balloon_trace_ GUARDED_BY_CONTEXT(sequence_checker_) = true;

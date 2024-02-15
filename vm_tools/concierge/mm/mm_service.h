@@ -62,6 +62,9 @@ class MmService {
   // Returns an open FD to the kills server.
   base::ScopedFD GetKillsServerConnection();
 
+  // Clears the blockers for |vm_cid| at or below |priority|.
+  void ClearBlockersUpToInclusive(int vm_cid, ResizePriority priority);
+
  private:
   // Retrieves the lowest priority that won't be blocked from the BalloonBroker.
   ResizePriority GetLowestUnblockedPriority();
@@ -100,6 +103,10 @@ class MmService {
   void NegotiationThreadReclaim(
       const BalloonBroker::ReclaimOperation& reclaim_operation,
       ResizePriority priority);
+
+  // Instructs the balloon broker to clear the blockers for |vm_cid|.
+  void NegotiationThreadClearBlockersUpToInclusive(int vm_cid,
+                                                   ResizePriority priority);
 
   // TODO(b/254164308) Currently only ARCVM is supported by the
   // MmService

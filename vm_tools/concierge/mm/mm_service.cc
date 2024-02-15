@@ -140,6 +140,15 @@ base::ScopedFD MmService::GetKillsServerConnection() {
   return socket.Release();
 }
 
+void MmService::ClearBlockersUpToInclusive(int vm_cid,
+                                           ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  negotiation_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&MmService::NegotiationThreadClearBlockersUpToInclusive,
+                     weak_ptr_factory_.GetWeakPtr(), vm_cid, priority));
+}
+
 void MmService::ReclaimUntilBlocked(int vm_cid,
                                     ResizePriority priority,
                                     ReclaimUntilBlockedCallback cb) {
@@ -247,6 +256,14 @@ void MmService::NegotiationThreadReclaim(
     ResizePriority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_->Reclaim(reclaim_operation, priority);
+}
+
+void MmService::NegotiationThreadClearBlockersUpToInclusive(
+    int vm_cid, ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
+  if (!balloon_broker_->ClearBlockersUpToInclusive(vm_cid, priority)) {
+    LOG(ERROR) << "Failed to clear blockers for VM: " << vm_cid;
+  }
 }
 
 }  // namespace vm_tools::concierge::mm

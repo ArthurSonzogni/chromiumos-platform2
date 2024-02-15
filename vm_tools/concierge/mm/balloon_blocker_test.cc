@@ -72,6 +72,26 @@ TEST_F(BalloonBlockerTest, TestBlockedDoesNotAdjustBalloon) {
   ASSERT_EQ(leaked_fake_balloon_->resizes_.size(), num_adjustments);
 }
 
+TEST_F(BalloonBlockerTest, TestClearBlockersUpToInclusive) {
+  SetBlockPriorityTo(ResizePriority::kPerceptibleApp);
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                      base::TimeTicks::Now()),
+            ResizePriority::kPerceptibleApp);
+
+  // Clearing the blockers at a lower priority should not clear the high
+  // priority blocker.
+  balloon_blocker_->ClearBlockersUpToInclusive(ResizePriority::kCachedApp);
+  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                      base::TimeTicks::Now()),
+            ResizePriority::kPerceptibleApp);
+
+  // Clearing the blockers at the highest priority should clear everything.
+  balloon_blocker_->ClearBlockersUpToInclusive(HighestResizePriority());
+  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                      base::TimeTicks::Now()),
+            LowestResizePriority());
+}
+
 TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   // An inflation should only block the lowest level at first, so the second
   // lowest priority should be unblocked.
