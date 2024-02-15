@@ -6,7 +6,6 @@ pub mod disk;
 pub mod frontends;
 pub mod methods;
 pub mod proto;
-pub mod unsafe_misc;
 
 use std::collections::BTreeMap;
 use std::env;
