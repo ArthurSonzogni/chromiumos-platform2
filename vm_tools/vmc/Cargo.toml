@@ -7,7 +7,7 @@ edition = "2018"
 
 [[bin]]
 name = "vmc"
-path = "main.rs"
+path = "vmc.rs"
 
 [profile.release]
 lto = true

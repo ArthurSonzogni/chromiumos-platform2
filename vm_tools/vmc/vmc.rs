@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+pub mod disk;
+pub mod methods;
+pub mod proto;
+
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
@@ -11,13 +16,13 @@ use std::io::{stdin, stdout, BufRead, Write};
 
 use getopts::Options;
 
-use super::Frontend;
 use crate::disk::DiskOpType;
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
 use crate::proto::system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use crate::proto::system_api::cicerone_service::VmDeviceAction;
 
-use crate::EnvMap;
+/// A string to string mapping of environment variables to values.
+pub type EnvMap<'a> = BTreeMap<&'a str, &'a str>;
 
 enum VmcError {
     Command(&'static str, Box<dyn Error>),
@@ -990,15 +995,11 @@ const USAGE: &str = r#"
      --help | -h ]
 "#;
 
-/// A frontend that implements a `vmc` (Virtual Machine Controller) style command line interface.
+/// `vmc` (Virtual Machine Controller) command line interface.
 /// This is the interface accessible from crosh (Ctrl-Alt-T in the browser to access).
 pub struct Vmc;
 
-impl Frontend for Vmc {
-    fn name(&self) -> &str {
-        "vmc"
-    }
-
+impl Vmc {
     fn print_usage(&self, program_name: &str) {
         eprintln!("USAGE: {}{}", program_name, USAGE);
     }
@@ -1052,6 +1053,20 @@ impl Frontend for Vmc {
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    libchromeos::panic_handler::install_memfd_handler();
+    let args_string: Vec<String> = std::env::args().collect();
+    let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
+    let vars_string: BTreeMap<String, String> = std::env::vars().collect();
+    let vars: EnvMap = vars_string
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+
+    let vmc = Vmc {};
+    vmc.run(&mut Methods::new()?, &args, &vars)
 }
 
 #[cfg(test)]
