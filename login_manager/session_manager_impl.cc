@@ -1471,7 +1471,6 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          request.disable_media_store_maintenance()),
       base::StringPrintf("DISABLE_DOWNLOAD_PROVIDER=%d",
                          request.disable_download_provider()),
-      base::StringPrintf("DISABLE_UREADAHEAD=%d", request.disable_ureadahead()),
       base::StringPrintf("ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE=%d",
                          request.enable_consumer_auto_update_toggle()),
       base::StringPrintf("ENABLE_NOTIFICATIONS_REFRESH=%d",
@@ -1479,8 +1478,6 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("ENABLE_PRIVACY_HUB_FOR_CHROME=%d",
                          request.enable_privacy_hub_for_chrome()),
       base::StringPrintf("ENABLE_TTS_CACHING=%d", request.enable_tts_caching()),
-      base::StringPrintf("HOST_UREADAHEAD_GENERATION=%d",
-                         request.host_ureadahead_generation()),
       base::StringPrintf("USE_DEV_CACHES=%d", request.use_dev_caches()),
       base::StringPrintf("ARC_SIGNED_IN=%d", request.arc_signed_in()),
   };

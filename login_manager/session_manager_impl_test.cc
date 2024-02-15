@@ -528,11 +528,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    StartArcInstanceExpectationsBuilder& SetDisableUreadahead(bool v) {
-      disable_ureadahead_ = v;
-      return *this;
-    }
-
     StartArcInstanceExpectationsBuilder& SetEnableNotificationRefresh(bool v) {
       enable_notification_refresh_ = v;
       return *this;
@@ -576,11 +571,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    StartArcInstanceExpectationsBuilder& SetHostUreadaheadGeneration(bool v) {
-      host_ureadahead_generation_ = v;
-      return *this;
-    }
-
     StartArcInstanceExpectationsBuilder& SetHostUreadaheadMode(
         arc::StartArcMiniInstanceRequest_HostUreadaheadMode v) {
       host_ureadahead_mode_ = v;
@@ -611,7 +601,6 @@ class SessionManagerImplTest : public ::testing::Test,
               std::to_string(disable_media_store_maintenance_),
           "DISABLE_DOWNLOAD_PROVIDER=" +
               std::to_string(disable_download_provider_),
-          "DISABLE_UREADAHEAD=" + std::to_string(disable_ureadahead_),
           "ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE=" +
               std::to_string(enable_consumer_auto_update_toggle_),
           "ENABLE_NOTIFICATIONS_REFRESH=" +
@@ -619,8 +608,6 @@ class SessionManagerImplTest : public ::testing::Test,
           "ENABLE_PRIVACY_HUB_FOR_CHROME=" +
               std::to_string(enable_privacy_hub_for_chrome_),
           "ENABLE_TTS_CACHING=" + std::to_string(enable_tts_caching_),
-          "HOST_UREADAHEAD_GENERATION=" +
-              std::to_string(host_ureadahead_generation_),
           "USE_DEV_CACHES=" + std::to_string(use_dev_caches_),
           "ARC_SIGNED_IN=" + std::to_string(arc_signed_in_),
       });
@@ -687,12 +674,10 @@ class SessionManagerImplTest : public ::testing::Test,
 
     bool disable_media_store_maintenance_ = false;
     bool disable_download_provider_ = false;
-    bool disable_ureadahead_ = false;
     bool enable_consumer_auto_update_toggle_ = false;
     bool enable_notification_refresh_ = false;
     bool enable_privacy_hub_for_chrome_ = false;
     bool enable_tts_caching_ = false;
-    bool host_ureadahead_generation_ = false;
     bool use_dev_caches_ = false;
     bool arc_generate_pai_ = false;
     bool arc_signed_in_ = false;
@@ -2644,25 +2629,6 @@ TEST_F(SessionManagerImplTest, DisableDownloadProvider) {
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
 }
 
-TEST_F(SessionManagerImplTest, DisableUreadahead) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  arc::StartArcMiniInstanceRequest request;
-  request.set_disable_ureadahead(true);
-
-  // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetDisableUreadahead(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-}
-
 TEST_F(SessionManagerImplTest, EnableNotificationRefresh) {
   ExpectAndRunStartSession(kSaneEmail);
 
@@ -2693,25 +2659,6 @@ TEST_F(SessionManagerImplTest, EnableTTSCaching) {
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
                                  .SetEnableTTSCaching(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-}
-
-TEST_F(SessionManagerImplTest, HostUreadaheadGeneration) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  arc::StartArcMiniInstanceRequest request;
-  request.set_host_ureadahead_generation(true);
-
-  // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetHostUreadaheadGeneration(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
