@@ -3920,9 +3920,11 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
       mm::MmService::ManagedVms().contains(type)) {
     auto cid = iter->second->GetInfo().cid;
     if (request.enable()) {
+      LOG(INFO) << "Starting Aggressive Baloon for CID: " << cid;
       auto cb = base::BindOnce(
           [](AggressiveBalloonResponder response_sender, bool success,
              const char* err_msg) {
+            LOG(INFO) << "Aggressive Balloon finished.";
             AggressiveBalloonResponse response;
             response.set_success(success);
             if (!success) {
@@ -3934,6 +3936,7 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
       vm_memory_management_service_->ReclaimUntilBlocked(
           cid, mm::ResizePriority::kCachedTab, std::move(cb));
     } else {
+      LOG(INFO) << "Stopping Aggressive Baloon for CID: " << cid;
       vm_memory_management_service_->StopReclaimUntilBlocked(cid);
       response.set_success(true);
       response_cb->Return(response);
