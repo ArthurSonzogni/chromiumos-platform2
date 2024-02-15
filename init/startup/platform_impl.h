@@ -25,6 +25,10 @@ bool IsTestImage(const base::FilePath& lsb_file);
 bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
                        const base::FilePath& base_dir);
 
+// Determine if the device is in dev mode.
+bool InDevMode(const crossystem::Crossystem& cros_system);
+bool IsDebugBuild(const crossystem::Crossystem& cros_system);
+
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
 bool IsFactoryMode(const crossystem::Crossystem& cros_system,
@@ -114,10 +118,6 @@ class Platform {
 
   // Runs clobber-log --repair for the given device with the given message.
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
-
-  // Determine if the device is in dev mode.
-  bool InDevMode(const crossystem::Crossystem& cros_system);
-  bool IsDebugBuild(const crossystem::Crossystem& cros_system);
 };
 
 }  // namespace startup

@@ -784,7 +784,7 @@ void ChromeosStartup::RestoreContextsForVar(
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
-  dev_mode_ = platform_->InDevMode(*cros_system_);
+  dev_mode_ = InDevMode(*cros_system_);
 
   // Make sure our clock is somewhat up-to-date. We don't need any resources
   // mounted below, so do this early on.
@@ -1032,7 +1032,7 @@ bool ChromeosStartup::DevIsDebugBuild() const {
   if (!dev_mode_) {
     return false;
   }
-  return platform_->IsDebugBuild(*cros_system_);
+  return IsDebugBuild(*cros_system_);
 }
 
 bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {

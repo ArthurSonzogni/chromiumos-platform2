@@ -40,7 +40,7 @@ MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
 // factory_utils.sh and factory_utils.sh.
 std::unique_ptr<MountHelper> MountHelperFactory::Generate(
     const crossystem::Crossystem& cros_system) {
-  bool dev_mode = platform_->InDevMode(cros_system);
+  bool dev_mode = InDevMode(cros_system);
   bool is_test_image = IsTestImage(lsb_file_);
   bool is_factory_mode = IsFactoryMode(cros_system, root_);
 

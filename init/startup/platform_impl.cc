@@ -281,14 +281,14 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
 }
 
 // Returns if we are running on a debug build.
-bool Platform::IsDebugBuild(const crossystem::Crossystem& cros_system) {
+bool IsDebugBuild(const crossystem::Crossystem& cros_system) {
   std::optional<int> debug =
       cros_system.VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
   return debug == 1;
 }
 
 // Determine if the device is in dev mode.
-bool Platform::InDevMode(const crossystem::Crossystem& cros_system) {
+bool InDevMode(const crossystem::Crossystem& cros_system) {
   // cros_debug equals one if we've booted in developer mode or we've booted
   // a developer image.
   std::optional<int> debug =
