@@ -69,6 +69,10 @@ const char kDBusInterface[] = "org.freedesktop.DBus";
 const char kDBusServiceName[] = "org.freedesktop.DBus";
 const char kDBusServicePath[] = "/org/freedesktop/DBus";
 
+// Debug Stats Interface
+const char kDBusDebugStatsInterface[] = "org.freedesktop.DBus.Debug.Stats";
+const char kDBusDebugStatsGetConnectionStats[] = "GetConnectionStats";
+
 // Object Manager interface
 const char kDBusObjectManagerInterface[] = "org.freedesktop.DBus.ObjectManager";
 // Methods
