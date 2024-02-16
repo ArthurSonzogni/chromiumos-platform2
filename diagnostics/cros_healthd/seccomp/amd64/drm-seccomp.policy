@@ -89,6 +89,7 @@ getuid: 1
 #   0x4008646f == DRM_IOCTL_I915_GEM_SET_CACHING
 #   0x641f == DRM_IOCTL_DROP_MASTER
 #   0x40046411 == DRM_IOCTL_AUTH_MAGIC
+#   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
      arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
      arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -111,7 +112,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
      arg1 == 0xc0206442 || arg1 == 0xc0386444 || arg1 == 0xc010640c || \
      arg1 == 0xc010646d || arg1 == 0xc01064ac || arg1 == 0xc0106462 || \
      arg1 == 0x40086478 || arg1 == 0xc0286442 || arg1 == 0x4008646f || \
-     arg1 == 0x641f || arg1 == 0x40046411
+     arg1 == 0x641f     || arg1 == 0x40046411 || arg1 == 0xc02864c3
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 memfd_create: 1

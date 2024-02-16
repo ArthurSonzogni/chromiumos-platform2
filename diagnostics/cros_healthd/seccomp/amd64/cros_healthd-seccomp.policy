@@ -120,6 +120,7 @@ getuid: 1
 #   0x40086478 == DRM_IOCTL_I915_PERF_REMOVE_CONFIG
 #   0x4008646f == DRM_IOCTL_I915_GEM_SET_CACHING
 #   0xc018647c == DRM_IOCTL_I915_GEM_CREATE_EXT
+#   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -146,7 +147,8 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0806447 || arg1 == 0xc0186447 || arg1 == 0x40086446 || \
        arg1 == 0xc0286484 || arg1 == 0xc0586447 || arg1 == 0xc0686447 || \
        arg1 == 0xc0706447 || arg1 == 0xc0286447 || arg1 == 0xc0306447 || \
-       arg1 == 0xc0406447 || arg1 == 0xc0606447 || arg1 == 0xc0786447
+       arg1 == 0xc0406447 || arg1 == 0xc0606447 || arg1 == 0xc0786447 || \
+       arg1 == 0xc02864c3
 kcmp: 1
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
