@@ -62,6 +62,7 @@ extern const char kPrefsOmahaCohortHint[];
 extern const char kPrefsOmahaCohortName[];
 extern const char kPrefsOmahaEolDate[];
 extern const char kPrefsOmahaExtendedDate[];
+extern const char kPrefsOmahaExtendedOptInRequired[];
 extern const char kPrefsP2PEnabled[];
 extern const char kPrefsP2PFirstAttemptTimestamp[];
 extern const char kPrefsP2PNumAttempts[];

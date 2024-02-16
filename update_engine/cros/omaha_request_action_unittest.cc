@@ -3205,6 +3205,60 @@ TEST_F(OmahaRequestActionTest, PersistExtendedDateBadTest) {
   EXPECT_EQ(kInvalidDate, StringToDate(extended_date));
 }
 
+TEST_F(OmahaRequestActionTest, PersistExtendedOptInRequiredTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_extended_opt_in_required=\"true\" foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  bool extended_opt_in_required = false;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetBoolean(
+      kPrefsOmahaExtendedOptInRequired, &extended_opt_in_required));
+  EXPECT_TRUE(extended_opt_in_required);
+}
+
+TEST_F(OmahaRequestActionTest, PersistMissingExtendedOptInRequiredTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  FakeSystemState::Get()->prefs()->SetBoolean(kPrefsOmahaExtendedOptInRequired,
+                                              true);
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  bool extended_opt_in_required = false;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetBoolean(
+      kPrefsOmahaExtendedOptInRequired, &extended_opt_in_required));
+  EXPECT_TRUE(extended_opt_in_required);
+}
+
+TEST_F(OmahaRequestActionTest, PersistExtendedOptInRequiredBadTest) {
+  tuc_params_.http_response =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response "
+      "protocol=\"3.0\"><app appid=\"test-app-id\" status=\"ok\">"
+      "<ping status=\"ok\"/><updatecheck status=\"noupdate\" "
+      "_extended_opt_in_required=\"bad\" foo=\"bar\"/></app></response>";
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  ASSERT_TRUE(TestUpdateCheck());
+
+  bool extended_opt_in_required = false;
+  EXPECT_TRUE(FakeSystemState::Get()->prefs()->GetBoolean(
+      kPrefsOmahaExtendedOptInRequired, &extended_opt_in_required));
+  EXPECT_FALSE(extended_opt_in_required);
+}
+
 TEST_F(OmahaRequestActionDlcPingTest, StorePingReplyNoPing) {
   OmahaRequestParams::AppParams app_param = {.name = dlc_id_};
   request_params_.set_dlc_apps_params(

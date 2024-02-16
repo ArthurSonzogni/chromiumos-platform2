@@ -26,6 +26,7 @@ const char kAttrVersion[] = "version";
 // Deprecated: "eol"
 const char kAttrEolDate[] = "_eol_date";
 const char kAttrExtendedDate[] = "_extended_date";
+const char kAttrExtendedOptInRequired[] = "_extended_opt_in_required";
 const char kAttrRollback[] = "_rollback";
 const char kAttrFirmwareVersion[] = "_firmware_version";
 const char kAttrKernelVersion[] = "_kernel_version";

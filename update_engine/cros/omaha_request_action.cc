@@ -456,6 +456,16 @@ void OmahaRequestAction::PersistExtendedDate(
   }
 }
 
+void OmahaRequestAction::PersistExtendedOptInRequired(
+    const OmahaParserData::App& platform_app) {
+  if (!platform_app.updatecheck.extended_opt_in_required.empty() &&
+      !SystemState::Get()->prefs()->SetBoolean(
+          kPrefsOmahaExtendedOptInRequired,
+          ParseBool(platform_app.updatecheck.extended_opt_in_required))) {
+    LOG(ERROR) << "Setting extended opt in required failed.";
+  }
+}
+
 void OmahaRequestAction::PersistDisableMarketSegment(const string& value) {
   auto prefs = SystemState::Get()->prefs();
   if (ParseBool(value)) {
@@ -504,6 +514,7 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
 
     PersistEolInfo(*platform_app);
     PersistExtendedDate(*platform_app);
+    PersistExtendedOptInRequired(*platform_app);
 
     // Parses the rollback versions of the current image. If the fields do not
     // exist they default to 0xffff for the 4 key versions.

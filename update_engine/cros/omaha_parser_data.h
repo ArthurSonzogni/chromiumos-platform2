@@ -30,6 +30,7 @@ extern const char kAttrVersion[];
 // |updatecheck| attributes.
 extern const char kAttrEolDate[];
 extern const char kAttrExtendedDate[];
+extern const char kAttrExtendedOptInRequired[];
 extern const char kAttrRollback[];
 extern const char kAttrFirmwareVersion[];
 extern const char kAttrKernelVersion[];
@@ -94,6 +95,7 @@ struct OmahaParserData {
       std::string poll_interval;
       std::string eol_date;
       std::string extended_date;
+      std::string extended_opt_in_required;
       std::string rollback;
       std::string firmware_version;
       std::string kernel_version;

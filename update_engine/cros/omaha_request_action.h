@@ -285,6 +285,9 @@ class OmahaRequestAction : public Action<OmahaRequestAction>,
   // Persists the extended date across boots.
   void PersistExtendedDate(const OmahaParserData::App& platform_app);
 
+  // Persists the extended opt in required across boots.
+  void PersistExtendedOptInRequired(const OmahaParserData::App& platform_app);
+
   // Persist whether we should disable sending market segment info or not.
   void PersistDisableMarketSegment(const std::string& value);
 

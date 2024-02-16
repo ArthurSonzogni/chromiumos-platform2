@@ -40,6 +40,7 @@ const char kIsInteractive[] = "IS_INTERACTIVE";
 const char kWillDeferUpdate[] = "WILL_DEFER_UPDATE";
 const char kEolDate[] = "EOL_DATE";
 const char kExtendedDate[] = "EXTENDED_DATE";
+const char kExtendedOptInRequired[] = "EXTENDED_OPT_IN_REQUIRED";
 
 }  // namespace
 
@@ -100,6 +101,8 @@ string UpdateEngineStatusToString(const UpdateEngineStatus& status) {
   key_value_store.SetString(kEolDate, base::NumberToString(status.eol_date));
   key_value_store.SetString(kExtendedDate,
                             base::NumberToString(status.extended_date));
+  key_value_store.SetBoolean(kExtendedOptInRequired,
+                             status.extended_opt_in_required);
 
   return key_value_store.SaveToString();
 }

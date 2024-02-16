@@ -2362,6 +2362,19 @@ TEST_F(UpdateAttempterTest, MissingExtendedDateTest) {
   EXPECT_EQ(kInvalidDate, status.extended_date);
 }
 
+TEST_F(UpdateAttempterTest, MissingExtendedOptInRequiredTest) {
+  UpdateEngineStatus status;
+  attempter_.GetStatus(&status);
+  EXPECT_FALSE(status.extended_opt_in_required);
+}
+
+TEST_F(UpdateAttempterTest, ExtendedOptInRequiredTest) {
+  EXPECT_TRUE(prefs_->SetBoolean(kPrefsOmahaExtendedOptInRequired, true));
+  UpdateEngineStatus status;
+  attempter_.GetStatus(&status);
+  EXPECT_TRUE(status.extended_opt_in_required);
+}
+
 TEST_F(UpdateAttempterTest, LastAttemptError) {
   UpdateEngineStatus status;
   attempter_.GetStatus(&status);

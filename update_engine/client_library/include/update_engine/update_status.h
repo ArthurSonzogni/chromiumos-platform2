@@ -99,6 +99,8 @@ struct UpdateEngineStatus {
   int64_t eol_date = -9999;
   // The extended date of the device in the number of days since Unix Epoch.
   int64_t extended_date = -9999;
+  // The extended opt in requirement for the device.
+  bool extended_opt_in_required = false;
   // The system will powerwash once the update is applied.
   bool will_powerwash_after_reboot = false;
   // The last update attempt error.

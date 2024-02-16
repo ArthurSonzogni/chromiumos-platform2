@@ -119,6 +119,9 @@ message StatusResult {
 
   // The extended date of the device in the number of days since Unix Epoch.
   int64 extended_date = 16;
+
+  // The extended opt in requirement for the device.
+  bool extended_opt_in_required = 17;
 }
 
 // This is the message flags that influences how updates are performed.

@@ -20,6 +20,7 @@ TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringDefaultTest) {
       R"(CURRENT_OP=UPDATE_STATUS_IDLE
 EOL_DATE=-9999
 EXTENDED_DATE=-9999
+EXTENDED_OPT_IN_REQUIRED=false
 IS_ENTERPRISE_ROLLBACK=false
 IS_INSTALL=false
 IS_INTERACTIVE=false
@@ -47,6 +48,7 @@ TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringTest) {
       .is_install = true,
       .eol_date = 123,
       .extended_date = 234,
+      .extended_opt_in_required = true,
       .will_powerwash_after_reboot = true,
       .last_attempt_error = 0,
       .is_interactive = true,
@@ -56,6 +58,7 @@ TEST(UpdateStatusUtilsTest, UpdateEngineStatusToStringTest) {
       R"(CURRENT_OP=UPDATE_STATUS_CHECKING_FOR_UPDATE
 EOL_DATE=123
 EXTENDED_DATE=234
+EXTENDED_OPT_IN_REQUIRED=true
 IS_ENTERPRISE_ROLLBACK=true
 IS_INSTALL=true
 IS_INTERACTIVE=true
