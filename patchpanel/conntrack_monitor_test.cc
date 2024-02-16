@@ -23,7 +23,6 @@ using testing::Return;
 
 namespace patchpanel {
 namespace {
-constexpr uint8_t kDefaultEventBitMask = 0;
 constexpr uint8_t kNewEventBitMask = (1 << 0);
 constexpr ConntrackMonitor::EventType kEventType[] = {
     ConntrackMonitor::EventType::kNew};
@@ -456,34 +455,28 @@ MATCHER_P(IsConntrackEvent, event, "") {
 TEST_F(ConntrackMonitorTest, Start) {
   auto socket = std::make_unique<net_base::MockSocket>(
       base::ScopedFD(std::move(read_fd_)), SOCK_RAW);
-  bool read_once = 0;
-  EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
-      .WillOnce([&socket, this, &read_once]() {
-        EXPECT_CALL(*socket, GetSockName(IsNetlinkAddr(kDefaultEventBitMask),
-                                         IsNetlinkAddrLength()))
-            .WillOnce(Return(true));
-        EXPECT_CALL(*socket,
-                    Bind(IsNetlinkAddr(kNewEventBitMask), sizeof(sockaddr_nl)))
-            .WillRepeatedly(Return(true));
-
-        EXPECT_CALL(*socket, RecvFrom(_, 0, IsNetlinkAddr(kDefaultEventBitMask),
-                                      IsNetlinkAddrLength()))
-            .WillRepeatedly(testing::WithArg<0>([this, &read_once](
-                                                    base::span<uint8_t> buf) {
-              // We need to set right size to receive from fd based on which
-              // event we are trying to receive.
-              size_t read_size =
-                  read_once ? sizeof(kEventBuf2) : sizeof(kEventBuf1);
-              read_once = true;
-              EXPECT_TRUE(base::ReadFromFD(
-                  read_fd(), reinterpret_cast<char*>(buf.data()), read_size));
-              return read_size;
-            }));
-        return std::move(socket);
-      });
+  auto sock_ptr = socket.get();
+  EXPECT_CALL(*socket_factory_,
+              CreateNetlink(NETLINK_NETFILTER, kNewEventBitMask, _))
+      .WillOnce(Return(std::move(socket)));
   auto* monitor = ConntrackMonitor::GetInstance();
   ASSERT_NE(monitor, nullptr);
   monitor->Start(kEventType);
+  EXPECT_CALL(*sock_ptr, RecvMessage)
+      .WillOnce(testing::WithArg<0>([this](std::vector<uint8_t>* buf) {
+        buf->resize(sizeof(kEventBuf1), 0);
+        EXPECT_TRUE(base::ReadFromFD(read_fd(),
+                                     reinterpret_cast<char*>(buf->data()),
+                                     sizeof(kEventBuf1)));
+        return true;
+      }))
+      .WillOnce(testing::WithArg<0>([this](std::vector<uint8_t>* buf) {
+        buf->resize(sizeof(kEventBuf2), 0);
+        EXPECT_TRUE(base::ReadFromFD(read_fd(),
+                                     reinterpret_cast<char*>(buf->data()),
+                                     sizeof(kEventBuf2)));
+        return true;
+      }));
   MockCallback event_cb;
   auto listener = monitor->AddListener(
       kEventType, base::BindRepeating(&MockCallback::OnConntrackEventReceived,
@@ -496,46 +489,9 @@ TEST_F(ConntrackMonitorTest, Start) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_F(ConntrackMonitorTest, CreateGetSockNameFailed) {
-  EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
-      .WillOnce([this]() {
-        auto socket = std::make_unique<net_base::MockSocket>(
-            base::ScopedFD(std::move(read_fd_)), SOCK_RAW);
-        EXPECT_CALL(*socket, GetSockName(IsNetlinkAddr(kDefaultEventBitMask),
-                                         IsNetlinkAddrLength()))
-            .WillOnce(Return(false));
-        return socket;
-      });
-
-  auto monitor = ConntrackMonitor::GetInstance();
-  ASSERT_NE(monitor, nullptr);
-  monitor->Start(kEventType);
-  EXPECT_TRUE(monitor->IsSocketNullForTesting());
-}
-
-TEST_F(ConntrackMonitorTest, CreateBindFailed) {
-  EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
-      .WillOnce([this]() {
-        auto socket = std::make_unique<net_base::MockSocket>(
-            std::move(read_fd_), SOCK_RAW);
-
-        EXPECT_CALL(*socket, GetSockName(IsNetlinkAddr(kDefaultEventBitMask),
-                                         IsNetlinkAddrLength()))
-            .WillOnce(Return(true));
-        EXPECT_CALL(*socket,
-                    Bind(IsNetlinkAddr(kNewEventBitMask), sizeof(sockaddr_nl)))
-            .WillOnce(Return(false));
-        return socket;
-      });
-
-  auto monitor = ConntrackMonitor::GetInstance();
-  ASSERT_NE(monitor, nullptr);
-  monitor->Start(kEventType);
-  EXPECT_TRUE(monitor->IsSocketNullForTesting());
-}
-
 TEST_F(ConntrackMonitorTest, CreateSocketIsNull) {
-  EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
+  EXPECT_CALL(*socket_factory_,
+              CreateNetlink(NETLINK_NETFILTER, kNewEventBitMask, _))
       .WillOnce(Return(nullptr));
 
   auto monitor = ConntrackMonitor::GetInstance();

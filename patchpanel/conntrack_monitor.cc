@@ -64,31 +64,14 @@ void ConntrackMonitor::Start(
   if (sock_ != nullptr) {
     return;
   }
-  sock_ = socket_factory_->Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER);
-  if (!sock_) {
-    PLOG(ERROR) << "Unable to create conntrack monitor, open socket failed.";
-    return;
-  }
-
-  struct sockaddr_nl local {};
-  local.nl_family = AF_NETLINK;
-  unsigned int addr_len = sizeof(local);
-  if (!sock_->GetSockName((struct sockaddr*)&local, &addr_len)) {
-    PLOG(ERROR)
-        << "Unable to create conntrack monitor, get socket name failed.";
-    sock_.reset();
-    return;
-  }
-
   event_mask_ = 0;
   for (EventType event : events) {
     event_mask_ |= EventTypeToMask(event);
   }
 
-  local.nl_groups = event_mask_;
-  if (!sock_->Bind((struct sockaddr*)&local, sizeof(local))) {
-    PLOG(ERROR) << "Unable to create conntrack monitor, bind to socket failed.";
-    sock_.reset();
+  sock_ = socket_factory_->CreateNetlink(NETLINK_NETFILTER, event_mask_);
+  if (!sock_) {
+    LOG(ERROR) << "Unable to create conntrack monitor, open socket failed.";
     return;
   }
 
@@ -106,37 +89,24 @@ void ConntrackMonitor::StopForTesting() {
 }
 
 void ConntrackMonitor::OnSocketReadable() {
-  socklen_t addrlen = sizeof(struct sockaddr_nl);
-  struct sockaddr_nl peer {};
-  peer.nl_family = AF_NETLINK;
-
-  // Receive from the netlink socket.
-  auto ret =
-      sock_->RecvFrom(buf_, /*flags=*/0, (struct sockaddr*)&peer, &addrlen);
-
-  if (!ret) {
-    PLOG(ERROR) << "Failed to receive buffer from socket.";
-    return;
-  }
-  if (peer.nl_pid != 0) {
-    LOG(ERROR) << "Ignoring message from pid: " << peer.nl_pid;
+  std::vector<uint8_t> buf;
+  if (!sock_->RecvMessage(&buf)) {
+    PLOG(ERROR) << "Failed to receive message from socket.";
     return;
   }
 
-  Process(static_cast<ssize_t>(*ret));
-}
-
-void ConntrackMonitor::Process(ssize_t len) {
   // If no handler is registered for conntrack event, skip processing.
   if (listeners_.empty()) {
     return;
   }
+
+  auto len = buf.size();
   if (len < sizeof(struct nlmsghdr)) {
     LOG(ERROR) << "Invalid message received from socket, length is:" << len;
     return;
   }
 
-  struct nlmsghdr* nlh = reinterpret_cast<struct nlmsghdr*>(buf_);
+  struct nlmsghdr* nlh = reinterpret_cast<struct nlmsghdr*>(buf.data());
 
   // If netlink message is able to parse and is not done with the reply, keep
   // iterating.

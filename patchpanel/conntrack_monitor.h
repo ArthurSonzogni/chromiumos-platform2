@@ -141,17 +141,10 @@ class ConntrackMonitor {
  private:
   friend base::LazyInstanceTraitsBase<ConntrackMonitor>;
 
-  static constexpr int kDefaultBufSize = 4096;
-
-  // Receives and parses buffer from socket when socket is readable.
+  // Receives and parses buffer from socket when socket is readable, and
+  // notifies registered handlers of conntrack table updates.
   void OnSocketReadable();
 
-  // Parses buffer received from sockets and notify registered handlers of
-  // conntrack table updates.
-  void Process(ssize_t len);
-
-  // Buffer used to receive message from netlink socket.
-  uint8_t buf_[kDefaultBufSize];
   // The netlink socket used to get conntrack events.
   std::unique_ptr<net_base::Socket> sock_;
   // List of callbacks that listen to conntrack table socket connection
