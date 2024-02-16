@@ -299,24 +299,24 @@ bool ChromeosStartup::IsVarFull() {
 }
 
 ChromeosStartup::ChromeosStartup(
-    std::unique_ptr<crossystem::Crossystem> crossystem,
+    crossystem::Crossystem* crossystem,
     std::unique_ptr<vpd::Vpd> vpd,
     const Flags& flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
     const base::FilePath& lsb_file,
     const base::FilePath& proc_file,
-    std::unique_ptr<Platform> platform,
+    Platform* platform,
     std::unique_ptr<MountHelper> mount_helper,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
-    : crossystem_(std::move(crossystem)),
+    : crossystem_(crossystem),
       vpd_(std::move(vpd)),
       flags_(flags),
       lsb_file_(lsb_file),
       proc_(proc_file),
       root_(root),
       stateful_(stateful),
-      platform_(std::move(platform)),
+      platform_(platform),
       mount_helper_(std::move(mount_helper)),
       tlcl_(std::move(tlcl)) {}
 
@@ -784,7 +784,7 @@ void ChromeosStartup::RestoreContextsForVar(
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
-  dev_mode_ = InDevMode(*crossystem_);
+  dev_mode_ = InDevMode(crossystem_);
 
   // Make sure our clock is somewhat up-to-date. We don't need any resources
   // mounted below, so do this early on.
@@ -1032,7 +1032,7 @@ bool ChromeosStartup::DevIsDebugBuild() const {
   if (!dev_mode_) {
     return false;
   }
-  return IsDebugBuild(*crossystem_);
+  return IsDebugBuild(crossystem_);
 }
 
 bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {

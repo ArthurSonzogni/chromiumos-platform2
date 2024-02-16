@@ -19,13 +19,12 @@ namespace startup {
 
 // Constructor for StandardMountHelper when the device is
 // not in dev mode.
-StandardMountHelper::StandardMountHelper(std::unique_ptr<Platform> platform,
+StandardMountHelper::StandardMountHelper(Platform* platform,
                                          const startup::Flags& flags,
                                          const base::FilePath& root,
                                          const base::FilePath& stateful,
                                          const bool dev_mode)
-    : startup::MountHelper(
-          std::move(platform), flags, root, stateful, dev_mode) {}
+    : startup::MountHelper(platform, flags, root, stateful, dev_mode) {}
 
 bool StandardMountHelper::DoMountVarAndHomeChronos() {
   return MountVarAndHomeChronos();

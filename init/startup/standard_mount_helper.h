@@ -21,7 +21,7 @@ namespace startup {
 // image or in factory mode.
 class StandardMountHelper : public startup::MountHelper {
  public:
-  explicit StandardMountHelper(std::unique_ptr<Platform> platform,
+  explicit StandardMountHelper(Platform* platform,
                                const startup::Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,

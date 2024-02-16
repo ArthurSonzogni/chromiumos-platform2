@@ -105,8 +105,7 @@ class Ext4FeaturesTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<startup::FakePlatform>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
-        true);
+        platform_.get(), flags_, base_dir, base_dir, true);
   }
 
   startup::Flags flags_;
@@ -246,13 +245,11 @@ class HibernateResumeBootTest : public ::testing::Test {
   HibernateResumeBootTest() {}
 
   void SetUp() override {
-    crossystem_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
     mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        std::make_unique<startup::FakePlatform>(), flags_, base_dir_, base_dir_,
-        true);
+        mock_platform_.get(), flags_, base_dir_, base_dir_, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir_, base_dir_, mock_platform_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
@@ -261,7 +258,6 @@ class HibernateResumeBootTest : public ::testing::Test {
     hiber_init_log_ = base_dir_.Append(kHiberResumeInitLog);
   }
 
-  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_;
   startup::Flags flags_;
   std::unique_ptr<startup::MockPlatform> mock_platform_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
@@ -304,7 +300,6 @@ class DevUpdateStatefulTest : public ::testing::Test {
   DevUpdateStatefulTest() {}
 
   void SetUp() override {
-    crossystem_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
@@ -317,15 +312,13 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
-        true);
+        platform_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
         mount_helper_.get());
   }
 
-  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;
@@ -437,14 +430,12 @@ class DevGatherLogsTest : public ::testing::Test {
   DevGatherLogsTest() {}
 
   void SetUp() override {
-    crossystem_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<startup::FakePlatform>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
-        true);
+        platform_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
@@ -458,7 +449,6 @@ class DevGatherLogsTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(home_chronos_));
   }
 
-  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;

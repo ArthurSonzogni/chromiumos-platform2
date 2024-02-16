@@ -32,13 +32,12 @@ namespace startup {
 
 // Constructor for FactoryModeMountHelper when the device is
 // in factory mode.
-FactoryModeMountHelper::FactoryModeMountHelper(
-    std::unique_ptr<Platform> platform,
-    const Flags& flags,
-    const base::FilePath& root,
-    const base::FilePath& stateful,
-    const bool dev_mode)
-    : MountHelper(std::move(platform), flags, root, stateful, dev_mode) {}
+FactoryModeMountHelper::FactoryModeMountHelper(Platform* platform,
+                                               const Flags& flags,
+                                               const base::FilePath& root,
+                                               const base::FilePath& stateful,
+                                               const bool dev_mode)
+    : MountHelper(platform, flags, root, stateful, dev_mode) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = GetStateful().Append(kOptionsFile);

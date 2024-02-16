@@ -21,7 +21,7 @@ namespace startup {
 // is running a test image.
 class TestModeMountHelper : public startup::MountHelper {
  public:
-  explicit TestModeMountHelper(std::unique_ptr<Platform> platform,
+  explicit TestModeMountHelper(Platform* platform,
                                const startup::Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,

@@ -20,12 +20,12 @@
 
 namespace startup {
 
-MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
+MountHelperFactory::MountHelperFactory(Platform* platform,
                                        const Flags& flags,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,
                                        const base::FilePath& lsb_file)
-    : platform_(std::move(platform)),
+    : platform_(platform),
       flags_(flags),
       root_(root),
       stateful_(stateful),
@@ -39,7 +39,7 @@ MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
 std::unique_ptr<MountHelper> MountHelperFactory::Generate(
-    const crossystem::Crossystem& crossystem) {
+    crossystem::Crossystem* crossystem) {
   bool dev_mode = InDevMode(crossystem);
   bool is_test_image = IsTestImage(lsb_file_);
   bool is_factory_mode = IsFactoryMode(crossystem, root_);
@@ -51,12 +51,12 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
   }
 
   if (dev_mode && is_test_image) {
-    return std::make_unique<TestModeMountHelper>(std::move(platform_), flags_,
-                                                 root_, stateful_, dev_mode);
+    return std::make_unique<TestModeMountHelper>(platform_, flags_, root_,
+                                                 stateful_, dev_mode);
   }
 
-  return std::make_unique<StandardMountHelper>(std::move(platform_), flags_,
-                                               root_, stateful_, dev_mode);
+  return std::make_unique<StandardMountHelper>(platform_, flags_, root_,
+                                               stateful_, dev_mode);
 }
 
 }  // namespace startup

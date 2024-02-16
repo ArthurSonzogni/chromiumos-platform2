@@ -32,7 +32,7 @@ enum class MountHelperType {
 // and StandardMountHelper classes.
 class MountHelper {
  public:
-  MountHelper(std::unique_ptr<Platform> platform,
+  MountHelper(Platform* platform,
               const Flags& flags,
               const base::FilePath& root,
               const base::FilePath& stateful,
@@ -67,7 +67,6 @@ class MountHelper {
   Flags GetFlags();
   base::FilePath GetRoot();
   base::FilePath GetStateful();
-  Platform* GetPlatform();
 
   // Checks for encstateful flag, then calls the appropriate
   // UmountVarAndHomeChronos function.
@@ -83,7 +82,7 @@ class MountHelper {
   virtual MountHelperType GetMountHelperType() const = 0;
 
  protected:
-  std::unique_ptr<Platform> platform_;
+  raw_ptr<Platform> platform_;
   const startup::Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

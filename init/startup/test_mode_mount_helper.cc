@@ -37,13 +37,12 @@ namespace startup {
 
 // Constructor for TestModeMountHelper when the device is
 // not in dev mode.
-TestModeMountHelper::TestModeMountHelper(std::unique_ptr<Platform> platform,
+TestModeMountHelper::TestModeMountHelper(Platform* platform,
                                          const startup::Flags& flags,
                                          const base::FilePath& root,
                                          const base::FilePath& stateful,
                                          const bool dev_mode)
-    : startup::MountHelper(
-          std::move(platform), flags, root, stateful, dev_mode) {}
+    : startup::MountHelper(platform, flags, root, stateful, dev_mode) {}
 
 bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and
@@ -55,7 +54,7 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   bool sys_key = system_key.value_or(false);
   if (sys_key) {
     LOG(INFO) << "Creating System Key";
-    CreateSystemKey(GetRoot(), GetStateful(), GetPlatform());
+    CreateSystemKey(GetRoot(), GetStateful(), platform_);
   }
 
   base::FilePath encrypted_failed =

@@ -24,7 +24,7 @@ namespace startup {
 // which derived class to generate/utilize.
 class MountHelperFactory {
  public:
-  explicit MountHelperFactory(std::unique_ptr<Platform> platform,
+  explicit MountHelperFactory(Platform* platform,
                               const Flags& flags,
                               const base::FilePath& root,
                               const base::FilePath& stateful,
@@ -36,10 +36,10 @@ class MountHelperFactory {
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
   virtual std::unique_ptr<MountHelper> Generate(
-      const crossystem::Crossystem& crossystem);
+      crossystem::Crossystem* crossystem);
 
  private:
-  std::unique_ptr<Platform> platform_;
+  raw_ptr<Platform> platform_;
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

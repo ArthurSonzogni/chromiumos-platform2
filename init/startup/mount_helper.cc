@@ -31,12 +31,12 @@ constexpr char kMountEncryptedLog[] = "run/mount_encrypted/mount-encrypted.log";
 
 namespace startup {
 
-MountHelper::MountHelper(std::unique_ptr<Platform> platform,
+MountHelper::MountHelper(Platform* platform,
                          const Flags& flags,
                          const base::FilePath& root,
                          const base::FilePath& stateful,
                          const bool dev_mode)
-    : platform_(std::move(platform)),
+    : platform_(platform),
       flags_(flags),
       root_(root),
       stateful_(stateful),
@@ -244,10 +244,6 @@ base::FilePath MountHelper::GetRoot() {
 
 base::FilePath MountHelper::GetStateful() {
   return stateful_;
-}
-
-Platform* MountHelper::GetPlatform() {
-  return platform_.get();
 }
 
 }  // namespace startup

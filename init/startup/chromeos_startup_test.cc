@@ -101,6 +101,8 @@ class EarlySetupTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir_ = temp_dir_.GetPath();
     kernel_debug_ = base_dir_.Append("sys/kernel/debug");
     kernel_config_ = base_dir_.Append("sys/kernel/config");
@@ -110,22 +112,21 @@ class EarlySetupTest : public ::testing::Test {
     kernel_security_ = base_dir_.Append("sys/kernel/security");
     fs_bpf_ = base_dir_.Append("fs/bpf");
     namespaces_ = base_dir_.Append("run/namespaces");
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::unique_ptr<vpd::Vpd>(), flags_, base_dir_, base_dir_, base_dir_,
-        base_dir_, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::unique_ptr<vpd::Vpd>(), flags_, base_dir_,
+        base_dir_, base_dir_, base_dir_, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir_,
-            base_dir_, true),
+            platform_.get(), flags_, base_dir_, base_dir_, true),
         std::move(tlcl));
   }
 
   startup::Flags flags_;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::ScopedTempDir temp_dir_;
@@ -157,36 +158,34 @@ class DevCheckBlockTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
-    crossystem_ = crossystem_fake.get();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     auto vpd_fake = std::make_unique<vpd::FakeVpd>();
     vpd_ = vpd_fake.get();
     base_dir = temp_dir_.GetPath();
     dev_mode_file = base_dir.Append(".developer_mode");
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(std::move(vpd_fake)), flags_, base_dir,
-        base_dir, base_dir, base_dir,
-        std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(std::move(vpd_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
     ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
     base::CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
   }
 
-  crossystem::fake::CrossystemFake* crossystem_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   vpd::FakeVpd* vpd_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath dev_mode_file;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
@@ -228,26 +227,27 @@ class TPMTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    auto crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, false),
+            platform_.get(), flags_, base_dir, base_dir, false),
         std::move(tlcl));
   }
 
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
 
@@ -403,28 +403,27 @@ class StatefulWipeTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful_ = base_dir.Append("mnt/stateful_partition");
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
-    crossystem_ = crossystem_fake.get();
-    platform_ = new startup::FakePlatform();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, stateful_, base_dir,
-        base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        stateful_, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            stateful_, false),
+            platform_.get(), flags_, base_dir, stateful_, false),
         std::move(tlcl));
     clobber_test_log_ = base_dir.Append("clobber_test_log");
   }
 
-  crossystem::fake::CrossystemFake* crossystem_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful_;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::FilePath clobber_test_log_;
@@ -520,12 +519,11 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
   base::FilePath state_dev = base_dir.Append("state_dev");
   startup_->SetStateDev(state_dev);
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
-      std::make_unique<startup::StandardMountHelper>(
-          std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
-          true);
+      std::make_unique<startup::StandardMountHelper>(platform_.get(), flags_,
+                                                     base_dir, base_dir, true);
   std::unique_ptr<StatefulMount> stateful_mount =
       std::make_unique<StatefulMount>(
-          flags_, base_dir, base_dir, platform_,
+          flags_, base_dir, base_dir, platform_.get(),
           std::unique_ptr<brillo::MockLogicalVolumeManager>(),
           mount_helper_.get());
   startup_->SetStatefulMount(std::move(stateful_mount));
@@ -580,12 +578,11 @@ TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
   base::FilePath state_dev = base_dir.Append("state_dev");
   startup_->SetStateDev(state_dev);
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
-      std::make_unique<startup::StandardMountHelper>(
-          std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
-          true);
+      std::make_unique<startup::StandardMountHelper>(platform_.get(), flags_,
+                                                     base_dir, base_dir, true);
   std::unique_ptr<StatefulMount> stateful_mount =
       std::make_unique<StatefulMount>(
-          flags_, base_dir, base_dir, platform_,
+          flags_, base_dir, base_dir, platform_.get(),
           std::unique_ptr<brillo::MockLogicalVolumeManager>(),
           mount_helper_.get());
   startup_->SetStatefulMount(std::move(stateful_mount));
@@ -604,27 +601,28 @@ class TpmCleanupTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
-    mock_platform_ = new startup::MockPlatform();
+    mock_platform_ = std::make_unique<startup::MockPlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::unique_ptr<startup::MockPlatform>(mock_platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, mock_platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            mock_platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
     flag_file_ = base_dir.Append(kTpmFirmwareUpdateRequestFlagFile);
     tpm_cleanup_ = base_dir.Append(kTpmFirmwareUpdateCleanup);
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  startup::MockPlatform* mock_platform_;
+  std::unique_ptr<startup::MockPlatform> mock_platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::FilePath flag_file_;
@@ -664,9 +662,9 @@ class ConfigTest : public ::testing::Test {
   std::unique_ptr<startup::MountHelper> GenerateMountHelper() {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
-    startup::MountHelperFactory factory(std::move(platform_), flags, base_dir_,
+    startup::MountHelperFactory factory(platform_.get(), flags, base_dir_,
                                         stateful_, lsb_file_);
-    return factory.Generate(*crossystem_);
+    return factory.Generate(crossystem_.get());
   }
 
   std::unique_ptr<crossystem::Crossystem> crossystem_;
@@ -745,12 +743,8 @@ class MountStackTest : public ::testing::Test {
  protected:
   MountStackTest()
       : base_dir_(base::FilePath("")),
-        platform_(new startup::FakePlatform()),
-        mount_helper_(std::unique_ptr<startup::FakePlatform>(platform_),
-                      flags_,
-                      base_dir_,
-                      base_dir_,
-                      true) {}
+        platform_(std::make_unique<startup::FakePlatform>()),
+        mount_helper_(platform_.get(), flags_, base_dir_, base_dir_, true) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -760,7 +754,7 @@ class MountStackTest : public ::testing::Test {
   startup::Flags flags_;
   base::FilePath base_dir_;
   base::ScopedTempDir temp_dir_;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   startup::StandardMountHelper mount_helper_;
 };
 
@@ -801,7 +795,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
   platform_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
       std::make_unique<startup::StandardMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
 
   bool res = mount_helper_->MountVarAndHomeChronosEncrypted();
   EXPECT_EQ(res, true);
@@ -817,7 +811,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
       std::make_unique<startup::FakePlatform>();
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
       std::make_unique<startup::StandardMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
 
   bool res = mount_helper_->MountVarAndHomeChronosEncrypted();
   EXPECT_EQ(res, false);
@@ -844,7 +838,7 @@ TEST_F(DoMountTest, StandardMountHelper) {
   platform_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
       std::make_unique<startup::StandardMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
 }
@@ -864,7 +858,7 @@ TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
   platform_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
       std::make_unique<startup::TestModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
   std::string sys_key_log_out;
@@ -884,7 +878,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
   platform_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
       std::make_unique<startup::TestModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
 }
@@ -898,7 +892,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
   platform_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
       std::make_unique<startup::TestModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
   std::string clobber_log_out;
@@ -923,7 +917,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
 
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
       std::make_unique<startup::TestModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, false);
   std::string clobber_log_out;
@@ -941,7 +935,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntVar) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, false);
 }
@@ -958,7 +952,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, base_dir_, true);
+          platform_.get(), flags_, base_dir_, base_dir_, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, false);
 }
@@ -977,7 +971,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, stateful, true);
+          platform_.get(), flags_, base_dir_, stateful, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
 }
@@ -990,7 +984,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, stateful, true);
+          platform_.get(), flags_, base_dir_, stateful, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, false);
 }
@@ -1006,7 +1000,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, stateful, true);
+          platform_.get(), flags_, base_dir_, stateful, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, false);
 }
@@ -1023,7 +1017,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
 
   std::unique_ptr<startup::FactoryModeMountHelper> mount_helper_ =
       std::make_unique<startup::FactoryModeMountHelper>(
-          std::move(platform_), flags_, base_dir_, stateful, true);
+          platform_.get(), flags_, base_dir_, stateful, true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
   EXPECT_EQ(res, true);
 }
@@ -1033,25 +1027,26 @@ class IsVarFullTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, false),
+            platform_.get(), flags_, base_dir, base_dir, false),
         std::move(tlcl));
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
@@ -1105,28 +1100,29 @@ class DeviceSettingsTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, false),
+            platform_.get(), flags_, base_dir, base_dir, false),
         std::move(tlcl));
     base::FilePath var_lib = base_dir.Append("var/lib");
     whitelist_ = var_lib.Append("whitelist");
     devicesettings_ = var_lib.Append("devicesettings");
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::FilePath whitelist_;
@@ -1175,25 +1171,26 @@ class DaemonStoreTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
@@ -1234,20 +1231,23 @@ class RemoveVarEmptyTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+    platform_ = std::make_unique<startup::FakePlatform>();
     base_dir = temp_dir_.GetPath();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::make_unique<startup::FakePlatform>(),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -1275,22 +1275,25 @@ class CheckVarLogTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+    platform_ = std::make_unique<startup::FakePlatform>();
     base_dir = temp_dir_.GetPath();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::make_unique<startup::FakePlatform>(),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
     var_log_ = base_dir.Append("var/log");
     base::CreateDirectory(var_log_);
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -1356,12 +1359,11 @@ class DevMountPackagesTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
-    platform_ = new startup::FakePlatform();
+    platform_ = std::make_unique<startup::FakePlatform>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        std::unique_ptr<startup::FakePlatform>(platform_), flags_, base_dir_,
-        base_dir_, true);
+        platform_.get(), flags_, base_dir_, base_dir_, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, base_dir_, platform_,
+        flags_, base_dir_, base_dir_, platform_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
         mount_helper_.get());
     proc_mounts_ = base_dir_.Append("proc/mounts");
@@ -1382,7 +1384,7 @@ class DevMountPackagesTest : public ::testing::Test {
 
   startup::Flags flags_;
   base::FilePath base_dir_;
-  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
@@ -1465,18 +1467,18 @@ class RestoreContextsForVarTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<startup::FakePlatform>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, std::make_unique<startup::FakePlatform>(*platform_.get()),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        base_dir, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
   }
 
@@ -1485,6 +1487,7 @@ class RestoreContextsForVarTest : public ::testing::Test {
   base::FilePath base_dir;
   hwsec_foundation::MockTlclWrapper* tlcl_;
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   std::unique_ptr<startup::FakePlatform> platform_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
@@ -1512,6 +1515,9 @@ class RestorePreservedPathsTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    crossystem_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
+    platform_ = std::make_unique<startup::FakePlatform>();
     base_dir = temp_dir_.GetPath();
     stateful_ = base_dir.Append("stateful_test");
     base::CreateDirectory(stateful_);
@@ -1519,16 +1525,16 @@ class RestorePreservedPathsTest : public ::testing::Test {
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
-        std::make_unique<vpd::Vpd>(), flags_, base_dir, stateful_, base_dir,
-        base_dir, std::make_unique<startup::FakePlatform>(),
+        crossystem_.get(), std::make_unique<vpd::Vpd>(), flags_, base_dir,
+        stateful_, base_dir, base_dir, platform_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
-            base_dir, true),
+            platform_.get(), flags_, base_dir, base_dir, true),
         std::move(tlcl));
     startup_->SetDevMode(true);
   }
 
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
+  std::unique_ptr<startup::FakePlatform> platform_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;

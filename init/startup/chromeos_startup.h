@@ -37,14 +37,14 @@ class ChromeosStartup {
   static void ParseFlags(Flags* flags, int argc, char* argv[]);
 
   // Constructor for the class
-  ChromeosStartup(std::unique_ptr<crossystem::Crossystem> crossystem,
+  ChromeosStartup(crossystem::Crossystem* crossystem,
                   std::unique_ptr<vpd::Vpd> vpd,
                   const Flags& flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
-                  std::unique_ptr<Platform> platform,
+                  Platform* platform,
                   std::unique_ptr<MountHelper> mount_helper,
                   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl);
 
@@ -159,7 +159,7 @@ class ChromeosStartup {
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
-  std::unique_ptr<crossystem::Crossystem> crossystem_;
+  raw_ptr<crossystem::Crossystem> crossystem_;
   std::unique_ptr<vpd::Vpd> vpd_;
   const Flags flags_;
   const base::FilePath lsb_file_;
@@ -167,7 +167,7 @@ class ChromeosStartup {
   const base::FilePath root_;
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
-  std::unique_ptr<Platform> platform_;
+  raw_ptr<Platform> platform_;
   std::unique_ptr<MountHelper> mount_helper_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;

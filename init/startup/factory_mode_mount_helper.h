@@ -22,7 +22,7 @@ namespace startup {
 // have different behavior when the device is in factory mode.
 class FactoryModeMountHelper : public MountHelper {
  public:
-  explicit FactoryModeMountHelper(std::unique_ptr<Platform> platform,
+  explicit FactoryModeMountHelper(Platform* platform,
                                   const Flags& flags,
                                   const base::FilePath& root,
                                   const base::FilePath& stateful,

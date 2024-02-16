@@ -281,18 +281,18 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
 }
 
 // Returns if we are running on a debug build.
-bool IsDebugBuild(const crossystem::Crossystem& crossystem) {
+bool IsDebugBuild(crossystem::Crossystem* crossystem) {
   std::optional<int> debug =
-      crossystem.VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+      crossystem->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
   return debug == 1;
 }
 
 // Determine if the device is in dev mode.
-bool InDevMode(const crossystem::Crossystem& crossystem) {
+bool InDevMode(crossystem::Crossystem* crossystem) {
   // cros_debug equals one if we've booted in developer mode or we've booted
   // a developer image.
   std::optional<int> debug =
-      crossystem.VbGetSystemPropertyInt(crossystem::Crossystem::kCrosDebug);
+      crossystem->VbGetSystemPropertyInt(crossystem::Crossystem::kCrosDebug);
   return debug == 1;
 }
 
@@ -312,7 +312,7 @@ bool IsTestImage(const base::FilePath& lsb_file) {
 }
 
 // Return if the device is in factory test mode.
-bool IsFactoryTestMode(const crossystem::Crossystem& crossystem,
+bool IsFactoryTestMode(crossystem::Crossystem* crossystem,
                        const base::FilePath& base_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
@@ -320,7 +320,7 @@ bool IsFactoryTestMode(const crossystem::Crossystem& crossystem,
   base::FilePath factory_tag = factory_dir.Append("enabled");
   struct stat statbuf;
   std::optional<int> res =
-      crossystem.VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+      crossystem->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
   if (res == 1 && stat(factory_tag.value().c_str(), &statbuf) == 0 &&
       S_ISREG(statbuf.st_mode)) {
     return true;
@@ -330,7 +330,7 @@ bool IsFactoryTestMode(const crossystem::Crossystem& crossystem,
 
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(const crossystem::Crossystem& crossystem,
+bool IsFactoryMode(crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir) {
   if (IsFactoryTestMode(crossystem, base_dir))
     return true;
