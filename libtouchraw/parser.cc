@@ -294,8 +294,17 @@ void Parser::ParseHIDData(std::unique_ptr<const HIDData> hid_data) {
                 GetDataField(cur, usages_[i].data_size, hid_data->payload);
             break;
           case kHidDGHeatMapFrameData:
+            // TODO: b/320780085 - Validate report descriptor collection that
+            // represents the heatmap data
             chunk->payload.assign(hid_data->payload.begin() + cur,
                                   hid_data->payload.end());
+            if (chunk->payload.size() != usages_[i].data_size) {
+              LOG(WARNING) << "Discard this chunk because chunk size "
+                           << chunk->payload.size()
+                           << " is not equal to the expected size "
+                           << usages_[i].data_size;
+              return;
+            }
             break;
           default:
             break;

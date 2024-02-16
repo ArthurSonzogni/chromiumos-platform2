@@ -40,7 +40,7 @@ class ParserTest : public testing::Test {
 };
 
 // Complete report descriptor that supports heat map.
-TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
+TEST_F(ParserTest, ValidReportDescriptorWithHeatmap) {
   hidraw_report_descriptor rpt_desc;
   auto buf = base::ReadFileToBytes(GetTestDataPath("report_descriptor.bin"));
   ASSERT_TRUE(buf.has_value());
@@ -56,7 +56,21 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
   EXPECT_EQ(parser_->usages_[parser_->sub_report_offset_.value()].report_id,
             145);
 
-  // First chunk.
+  // A chunk that has unmatched payload size 5, where the expected size is 7304
+  // retrieved from the report descriptor.
+  auto hid_data = std::make_unique<HIDData>(
+      HIDData{144,  // Report id.
+              {
+                  0x11, 0x22,                    // Protocol vendor ID.
+                  0x33, 0x44,                    // Protocol version.
+                  0x55, 0x66, 0x77, 0x88,        // Scan time.
+                  0x99, 0xaa,                    // Sequence ID.
+                  0xbb, 0xcc, 0xdd, 0xee, 0xff,  // Frame data.
+              }});
+  parser_->ParseHIDData(std::move(hid_data));
+
+  // Use heat map report descriptor information to parse a valid first chunk.
+  parser_->usages_[parser_->sync_report_offset_.value() + 4].data_size = 3;
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
       .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
         EXPECT_EQ(chunk->vendor_id, 0x2211);
@@ -70,7 +84,7 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
         EXPECT_EQ(chunk->payload[1], 0xee);
         EXPECT_EQ(chunk->payload[2], 0xff);
       });
-  auto hid_data1 = std::make_unique<HIDData>(
+  hid_data = std::make_unique<HIDData>(
       HIDData{144,  // Report id.
               {
                   0x11, 0x22,              // Protocol vendor ID.
@@ -79,9 +93,11 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
                   0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
                   0xdd, 0xee, 0xff,        // Frame data.
               }});
-  parser_->ParseHIDData(std::move(hid_data1));
+  parser_->ParseHIDData(std::move(hid_data));
 
-  // A subsequent chunk.
+  // Use heat map report descriptor information to parse a valid subsequent
+  // chunk.
+  parser_->usages_[parser_->sub_report_offset_.value() + 4].data_size = 5;
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
       .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
         EXPECT_EQ(chunk->vendor_id, 0x2211);
@@ -95,7 +111,7 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
         EXPECT_EQ(chunk->payload[1], 0xcc);
         EXPECT_EQ(chunk->payload[2], 0xdd);
       });
-  auto hid_data2 = std::make_unique<HIDData>(
+  hid_data = std::make_unique<HIDData>(
       HIDData{145,  // Report id.
               {
                   0x11, 0x22,                    // Protocol vendor ID.
@@ -104,11 +120,11 @@ TEST_F(ParserTest, ReportDescriptorWithHeatmap) {
                   0x99, 0xaa,                    // Sequence ID.
                   0xbb, 0xcc, 0xdd, 0xee, 0xff,  // Frame data.
               }});
-  parser_->ParseHIDData(std::move(hid_data2));
+  parser_->ParseHIDData(std::move(hid_data));
 }
 
 // Complete report descriptor that does not support heat map.
-TEST_F(ParserTest, ReportDescriptorWithoutHeatmap) {
+TEST_F(ParserTest, ValidReportDescriptorWithoutHeatmap) {
   hidraw_report_descriptor rpt_desc;
   auto buf = base::ReadFileToBytes(
       GetTestDataPath("report_descriptor_no_heatmap.bin"));
@@ -141,7 +157,7 @@ TEST_F(ParserTest, UnknownHidType) {
             145);
 
   // Unsupported report ID.
-  auto hid_data1 = std::make_unique<HIDData>(
+  auto hid_data = std::make_unique<HIDData>(
       HIDData{140,  // Report id.
               {
                   0x11, 0x22,              // Protocol vendor ID.
@@ -150,9 +166,10 @@ TEST_F(ParserTest, UnknownHidType) {
                   0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
                   0xdd, 0xee, 0xff,        // Frame data.
               }});
-  parser_->ParseHIDData(std::move(hid_data1));
+  parser_->ParseHIDData(std::move(hid_data));
 
   // Report descriptor and data do not match.
+  parser_->usages_[parser_->sync_report_offset_.value() + 3].data_size = 7;
   EXPECT_CALL(*mock_consumer_, Push(testing::_))
       .WillOnce([&](std::unique_ptr<const HeatmapChunk> chunk) {
         EXPECT_EQ(chunk->vendor_id, 0x2211);
@@ -165,7 +182,7 @@ TEST_F(ParserTest, UnknownHidType) {
         EXPECT_EQ(chunk->payload[0], 0x99);
         EXPECT_EQ(chunk->payload[6], 0xff);
       });
-  auto hid_data2 = std::make_unique<HIDData>(
+  hid_data = std::make_unique<HIDData>(
       HIDData{144,  // Report id.
               {
                   0x11, 0x22,              // Protocol vendor ID.
@@ -174,7 +191,7 @@ TEST_F(ParserTest, UnknownHidType) {
                   0x99, 0xaa, 0xbb, 0xcc,  // Byte count.
                   0xdd, 0xee, 0xff,        // Frame data.
               }});
-  parser_->ParseHIDData(std::move(hid_data2));
+  parser_->ParseHIDData(std::move(hid_data));
 }
 
 }  // namespace touchraw

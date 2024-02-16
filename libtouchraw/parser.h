@@ -109,8 +109,8 @@ class LIBTOUCHRAW_EXPORT Parser : public HIDDataConsumerInterface {
   void ParseHIDData(std::unique_ptr<const HIDData> hid_data);
 
  private:
-  FRIEND_TEST(ParserTest, ReportDescriptorWithHeatmap);
-  FRIEND_TEST(ParserTest, ReportDescriptorWithoutHeatmap);
+  FRIEND_TEST(ParserTest, ValidReportDescriptorWithHeatmap);
+  FRIEND_TEST(ParserTest, ValidReportDescriptorWithoutHeatmap);
   FRIEND_TEST(ParserTest, UnknownHidType);
 
   /**
