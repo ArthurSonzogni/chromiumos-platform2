@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -22,6 +23,8 @@
 extern int mctk_verbosity;
 
 namespace {
+
+uint32_t mctk_patchlevel = 1;
 
 void PrintUsage(char* progname) {
   fprintf(stderr, "\n");
@@ -45,6 +48,7 @@ void PrintUsage(char* progname) {
       "Options, executed in the order they are passed in:\n"
       "\n"
       "  -h, --help                        Print this help message.\n"
+      "      --patchlevel                  Print an internal change counter.\n"
       "\n"
       "  -v, --verbose                     Increase verbosity.\n"
       "\n"
@@ -92,7 +96,7 @@ int main(int argc, char** argv) {
   int opt;
 
   static struct option long_options[] = {
-      {"help", 0, 0, 'h'},
+      {"help", 0, 0, 'h'},         {"patchlevel", 0, 0, 10006},
 
       {"verbose", 0, 0, 'v'},
 
@@ -105,7 +109,7 @@ int main(int argc, char** argv) {
 
       {"auto-route", 0, 0, 10004}, {NULL, 0, NULL, 0}};
 
-  if (argc < 3) {
+  if (argc < 2) {
     PrintUsage(argv[0]);
     return EXIT_FAILURE;
   }
@@ -117,6 +121,10 @@ int main(int argc, char** argv) {
       default:
       case 'h':
         PrintUsage(argv[0]);
+        break;
+
+      case 10006: /* --patchlevel */
+        fprintf(stderr, "mctk patchlevel: %u\n", mctk_patchlevel);
         break;
 
       case 'v':
