@@ -12,7 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -25,14 +25,15 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
 bool ConfigureProcessMgmtSecurity(const base::FilePath& root);
 
 // Sets up the LoadPin verity root digests to be trusted by the kernel.
-bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform);
+bool SetupLoadPinVerityDigests(const base::FilePath& root,
+                               StartupDep* startup_dep);
 
 // Block symlink and FIFO access on the given path.
 bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path);
 
 void CreateSystemKey(const base::FilePath& root,
                      const base::FilePath& stateful,
-                     Platform* platform);
+                     StartupDep* startup_dep);
 
 bool AllowSymlink(const base::FilePath& root, const std::string& path);
 bool AllowFifo(const base::FilePath& root, const std::string& path);

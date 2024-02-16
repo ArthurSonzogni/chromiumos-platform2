@@ -40,7 +40,7 @@
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/mount_helper_factory.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/stateful_mount.h"
@@ -235,17 +235,17 @@ bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
     return false;
   }
 
-  if (platform_->Stat(need_finalization, &statbuf)) {
+  if (startup_dep_->Stat(need_finalization, &statbuf)) {
     return true;
   }
 
   // This should only be supported on the non-TPM2 device.
-  if (!USE_TPM2 && platform_->Stat(preservation_request, &statbuf) &&
+  if (!USE_TPM2 && startup_dep_->Stat(preservation_request, &statbuf) &&
       statbuf.st_uid == getuid()) {
     return false;
   }
 
-  if (platform_->Stat(cryptohome_key, &statbuf)) {
+  if (startup_dep_->Stat(cryptohome_key, &statbuf)) {
     return true;
   }
 
@@ -278,7 +278,7 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
 
   if (!status) {
     std::vector<std::string> args = {"keepimg", "preserve_lvs"};
-    platform_->Clobber(
+    startup_dep_->Clobber(
         "self-repair", args,
         std::string("Bad file attrs under ").append(path.value()));
   }
@@ -290,7 +290,7 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
 bool ChromeosStartup::IsVarFull() {
   struct statvfs st;
   base::FilePath var = root_.Append(kVar);
-  if (!platform_->Statvfs(var, &st)) {
+  if (!startup_dep_->Statvfs(var, &st)) {
     PLOG(WARNING) << "Failed statvfs " << var.value();
     return false;
   }
@@ -306,7 +306,7 @@ ChromeosStartup::ChromeosStartup(
     const base::FilePath& stateful,
     const base::FilePath& lsb_file,
     const base::FilePath& proc_file,
-    Platform* platform,
+    StartupDep* startup_dep,
     std::unique_ptr<MountHelper> mount_helper,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
     : crossystem_(crossystem),
@@ -316,7 +316,7 @@ ChromeosStartup::ChromeosStartup(
       proc_(proc_file),
       root_(root),
       stateful_(stateful),
-      platform_(platform),
+      startup_dep_(startup_dep),
       mount_helper_(std::move(mount_helper)),
       tlcl_(std::move(tlcl)) {}
 
@@ -329,8 +329,8 @@ void ChromeosStartup::EarlySetup() {
     char data[25];
     snprintf(data, sizeof(data), "mode=0750,uid=0,gid=%d", debugfs_grp);
     const base::FilePath debug = sysfs.Append(kKernelDebug);
-    if (!platform_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
-                          data)) {
+    if (!startup_dep_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
+                             data)) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << debug.value();
     }
@@ -343,8 +343,8 @@ void ChromeosStartup::EarlySetup() {
   // dependence on debugfs.
   const base::FilePath tracefs = sysfs.Append(kKernelTracing);
   // All users may need to access the tracing directory.
-  if (!platform_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags,
-                        "mode=0755")) {
+  if (!startup_dep_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags,
+                           "mode=0755")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << tracefs.value();
   }
@@ -352,8 +352,8 @@ void ChromeosStartup::EarlySetup() {
   // Mount configfs, if present.
   const base::FilePath configfs = sysfs.Append(kKernelConfig);
   if (base::DirectoryExists(configfs)) {
-    if (!platform_->Mount("configfs", configfs, "configfs", kCommonMountFlags,
-                          "")) {
+    if (!startup_dep_->Mount("configfs", configfs, "configfs",
+                             kCommonMountFlags, "")) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << configfs.value();
     }
@@ -367,8 +367,8 @@ void ChromeosStartup::EarlySetup() {
     const std::string data =
         base::StrCat({"mode=0770,gid=", std::to_string(bpffs_grp)});
     const base::FilePath bpffs = sysfs.Append(kBpf);
-    if (!platform_->Mount("bpffs", bpffs, "bpf", kCommonMountFlags,
-                          data.c_str())) {
+    if (!startup_dep_->Mount("bpffs", bpffs, "bpf", kCommonMountFlags,
+                             data.c_str())) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << bpffs.value();
     }
@@ -376,13 +376,13 @@ void ChromeosStartup::EarlySetup() {
 
   // Mount securityfs as it is used to configure inode security policies below.
   const base::FilePath securityfs = sysfs.Append(kKernelSecurity);
-  if (!platform_->Mount("securityfs", securityfs, "securityfs",
-                        kCommonMountFlags, "")) {
+  if (!startup_dep_->Mount("securityfs", securityfs, "securityfs",
+                           kCommonMountFlags, "")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << securityfs.value();
   }
 
-  if (!SetupLoadPinVerityDigests(root_, platform_.get())) {
+  if (!SetupLoadPinVerityDigests(root_, startup_dep_.get())) {
     LOG(WARNING) << "Failed to setup LoadPin verity digests.";
   }
 
@@ -392,8 +392,8 @@ void ChromeosStartup::EarlySetup() {
 
   // Protect a bind mount to the Chrome mount namespace.
   const base::FilePath namespaces = root_.Append(kRunNamespaces);
-  if (!platform_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
-      !platform_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
+  if (!startup_dep_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
+      !startup_dep_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
     PLOG(WARNING) << "Unable to mount " << namespaces.value();
   }
 
@@ -445,14 +445,14 @@ void ChromeosStartup::CheckForStatefulWipe() {
   // example, doing Esc-F3-Power on a Chromebook with DEV-signed firmware);
   // this protects various development use cases, most especially prototype
   // units or booting Chromium OS on non-Chrome hardware. And because crossystem
-  // is slow on some platforms, we want to do the additional checks only after
-  // verified kDevModeFile existence.
+  // is slow on some platforms, we want to do the additional checks only
+  // after verified kDevModeFile existence.
   std::vector<std::string> clobber_args;
   struct stat stbuf;
   std::string boot_alert_msg;
   std::string clobber_log_msg;
   base::FilePath reset_file = stateful_.Append(kResetFile);
-  if ((platform_->Lstat(reset_file, &stbuf) && S_ISLNK(stbuf.st_mode)) ||
+  if ((startup_dep_->Lstat(reset_file, &stbuf) && S_ISLNK(stbuf.st_mode)) ||
       base::PathExists(reset_file)) {
     boot_alert_msg = "power_wash";
     // If it's not a plain file owned by us, force a powerwash.
@@ -478,7 +478,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // No physical stateful partition available, usually due to initramfs
     // (recovery image, factory install shim or netboot). Do not wipe.
   } else if (IsDevToVerifiedModeTransition(0)) {
-    bool res = platform_->Stat(dev_mode_allowed_file_, &stbuf);
+    bool res = startup_dep_->Stat(dev_mode_allowed_file_, &stbuf);
     if ((res && stbuf.st_uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
       if (!DevIsDebugBuild()) {
         // We're transitioning from dev mode to verified boot.
@@ -501,7 +501,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
       }
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
-    if (!platform_->Stat(dev_mode_allowed_file_, &stbuf) ||
+    if (!startup_dep_->Stat(dev_mode_allowed_file_, &stbuf) ||
         stbuf.st_uid != getuid()) {
       if (!DevIsDebugBuild()) {
         // We're transitioning from verified boot to dev mode.
@@ -523,7 +523,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
   }
 
   if (!clobber_args.empty()) {
-    platform_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
+    startup_dep_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
   }
 }
 
@@ -534,8 +534,9 @@ void ChromeosStartup::MountHome() {
   mount_helper_->MountOrFail(home, home_root, "", MS_BIND, "");
   // Remount /home with nosymfollow: bind mounts do not accept the option
   // within the same command.
-  if (!platform_->Mount(base::FilePath(), home_root, "",
-                        MS_REMOUNT | kCommonMountFlags | MS_NOSYMFOLLOW, "")) {
+  if (!startup_dep_->Mount(base::FilePath(), home_root, "",
+                           MS_REMOUNT | kCommonMountFlags | MS_NOSYMFOLLOW,
+                           "")) {
     PLOG(WARNING) << "Unable to remount " << home_root.value();
   }
 }
@@ -563,7 +564,7 @@ void ChromeosStartup::CleanupTpm() {
   if (base::PathExists(tpm_update_req)) {
     base::FilePath tpm_cleanup = root_.Append(kTpmFirmwareUpdateCleanup);
     if (base::PathExists(tpm_cleanup)) {
-      platform_->RunProcess(tpm_cleanup);
+      startup_dep_->RunProcess(tpm_cleanup);
     }
   }
 }
@@ -671,8 +672,8 @@ void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
       PLOG(WARNING) << "chmod failed for " << rds.value();
       continue;
     }
-    platform_->Mount(rds, rds, "", MS_BIND, "");
-    platform_->Mount(base::FilePath("none"), rds, "", MS_SHARED, "");
+    startup_dep_->Mount(rds, rds, "", MS_BIND, "");
+    startup_dep_->Mount(base::FilePath("none"), rds, "", MS_SHARED, "");
   }
 }
 
@@ -799,9 +800,9 @@ int ChromeosStartup::Run() {
       USE_LVM_STATEFUL_PARTITION
           ? std::make_unique<brillo::LogicalVolumeManager>()
           : std::unique_ptr<brillo::LogicalVolumeManager>();
-  stateful_mount_ =
-      std::make_unique<StatefulMount>(flags_, root_, stateful_, platform_.get(),
-                                      std::move(lvm), mount_helper_.get());
+  stateful_mount_ = std::make_unique<StatefulMount>(
+      flags_, root_, stateful_, startup_dep_.get(), std::move(lvm),
+      mount_helper_.get());
   stateful_mount_->MountStateful();
   state_dev_ = stateful_mount_->GetStateDev();
   dev_image_ = stateful_mount_->GetDevImage();
@@ -834,7 +835,7 @@ int ChromeosStartup::Run() {
   base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
   struct stat stbuf;
   if (!mount_helper_->DoMountVarAndHomeChronos()) {
-    if (!platform_->Stat(encrypted_failed, &stbuf) ||
+    if (!startup_dep_->Stat(encrypted_failed, &stbuf) ||
         stbuf.st_uid != getuid()) {
       base::WriteFile(encrypted_failed, "");
     } else {
@@ -904,7 +905,7 @@ int ChromeosStartup::Run() {
 
   MoveToLibDeviceSettings();
 
-  MaybeRunUefiStartup(*UefiDelegate::Create(*platform_, root_));
+  MaybeRunUefiStartup(*UefiDelegate::Create(*startup_dep_, root_));
 
   // /run is tmpfs used for runtime data. Make sure /var/run and /var/lock
   // are bind-mounted to /run and /run/lock respectively for backwards
@@ -912,12 +913,12 @@ int ChromeosStartup::Run() {
   // Bind mount /run to /var/run.
   const base::FilePath var = root_.Append(kVar);
   const base::FilePath root_run = root_.Append(kRun);
-  platform_->Mount(root_run, var.Append(kRun), "", MS_BIND, "");
+  startup_dep_->Mount(root_run, var.Append(kRun), "", MS_BIND, "");
   mount_helper_->RememberMount(root_run);
 
   // Bind mount /run/lock to /var/lock.
   const base::FilePath root_run_lock = root_run.Append(kLock);
-  platform_->Mount(root_run_lock, var.Append(kLock), "", MS_BIND, "");
+  startup_dep_->Mount(root_run_lock, var.Append(kLock), "", MS_BIND, "");
   mount_helper_->RememberMount(root_run_lock);
 
   CreateDaemonStore();
@@ -927,9 +928,10 @@ int ChromeosStartup::Run() {
   CheckVarLog();
 
   // MS_SHARED to give other namespaces access to mount points under /media.
-  platform_->Mount(base::FilePath(kMedia), root_.Append(kMedia), "tmpfs",
-                   MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
-  platform_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED, "");
+  startup_dep_->Mount(base::FilePath(kMedia), root_.Append(kMedia), "tmpfs",
+                      MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
+  startup_dep_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED,
+                      "");
 
   std::vector<std::string> t_args = {root_.Append(kMedia).value()};
   TmpfilesConfiguration(t_args);
@@ -944,7 +946,7 @@ int ChromeosStartup::Run() {
   // policies are not possible
   const base::FilePath kernel_sec =
       root_.Append(kSysfs).Append(kKernelSecurity);
-  if (!platform_->Umount(kernel_sec)) {
+  if (!startup_dep_->Umount(kernel_sec)) {
     PLOG(WARNING) << "Failed to umount: " << kernel_sec;
   }
 
@@ -1003,7 +1005,7 @@ void ChromeosStartup::DevCheckBlockDevMode(
       base::WriteFile(dev_mode_file, "");
     }
 
-    platform_->BootAlert("block_devmode");
+    startup_dep_->BootAlert("block_devmode");
   }
 }
 

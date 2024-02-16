@@ -14,7 +14,7 @@
 #include <base/values.h>
 
 #include "init/startup/flags.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -32,7 +32,7 @@ enum class MountHelperType {
 // and StandardMountHelper classes.
 class MountHelper {
  public:
-  MountHelper(Platform* platform,
+  MountHelper(StartupDep* startup_dep,
               const Flags& flags,
               const base::FilePath& root,
               const base::FilePath& stateful,
@@ -82,7 +82,7 @@ class MountHelper {
   virtual MountHelperType GetMountHelperType() const = 0;
 
  protected:
-  raw_ptr<Platform> platform_;
+  raw_ptr<StartupDep> startup_dep_;
   const startup::Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

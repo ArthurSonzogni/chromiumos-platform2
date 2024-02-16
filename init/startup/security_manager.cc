@@ -22,7 +22,7 @@
 #include <linux/loadpin.h>
 #include <openssl/sha.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace {
 
@@ -154,7 +154,8 @@ bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
          AccumulatePolicyFiles(root, gid_mgmt_policies, pmp_gid);
 }
 
-bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
+bool SetupLoadPinVerityDigests(const base::FilePath& root,
+                               StartupDep* startup_dep) {
   const auto loadpin_verity =
       root.Append(kSysKernelSecurity).Append(kLoadPinVerity);
   const auto trusted_dlc_digests = root.Append(kTrustedDlcVerityDigests);
@@ -166,7 +167,7 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
 
   // Open (write) the LoadPin dm-verity attribute file.
   constexpr auto kWriteFlags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
-  auto fd = platform->Open(loadpin_verity, kWriteFlags);
+  auto fd = startup_dep->Open(loadpin_verity, kWriteFlags);
   if (!fd.is_valid()) {
     // This means LoadPin dm-verity attribute is not supported.
     // No further action is required.
@@ -181,14 +182,14 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
 
   // Open (read) the trusted digest file in rootfs.
   constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
-  auto digests_fd = platform->Open(trusted_dlc_digests, kReadFlags);
+  auto digests_fd = startup_dep->Open(trusted_dlc_digests, kReadFlags);
   if (!digests_fd.is_valid()) {
     if (errno != ENOENT) {
       PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
       // NOTE: Do not return here, so invalid digests get fed into LoadPin.
     }
     // Any failure in loading/parsing will block subsequent feeds into LoadPin.
-    digests_fd = platform->Open(dev_null, kReadFlags);
+    digests_fd = startup_dep->Open(dev_null, kReadFlags);
     if (!digests_fd.is_valid()) {
       PLOG(WARNING) << "Failed to open " << dev_null.value() << ".";
       return false;
@@ -197,8 +198,8 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform) {
 
   // Write trusted digests or /dev/null into LoadPin.
   int arg1 = digests_fd.get();
-  int ret =
-      platform->Ioctl(fd.get(), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, &arg1);
+  int ret = startup_dep->Ioctl(fd.get(), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS,
+                               &arg1);
   if (ret != 0) {
     PLOG(WARNING) << "Unable to setup trusted DLC verity digests";
   }
@@ -230,7 +231,7 @@ bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path) {
 // wiping encstateful after a reboot.
 void CreateSystemKey(const base::FilePath& root,
                      const base::FilePath& stateful,
-                     Platform* platform) {
+                     StartupDep* startup_dep) {
   base::FilePath log_file = root.Append(kSysKeyLogFile);
   base::FilePath no_early = stateful.Append(kNoEarlyKeyFile);
   base::FilePath backup = stateful.Append(kSysKeyBackupFile);
@@ -247,7 +248,7 @@ void CreateSystemKey(const base::FilePath& root,
                      "Checking if a system key already exists in NVRAM...\n");
   std::string output;
   std::vector<std::string> mnt_enc_info = {"info"};
-  int status = platform->MountEncrypted(mnt_enc_info, &output);
+  int status = startup_dep->MountEncrypted(mnt_enc_info, &output);
   if (status == 0) {
     base::AppendToFile(log_file, output.append("\n"));
     if (output.find("NVRAM: available.") != std::string::npos) {
@@ -271,7 +272,7 @@ void CreateSystemKey(const base::FilePath& root,
 
   // Persists system key.
   std::vector<std::string> mnt_enc_set = {"set", backup.value()};
-  status = platform->MountEncrypted(mnt_enc_set, &output);
+  status = startup_dep->MountEncrypted(mnt_enc_set, &output);
   if (status == 0) {
     base::AppendToFile(log_file, output);
     base::AppendToFile(log_file, "Successfully created a system key.");

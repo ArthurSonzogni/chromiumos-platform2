@@ -13,7 +13,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -21,7 +21,7 @@ namespace startup {
 // is running a test image.
 class TestModeMountHelper : public startup::MountHelper {
  public:
-  explicit TestModeMountHelper(Platform* platform,
+  explicit TestModeMountHelper(StartupDep* startup_dep,
                                const startup::Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,

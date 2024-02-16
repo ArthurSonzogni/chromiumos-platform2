@@ -14,7 +14,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -24,7 +24,7 @@ namespace startup {
 // which derived class to generate/utilize.
 class MountHelperFactory {
  public:
-  explicit MountHelperFactory(Platform* platform,
+  explicit MountHelperFactory(StartupDep* startup_dep,
                               const Flags& flags,
                               const base::FilePath& root,
                               const base::FilePath& stateful,
@@ -39,7 +39,7 @@ class MountHelperFactory {
       crossystem::Crossystem* crossystem);
 
  private:
-  raw_ptr<Platform> platform_;
+  raw_ptr<StartupDep> startup_dep_;
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

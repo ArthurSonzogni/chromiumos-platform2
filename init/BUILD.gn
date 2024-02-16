@@ -76,9 +76,9 @@ static_library("libcrosstartup") {
     "startup/flags.h",
     "startup/mount_helper.cc",
     "startup/mount_helper_factory.cc",
-    "startup/platform_impl.cc",
     "startup/security_manager.cc",
     "startup/standard_mount_helper.cc",
+    "startup/startup_dep_impl.cc",
     "startup/stateful_mount.cc",
     "startup/test_mode_mount_helper.cc",
     "startup/uefi_startup.cc",
@@ -208,7 +208,7 @@ if (use.test) {
   executable("chromeos_startup_test") {
     sources = [
       "startup/chromeos_startup_test.cc",
-      "startup/fake_platform_impl.cc",
+      "startup/fake_startup_dep_impl.cc",
       "startup/security_manager_test.cc",
       "startup/stateful_mount_test.cc",
       "startup/uefi_startup_test.cc",

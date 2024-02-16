@@ -9,16 +9,16 @@
 
 #include <gmock/gmock.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
-class MockPlatform : public Platform {
+class MockStartupDep : public StartupDep {
  public:
-  MockPlatform() = default;
+  MockStartupDep() = default;
 
-  MockPlatform(const MockPlatform&) = delete;
-  MockPlatform& operator=(const MockPlatform&) = delete;
+  MockStartupDep(const MockStartupDep&) = delete;
+  MockStartupDep& operator=(const MockStartupDep&) = delete;
 
   MOCK_METHOD(bool,
               Stat,

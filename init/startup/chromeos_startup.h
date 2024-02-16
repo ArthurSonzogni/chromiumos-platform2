@@ -19,7 +19,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/stateful_mount.h"
 
 namespace startup {
@@ -44,7 +44,7 @@ class ChromeosStartup {
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
-                  Platform* platform,
+                  StartupDep* startup_dep,
                   std::unique_ptr<MountHelper> mount_helper,
                   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl);
 
@@ -167,7 +167,7 @@ class ChromeosStartup {
   const base::FilePath root_;
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
-  raw_ptr<Platform> platform_;
+  raw_ptr<StartupDep> startup_dep_;
   std::unique_ptr<MountHelper> mount_helper_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;

@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "init/startup/constants.h"
-#include "init/startup/mock_platform_impl.h"
+#include "init/startup/mock_startup_dep_impl.h"
 #include "init/startup/uefi_startup.h"
 #include "init/startup/uefi_startup_impl.h"
 
@@ -28,7 +28,7 @@ namespace startup {
 
 namespace {
 
-// Same as Platform::Open.
+// Same as StartupDep::Open.
 base::ScopedFD OpenImpl(const base::FilePath& path, int flags) {
   return base::ScopedFD(HANDLE_EINTR(open(path.value().c_str(), flags)));
 }
@@ -103,13 +103,13 @@ class UefiDelegateTest : public ::testing::Test {
     root_dir_ = temp_dir_.GetPath();
 
     uefi_delegate_ =
-        std::make_unique<UefiDelegateImpl>(mock_platform_, root_dir_);
+        std::make_unique<UefiDelegateImpl>(mock_startup_dep_, root_dir_);
   }
 
   base::ScopedTempDir temp_dir_;
   base::FilePath root_dir_;
 
-  StrictMock<MockPlatform> mock_platform_;
+  StrictMock<MockStartupDep> mock_startup_dep_;
   std::unique_ptr<UefiDelegate> uefi_delegate_;
 };
 
@@ -134,7 +134,7 @@ TEST_F(UefiDelegateTest, MountEfivarfs) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
   ASSERT_TRUE(base::CreateDirectory(efivars_dir));
 
-  EXPECT_CALL(mock_platform_,
+  EXPECT_CALL(mock_startup_dep_,
               Mount(kFsTypeEfivarfs, efivars_dir, kFsTypeEfivarfs,
                     kCommonMountFlags, "uid=123,gid=456"))
       .WillOnce(Return(true));
@@ -152,11 +152,13 @@ TEST_F(UefiDelegateTest, ModifyVar) {
       efivars_dir.Append("myvar-1a2a2d4e-6e6a-468f-944c-c00d14d92c1e");
   ASSERT_TRUE(base::WriteFile(var_path, ""));
 
-  EXPECT_CALL(mock_platform_, Open(var_path, O_RDONLY | O_CLOEXEC))
+  EXPECT_CALL(mock_startup_dep_, Open(var_path, O_RDONLY | O_CLOEXEC))
       .WillOnce(OpenImpl);
 
-  EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_GETFLAGS, _)).WillOnce(Return(0));
-  EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_SETFLAGS, _)).WillOnce(Return(0));
+  EXPECT_CALL(mock_startup_dep_, Ioctl(_, FS_IOC_GETFLAGS, _))
+      .WillOnce(Return(0));
+  EXPECT_CALL(mock_startup_dep_, Ioctl(_, FS_IOC_SETFLAGS, _))
+      .WillOnce(Return(0));
 
   EXPECT_TRUE(uefi_delegate_->MakeUefiVarMutable(
       "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar"));
@@ -168,7 +170,7 @@ TEST_F(UefiDelegateTest, ModifyInvalidVar) {
   const base::FilePath var_path =
       efivars_dir.Append("myvar-1a2a2d4e-6e6a-468f-944c-c00d14d92c1e");
 
-  EXPECT_CALL(mock_platform_, Open(var_path, O_RDONLY | O_CLOEXEC))
+  EXPECT_CALL(mock_startup_dep_, Open(var_path, O_RDONLY | O_CLOEXEC))
       .WillOnce(OpenImpl);
 
   EXPECT_FALSE(uefi_delegate_->MakeUefiVarMutable(
@@ -190,10 +192,10 @@ TEST_F(UefiDelegateTest, MakeEsrtReadableByFwupd) {
   // The `entries` directory, `fw_resource_version` file, and
   // `entry_file` should all get modified, so expect these calls to
   // happen three times.
-  EXPECT_CALL(mock_platform_, Open(_, O_RDONLY | O_CLOEXEC))
+  EXPECT_CALL(mock_startup_dep_, Open(_, O_RDONLY | O_CLOEXEC))
       .Times(3)
       .WillRepeatedly(OpenImpl);
-  EXPECT_CALL(mock_platform_, Fchown(_, 123, 456))
+  EXPECT_CALL(mock_startup_dep_, Fchown(_, 123, 456))
       .Times(3)
       .WillRepeatedly(Return(true));
 
@@ -206,9 +208,9 @@ TEST_F(UefiDelegateTest, MountEfiSystemPartition) {
 
   const base::FilePath esp_dir = root_dir_.Append(kEspDir);
 
-  EXPECT_CALL(mock_platform_, GetRootDevicePartitionPath(kEspLabel))
+  EXPECT_CALL(mock_startup_dep_, GetRootDevicePartitionPath(kEspLabel))
       .WillOnce(Return(base::FilePath("/dev/sda12")));
-  EXPECT_CALL(mock_platform_,
+  EXPECT_CALL(mock_startup_dep_,
               Mount(base::FilePath("/dev/sda12"), esp_dir, kFsTypeVfat,
                     kCommonMountFlags, "uid=123,gid=456,umask=007"))
       .WillOnce(Return(true));

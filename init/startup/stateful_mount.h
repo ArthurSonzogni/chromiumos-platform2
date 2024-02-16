@@ -17,7 +17,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -32,7 +32,7 @@ class StatefulMount {
   StatefulMount(const Flags& flags,
                 const base::FilePath& root,
                 const base::FilePath& stateful,
-                Platform* platform,
+                StartupDep* startup_dep,
                 std::unique_ptr<brillo::LogicalVolumeManager> lvm,
                 MountHelper* mount_helper);
 
@@ -70,7 +70,7 @@ class StatefulMount {
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
-  Platform* platform_;
+  StartupDep* startup_dep_;
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
   MountHelper* mount_helper_;
   bootstat::BootStat bootstat_;

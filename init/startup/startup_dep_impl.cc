@@ -27,7 +27,7 @@
 #include <brillo/process/process.h>
 #include <libcrossystem/crossystem.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/utils.h"
 
 namespace {
@@ -43,55 +43,55 @@ const int kNoResumeFromHibernatePending = 0x23;
 
 namespace startup {
 
-bool Platform::Stat(const base::FilePath& path, struct stat* st) {
+bool StartupDep::Stat(const base::FilePath& path, struct stat* st) {
   return stat(path.value().c_str(), st) == 0;
 }
 
-bool Platform::Statvfs(const base::FilePath& path, struct statvfs* st) {
+bool StartupDep::Statvfs(const base::FilePath& path, struct statvfs* st) {
   return statvfs(path.value().c_str(), st) == 0;
 }
 
-bool Platform::Lstat(const base::FilePath& path, struct stat* st) {
+bool StartupDep::Lstat(const base::FilePath& path, struct stat* st) {
   return lstat(path.value().c_str(), st) == 0;
 }
 
-bool Platform::Mount(const base::FilePath& src,
-                     const base::FilePath& dst,
-                     const std::string& type,
-                     const unsigned long flags,  // NOLINT(runtime/int)
-                     const std::string& data) {
+bool StartupDep::Mount(const base::FilePath& src,
+                       const base::FilePath& dst,
+                       const std::string& type,
+                       const unsigned long flags,  // NOLINT(runtime/int)
+                       const std::string& data) {
   return mount(src.value().c_str(), dst.value().c_str(), type.c_str(), flags,
                data.c_str()) == 0;
 }
 
-bool Platform::Mount(const std::string& src,
-                     const base::FilePath& dst,
-                     const std::string& type,
-                     const unsigned long flags,  // NOLINT(runtime/int)
-                     const std::string& data) {
+bool StartupDep::Mount(const std::string& src,
+                       const base::FilePath& dst,
+                       const std::string& type,
+                       const unsigned long flags,  // NOLINT(runtime/int)
+                       const std::string& data) {
   return mount(src.c_str(), dst.value().c_str(), type.c_str(), flags,
                data.c_str()) == 0;
 }
 
-bool Platform::Umount(const base::FilePath& path) {
+bool StartupDep::Umount(const base::FilePath& path) {
   return !umount(path.value().c_str());
 }
 
-base::ScopedFD Platform::Open(const base::FilePath& pathname, int flags) {
+base::ScopedFD StartupDep::Open(const base::FilePath& pathname, int flags) {
   return base::ScopedFD(HANDLE_EINTR(open(pathname.value().c_str(), flags)));
 }
 
 // NOLINTNEXTLINE(runtime/int)
-int Platform::Ioctl(int fd, unsigned long request, int* arg1) {
+int StartupDep::Ioctl(int fd, unsigned long request, int* arg1) {
   return ioctl(fd, request, arg1);
 }
 
-bool Platform::Fchown(int fd, uid_t owner, gid_t group) {
+bool StartupDep::Fchown(int fd, uid_t owner, gid_t group) {
   return fchown(fd, owner, group) == 0;
 }
 
-int Platform::MountEncrypted(const std::vector<std::string>& args,
-                             std::string* output) {
+int StartupDep::MountEncrypted(const std::vector<std::string>& args,
+                               std::string* output) {
   brillo::ProcessImpl mount_enc;
   mount_enc.AddArg("/usr/sbin/mount-encrypted");
   for (auto arg : args) {
@@ -108,7 +108,7 @@ int Platform::MountEncrypted(const std::vector<std::string>& args,
   return status;
 }
 
-void Platform::BootAlert(const std::string& arg) {
+void StartupDep::BootAlert(const std::string& arg) {
   brillo::ProcessImpl boot_alert;
   boot_alert.AddArg("/sbin/chromeos-boot-alert");
   boot_alert.AddArg(arg);
@@ -122,7 +122,7 @@ void Platform::BootAlert(const std::string& arg) {
   }
 }
 
-[[noreturn]] void Platform::Clobber(const std::vector<std::string> args) {
+[[noreturn]] void StartupDep::Clobber(const std::vector<std::string> args) {
   brillo::ProcessImpl clobber;
   clobber.AddArg("/sbin/clobber-state");
 
@@ -142,7 +142,7 @@ void Platform::BootAlert(const std::string& arg) {
   exit(1);
 }
 
-void Platform::ClobberLog(const std::string& msg) {
+void StartupDep::ClobberLog(const std::string& msg) {
   brillo::ProcessImpl log;
   log.AddArg("/sbin/clobber-log");
   log.AddArg("--");
@@ -152,15 +152,15 @@ void Platform::ClobberLog(const std::string& msg) {
   }
 }
 
-void Platform::Clobber(const std::string& boot_alert_msg,
-                       const std::vector<std::string>& args,
-                       const std::string& clobber_log_msg) {
+void StartupDep::Clobber(const std::string& boot_alert_msg,
+                         const std::vector<std::string>& args,
+                         const std::string& clobber_log_msg) {
   BootAlert(boot_alert_msg);
   ClobberLog(clobber_log_msg);
   Clobber(args);
 }
 
-void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
+void StartupDep::RemoveInBackground(const std::vector<base::FilePath>& paths) {
   pid_t pid = fork();
   if (pid == 0) {
     for (auto path : paths) {
@@ -171,7 +171,7 @@ void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
 }
 
 // Run command, cmd_path.
-void Platform::RunProcess(const base::FilePath& cmd_path) {
+void StartupDep::RunProcess(const base::FilePath& cmd_path) {
   brillo::ProcessImpl proc;
   proc.AddArg(cmd_path.value());
   int res = proc.Run();
@@ -185,7 +185,7 @@ void Platform::RunProcess(const base::FilePath& cmd_path) {
   }
 }
 
-bool Platform::RunHiberman(const base::FilePath& output_file) {
+bool StartupDep::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
   hiberman.AddArg("/sbin/minijail0");
   hiberman.AddArg("-v");
@@ -206,7 +206,7 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
   return false;
 }
 
-void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
+void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
   brillo::ProcessImpl crash;
   crash.AddArg("/sbin/crash_reporter");
   crash.AddArg("--early");
@@ -227,7 +227,7 @@ void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
   sync();
 }
 
-std::optional<base::FilePath> Platform::GetRootDevicePartitionPath(
+std::optional<base::FilePath> StartupDep::GetRootDevicePartitionPath(
     const std::string& partition_label) {
   base::FilePath root_dev;
   if (!utils::GetRootDevice(&root_dev, /*strip_partition=*/true)) {
@@ -246,7 +246,7 @@ std::optional<base::FilePath> Platform::GetRootDevicePartitionPath(
   return brillo::AppendPartition(root_dev, esp_partition_num);
 }
 
-void Platform::ReplayExt4Journal(const base::FilePath& dev) {
+void StartupDep::ReplayExt4Journal(const base::FilePath& dev) {
   brillo::ProcessImpl e2fsck;
   e2fsck.AddArg("/sbin/e2fsck");
   e2fsck.AddArg("-p");
@@ -263,8 +263,8 @@ void Platform::ReplayExt4Journal(const base::FilePath& dev) {
   }
 }
 
-void Platform::ClobberLogRepair(const base::FilePath& dev,
-                                const std::string& msg) {
+void StartupDep::ClobberLogRepair(const base::FilePath& dev,
+                                  const std::string& msg) {
   brillo::ProcessImpl log_repair;
   log_repair.AddArg("/sbin/clobber-log");
   log_repair.AddArg("--repair");

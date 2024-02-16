@@ -20,7 +20,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/test_mode_mount_helper.h"
 
@@ -37,12 +37,12 @@ namespace startup {
 
 // Constructor for TestModeMountHelper when the device is
 // not in dev mode.
-TestModeMountHelper::TestModeMountHelper(Platform* platform,
+TestModeMountHelper::TestModeMountHelper(StartupDep* startup_dep,
                                          const startup::Flags& flags,
                                          const base::FilePath& root,
                                          const base::FilePath& stateful,
                                          const bool dev_mode)
-    : startup::MountHelper(platform, flags, root, stateful, dev_mode) {}
+    : startup::MountHelper(startup_dep, flags, root, stateful, dev_mode) {}
 
 bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and
@@ -54,14 +54,14 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   bool sys_key = system_key.value_or(false);
   if (sys_key) {
     LOG(INFO) << "Creating System Key";
-    CreateSystemKey(GetRoot(), GetStateful(), platform_);
+    CreateSystemKey(GetRoot(), GetStateful(), startup_dep_);
   }
 
   base::FilePath encrypted_failed =
       GetStateful().Append(kMountEncryptedFailedFile);
   struct stat statbuf;
   bool ret;
-  if (!platform_->Stat(encrypted_failed, &statbuf) ||
+  if (!startup_dep_->Stat(encrypted_failed, &statbuf) ||
       statbuf.st_uid != getuid()) {
     // Try to use the original handler in chromeos_startup.
     // It should not wipe whole stateful partition in this case.
@@ -74,11 +74,11 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
     // to wiping whole stateful partition (including all helpful programs in
     // /usr/local/bin and sshd).
     std::string msg("Failed mounting var and home/chronos; re-created.");
-    platform_->ClobberLog(msg);
+    startup_dep_->ClobberLog(msg);
 
     std::vector<std::string> crash_args{"--mount_failure",
                                         "--mount_device='encstateful'"};
-    platform_->AddClobberCrashReport(crash_args);
+    startup_dep_->AddClobberCrashReport(crash_args);
     base::FilePath backup = GetStateful().Append("corrupted_encryption");
     brillo::DeletePathRecursively(backup);
     base::CreateDirectory(backup);

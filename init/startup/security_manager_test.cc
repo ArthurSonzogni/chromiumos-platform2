@@ -23,9 +23,9 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
-#include "init/startup/fake_platform_impl.h"
-#include "init/startup/mock_platform_impl.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/fake_startup_dep_impl.h"
+#include "init/startup/mock_startup_dep_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
 
 using testing::_;
@@ -72,10 +72,10 @@ class SecurityManagerTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
-    mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
+    mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
   }
 
-  std::unique_ptr<startup::MockPlatform> mock_platform_;
+  std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
 
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_;
@@ -182,13 +182,13 @@ TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(),
                         O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
   // int fd = loadpin_verity.get();
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, _))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, _))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
-  EXPECT_CALL(*mock_platform_, Ioctl(_, _, _)).Times(0);
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(_, _, _)).Times(0);
 
   EXPECT_TRUE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
@@ -197,17 +197,17 @@ TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
   // int fd = loadpin_verity.get();
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(DoAll(
           // Override the `errno` to be non-`ENOENT`.
           InvokeWithoutArgs([] { errno = EACCES; }),
           Return(ByMove(std::move(loadpin_verity)))));
   // `loadpin_verity` is moved, do not use.
-  EXPECT_CALL(*mock_platform_, Ioctl(_, _, _)).Times(0);
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(_, _, _)).Times(0);
 
   // The call should fail as failure to open LoadPin verity file.
   EXPECT_FALSE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, ValidDigests) {
@@ -219,19 +219,20 @@ TEST_F(SecurityManagerLoadPinTest, ValidDigests) {
       open(trusted_verity_digests_path_.value().c_str(), kReadFlags)));
   int digests_fd = trusted_verity_digests.get();
 
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(trusted_verity_digests_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_,
+              Open(trusted_verity_digests_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(trusted_verity_digests))));
   // `trusted_verity_digests` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Ioctl(fd, _, IntPtrCheck(digests_fd)))
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(fd, _, IntPtrCheck(digests_fd)))
       .WillOnce(Return(0));
 
   EXPECT_TRUE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
@@ -248,23 +249,24 @@ TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
       HANDLE_EINTR(open(dev_null_path_.value().c_str(), kReadFlags)));
   int dev_null_fd = dev_null.get();
 
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(trusted_verity_digests_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_,
+              Open(trusted_verity_digests_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(trusted_verity_digests))));
   // `trusted_verity_digests` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(dev_null_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(dev_null_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(dev_null))));
   // `dev_null` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Ioctl(fd, _, IntPtrCheck(dev_null_fd)))
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(fd, _, IntPtrCheck(dev_null_fd)))
       .WillOnce(Return(0));
 
   EXPECT_TRUE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
@@ -281,26 +283,27 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
       HANDLE_EINTR(open(dev_null_path_.value().c_str(), kReadFlags)));
   int dev_null_fd = dev_null.get();
 
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(trusted_verity_digests_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_,
+              Open(trusted_verity_digests_path_, kReadFlags))
       .WillOnce(DoAll(
           // Override the `errno` to be non-`ENOENT`.
           InvokeWithoutArgs([] { errno = EACCES; }),
           Return(ByMove(std::move(trusted_verity_digests)))));
   // `trusted_verity_digests` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(dev_null_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(dev_null_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(dev_null))));
   // `dev_null` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Ioctl(fd, _, IntPtrCheck(dev_null_fd)))
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(fd, _, IntPtrCheck(dev_null_fd)))
       .WillOnce(Return(0));
 
   EXPECT_TRUE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
@@ -316,22 +319,23 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
   base::ScopedFD dev_null(
       HANDLE_EINTR(open(dev_null_path_.value().c_str(), kReadFlags)));
 
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(trusted_verity_digests_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_,
+              Open(trusted_verity_digests_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(trusted_verity_digests))));
   // `trusted_verity_digests` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(dev_null_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(dev_null_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(dev_null))));
   // `dev_null` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Ioctl(_, _, _)).Times(0);
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(_, _, _)).Times(0);
 
   EXPECT_FALSE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
@@ -343,19 +347,20 @@ TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
       open(trusted_verity_digests_path_.value().c_str(), kReadFlags)));
   int digests_fd = trusted_verity_digests.get();
 
-  EXPECT_CALL(*mock_platform_, Open(loadpin_verity_path_, kWriteFlags))
+  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
       .WillOnce(Return(ByMove(std::move(loadpin_verity))));
   // `loadpin_verity` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Open(trusted_verity_digests_path_, kReadFlags))
+  EXPECT_CALL(*mock_startup_dep_,
+              Open(trusted_verity_digests_path_, kReadFlags))
       .WillOnce(Return(ByMove(std::move(trusted_verity_digests))));
   // `trusted_verity_digests` is moved, do not use.
 
-  EXPECT_CALL(*mock_platform_, Ioctl(fd, _, IntPtrCheck(digests_fd)))
+  EXPECT_CALL(*mock_startup_dep_, Ioctl(fd, _, IntPtrCheck(digests_fd)))
       .WillOnce(Return(-1));
 
   EXPECT_FALSE(
-      startup::SetupLoadPinVerityDigests(base_dir_, mock_platform_.get()));
+      startup::SetupLoadPinVerityDigests(base_dir_, mock_startup_dep_.get()));
 }
 
 class SysKeyTest : public ::testing::Test {
@@ -367,14 +372,14 @@ class SysKeyTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     log_file = base_dir.Append(kSysKeyLog);
-    platform_ = std::make_unique<startup::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
   }
 
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;
   base::FilePath log_file;
-  std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
 };
 
 TEST_F(SysKeyTest, NoEarlySysKeyFile) {
@@ -384,8 +389,8 @@ TEST_F(SysKeyTest, NoEarlySysKeyFile) {
 
   struct stat st;
   st.st_mode = S_IFREG;
-  platform_->SetStatResultForPath(no_early, st);
-  startup::CreateSystemKey(base_dir, stateful, platform_.get());
+  startup_dep_->SetStatResultForPath(no_early, st);
+  startup::CreateSystemKey(base_dir, stateful, startup_dep_.get());
 
   std::string res;
   base::ReadFileToString(log_file, &res);
@@ -394,9 +399,9 @@ TEST_F(SysKeyTest, NoEarlySysKeyFile) {
 
 TEST_F(SysKeyTest, AlreadySysKey) {
   ASSERT_TRUE(CreateDirAndWriteFile(log_file, "1"));
-  platform_->SetMountEncOutputForArg("info", "NVRAM: available.");
+  startup_dep_->SetMountEncOutputForArg("info", "NVRAM: available.");
 
-  startup::CreateSystemKey(base_dir, stateful, platform_.get());
+  startup::CreateSystemKey(base_dir, stateful, startup_dep_.get());
 
   std::string res;
   base::ReadFileToString(log_file, &res);
@@ -411,9 +416,9 @@ TEST_F(SysKeyTest, NeedSysKeyBadRandomWrite) {
   // base::FilePath backup = stateful.Append(kPreserveSysKeyFile);
   ASSERT_TRUE(CreateDirAndWriteFile(log_file, "1"));
   // ASSERT_TRUE(CreateDirAndWriteFile(backup, "1"));
-  platform_->SetMountEncOutputForArg("info", "not found.");
+  startup_dep_->SetMountEncOutputForArg("info", "not found.");
 
-  startup::CreateSystemKey(base_dir, stateful, platform_.get());
+  startup::CreateSystemKey(base_dir, stateful, startup_dep_.get());
 
   std::string res;
   base::ReadFileToString(log_file, &res);
@@ -429,9 +434,9 @@ TEST_F(SysKeyTest, NeedSysKeySuccessful) {
   base::FilePath backup = stateful.Append(kPreserveSysKeyFile);
   ASSERT_TRUE(CreateDirAndWriteFile(log_file, "1"));
   ASSERT_TRUE(CreateDirAndWriteFile(backup, "1"));
-  platform_->SetMountEncOutputForArg("info", "not found.");
-  platform_->SetMountEncOutputForArg("set", "MountEncrypted set output.\n");
-  startup::CreateSystemKey(base_dir, stateful, platform_.get());
+  startup_dep_->SetMountEncOutputForArg("info", "not found.");
+  startup_dep_->SetMountEncOutputForArg("set", "MountEncrypted set output.\n");
+  startup::CreateSystemKey(base_dir, stateful, startup_dep_.get());
 
   std::string res;
   base::ReadFileToString(log_file, &res);

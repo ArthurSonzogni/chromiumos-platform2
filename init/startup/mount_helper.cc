@@ -19,7 +19,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace {
 
@@ -31,12 +31,12 @@ constexpr char kMountEncryptedLog[] = "run/mount_encrypted/mount-encrypted.log";
 
 namespace startup {
 
-MountHelper::MountHelper(Platform* platform,
+MountHelper::MountHelper(StartupDep* startup_dep,
                          const Flags& flags,
                          const base::FilePath& root,
                          const base::FilePath& stateful,
                          const bool dev_mode)
-    : platform_(platform),
+    : startup_dep_(startup_dep),
       flags_(flags),
       root_(root),
       stateful_(stateful),
@@ -56,7 +56,7 @@ void MountHelper::CleanupMountsStack(std::vector<base::FilePath>* mnts) {
     if (mnt == encrypted) {
       DoUmountVarAndHomeChronos();
     } else {
-      platform_->Umount(mnt);
+      startup_dep_->Umount(mnt);
     }
     mount_stack_.pop();
   }
@@ -71,7 +71,7 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   CleanupMountsStack(&mounts);
 
   // Leave /mnt/stateful_partition mounted for clobber-state to handle.
-  platform_->BootAlert("self_repair");
+  startup_dep_->BootAlert("self_repair");
 
   std::string mounts_str;
   for (base::FilePath mount : mounts) {
@@ -81,7 +81,7 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   std::string message = "Self-repair incoherent stateful partition: " + msg +
                         ". History: " + mounts_str;
   LOG(INFO) << message;
-  platform_->ClobberLog(message);
+  startup_dep_->ClobberLog(message);
 
   base::FilePath tmpfiles = root_.Append("run/tmpfiles.log");
   brillo::ProcessImpl append_log;
@@ -93,10 +93,10 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   }
 
   std::vector<std::string> crash_args{"--clobber_state"};
-  platform_->AddClobberCrashReport(crash_args);
+  startup_dep_->AddClobberCrashReport(crash_args);
 
   std::vector<std::string> argv{"fast", "keepimg", "preserve_lvs"};
-  platform_->Clobber(argv);
+  startup_dep_->Clobber(argv);
 }
 
 // Used to mount essential mount points for the system from the stateful
@@ -108,7 +108,7 @@ void MountHelper::MountOrFail(const base::FilePath& source,
                               const int32_t& flags,
                               const std::string& data) {
   if (base::DirectoryExists(source) && base::DirectoryExists(target)) {
-    if (platform_->Mount(source, target, type.c_str(), flags, data)) {
+    if (startup_dep_->Mount(source, target, type.c_str(), flags, data)) {
       // Push it on the undo stack if we fail later.
       RememberMount(target);
       return;
@@ -133,7 +133,8 @@ void MountHelper::MountOrFail(const base::FilePath& source,
 bool MountHelper::MountVarAndHomeChronosEncrypted() {
   base::FilePath mount_enc_log = root_.Append(kMountEncryptedLog);
   std::string output;
-  int status = platform_->MountEncrypted(std::vector<std::string>(), &output);
+  int status =
+      startup_dep_->MountEncrypted(std::vector<std::string>(), &output);
   if (base::PathExists(mount_enc_log)) {
     base::AppendToFile(mount_enc_log, output);
   } else {
@@ -188,12 +189,12 @@ bool MountHelper::MountVarAndHomeChronosUnencrypted() {
     return false;
   }
 
-  if (!platform_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
+  if (!startup_dep_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
     return false;
   }
-  if (!platform_->Mount(stateful_.Append(kHomeChronos),
-                        root_.Append(kHomeChronos), "", MS_BIND, "")) {
-    platform_->Umount(root_.Append(kVar));
+  if (!startup_dep_->Mount(stateful_.Append(kHomeChronos),
+                           root_.Append(kHomeChronos), "", MS_BIND, "")) {
+    startup_dep_->Umount(root_.Append(kVar));
     return false;
   }
   return true;
@@ -202,10 +203,10 @@ bool MountHelper::MountVarAndHomeChronosUnencrypted() {
 // Unmount bind mounts for /var and /home/chronos.
 bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
   bool ret = false;
-  if (platform_->Umount(root_.Append(kVar))) {
+  if (startup_dep_->Umount(root_.Append(kVar))) {
     ret = true;
   }
-  if (platform_->Umount(root_.Append(kHomeChronos))) {
+  if (startup_dep_->Umount(root_.Append(kHomeChronos))) {
     ret = true;
   }
   return ret;

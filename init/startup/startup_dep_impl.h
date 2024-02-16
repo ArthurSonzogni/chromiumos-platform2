@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_STARTUP_PLATFORM_IMPL_H_
-#define INIT_STARTUP_PLATFORM_IMPL_H_
+#ifndef INIT_STARTUP_STARTUP_DEP_IMPL_H_
+#define INIT_STARTUP_STARTUP_DEP_IMPL_H_
 
 #include <sys/statvfs.h>
 #include <sys/types.h>
@@ -34,13 +34,13 @@ bool IsDebugBuild(crossystem::Crossystem* crossystem);
 bool IsFactoryMode(crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir);
 
-// Platform defines functions that interface with the filesystem and
+// StartupDep defines functions that interface with the filesystem and
 // other utilities that we want to override for testing. That includes
 // wrappers functions for syscalls.
-class Platform {
+class StartupDep {
  public:
-  Platform() {}
-  virtual ~Platform() = default;
+  StartupDep() {}
+  virtual ~StartupDep() = default;
 
   // Wrapper around stat(2).
   virtual bool Stat(const base::FilePath& path, struct stat* st);
@@ -122,4 +122,4 @@ class Platform {
 
 }  // namespace startup
 
-#endif  // INIT_STARTUP_PLATFORM_IMPL_H_
+#endif  // INIT_STARTUP_STARTUP_DEP_IMPL_H_

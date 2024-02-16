@@ -17,7 +17,7 @@
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace {
 
@@ -32,12 +32,12 @@ namespace startup {
 
 // Constructor for FactoryModeMountHelper when the device is
 // in factory mode.
-FactoryModeMountHelper::FactoryModeMountHelper(Platform* platform,
+FactoryModeMountHelper::FactoryModeMountHelper(StartupDep* startup_dep,
                                                const Flags& flags,
                                                const base::FilePath& root,
                                                const base::FilePath& stateful,
                                                const bool dev_mode)
-    : MountHelper(platform, flags, root, stateful, dev_mode) {}
+    : MountHelper(startup_dep, flags, root, stateful, dev_mode) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = GetStateful().Append(kOptionsFile);
@@ -52,13 +52,14 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
     // tmpfs on /var to improve performance. (especially when running
     // tests like touchpad, touchscreen).
     base::FilePath var = GetRoot().Append(kVar);
-    if (!platform_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0, "")) {
+    if (!startup_dep_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0,
+                             "")) {
       return false;
     }
     base::FilePath stateful_home_chronos = GetStateful().Append(kHomeChronos);
     base::FilePath home_chronos = GetRoot().Append(kHomeChronos);
-    if (!platform_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
-                          "")) {
+    if (!startup_dep_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
+                             "")) {
       return false;
     }
     return true;

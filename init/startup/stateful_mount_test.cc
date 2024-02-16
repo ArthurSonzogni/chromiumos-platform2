@@ -27,9 +27,9 @@
 #include <libcrossystem/crossystem_fake.h>
 
 #include "init/startup/chromeos_startup.h"
-#include "init/startup/fake_platform_impl.h"
-#include "init/startup/mock_platform_impl.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/fake_startup_dep_impl.h"
+#include "init/startup/mock_startup_dep_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
 
 using testing::_;
@@ -103,16 +103,16 @@ class Ext4FeaturesTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
-    platform_ = std::make_unique<startup::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), flags_, base_dir, base_dir, true);
+        startup_dep_.get(), flags_, base_dir, base_dir, true);
   }
 
   startup::Flags flags_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
-  std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
 };
 
@@ -126,10 +126,10 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
   ASSERT_TRUE(CreateDirAndWriteFile(encrypt_file, "1"));
 
   struct stat st;
-  platform_->SetStatResultForPath(encrypt_file, st);
+  startup_dep_->SetStatResultForPath(encrypt_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -146,10 +146,10 @@ TEST_F(Ext4FeaturesTest, Verity) {
   ASSERT_TRUE(CreateDirAndWriteFile(verity_file, "1"));
 
   struct stat st;
-  platform_->SetStatResultForPath(verity_file, st);
+  startup_dep_->SetStatResultForPath(verity_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -163,7 +163,7 @@ TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -181,10 +181,10 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
 
   struct stat st;
   st.st_mode = S_IFDIR;
-  platform_->SetStatResultForPath(quota_file, st);
+  startup_dep_->SetStatResultForPath(quota_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -202,10 +202,10 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
 
   struct stat st;
   st.st_mode = S_IFDIR;
-  platform_->SetStatResultForPath(quota_file, st);
+  startup_dep_->SetStatResultForPath(quota_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -219,7 +219,7 @@ TEST_F(Ext4FeaturesTest, DisableQuota) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -232,7 +232,7 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(),
+      flags, base_dir, base_dir, startup_dep_.get(),
       std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -247,11 +247,11 @@ class HibernateResumeBootTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
-    mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
+    mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        mock_platform_.get(), flags_, base_dir_, base_dir_, true);
+        mock_startup_dep_.get(), flags_, base_dir_, base_dir_, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, base_dir_, mock_platform_.get(),
+        flags_, base_dir_, base_dir_, mock_startup_dep_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
         mount_helper_.get());
     state_dev_ = base::FilePath("test");
@@ -259,7 +259,7 @@ class HibernateResumeBootTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  std::unique_ptr<startup::MockPlatform> mock_platform_;
+  std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
@@ -278,7 +278,7 @@ TEST_F(HibernateResumeBootTest, HibermanFail) {
   base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
   ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
 
-  EXPECT_CALL(*mock_platform_, RunHiberman(hiber_init_log_))
+  EXPECT_CALL(*mock_startup_dep_, RunHiberman(hiber_init_log_))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(stateful_mount_->HibernateResumeBoot());
@@ -289,7 +289,7 @@ TEST_F(HibernateResumeBootTest, HibermanSuccess) {
   base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
   ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
 
-  EXPECT_CALL(*mock_platform_, RunHiberman(hiber_init_log_))
+  EXPECT_CALL(*mock_startup_dep_, RunHiberman(hiber_init_log_))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(stateful_mount_->HibernateResumeBoot());
@@ -303,7 +303,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
-    platform_ = std::make_unique<startup::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     stateful_update_file = stateful.Append(".update_available");
     clobber_log_ = base_dir.Append("clobber_log");
     var_new = stateful.Append("var_new");
@@ -312,9 +312,9 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), flags_, base_dir, base_dir, true);
+        startup_dep_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, platform_.get(),
+        flags_, base_dir, stateful, startup_dep_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
         mount_helper_.get());
   }
@@ -322,7 +322,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;
-  std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
@@ -344,13 +344,13 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   ASSERT_TRUE(CreateDirectory(var_new));
   struct stat st;
   st.st_mode = S_IFDIR;
-  platform_->SetStatResultForPath(developer_new, st);
-  platform_->SetStatResultForPath(var_new, st);
-  platform_->SetClobberLogFile(clobber_log_);
+  startup_dep_->SetStatResultForPath(developer_new, st);
+  startup_dep_->SetStatResultForPath(var_new, st);
+  startup_dep_->SetClobberLogFile(clobber_log_);
 
   ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "1"));
   st.st_mode = S_IFREG;
-  platform_->SetStatResultForPath(stateful_update_file, st);
+  startup_dep_->SetStatResultForPath(stateful_update_file, st);
 
   LOG(INFO) << "var new test: " << var_new.value();
   LOG(INFO) << "developer_new test: " << developer_new.value();
@@ -380,7 +380,7 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
 }
 
 TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
-  platform_->SetClobberLogFile(clobber_log_);
+  startup_dep_->SetClobberLogFile(clobber_log_);
 
   ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "clobber"));
   base::FilePath labmachine = stateful.Append(".labmachine");
@@ -391,14 +391,14 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
 
   struct stat st;
   st.st_mode = S_IFREG;
-  platform_->SetStatResultForPath(stateful_update_file, st);
-  platform_->SetStatResultForPath(labmachine, st);
-  platform_->SetStatResultForPath(test, st);
+  startup_dep_->SetStatResultForPath(stateful_update_file, st);
+  startup_dep_->SetStatResultForPath(labmachine, st);
+  startup_dep_->SetStatResultForPath(test, st);
 
   st.st_mode = S_IFDIR;
-  platform_->SetStatResultForPath(test_dir, st);
-  platform_->SetStatResultForPath(empty, st);
-  platform_->SetStatResultForPath(preserve_dir, st);
+  startup_dep_->SetStatResultForPath(test_dir, st);
+  startup_dep_->SetStatResultForPath(empty, st);
+  startup_dep_->SetStatResultForPath(preserve_dir, st);
 
   ASSERT_TRUE(base::CreateDirectory(empty));
   ASSERT_TRUE(base::CreateDirectory(test_dir));
@@ -433,11 +433,11 @@ class DevGatherLogsTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
-    platform_ = std::make_unique<startup::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), flags_, base_dir, base_dir, true);
+        startup_dep_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, platform_.get(),
+        flags_, base_dir, stateful, startup_dep_.get(),
         std::unique_ptr<brillo::MockLogicalVolumeManager>(),
         mount_helper_.get());
     lab_preserve_logs_ = stateful.Append(".gatherme");
@@ -456,7 +456,7 @@ class DevGatherLogsTest : public ::testing::Test {
   base::FilePath prior_log_dir_;
   base::FilePath var_dir_;
   base::FilePath home_chronos_;
-  std::unique_ptr<startup::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
@@ -466,7 +466,7 @@ TEST_F(DevGatherLogsTest, NoPreserveLogs) {
   ASSERT_TRUE(CreateDirAndWriteFile(lab_preserve_logs_, "#"));
   struct stat st;
   st.st_mode = S_IFDIR;
-  platform_->SetStatResultForPath(lab_preserve_logs_, st);
+  startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
 
   stateful_mount_->DevGatherLogs(base_dir);
 }
@@ -502,7 +502,7 @@ TEST_F(DevGatherLogsTest, PreserveLogs) {
 
   struct stat st;
   st.st_mode = S_IFREG;
-  platform_->SetStatResultForPath(lab_preserve_logs_, st);
+  startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
 
   EXPECT_EQ(PathExists(home_chronos), true);
 

@@ -9,7 +9,7 @@
 
 #include <base/files/file_path.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/uefi_startup.h"
 
 namespace startup {
@@ -41,7 +41,7 @@ constexpr char kEfiImageSecurityDatabaseGuid[] =
 
 class UefiDelegateImpl : public UefiDelegate {
  public:
-  UefiDelegateImpl(Platform& platform, const base::FilePath& root_dir);
+  UefiDelegateImpl(StartupDep& startup_dep, const base::FilePath& root_dir);
 
   bool IsUefiEnabled() const override;
   std::optional<UserAndGroup> GetFwupdUserAndGroup() const override;
@@ -52,7 +52,7 @@ class UefiDelegateImpl : public UefiDelegate {
   bool MountEfiSystemPartition(const UserAndGroup& fwupd) override;
 
  private:
-  Platform& platform_;
+  StartupDep& startup_dep_;
   const base::FilePath root_dir_;
 };
 

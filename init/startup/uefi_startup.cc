@@ -21,15 +21,15 @@
 namespace startup {
 
 std::unique_ptr<UefiDelegate> UefiDelegate::Create(
-    Platform& platform, const base::FilePath& root_dir) {
-  return std::make_unique<UefiDelegateImpl>(platform, root_dir);
+    StartupDep& startup_dep, const base::FilePath& root_dir) {
+  return std::make_unique<UefiDelegateImpl>(startup_dep, root_dir);
 }
 
 UefiDelegate::~UefiDelegate() = default;
 
-UefiDelegateImpl::UefiDelegateImpl(Platform& platform,
+UefiDelegateImpl::UefiDelegateImpl(StartupDep& startup_dep,
                                    const base::FilePath& root_dir)
-    : platform_(platform), root_dir_(root_dir) {}
+    : startup_dep_(startup_dep), root_dir_(root_dir) {}
 
 bool UefiDelegateImpl::IsUefiEnabled() const {
   return base::PathExists(root_dir_.Append(kSysEfiDir));
@@ -54,11 +54,11 @@ bool UefiDelegateImpl::MountEfivarfs(const UserAndGroup& fwupd) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
   const std::string data =
       "uid=" + std::to_string(fwupd.uid) + ",gid=" + std::to_string(fwupd.gid);
-  if (!platform_.Mount(/*src=*/kFsTypeEfivarfs,
-                       /*dst=*/efivars_dir,
-                       /*type=*/kFsTypeEfivarfs,
-                       /*flags=*/kCommonMountFlags,
-                       /*data=*/data)) {
+  if (!startup_dep_.Mount(/*src=*/kFsTypeEfivarfs,
+                          /*dst=*/efivars_dir,
+                          /*type=*/kFsTypeEfivarfs,
+                          /*flags=*/kCommonMountFlags,
+                          /*data=*/data)) {
     PLOG(WARNING) << "Unable to mount " << efivars_dir;
     return false;
   }
@@ -70,19 +70,19 @@ bool UefiDelegateImpl::MakeUefiVarMutable(const std::string& vendor,
                                           const std::string& name) {
   const base::FilePath var_path =
       root_dir_.Append(kEfivarsDir).Append(name + '-' + vendor);
-  base::ScopedFD var_fd = platform_.Open(var_path, O_RDONLY | O_CLOEXEC);
+  base::ScopedFD var_fd = startup_dep_.Open(var_path, O_RDONLY | O_CLOEXEC);
   if (!var_fd.is_valid()) {
     PLOG(WARNING) << "Failed to open " << var_path;
     return false;
   }
 
   int attr = 0;
-  if (platform_.Ioctl(var_fd.get(), FS_IOC_GETFLAGS, &attr) < 0) {
+  if (startup_dep_.Ioctl(var_fd.get(), FS_IOC_GETFLAGS, &attr) < 0) {
     PLOG(WARNING) << "Failed to get attributes for " << var_path;
     return false;
   }
   attr &= ~FS_IMMUTABLE_FL;
-  if (platform_.Ioctl(var_fd.get(), FS_IOC_SETFLAGS, &attr) < 0) {
+  if (startup_dep_.Ioctl(var_fd.get(), FS_IOC_SETFLAGS, &attr) < 0) {
     PLOG(WARNING) << "Failed to set attributes for " << var_path;
     return false;
   }
@@ -96,9 +96,9 @@ void UefiDelegateImpl::MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) {
       base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES);
 
   file_enumerator.ForEach([this, fwupd](const base::FilePath& path) {
-    base::ScopedFD fd = platform_.Open(path, O_RDONLY | O_CLOEXEC);
+    base::ScopedFD fd = startup_dep_.Open(path, O_RDONLY | O_CLOEXEC);
     if (fd.is_valid()) {
-      if (!platform_.Fchown(fd.get(), fwupd.uid, fwupd.gid)) {
+      if (!startup_dep_.Fchown(fd.get(), fwupd.uid, fwupd.gid)) {
         PLOG(WARNING) << "Failed to change ownership of " << path << " to "
                       << fwupd.uid << ":" << fwupd.gid;
       }
@@ -110,7 +110,7 @@ void UefiDelegateImpl::MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) {
 
 bool UefiDelegateImpl::MountEfiSystemPartition(const UserAndGroup& fwupd) {
   const base::FilePath mount_point = root_dir_.Append(kEspDir);
-  const auto esp_dev = platform_.GetRootDevicePartitionPath(kEspLabel);
+  const auto esp_dev = startup_dep_.GetRootDevicePartitionPath(kEspLabel);
   if (!esp_dev.has_value()) {
     LOG(WARNING) << "Unable to find ESP label (" << kEspLabel
                  << ") in root partition layout";
@@ -123,11 +123,11 @@ bool UefiDelegateImpl::MountEfiSystemPartition(const UserAndGroup& fwupd) {
   // can't access the files.
   const std::string data = "uid=" + std::to_string(fwupd.uid) +
                            ",gid=" + std::to_string(fwupd.gid) + ",umask=007";
-  if (!platform_.Mount(/*src=*/esp_dev.value(),
-                       /*dst=*/mount_point,
-                       /*type=*/kFsTypeVfat,
-                       /*flags=*/kCommonMountFlags,
-                       /*data=*/data)) {
+  if (!startup_dep_.Mount(/*src=*/esp_dev.value(),
+                          /*dst=*/mount_point,
+                          /*type=*/kFsTypeVfat,
+                          /*flags=*/kCommonMountFlags,
+                          /*data=*/data)) {
     PLOG(WARNING) << "Unable to mount " << mount_point;
     return false;
   }

@@ -37,7 +37,7 @@
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/utils.h"
 
@@ -174,13 +174,13 @@ namespace startup {
 StatefulMount::StatefulMount(const Flags& flags,
                              const base::FilePath& root,
                              const base::FilePath& stateful,
-                             Platform* platform,
+                             StartupDep* startup_dep,
                              std::unique_ptr<brillo::LogicalVolumeManager> lvm,
                              MountHelper* mount_helper)
     : flags_(flags),
       root_(root),
       stateful_(stateful),
-      platform_(platform),
+      startup_dep_(startup_dep),
       lvm_(std::move(lvm)),
       mount_helper_(mount_helper) {}
 
@@ -320,7 +320,7 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
 
   if (!sb_features.empty() || !sb_options.empty()) {
     // Ensure to replay the journal first so it doesn't overwrite the flag.
-    platform_->ReplayExt4Journal(state_dev_);
+    startup_dep_->ReplayExt4Journal(state_dev_);
 
     if (!sb_options.empty()) {
       std::string opts = base::JoinString(sb_options, ",");
@@ -337,17 +337,17 @@ bool StatefulMount::HibernateResumeBoot() {
   base::FilePath hiberman_cmd = root_.Append(kHiberman);
   base::FilePath hiber_init_log = root_.Append(kHiberResumeInitLog);
   return (base::PathExists(hiberman_cmd) &&
-          platform_->RunHiberman(hiber_init_log));
+          startup_dep_->RunHiberman(hiber_init_log));
 }
 
 void StatefulMount::ClobberStateful(
     const std::vector<std::string>& clobber_args,
     const std::string& clobber_message) {
-  platform_->BootAlert("self_repair");
-  platform_->ClobberLogRepair(state_dev_, clobber_message);
-  platform_->AddClobberCrashReport(
+  startup_dep_->BootAlert("self_repair");
+  startup_dep_->ClobberLogRepair(state_dev_, clobber_message);
+  startup_dep_->AddClobberCrashReport(
       {"--mount_failure", "--mount_device=stateful"});
-  platform_->Clobber(clobber_args);
+  startup_dep_->Clobber(clobber_args);
 }
 
 bool StatefulMount::AttemptStatefulMigration() {
@@ -502,9 +502,10 @@ void StatefulMount::MountStateful() {
     EnableExt4Features();
 
     // Mount stateful partition from state_dev.
-    if (!platform_->Mount(state_dev_, base::FilePath("/mnt/stateful_partition"),
-                          fs_form_state->c_str(), stateful_mount_flags,
-                          stateful_mount_opts)) {
+    if (!startup_dep_->Mount(state_dev_,
+                             base::FilePath("/mnt/stateful_partition"),
+                             fs_form_state->c_str(), stateful_mount_flags,
+                             stateful_mount_opts)) {
       // Try to rebuild the stateful partition by clobber-state. (Not using fast
       // mode out of security consideration: the device might have gotten into
       // this state through power loss during dev mode transition).
@@ -531,8 +532,8 @@ void StatefulMount::MountStateful() {
         image_vars_dict.FindString("FS_FORMAT_OEM");
     const base::FilePath oem_dev =
         brillo::AppendPartition(root_dev_type_, part_num_oem);
-    status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
-                              *fs_form_oem, oem_flags, "");
+    status = startup_dep_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
+                                 *fs_form_oem, oem_flags, "");
     if (!status) {
       PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
     }
@@ -582,7 +583,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   if (base::DirectoryExists(developer_new) && base::DirectoryExists(var_new)) {
     std::string update = "'Updating from " + developer_new.value() + " && " +
                          var_new.value() + ".'";
-    platform_->ClobberLog(update);
+    startup_dep_->ClobberLog(update);
 
     for (const std::string& path : {var, dev_image}) {
       base::FilePath path_new = stateful_.Append(path + kNew);
@@ -618,12 +619,12 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       }
       paths_to_rm.push_back(path_new);
     }
-    platform_->RemoveInBackground(paths_to_rm);
+    startup_dep_->RemoveInBackground(paths_to_rm);
   } else {
     std::string update = "'Stateful update did not find " +
                          developer_new.value() + " & " + var_new.value() +
                          ".'\n'Keeping old development tools.'";
-    platform_->ClobberLog(update);
+    startup_dep_->ClobberLog(update);
   }
 
   // Check for clobber.
@@ -664,7 +665,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   }
 
   std::vector<base::FilePath> rm_paths{stateful_update_file};
-  platform_->RemoveInBackground(rm_paths);
+  startup_dep_->RemoveInBackground(rm_paths);
 
   return true;
 }
@@ -751,9 +752,9 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
         volume_group_->IsValid()) {
       auto lg = lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
       lg->Activate();
-      platform_->Mount(device, stateful_dev, "",
-                       MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-                       "discard");
+      startup_dep_->Mount(device, stateful_dev, "",
+                          MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+                          "discard");
     }
   }
 
@@ -763,7 +764,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);
   mount_helper_->MountOrFail(stateful_dev, usrlocal, "", MS_BIND, "");
-  if (!platform_->Mount(base::FilePath(""), usrlocal, "", MS_REMOUNT, "")) {
+  if (!startup_dep_->Mount(base::FilePath(""), usrlocal, "", MS_REMOUNT, "")) {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
 

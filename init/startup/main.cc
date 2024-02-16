@@ -21,7 +21,7 @@
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/mount_helper_factory.h"
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace {
 
@@ -72,11 +72,11 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 
   crossystem::Crossystem crossystem;
-  startup::Platform platform;
+  startup::StartupDep startup_dep;
 
   startup::MountHelperFactory mount_helper_factory(
-      &platform, flags, base::FilePath("/"), base::FilePath(kStatefulPartition),
-      base::FilePath(kLsbRelease));
+      &startup_dep, flags, base::FilePath("/"),
+      base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
       mount_helper_factory.Generate(&crossystem);
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
       std::make_unique<startup::ChromeosStartup>(
           &crossystem, std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-          base::FilePath(kProcPath), &platform, std::move(mount_helper),
+          base::FilePath(kProcPath), &startup_dep, std::move(mount_helper),
           std::move(tlcl));
 
   return startup->Run();

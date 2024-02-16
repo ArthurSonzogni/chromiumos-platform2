@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_STARTUP_FAKE_PLATFORM_IMPL_H_
-#define INIT_STARTUP_FAKE_PLATFORM_IMPL_H_
+#ifndef INIT_STARTUP_FAKE_STARTUP_DEP_IMPL_H_
+#define INIT_STARTUP_FAKE_STARTUP_DEP_IMPL_H_
 
 #include <stdlib.h>
 #include <sys/types.h>
@@ -15,7 +15,7 @@
 
 #include <base/files/file_util.h>
 
-#include "init/startup/platform_impl.h"
+#include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
@@ -23,9 +23,9 @@ namespace startup {
 // use of system calls or other functionality that utilizes
 // system command outputs.
 
-class FakePlatform : public Platform {
+class FakeStartupDep : public StartupDep {
  public:
-  FakePlatform();
+  FakeStartupDep();
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st);
 
@@ -46,7 +46,7 @@ class FakePlatform : public Platform {
 
   std::set<std::string> GetClobberArgs();
 
-  // `startup::Platform` overrides.
+  // `startup::StartupDep` overrides.
   bool Stat(const base::FilePath& path, struct stat* st) override;
   bool Statvfs(const base::FilePath& path, struct statvfs* st) override;
   bool Lstat(const base::FilePath& path, struct stat* st) override;
@@ -93,4 +93,4 @@ class FakePlatform : public Platform {
 
 }  // namespace startup
 
-#endif  // INIT_STARTUP_FAKE_PLATFORM_IMPL_H_
+#endif  // INIT_STARTUP_FAKE_STARTUP_DEP_IMPL_H_
