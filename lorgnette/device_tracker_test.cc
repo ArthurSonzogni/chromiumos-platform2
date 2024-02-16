@@ -887,7 +887,9 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedSANEDeviceIncluded) {
 
 TEST_F(DeviceTrackerTest, DiscoverySessionClosesOpenScanners) {
   sane_client_->SetListDevicesResult(true);
-  CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
+  SaneDeviceFake* scanner = CreateFakeScanner("epson2:libusb:001:001",
+                                              "GoogleTest", "Scanner 1", "USB");
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
 
   EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
       .WillRepeatedly([] {
@@ -924,6 +926,17 @@ TEST_F(DeviceTrackerTest, DiscoverySessionClosesOpenScanners) {
   auto& handle = open_response.config().scanner();
   EXPECT_FALSE(handle.token().empty());
 
+  // Start a scan.  This job should get closed when the second discovery session
+  // invalidates the handle.
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  EXPECT_THAT(sps_response.scanner(), EqualsProto(sps_request.scanner()));
+  EXPECT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_TRUE(sps_response.has_job_handle());
+
   // Second discovery session succeeds and invalidates the handle.
   base::RunLoop run_loop2;
   SetQuitClosure(run_loop2.QuitClosure());
@@ -945,6 +958,16 @@ TEST_F(DeviceTrackerTest, DiscoverySessionClosesOpenScanners) {
   EXPECT_THAT(config_response.scanner(), EqualsProto(handle));
   EXPECT_NE(config_response.result(), OPERATION_RESULT_SUCCESS);
   EXPECT_FALSE(config_response.has_config());
+
+  // Job is no longer valid.
+  CancelScanRequest cancel_request;
+  *cancel_request.mutable_job_handle() = sps_response.job_handle();
+  CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
+  EXPECT_FALSE(cancel_response.success());
+  EXPECT_NE(cancel_response.failure_reason(), "");
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(cancel_response.job_handle(),
+              EqualsProto(cancel_request.job_handle()));
 }
 
 TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
@@ -1348,13 +1371,37 @@ TEST_F(DeviceTrackerTest, OpenScannerFirstClientSucceeds) {
 }
 
 TEST_F(DeviceTrackerTest, OpenScannerSameClientSucceedsTwice) {
-  CreateFakeScanner("Test");
+  SaneDeviceFake* scanner = CreateFakeScanner("Test");
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
 
   OpenScannerRequest request;
   request.mutable_scanner_id()->set_connection_string("Test");
   request.set_client_id("DeviceTrackerTest");
   OpenScannerResponse response1 = tracker_->OpenScanner(request);
+
+  // Start a scan on the first handle to check that the job gets closed when the
+  // scanner gets opened a second time.
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = response1.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  EXPECT_THAT(sps_response.scanner(), EqualsProto(sps_request.scanner()));
+  EXPECT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_TRUE(sps_response.has_job_handle());
+
   OpenScannerResponse response2 = tracker_->OpenScanner(request);
+
+  // Cancelling this job should fail since it was implicitly cancelled in the
+  // second open request.
+  CancelScanRequest cancel_request;
+  *cancel_request.mutable_job_handle() = sps_response.job_handle();
+  CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
+  EXPECT_FALSE(cancel_response.success());
+  EXPECT_NE(cancel_response.failure_reason(), "");
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(cancel_response.job_handle(),
+              EqualsProto(cancel_request.job_handle()));
 
   EXPECT_THAT(response1.scanner_id(), EqualsProto(request.scanner_id()));
   EXPECT_EQ(response1.result(), OPERATION_RESULT_SUCCESS);
@@ -1878,7 +1925,7 @@ TEST_F(DeviceTrackerTest, CancelScanInvalidJobHandle) {
   EXPECT_THAT(response.job_handle(), EqualsProto(request.job_handle()));
 }
 
-TEST_F(DeviceTrackerTest, CancelScanClosedScanner) {
+TEST_F(DeviceTrackerTest, CloseScannerCancelsJob) {
   SaneDeviceFake* scanner = CreateFakeScanner("Test");
   scanner->SetScanParameters(MakeScanParameters(10, 10));
 
@@ -1894,8 +1941,9 @@ TEST_F(DeviceTrackerTest, CancelScanClosedScanner) {
   StartPreparedScanResponse sps_response =
       tracker_->StartPreparedScan(sps_request);
   ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_TRUE(sps_response.has_job_handle());
 
-  // Close device, leaving a dangling job handle.
+  // Close device, which should also cancel the job.
   CloseScannerRequest close_request;
   *close_request.mutable_scanner() = open_response.config().scanner();
   CloseScannerResponse close_response = tracker_->CloseScanner(close_request);
@@ -1904,14 +1952,6 @@ TEST_F(DeviceTrackerTest, CancelScanClosedScanner) {
   CancelScanRequest cancel_request;
   *cancel_request.mutable_job_handle() = sps_response.job_handle();
   CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
-  EXPECT_FALSE(cancel_response.success());
-  EXPECT_NE(cancel_response.failure_reason(), "");
-  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_MISSING);
-  EXPECT_THAT(cancel_response.job_handle(),
-              EqualsProto(cancel_request.job_handle()));
-
-  // Job handle itself is no longer valid.
-  cancel_response = tracker_->CancelScan(cancel_request);
   EXPECT_FALSE(cancel_response.success());
   EXPECT_NE(cancel_response.failure_reason(), "");
   EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
@@ -2105,7 +2145,7 @@ TEST_F(DeviceTrackerTest, ReadScanDataFailsForClosedScanner) {
       tracker_->StartPreparedScan(sps_request);
   ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
 
-  // Close device, leaving a dangling job handle.
+  // Close device, which cancels the job.
   CloseScannerRequest close_request;
   *close_request.mutable_scanner() = open_response.config().scanner();
   CloseScannerResponse close_response = tracker_->CloseScanner(close_request);
@@ -2114,13 +2154,6 @@ TEST_F(DeviceTrackerTest, ReadScanDataFailsForClosedScanner) {
   ReadScanDataRequest rsd_request;
   *rsd_request.mutable_job_handle() = sps_response.job_handle();
   ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
-  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_MISSING);
-  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
-  EXPECT_FALSE(rsd_response.has_data());
-  EXPECT_FALSE(rsd_response.has_estimated_completion());
-
-  // Job handle itself is no longer valid.
-  rsd_response = tracker_->ReadScanData(rsd_request);
   EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_INVALID);
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_FALSE(rsd_response.has_data());

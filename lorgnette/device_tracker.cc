@@ -194,7 +194,7 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
                 << ": Closing existing scanner open by same client: "
                 << it->second.handle << " (" << it->second.connection_string
                 << ")";
-      // TODO(bmgordon): Make sure outstanding job handles are cancelled.
+      ClearJobsForScanner(it->first);
       it = open_scanners_.erase(it);
     } else {
       ++it;
@@ -684,7 +684,7 @@ OpenScannerResponse DeviceTracker::OpenScanner(
     LOG(WARNING) << __func__
                  << ": Closing existing handle owned by same client: "
                  << scanner.first;
-    // TODO(bmgordon): Cancel outstanding jobs.
+    ClearJobsForScanner(scanner.first);
     open_scanners_.erase(scanner);
     break;
   }
@@ -731,6 +731,24 @@ OpenScannerResponse DeviceTracker::OpenScanner(
   return response;
 }
 
+void DeviceTracker::ClearJobsForScanner(const std::string& scanner_handle) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!base::Contains(open_scanners_, scanner_handle)) {
+    return;
+  }
+
+  OpenScannerState& state = open_scanners_[scanner_handle];
+  std::optional<std::string> job_id = state.device->GetCurrentJob();
+  if (!job_id.has_value()) {
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": Canceling existing job " << job_id.value()
+            << " for scanner " << scanner_handle;
+  active_jobs_.erase(job_id.value());
+}
+
 CloseScannerResponse DeviceTracker::CloseScanner(
     const CloseScannerRequest& request) {
   LOG(INFO) << __func__ << ": Closing device: " << request.scanner().token();
@@ -755,7 +773,7 @@ CloseScannerResponse DeviceTracker::CloseScanner(
     return response;
   }
 
-  // TODO(bmgordon): Cancel any outstanding scan jobs.
+  ClearJobsForScanner(handle);
   open_scanners_.erase(handle);
   LOG(INFO) << __func__ << ": Stopped tracking scanner " << handle
             << ".  Active scanners: " << open_scanners_.size();

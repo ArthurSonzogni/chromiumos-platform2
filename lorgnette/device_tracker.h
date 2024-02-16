@@ -175,6 +175,11 @@ class DeviceTracker {
   void SaveDeviceCache();
   void LoadDeviceCache();
 
+  // If `scanner_handle` has an active job, remove that job from the list of
+  // active jobs.  This doesn't explicitly cancel the job - that is the caller's
+  // responsibility.
+  void ClearJobsForScanner(const std::string& scanner_handle);
+
   // Individual phases of discovery.  Each function is posted as a separate task
   // on the event loop to break up the amount of time spent blocking.
   // Because other events can be processed in between, each function needs to
