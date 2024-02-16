@@ -50,11 +50,21 @@ class ValidationLog {
         Metrics::kPortalDetectorResultUnknown;
   };
 
-  // Records metrics related to CAPPORT query results.
-  void RecordCAPPORTMetrics() const;
-  // Records metrics related to portal detector probes and returns true if a
-  // redirect was found.
-  bool RecordProbeMetrics() const;
+  // Used internally to RecordMetrics to share the result of aggregating portal
+  // detector probe events.
+  struct ProbeAggregateResult {
+    int total_attempts = 0;
+    bool has_internet = false;
+    bool has_redirect = false;
+    bool has_suspected_redirect = false;
+  };
+
+  // Records metrics related to CAPPORT query results, also taking into account
+  // whether portal detection probes could confirm Internet connectivity or not.
+  void RecordCAPPORTMetrics(bool has_internet_connectivity) const;
+  // Records metrics related to portal detector probes and returns the aggregate
+  // portal detector probe result.
+  ProbeAggregateResult RecordProbeMetrics() const;
 
   Technology technology_;
   Metrics* metrics_;

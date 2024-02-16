@@ -55,9 +55,9 @@ void ValidationLog::SetHasTermsAndConditions() {
   has_terms_and_conditions_ = true;
 }
 
-bool ValidationLog::RecordProbeMetrics() const {
+ValidationLog::ProbeAggregateResult ValidationLog::RecordProbeMetrics() const {
   if (probe_results_.empty()) {
-    return false;
+    return {};
   }
 
   int total_attempts = 0;
@@ -135,11 +135,16 @@ bool ValidationLog::RecordProbeMetrics() const {
   metrics_->SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, technology_,
                           netval_result);
 
-  // Return as true both 302/307 redirect cases and spoofed 200 answer cases.
-  return has_redirect || has_suspected_redirect;
+  return ProbeAggregateResult{
+      .total_attempts = total_attempts,
+      .has_internet = has_internet,
+      // Return as true both 302/307 redirect cases and spoofed 200 answer
+      // cases.
+      .has_redirect = has_redirect || has_suspected_redirect,
+  };
 }
 
-void ValidationLog::RecordCAPPORTMetrics() const {
+void ValidationLog::RecordCAPPORTMetrics(bool has_internet_connectivity) const {
   if (capport_results_.empty()) {
     return;
   }
@@ -183,12 +188,25 @@ void ValidationLog::RecordCAPPORTMetrics() const {
                           time_to_user_portal_url.InMilliseconds());
     }
   }
+
+  Metrics::AggregateCAPPORTResult capport_aggregate_result =
+      Metrics::kAggregateCAPPORTResultUnknown;
+  if (*is_captive) {
+    capport_aggregate_result = Metrics::kAggregateCAPPORTResultCaptive;
+  } else if (has_internet_connectivity) {
+    capport_aggregate_result = Metrics::kAggregateCAPPORTResultOpenWithInternet;
+  } else {
+    capport_aggregate_result =
+        Metrics::kAggregateCAPPORTResultOpenWithoutInternet;
+  }
+  metrics_->SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult,
+                          technology_, capport_aggregate_result);
 }
 
 void ValidationLog::RecordMetrics() const {
-  bool has_redirect = RecordProbeMetrics();
+  auto probe_aggregate_result = RecordProbeMetrics();
 
-  RecordCAPPORTMetrics();
+  RecordCAPPORTMetrics(probe_aggregate_result.has_internet);
 
   std::optional<Metrics::CapportSupported> capport_support = std::nullopt;
   if (capport_dhcp_supported_ && capport_ra_supported_) {
@@ -204,7 +222,7 @@ void ValidationLog::RecordMetrics() const {
                             *capport_support);
   }
 
-  if (has_redirect) {
+  if (probe_aggregate_result.has_redirect) {
     metrics_->SendEnumToUMA(
         Metrics::kMetricCapportSupported, technology_,
         capport_support.value_or(Metrics::kCapportNotSupported));
@@ -213,11 +231,11 @@ void ValidationLog::RecordMetrics() const {
   if (technology_ == Technology::kWiFi && !probe_results_.empty()) {
     Metrics::TermsAndConditionsAggregateResult tc_result =
         Metrics::kTermsAndConditionsAggregateResultUnknown;
-    if (has_terms_and_conditions_ && has_redirect) {
+    if (has_terms_and_conditions_ && probe_aggregate_result.has_redirect) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultPortalWithURL;
     } else if (has_terms_and_conditions_) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalWithURL;
-    } else if (has_redirect) {
+    } else if (probe_aggregate_result.has_redirect) {
       tc_result = Metrics::kTermsAndConditionsAggregateResultPortalNoURL;
     } else {
       tc_result = Metrics::kTermsAndConditionsAggregateResultNoPortalNoURL;

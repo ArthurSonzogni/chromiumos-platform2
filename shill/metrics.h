@@ -1634,6 +1634,23 @@ class Metrics {
           .num_buckets = kTimerHistogramNumBuckets,
   };
 
+  // Result of CAPPORT status queries aggregated until the CAPPORT network
+  // indicates that access to the external network has been granted.
+  enum AggregateCAPPORTResult {
+    kAggregateCAPPORTResultUnknown = 0,
+    kAggregateCAPPORTResultCaptive = 1,
+    kAggregateCAPPORTResultOpenWithoutInternet = 2,
+    kAggregateCAPPORTResultOpenWithInternet = 3,
+
+    kAggregateCAPPORTResultMax,
+  };
+  static constexpr EnumMetric<NameByTechnology>
+      kPortalDetectorAggregateCAPPORTResult = {
+          .n = {"PortalDetector.AggregateCAPPORTResult",
+                TechnologyLocation::kAfterName},
+          .max = kAggregateCAPPORTResultMax,
+  };
+
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
 

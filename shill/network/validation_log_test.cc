@@ -535,14 +535,54 @@ TEST_F(ValidationLogTest, CAPPORTOpensDirectly) {
       metrics_,
       SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL, _, _))
       .Times(0);
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult, _, _))
+      .Times(0);
+
+  log_.RecordMetrics();
+}
+
+TEST_F(ValidationLogTest, CAPPORTRemainsCaptive) {
+  AddCAPPORTStatus(GetCAPPORTCaptiveStatus());
+
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTNotCaptive, _, _))
+      .Times(0);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL,
+                        Technology::kWiFi, _));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult,
+                            Technology::kWiFi,
+                            Metrics::kAggregateCAPPORTResultCaptive));
 
   log_.RecordMetrics();
 }
 
 TEST_F(ValidationLogTest, CAPPORTOpensWithoutUserPortalURL) {
   AddCAPPORTStatus(GetCAPPORTCaptiveNoPortalURLStatus());
+  AddPortalDetectorResult(GetInternetConnectivityResult());
   AddCAPPORTStatus(GetCAPPORTNotCaptiveStatus());
 
+  // Probe metrics expectations
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
+                                      Technology::kWiFi,
+                                      Metrics::kPortalDetectorResultOnline));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
+                    Metrics::kPortalDetectorAggregateResultInternet));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
+                                  Technology::kWiFi, 1));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
+                                  Technology::kWiFi, _));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricTermsAndConditionsAggregateResult,
+                    Metrics::kTermsAndConditionsAggregateResultNoPortalNoURL));
+
+  // CAPPORT metrics expectations
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTNotCaptive,
                         Technology::kWiFi, _));
@@ -550,6 +590,29 @@ TEST_F(ValidationLogTest, CAPPORTOpensWithoutUserPortalURL) {
       metrics_,
       SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL, _, _))
       .Times(0);
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult,
+                            Technology::kWiFi,
+                            Metrics::kAggregateCAPPORTResultOpenWithInternet));
+
+  log_.RecordMetrics();
+}
+
+TEST_F(ValidationLogTest, CAPPORTOpensWithoutInternetAccess) {
+  AddCAPPORTStatus(GetCAPPORTCaptiveStatus());
+  AddCAPPORTStatus(GetCAPPORTNotCaptiveStatus());
+
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTNotCaptive,
+                        Technology::kWiFi, _));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL,
+                        Technology::kWiFi, _));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult,
+                    Technology::kWiFi,
+                    Metrics::kAggregateCAPPORTResultOpenWithoutInternet));
 
   log_.RecordMetrics();
 }
@@ -559,16 +622,39 @@ TEST_F(ValidationLogTest, CAPPORTOpensWithUserPortalURL) {
   AddCAPPORTStatus(GetCAPPORTCaptiveStatus());
   AddCAPPORTStatus(GetCAPPORTCaptiveStatus());
   AddCAPPORTStatus(GetCAPPORTCaptiveStatus());
+  AddPortalDetectorResult(GetInternetConnectivityResult());
   AddCAPPORTStatus(GetCAPPORTNotCaptiveStatus());
   AddCAPPORTStatus(GetCAPPORTNotCaptiveStatus());
   AddCAPPORTStatus(GetCAPPORTNotCaptiveStatus());
 
+  // Probe metrics expectations
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
+                                      Technology::kWiFi,
+                                      Metrics::kPortalDetectorResultOnline));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
+                    Metrics::kPortalDetectorAggregateResultInternet));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
+                                  Technology::kWiFi, 1));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
+                                  Technology::kWiFi, _));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kMetricTermsAndConditionsAggregateResult,
+                    Metrics::kTermsAndConditionsAggregateResultNoPortalNoURL));
+
+  // CAPPORT metrics expectations
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTNotCaptive,
                         Technology::kWiFi, _));
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL,
                         Technology::kWiFi, _));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult,
+                            Technology::kWiFi,
+                            Metrics::kAggregateCAPPORTResultOpenWithInternet));
 
   log_.RecordMetrics();
 }
@@ -613,6 +699,10 @@ TEST_F(ValidationLogTest, ValidationLogRecordMetricsWithoutRecord) {
   EXPECT_CALL(
       metrics_,
       SendToUMA(Metrics::kPortalDetectorTimeToCAPPORTUserPortalURL, _, _))
+      .Times(0);
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateCAPPORTResult, _, _))
       .Times(0);
 
   log_.RecordMetrics();
