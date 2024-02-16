@@ -26,12 +26,36 @@ static void sl_registry_bind(struct wl_client* client,
       break;
   }
 
-  assert(sl_client_supports_interface(host->ctx, client, global->interface));
-  assert(&global->link != &host->ctx->globals);
-  assert(version != 0);
-  assert(global->version >= version);
+  // matches the behavior of libwayland's `registry_bind()`
+  if (!sl_client_supports_interface(host->ctx, client, global->interface)) {
+    wl_resource_post_error(resource, WL_DISPLAY_ERROR_IMPLEMENTATION,
+                           "client doesn't support interface %s", interface);
+  } else if (&global->link == &host->ctx->globals) {
+    wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+                           "invalid global %s (%d)", interface, name);
+  } else if (strcmp(global->interface->name, interface) != 0) {
+    wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+                           "invalid interface for global %u: "
+                           "have %s, wanted %s",
+                           name, interface, global->interface->name);
+  } else if (version == 0) {
+    wl_resource_post_error(
+        resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+        "invalid version for global %s (%d): 0 is not a valid version",
+        interface, name);
+  } else if (global->version < version) {
+    wl_resource_post_error(
+        resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+        "invalid version for global %s (%d): have %d, wanted %d", interface,
+        name, global->version, version);
+  } else {
+    global->bind(client, global->data, version, id);
+    return;
+  }
 
-  global->bind(client, global->data, version, id);
+  // flush immediately on error before tearing down the session, otherwise
+  // client may never receive the descriptive error event.
+  wl_client_flush(client);
 }
 
 static const struct wl_registry_interface sl_registry_implementation = {
