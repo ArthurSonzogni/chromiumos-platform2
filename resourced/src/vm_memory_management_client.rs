@@ -27,7 +27,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 use tokio::time::sleep;
 
-use crate::dbus::DEFAULT_DBUS_TIMEOUT;
 use crate::dbus_ownership_listener::monitor_dbus_service;
 use crate::dbus_ownership_listener::DbusOwnershipChangeCallback;
 use crate::vm_concierge_client::VmConciergeClient;
@@ -147,7 +146,7 @@ impl VmMemoryManagementClient {
     pub async fn new(conn: Arc<SyncConnection>) -> Result<Self> {
         let state = Arc::new(Mutex::new(VmMMConnectionState::Disconnected));
         let cb = VmConciergeMonitor {
-            concierge: VmConciergeClient::new(conn.clone(), DEFAULT_DBUS_TIMEOUT),
+            concierge: VmConciergeClient::new(conn.clone(), Duration::from_secs(60)),
             state: state.clone(),
         };
         monitor_dbus_service(&conn, VM_CONCIERGE_SERVICE_NAME, cb)
