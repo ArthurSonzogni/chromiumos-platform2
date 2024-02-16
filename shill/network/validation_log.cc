@@ -122,13 +122,13 @@ ValidationLog::ProbeAggregateResult ValidationLog::RecordProbeMetrics() const {
         Metrics::kPortalDetectorAggregateResultInternetAfterRedirect;
   } else if (has_internet && has_suspected_redirect) {
     netval_result =
-        Metrics::kPortalDetectorAggregateResultInternetAfterPartialConnectivity;
+        Metrics::kPortalDetectorAggregateResultInternetAfterPortalSuspected;
   } else if (has_internet) {
     netval_result = Metrics::kPortalDetectorAggregateResultInternet;
   } else if (has_redirect) {
     netval_result = Metrics::kPortalDetectorAggregateResultRedirect;
   } else if (has_suspected_redirect) {
-    netval_result = Metrics::kPortalDetectorAggregateResultPartialConnectivity;
+    netval_result = Metrics::kPortalDetectorAggregateResultPortalSuspected;
   } else {
     netval_result = Metrics::kPortalDetectorAggregateResultNoConnectivity;
   }

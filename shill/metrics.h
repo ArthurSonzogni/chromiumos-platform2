@@ -361,11 +361,17 @@ class Metrics {
   enum PortalDetectorAggregateResult {
     kPortalDetectorAggregateResultUnknown = 0,
     kPortalDetectorAggregateResultNoConnectivity = 1,
-    kPortalDetectorAggregateResultPartialConnectivity = 2,
+    // Deprecated in m123. "partial connectivity" was changed to "portal
+    // suspected" in m121.
+    // kPortalDetectorAggregateResultPartialConnectivity = 2,
     kPortalDetectorAggregateResultRedirect = 3,
-    kPortalDetectorAggregateResultInternetAfterPartialConnectivity = 4,
+    // Deprecated in m123. "partial connectivity" was changed to "portal
+    // suspected" in m121.
+    // kPortalDetectorAggregateResultInternetAfterPartialConnectivity = 4,
     kPortalDetectorAggregateResultInternetAfterRedirect = 5,
     kPortalDetectorAggregateResultInternet = 6,
+    kPortalDetectorAggregateResultPortalSuspected = 7,
+    kPortalDetectorAggregateResultInternetAfterPortalSuspected = 8,
 
     kPortalDetectorAggregateResultMax,
   };

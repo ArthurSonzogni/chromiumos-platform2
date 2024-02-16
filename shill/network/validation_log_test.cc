@@ -205,10 +205,10 @@ TEST_F(ValidationLogTest, PortalSuspectedResult) {
       metrics_,
       SendEnumToUMA(Metrics::kPortalDetectorInitialResult, Technology::kWiFi,
                     Metrics::kPortalDetectorResultHTTPSFailure));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(
-                  Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
-                  Metrics::kPortalDetectorAggregateResultPartialConnectivity));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
+                    Metrics::kPortalDetectorAggregateResultPortalSuspected));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToDisconnect,
                                   Technology::kWiFi, 1));
   EXPECT_CALL(metrics_,
@@ -291,10 +291,10 @@ TEST_F(ValidationLogTest, NoConnectivityThenPortalSuspectedResults) {
       SendEnumToUMA(Metrics::kPortalDetectorRetryResult, Technology::kWiFi,
                     Metrics::kPortalDetectorResultHTTPSFailure))
       .Times(1);
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA(
-                  Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
-                  Metrics::kPortalDetectorAggregateResultPartialConnectivity));
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
+                    Metrics::kPortalDetectorAggregateResultPortalSuspected));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToDisconnect,
                                   Technology::kWiFi, 4));
   EXPECT_CALL(metrics_,
@@ -468,8 +468,7 @@ TEST_F(ValidationLogTest, InternetConnectivityAfterPortalSuspectedResult) {
       metrics_,
       SendEnumToUMA(
           Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
-          Metrics::
-              kPortalDetectorAggregateResultInternetAfterPartialConnectivity));
+          Metrics::kPortalDetectorAggregateResultInternetAfterPortalSuspected));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
                                   Technology::kWiFi, 4));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
@@ -508,8 +507,7 @@ TEST_F(ValidationLogTest, IgnoreRedirectResultsAfterInternetConnectivity) {
       metrics_,
       SendEnumToUMA(
           Metrics::kPortalDetectorAggregateResult, Technology::kWiFi,
-          Metrics::
-              kPortalDetectorAggregateResultInternetAfterPartialConnectivity));
+          Metrics::kPortalDetectorAggregateResultInternetAfterPortalSuspected));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
                                   Technology::kWiFi, 3));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
