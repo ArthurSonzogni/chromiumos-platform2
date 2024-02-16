@@ -640,6 +640,19 @@ bool ArcService::Start(uint32_t id) {
   return true;
 }
 
+bool ArcService::StartWithMockGuestIfManager(
+    uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager) {
+  if (!IsVM(arc_type_)) {
+    return false;
+  }
+  if (Start(id)) {
+    guest_if_manager_ = std::move(mock_guest_if_manager);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void ArcService::Stop(uint32_t id) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kStop);
   if (!IsStarted()) {
@@ -725,11 +738,13 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     if (tap_ifname.empty()) {
       LOG(ERROR) << "Failed to create tap device for shill device "
                  << shill_device;
+      ReleaseConfig(shill_device.type, std::move(config));
       return;
     }
-    if (guest_if_manager_->AddInterface(tap_ifname)->empty()) {
+    if (!guest_if_manager_->AddInterface(tap_ifname).has_value()) {
       LOG(ERROR) << "Failed to hotplug tap device " << tap_ifname
                  << " to guest for shill device " << shill_device;
+      ReleaseConfig(shill_device.type, std::move(config));
       return;
     }
     config->set_tap_ifname(tap_ifname);
@@ -748,12 +763,14 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     arc_device_ifname = config->tap_ifname();
     if (arc_device_ifname.empty()) {
       LOG(ERROR) << "No TAP device for " << shill_device;
+      ReleaseConfig(shill_device.type, std::move(config));
       return;
     }
     const auto guest_ifname_opt =
         guest_if_manager_->GetGuestIfName(config->tap_ifname());
     if (!guest_ifname_opt.has_value()) {
       LOG(ERROR) << "No guest device for " << shill_device;
+      ReleaseConfig(shill_device.type, std::move(config));
       return;
     }
     guest_ifname = *guest_ifname_opt;
@@ -767,6 +784,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   if (!technology.has_value()) {
     LOG(ERROR) << "Shill device technology type " << shill_device.type
                << " is invalid for ArcDevice.";
+    ReleaseConfig(shill_device.type, std::move(config));
     return;
   }
 

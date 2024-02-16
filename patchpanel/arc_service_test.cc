@@ -1622,6 +1622,144 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
   }
 }
 
+// Vm with hotplug implementation.
+
+TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddRemoveDevice) {
+  // Expectations for mock VmConciergeClient.
+  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
+  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
+      .WillOnce(Invoke([](int64_t, const std::string&,
+                          VmConciergeClient::AttachTapCallback callback) {
+        std::move(callback).Run({kBusSlotA});
+        return true;
+      }));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              DetachTapDevice(Eq(kTestCID), Eq(kBusSlotA), _))
+      .WillOnce(Invoke(
+          [](int64_t, uint32_t, VmConciergeClient::DetachTapCallback callback) {
+            std::move(callback).Run(true);
+            return true;
+          }));
+  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
+      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
+  // Expectations for tap devices creation.
+  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
+                                    StrEq("crosvm"), DeviceMode::kTap))
+      .WillOnce(Return("vmtap0"))
+      .WillOnce(Return("vmtap-hp0"));
+  // Expectations for "arc0" setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+
+  // Expectations for eth0 setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), kFirstEthHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap-hp0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
+                                 /*static_ipv6=*/false));
+  EXPECT_CALL(*datapath_,
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
+                                 IPv4Address(100, 115, 92, 6)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kNonWiFiForwardingSet,
+                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
+
+  auto svc = NewService(ArcService::ArcType::kVMHotplug);
+  auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
+  EXPECT_TRUE(
+      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
+  svc->AddDevice(eth_dev);
+  const auto arc_devices = svc->GetDevices();
+  ASSERT_EQ(arc_devices.size(), 1);
+
+  EXPECT_EQ(arc_devices[0]->guest_device_ifname(), "eth1");
+  EXPECT_THAT(arc_devices[0]->shill_device_ifname(), "eth0");
+  EXPECT_THAT(arc_devices[0]->arc_device_ifname(), "vmtap-hp0");
+
+  svc->RemoveDevice(eth_dev);
+  EXPECT_TRUE(svc->GetDevices().empty());
+}
+
+TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceAddTapFail) {
+  // Expectations for mock VmConciergeClient.
+  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
+  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
+      .WillOnce(Return(true));
+  // Expectations for tap devices creation.
+  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
+                                    StrEq("crosvm"), DeviceMode::kTap))
+      .WillOnce(Return("vmtap0"))
+      .WillOnce(Return(""));
+  // Expectations for "arc0" setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
+
+  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
+      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
+
+  auto svc = NewService(ArcService::ArcType::kVMHotplug);
+  auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
+  EXPECT_TRUE(
+      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
+  svc->AddDevice(eth_dev);
+  EXPECT_TRUE(svc->GetDevices().empty());
+}
+
+TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceHotPlugTapFail) {
+  // Expectations for mock VmConciergeClient.
+  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
+  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_vm_concierge_client,
+              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
+      .WillOnce(Invoke([](int64_t, const std::string&,
+                          VmConciergeClient::AttachTapCallback callback) {
+        std::move(callback).Run(std::nullopt);
+        return false;
+      }));
+  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
+      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
+  // Expectations for tap devices creation.
+  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
+                                    StrEq("crosvm"), DeviceMode::kTap))
+      .WillOnce(Return("vmtap0"))
+      .WillOnce(Return("vmtap-hp0"));
+  // Expectations for "arc0" setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
+
+  auto svc = NewService(ArcService::ArcType::kVMHotplug);
+  auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
+  EXPECT_TRUE(
+      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
+  svc->AddDevice(eth_dev);
+  EXPECT_TRUE(svc->GetDevices().empty());
+}
+
 TEST_F(ArcServiceTest, ArcVethHostName) {
   static struct {
     std::string shill_device_interface_property;

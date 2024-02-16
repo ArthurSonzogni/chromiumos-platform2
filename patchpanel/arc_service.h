@@ -308,6 +308,10 @@ class ArcService {
   ~ArcService();
 
   bool Start(uint32_t id);
+
+  // Starts ArcService with a mock GuestIfManager for test.
+  bool StartWithMockGuestIfManager(
+      uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager);
   void Stop(uint32_t id);
 
   // Returns the IPv4 address of the "arc0" legacy management interface.
