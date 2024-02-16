@@ -37,7 +37,7 @@ class ChromeosStartup {
   static void ParseFlags(Flags* flags, int argc, char* argv[]);
 
   // Constructor for the class
-  ChromeosStartup(std::unique_ptr<crossystem::Crossystem> cros_system,
+  ChromeosStartup(std::unique_ptr<crossystem::Crossystem> crossystem,
                   std::unique_ptr<vpd::Vpd> vpd,
                   const Flags& flags,
                   const base::FilePath& root,
@@ -159,7 +159,7 @@ class ChromeosStartup {
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
-  std::unique_ptr<crossystem::Crossystem> cros_system_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   std::unique_ptr<vpd::Vpd> vpd_;
   const Flags flags_;
   const base::FilePath lsb_file_;

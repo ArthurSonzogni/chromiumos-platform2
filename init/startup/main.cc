@@ -71,18 +71,18 @@ int main(int argc, char* argv[]) {
   // A decreasing number is more verbose and numbers below zero are OK.
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 
-  std::unique_ptr<crossystem::Crossystem> cros_system =
+  std::unique_ptr<crossystem::Crossystem> crossystem =
       std::make_unique<crossystem::Crossystem>();
   startup::MountHelperFactory mount_helper_factory(
       std::make_unique<startup::Platform>(), flags, base::FilePath("/"),
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate(*cros_system);
+      mount_helper_factory.Generate(*crossystem);
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
-          std::unique_ptr<crossystem::Crossystem>(std::move(cros_system)),
+          std::unique_ptr<crossystem::Crossystem>(std::move(crossystem)),
           std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
           base::FilePath(kProcPath), std::make_unique<startup::Platform>(),

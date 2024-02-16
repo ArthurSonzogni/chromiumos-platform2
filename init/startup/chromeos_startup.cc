@@ -255,12 +255,12 @@ bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
 // Returns true if the device is in transitioning between verified boot and dev
 // mode. devsw_boot is the expected value of devsw_boot.
 bool ChromeosStartup::IsDevToVerifiedModeTransition(int devsw_boot) {
-  std::optional<int> boot = cros_system_->VbGetSystemPropertyInt(
+  std::optional<int> boot = crossystem_->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDevSwitchBoot);
   if (!boot || *boot != devsw_boot)
     return false;
 
-  std::optional<std::string> dstr = cros_system_->VbGetSystemPropertyString(
+  std::optional<std::string> dstr = crossystem_->VbGetSystemPropertyString(
       crossystem::Crossystem::kMainFirmwareType);
   return dstr && dstr != "recovery";
 }
@@ -299,7 +299,7 @@ bool ChromeosStartup::IsVarFull() {
 }
 
 ChromeosStartup::ChromeosStartup(
-    std::unique_ptr<crossystem::Crossystem> cros_system,
+    std::unique_ptr<crossystem::Crossystem> crossystem,
     std::unique_ptr<vpd::Vpd> vpd,
     const Flags& flags,
     const base::FilePath& root,
@@ -309,7 +309,7 @@ ChromeosStartup::ChromeosStartup(
     std::unique_ptr<Platform> platform,
     std::unique_ptr<MountHelper> mount_helper,
     std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
-    : cros_system_(std::move(cros_system)),
+    : crossystem_(std::move(crossystem)),
       vpd_(std::move(vpd)),
       flags_(flags),
       lsb_file_(lsb_file),
@@ -784,7 +784,7 @@ void ChromeosStartup::RestoreContextsForVar(
 
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
-  dev_mode_ = InDevMode(*cros_system_);
+  dev_mode_ = InDevMode(*crossystem_);
 
   // Make sure our clock is somewhat up-to-date. We don't need any resources
   // mounted below, so do this early on.
@@ -838,7 +838,7 @@ int ChromeosStartup::Run() {
         stbuf.st_uid != getuid()) {
       base::WriteFile(encrypted_failed, "");
     } else {
-      cros_system_->VbSetSystemPropertyInt("recovery_request", 1);
+      crossystem_->VbSetSystemPropertyInt("recovery_request", 1);
     }
 
     utils::Reboot();
@@ -965,11 +965,11 @@ void ChromeosStartup::DevCheckBlockDevMode(
   if (!dev_mode_) {
     return;
   }
-  std::optional<int> devsw = cros_system_->VbGetSystemPropertyInt(
+  std::optional<int> devsw = crossystem_->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDevSwitchBoot);
   std::optional<int> debug =
-      cros_system_->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
-  std::optional<int> rec_reason = cros_system_->VbGetSystemPropertyInt(
+      crossystem_->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  std::optional<int> rec_reason = crossystem_->VbGetSystemPropertyInt(
       crossystem::Crossystem::kRecoveryReason);
   if (!devsw || !debug || !rec_reason) {
     LOG(WARNING) << "Failed to get boot information from crossystem";
@@ -989,7 +989,7 @@ void ChromeosStartup::DevCheckBlockDevMode(
   if (val == "1") {
     block_devmode = true;
   } else {
-    std::optional<int> crossys_block = cros_system_->VbGetSystemPropertyInt(
+    std::optional<int> crossys_block = crossystem_->VbGetSystemPropertyInt(
         crossystem::Crossystem::kBlockDevmode);
     if (crossys_block == 1) {
       block_devmode = true;
@@ -1032,7 +1032,7 @@ bool ChromeosStartup::DevIsDebugBuild() const {
   if (!dev_mode_) {
     return false;
   }
-  return IsDebugBuild(*cros_system_);
+  return IsDebugBuild(*crossystem_);
 }
 
 bool ChromeosStartup::DevUpdateStatefulPartition(const std::string& args) {

@@ -39,10 +39,10 @@ MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
 std::unique_ptr<MountHelper> MountHelperFactory::Generate(
-    const crossystem::Crossystem& cros_system) {
-  bool dev_mode = InDevMode(cros_system);
+    const crossystem::Crossystem& crossystem) {
+  bool dev_mode = InDevMode(crossystem);
   bool is_test_image = IsTestImage(lsb_file_);
-  bool is_factory_mode = IsFactoryMode(cros_system, root_);
+  bool is_factory_mode = IsFactoryMode(crossystem, root_);
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {

@@ -22,16 +22,16 @@ namespace startup {
 bool IsTestImage(const base::FilePath& lsb_file);
 
 // Determines if the device is in factory test mode.
-bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
+bool IsFactoryTestMode(const crossystem::Crossystem& crossystem,
                        const base::FilePath& base_dir);
 
 // Determine if the device is in dev mode.
-bool InDevMode(const crossystem::Crossystem& cros_system);
-bool IsDebugBuild(const crossystem::Crossystem& cros_system);
+bool InDevMode(const crossystem::Crossystem& crossystem);
+bool IsDebugBuild(const crossystem::Crossystem& crossystem);
 
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(const crossystem::Crossystem& cros_system,
+bool IsFactoryMode(const crossystem::Crossystem& crossystem,
                    const base::FilePath& base_dir);
 
 // Platform defines functions that interface with the filesystem and

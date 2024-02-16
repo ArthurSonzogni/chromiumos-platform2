@@ -36,7 +36,7 @@ class MountHelperFactory {
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
   virtual std::unique_ptr<MountHelper> Generate(
-      const crossystem::Crossystem& cros_system);
+      const crossystem::Crossystem& crossystem);
 
  private:
   std::unique_ptr<Platform> platform_;

@@ -157,7 +157,7 @@ class DevCheckBlockTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
-    cros_system_ = crossystem_fake.get();
+    crossystem_ = crossystem_fake.get();
     auto vpd_fake = std::make_unique<vpd::FakeVpd>();
     vpd_ = vpd_fake.get();
     base_dir = temp_dir_.GetPath();
@@ -175,12 +175,12 @@ class DevCheckBlockTest : public ::testing::Test {
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true),
         std::move(tlcl));
-    ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+    ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
     base::CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
   }
 
-  crossystem::fake::CrossystemFake* cros_system_;
+  crossystem::fake::CrossystemFake* crossystem_;
   vpd::FakeVpd* vpd_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
@@ -192,9 +192,9 @@ class DevCheckBlockTest : public ::testing::Test {
 };
 
 TEST_F(DevCheckBlockTest, DevSWBoot) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("recovery_reason", 0));
   ASSERT_TRUE(vpd_->WriteValues(vpd::VpdRw, {{"block_devmode", "1"}}));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
@@ -202,22 +202,22 @@ TEST_F(DevCheckBlockTest, DevSWBoot) {
 }
 
 TEST_F(DevCheckBlockTest, VpdCrosSysBlockDev) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("recovery_reason", 0));
   ASSERT_TRUE(vpd_->WriteValues(vpd::VpdRw, {{"block_devmode", "0"}}));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("block_devmode", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
   EXPECT_EQ(PathExists(dev_mode_file), true);
 }
 
 TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("recovery_reason", 0));
   // No "block_devmode" in VPD.
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("block_devmode", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
   EXPECT_EQ(PathExists(dev_mode_file), true);
@@ -403,7 +403,7 @@ class StatefulWipeTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful_ = base_dir.Append("mnt/stateful_partition");
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
-    cros_system_ = crossystem_fake.get();
+    crossystem_ = crossystem_fake.get();
     platform_ = new startup::FakePlatform();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
@@ -419,7 +419,7 @@ class StatefulWipeTest : public ::testing::Test {
     clobber_test_log_ = base_dir.Append("clobber_test_log");
   }
 
-  crossystem::fake::CrossystemFake* cros_system_;
+  crossystem::fake::CrossystemFake* crossystem_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -482,9 +482,8 @@ TEST_F(StatefulWipeTest, NoStateDev) {
 // Test transitioning to verified mode, dev_mode_allowed file is owned by us.
 TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   platform_->SetClobberLogFile(clobber_test_log_);
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
-  ASSERT_TRUE(
-      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
   ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
   struct stat st;
@@ -508,10 +507,9 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
 // preserve the testing tools.
 TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
   platform_->SetClobberLogFile(clobber_test_log_);
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
-  ASSERT_TRUE(
-      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
   ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
   struct stat st;
@@ -545,9 +543,8 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
 // the stateful.
 TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
   platform_->SetClobberLogFile(clobber_test_log_);
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
-  ASSERT_TRUE(
-      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
   ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
   struct stat st;
@@ -571,10 +568,9 @@ TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
 // the testing tools.
 TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
   platform_->SetClobberLogFile(clobber_test_log_);
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
-  ASSERT_TRUE(
-      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
   struct stat st;
   st.st_uid = -1;
@@ -659,7 +655,7 @@ class ConfigTest : public ::testing::Test {
 
   void SetUp() override {
     auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
-    cros_system_ =
+    crossystem_ =
         std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     CreateBaseAndSetNames(&base_dir_, &lsb_file_, &stateful_);
     platform_ = std::make_unique<startup::FakePlatform>();
@@ -670,10 +666,10 @@ class ConfigTest : public ::testing::Test {
     startup::ChromeosStartup::ParseFlags(&flags);
     startup::MountHelperFactory factory(std::move(platform_), flags, base_dir_,
                                         stateful_, lsb_file_);
-    return factory.Generate(*cros_system_);
+    return factory.Generate(*crossystem_);
   }
 
-  std::unique_ptr<crossystem::Crossystem> cros_system_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   base::FilePath base_dir_;
   base::FilePath lsb_file_;
   base::FilePath stateful_;
@@ -681,7 +677,7 @@ class ConfigTest : public ::testing::Test {
 };
 
 TEST_F(ConfigTest, NoDevMode) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(lsb_file_,
                                     "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -690,7 +686,7 @@ TEST_F(ConfigTest, NoDevMode) {
 }
 
 TEST_F(ConfigTest, DevMode) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
   ASSERT_TRUE(CreateDirAndWriteFile(lsb_file_,
                                     "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -699,8 +695,8 @@ TEST_F(ConfigTest, DevMode) {
 }
 
 TEST_F(ConfigTest, DevModeTest) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -708,8 +704,8 @@ TEST_F(ConfigTest, DevModeTest) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryTest) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath factory_en = stateful_.Append("dev_image/factory/enabled");
@@ -720,8 +716,8 @@ TEST_F(ConfigTest, DevModeTestFactoryTest) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath cmdline = base_dir_.Append(kProcCmdLine);
@@ -732,8 +728,8 @@ TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstallerUsingFile) {
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath cmdline = base_dir_.Append(kProcCmdLine);
