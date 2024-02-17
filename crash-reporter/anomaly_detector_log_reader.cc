@@ -47,8 +47,7 @@ bool AuditReader::ReadLine(const std::string& line, LogEntry* entry) {
   double time_in_seconds;
   if (!base::StringToDouble(log_time, &time_in_seconds)) {
     LOG(WARNING) << "Ingnoring log entry due to invalid timestamp. time="
-                 << log_time << " tag=audit"
-                 << " message=" << log_message;
+                 << log_time << " tag=audit" << " message=" << log_message;
     return false;
   }
 
