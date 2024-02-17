@@ -37,7 +37,8 @@ TEE_Result HwsecSelfTest(uint32_t param_types,
   return res;
 }
 
-TEE_Result HwsecReadCounter(uint32_t param_types,
+TEE_Result HwsecReadCounter(TpmSession* session,
+                            uint32_t param_types,
                             TEE_Param params[TEE_NUM_PARAMS]) {
   TEE_Result res = TEE_ERROR_GENERIC;
 
@@ -59,42 +60,27 @@ TEE_Result HwsecReadCounter(uint32_t param_types,
     return TEE_ERROR_SHORT_BUFFER;
   }
 
-  TpmSession session;
-
-  res = OpenHwsecSession(&session);
-  if (res != TEE_SUCCESS) {
-    EMSG("OpenHwsecSession failed with code 0x%x", res);
-    goto cleanup_session;
-  }
-
   TPM2B_MAX_NV_BUFFER data;
-  res = GetVerifiedCounterData(&session, params[0].value.a, params[1].value.a,
+  res = GetVerifiedCounterData(session, params[0].value.a, params[1].value.a,
                                &data);
   if (res != TEE_SUCCESS) {
     EMSG("GetVerifiedCounterData failed with code 0x%x", res);
-    goto cleanup_session;
+    return res;
   }
 
   if (data.t.size > params[1].value.a) {
     EMSG("GetVerifiedCounterData result is too large");
-    res = TEE_ERROR_SHORT_BUFFER;
-    goto cleanup_session;
+    return TEE_ERROR_SHORT_BUFFER;
   }
 
   params[2].memref.size = data.t.size;
   memcpy(params[2].memref.buffer, data.t.buffer, data.t.size);
 
-  res = TEE_SUCCESS;
-
-cleanup_session:
-  if (CloseHwsecSession(&session) != TEE_SUCCESS) {
-    EMSG("CloseHwsecSession failed");
-  }
-
-  return res;
+  return TEE_SUCCESS;
 }
 
-TEE_Result HwsecIncreaseCounter(uint32_t param_types,
+TEE_Result HwsecIncreaseCounter(TpmSession* session,
+                                uint32_t param_types,
                                 TEE_Param params[TEE_NUM_PARAMS]) {
   TEE_Result res = TEE_ERROR_GENERIC;
 
@@ -109,26 +95,11 @@ TEE_Result HwsecIncreaseCounter(uint32_t param_types,
     return TEE_ERROR_NOT_SUPPORTED;
   }
 
-  TpmSession session;
-
-  res = OpenHwsecSession(&session);
-  if (res != TEE_SUCCESS) {
-    EMSG("OpenHwsecSession failed with code 0x%x", res);
-    goto cleanup_session;
-  }
-
-  res = IncreaseVerifiedCounter(&session, params[0].value.a);
+  res = IncreaseVerifiedCounter(session, params[0].value.a);
   if (res != TEE_SUCCESS) {
     EMSG("IncreaseVerifiedCounter failed with code 0x%x", res);
-    goto cleanup_session;
+    return res;
   }
 
-  res = TEE_SUCCESS;
-
-cleanup_session:
-  if (CloseHwsecSession(&session) != TEE_SUCCESS) {
-    EMSG("CloseHwsecSession failed");
-  }
-
-  return res;
+  return TEE_SUCCESS;
 }
