@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -56,8 +57,9 @@ class ProbeStatement {
   // The process can be break into following steps:
   // - Call probe function |probe_function_|
   // - Filter results by |key_|  (if |key_| is not empty)
-  // - Transform and check results by |expect_|  (if |expect_| is not empty)
-  // - Return final results that passed |expect_| check.
+  // - Transform and check results by |probe_result_checker_|  (if
+  //   |probe_result_checker_| is not empty)
+  // - Return final results.
   virtual void Eval(
       base::OnceCallback<void(ProbeFunction::DataType)> callback) const;
 
@@ -76,20 +78,21 @@ class ProbeStatement {
     probe_function_ = std::move(probe_function);
   }
 
-  // Set mocked expect value for testing.
-  void SetExpectForTesting(base::Value expect_value) {
-    expect_value_ = std::move(expect_value);
-  }
-
  protected:
   ProbeStatement() = default;
 
  private:
+  void OnProbeFunctionEvalCompleted(
+      base::OnceCallback<void(ProbeFunction::DataType)> callback,
+      ProbeFunction::DataType results) const;
+
   std::string component_name_;
   std::unique_ptr<ProbeFunction> probe_function_;
   std::set<std::string> key_;
-  std::optional<base::Value> expect_value_;
+  std::unique_ptr<ProbeResultChecker> probe_result_checker_;
   std::optional<base::Value> information_;
+  // Must be the last member.
+  base::WeakPtrFactory<ProbeStatement> weak_ptr_factory_{this};
 
   FRIEND_TEST(ProbeConfigTest, LoadConfig);
 };

@@ -144,7 +144,12 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
-    }
+    },
+    "expect": [
+      {
+        "field_2": [true, "str"]
+      }
+    ]
   })");
   auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
 
@@ -162,14 +167,7 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
   EXPECT_CALL(*probe_function, EvalImpl())
       .WillOnce(Return(ByMove(std::move(eval_result))));
 
-  auto expect_value = base::JSONReader::Read(R"([
-    {
-      "field_2": [true, "str"]
-    }
-  ])");
-
   probe_statement->SetProbeFunctionForTesting(std::move(probe_function));
-  probe_statement->SetExpectForTesting(std::move(*expect_value));
 
   // Should only get results that pass the check.
   auto ans = std::move(base::JSONReader::Read(R"([
@@ -181,6 +179,17 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_statement->Eval(future.GetCallback());
   EXPECT_EQ(future.Get(), ans);
+}
+
+TEST_F(ProbeStatementTest, InvalidExpectValue) {
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    },
+    "expect": "wrong_type"
+  })");
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+  EXPECT_FALSE(probe_statement);
 }
 
 TEST_F(ProbeStatementTest, GetInformation) {
