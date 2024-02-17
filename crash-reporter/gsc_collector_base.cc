@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 
 using base::FilePath;
@@ -41,7 +42,7 @@ GscCollectorBase::GscCollectorBase(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("gsc", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kGSC, metrics_lib),
       crash_detected_(false),
       latest_crash_id_(kInvalidCrashLogID),
       prev_crash_id_(kInvalidCrashLogID) {}

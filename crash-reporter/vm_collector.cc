@@ -17,6 +17,7 @@
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 
 // Disallow fallback directory -- VM collector is run in a sandbox without
 // access to /home/chronos. (vm_collector is invoked via cicerone, with a
@@ -25,7 +26,7 @@ VmCollector::VmCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("vm_collector",
+    : CrashCollector(CrashReporterCollector::kVm,
                      kAlwaysUseDaemonStore,
                      kNormalCrashSendMode,
                      metrics_lib) {}

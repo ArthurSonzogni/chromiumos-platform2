@@ -22,19 +22,13 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
-
-namespace {
-
-// TODO(b/169638371): Remove the word "native".
-constexpr char kArcvmCxxCollectorName[] = "ARCVM_native";
-
-}  // namespace
+#include "crash-reporter/crash_collector_names.h"
 
 ArcvmCxxCollector::ArcvmCxxCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector(kArcvmCxxCollectorName,
+    : CrashCollector(CrashReporterCollector::kArcvmCxx,
                      kAlwaysUseUserCrashDirectory,
                      kNormalCrashSendMode,
                      metrics_lib) {}

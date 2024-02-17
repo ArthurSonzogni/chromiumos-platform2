@@ -18,6 +18,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -40,7 +41,7 @@ KernelWarningCollector::KernelWarningCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("kernel_warning", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kKernelWarning, metrics_lib),
       warning_report_path_("/dev/stdin") {}
 
 KernelWarningCollector::~KernelWarningCollector() {}

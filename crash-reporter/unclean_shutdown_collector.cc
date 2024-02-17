@@ -18,6 +18,8 @@
 #include <brillo/strings/string_utils.h>
 #include <metrics/metrics_library.h>
 
+#include "crash-reporter/crash_collector_names.h"
+
 using base::FilePath;
 using brillo::SafeFD;
 
@@ -105,7 +107,7 @@ UncleanShutdownCollector::UncleanShutdownCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("unclean_shutdown", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kUncleanShutdown, metrics_lib),
       unclean_shutdown_file_(kUncleanShutdownFile),
       powerd_trace_path_(kPowerdTracePath),
       powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)),

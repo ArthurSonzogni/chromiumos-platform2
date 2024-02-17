@@ -21,12 +21,11 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/kernel_util.h"
 #include "crash-reporter/util.h"
 
 namespace {
-
-constexpr char kArcvmKernelCollectorName[] = "ARCVM_kernel";
 constexpr char kArcvmKernelCrashType[] =
     "arcvm_kernel_crash";  // This is not a crash_type of Android.
 
@@ -46,7 +45,7 @@ ArcvmKernelCollector::ArcvmKernelCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector(kArcvmKernelCollectorName,
+    : CrashCollector(CrashReporterCollector::kArcvmKernel,
                      kAlwaysUseUserCrashDirectory,
                      kNormalCrashSendMode,
                      metrics_lib) {}

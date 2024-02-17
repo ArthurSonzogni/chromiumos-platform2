@@ -19,6 +19,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -62,7 +63,7 @@ MountFailureCollector::MountFailureCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("mount_failure_collector", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kMountFailure, metrics_lib),
       device_type_(device_type),
       testonly_send_all_(testonly_send_all) {}
 

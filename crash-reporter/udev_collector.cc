@@ -33,6 +33,7 @@
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_adaptor.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/udev_bluetooth_util.h"
 #include "crash-reporter/util.h"
@@ -66,7 +67,7 @@ UdevCollector::UdevCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("udev", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kUdev, metrics_lib),
       dev_coredump_directory_(kDefaultDevCoredumpDirectory) {
 #if !USE_FBPREPROCESSORD
   // By default, generate connectivity fwdumps only on boards that

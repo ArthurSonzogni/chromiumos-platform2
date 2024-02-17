@@ -23,6 +23,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 
 using base::FilePath;
@@ -81,7 +82,7 @@ KernelCollector::KernelCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("kernel", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kKernel, metrics_lib),
       is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),

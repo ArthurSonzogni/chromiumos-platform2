@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 
 namespace {
 constexpr char kExecName[] = "security-anomaly";
@@ -26,7 +27,7 @@ SecurityAnomalyCollector::SecurityAnomalyCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("security_anomaly_collector", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kSecurityAnomaly, metrics_lib),
       anomaly_report_path_("/dev/stdin") {}
 
 bool SecurityAnomalyCollector::LoadSecurityAnomaly(

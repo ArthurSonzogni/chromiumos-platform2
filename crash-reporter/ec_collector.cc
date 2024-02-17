@@ -18,6 +18,7 @@
 #include <libec/ec_panicinfo.h>
 #include <metrics/metrics_library.h>
 
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -39,7 +40,7 @@ ECCollector::ECCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("ec", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kEC, metrics_lib),
       debugfs_path_(kECDebugFSPath),
       libfs_path_(kECLibFSPath) {}
 

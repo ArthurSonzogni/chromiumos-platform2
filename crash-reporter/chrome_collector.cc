@@ -33,6 +33,7 @@
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collector.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -83,7 +84,7 @@ ChromeCollector::ChromeCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("chrome",
+    : CrashCollector(CrashReporterCollector::kChrome,
                      kUseNormalCrashDirectorySelectionMethod,
                      crash_sending_mode,
                      metrics_lib),

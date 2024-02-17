@@ -32,6 +32,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector_base.h"
 #include "crash-reporter/util.h"
@@ -120,8 +121,9 @@ UserCollector::UserCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : UserCollectorBase(
-          "user", kUseNormalCrashDirectorySelectionMethod, metrics_lib),
+    : UserCollectorBase(CrashReporterCollector::kUser,
+                        kUseNormalCrashDirectorySelectionMethod,
+                        metrics_lib),
       core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       filter_path_(kFilterPath),

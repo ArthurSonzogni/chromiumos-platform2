@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 
 using base::FilePath;
 
@@ -26,7 +27,8 @@ CrashReporterFailureCollector::CrashReporterFailureCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("crash-reporter-failure-collector", metrics_lib) {}
+    : CrashCollector(CrashReporterCollector::kCrashReporterFailure,
+                     metrics_lib) {}
 
 CrashReporterFailureCollector::~CrashReporterFailureCollector() {}
 

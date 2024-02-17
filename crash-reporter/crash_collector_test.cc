@@ -47,6 +47,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "crash-reporter/crash_collector.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -90,7 +91,7 @@ constexpr char kARCStatus[] = "Not built with ARC";
 
 CrashCollectorMock::CrashCollectorMock()
     : CrashCollector(
-          "mock",
+          CrashReporterCollector::kMock,
           base::MakeRefCounted<
               base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
               std::make_unique<MetricsLibraryMock>())) {}
@@ -98,7 +99,7 @@ CrashCollectorMock::CrashCollectorMock(
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode)
     : CrashCollector(
-          "mock",
+          CrashReporterCollector::kMock,
           crash_directory_selection_method,
           crash_sending_mode,
           base::MakeRefCounted<

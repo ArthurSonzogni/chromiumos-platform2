@@ -32,6 +32,8 @@
 #include <session_manager/dbus-proxies.h>
 #include <zlib.h>
 
+enum class CrashReporterCollector;
+
 // Walk the directory tree to make sure we avoid symlinks.
 // All parent parts must already exist else we return false.
 bool ValidatePathAndOpen(const base::FilePath& dir, int* outfd);
@@ -124,14 +126,14 @@ class CrashCollector {
   };
 
   explicit CrashCollector(
-      const std::string& collector_name,
+      CrashReporterCollector collector,
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
           metrics_lib,
       const std::string& tag = "");
 
   explicit CrashCollector(
-      const std::string& collector_name,
+      CrashReporterCollector collector,
       CrashDirectorySelectionMethod crash_directory_selection_method,
       CrashSendingMode crash_sending_mode,
       const scoped_refptr<
@@ -612,7 +614,7 @@ class CrashCollector {
   bool ShouldHandleChromeCrashes();
 
   std::string extra_metadata_;
-  const std::string collector_name_;
+  const CrashReporterCollector collector_;
   base::FilePath forced_crash_directory_;
   base::FilePath lsb_release_;
   base::FilePath system_crash_path_;

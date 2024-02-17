@@ -59,6 +59,7 @@
 #include <zlib.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
@@ -538,26 +539,26 @@ std::optional<std::string> ReadDmiIdBestEffort(const std::string& file) {
 }
 
 CrashCollector::CrashCollector(
-    const std::string& collector_name,
+    CrashReporterCollector collector,
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib,
     const std::string& tag)
-    : CrashCollector(collector_name,
+    : CrashCollector(collector,
                      kUseNormalCrashDirectorySelectionMethod,
                      kNormalCrashSendMode,
                      metrics_lib,
                      tag) {}
 
 CrashCollector::CrashCollector(
-    const std::string& collector_name,
+    CrashReporterCollector collector,
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode,
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib,
     const std::string& tag)
-    : collector_name_(collector_name),
+    : collector_(collector),
       lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
@@ -572,7 +573,7 @@ CrashCollector::CrashCollector(
       bytes_written_(0),
       metrics_lib_(metrics_lib),
       tag_(tag) {
-  AddCrashMetaUploadData(kCollectorNameKey, collector_name);
+  AddCrashMetaUploadData(kCollectorNameKey, GetNameForCollector(collector));
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
@@ -2207,7 +2208,7 @@ void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
   AddCrashMetaUploadData(kCollectorNameKey, exec);
   // Record the original collector name for analytics purposes. (e.g. to see
   // if one collector fails more often than others.)
-  AddCrashMetaUploadData("orig_collector", collector_name_);
+  AddCrashMetaUploadData("orig_collector", GetNameForCollector(collector_));
   AddCrashMetaUploadData("orig_exec", orig_exec);
 
   FilePath crash_path;

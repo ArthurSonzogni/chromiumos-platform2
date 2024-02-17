@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -34,7 +35,7 @@ SELinuxViolationCollector::SELinuxViolationCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("selinux", metrics_lib),
+    : CrashCollector(CrashReporterCollector::kSELinuxViolation, metrics_lib),
       violation_report_path_("/dev/stdin") {}
 
 SELinuxViolationCollector::~SELinuxViolationCollector() {}

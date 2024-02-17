@@ -16,12 +16,14 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 
 MissedCrashCollector::MissedCrashCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("missed_crash", metrics_lib), input_file_(stdin) {}
+    : CrashCollector(CrashReporterCollector::kMissedCrash, metrics_lib),
+      input_file_(stdin) {}
 
 MissedCrashCollector::~MissedCrashCollector() = default;
 

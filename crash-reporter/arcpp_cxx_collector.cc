@@ -23,6 +23,7 @@
 #include <brillo/process/process.h>
 
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -68,7 +69,9 @@ ArcppCxxCollector::ArcppCxxCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : UserCollectorBase("ARCPP_cxx", kAlwaysUseUserCrashDirectory, metrics_lib),
+    : UserCollectorBase(CrashReporterCollector::kArcppCxx,
+                        kAlwaysUseUserCrashDirectory,
+                        metrics_lib),
       context_(std::move(context)) {}
 
 // The parameter |exec_name| is unused as we are computing the crash severity

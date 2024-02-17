@@ -25,6 +25,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 #include "crash-reporter/vm_support.h"
 
@@ -63,16 +64,16 @@ const char* UserCollectorBase::kUserId = "Uid:\t";
 const char* UserCollectorBase::kGroupId = "Gid:\t";
 
 UserCollectorBase::UserCollectorBase(
-    const std::string& collector_name,
+    CrashReporterCollector collector,
     CrashDirectorySelectionMethod crash_directory_selection_method,
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector(collector_name,
+    : CrashCollector(collector,
                      crash_directory_selection_method,
                      kNormalCrashSendMode,
                      metrics_lib,
-                     collector_name) {}
+                     GetNameForCollector(collector)) {}
 
 void UserCollectorBase::Initialize(bool directory_failure, bool early) {
   CrashCollector::Initialize(early);

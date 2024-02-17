@@ -16,6 +16,7 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collector_names.h"
 
 using base::FilePath;
 
@@ -76,7 +77,8 @@ BERTCollector::BERTCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib)
-    : CrashCollector("bert", metrics_lib), acpitable_path_(kACPITablePath) {}
+    : CrashCollector(CrashReporterCollector::kBERT, metrics_lib),
+      acpitable_path_(kACPITablePath) {}
 
 BERTCollector::~BERTCollector() {}
 

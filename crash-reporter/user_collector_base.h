@@ -24,7 +24,7 @@
 class UserCollectorBase : public CrashCollector {
  public:
   explicit UserCollectorBase(
-      const std::string& collector_name,
+      CrashReporterCollector collector,
       CrashDirectorySelectionMethod crash_directory_selection_method,
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
