@@ -69,7 +69,7 @@ FanRoutine::Create(Context* context, const mojom::FanRoutineArgumentPtr& arg) {
             /*reason=*/nullptr)));
   }
 
-  std::optional<uint8_t> expected_fan_count;
+  uint8_t expected_fan_count;
   auto status = context->ground_truth()->PrepareRoutineFan(expected_fan_count);
   if (!status->is_supported()) {
     return base::unexpected(std::move(status));
@@ -78,8 +78,7 @@ FanRoutine::Create(Context* context, const mojom::FanRoutineArgumentPtr& arg) {
       base::WrapUnique(new FanRoutine(context, expected_fan_count)));
 }
 
-FanRoutine::FanRoutine(Context* context,
-                       std::optional<uint8_t> expected_fan_count)
+FanRoutine::FanRoutine(Context* context, uint8_t expected_fan_count)
     : context_(context), expected_fan_count_(expected_fan_count) {
   CHECK(context_);
 }
@@ -260,11 +259,9 @@ void FanRoutine::HandleSetFanSpeed(const std::optional<std::string>& error) {
 }
 
 mojom::HardwarePresenceStatus FanRoutine::CheckFanCount() {
-  if (!expected_fan_count_.has_value()) {
-    return mojom::HardwarePresenceStatus::kNotConfigured;
-  }
   auto actual_fan_count = original_fan_speed_.size();
-  return actual_fan_count == expected_fan_count_.value()
+
+  return actual_fan_count == expected_fan_count_
              ? mojom::HardwarePresenceStatus::kMatched
              : mojom::HardwarePresenceStatus::kNotMatched;
 }

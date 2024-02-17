@@ -295,25 +295,19 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineUfsLifetime() const {
 }
 
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineFan(
-    std::optional<uint8_t>& fan_count) const {
+    uint8_t& fan_count) const {
   if (!HasCrosEC()) {
     return MakeUnsupported("Not supported on a non-CrosEC device");
   }
 
   std::string error;
-  uint8_t fan_count_value;
   AssignOrAppendError(
       cros_config()->GetU8CrosConfig(cros_config_property::kFanCount),
-      fan_count_value, error);
+      fan_count, error);
 
-  // TODO(b/320425048): Distinguish between having a not-filled cros-config and
-  // real error when accessing cros config.
   if (!error.empty()) {
-    fan_count = std::nullopt;
-    return MakeSupported();
+    return MakeUnsupported(error);
   }
-
-  fan_count = fan_count_value;
   if (fan_count == 0) {
     return MakeUnsupported("Doesn't support device with no fan.");
   }
