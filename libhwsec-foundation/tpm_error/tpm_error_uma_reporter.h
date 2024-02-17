@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <metrics/metrics_library.h>
-
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 #include "libhwsec-foundation/tpm_error/tpm_error_data.h"
 
@@ -25,6 +23,7 @@ enum class HWSEC_FOUNDATION_EXPORT TpmMetricsClientID {
   kTrunksSend = 7,
   kBootLockBox = 8,
   kDeviceManagement = 9,
+  kHwsecOpteePlugin = 10,
 };
 
 void HWSEC_FOUNDATION_EXPORT SetTpmMetricsClientID(TpmMetricsClientID id);

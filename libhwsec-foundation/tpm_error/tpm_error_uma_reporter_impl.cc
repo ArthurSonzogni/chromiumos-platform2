@@ -47,6 +47,8 @@ std::string ClientIDToClientName(TpmMetricsClientID id) {
       return "BootLockBox";
     case TpmMetricsClientID::kDeviceManagement:
       return "DeviceManagement";
+    case TpmMetricsClientID::kHwsecOpteePlugin:
+      return "HwsecOpteePlugin";
   }
 }
 

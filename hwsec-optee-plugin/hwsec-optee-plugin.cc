@@ -15,6 +15,7 @@
 #include <brillo/syslog_logging.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 
 extern "C" {
 #include <tee_plugin_method.h>
@@ -45,6 +46,11 @@ static const hwsec::OpteePluginFrontend& GetHwsec() {
 
 static TEEC_Result HwsecPluginInit(void) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  // Set TPM metrics client ID.
+  hwsec_foundation::SetTpmMetricsClientID(
+      hwsec_foundation::TpmMetricsClientID::kHwsecOpteePlugin);
+
   return TEEC_SUCCESS;
 }
 
