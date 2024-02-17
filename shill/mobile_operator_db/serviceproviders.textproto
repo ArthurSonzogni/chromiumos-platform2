@@ -14763,3 +14763,12 @@ mno {
     }
   }
 }
+
+# Nokia P-LTE network
+mno {
+  data {
+    uuid: "5d4e5cb0-6d59-4e7e-8df0-43b333399d60"
+    country: "int"
+    mccmnc: "99940"
+  }
+}
