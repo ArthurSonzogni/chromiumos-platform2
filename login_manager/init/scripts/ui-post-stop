@@ -19,9 +19,18 @@ cryptohome --action=pkcs11_terminate
 # until we do this.
 echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR:-}/to_be_frozen/freezer.state"
 
+# Start the dlcservice if it is not running.
+status dlcservice | grep running || start dlcservice
+# Get the list of user-tied DLC mount points for passing to the process_killer.
+USER_TIED_DLC=""
+if status dlcservice | grep running; then
+  USER_TIED_DLC="$(dlcservice_util --list --user_tied --check_mount |
+    jq -c '[.[][].root_mount]')"
+fi
+
 # Terminate any processes with files open on the mount point
 # TODO(wad) parallelize with VFS/PID namespaces.
-process_killer --session --file_holders
+process_killer --session --file_holders --mount_filter="${USER_TIED_DLC}"
 
 # Make sure everything is going down. No exceptions.
 # The loop is so that clever daemons can't evade the kill by
@@ -71,6 +80,9 @@ for container in /run/containers/* ; do
     rm -rf "${container}"
   fi
 done
+
+# Unload user-tied DLCs before cryptohome unmounting.
+dlcservice_util --unload --user_tied
 
 cryptohome --action=unmount
 # Unmount the user session namespace mount point.
