@@ -99,7 +99,7 @@ class ArgumentParserProvider : public ProbeFunction::ArgumentParser {
 
   bool Parse(const std::optional<base::Value>& value,
              std::string& err) override {
-    if (value.has_value()) {
+    if (value.has_value() && !value->is_none()) {
       return internal::ParseArgument(value.value(), target_, err);
     }
     if (default_value_.has_value()) {
@@ -133,7 +133,7 @@ class ArgumentParserProvider<std::optional<T>>
 
   bool Parse(const std::optional<base::Value>& value,
              std::string& err) override {
-    if (value.has_value()) {
+    if (value.has_value() && !value->is_none()) {
       T tmp;
       if (internal::ParseArgument(value.value(), tmp, err)) {
         target_ = std::move(tmp);
@@ -156,10 +156,12 @@ class ArgumentParserProvider<std::optional<T>>
 // |type|: The type of the argument.
 // |field_name|: The field name of the argument. This will define a member
 //               variable |field_name_|.
-// |...|: A default value. Cannot be set if |type| is std::optional<T> (because
-//        it will never be nullopt).
-//        If |type| is not std::optional<T> and don't have default value, the
-//        argument become a required argument.
+// |...|: A default value. Should only be used if |type| is not a
+//        std::optional<T>. (Otherwise, the nullopt will always be overridden by
+//        the default value, which means we can just use a T instead of a
+//        std::optional<T>.)
+//        If |type| is not a std::optional<T> and don't have a default value,
+//        the argument become a required argument.
 //
 // Example:
 //   class MyFunction: public ProbeFunction {

@@ -149,6 +149,20 @@ TEST_F(ProbeFunctionArgumentTest, Optional) {
   EXPECT_EQ(fun->default_probe_fun_->GetFunctionName(), "no_arg2");
 }
 
+TEST_F(ProbeFunctionArgumentTest, OptionalNull) {
+  arg_.Set("default_int", base::Value());
+  arg_.Set("opt_int", base::Value());
+  arg_.Set("default_vec_int", base::Value());
+  arg_.Set("default_probe_fun", base::Value());
+
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
+  ASSERT_TRUE(fun);
+  EXPECT_EQ(fun->default_int_, 42);
+  EXPECT_EQ(fun->opt_int_, std::nullopt);
+  EXPECT_EQ(fun->default_vec_int_, (std::vector<int>{1, 2, 3}));
+  ASSERT_TRUE(fun->default_probe_fun_);
+}
+
 TEST_F(ProbeFunctionArgumentTest, Empty) {
   arg_.clear();
   auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);

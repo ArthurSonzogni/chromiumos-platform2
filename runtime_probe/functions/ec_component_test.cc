@@ -131,7 +131,8 @@ TEST_F(EcComponentFunctionTest, ProbeWithInvalidManifestFailed) {
 TEST_F(EcComponentFunctionTestNoExpect, ProbeWithTypeSucceed) {
   auto arguments = base::JSONReader::Read(R"JSON(
     {
-      "type": "bc12"
+      "type": "bc12",
+      "name": null
     }
   )JSON");
   auto probe_function =
