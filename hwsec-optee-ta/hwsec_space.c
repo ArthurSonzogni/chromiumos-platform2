@@ -4,6 +4,7 @@
 
 #include "hwsec-optee-ta/hwsec_space.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -15,6 +16,21 @@
 #include "hwsec-optee-ta/hwsec_session.h"
 
 #define NAME_CACHE_SIZE 2
+
+const static uint16_t kCounterDataSize = 8;
+
+// The counter attributes: https://crrev.com/c/3319028
+const static TPMA_NV kCounterAttr = {
+    .TPMA_NV_COUNTER = 1,
+    .TPMA_NV_ORDERLY = 1,
+    .TPMA_NV_AUTHREAD = 1,
+    .TPMA_NV_AUTHWRITE = 1,
+    .TPMA_NV_PLATFORMCREATE = 1,
+    .TPMA_NV_WRITE_STCLEAR = 1,
+    .TPMA_NV_PPREAD = 1,
+    .TPMA_NV_PPWRITE = 1,
+    .TPMA_NV_NO_DA = 1,
+};
 
 static uint8_t buffer[HWSEC_COMMAND_MAX_LEN];
 
@@ -190,18 +206,16 @@ static TEE_Result GetVerifiedSpacePublic(TPMI_RH_NV_INDEX index,
   return TEE_SUCCESS;
 }
 
-static TEE_Result InitNVName(TPMI_RH_NV_INDEX index, TPM2B_NAME* name) {
+static TEE_Result InitNVName(TPMI_RH_NV_INDEX index,
+                             TPM2B_NV_PUBLIC* pub,
+                             TPM2B_NAME* name) {
   TEE_Result res = TEE_ERROR_GENERIC;
 
-  TPM2B_NV_PUBLIC pub;
-  res = GetVerifiedSpacePublic(index, &pub, name);
+  res = GetVerifiedSpacePublic(index, pub, name);
   if (res != TEE_SUCCESS) {
     EMSG("GetVerifiedSpacePublic failed with code 0x%x", res);
-    memset(name, 0, sizeof(TPM2B_NAME));
     return res;
   }
-
-  // TODO(yich): Verify the NV attributes.
 
   return TEE_SUCCESS;
 }
@@ -222,14 +236,51 @@ static TEE_Result GetVerifiedCounterName(TPMI_RH_NV_INDEX index,
   }
 
   name_caches[0].index = index;
-  res = InitNVName(index, &name_caches[0].name);
+
+  TPM2B_NV_PUBLIC pub;
+  res = InitNVName(index, &pub, &name_caches[0].name);
   if (res != TEE_SUCCESS) {
     EMSG("InitNVName failed with code 0x%x", res);
-    return res;
+    goto error;
+  }
+
+  if (pub.t.nvPublic.nvIndex != index) {
+    EMSG("nvIndex 0x%x mismatch with 0x%x", index, pub.t.nvPublic.nvIndex);
+    res = TEE_ERROR_SECURITY;
+    goto error;
+  }
+
+  // We don't care about the NV is written or not.
+  TPMA_NV verify_attr = kCounterAttr;
+  verify_attr.TPMA_NV_WRITTEN = pub.t.nvPublic.attributes.TPMA_NV_WRITTEN;
+
+  if (memcmp(&pub.t.nvPublic.attributes, &verify_attr, sizeof(TPMA_NV)) != 0) {
+    static_assert(sizeof(uint32_t) == sizeof(TPMA_NV), "Wrong TPMA_NV size");
+    uint32_t value;
+    memcpy(&value, &pub.t.nvPublic.attributes, sizeof(value));
+    EMSG("Invalid counter attributes 0x%x.", value);
+    res = TEE_ERROR_SECURITY;
+    goto error;
+  }
+
+  if (pub.t.nvPublic.dataSize != kCounterDataSize) {
+    EMSG("Invalid counter data size.");
+    res = TEE_ERROR_SECURITY;
+    goto error;
   }
 
   memcpy(name, &name_caches[0].name, sizeof(TPM2B_NAME));
+
+  if (verify_attr.TPMA_NV_WRITTEN == 0) {
+    // The cache is invalid if the spase is not written.
+    memset(&name_caches[0].name, 0, sizeof(TPM2B_NAME));
+  }
+
   return TEE_SUCCESS;
+
+error:
+  memset(&name_caches[0].name, 0, sizeof(TPM2B_NAME));
+  return res;
 }
 
 TEE_Result GetVerifiedCounterData(TpmSession* session,
