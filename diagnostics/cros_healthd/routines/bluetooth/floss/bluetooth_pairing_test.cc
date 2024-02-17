@@ -47,7 +47,7 @@ constexpr uint32_t kTargetBluetoothClass = 2360344;
 // Value of public address type.
 constexpr uint32_t kTargetAddressTypeValue = 0;
 
-namespace mojom = ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::Return;
@@ -55,7 +55,7 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothPairingRoutineTest : public testing::Test {
+class BluetoothPairingRoutineTest : public ::testing::Test {
  public:
   BluetoothPairingRoutineTest(const BluetoothPairingRoutineTest&) = delete;
   BluetoothPairingRoutineTest& operator=(const BluetoothPairingRoutineTest&) =
@@ -213,7 +213,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
     // Check the discovering state if the powered state is on.
     if (initial_powered) {
       EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-          .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+          .WillRepeatedly(
+              base::test::RunOnceCallbackRepeatedly<0>(/*discovering=*/false));
     }
 
     // Check bonded devices.
@@ -312,13 +313,11 @@ TEST_F(BluetoothPairingRoutineTest, RoutineErrorInitialization) {
 // Test that the Bluetooth pairing routine can handle the error when the
 // adapter is already in discovery mode.
 TEST_F(BluetoothPairingRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
-  // Check the powered state and ensure powered state is on.
-  SetupEnsurePoweredOnSuccessCall(/*initial_powered=*/true);
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
+
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  // Reset powered.
-  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _));
 
   RunRoutineAndWaitForException(kBluetoothRoutineFailedDiscoveryMode);
 }

@@ -35,12 +35,12 @@ const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
 const int32_t kDefaultHciInterface = 0;
 
-namespace mojom = ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
-using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::Sequence;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
@@ -52,7 +52,7 @@ struct FakeScannedPeripheral {
   bool is_high_signal;
 };
 
-class BluetoothScanningRoutineTest : public testing::Test {
+class BluetoothScanningRoutineTest : public ::testing::Test {
  public:
   BluetoothScanningRoutineTest(const BluetoothScanningRoutineTest&) = delete;
   BluetoothScanningRoutineTest& operator=(const BluetoothScanningRoutineTest&) =
@@ -71,9 +71,19 @@ class BluetoothScanningRoutineTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_floss_controller(), GetManager())
-        .WillOnce(Return(&mock_manager_proxy_));
+        .WillRepeatedly(Return(&mock_manager_proxy_));
+    EXPECT_CALL(*mock_floss_controller(), GetAdapters())
+        .WillRepeatedly(Return(
+            std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>{
+                &mock_adapter_proxy_}));
     EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(true));
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/true));
+    EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<0>(
+            /*hci_interface=*/kDefaultHciInterface));
+    EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
+        .WillRepeatedly(ReturnRef(kDefaultAdapterPath));
 
     auto arg = mojom::BluetoothScanningRoutineArgument::New();
     arg->exec_duration = kScanningRoutineDefaultRuntime;
@@ -83,40 +93,9 @@ class BluetoothScanningRoutineTest : public testing::Test {
     routine_ = future.Take().value();
   }
 
-  // Get the adapter with HCI interface 0.
-  void SetupGetAdaptersCall() {
-    EXPECT_CALL(*mock_floss_controller(), GetAdapters())
-        .WillOnce(Return(
-            std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>{
-                &mock_adapter_proxy_}));
-    EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
-        .WillOnce(ReturnRef(kDefaultAdapterPath));
-  }
-
-  // Setup all the required call for calling |Initialize| successfully.
-  void SetupInitializeSuccessCall(bool initial_powered) {
-    EXPECT_CALL(*mock_floss_controller(), GetManager())
-        .WillOnce(Return(&mock_manager_proxy_));
-    EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
-    EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*hci_interface=*/0));
-    if (initial_powered) {
-      SetupGetAdaptersCall();
-    } else {
-      EXPECT_CALL(*mock_floss_controller(), GetAdapters())
-          .WillOnce(
-              Return(std::vector<
-                     org::chromium::bluetooth::BluetoothProxyInterface*>{}));
-    }
-    EXPECT_CALL(mock_manager_proxy_,
-                GetAdapterEnabledAsync(kDefaultHciInterface, _, _, _))
-        .WillOnce(base::test::RunOnceCallback<1>(/*enabled=*/initial_powered));
-  }
-
   void SetSwitchDiscoveryCall() {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-        .WillOnce(WithArg<0>(
+        .WillRepeatedly(WithArg<0>(
             [=, this](base::OnceCallback<void(bool is_success)> on_success) {
               std::move(on_success).Run(/*is_success=*/true);
               for (const auto& peripheral : fake_peripherals_) {
@@ -129,37 +108,32 @@ class BluetoothScanningRoutineTest : public testing::Test {
                 }
               }
             }));
-    const auto polling_times =
-        kScanningRoutineDefaultRuntime / kScanningRoutineRssiPollingPeriod;
-    for (int i = 0; i < polling_times; ++i) {
-      for (const auto& peripheral : fake_peripherals_) {
-        if (i < peripheral.rssi_history.size()) {
-          EXPECT_CALL(mock_adapter_proxy_,
-                      GetRemoteRSSIAsync(peripheral.device_dict, _, _, _))
-              .WillOnce(
-                  base::test::RunOnceCallback<1>(peripheral.rssi_history[i]));
-        } else {
-          EXPECT_CALL(mock_adapter_proxy_,
-                      GetRemoteRSSIAsync(peripheral.device_dict, _, _, _))
-              .WillOnce(base::test::RunOnceCallback<1>(/*invalid_rssi=*/127));
-        }
-      }
-    }
+
+    SetupGetRssiCall();
+
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*is_success=*/true));
+        .WillRepeatedly(base::test::RunOnceCallback<0>(/*is_success=*/true));
   }
 
-  // Setup the call when the adapter added event is received in Floss event hub.
-  void SetupAdapterAddedCall() {
-    EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
-        .WillOnce(ReturnRef(kDefaultAdapterPath));
-    EXPECT_CALL(mock_adapter_proxy_, RegisterCallbackAsync);
-    EXPECT_CALL(mock_adapter_proxy_, RegisterConnectionCallbackAsync);
+  void SetupGetRssiCall() {
+    for (const auto& peripheral : fake_peripherals_) {
+      Sequence s;
+      for (const auto& rssi : peripheral.rssi_history) {
+        EXPECT_CALL(mock_adapter_proxy_,
+                    GetRemoteRSSIAsync(peripheral.device_dict, _, _, _))
+            .InSequence(s)
+            .WillOnce(base::test::RunOnceCallback<1>(rssi));
+      }
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteRSSIAsync(peripheral.device_dict, _, _, _))
+          .InSequence(s)
+          .WillRepeatedly(
+              base::test::RunOnceCallbackRepeatedly<1>(/*invalid_rssi=*/127));
+    }
   }
 
+  // Setup the call to reset the powered state.
   void SetupResetPoweredCall(bool initial_powered) {
-    EXPECT_CALL(*mock_floss_controller(), GetManager())
-        .WillOnce(Return(&mock_manager_proxy_));
     if (initial_powered) {
       EXPECT_CALL(mock_manager_proxy_,
                   StartAsync(kDefaultHciInterface, _, _, _));
@@ -167,6 +141,60 @@ class BluetoothScanningRoutineTest : public testing::Test {
       EXPECT_CALL(mock_manager_proxy_,
                   StopAsync(kDefaultHciInterface, _, _, _));
     }
+  }
+
+  // Setup the required calls to ensure the powered state is on.
+  void SetupEnsurePoweredOnSuccessCall(bool initial_powered) {
+    EXPECT_CALL(mock_manager_proxy_,
+                GetAdapterEnabledAsync(kDefaultHciInterface, _, _, _))
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(
+            /*enabled=*/initial_powered));
+
+    if (!initial_powered) {
+      EXPECT_CALL(*mock_floss_controller(), GetAdapters())
+          .WillOnce(
+              Return(std::vector<
+                     org::chromium::bluetooth::BluetoothProxyInterface*>{}))
+          .WillRepeatedly(Return(
+              std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>{
+                  &mock_adapter_proxy_}));
+      EXPECT_CALL(mock_manager_proxy_,
+                  StartAsync(kDefaultHciInterface, _, _, _))
+          .WillRepeatedly(
+              WithArg<1>([&](base::OnceCallback<void()> on_success) {
+                EXPECT_CALL(mock_adapter_proxy_, RegisterCallbackAsync);
+                EXPECT_CALL(mock_adapter_proxy_,
+                            RegisterConnectionCallbackAsync);
+                std::move(on_success).Run();
+                fake_floss_event_hub()->SendAdapterAdded(&mock_adapter_proxy_);
+                fake_floss_event_hub()->SendAdapterPoweredChanged(
+                    kDefaultHciInterface, /*powered=*/true);
+              }));
+    }
+  }
+
+  // Setup the required calls for running the scanning routine successfully. The
+  // initial powered sate is on.
+  void SetupRoutineSuccessCall(bool initial_powered = true) {
+    // Check the powered state and ensure powered state is on.
+    SetupEnsurePoweredOnSuccessCall(initial_powered);
+
+    // Check the discovering state if the powered state is on.
+    if (initial_powered) {
+      EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
+          .WillRepeatedly(
+              base::test::RunOnceCallbackRepeatedly<0>(/*discovering=*/false));
+    }
+
+    SetSwitchDiscoveryCall();
+
+    // Stop discovery.
+    EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(/*is_success=*/true));
+
+    // Reset powered.
+    SetupResetPoweredCall(initial_powered);
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
@@ -225,11 +253,6 @@ class BluetoothScanningRoutineTest : public testing::Test {
 // Test that the Bluetooth scanning routine can pass successfully when the
 // adapter powered is on at first.
 TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
-
   // Set up fake data.
   AddScannedDeviceData(/*address=*/"70:88:6B:92:34:70", /*name=*/"GID6B",
                        /*rssi_history=*/{-54, -56, -52});
@@ -244,10 +267,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
        kNearbyPeripheralMinimumAverageRssi - 1},
       /*is_high_signal=*/false);
 
-  // Start scanning.
-  SetSwitchDiscoveryCall();
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -269,25 +289,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
 // Test that the Bluetooth scanning routine can pass successfully when the
 // adapter powered is off at first.
 TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOff) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/false);
-
-  // Power on.
-  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
-      .WillOnce(WithArg<1>([&](base::OnceCallback<void()> on_success) {
-        std::move(on_success).Run();
-        fake_floss_event_hub()->SendAdapterAdded(&mock_adapter_proxy_);
-        fake_floss_event_hub()->SendAdapterPoweredChanged(kDefaultHciInterface,
-                                                          /*powered=*/true);
-      }));
-  SetupAdapterAddedCall();
-  EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
-      .WillOnce(ReturnRef(kDefaultAdapterPath));
-
-  // Start scanning.
-  SetSwitchDiscoveryCall();
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/false);
+  SetupRoutineSuccessCall(/*initial_powered=*/false);
 
   task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -305,7 +307,6 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOff) {
 // Test that the Bluetooth scanning routine can handle the error when the
 // initialization is failed.
 TEST_F(BluetoothScanningRoutineTest, RoutineErrorInitialization) {
-  InSequence s;
   EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine.");
 }
@@ -313,15 +314,11 @@ TEST_F(BluetoothScanningRoutineTest, RoutineErrorInitialization) {
 // Test that the Bluetooth scanning routine can handle the error when the
 // adapter is already in discovery mode.
 TEST_F(BluetoothScanningRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   RunRoutineAndWaitForException(kBluetoothRoutineFailedDiscoveryMode);
 }
@@ -329,16 +326,12 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
 // Test that the Bluetooth scanning routine can handle the error when it fails
 // to power on the adapter.
 TEST_F(BluetoothScanningRoutineTest, PowerOnAdapterError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  SetupRoutineSuccessCall(/*initial_powered=*/false);
 
   // Power on.
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error.get()));
-
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/false);
 
   RunRoutineAndWaitForException(
       "Failed to ensure default adapter is powered on.");
@@ -347,20 +340,12 @@ TEST_F(BluetoothScanningRoutineTest, PowerOnAdapterError) {
 // Test that the Bluetooth scanning routine can handle the error when adapter
 // fails to start discovery.
 TEST_F(BluetoothScanningRoutineTest, StartDiscoveryError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start discovery.
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  // Stop discovery.
-  SetupGetAdaptersCall();
-  EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   RunRoutineAndWaitForException("Failed to update discovery mode.");
 }
@@ -368,20 +353,12 @@ TEST_F(BluetoothScanningRoutineTest, StartDiscoveryError) {
 // Test that the Bluetooth scanning routine can handle the error when adapter
 // fails to stop discovery.
 TEST_F(BluetoothScanningRoutineTest, StopDiscoveryError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
-  // Start discovery.
-  EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*is_success=*/true));
   // Stop discovery.
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   RunRoutineAndWaitForException("Failed to update discovery mode.");
@@ -390,10 +367,7 @@ TEST_F(BluetoothScanningRoutineTest, StopDiscoveryError) {
 // Test that the Bluetooth scanning routine can handle the error when parsing
 // device info.
 TEST_F(BluetoothScanningRoutineTest, ParseDeviceInfoError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
@@ -403,11 +377,6 @@ TEST_F(BluetoothScanningRoutineTest, ParseDeviceInfoError) {
             fake_floss_event_hub()->SendDeviceAdded(
                 brillo::VariantDictionary{{"no_address", ""}, {"no_name", ""}});
           }));
-  // Stop discovery.
-  SetupGetAdaptersCall();
-  EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   RunRoutineAndWaitForException("Failed to parse device info.");
 }
@@ -415,10 +384,7 @@ TEST_F(BluetoothScanningRoutineTest, ParseDeviceInfoError) {
 // Test that the Bluetooth scanning routine can handle the error when getting
 // device RSSI.
 TEST_F(BluetoothScanningRoutineTest, GetDeviceRssiError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
@@ -432,11 +398,6 @@ TEST_F(BluetoothScanningRoutineTest, GetDeviceRssiError) {
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, GetRemoteRSSIAsync(_, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error.get()));
-  // Stop discovery.
-  SetupGetAdaptersCall();
-  EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   RunRoutineAndWaitForException("Failed to get device RSSI");
 }
@@ -444,19 +405,10 @@ TEST_F(BluetoothScanningRoutineTest, GetDeviceRssiError) {
 // Test that the Bluetooth scanning routine can handle the error when timeout
 // occurred.
 TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutError) {
-  InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
 
-  // Start discovery.
+  // Failed to get response of |StartDiscovery| method before timeout.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _));
-
-  // Stop discovery.
-  SetupGetAdaptersCall();
-  EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
-  // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
 
   task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime +
                                   kScanningRoutineTimeout);
