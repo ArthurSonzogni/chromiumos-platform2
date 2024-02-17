@@ -20,6 +20,7 @@
 #include "runtime_probe/probe_result_checker.h"
 
 namespace runtime_probe {
+class Matcher;
 
 class ProbeStatement {
   // Holds a probe statement with following JSON schema::
@@ -47,7 +48,7 @@ class ProbeStatement {
   // be called.  The results will be filtered / processed by "keys" and "expect"
   // rules.  See ProbeStatement::Eval for more details.
  public:
-  virtual ~ProbeStatement() = default;
+  virtual ~ProbeStatement();
 
   static std::unique_ptr<ProbeStatement> FromValue(std::string component_name,
                                                    const base::Value& dv);
@@ -79,7 +80,7 @@ class ProbeStatement {
   }
 
  protected:
-  ProbeStatement() = default;
+  ProbeStatement();
 
  private:
   void OnProbeFunctionEvalCompleted(
@@ -90,6 +91,7 @@ class ProbeStatement {
   std::unique_ptr<ProbeFunction> probe_function_;
   std::set<std::string> key_;
   std::unique_ptr<ProbeResultChecker> probe_result_checker_;
+  std::unique_ptr<Matcher> matcher_;
   std::optional<base::Value> information_;
   // Must be the last member.
   base::WeakPtrFactory<ProbeStatement> weak_ptr_factory_{this};

@@ -166,6 +166,73 @@ TEST_F(ProbeStatementTest, InvalidExpectValue) {
   EXPECT_FALSE(probe_statement);
 }
 
+TEST_F(ProbeStatementTest, EvalWithMatcher) {
+  // Set a valid probe function and mock it later.
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    },
+    "matcher": {
+      "operator": "STRING_EQUAL",
+      "operand": ["field_2", "value_2"]
+    }
+  })");
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+  probe_statement->SetProbeFunctionForTesting(
+      std::make_unique<FakeProbeFunction>(R"([
+        {
+          "field_1": "value_1"
+        },
+        {
+          "field_2": "value_1"
+        },
+        {
+          "field_2": "value_2"
+        }
+      ])"));
+
+  // Should only get results that pass the check.
+  auto ans = std::move(base::JSONReader::Read(R"([
+        {
+          "field_2": "value_2"
+        }
+      ])")
+                           ->GetList());
+  base::test::TestFuture<ProbeFunction::DataType> future;
+  probe_statement->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
+}
+
+TEST_F(ProbeStatementTest, InvalidMatcherValue) {
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    },
+    "matcher": "wrong_type"
+  })");
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+  EXPECT_FALSE(probe_statement);
+}
+
+TEST_F(ProbeStatementTest, CanOnlyHaveEitherMatcherOrExpect) {
+  auto dict_value = base::JSONReader::Read(R"({
+    "eval": {
+      "memory": {}
+    },
+    "expect": [
+      {
+        "field_2": [true, "str"]
+      }
+    ],
+    "matcher": {
+      "operator": "STRING_EQUAL",
+      "operand": ["field_2", "value_2"]
+    }
+  })");
+  auto probe_statement = ProbeStatement::FromValue("component", *dict_value);
+  EXPECT_FALSE(probe_statement);
+}
+
 TEST_F(ProbeStatementTest, GetInformation) {
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {

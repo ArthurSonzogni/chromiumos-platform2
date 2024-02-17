@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/values.h>
 
+#include "runtime_probe/matchers/matcher.h"
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/probe_result_checker.h"
 #include "runtime_probe/probe_statement.h"
@@ -32,6 +33,10 @@ void FilterValueByKey(base::Value* dv, const std::set<std::string>& keys) {
 }
 
 }  // namespace
+
+ProbeStatement::ProbeStatement() = default;
+
+ProbeStatement::~ProbeStatement() = default;
 
 std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
     std::string component_name, const base::Value& dv) {
@@ -80,6 +85,12 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   // Parse optional field "expect"
   // TODO(b:121354690): Make expect useful
   const auto* expect_value = dict.Find("expect");
+  const auto* matcher_value = dict.Find("matcher");
+  if (expect_value && matcher_value) {
+    LOG(ERROR)
+        << "A probe statement can't have both \"expect\" and \"matcher\".";
+    return nullptr;
+  }
   if (!expect_value) {
     VLOG(3) << "\"expect\" does not exist.";
   } else {
@@ -87,6 +98,17 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
         ProbeResultChecker::FromValue(*expect_value);
     if (!instance->probe_result_checker_) {
       LOG(ERROR) << "Failed to parse \"expect\".";
+      return nullptr;
+    }
+  }
+  if (matcher_value) {
+    if (!matcher_value->is_dict()) {
+      LOG(ERROR) << "\"matcher\" should be a dict.";
+      return nullptr;
+    }
+    instance->matcher_ = Matcher::FromValue(matcher_value->GetDict());
+    if (!instance->matcher_) {
+      LOG(ERROR) << "Failed to parse \"matcher\".";
       return nullptr;
     }
   }
@@ -120,6 +142,11 @@ void ProbeStatement::OnProbeFunctionEvalCompleted(
   if (probe_result_checker_) {
     results.EraseIf([&](base::Value& result) {
       return !probe_result_checker_->Apply(&result);
+    });
+  }
+  if (matcher_) {
+    results.EraseIf([&](base::Value& result) {
+      return !matcher_->Match(result.GetDict());
     });
   }
   std::move(callback).Run(std::move(results));
