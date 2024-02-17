@@ -376,9 +376,6 @@ TEE_Result GetVerifiedCounterData(TpmSession* session,
   if (tpm_rc != TPM_RC_SUCCESS) {
     EMSG("TPMI_ST_COMMAND_TAG_Unmarshal failed with code 0x%x", tpm_rc);
     return TEE_ERROR_BAD_FORMAT;
-  } else if (tag != TPM_ST_SESSIONS) {
-    EMSG("Unknown tag");
-    return TEE_ERROR_CORRUPT_OBJECT;
   }
 
   tpm_rc = UINT32_Unmarshal(&buffer_size, &buffer_ptr, &remaining);
@@ -395,9 +392,25 @@ TEE_Result GetVerifiedCounterData(TpmSession* session,
   if (tpm_rc != TPM_RC_SUCCESS) {
     EMSG("UINT32_Unmarshal failed with code 0x%x", tpm_rc);
     return TEE_ERROR_BAD_FORMAT;
-  } else if (rc != TPM_RC_SUCCESS) {
+  }
+
+  if (tag == TPM_ST_NO_SESSIONS && rc == TPM_RC_NV_UNINITIALIZED) {
+    res = IncreaseVerifiedCounter(session, index);
+    if (res != TEE_SUCCESS) {
+      EMSG("IncreaseVerifiedCounter failed with code 0x%x", res);
+      return res;
+    }
+    return GetVerifiedCounterData(session, index, nv_size, data);
+  }
+
+  if (rc != TPM_RC_SUCCESS) {
     EMSG("Read NV failed with code 0x%x", rc);
     return TEE_ERROR_BAD_STATE;
+  }
+
+  if (tag != TPM_ST_SESSIONS) {
+    EMSG("Unknown tag");
+    return TEE_ERROR_CORRUPT_OBJECT;
   }
 
   UINT32 parameter_size;
