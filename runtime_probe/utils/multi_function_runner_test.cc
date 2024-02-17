@@ -17,16 +17,6 @@
 namespace runtime_probe {
 namespace {
 
-class FakeProbeFunction : public ProbeFunction {
-  using ProbeFunction::ProbeFunction;
-
- public:
-  NAME_PROBE_FUNCTION("fake");
-
- private:
-  DataType EvalImpl() const override { return {}; }
-};
-
 class MultiFunctionRunnerTest : public ::testing::Test {
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
@@ -34,12 +24,12 @@ class MultiFunctionRunnerTest : public ::testing::Test {
 
 TEST_F(MultiFunctionRunnerTest, Success) {
   MultiFunctionRunner runner;
-  runner.AddFunction(CreateFakeProbeFunction<FakeProbeFunction>(R"JSON(
+  runner.AddFunction(std::make_unique<FakeProbeFunction>(R"JSON(
       [{
         "key1": "key1"
       }]
     )JSON"));
-  runner.AddFunction(CreateFakeProbeFunction<FakeProbeFunction>(R"JSON(
+  runner.AddFunction(std::make_unique<FakeProbeFunction>(R"JSON(
       [{
         "key2": "key2"
       },

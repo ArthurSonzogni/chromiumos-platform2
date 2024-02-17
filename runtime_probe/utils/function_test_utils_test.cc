@@ -25,28 +25,16 @@ class MockProbeFunction : public ProbeFunction {
 
 class FuntionTestUtilsTest : public BaseFunctionTest {};
 
-TEST_F(FuntionTestUtilsTest, CreateFakeProbeFunction) {
+TEST_F(FuntionTestUtilsTest, FakeProbeFunction) {
   auto probe_result = R"JSON(
       [{
         "field_1": "value_1",
         "field_2": "value_2"
       }]
     )JSON";
-  auto probe_function =
-      CreateFakeProbeFunction<MockProbeFunction>(probe_result);
-  // CreateFakeProbeFunction<T>() should return a pointer to |T| pointing
-  // to an object of |FakeProbeFunction<T>|, which is a derived class of |T|.
-  static_assert(
-      std::is_base_of_v<MockProbeFunction,
-                        std::remove_reference_t<decltype(*probe_function)>>,
-      "probe_function is not a pointer to MockProbeFunction");
-  EXPECT_NE(
-      dynamic_cast<FakeProbeFunction<MockProbeFunction>*>(probe_function.get()),
-      nullptr);
-
-  auto result = EvalProbeFunction(probe_function.get());
+  FakeProbeFunction probe_function(probe_result);
+  auto result = EvalProbeFunction(&probe_function);
   auto ans = CreateProbeResultFromJson(probe_result);
-
   EXPECT_EQ(result, ans);
 }
 

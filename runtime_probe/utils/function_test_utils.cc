@@ -42,6 +42,17 @@ void BaseFunctionTest::ExpectUnorderedListEqual(const base::Value::List& result,
   EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(ans_matcher_list));
 }
 
+FakeProbeFunction::FakeProbeFunction(const std::string& probe_result) {
+  auto res = base::JSONReader::Read(probe_result);
+  fake_result_ = std::move(res->GetList());
+}
+
+FakeProbeFunction::~FakeProbeFunction() = default;
+
+FakeProbeFunction::DataType FakeProbeFunction::EvalImpl() const {
+  return fake_result_.Clone();
+}
+
 ProbeFunction::DataType EvalProbeFunction(ProbeFunction* probe_function) {
   base::test::TestFuture<ProbeFunction::DataType> future;
   probe_function->Eval(future.GetCallback());

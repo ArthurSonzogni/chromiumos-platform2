@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/json/json_reader.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/values.h>
@@ -44,31 +43,21 @@ class BaseFunctionTest : public BaseFileTest {
   ::testing::NiceMock<ContextMockImpl> mock_context_;
 };
 
-// A fake probe function that always gets |fake_result_| as probe results.
-template <typename ProbeFunctionType>
-class FakeProbeFunction : public ProbeFunctionType {
-  using ProbeFunctionType::ProbeFunctionType;
-
+// A fake probe function that always returns |probe_result|.
+class FakeProbeFunction : public ProbeFunction {
  public:
-  typename ProbeFunctionType::DataType fake_result_;
+  explicit FakeProbeFunction(const std::string& probe_result);
+  FakeProbeFunction(FakeProbeFunction&) = delete;
+  FakeProbeFunction& operator=(FakeProbeFunction&) = delete;
+  ~FakeProbeFunction() override;
+
+  NAME_PROBE_FUNCTION("fake");
 
  private:
-  typename ProbeFunctionType::DataType EvalImpl() const override {
-    return fake_result_.Clone();
-  }
-};
+  DataType EvalImpl() const override;
 
-// Create a fake of |ProbeFunctionType| that always returns |probe_result|.
-template <typename ProbeFunctionType>
-std::unique_ptr<ProbeFunctionType> CreateFakeProbeFunction(
-    const std::string& probe_result) {
-  auto probe_function =
-      CreateProbeFunction<FakeProbeFunction<ProbeFunctionType>>(
-          base::Value::Dict{});
-  auto res = base::JSONReader::Read(probe_result);
-  probe_function->fake_result_ = std::move(res->GetList());
-  return probe_function;
-}
+  DataType fake_result_;
+};
 
 // Get the result that the callback receives.
 ProbeFunction::DataType EvalProbeFunction(ProbeFunction* probe_function);
