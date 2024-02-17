@@ -115,6 +115,40 @@ TEST_F(BackendVendorTpm2Test, SendRawCommand) {
               IsOkAndHolds(kFakeResponse));
 }
 
+TEST_F(BackendVendorTpm2Test, SendRawCommandNormalError) {
+  const brillo::Blob kFakeRequest = {0x80, 0x01, 0x00, 0x00, 0x00, 0x14, 0xba,
+                                     0xcc, 0xd0, 0x0a, 0x00, 0x04, 0x00, 0x00,
+                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  const std::string kFakeInput = brillo::BlobToString(kFakeRequest);
+  const brillo::Blob kFakeResponse = {0x80, 0x01, 0x00, 0x00, 0x00,
+                                      0x0A, 0x00, 0x00, 0x09, 0xA2};
+  const std::string kFakeOutput = brillo::BlobToString(kFakeResponse);
+
+  EXPECT_CALL(proxy_->GetMockCommandTransceiver(),
+              SendCommandAndWait(kFakeInput))
+      .WillOnce(Return(kFakeOutput));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().SendRawCommand(kFakeRequest),
+              IsOkAndHolds(kFakeResponse));
+}
+
+TEST_F(BackendVendorTpm2Test, SendRawCommandCommError) {
+  const brillo::Blob kFakeRequest = {0x80, 0x01, 0x00, 0x00, 0x00, 0x14, 0xba,
+                                     0xcc, 0xd0, 0x0a, 0x00, 0x04, 0x00, 0x00,
+                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  const std::string kFakeInput = brillo::BlobToString(kFakeRequest);
+  const brillo::Blob kFakeResponse = {0x80, 0x01, 0x00, 0x00, 0x00,
+                                      0x0A, 0x00, 0x00, 0x90, 0x10};
+  const std::string kFakeOutput = brillo::BlobToString(kFakeResponse);
+
+  EXPECT_CALL(proxy_->GetMockCommandTransceiver(),
+              SendCommandAndWait(kFakeInput))
+      .WillOnce(Return(kFakeOutput));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().SendRawCommand(kFakeRequest),
+              NotOkWith("SAPI_RC_NO_CONNECTION"));
+}
+
 TEST_F(BackendVendorTpm2Test, GetRsuDeviceId) {
   const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
 

@@ -56,7 +56,20 @@ Status GetResponseStatus(const std::string& response) {
       MakeStatus<TPM2Error>(trunks::Parse_TPM_RC(&buffer, &rc, nullptr)))
       .WithStatus<TPMError>("Failed to parse TPM_RC");
 
-  return MakeStatus<TPM2Error>(rc);
+  Status status = MakeStatus<TPM2Error>(rc);
+
+  if (status.ok()) {
+    return OkStatus();
+  }
+
+  if (status.err_status()->ToTPMRetryAction() !=
+      TPMRetryAction::kCommunication) {
+    // Communication error is the only valid retry action for vendor commands.
+    LOG(WARNING) << "TPM vendor command error: " << status;
+    return OkStatus();
+  }
+
+  return status;
 }
 
 }  // namespace
