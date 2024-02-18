@@ -64,8 +64,6 @@ struct sl_window {
   // should continue doing normal window position and sizing operations with Exo
   // with real x,y,width,height.
   bool use_emulated_rects = false;
-  int emulated_x = 0;
-  int emulated_y = 0;
   int emulated_width = 0;
   int emulated_height = 0;
 
@@ -264,7 +262,7 @@ std::set<int> sl_window_logged_quirks(struct sl_window* window);
 
 bool sl_window_is_client_positioned(struct sl_window* window);
 
-// Get position of the window, taking account of emulated status.
+// Get position of the window.
 void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y);
 // Get size of the window, taking account of emulated status.
 void sl_window_get_width_height(struct sl_window* window,

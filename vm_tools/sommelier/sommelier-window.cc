@@ -879,20 +879,11 @@ bool sl_window_is_client_positioned(struct sl_window* window) {
 }
 
 void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y) {
-  if (window->use_emulated_rects) {
-    if (x != nullptr) {
-      *x = window->emulated_x;
-    }
-    if (y != nullptr) {
-      *y = window->emulated_y;
-    }
-  } else {
-    if (x != nullptr) {
-      *x = window->x;
-    }
-    if (y != nullptr) {
-      *y = window->y;
-    }
+  if (x != nullptr) {
+    *x = window->x;
+  }
+  if (y != nullptr) {
+    *y = window->y;
   }
 }
 

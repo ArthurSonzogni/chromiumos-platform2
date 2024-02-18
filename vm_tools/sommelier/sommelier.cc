@@ -2451,18 +2451,14 @@ void sl_handle_property_notify(struct sl_context* ctx,
       return;
     }
 
-    // TODO(b/191224463): Support multiple monitors by selecting the correct
-    // xywh indexes.
-    uint32_t window_screen_x = 0;
-    uint32_t window_screen_y = 0;
     for (uint32_t i = 0; i < reply->value_len; i += 4) {
-      if (xywh[i] == window_screen_x && xywh[i + 1] == window_screen_y) {
+      // Assume the fullscreen window position is the screen's position.
+      // XWayland emulation must match this x/y coordinates.
+      if (xywh[i] == window->x && xywh[i + 1] == window->y) {
         // NOTE: XWayland will send a wp_viewport.set_source request based on
         // ConfigureNotify request. ConfigureNotify with emulated values will be
         // sent in the next sl_host_surface_commit().
         window->use_emulated_rects = true;
-        window->emulated_x = xywh[i];
-        window->emulated_y = xywh[i + 1];
         window->emulated_width = xywh[i + 2];
         window->emulated_height = xywh[i + 3];
         free(reply);
@@ -2470,8 +2466,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
       }
     }
 
-    fprintf(stderr, "failed to find screen with position %u,%u\n",
-            window_screen_x, window_screen_y);
+    fprintf(stderr, "failed to find screen with position %u,%u\n", window->x,
+            window->y);
     window->use_emulated_rects = false;
     free(reply);
 
