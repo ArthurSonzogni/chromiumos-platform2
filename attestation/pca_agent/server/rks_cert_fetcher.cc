@@ -44,6 +44,9 @@ constexpr char kCertXmlUrl[] =
 constexpr char kSignatureXmlUrl[] =
     "https://www.gstatic.com/cryptauthvault/v0/cert.sig.xml";
 
+// File path to persist the most recently fetched cert.
+constexpr char kCertFilePath[] = "/var/lib/pca_agent/cert";
+
 // The server-side certificate updates every few months, so it is frequent
 // enough to fetch certificates once per day. If the fetch request failed, retry
 // in 10 minutes.
@@ -63,15 +66,33 @@ std::optional<std::string> ExtractDataFromResponse(
 }  // namespace
 
 RksCertificateFetcher::RksCertificateFetcher(
+    libstorage::Platform* platform,
     std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
         manager_proxy)
-    : manager_proxy_(std::move(manager_proxy)) {}
+    : platform_(platform), manager_proxy_(std::move(manager_proxy)) {
+  CHECK(platform_);
+  CHECK(manager_proxy_);
+}
 
 void RksCertificateFetcher::StartFetching(
     OnCertFetchedCallback on_cert_fetched) {
   http_utils_->GetChromeProxyServersAsync(
       kCertXmlUrl, base::BindOnce(&RksCertificateFetcher::OnGetProxyServers,
                                   weak_factory_.GetWeakPtr(), on_cert_fetched));
+}
+
+RksCertificateAndSignature RksCertificateFetcher::GetCertificate() {
+  RksCertificateAndSignature cert_proto;
+  std::string cert;
+  if (!platform_->ReadFileToString(base::FilePath(kCertFilePath), &cert)) {
+    LOG(WARNING) << "Failed to read certificate from file.";
+    return cert_proto;
+  }
+  if (!cert_proto.ParseFromString(cert)) {
+    LOG(WARNING) << "Failed to parse certificate proto from string.";
+    return cert_proto;
+  }
+  return cert_proto;
 }
 
 std::shared_ptr<brillo::http::Transport> RksCertificateFetcher::GetTransport() {
@@ -235,9 +256,12 @@ void RksCertificateFetcher::OnFetchSignatureSuccess(
     OnFetchError(on_cert_fetched);
     return;
   }
-  certificate_.set_certificate_xml(cert_xml);
-  certificate_.set_signature_xml(std::move(*sig_xml));
-  on_cert_fetched.Run(certificate_);
+  RksCertificateAndSignature certificate;
+  certificate.set_certificate_xml(cert_xml);
+  certificate.set_signature_xml(std::move(*sig_xml));
+
+  PersistCertificate(certificate);
+  on_cert_fetched.Run(certificate);
   metrics_.ReportCertificateFetchResult(CertificateFetchResult::kSuccess);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -263,6 +287,19 @@ void RksCertificateFetcher::OnFetchError(
       base::BindOnce(&RksCertificateFetcher::Fetch, weak_factory_.GetWeakPtr(),
                      on_cert_fetched),
       kFetchFailedRetryInterval);
+}
+
+void RksCertificateFetcher::PersistCertificate(
+    const RksCertificateAndSignature& cert_proto) {
+  std::string cert;
+  if (!cert_proto.SerializeToString(&cert)) {
+    LOG(WARNING) << "Failed to serialize certificate proto to string.";
+    return;
+  }
+  if (!platform_->WriteStringToFile(base::FilePath(kCertFilePath), cert)) {
+    LOG(WARNING) << "Failed to write certificate to file.";
+    return;
+  }
 }
 
 }  // namespace pca_agent

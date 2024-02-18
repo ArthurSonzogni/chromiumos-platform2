@@ -10,6 +10,8 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/fake_platform.h>
+#include <libstorage/platform/platform.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
 
@@ -65,8 +67,8 @@ class RksCertificateFetcherTest : public ::testing::Test {
         .WillByDefault(
             [](Unused, auto callback) { std::move(callback).Run(true, {}); });
 
-    fetcher_ =
-        std::make_unique<RksCertificateFetcher>(std::move(manager_proxy));
+    fetcher_ = std::make_unique<RksCertificateFetcher>(
+        &platform_, std::move(manager_proxy));
     fetcher_->set_transport_factory_for_testing(&fake_trasport_factory_);
     fetcher_->set_pca_http_utils_for_testing(&mock_pca_http_utils_);
   }
@@ -83,6 +85,9 @@ class RksCertificateFetcherTest : public ::testing::Test {
     EXPECT_EQ(reply.certificate_xml(), kFakeCertXml);
     EXPECT_EQ(reply.signature_xml(), kFakeSignatureXml);
     EXPECT_TRUE(on_cert_fetched_future_.IsEmpty());
+    RksCertificateAndSignature persisted_cert = fetcher_->GetCertificate();
+    EXPECT_EQ(persisted_cert.certificate_xml(), kFakeCertXml);
+    EXPECT_EQ(persisted_cert.signature_xml(), kFakeSignatureXml);
   }
 
   // Functions to connect the manager signal with online/offline status
@@ -140,6 +145,8 @@ class RksCertificateFetcherTest : public ::testing::Test {
 
   FakeTransportFactory fake_trasport_factory_;
   MockPcaHttpUtils mock_pca_http_utils_;
+
+  libstorage::FakePlatform platform_;
 
   NiceMock<ManagerProxyMock>* manager_proxy_;
 

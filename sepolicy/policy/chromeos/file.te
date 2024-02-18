@@ -446,6 +446,7 @@ type cros_var_lib_node_exporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_save, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_pca_agent, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;

@@ -18,6 +18,7 @@ group("all") {
     ":install_minijail_conf",
     ":install_policy",
     ":install_systemd",
+    ":install_tmpfiles_config",
     ":libattestation",
     ":pca_agent_client",
     ":pca_agentd",
@@ -263,6 +264,7 @@ source_set("pca_agent_server_library") {
   pkg_deps = [
     "libmetrics",
     "libshill-client",
+    "libstorage_platform",
   ]
 }
 
@@ -276,6 +278,7 @@ executable("pca_agentd") {
 
   pkg_deps = [
     "libshill-client",
+    "libstorage_platform",
     "protobuf",
     "system_api",
   ]
@@ -401,6 +404,7 @@ if (use.test) {
     pkg_deps = [
       "libshill-client",
       "libshill-client-test",
+      "libstorage_fake_platform",
       "protobuf-lite",
       "system_api",
     ]
@@ -411,4 +415,9 @@ if (use.test) {
       ":server_library",
     ]
   }
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "pca_agent/server/tmpfiles.d/pca_agent.conf" ]
+  install_path = "tmpfilesd"
 }

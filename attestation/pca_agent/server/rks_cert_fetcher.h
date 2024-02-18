@@ -16,6 +16,7 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/http/http_transport.h>
 #include <dbus/bus.h>
+#include <libstorage/platform/platform.h>
 #include <shill/dbus-proxies.h>
 
 #include "attestation/pca_agent/server/default_transport_factory.h"
@@ -28,7 +29,8 @@ namespace pca_agent {
 class RksCertificateFetcher final : private DefaultTransportFactory,
                                     private PcaHttpUtils {
  public:
-  explicit RksCertificateFetcher(
+  RksCertificateFetcher(
+      libstorage::Platform* platform,
       std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
           manager_proxy);
 
@@ -47,7 +49,7 @@ class RksCertificateFetcher final : private DefaultTransportFactory,
   // Return the most recently fetched certificate. Empty certificate and
   // signature XMLs will be returned if no certificate files have been fetched
   // yet.
-  const RksCertificateAndSignature& certificate() const { return certificate_; }
+  RksCertificateAndSignature GetCertificate();
 
   void set_transport_factory_for_testing(TransportFactory* factory) {
     transport_factory_ = factory;
@@ -120,6 +122,8 @@ class RksCertificateFetcher final : private DefaultTransportFactory,
   // request failed.
   void OnFetchError(OnCertFetchedCallback on_cert_fetched);
 
+  void PersistCertificate(const RksCertificateAndSignature& cert_proto);
+
   // A |TransportFactory| used to create |brillo::http::Transport| instance;
   // alternated during unittest for testability.
   TransportFactory* transport_factory_{this};
@@ -130,6 +134,8 @@ class RksCertificateFetcher final : private DefaultTransportFactory,
 
   // The list of proxy servers used to try to send the request with.
   std::vector<std::string> proxy_servers_;
+
+  libstorage::Platform* platform_;
 
   std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
       manager_proxy_;
@@ -144,9 +150,6 @@ class RksCertificateFetcher final : private DefaultTransportFactory,
 
   // Used to retrieve proxy servers from Chrome.
   brillo::DBusConnection connection_;
-
-  // Most recently fetched certificate files.
-  RksCertificateAndSignature certificate_;
 
   Metrics metrics_;
 

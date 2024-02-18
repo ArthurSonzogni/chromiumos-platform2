@@ -19,7 +19,7 @@ namespace pca_agent {
 RksAgentService::RksAgentService(scoped_refptr<dbus::Bus> bus)
     : org::chromium::RksAgentAdaptor(this) {
   fetcher_ = std::make_unique<RksCertificateFetcher>(
-      std::make_unique<org::chromium::flimflam::ManagerProxy>(bus));
+      &platform_, std::make_unique<org::chromium::flimflam::ManagerProxy>(bus));
   fetcher_->StartFetching(
       base::BindRepeating(&RksAgentService::SendCertificateFetchedSignal,
                           weak_factory_.GetWeakPtr()));
@@ -29,7 +29,7 @@ void RksAgentService::GetCertificate(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<RksCertificateAndSignature>>
         response) {
-  response->Return(fetcher_->certificate());
+  response->Return(fetcher_->GetCertificate());
 }
 
 }  // namespace pca_agent

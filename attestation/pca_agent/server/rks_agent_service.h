@@ -15,6 +15,7 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/attestation/dbus-constants.h>
+#include <libstorage/platform/platform.h>
 
 #include "attestation/pca-agent/dbus_adaptors/org.chromium.PcaAgent.h"
 #include "attestation/pca_agent/server/rks_cert_fetcher.h"
@@ -43,6 +44,8 @@ class RksAgentService : public org::chromium::RksAgentInterface,
 
  private:
   std::unique_ptr<RksCertificateFetcher> fetcher_;
+
+  libstorage::Platform platform_;
 
   base::WeakPtrFactory<RksAgentService> weak_factory_{this};
 };
