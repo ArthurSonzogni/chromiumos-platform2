@@ -823,7 +823,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_GetCrosFwConfigFailedSucceeded) {
+       GetNextStateCase_NoCrosFwConfigSucceeded) {
   // We currently skip setting firmware config if there is no such field found
   // in cros_config to handle exceptions like octopus.
 
@@ -843,20 +843,20 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_GetCbiFwConfigFailedBlocking) {
+       GetNextStateCase_NoCbiFwConfigSucceeded) {
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
-  // Failed to get SSFC.
+  // Failed to get firmware_config in CBI.
   StateHandlerArgs args = {.get_cbi_fw_config_success = false};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
   task_environment_.RunUntilIdle();
 
-  // Provision failed signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
@@ -864,7 +864,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
-  // Failed to get SSFC.
+  // Failed to set firmware_config in CBI.
   StateHandlerArgs args = {.set_cbi_fw_config_success = false};
 
   auto handler = CreateInitializedStateHandler(args);

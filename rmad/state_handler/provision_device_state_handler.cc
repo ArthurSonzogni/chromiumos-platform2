@@ -648,12 +648,15 @@ ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
                kProgressReadFwConfig);
 
   uint32_t cbi_fw_config;
-  if (!cbi_utils_->GetFirmwareConfig(&cbi_fw_config)) {
-    LOG(ERROR) << "Failed to get firmware config in cbi.";
-    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ;
+  bool get_cbi_fw_config_success =
+      cbi_utils_->GetFirmwareConfig(&cbi_fw_config);
+  if (!get_cbi_fw_config_success) {
+    LOG(WARNING) << "Failed to get firmware config in cbi.";
   }
 
-  if (cros_config_fw_config != cbi_fw_config &&
+  // If the firmware config is not set in CBI, we just set what we found in
+  // cros_config.
+  if ((!get_cbi_fw_config_success || cros_config_fw_config != cbi_fw_config) &&
       !cbi_utils_->SetFirmwareConfig(cros_config_fw_config)) {
     // TODO(jeffulin): Add an error code of setting firmware config.
     LOG(ERROR) << "Failed to set firmware config to cbi.";
