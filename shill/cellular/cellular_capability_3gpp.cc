@@ -23,6 +23,7 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
 
+#include "base/time/time.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"
@@ -83,6 +84,12 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetPowerState =
 // 12 minutes(See 3gpp T3402).
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetNextAttachApn =
     base::Milliseconds(12500);
+// When the modem is enabled but the carrier is not yet recognized, shill does
+// not have a known list of APNs to start the attach procedure. The timer
+// |kTimeoutDelayedFallbackAttach| defines the amount of time that shill will
+// wait until starting the attach procedure without any known APNs.
+constexpr base::TimeDelta
+    CellularCapability3gpp::kTimeoutDelayedFallbackAttach = base::Seconds(3);
 
 const RpcIdentifier CellularCapability3gpp::kRootPath = RpcIdentifier("/");
 const char CellularCapability3gpp::kStatusProperty[] = "status";
@@ -2293,11 +2300,33 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();
 
+  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown() &&
+      deferred_fallback_attach_needed_) {
+    deferred_fallback_attach_needed_ = false;
+    // If the carrier is not in shill's db, shill should use the custom APN or
+    // at least clear the attach APN, so the modem can clear any previous value
+    // and try to attach on its own.
+    SLOG(this, 2) << "Mobile operator not yet identified. Posted deferred "
+                     "fallback Attach APN procedure";
+    cellular()->dispatcher()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&CellularCapability3gpp::DelayedFallbackAttach,
+                       weak_ptr_factory_.GetWeakPtr()),
+        kTimeoutDelayedFallbackAttach);
+    return;
+  }
+
+  ConfigureAttachApn();
+}
+
+void CellularCapability3gpp::DelayedFallbackAttach() {
+  SLOG(this, 3) << __func__;
   ConfigureAttachApn();
 }
 
 void CellularCapability3gpp::ConfigureAttachApn() {
   SLOG(this, 3) << __func__;
+  deferred_fallback_attach_needed_ = false;
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
@@ -2308,22 +2337,6 @@ void CellularCapability3gpp::ConfigureAttachApn() {
   // - The UI APN is enforced, even when it's incorrect.
   // When the attach APN sent by shill matches the the one in the modem,
   // ModemManager will not unregister, so the operation will have no effect.
-
-  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
-    // If the carrier is not in shill's db, shill should use the custom APN or
-    // at least clear the attach APN, so the modem can clear any previous value
-    // and try to attach on its own.
-    SLOG(this, 2) << "Mobile operator not yet identified. Posted deferred "
-                     "Clear Attach APN";
-    try_next_attach_apn_callback_.Reset(
-        base::BindOnce(&CellularCapability3gpp::SetNextAttachApn,
-                       weak_ptr_factory_.GetWeakPtr()));
-    cellular()->dispatcher()->PostDelayedTask(
-        FROM_HERE, try_next_attach_apn_callback_.callback(),
-        kTimeoutSetNextAttachApn);
-    return;
-  }
-
   SetNextAttachApn();
 }
 

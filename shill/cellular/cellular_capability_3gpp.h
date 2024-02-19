@@ -51,6 +51,7 @@ class CellularCapability3gpp {
  public:
   static const base::TimeDelta kTimeoutConnect;
   static const base::TimeDelta kTimeoutDefault;
+  static const base::TimeDelta kTimeoutDelayedFallbackAttach;
   static const base::TimeDelta kTimeoutDisconnect;
   static const base::TimeDelta kTimeoutEnable;
   static const base::TimeDelta kTimeoutGetLocation;
@@ -402,6 +403,7 @@ class CellularCapability3gpp {
   // TODO(b/228528516) Remove this hack once the fix for
   // b/228042798 lands.
   bool IsDualStackSupported();
+  void DelayedFallbackAttach();
   void SetNextAttachApn();
   void ScheduleNextAttach(const Error& error);
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
@@ -570,6 +572,7 @@ class CellularCapability3gpp {
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::optional<std::vector<MobileAPN>> profiles_;
+  bool deferred_fallback_attach_needed_ = true;
 
   // SIM properties
   RpcIdentifier sim_path_;
