@@ -61,6 +61,7 @@ source_set("lib") {
   configs += [ ":target_defaults" ]
   deps = [
     "//runtime_probe/functions",
+    "//runtime_probe/matchers",
     "//runtime_probe/system:system_base",
     "//runtime_probe/utils",
   ]
@@ -113,6 +114,7 @@ if (use.test) {
       "//common-mk/testrunner",
       "//runtime_probe/function_templates:test",
       "//runtime_probe/functions:test",
+      "//runtime_probe/matchers:test",
       "//runtime_probe/system:test_utils",
       "//runtime_probe/utils:test",
     ]
