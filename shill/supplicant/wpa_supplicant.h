@@ -267,6 +267,9 @@ class WPASupplicant {
   static constexpr char kCredentialsMatchTypeRoaming[] = "roaming";
   static constexpr char kCredentialsMatchTypeUnknown[] = "unknown";
 
+  static constexpr char kANQPPropertyAddr[] = "addr";
+  static constexpr char kANQPPropertyIds[] = "ids";
+
   static constexpr char kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";
 
   static constexpr char kFlagDisableEapTLS1p1[] = "tls_disable_tlsv1_1=1";

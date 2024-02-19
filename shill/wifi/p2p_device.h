@@ -127,6 +127,8 @@ class P2PDevice : public LocalDevice,
                            const RpcIdentifier& cred,
                            const KeyValueStore& properties) override{};
   void InterworkingSelectDone() override{};
+  void ANQPQueryDone(const std::string& addr,
+                     const std::string& result) override{};
   void ScanDone(const bool& success) override{};
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override{};

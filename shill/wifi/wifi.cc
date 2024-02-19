@@ -649,6 +649,15 @@ void WiFi::InterworkingSelectDone() {
   }
 }
 
+void WiFi::ANQPQueryDone(const std::string& addr, const std::string& result) {
+  SLOG(this, 2) << __func__ << " addr=" << addr << " result=" << result;
+  // ANQPQueryDone is called when the results of an ANQP query are available.
+  // The query can be triggered either by an explicit ANQPGet call or when an
+  // interworking selection is done.
+  // TODO(b/322972968): add metrics to report the result of the ANQP request and
+  // the supported fields.
+}
+
 void WiFi::TermsAndConditions(const std::string& url) {
   SLOG(this, 2) << __func__;
   std::optional<net_base::HttpUrl> http_url =
@@ -2611,6 +2620,15 @@ void WiFi::StateChanged(const std::string& new_state) {
             Metrics::kMetricPasspointTermsAndConditions,
             Metrics::kPasspointTermsAndConditionsAssociated);
       }
+      WiFiEndpointConstRefPtr current = GetCurrentEndpoint();
+      if (!current->hs20_information().supported && current->anqp_support()) {
+        // The endpoint supports ANQP requests, query the capability list to
+        // know the fields supported by the access point.
+        // HS2.0 endpoints are excluded since we expect the ANQP request to be
+        // done during interworking selection.
+        ANQPGet(GetCurrentEndpoint()->bssid_string(),
+                {IEEE_80211::kANQPCapabilityList});
+      }
     }
     has_already_completed_ = true;
     StopHandshakeTimer();
@@ -4264,6 +4282,15 @@ bool WiFi::UpdateSupplicantProperties(const WiFiService* service,
   }
 
   return true;
+}
+
+void WiFi::ANQPGet(const std::string& bssid, const std::vector<uint16_t>& ids) {
+  KeyValueStore args;
+  args.Set<std::string>(WPASupplicant::kANQPPropertyAddr, bssid);
+  args.Set<std::vector<uint16_t>>(WPASupplicant::kANQPPropertyIds, ids);
+  if (!supplicant_interface_proxy_->ANQPGet(args)) {
+    LOG(ERROR) << __func__ << "failed to send ANQP request to " << bssid;
+  }
 }
 
 }  // namespace shill

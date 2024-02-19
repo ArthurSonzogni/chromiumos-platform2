@@ -64,6 +64,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool RemoveAllCreds() override;
   bool InterworkingSelect() override;
   bool SignalPoll(KeyValueStore* signalInfo) override;
+  bool ANQPGet(const KeyValueStore& args) override;
 
  private:
   class PropertySet : public dbus::PropertySet {
@@ -107,6 +108,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                            const dbus::ObjectPath& cred,
                            const brillo::VariantDictionary& properties);
   void InterworkingSelectDone();
+  void ANQPQueryDone(const std::string& addr, const std::string& result);
   void NetworkAdded(const dbus::ObjectPath& network,
                     const brillo::VariantDictionary& properties);
   void NetworkRemoved(const dbus::ObjectPath& network);

@@ -41,6 +41,10 @@ class SupplicantEventDelegateInterface {
   // Interworking match between endpoint and Passpoint credentials is over.
   virtual void InterworkingSelectDone() = 0;
 
+  // Report the result of an ANQP request sent to |addr| in |result|.
+  virtual void ANQPQueryDone(const std::string& addr,
+                             const std::string& result) = 0;
+
   // The interface element in the supplicant has changed one or more
   // properties.
   virtual void PropertiesChanged(const KeyValueStore& properties) = 0;

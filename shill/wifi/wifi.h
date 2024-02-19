@@ -169,6 +169,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
+  void ANQPQueryDone(const std::string& addr,
+                     const std::string& result) override;
   void BSSAdded(const RpcIdentifier& BSS,
                 const KeyValueStore& properties) override;
   void BSSRemoved(const RpcIdentifier& BSS) override;
@@ -795,6 +797,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool ShouldBringNetworkInterfaceDownAfterDisabled() const override {
     return true;
   }
+
+  // Sends an ANQP request to for the identifier list |ids| to the access point
+  // represented by |bssid|.
+  void ANQPGet(const std::string& bssid, const std::vector<uint16_t>& ids);
 
   // Called when link becomes unreliable (multiple link monitor failures
   // detected in short period of time).

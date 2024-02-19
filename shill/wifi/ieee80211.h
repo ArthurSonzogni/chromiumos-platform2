@@ -284,6 +284,29 @@ enum WiFiStatusCode : uint16_t {
   kStatusCodeInvalid = UINT16_MAX
 };
 
+// ANQP information ID as defined from IEEE802.11-2020, table 7-43bk.
+enum ANQPInformationID : uint16_t {
+  // 0-255 are reserved.
+  kANQPQueryList = 256,
+  kANQPCapabilityList = 257,
+  kANQPVenueName = 258,
+  kANQPEmergencyCallNumber = 259,
+  kANQPNetworkAuthenticationType = 260,
+  kANQPRoamingConsortiumList = 261,
+  kANQPAddressTypeAvailability = 262,
+  kANQPNAIRealmList = 263,
+  kANQP3GPPCellularNetwork = 264,
+  kANQPAPGeospatialLocation = 265,
+  kANQPAPCivicLocation = 266,
+  kANQPAPLocationPublicIdentifierURI = 267,
+  kANQPDomainNameList = 268,
+  kANQPEmergencyAlertIdentifierURI = 269,
+  kANQPEmergencyNAI = 271,
+  // 272-76796 are reserved.
+  kANQPVendorSpecificList = 56797,
+  // 56798-65535 are reserved.
+};
+
 // Returns a string representing the specified |reason|, which is an integer
 // value corresponding to the NL80211_ATTR_REASON_CODE attribute acquired from
 // the kernel.

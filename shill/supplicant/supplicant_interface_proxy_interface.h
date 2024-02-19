@@ -47,6 +47,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool RemoveAllCreds() = 0;
   virtual bool InterworkingSelect() = 0;
   virtual bool SignalPoll(KeyValueStore* signalInfo) = 0;
+  virtual bool ANQPGet(const KeyValueStore& args) = 0;
 };
 
 }  // namespace shill

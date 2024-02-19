@@ -34,6 +34,7 @@
 #include <net-base/netlink_packet.h>
 #include <net-base/netlink_message.h>
 
+#include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -457,6 +458,14 @@ void AddVendorIE(uint32_t oui,
   ies->push_back((oui >> 8) & 0xff);          // OUI middle octet
   ies->push_back(oui & 0xff);                 // OUI LSByte
   ies->push_back(vendor_type);                // OUI Type
+  ies->insert(ies->end(), data.begin(), data.end());
+}
+
+void AddIEWithData(uint8_t type,
+                   std::vector<uint8_t> data,
+                   std::vector<uint8_t>* ies) {
+  ies->push_back(type);         // type
+  ies->push_back(data.size());  // length
   ies->insert(ies->end(), data.begin(), data.end());
 }
 
@@ -1737,7 +1746,9 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   StartWiFi();
 
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
   InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
 
   const auto dhcp_matcher =
       Optional(AllOf(Field(&DHCPProvider::Options::use_arp_gateway, true),
@@ -3233,9 +3244,11 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Supplicant state should still be updated, however.
   StartWiFi();
   test_event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
   InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
   EXPECT_EQ(service->state(), Service::kStateAssociating);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service->state(), Service::kStateConfiguring);
@@ -3250,8 +3263,10 @@ TEST_F(WiFiMainTest, RoamStateChange) {
   // Forward transition should trigger a Service state change.
   StartWiFi();
   test_event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
   InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   SetIsRoamingInProgress(true);
   EXPECT_CALL(*service, SetState(_)).Times(0);
@@ -4154,10 +4169,12 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   StartWiFi();
   test_event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWep);
+  RpcIdentifier bss_path = AddEndpointToService(service, -90, 0, nullptr);
 
   SetWEPSupport(true);
   ExpectConnecting();
   InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
   SetCurrentService(service);
 
   // These expectations are very much like SetupConnectedService except
@@ -6222,6 +6239,34 @@ TEST_F(WiFiMainTest, TermsAndConditions) {
 
   EXPECT_CALL(*network(), OnTermsAndConditions(http_url.value())).Times(1);
   TermsAndConditions(url);
+}
+
+TEST_F(WiFiMainTest, ANQPGet) {
+  StartWiFi();
+
+  // Create a service with and endpoint that supports ANQP.
+  std::vector<uint8_t> ies;
+  const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtANQP};
+  AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+
+  std::string ssid;
+  RpcIdentifier path;
+  std::string bssid;
+  WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
+  MockWiFiServiceRefPtr service =
+      MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
+  EXPECT_CALL(*wifi_provider(), FindServiceForEndpoint(EndpointMatch(endpoint)))
+      .WillRepeatedly(Return(service));
+  ON_CALL(*service, GetBSSIDConnectableEndpointCount())
+      .WillByDefault(Return(1));
+  ReportBSSWithIEs(path, ssid, bssid, -90, 0, kNetworkModeInfrastructure, ies);
+
+  InitiateConnect(service);
+  ReportCurrentBSSChanged(path);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), ANQPGet(_));
+  TriggerNetworkStart();
+  Mock::VerifyAndClearExpectations(service.get());
 }
 
 }  // namespace shill

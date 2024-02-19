@@ -133,6 +133,10 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
       base::BindRepeating(&SupplicantInterfaceProxy::HS20TermsAndConditions,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  interface_proxy_->RegisterANQPQueryDoneSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::ANQPQueryDone,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.
@@ -476,6 +480,19 @@ bool SupplicantInterfaceProxy::RemoveAllCreds() {
   return true;
 }
 
+bool SupplicantInterfaceProxy::ANQPGet(const KeyValueStore& args) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(args);
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->ANQPGet(dict, &error)) {
+    LOG(ERROR) << __func__ << ": request failed: " << error->GetCode() << " "
+               << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
 void SupplicantInterfaceProxy::BlobAdded(const std::string& /*blobname*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX
@@ -551,6 +568,12 @@ void SupplicantInterfaceProxy::InterworkingAPAdded(
 void SupplicantInterfaceProxy::InterworkingSelectDone() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   delegate_->InterworkingSelectDone();
+}
+
+void SupplicantInterfaceProxy::ANQPQueryDone(const std::string& addr,
+                                             const std::string& result) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->ANQPQueryDone(addr, result);
 }
 
 void SupplicantInterfaceProxy::ScanDone(bool success) {

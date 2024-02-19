@@ -68,6 +68,9 @@
     </method>
     <method name="RemoveAllCreds"/>
     <method name="InterworkingSelect"/>
+    <method name="ANQPGet">
+      <arg name="args" type="a{sv}" direction="in"/>
+    </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Scanning" type="b" access="read"/>
@@ -127,6 +130,10 @@
       <arg name="properties" type="a{sv}"/>
     </signal>
     <signal name="InterworkingSelectDone">
+    </signal>
+    <signal name="ANQPQueryDone">
+      <arg name="addr" type="s"/>
+      <arg name="result" type="s"/>
     </signal>
     <signal name="StationAdded">
       <arg name="Station" type="o"/>

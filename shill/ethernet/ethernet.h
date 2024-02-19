@@ -64,6 +64,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
+  void ANQPQueryDone(const std::string& addr,
+                     const std::string& result) override{};
   void BSSAdded(const RpcIdentifier& BSS,
                 const KeyValueStore& properties) override;
   void BSSRemoved(const RpcIdentifier& BSS) override;
