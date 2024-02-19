@@ -15,6 +15,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/types/expected.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -33,8 +34,8 @@ void LogResetColorError(const std::optional<std::string>& err) {
 }  // namespace
 
 base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
-LedLitUpV2Routine::Create(Context* context,
-                          mojom::LedLitUpRoutineArgumentPtr arg) {
+LedLitUpRoutine::Create(Context* context,
+                        mojom::LedLitUpRoutineArgumentPtr arg) {
   CHECK(!arg.is_null());
 
   auto status = context->ground_truth()->PrepareRoutineLedLitUp();
@@ -50,15 +51,12 @@ LedLitUpV2Routine::Create(Context* context,
         mojom::Unsupported::New("Unexpected LED color", /*reason=*/nullptr)));
   }
   return base::ok(
-      base::WrapUnique(new LedLitUpV2Routine(context, std::move(arg))));
+      base::WrapUnique(new LedLitUpRoutine(context, std::move(arg))));
 }
 
-LedLitUpV2Routine::LedLitUpV2Routine(Context* context,
-                                     mojom::LedLitUpRoutineArgumentPtr arg)
-    : context_(context),
-      name_(arg->name),
-      color_(arg->color),
-      step_(TestStep::kInitialize) {
+LedLitUpRoutine::LedLitUpRoutine(Context* context,
+                                 mojom::LedLitUpRoutineArgumentPtr arg)
+    : context_(context), name_(arg->name), color_(arg->color) {
   CHECK(context_);
   if (arg->replier.is_valid()) {
     // The disconnection of |replier_| is handled in |RunNextStep| to avoid
@@ -67,14 +65,14 @@ LedLitUpV2Routine::LedLitUpV2Routine(Context* context,
   }
 }
 
-LedLitUpV2Routine::~LedLitUpV2Routine() {
+LedLitUpRoutine::~LedLitUpRoutine() {
   if (need_reset_color_in_cleanup_) {
     context_->executor()->ResetLedColor(name_,
                                         base::BindOnce(&LogResetColorError));
   }
 }
 
-void LedLitUpV2Routine::OnStart() {
+void LedLitUpRoutine::OnStart() {
   CHECK_EQ(step_, TestStep::kInitialize);
   if (!replier_.is_bound()) {
     RaiseException("Invalid replier.");
@@ -83,7 +81,7 @@ void LedLitUpV2Routine::OnStart() {
   RunNextStep();
 }
 
-void LedLitUpV2Routine::ReplierDisconnectHandler() {
+void LedLitUpRoutine::ReplierDisconnectHandler() {
   CHECK_EQ(step_, TestStep::kGetColorMatched);
   context_->executor()->ResetLedColor(name_,
                                       base::BindOnce(&LogResetColorError));
@@ -91,7 +89,7 @@ void LedLitUpV2Routine::ReplierDisconnectHandler() {
   RaiseException("Replier disconnected.");
 }
 
-void LedLitUpV2Routine::SetLedColorCallback(
+void LedLitUpRoutine::SetLedColorCallback(
     const std::optional<std::string>& err) {
   CHECK_EQ(step_, TestStep::kSetColor);
   if (err) {
@@ -106,7 +104,7 @@ void LedLitUpV2Routine::SetLedColorCallback(
   RunNextStep();
 }
 
-void LedLitUpV2Routine::GetColorMatchedCallback(bool matched) {
+void LedLitUpRoutine::GetColorMatchedCallback(bool matched) {
   CHECK_EQ(step_, TestStep::kGetColorMatched);
   // No need to handle the disconnection after receiving the response.
   replier_.set_disconnect_handler(base::DoNothing());
@@ -114,7 +112,7 @@ void LedLitUpV2Routine::GetColorMatchedCallback(bool matched) {
   RunNextStep();
 }
 
-void LedLitUpV2Routine::ResetLedColorCallback(
+void LedLitUpRoutine::ResetLedColorCallback(
     const std::optional<std::string>& err) {
   CHECK_EQ(step_, TestStep::kResetColor);
   // Don't need to reset the color again if we've tried once.
@@ -127,7 +125,7 @@ void LedLitUpV2Routine::ResetLedColorCallback(
   RunNextStep();
 }
 
-void LedLitUpV2Routine::RunNextStep() {
+void LedLitUpRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int>(step_) + 1);
 
   switch (step_) {
@@ -139,7 +137,7 @@ void LedLitUpV2Routine::RunNextStep() {
       SetPercentage(25);
       context_->executor()->SetLedColor(
           name_, color_,
-          base::BindOnce(&LedLitUpV2Routine::SetLedColorCallback,
+          base::BindOnce(&LedLitUpRoutine::SetLedColorCallback,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kGetColorMatched:
@@ -152,10 +150,10 @@ void LedLitUpV2Routine::RunNextStep() {
                         "Waiting for user to check the LED color.");
         // Handle the disconnection during calling the remote function.
         replier_.set_disconnect_handler(
-            base::BindOnce(&LedLitUpV2Routine::ReplierDisconnectHandler,
+            base::BindOnce(&LedLitUpRoutine::ReplierDisconnectHandler,
                            weak_ptr_factory_.GetWeakPtr()));
         replier_->GetColorMatched(
-            base::BindOnce(&LedLitUpV2Routine::GetColorMatchedCallback,
+            base::BindOnce(&LedLitUpRoutine::GetColorMatchedCallback,
                            weak_ptr_factory_.GetWeakPtr()));
       }
       break;
@@ -163,7 +161,7 @@ void LedLitUpV2Routine::RunNextStep() {
       SetRunningState();
       SetPercentage(75);
       context_->executor()->ResetLedColor(
-          name_, base::BindOnce(&LedLitUpV2Routine::ResetLedColorCallback,
+          name_, base::BindOnce(&LedLitUpRoutine::ResetLedColorCallback,
                                 weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:

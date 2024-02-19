@@ -91,7 +91,7 @@ class LedLitUpRoutineV2Test : public BaseFileTest {
     if (!option.without_replier) {
       arg->replier = mock_replier_.receiver.BindNewPipeAndPassRemote();
     }
-    return LedLitUpV2Routine::Create(&mock_context_, std::move(arg));
+    return LedLitUpRoutine::Create(&mock_context_, std::move(arg));
   }
 
   void SetExecutorSetLedColorResponse(const std::optional<std::string>& err) {
