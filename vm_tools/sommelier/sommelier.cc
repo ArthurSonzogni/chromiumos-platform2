@@ -4017,6 +4017,8 @@ int real_main(int argc, char** argv) {
       ctx.viewport_resize = true;
     } else if (strstr(arg, "--allow-xwayland-emulate-screen-pos-size") == arg) {
       ctx.allow_xwayland_emulate_screen_pos_size = true;
+    } else if (strstr(arg, "--ignore-stateless-toplevel-configure") == arg) {
+      ctx.ignore_stateless_toplevel_configure = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

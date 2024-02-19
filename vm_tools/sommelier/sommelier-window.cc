@@ -268,8 +268,13 @@ void sl_internal_toplevel_configure(struct sl_window* window,
   int activated = 0;
   uint32_t* state;
   int i = 0;
-  if (!window->managed)
+  if (!window->managed ||
+      (window->ctx->ignore_stateless_toplevel_configure && states->size == 0)) {
+    // Ignore requests for non-managed windows.
+    // Ignore requests with no states if --ignore-stateless-toplevel-configure
+    // is set.
     return;
+  }
 
   if (width && height) {
     int32_t width_in_pixels = width;
