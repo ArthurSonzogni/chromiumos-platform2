@@ -194,10 +194,19 @@ base::Value::Dict ConvertToValue(
       out_rssi_history.Append(std::move(rssi));
     }
     out_peripheral.Set("rssi_history", std::move(out_rssi_history));
-    if (peripheral->name.has_value())
+    if (peripheral->name.has_value()) {
       out_peripheral.Set("name", peripheral->name.value());
-    if (peripheral->peripheral_id.has_value())
+    }
+    if (peripheral->peripheral_id.has_value()) {
       out_peripheral.Set("peripheral_id", peripheral->peripheral_id.value());
+    }
+    if (peripheral->uuids.has_value()) {
+      base::Value::List out_uuids;
+      for (const auto& uuid : peripheral->uuids.value()) {
+        out_uuids.Append(uuid.AsLowercaseString());
+      }
+      out_peripheral.Set("uuids", std::move(out_uuids));
+    }
 
     out_peripherals.Append(std::move(out_peripheral));
   }

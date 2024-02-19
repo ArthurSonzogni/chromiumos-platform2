@@ -250,6 +250,7 @@ void BluetoothScanningRoutine::StoreScannedPeripheral(
   }
   if (!scanned_peripherals_.contains(devie_info->address)) {
     scanned_peripherals_[devie_info->address].name = devie_info->name;
+    GetPeripheralUuids(device);
   }
 
   // TODO(b/300239430): Remove polling after RSSI changed event is supported.
@@ -298,6 +299,43 @@ void BluetoothScanningRoutine::HandleRssiResponse(const std::string& address,
     return;
   }
   scanned_peripherals_[address].rssi_history.push_back(rssi);
+}
+
+void BluetoothScanningRoutine::GetPeripheralUuids(
+    const brillo::VariantDictionary& device) {
+  auto adapter = GetDefaultAdapter();
+  if (!adapter) {
+    SetResultAndStop(base::unexpected("Failed to get default adapter."));
+    return;
+  }
+
+  auto devie_info = floss_utils::ParseDeviceInfo(device);
+  CHECK(devie_info.has_value());
+  auto uuids_cb = SplitDbusCallback(
+      base::BindOnce(&BluetoothScanningRoutine::HandleUuidsResponse,
+                     weak_ptr_factory_.GetWeakPtr(), devie_info->address));
+  adapter->GetRemoteUuidsAsync(device, std::move(uuids_cb.first),
+                               std::move(uuids_cb.second));
+}
+
+void BluetoothScanningRoutine::HandleUuidsResponse(
+    const std::string& address,
+    brillo::Error* error,
+    const std::vector<std::vector<uint8_t>>& uuids) {
+  if (error) {
+    SetResultAndStop(base::unexpected("Failed to get device UUIDs"));
+    return;
+  }
+
+  for (const auto& uuid : uuids) {
+    auto out_uuid = floss_utils::ParseUuidBytes(uuid);
+    if (!out_uuid.is_valid()) {
+      SetResultAndStop(
+          base::unexpected("Failed to parse UUID from device UUIDs."));
+      return;
+    }
+    scanned_peripherals_[address].uuids.push_back(out_uuid);
+  }
 }
 
 void BluetoothScanningRoutine::UpdatePercentage() {
@@ -357,6 +395,7 @@ void BluetoothScanningRoutine::SetResultAndStop(
       peripheral_info->name = info.name;
       peripheral_info->peripheral_id =
           base::NumberToString(base::FastHash((address)));
+      peripheral_info->uuids = info.uuids;
     }
     routine_output->peripherals.push_back(std::move(peripheral_info));
   }

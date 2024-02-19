@@ -115,12 +115,16 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothScanningDetail) {
   peripheral1->rssi_history = std::vector<int16_t>{-40, -50, -60};
   peripheral1->name = "TEST_PERIPHERAL_1";
   peripheral1->peripheral_id = "TEST_ID_1";
+  peripheral1->uuids = {
+      base::Uuid::ParseLowercase("0000110a-0000-1000-8000-00805f9b34fb"),
+      base::Uuid::ParseLowercase("0000110f-0000-1000-8000-00805f9b34fb")};
   detail->peripherals.push_back(std::move(peripheral1));
 
   auto peripheral2 = mojom::BluetoothScannedPeripheralInfo::New();
   peripheral2->rssi_history = std::vector<int16_t>{-100, -90, -80};
   peripheral2->name = std::nullopt;
   peripheral2->peripheral_id = std::nullopt;
+  peripheral2->uuids = std::nullopt;
   detail->peripherals.push_back(std::move(peripheral2));
 
   base::Value::Dict expected_peripheral1;
@@ -131,6 +135,10 @@ TEST(RoutineOutputUtilsTest, ConvertBluetoothScanningDetail) {
   expected_peripheral1.Set("rssi_history", std::move(expected_rssi_history1));
   expected_peripheral1.Set("name", "TEST_PERIPHERAL_1");
   expected_peripheral1.Set("peripheral_id", "TEST_ID_1");
+  base::Value::List expected_uuids;
+  expected_uuids.Append("0000110a-0000-1000-8000-00805f9b34fb");
+  expected_uuids.Append("0000110f-0000-1000-8000-00805f9b34fb");
+  expected_peripheral1.Set("uuids", std::move(expected_uuids));
   base::Value::Dict expected_peripheral2;
   base::Value::List expected_rssi_history2;
   expected_rssi_history2.Append(-100);

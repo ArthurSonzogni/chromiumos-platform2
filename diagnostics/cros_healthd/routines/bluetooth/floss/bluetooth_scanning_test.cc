@@ -23,6 +23,7 @@
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
+#include "diagnostics/cros_healthd/utils/floss_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -34,6 +35,10 @@ namespace {
 const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
 const int32_t kDefaultHciInterface = 0;
+
+const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
+                                             0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
+                                             0x5f, 0x9b, 0x34, 0xfb};
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
@@ -49,6 +54,7 @@ struct FakeScannedPeripheral {
   std::string name;
   brillo::VariantDictionary device_dict;
   std::vector<int16_t> rssi_history;
+  std::vector<std::vector<uint8_t>> uuids;
   bool is_high_signal;
 };
 
@@ -110,6 +116,7 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
             }));
 
     SetupGetRssiCall();
+    SetupGetUuidsCall();
 
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
         .WillRepeatedly(base::test::RunOnceCallback<0>(/*is_success=*/true));
@@ -129,6 +136,15 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
           .InSequence(s)
           .WillRepeatedly(
               base::test::RunOnceCallbackRepeatedly<1>(/*invalid_rssi=*/127));
+    }
+  }
+
+  void SetupGetUuidsCall() {
+    for (const auto& peripheral : fake_peripherals_) {
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteUuidsAsync(peripheral.device_dict, _, _, _))
+          .WillRepeatedly(
+              base::test::RunOnceCallbackRepeatedly<1>(peripheral.uuids));
     }
   }
 
@@ -217,12 +233,14 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
   void AddScannedDeviceData(std::string address,
                             std::string name,
                             std::vector<int16_t> rssi_history,
+                            std::vector<std::vector<uint8_t>> uuids,
                             bool is_high_signal = true) {
     fake_peripherals_.push_back(
         {.address = address,
          .name = name,
          .device_dict = {{"address", address}, {"name", name}},
          .rssi_history = rssi_history,
+         .uuids = uuids,
          .is_high_signal = is_high_signal});
   }
 
@@ -231,11 +249,21 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
     for (const auto& peripheral : fake_peripherals_) {
       auto out_peripheral = mojom::BluetoothScannedPeripheralInfo::New();
       out_peripheral->rssi_history = peripheral.rssi_history;
+
+      // These fields will be reported when the signal is high.
       if (peripheral.is_high_signal) {
         out_peripheral->name = peripheral.name;
         out_peripheral->peripheral_id =
             base::NumberToString(base::FastHash(peripheral.address));
+        std::vector<base::Uuid> out_uuids;
+        for (const auto& uuid : peripheral.uuids) {
+          auto out_uuid = floss_utils::ParseUuidBytes(uuid);
+          CHECK(out_uuid.is_valid());
+          out_uuids.push_back(out_uuid);
+        }
+        out_peripheral->uuids = out_uuids;
       }
+
       detail->peripherals.push_back(std::move(out_peripheral));
     }
     return detail;
@@ -255,9 +283,10 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
 TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
   // Set up fake data.
   AddScannedDeviceData(/*address=*/"70:88:6B:92:34:70", /*name=*/"GID6B",
-                       /*rssi_history=*/{-54, -56, -52});
+                       /*rssi_history=*/{-54, -56, -52},
+                       /*uuids=*/{kTestUuidBytes});
   AddScannedDeviceData(/*address=*/"70:D6:9F:0B:4F:D8", /*name=*/"",
-                       /*rssi_history=*/{-54});
+                       /*rssi_history=*/{-54}, /*uuids=*/{});
   // Low signal RSSI history.
   AddScannedDeviceData(
       /*address=*/"6F:92:B8:03:F3:4E", /*name=*/"Low signal device name",
@@ -265,6 +294,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
       {kNearbyPeripheralMinimumAverageRssi, kNearbyPeripheralMinimumAverageRssi,
        kNearbyPeripheralMinimumAverageRssi, kNearbyPeripheralMinimumAverageRssi,
        kNearbyPeripheralMinimumAverageRssi - 1},
+      /*uuids=*/{},
       /*is_high_signal=*/false);
 
   SetupRoutineSuccessCall(/*initial_powered=*/true);
@@ -384,22 +414,46 @@ TEST_F(BluetoothScanningRoutineTest, ParseDeviceInfoError) {
 // Test that the Bluetooth scanning routine can handle the error when getting
 // device RSSI.
 TEST_F(BluetoothScanningRoutineTest, GetDeviceRssiError) {
+  AddScannedDeviceData(/*address=*/"70:D6:9F:0B:4F:D8", /*name=*/"",
+                       /*rssi_history=*/{}, /*uuids=*/{});
+
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
-  // Start discovery.
-  EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(
-          WithArg<0>([&](base::OnceCallback<void(bool is_success)> on_success) {
-            std::move(on_success).Run(/*is_success=*/true);
-            fake_floss_event_hub()->SendDevicePropertiesChanged(
-                brillo::VariantDictionary{{"address", ""}, {"name", ""}},
-                {static_cast<uint32_t>(BtPropertyType::kRemoteRssi)});
-          }));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, GetRemoteRSSIAsync(_, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error.get()));
 
   RunRoutineAndWaitForException("Failed to get device RSSI");
+}
+
+// Test that the Bluetooth scanning routine can handle the error when getting
+// device UUIDs.
+TEST_F(BluetoothScanningRoutineTest, GetDeviceUuidsError) {
+  AddScannedDeviceData(/*address=*/"70:D6:9F:0B:4F:D8", /*name=*/"",
+                       /*rssi_history=*/{}, /*uuids=*/{});
+
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
+
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_adapter_proxy_, GetRemoteUuidsAsync(_, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<2>(error.get()));
+
+  RunRoutineAndWaitForException("Failed to get device UUIDs");
+}
+
+// Test that the Bluetooth scanning routine can handle the error when parsing
+// device UUIDs.
+TEST_F(BluetoothScanningRoutineTest, ParseDeviceUuidsError) {
+  AddScannedDeviceData(/*address=*/"70:D6:9F:0B:4F:D8", /*name=*/"",
+                       /*rssi_history=*/{}, /*uuids=*/{});
+
+  SetupRoutineSuccessCall(/*initial_powered=*/true);
+
+  std::vector<std::vector<uint8_t>> bad_uuids{{}};
+  EXPECT_CALL(mock_adapter_proxy_, GetRemoteUuidsAsync(_, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(bad_uuids));
+
+  RunRoutineAndWaitForException("Failed to parse UUID from device UUIDs.");
 }
 
 // Test that the Bluetooth scanning routine can handle the error when timeout

@@ -138,6 +138,14 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
     } else {
       EXPECT_CALL(*mock_device, is_rssi_valid()).WillOnce(Return(false));
     }
+    // UUIDs.
+    if (device.uuids.has_value()) {
+      EXPECT_CALL(*mock_device, is_uuids_valid()).WillOnce(Return(true));
+      EXPECT_CALL(*mock_device, uuids())
+          .WillOnce(ReturnRef(device.uuids.value()));
+    } else {
+      EXPECT_CALL(*mock_device, is_uuids_valid()).WillOnce(Return(false));
+    }
   }
 
   void SetDeviceRssiChangedCall(const dbus::ObjectPath& device_path,
@@ -152,11 +160,13 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
                             std::string address,
                             std::optional<std::string> name,
                             std::vector<int16_t> rssi_history,
+                            std::optional<std::vector<std::string>> uuids,
                             bool is_high_signal = true) {
     fake_devices_[device_path] = ScannedPeripheralDevice{
         .peripheral_id = base::NumberToString(base::FastHash(address)),
         .name = name,
-        .rssi_history = rssi_history};
+        .rssi_history = rssi_history,
+        .uuids = uuids};
     device_addresses_[device_path] = address;
     mock_device_proxies_[device_path] =
         std::make_unique<StrictMock<org::bluez::Device1ProxyMock>>();
@@ -169,8 +179,15 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
       base::Value::Dict peripheral;
       if (is_high_signal_device[device_path]) {
         peripheral.Set("peripheral_id", device.peripheral_id);
-        if (device.name.has_value())
+        if (device.name.has_value()) {
           peripheral.Set("name", device.name.value());
+        }
+        if (device.uuids.has_value()) {
+          base::Value::List out_uuids;
+          for (const auto& uuid : device.uuids.value())
+            out_uuids.Append(uuid);
+          peripheral.Set("uuids", std::move(out_uuids));
+        }
       }
       base::Value::List out_rssi_history;
       for (const auto& rssi : device.rssi_history)
@@ -220,18 +237,22 @@ TEST_F(BluezBluetoothScanningRoutineTest, RoutineSuccess) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Set up fake data.
-  SetScannedDeviceData(dbus::ObjectPath("/org/bluez/dev_70_88_6B_92_34_70"),
-                       /*address=*/"70:88:6B:92:34:70", /*name=*/"GID6B",
-                       /*rssi_history=*/{-54, -56, -52});
+  SetScannedDeviceData(
+      dbus::ObjectPath("/org/bluez/dev_70_88_6B_92_34_70"),
+      /*address=*/"70:88:6B:92:34:70", /*name=*/"GID6B",
+      /*rssi_history=*/{-54, -56, -52}, /*uuids=*/
+      std::vector<std::string>{"0000110c-0000-1000-8000-00805f9b34fb",
+                               "0000110e-0000-1000-8000-00805f9b34fb",
+                               "0000111e-0000-1000-8000-00805f9b34fb"});
   SetScannedDeviceData(dbus::ObjectPath("/org/bluez/dev_70_D6_9F_0B_4F_D8"),
                        /*address=*/"70:D6:9F:0B:4F:D8", /*name=*/std::nullopt,
-                       /*rssi_history=*/{-54});
+                       /*rssi_history=*/{-54}, /*uuids=*/std::nullopt);
   // Low signal RSSI history.
   SetScannedDeviceData(
       dbus::ObjectPath("/org/bluez/dev_6F_92_B8_03_F3_4E"),
       /*address=*/"6F:92:B8:03:F3:4E", /*name=*/"Low signal device name",
       /*rssi_history=*/{kNearbyPeripheralMinimumAverageRssi - 1},
-      /*is_high_signal=*/false);
+      /*uuids=*/std::vector<std::string>{}, /*is_high_signal=*/false);
 
   // Start scanning.
   SetSwitchDiscoveryCall();

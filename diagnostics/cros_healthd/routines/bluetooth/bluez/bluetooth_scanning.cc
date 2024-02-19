@@ -49,9 +49,16 @@ base::Value::Dict ConstructPeripheralDict(
   // Peripheral ID.
   peripheral.Set("peripheral_id", device.peripheral_id);
   // Name.
-  if (device.name.has_value())
+  if (device.name.has_value()) {
     peripheral.Set("name", device.name.value());
-
+  }
+  // UUIDs.
+  if (device.uuids.has_value()) {
+    base::Value::List out_uuids;
+    for (const auto& uuid : device.uuids.value())
+      out_uuids.Append(uuid);
+    peripheral.Set("uuids", std::move(out_uuids));
+  }
   return peripheral;
 }
 
@@ -221,6 +228,8 @@ void BluetoothScanningRoutine::OnDeviceAdded(
     scanned_devices_[path].name = device->name();
   if (device->is_rssi_valid())
     scanned_devices_[path].rssi_history.push_back(device->rssi());
+  if (device->is_uuids_valid())
+    scanned_devices_[path].uuids = device->uuids();
 }
 
 void BluetoothScanningRoutine::OnDevicePropertyChanged(
@@ -239,6 +248,9 @@ void BluetoothScanningRoutine::OnDevicePropertyChanged(
   if (property_name == device->NameName()) {
     if (device->is_name_valid())
       scanned_devices_[path].name = device->name();
+  } else if (property_name == device->UUIDsName()) {
+    if (device->is_uuids_valid())
+      scanned_devices_[path].uuids = device->uuids();
   } else if (property_name == device->RSSIName()) {
     if (device->is_rssi_valid())
       scanned_devices_[path].rssi_history.push_back(device->rssi());

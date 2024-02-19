@@ -27,6 +27,7 @@ struct ScannedPeripheralDevice {
   std::string peripheral_id;
   std::optional<std::string> name;
   std::vector<int16_t> rssi_history;
+  std::optional<std::vector<std::string>> uuids;
 };
 
 class BluetoothScanningRoutine final : public DiagnosticRoutineWithStatus,

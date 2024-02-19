@@ -13,6 +13,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
+#include <base/uuid.h>
 #include <brillo/variant_dictionary.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
@@ -94,6 +95,14 @@ class BluetoothScanningRoutine final : public BaseRoutineControl,
                           brillo::Error* error,
                           int16_t rssi);
 
+  // Get the scanned peripheral's UUIDs.
+  void GetPeripheralUuids(const brillo::VariantDictionary& device);
+
+  // Handle the response of the peripheral UUIDs.
+  void HandleUuidsResponse(const std::string& address,
+                           brillo::Error* error,
+                           const std::vector<std::vector<uint8_t>>& uuids);
+
   // Update the routine percentage.
   void UpdatePercentage();
 
@@ -126,6 +135,7 @@ class BluetoothScanningRoutine final : public BaseRoutineControl,
   struct ScannedPeripheral {
     std::vector<int16_t> rssi_history;
     std::optional<std::string> name;
+    std::vector<base::Uuid> uuids;
   };
 
   // Scanned peripherals. The key is the peripheral's address.
