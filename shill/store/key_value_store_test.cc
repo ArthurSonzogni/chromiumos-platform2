@@ -37,6 +37,7 @@ const char kUintKey[] = "UintKey";
 const char kUint16Key[] = "Uint16Key";
 const char kUint8Key[] = "Uint8Key";
 const char kUint8sKey[] = "Uint8sKey";
+const char kUint16sKey[] = "Uint16sKey";
 const char kUint32sKey[] = "Uint32sKey";
 const char kUint64sKey[] = "Uint64sKey";
 const char kNestedInt32Key[] = "NestedInt32Key";
@@ -66,6 +67,7 @@ const uint32_t kUintValue = 654;
 const uint16_t kUint16Value = 123;
 const uint8_t kUint8Value = 3;
 const std::vector<uint8_t> kUint8sValue{1, 2};
+const std::vector<uint16_t> kUint16sValue{1, 2};
 const std::vector<uint32_t> kUint32sValue{1, 2};
 const std::vector<uint64_t> kUint64sValue{1,
                                           std::numeric_limits<uint64_t>::min(),
@@ -100,6 +102,7 @@ class KeyValueStoreTest : public Test {
     store->Set<uint16_t>(kUint16Key, kUint16Value);
     store->Set<uint8_t>(kUint8Key, kUint8Value);
     store->Set<std::vector<uint8_t>>(kUint8sKey, kUint8sValue);
+    store->Set<std::vector<uint16_t>>(kUint16sKey, kUint16sValue);
     store->Set<std::vector<uint32_t>>(kUint32sKey, kUint32sValue);
     store->Set<std::vector<uint64_t>>(kUint64sKey, kUint64sValue);
   }
@@ -367,6 +370,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.Contains<uint32_t>(kUintKey));
   EXPECT_TRUE(store_.Contains<uint16_t>(kUint16Key));
   EXPECT_TRUE(store_.Contains<std::vector<uint8_t>>(kUint8sKey));
+  EXPECT_TRUE(store_.Contains<std::vector<uint16_t>>(kUint16sKey));
   EXPECT_TRUE(store_.Contains<std::vector<uint32_t>>(kUint32sKey));
   EXPECT_TRUE(store_.Contains<std::vector<uint64_t>>(kUint64sKey));
   EXPECT_FALSE(store_.IsEmpty());
@@ -391,6 +395,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_FALSE(store_.Contains<uint32_t>(kUintKey));
   EXPECT_FALSE(store_.Contains<uint16_t>(kUint16Key));
   EXPECT_FALSE(store_.Contains<std::vector<uint8_t>>(kUint8sKey));
+  EXPECT_FALSE(store_.Contains<std::vector<uint16_t>>(kUint16sKey));
   EXPECT_FALSE(store_.Contains<std::vector<uint32_t>>(kUint32sKey));
   EXPECT_FALSE(store_.Contains<std::vector<uint64_t>>(kUint64sKey));
 }
@@ -685,6 +690,21 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Set<std::vector<uint8_t>>("uint8sKey", kUint8s2);
   EXPECT_NE(first, second);
 
+  const std::vector<uint16_t> kUint16s1{1};
+  const std::vector<uint16_t> kUint16s2{2};
+
+  first.Clear();
+  second.Clear();
+  first.Set<std::vector<uint16_t>>("uint16sKey", kUint16s1);
+  second.Set<std::vector<uint16_t>>("uint16sOtherKey", kUint16s1);
+  EXPECT_NE(first, second);
+
+  first.Clear();
+  second.Clear();
+  first.Set<std::vector<uint16_t>>("uint16sKey", kUint16s1);
+  second.Set<std::vector<uint16_t>>("uint16sKey", kUint16s2);
+  EXPECT_NE(first, second);
+
   const std::vector<uint32_t> kUint32s1{1};
   const std::vector<uint32_t> kUint32s2{2};
 
@@ -735,6 +755,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   first.Set<uint32_t>("uintKey", 1);
   first.Set<uint16_t>("uint16Key", 1);
   first.Set<std::vector<uint8_t>>("uint8sKey", kUint8s1);
+  first.Set<std::vector<uint16_t>>("uint16sKey", kUint16s1);
   first.Set<std::vector<uint32_t>>("uint32sKey", kUint32s1);
   first.Set<std::vector<uint64_t>>("uint64sKey", kUint64s1);
   second.Set<bool>("boolKey", true);
@@ -755,6 +776,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Set<uint32_t>("uintKey", 1);
   second.Set<uint16_t>("uint16Key", 1);
   second.Set<std::vector<uint8_t>>("uint8sKey", kUint8s1);
+  second.Set<std::vector<uint16_t>>("uint16sKey", kUint16s1);
   second.Set<std::vector<uint32_t>>("uint32sKey", kUint32s1);
   second.Set<std::vector<uint64_t>>("uint64sKey", kUint64s1);
   EXPECT_EQ(first, second);
@@ -780,7 +802,7 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
 
   brillo::VariantDictionary dict =
       KeyValueStore::ConvertToVariantDictionary(store);
-  EXPECT_EQ(23, dict.size());
+  EXPECT_EQ(24, dict.size());
   EXPECT_EQ(kStringValue, dict[kStringKey].Get<std::string>());
   std::map<std::string, std::string> stringmap_value =
       dict[kStringmapKey].Get<std::map<std::string, std::string>>();
@@ -810,6 +832,7 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
     EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
   }
   EXPECT_EQ(kUint8sValue, dict[kUint8sKey].Get<std::vector<uint8_t>>());
+  EXPECT_EQ(kUint16sValue, dict[kUint16sKey].Get<std::vector<uint16_t>>());
   EXPECT_EQ(kUint32sValue, dict[kUint32sKey].Get<std::vector<uint32_t>>());
   EXPECT_EQ(kUint64sValue, dict[kUint64sKey].Get<std::vector<uint64_t>>());
   brillo::VariantDictionary nested_dict =
@@ -837,6 +860,7 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   dict[kRpcIdentifierKey] = brillo::Any(kRpcIdentifierValue);
   dict[kUint16Key] = brillo::Any(kUint16Value);
   dict[kUint8sKey] = brillo::Any(kUint8sValue);
+  dict[kUint16sKey] = brillo::Any(kUint16sValue);
   dict[kUint32sKey] = brillo::Any(kUint32sValue);
   dict[kUint64sKey] = brillo::Any(kUint64sValue);
   brillo::VariantDictionary nested_dict;
@@ -885,6 +909,8 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_EQ(kUint16Value, store.Get<uint16_t>(kUint16Key));
   EXPECT_TRUE(store.Contains<std::vector<uint8_t>>(kUint8sKey));
   EXPECT_EQ(kUint8sValue, store.Get<std::vector<uint8_t>>(kUint8sKey));
+  EXPECT_TRUE(store.Contains<std::vector<uint16_t>>(kUint16sKey));
+  EXPECT_EQ(kUint16sValue, store.Get<std::vector<uint16_t>>(kUint16sKey));
   EXPECT_TRUE(store.Contains<std::vector<uint32_t>>(kUint32sKey));
   EXPECT_EQ(kUint32sValue, store.Get<std::vector<uint32_t>>(kUint32sKey));
   EXPECT_TRUE(store.Contains<std::vector<uint64_t>>(kUint64sKey));
