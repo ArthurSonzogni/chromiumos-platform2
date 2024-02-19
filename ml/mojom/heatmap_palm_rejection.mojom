@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next MinVersion: 2
+// Next MinVersion: 3
 
 // Datatypes and interfaces of heatmap palm rejection API.
 
@@ -38,6 +38,10 @@ enum LoadHeatmapPalmRejectionResult {
   CREATE_GRAPH_EXECUTOR_ERROR = 3,
   // Failed to open the hidraw device.
   OPEN_DEVICE_ERROR = 4,
+  // Failed to create a watcher for the hidraw device.
+  [MinVersion=2] WATCH_DEVICE_ERROR = 5,  
+  // The device does not support heatmap.
+  [MinVersion=2] FEATURE_NOT_SUPPORTED_ERROR = 6,
 };
 
 // Configs to set up heatmap palm rejection service.

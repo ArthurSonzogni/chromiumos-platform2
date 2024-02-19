@@ -158,6 +158,9 @@ static_library("ml_common") {
     "web_platform_model_impl.cc",
     "web_platform_model_loader_impl.cc",
   ]
+  if (use.input_devices_spi_heatmap) {
+    sources += [ "heatmap_consumer.cc" ]
+  }
   include_dirs = [
     "${sysroot}/usr/include/icu-chrome/common",
     "${sysroot}/usr/include/icu-chrome/i18n",
@@ -174,15 +177,19 @@ static_library("ml_common") {
     "utf",
   ]
   pkg_deps = [ "protobuf" ]
+  if (use.input_devices_spi_heatmap) {
+    pkg_deps += [ "libtouchraw" ]
+  }
   all_dependent_configs = [ ":ml_common_pkg_deps" ]
   defines = [
+    "TC3_VOCAB_ANNOTATOR_IMPL",
+    "USE_INPUT_DEVICES_SPI_HEATMAP=${use.input_devices_spi_heatmap}",
     "USE_ONDEVICE_DOCUMENT_SCANNER=${use.ondevice_document_scanner}",
     "USE_ONDEVICE_DOCUMENT_SCANNER_DLC=${use.ondevice_document_scanner_dlc}",
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
-    "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
         "${use.ondevice_image_content_annotation}",
-    "TC3_VOCAB_ANNOTATOR_IMPL",
+    "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
   deps = [
@@ -308,6 +315,9 @@ if (use.test) {
       "web_platform_handwriting_proto_mojom_conversion_test.cc",
       "web_platform_model_impl_test.cc",
     ]
+    if (use.input_devices_spi_heatmap) {
+      sources += [ "heatmap_consumer_test.cc" ]
+    }
     configs += [ "//common-mk:test" ]
     include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
     defines = [
@@ -316,9 +326,9 @@ if (use.test) {
       "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
       "USE_ONDEVICE_HANDWRITING=${use.ondevice_handwriting}",
       "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
-      "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
       "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
           "${use.ondevice_image_content_annotation}",
+      "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     ]
     if (!use.asan) {
       defines += [ "USE_ONDEVICE_SPEECH=${use.ondevice_speech}" ]

@@ -128,6 +128,7 @@ _IUSE = [
     "input_devices_nvt_ts",
     "input_devices_pixart",
     "input_devices_sis",
+    "input_devices_spi_heatmap",
     "input_devices_synaptics",
     "input_devices_wacom",
     "input_devices_weida",

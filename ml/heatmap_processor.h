@@ -37,15 +37,18 @@ class HeatmapProcessor {
       chromeos::machine_learning::mojom::HeatmapPalmRejectionConfigPtr config);
 
   // Processes `heatmap_data` to decide whether there is a palm.
-  void Process(const std::vector<double>& heatmap_data,
-               int height,
-               int width,
-               base::Time timestamp);
+  virtual void Process(const std::vector<double>& heatmap_data,
+                       int height,
+                       int width,
+                       base::Time timestamp);
+
+ protected:
+  HeatmapProcessor();
 
  private:
+  FRIEND_TEST(HeatmapConsumerTest, PushesData);
   friend class base::NoDestructor<HeatmapProcessor>;
 
-  HeatmapProcessor();
   HeatmapProcessor(const HeatmapProcessor&) = delete;
   HeatmapProcessor& operator=(const HeatmapProcessor&) = delete;
 

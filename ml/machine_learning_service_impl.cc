@@ -19,6 +19,9 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
+#if USE_INPUT_DEVICES_SPI_HEATMAP
+#include <libtouchraw/touchraw_interface.h>
+#endif
 #include <mojo/public/cpp/bindings/self_owned_receiver.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <tensorflow/lite/model.h>
@@ -32,6 +35,9 @@
 #include "ml/grammar_library.h"
 #include "ml/handwriting.h"
 #include "ml/handwriting_recognizer_impl.h"
+#if USE_INPUT_DEVICES_SPI_HEATMAP
+#include "ml/heatmap_consumer.h"
+#endif
 #include "ml/heatmap_processor.h"
 #include "ml_core/dlc/dlc_client.h"
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
@@ -915,6 +921,13 @@ void MachineLearningServiceImpl::LoadHeatmapPalmRejection(
     mojo::PendingRemote<
         chromeos::machine_learning::mojom::HeatmapPalmRejectionClient> client,
     LoadHeatmapPalmRejectionCallback callback) {
+  if (!USE_INPUT_DEVICES_SPI_HEATMAP) {
+    LOG(ERROR) << "Heatmap palm rejection is not supported";
+    std::move(callback).Run(
+        LoadHeatmapPalmRejectionResult::FEATURE_NOT_SUPPORTED_ERROR);
+    return;
+  }
+
   // If it is run in the control process, spawn a worker process and forward the
   // request to it.
   if (Process::GetInstance()->IsControlProcess()) {
@@ -932,12 +945,32 @@ void MachineLearningServiceImpl::LoadHeatmapPalmRejection(
                                    std::move(callback));
     return;
   }
+
   // From here below is the worker process.
   RequestMetrics request_metrics("HeatmapPalmRejection", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
-  auto* const processor = ml::HeatmapProcessor::GetInstance();
-  auto result = processor->Start(std::move(client), std::move(config));
+  auto result = LoadHeatmapPalmRejectionResult::UNKNOWN_ERROR;
+
+#if USE_INPUT_DEVICES_SPI_HEATMAP
+  auto processor = ml::HeatmapProcessor::GetInstance();
+  auto consumer = std::make_unique<HeatmapConsumer>(processor);
+  static std::unique_ptr<touchraw::TouchrawInterface> touchraw_interface =
+      touchraw::TouchrawInterface::Create(
+          base::FilePath(config->heatmap_hidraw_device), std::move(consumer));
+  if (touchraw_interface) {
+    absl::Status status = touchraw_interface->StartWatching();
+    if (status == absl::OkStatus()) {
+      result = processor->Start(std::move(client), std::move(config));
+    } else {
+      LOG(ERROR) << "Fail to start watching hidraw device: " << status;
+      result = LoadHeatmapPalmRejectionResult::WATCH_DEVICE_ERROR;
+    }
+  } else {
+    LOG(ERROR) << "Failed to open hidraw device";
+    result = LoadHeatmapPalmRejectionResult::OPEN_DEVICE_ERROR;
+  }
+#endif
 
   std::move(callback).Run(result);
   request_metrics.FinishRecordingPerformanceMetrics();
