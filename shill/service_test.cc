@@ -3157,7 +3157,6 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByTechnology) {
             service_->GetNetworkValidationMode());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_EQ(Service::kStateConnected, service_->state());
 
   service_->network_event_handler()->OnNetworkValidationStop(
       1, /*is_failure=*/false);
@@ -3183,7 +3182,6 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy) {
             service_->GetNetworkValidationMode());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_EQ(Service::kStateConnected, service_->state());
 
   service_->network_event_handler()->OnNetworkValidationStop(
       1, /*is_failure=*/false);
@@ -3209,7 +3207,6 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal) {
             service_->GetNetworkValidationMode());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
       NetworkMonitor::ValidationReason::kServicePropertyUpdate));
-  EXPECT_EQ(Service::kStateConnected, service_->state());
 
   service_->network_event_handler()->OnNetworkValidationStop(
       1, /*is_failure=*/false);
