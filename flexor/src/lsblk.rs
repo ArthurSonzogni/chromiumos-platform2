@@ -21,38 +21,15 @@ pub struct LsBlkDevice {
     /// Device type.
     #[serde(rename = "type")]
     pub device_type: String,
+
+    /// "Child" disks, e.g. partitions per disk.
+    pub children: Option<Vec<LsBlkDevice>>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-struct LsBlkDeviceWithChildren {
-    #[serde(flatten)]
-    details: LsBlkDevice,
-
-    /// Child devices.
-    #[serde(default)]
-    children: Vec<LsBlkDeviceWithChildren>,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, Eq, PartialEq)]
 struct LsBlkOutput {
     #[serde(rename = "blockdevices")]
-    block_devices: Vec<LsBlkDeviceWithChildren>,
-}
-
-impl LsBlkOutput {
-    fn parse(input: &[u8]) -> Result<LsBlkOutput> {
-        Ok(serde_json::from_slice(input)?)
-    }
-
-    fn flattened(self) -> Vec<LsBlkDevice> {
-        let mut output = Vec::new();
-        let mut stack = self.block_devices;
-        while let Some(device) = stack.pop() {
-            output.push(device.details);
-            stack.extend(device.children);
-        }
-        output
-    }
+    block_devices: Vec<LsBlkDevice>,
 }
 
 /// Capture information about block devices from lsblk.
@@ -60,12 +37,6 @@ impl LsBlkOutput {
 /// lsblk is a convenient tool that already exists on CrOS base builds
 /// and in most other linux distributions. Using the "--json" flag
 /// makes the output easily parsible.
-///
-/// target: Block device to show information about. It will limit
-/// lsblk to only return information about partitions on the target
-/// device. If target is None lsblk will return information about most
-/// block devices, excluding the zram device and slow devices such as
-/// floppy drives.
 ///
 /// Returns the raw output of lsblk.
 fn get_lsblk_output() -> Result<Vec<u8>> {
@@ -97,8 +68,8 @@ fn get_lsblk_output() -> Result<Vec<u8>> {
 /// Returns a flattened vector of devices.
 pub fn get_lsblk_devices() -> Result<Vec<LsBlkDevice>> {
     let output = get_lsblk_output()?;
-    let parsed = LsBlkOutput::parse(&output)?;
-    Ok(parsed.flattened())
+    let parsed: LsBlkOutput = serde_json::from_slice(&output)?;
+    Ok(parsed.block_devices)
 }
 
 /// Run a command and get its stdout as raw bytes. An error is
@@ -122,10 +93,11 @@ fn get_command_output(mut command: Command) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
 
-    fn mkdev(name: &str, dtype: &str) -> LsBlkDevice {
+    fn mkdev(name: &str, dtype: &str, children: Option<Vec<LsBlkDevice>>) -> LsBlkDevice {
         LsBlkDevice {
             name: name.into(),
             device_type: dtype.into(),
+            children,
         }
     }
 
@@ -139,28 +111,33 @@ mod tests {
 
         #[rustfmt::skip]
         let expected = vec![
-            mkdev("/dev/sda", "disk"),
-            mkdev("/dev/sda12", "part"),
-            mkdev("/dev/sda11", "part"),
-            mkdev("/dev/sda10", "part"),
-            mkdev("/dev/sda9", "part"),
-            mkdev("/dev/sda8", "part"),
-            mkdev("/dev/sda7", "part"),
-            mkdev("/dev/sda6", "part"),
-            mkdev("/dev/sda5", "part"),
-            mkdev("/dev/sda4", "part"),
-            mkdev("/dev/sda3", "part"),
-            mkdev("/dev/sda2", "part"),
-            mkdev("/dev/sda1", "part"),
-            mkdev("/dev/loop4", "loop"),
-            mkdev("/dev/loop3", "loop"),
-            mkdev("/dev/loop2", "loop"),
-            mkdev("/dev/loop1", "loop"),
-            mkdev("/dev/mapper/encstateful", "dm"),
-            mkdev("/dev/loop0", "loop"),
+            mkdev("/dev/loop0", "loop", None),
+            mkdev("/dev/loop1", "loop", Some(
+                vec![mkdev("/dev/mapper/encstateful", "dm", None),]
+            )),
+            mkdev("/dev/loop2", "loop", None),
+            mkdev("/dev/loop3", "loop", None),
+            mkdev("/dev/loop4", "loop", None),
+            mkdev("/dev/sda", "disk", Some(
+                vec![
+                    mkdev("/dev/sda1", "part", None),
+                    mkdev("/dev/sda2", "part", None),
+                    mkdev("/dev/sda3", "part", None),
+                    mkdev("/dev/sda4", "part", None),
+                    mkdev("/dev/sda5", "part", None),
+                    mkdev("/dev/sda6", "part", None),
+                    mkdev("/dev/sda7", "part", None),
+                    mkdev("/dev/sda8", "part", None),
+                    mkdev("/dev/sda9", "part", None),
+                    mkdev("/dev/sda10", "part", None),
+                    mkdev("/dev/sda11", "part", None),
+                    mkdev("/dev/sda12", "part", None),
+                ])
+            ),
         ];
 
-        let output = LsBlkOutput::parse(input).unwrap();
-        assert_eq!(output.flattened(), expected);
+        let output: std::result::Result<LsBlkOutput, _> = serde_json::from_slice(input);
+        assert!(output.is_ok());
+        assert_eq!(output.unwrap().block_devices, expected);
     }
 }

@@ -6,7 +6,7 @@ use std::fs::File;
 
 use anyhow::{anyhow, bail, Context, Result};
 use gpt_disk_io::{BlockIo, BlockIoAdapter, Disk};
-use gpt_disk_types::{BlockSize, GptPartitionEntry, GptPartitionName, Guid};
+use gpt_disk_types::{BlockSize, GptPartitionEntry, GptPartitionName};
 
 /// Holds information about a GPT formatted disk.
 pub struct Gpt<T: BlockIo> {
@@ -62,28 +62,6 @@ impl<T: BlockIo> Gpt<T> {
         &mut self,
         label: GptPartitionName,
     ) -> Result<GptPartitionEntry> {
-        self.get_entry_and_part_num_for_partition_with(|entry| entry.name == label)
-            .map(|(entry, _)| entry)
-    }
-
-    /// Reads the GPT partition table and returns information about the first
-    /// partition with partition type `type_guid` that is found.
-    pub fn get_entry_and_index_for_partition_with_type_guid(
-        &mut self,
-        type_guid: Guid,
-    ) -> Result<(GptPartitionEntry, u32)> {
-        self.get_entry_and_part_num_for_partition_with(|entry| {
-            entry.partition_type_guid.0.to_bytes() == type_guid.to_bytes()
-        })
-    }
-
-    fn get_entry_and_part_num_for_partition_with<F>(
-        &mut self,
-        predicate: F,
-    ) -> Result<(GptPartitionEntry, u32)>
-    where
-        F: Fn(GptPartitionEntry) -> bool,
-    {
         let mut block_buf = vec![
             0;
             self.block_size
@@ -105,12 +83,8 @@ impl<T: BlockIo> Gpt<T> {
 
         for entry_array_index in 0..layout.num_entries {
             let entry = entry_array.get_partition_entry(entry_array_index).unwrap();
-            if predicate(*entry) && entry.is_used() {
-                // The entry array index is 0 based, but the partition index
-                // we want is starting from 1. E.g. first partition of a
-                // blockdevice mapped to dev is /dev/nvme0n1p1 not
-                // /dev/nvme0n1p0.
-                return Ok((*entry, entry_array_index + 1));
+            if entry.name == label && entry.is_used() {
+                return Ok(*entry);
             }
         }
         bail!("Unable to find matching partition");
@@ -183,20 +157,6 @@ mod tests {
         let mut gpt = Gpt::from_slice(disk, block_size)?;
         let state_entry = gpt.get_entry_for_partition_with_label(ENTRY_LABEL.parse().unwrap());
         assert!(state_entry.is_ok());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_entry_and_index_for_partition_with_type_guid() -> Result<()> {
-        let mut disk = vec![0; 4 * 1024 * 1024];
-        let block_size = BlockSize::BS_512;
-        setup_disk_with_valid_header(&mut disk, block_size)?;
-
-        let mut gpt = Gpt::from_slice(disk, block_size)?;
-        let state_entry =
-            gpt.get_entry_and_index_for_partition_with_type_guid(GptPartitionType::EFI_SYSTEM.0)?;
-        assert_eq!(state_entry.1, 1);
 
         Ok(())
     }

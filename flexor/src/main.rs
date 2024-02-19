@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::{path::Path, process::ExitCode};
+use std::{
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 use anyhow::{bail, Context, Result};
-use gpt_disk_types::{guid, Guid};
 use libchromeos::{panic_handler, syslog};
 use log::{error, info};
 use nix::sys::reboot::reboot;
@@ -22,23 +24,30 @@ const FLEXOR_TAG: &str = "flexor";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
 
-const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 8_000_000_000 / 512;
-const FLEX_DEPLOY_PART_LABEL: &str = "FLEX_DEPLOY";
-const FLEX_DEPLOY_PART_NUM: u32 = 13;
+// This struct contains all of the information commonly passed around
+// during an installation.
+struct InstallConfig {
+    target_device: PathBuf,
+    install_partition: PathBuf,
+}
 
-const STATEFUL_PARTITION_LABEL: &str = "STATE";
-const STATEFUL_PARTITION_NUM: u32 = 1;
+impl InstallConfig {
+    pub fn new() -> Result<Self> {
+        let disk_info = disk::disk_info()?;
 
-const INSTALL_PART_TYPE: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
+        Ok(InstallConfig {
+            target_device: disk_info.target_device,
+            install_partition: disk_info.install_partition,
+        })
+    }
+}
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
 /// the image size is about 2.5GB, we assume that much free space in RAM.
-fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
-    // We expect our data on a partition with [`INSTALL_PART_GUID`], with a vFAT filesystem.
-    let install_partition_path =
-        disk::get_install_partition(disk_path).context("Unable to find correct partition path")?;
-    let mount = mount::Mount::mount_by_path(&install_partition_path, mount::FsType::Vfat)
+fn copy_image_to_rootfs(config: &InstallConfig) -> Result<()> {
+    // We expect our data on a partition with a vFAT filesystem.
+    let mount = mount::Mount::mount_by_path(&config.target_device, mount::FsType::Vfat)
         .context("Unable to mount the install partition")?;
 
     // Copy the image to rootfs.
@@ -55,23 +64,23 @@ fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
 /// two steps:
 /// 1. Put the ChromeOS partition layout and write stateful partition.
 /// 2. Insert a thirteenth partition on disk for our own data.
-fn setup_disk(disk_path: &Path) -> Result<()> {
+fn setup_disk(config: &InstallConfig) -> Result<()> {
     // Install the layout and stateful partition.
-    chromeos_install::write_partition_table_and_stateful(disk_path)
+    chromeos_install::write_partition_table_and_stateful(&config.target_device)
         .context("Unable to put initial partition table")?;
     // Insert a thirtheenth partition.
-    disk::insert_thirteenth_partition(disk_path)
+    disk::insert_thirteenth_partition(&config.target_device)
         .context("Unable to insert thirtheenth partition")?;
     // Reread the partition table.
-    disk::reload_partitions(disk_path).context("Unable to reload partition table")
+    disk::reload_partitions(&config.target_device).context("Unable to reload partition table")
 }
 
 /// Sets up the thirteenth partition on disk and then proceeds to install the
 /// provided image on the device.
-fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
+fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()> {
     // Create an ext4 filesystem on the disk.
     let new_partition_path =
-        libchromeos::disk::get_partition_device(disk_path, FLEX_DEPLOY_PART_NUM)
+        libchromeos::disk::get_partition_device(&config.target_device, disk::FLEX_DEPLOY_PART_NUM)
             .context("Unable to find correct partition path")?;
     disk::mkfs_ext4(new_partition_path.as_path())
         .context("Unable to write ext4 to the flex deployment partition")?;
@@ -93,32 +102,32 @@ fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
 
     // Finally install the image on disk.
     chromeos_install::install_image_to_disk(
-        disk_path,
+        &config.target_device,
         new_part_mount.mount_path().join(image_path).as_path(),
     )
     .context("Unable to install the image to disk")
 }
 
 /// Performs the actual installation of ChromeOS.
-fn perform_installation(disk_path: &Path) -> Result<()> {
+fn perform_installation(config: &InstallConfig) -> Result<()> {
     info!("Setting up the disk");
-    setup_disk(disk_path)?;
+    setup_disk(config)?;
 
     info!("Setting up the new partition and installing ChromeOS Flex");
-    setup_flex_deploy_partition_and_install(disk_path)?;
+    setup_flex_deploy_partition_and_install(config)?;
 
     info!("Trying to remove the flex deployment partition");
-    disk::try_remove_thirteenth_partition(disk_path)
+    disk::try_remove_thirteenth_partition(&config.target_device)
 }
 
 /// Installs ChromeOS Flex and retries the actual installation steps at most three times.
-fn run(disk_path: &Path) -> Result<()> {
+fn run(config: &InstallConfig) -> Result<()> {
     info!("Start Flex-ing");
-    copy_image_to_rootfs(disk_path)?;
+    copy_image_to_rootfs(config)?;
 
     // Try installing on the device three times at most.
     for _ in 0..3 {
-        match perform_installation(disk_path) {
+        match perform_installation(config) {
             Ok(_) => {
                 // On success we reboot and end execution.
                 info!("Rebooting into ChromeOS Flex, keep fingers crossed");
@@ -142,20 +151,18 @@ fn run(disk_path: &Path) -> Result<()> {
 /// 2. Otherwise we hope to already have the Flex layout including the FLEX_DEPLOY partition
 ///    in that case we write the logs to that partition (may need to create a filesystem on that
 ///    partition though).
-fn try_safe_logs(disk_path: &Path) -> Result<()> {
+fn try_safe_logs(config: &InstallConfig) -> Result<()> {
     // Case 1: The install partition still exists, so we write the logs to it.
-    if let Ok(install_partition_path) = disk::get_install_partition(disk_path) {
-        if matches!(install_partition_path.try_exists(), Ok(true)) {
-            let install_mount =
-                mount::Mount::mount_by_path(&install_partition_path, mount::FsType::Vfat)?;
-            std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
-                .context("Unable to copy the logfile to the install partition")?;
-            return Ok(());
-        }
+    if matches!(config.install_partition.try_exists(), Ok(true)) {
+        let install_mount =
+            mount::Mount::mount_by_path(&config.install_partition, mount::FsType::Vfat)?;
+        std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
+            .context("Unable to copy the logfile to the install partition")?;
+        return Ok(());
     }
 
     let flex_depl_partition_path =
-        libchromeos::disk::get_partition_device(disk_path, FLEX_DEPLOY_PART_NUM)
+        libchromeos::disk::get_partition_device(&config.target_device, disk::FLEX_DEPLOY_PART_NUM)
             .context("Error finding a place to write logs to")?;
 
     // Case 2: We already have the Flex layout and can try to write to the FLEX_DEPLOY partition.
@@ -194,19 +201,19 @@ fn main() -> ExitCode {
     }
 
     info!("Hello from Flexor!");
-    let disk_path = match disk::get_target_device().context("Error getting the target disk") {
-        Ok(path) => path,
+    let config = match InstallConfig::new() {
+        Ok(config) => config,
         Err(err) => {
-            error!("Error selecting the target disk: {err}");
+            error!("Error getting information for the install: {err}");
             return ExitCode::FAILURE;
         }
     };
 
-    if let Err(err) = run(&disk_path) {
+    if let Err(err) = run(&config) {
         error!("Unable to perform installation due to error: {err}");
 
         // If we weren't successful, try to save the logs.
-        if let Err(err) = try_safe_logs(&disk_path) {
+        if let Err(err) = try_safe_logs(&config) {
             error!("Unable to save logs due to: {err}")
         }
         // TODO(b/314965086): Add an error screen displaying the log.

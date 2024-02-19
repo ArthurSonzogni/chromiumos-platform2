@@ -12,46 +12,76 @@ use std::process::Command;
 
 use crate::cgpt;
 use crate::gpt;
-use crate::mount;
+use crate::lsblk::LsBlkDevice;
 
+use crate::mount;
 use crate::util::execute_command;
 
-/// Identifies the target device to install onto. The device
-/// is identified by having the remote install payload on it.
-pub fn get_target_device() -> Result<PathBuf> {
-    let disks = get_disks()?;
+/// Constants for the newly created FLEX_DEPLOY partition.
+pub const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 8_000_000_000 / 512;
+pub const FLEX_DEPLOY_PART_LABEL: &str = "FLEX_DEPLOY";
+pub const FLEX_DEPLOY_PART_NUM: u32 = 13;
 
-    for disk in disks {
-        info!("Checking disk: {}", disk.display());
-        if check_disk_contains_flexor(&disk) {
-            info!("Found payload on {}", disk.display());
-            return Ok(disk);
+/// Module specific constants.
+const STATEFUL_PARTITION_LABEL: &str = "STATE";
+const STATEFUL_PARTITION_NUM: u32 = 1;
+
+/// Holds information about the disk Flexor installs to.
+pub struct DiskInfo {
+    pub target_device: PathBuf,
+    pub install_partition: PathBuf,
+}
+
+/// Fetches information about the disk we want to install to. The target disk
+/// is identified by having the installation payload on one of the partitions
+/// (the install partition).
+pub fn disk_info() -> Result<DiskInfo> {
+    let device = get_disks()?;
+
+    for device in device {
+        info!("Checking device: {}", device.name);
+        if let Some(disk_info) = get_install_disk_info(device) {
+            info!(
+                "Installing to disk: {}, reading installation payload from: {}",
+                disk_info.target_device.display(),
+                disk_info.install_partition.display()
+            );
+            return Ok(disk_info);
         }
     }
 
     bail!("Unable to locate payload on any disk");
 }
 
-/// Gets the install partition on a device, which is identified by [`INSTALL_PART_GUID`].
-pub fn get_install_partition(disk_path: &Path) -> Result<PathBuf> {
-    let file = File::open(disk_path)?;
-    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512).with_context(|| {
-        format!(
-            "Unable to read the GPT partition table of {}",
-            disk_path.display()
+/// Checks if one of a disk's partitions contains the installation payload.
+fn get_install_disk_info(disk: LsBlkDevice) -> Option<DiskInfo> {
+    fn has_install_payload(device: &Path) -> bool {
+        let Ok(mount) = mount::Mount::mount_by_path(device, mount::FsType::Vfat) else {
+            return false;
+        };
+        matches!(
+            mount
+                .mount_path()
+                .join(crate::FLEX_IMAGE_FILENAME)
+                .try_exists(),
+            Ok(true)
         )
-    })?;
+    }
 
-    let (_, index) = gpt
-        .get_entry_and_index_for_partition_with_type_guid(crate::INSTALL_PART_TYPE)
-        .with_context(|| {
-            format!(
-                "Unable to find a partition with the install GUID on {}",
-                disk_path.display()
-            )
-        })?;
-    libchromeos::disk::get_partition_device(disk_path, index)
-        .with_context(|| format!("Unable get partition device on {}", disk_path.display()))
+    // We only check disks.
+    if disk.device_type != "disk" {
+        return None;
+    }
+
+    for children in disk.children.unwrap_or_default() {
+        if children.device_type == "part" && has_install_payload(Path::new(&children.name)) {
+            return Some(DiskInfo {
+                target_device: PathBuf::from(&disk.name),
+                install_partition: PathBuf::from(&children.name),
+            });
+        }
+    }
+    None
 }
 
 /// Reload the partition table on block devices.
@@ -94,27 +124,27 @@ pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
         )
     })?;
 
-    let new_part_size_lba = crate::FLEX_DEPLOY_PART_NUM_BLOCKS;
+    let new_part_size_lba = FLEX_DEPLOY_PART_NUM_BLOCKS;
 
     let current_stateful = gpt
-        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())
+        .get_entry_for_partition_with_label(STATEFUL_PARTITION_LABEL.parse().unwrap())
         .context("Unable to locate stateful partition on disk")?;
 
     let new_stateful_range = shrink_partition_by(current_stateful, new_part_size_lba)
         .context("Unable to shrink stateful partiton")?;
     cgpt::resize_cgpt_partition(
-        crate::STATEFUL_PARTITION_NUM,
+        STATEFUL_PARTITION_NUM,
         disk_path,
-        crate::STATEFUL_PARTITION_LABEL,
+        STATEFUL_PARTITION_LABEL,
         new_stateful_range,
     )?;
 
     let new_range = add_partition_after(new_stateful_range, new_part_size_lba)
         .context("Unable to calculate new partition range")?;
     cgpt::add_cgpt_partition(
-        crate::FLEX_DEPLOY_PART_NUM,
+        FLEX_DEPLOY_PART_NUM,
         disk_path,
-        crate::FLEX_DEPLOY_PART_LABEL,
+        FLEX_DEPLOY_PART_LABEL,
         new_range,
     )
 }
@@ -136,10 +166,10 @@ pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {
 
     // First make sure both the stateful and flex deployment partition exist.
     let stateful_part = gpt
-        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())
+        .get_entry_for_partition_with_label(STATEFUL_PARTITION_LABEL.parse().unwrap())
         .context("Unable to locate stateful partition on disk")?;
     let flex_dep_part = gpt
-        .get_entry_for_partition_with_label(crate::FLEX_DEPLOY_PART_LABEL.parse().unwrap())
+        .get_entry_for_partition_with_label(FLEX_DEPLOY_PART_LABEL.parse().unwrap())
         .context("Unable to locate flex deployment partition on disk")?;
 
     // Then calculate the new range and close the disk file handle.
@@ -155,14 +185,14 @@ pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {
     drop(gpt);
 
     // Then remove the flex deployment partition.
-    cgpt::remove_cgpt_partition(crate::FLEX_DEPLOY_PART_NUM, disk_path)?;
+    cgpt::remove_cgpt_partition(FLEX_DEPLOY_PART_NUM, disk_path)?;
     reload_partitions(disk_path)?;
 
     // Now grow the stateful partition.
     cgpt::resize_cgpt_partition(
-        crate::STATEFUL_PARTITION_NUM,
+        STATEFUL_PARTITION_NUM,
         disk_path,
-        crate::STATEFUL_PARTITION_LABEL,
+        STATEFUL_PARTITION_LABEL,
         new_stateful_range,
     )
     .context(
@@ -171,7 +201,7 @@ pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {
     reload_partitions(disk_path)?;
 
     // Finally grow the filesystem.
-    extend_ext_filesystem(disk_path, crate::STATEFUL_PARTITION_NUM)
+    extend_ext_filesystem(disk_path, STATEFUL_PARTITION_NUM)
         .context("Unable to extend the stateful partition's filesystem")
 }
 
@@ -258,40 +288,12 @@ fn add_partition_after(range: LbaRangeInclusive, size_in_lba: u64) -> Result<Lba
 }
 
 /// Get information about all disk devices.
-fn get_disks() -> Result<Vec<PathBuf>> {
-    let devices = crate::lsblk::get_lsblk_devices().context("Unable to get block devices")?;
-
-    let mut disks = Vec::new();
-    for device in devices {
-        if device.device_type != "disk" {
-            continue;
-        }
-        disks.push(Path::new(&device.name).into());
-    }
-    Ok(disks)
-}
-
-fn check_disk_contains_flexor(path: &Path) -> bool {
-    let Ok(install_partition) = get_install_partition(path) else {
-        return false;
-    };
-
-    if !matches!(install_partition.try_exists(), Ok(true)) {
-        return false;
-    };
-
-    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&install_partition, mount::FsType::Vfat)
-    else {
-        return false;
-    };
-
-    matches!(
-        flex_depl_mount
-            .mount_path()
-            .join("flex_image.tar.xz")
-            .try_exists(),
-        Ok(true)
-    )
+fn get_disks() -> Result<Vec<LsBlkDevice>> {
+    Ok(crate::lsblk::get_lsblk_devices()
+        .context("Unable to get block devices")?
+        .into_iter()
+        .filter(|device| device.device_type == "disk")
+        .collect())
 }
 
 #[cfg(test)]
