@@ -230,6 +230,7 @@ config("test") {
     # under the output directory, instead of the ones installed in the system
     # dir. -rpath and -rpath-link has higher priority than the system library
     # directory.
+    "-Wl,-rpath=\$ORIGIN/",
     "-Wl,-rpath=\$ORIGIN/lib/",
     "-Wl,-rpath-link=lib/",
   ]

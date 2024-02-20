@@ -11,6 +11,7 @@ group("platform") {
     ":install_platform_headers",
     ":install_platform_keyring_headers",
     ":libstorage_fake_platform",
+    ":libstorage_fake_platform_static",
     ":libstorage_fuzzer",
     ":libstorage_platform",
     ":libstorage_platform_static",
@@ -66,8 +67,31 @@ source_set("libstorage_sources") {
   configs += [ "//common-mk:pic" ]
 }
 
+source_set("libstorage_fake_platform_sources") {
+  sources = [
+    "fake_platform.cc",
+    "fake_platform/fake_fake_mount_mapping_redirect_factory.cc",
+    "fake_platform/fake_mount_mapper.cc",
+    "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
+    "fake_platform/test_file_path.cc",
+    "mock_platform.cc",
+    "util/get_random_suffix.cc",
+  ]
+  libs = [ "hwsec-foundation" ]
+  pkg_deps = [ "libbrillo-test" ]
+  all_dependent_configs = [
+    ":target_defaults",
+    "//common-mk:test",
+  ]
+  configs += [ "//common-mk:pic" ]
+}
+
 static_library("libstorage_platform_static") {
   deps = [ ":libstorage_sources" ]
+}
+
+static_library("libstorage_fake_platform_static") {
+  deps = [ ":libstorage_fake_platform_sources" ]
 }
 
 shared_library("libstorage_platform") {
@@ -118,22 +142,11 @@ generate_pkg_config("libstorage_fake_platform_pc") {
 }
 
 shared_library("libstorage_fake_platform") {
-  sources = [
-    "fake_platform.cc",
-    "fake_platform/fake_fake_mount_mapping_redirect_factory.cc",
-    "fake_platform/fake_mount_mapper.cc",
-    "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
-    "fake_platform/test_file_path.cc",
-    "mock_platform.cc",
-    "util/get_random_suffix.cc",
+  deps = [
+    ":libstorage_fake_platform_pc",
+    ":libstorage_fake_platform_sources",
+    ":libstorage_platform",
   ]
-  libs = [ "hwsec-foundation" ]
-  pkg_deps = [ "libbrillo-test" ]
-  configs += [
-    "//common-mk:test",
-    ":target_defaults",
-  ]
-  deps = [ ":libstorage_fake_platform_pc" ]
 
   # We want to install this shared lib on the test image.
   # gnlint: disable=GnLintInstallPathAlias
@@ -175,7 +188,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libbrillo-test" ]
     deps = [
-      ":libstorage_fake_platform",
+      ":libstorage_fake_platform_static",
       ":libstorage_platform_static",
       "//common-mk/testrunner",
     ]
@@ -191,7 +204,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libbrillo-test" ]
     deps = [
-      ":libstorage_fake_platform",
+      ":libstorage_fake_platform_static",
       ":libstorage_platform_static",
       "//common-mk/testrunner",
     ]
