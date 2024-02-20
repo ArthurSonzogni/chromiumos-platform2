@@ -576,24 +576,6 @@ void TerminaVm::RecordKernelVersionForEnterpriseReporting() {
   }
 }
 
-bool TerminaVm::AttachUsbDevice(uint8_t bus,
-                                uint8_t addr,
-                                uint16_t vid,
-                                uint16_t pid,
-                                int fd,
-                                uint8_t* out_port) {
-  return vm_tools::concierge::AttachUsbDevice(
-      GetVmSocketPath(), bus, addr, vid, pid, fd, out_port, GetInfo().type);
-}
-
-bool TerminaVm::DetachUsbDevice(uint8_t port) {
-  return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port);
-}
-
-bool TerminaVm::ListUsbDevice(std::vector<UsbDeviceEntry>* device) {
-  return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), device);
-}
-
 void TerminaVm::HandleSuspendImminent() {
   LOG(INFO) << "Preparing to suspend";
 

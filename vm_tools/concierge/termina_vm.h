@@ -205,14 +205,6 @@ class TerminaVm final : public VmBaseImpl {
   // otherwise.
   bool Shutdown() override;
   VmBaseImpl::Info GetInfo() const override;
-  bool AttachUsbDevice(uint8_t bus,
-                       uint8_t addr,
-                       uint16_t vid,
-                       uint16_t pid,
-                       int fd,
-                       uint8_t* out_port) override;
-  bool DetachUsbDevice(uint8_t port) override;
-  bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;
   vm_tools::concierge::DiskImageStatus ResizeDisk(

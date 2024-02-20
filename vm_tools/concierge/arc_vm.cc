@@ -587,20 +587,6 @@ bool ArcVm::DetachNetDevice(uint8_t bus) {
   return vm_tools::concierge::DetachNetDevice(GetVmSocketPath(), bus);
 }
 
-bool ArcVm::AttachUsbDevice(uint8_t bus,
-                            uint8_t addr,
-                            uint16_t vid,
-                            uint16_t pid,
-                            int fd,
-                            uint8_t* out_port) {
-  return vm_tools::concierge::AttachUsbDevice(
-      GetVmSocketPath(), bus, addr, vid, pid, fd, out_port, GetInfo().type);
-}
-
-bool ArcVm::DetachUsbDevice(uint8_t port) {
-  return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port);
-}
-
 namespace {
 
 std::optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
@@ -678,10 +664,6 @@ const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     InitializeBalloonPolicy(margins, vm);
   }
   return balloon_policy_;
-}
-
-bool ArcVm::ListUsbDevice(std::vector<UsbDeviceEntry>* devices) {
-  return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), devices);
 }
 
 void ArcVm::HandleSuspendImminent() {
