@@ -44,10 +44,10 @@ TEST_F(EdidFunctionTest, ProbeEdid) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "height": 1080,
+        "height": "1080",
         "product_id": "0046",
         "vendor": "NCP",
-        "width": 1920
+        "width": "1920"
       }
     ]
   )JSON");

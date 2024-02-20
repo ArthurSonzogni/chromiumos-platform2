@@ -6,7 +6,6 @@
 
 #include <pcrecpp.h>
 
-#include <numeric>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -39,8 +38,8 @@ base::Value::Dict ProbeEdidPath(const base::FilePath& edid_path) {
   base::Value::Dict res;
   res.Set("vendor", edid->vendor);
   res.Set("product_id", base::StringPrintf("%04x", edid->product_id));
-  res.Set("width", edid->width);
-  res.Set("height", edid->height);
+  res.Set("width", std::to_string(edid->width));
+  res.Set("height", std::to_string(edid->height));
   res.Set("path", edid_path.value());
   return res;
 }
