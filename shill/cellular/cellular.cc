@@ -1535,7 +1535,8 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (ModemIsEnabledButNotRegistered()) {
+  if (ModemIsEnabledButNotRegistered() ||
+      capability_->IsSetInitialEpsBearerSettingsInProgress()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Waiting for Modem registration.";
     SetPendingConnect(service->iccid());
