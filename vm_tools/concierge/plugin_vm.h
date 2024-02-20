@@ -107,17 +107,6 @@ class PluginVm final : public VmBaseImpl {
   // Adjusts the amount of CPU the Plugin VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
-  // The 9p server managed by seneschal that provides access to shared files for
-  // this VM.  Returns 0 if there is no seneschal server associated with this
-  // VM.
-  uint32_t seneschal_server_handle() const {
-    if (seneschal_server_proxy_) {
-      return seneschal_server_proxy_->handle();
-    }
-
-    return 0;
-  }
-
  private:
   explicit PluginVm(Config config);
   PluginVm(const PluginVm&) = delete;

@@ -21,8 +21,8 @@
 namespace vm_tools::concierge {
 
 VmBaseImpl::VmBaseImpl(Config config)
-    : seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
-      vsock_cid_(config.vsock_cid),
+    : vsock_cid_(config.vsock_cid),
+      seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
       network_handle_(std::move(config.network)),
       control_socket_path_(
           config.runtime_dir.Append(config.cros_vm_socket).value()) {

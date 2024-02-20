@@ -127,13 +127,6 @@ class ArcVm final : public VmBaseImpl {
   bool rootfs_writable() const { return features_.rootfs_writable; }
   bool use_dev_conf() const { return features_.use_dev_conf; }
 
-  // The 9p server managed by seneschal that provides access to shared files for
-  // this VM.  Returns 0 if there is no seneschal server associated with this
-  // VM.
-  uint32_t seneschal_server_handle() const {
-    return seneschal_server_proxy_ ? seneschal_server_proxy_->handle() : 0;
-  }
-
   // The IPv4 address of the VM in network byte order.
   uint32_t IPv4Address() const;
 
@@ -245,9 +238,6 @@ class ArcVm final : public VmBaseImpl {
   base::expected<SwapStatus, std::string> FetchVmmSwapStatus();
 
   const patchpanel::Client::ArcVMAllocation& GetNetworkAllocation() const;
-
-  // Proxy to the server providing shared directory access for this VM.
-  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
 
   // Path to the virtio-blk disk image for /data.
   // An empty path is set if /data is not backed by virtio-blk.

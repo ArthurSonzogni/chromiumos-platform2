@@ -252,9 +252,6 @@ class VmBaseImpl {
   // Handle to the VM process.
   brillo::ProcessImpl process_;
 
-  // Proxy to the server providing shared directory access for this VM.
-  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
-
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_ = 0;
 
@@ -267,6 +264,9 @@ class VmBaseImpl {
 
   // Handle the device resuming from a suspend.
   virtual void HandleSuspendDone() = 0;
+
+  // Proxy to the server providing shared directory access for this VM.
+  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
 
   // Scoped handle to the network resources allocated for this VM (over dbus),
   // which will be removed when we destroy the VM. This is nullptr if network
