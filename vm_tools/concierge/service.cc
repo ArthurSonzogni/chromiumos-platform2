@@ -265,28 +265,6 @@ constexpr char kVmmSwapTbwHistoryFilePath[] =
 // system bus (usually 32 MiB).
 constexpr int64_t kMaxGetVmLogsSize = MiB(30);
 
-// A feature name for enabling VmMemoryManagementService (i.e. no-poll balloon)
-constexpr char kVmMemoryManagementServiceFeatureName[] =
-    "CrOSLateBootVmMemoryManagementService";
-// Parameter name for |kVmMemoryManagementServiceFeatureName| that specifies
-// the number of milliseconds ARC will wait before aborting a kill decision.
-// Default value is 100ms.
-constexpr char kVmMemoryManagementArcKillDecisionMsTimeoutParam[] =
-    "ArcMsTimeout";
-// Default value for kVmMemoryManagementArcKillDecisionMsTimeoutParam
-constexpr int kVmMemoryManagementArcKillDecisionMsTimeoutDefault = 100;
-// Parameter name for |kVmMemoryManagementServiceFeatureName| that specifies
-// the number of milliseconds host clients will wait before aborting a kill
-// decision. Default value is 300ms.
-constexpr char kVmMemoryManagementHostKillDecisionMsTimeoutParam[] =
-    "HostMsTimeout";
-// Default value for kVmMemoryManagementHostKillDecisionMsTimeoutParam
-constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
-
-// Needs to be const as libfeatures does pointers checking.
-const VariationsFeature kVmMemoryManagementServiceFeature{
-    kVmMemoryManagementServiceFeatureName, FEATURE_ENABLED_BY_DEFAULT};
-
 std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
                                   bool is_rootfs_writable,
                                   VMImageSpec& image_spec,
@@ -1319,20 +1297,25 @@ bool Service::Init() {
   return true;
 }
 
-void Service::InitVmMemoryManagementService() {
+bool Service::InitVmMemoryManagementService() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!vmmms_init_done_) {
-    DoInitVmMemoryManagementService();
+    if (!DoInitVmMemoryManagementService()) {
+      return false;
+    }
+
     vmmms_init_done_ = true;
 
     if (get_vmmms_kills_connection_response_sender_) {
       SendGetVmmmsKillConnectionResponse();
     }
   }
+
+  return true;
 }
 
-void Service::DoInitVmMemoryManagementService() {
+bool Service::DoInitVmMemoryManagementService() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // The VM Memory Management Service has a dependency on VSOCK Loopback and
@@ -1341,23 +1324,7 @@ void Service::DoInitVmMemoryManagementService() {
   if (kernel_version.first < 5 ||
       (kernel_version.first == 5 && kernel_version.second < 4)) {
     LOG(INFO) << "VmMemoryManagementService not supported by kernel";
-    return;
-  }
-
-  const feature::PlatformFeatures::ParamsResult result =
-      feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
-          {&kVmMemoryManagementServiceFeature});
-
-  const auto result_iter = result.find(kVmMemoryManagementServiceFeatureName);
-  if (result_iter == result.end()) {
-    LOG(INFO) << "VmMemoryManagementService feature flag not found";
-    return;
-  }
-
-  const auto& entry = result_iter->second;
-  if (!entry.enabled) {
-    LOG(INFO) << "VmMemoryManagementService feature flag not enabled";
-    return;
+    return false;
   }
 
   vm_memory_management_service_ = std::make_unique<mm::MmService>(
@@ -1366,22 +1333,11 @@ void Service::DoInitVmMemoryManagementService() {
   if (!vm_memory_management_service_->Start()) {
     vm_memory_management_service_.reset();
     LOG(ERROR) << "Failed to initialize VmMemoryManagementService.";
-    return;
+    return false;
   }
 
-  auto arc_timeout_ms =
-      FindIntValue(entry.params,
-                   kVmMemoryManagementArcKillDecisionMsTimeoutParam)
-          .value_or(kVmMemoryManagementArcKillDecisionMsTimeoutDefault);
-  arc_kill_decision_timeout_ = base::Milliseconds(arc_timeout_ms);
-
-  auto host_timeout_ms =
-      FindIntValue(entry.params,
-                   kVmMemoryManagementHostKillDecisionMsTimeoutParam)
-          .value_or(kVmMemoryManagementHostKillDecisionMsTimeoutDefault);
-  host_kill_decision_timeout_ = base::Milliseconds(host_timeout_ms);
-
   LOG(INFO) << "Enabling VmMemoryManagementService";
+  return true;
 }
 
 void Service::ChildExited() {
@@ -3953,8 +3909,14 @@ void Service::SendGetVmmmsKillConnectionResponse() {
   }
 
   response.set_success(!fds.empty());
+
+  // The timeout that the host (resourced) should use when waiting on a kill
+  // decision response from VMMMS.
+  static constexpr base::TimeDelta kVmMemoryManagementHostKillDecisionTimeout =
+      base::Milliseconds(300);
+
   response.set_host_kill_request_timeout_ms(
-      host_kill_decision_timeout_.InMilliseconds());
+      kVmMemoryManagementHostKillDecisionTimeout.InMilliseconds());
 
   auto local = std::move(get_vmmms_kills_connection_response_sender_);
   local->Return(response, fds);

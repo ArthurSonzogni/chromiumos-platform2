@@ -128,11 +128,15 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Initialize VmMemoryManagementService and handle any pending kills
   // connection requests.
-  void InitVmMemoryManagementService();
+  // Returns true on success, false if a VMMMS prerequisite was not met (i.e.
+  // unsupported host kernel version), or if an error occurred.
+  bool InitVmMemoryManagementService();
 
   // Helper for VmMemoryManagementService that does the feature check and
   // actual initialization.
-  void DoInitVmMemoryManagementService();
+  // Returns true on success, false if a VMMMS prerequisite was not met (i.e.
+  // unsupported host kernel version), or if an error occurred.
+  bool DoInitVmMemoryManagementService();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   //
@@ -657,12 +661,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
-
-  // The timeout arc should use for kill decision requests.
-  base::TimeDelta arc_kill_decision_timeout_;
-
-  // The timeout host clients should use for kill decision requests.
-  base::TimeDelta host_kill_decision_timeout_;
 
   // The VM Memory Management service
   std::unique_ptr<mm::MmService> vm_memory_management_service_

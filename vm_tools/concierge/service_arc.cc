@@ -81,6 +81,11 @@ constexpr char kArcVmAAudioMMAPLowLatencyFeatureName[] =
 // OOM killer wakes up.
 constexpr uint32_t kLmkdVsockTimeoutMs = 100;
 
+// The number of milliseconds ARCVM clients will wait before aborting a kill
+// decision.
+constexpr base::TimeDelta kVmMemoryManagementArcKillDecisionTimeout =
+    base::Milliseconds(100);
+
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmLowMemJemallocArenasFeature{
     kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
@@ -198,11 +203,15 @@ void Service::StartArcVm(
     const vm_tools::concierge::StartArcVmRequest& request) {
   ASYNC_SERVICE_METHOD();
 
-  InitVmMemoryManagementService();
-
   StartVmResponse response;
   // We change to a success status later if necessary.
   response.set_status(VM_STATUS_FAILURE);
+
+  // VMMMS must be initialized before ARCVM boot.
+  if (!InitVmMemoryManagementService()) {
+    response_cb->Return(response);
+    return;
+  }
 
   if (!CheckStartVmPreconditions(request, &response)) {
     response_cb->Return(response);
@@ -372,10 +381,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   if (features.use_vm_memory_management_client) {
     params.emplace_back(base::StringPrintf(
         "androidboot.lmkd.use_vm_memory_management_client=%s", "true"));
-    params.emplace_back(
-        base::StringPrintf("androidboot.lmkd.vm_memory_management_kill_"
-                           "decision_timeout_ms=%" PRId64,
-                           arc_kill_decision_timeout_.InMilliseconds()));
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.vm_memory_management_kill_"
+        "decision_timeout_ms=%" PRId64,
+        kVmMemoryManagementArcKillDecisionTimeout.InMilliseconds()));
     params.emplace_back(base::StringPrintf(
         "androidboot.lmkd.vm_memory_management_reclaim_port=%d",
         kVmMemoryManagementReclaimServerPort));
