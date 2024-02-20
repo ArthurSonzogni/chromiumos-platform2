@@ -338,8 +338,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     return false;
   }
   if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
-                                 dealer_pub_key, /*salt=*/brillo::Blob(),
-                                 HkdfHash::kSha256, /*result_len=*/0,
+                                 dealer_pub_key, /*hkdf_salt=*/brillo::Blob(),
+                                 HkdfHash::kSha256, /*symmetric_key_len=*/0,
                                  recovery_key)) {
     LOG(ERROR) << "Failed to compute HKDF of recovery_dh";
     return false;
@@ -839,10 +839,10 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to convert destination_dh_x BIGNUM to SecureBlob";
     return false;
   }
-  if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
-                                 request.dealer_pub_key,
-                                 /*salt=*/brillo::Blob(), HkdfHash::kSha256,
-                                 /*result_len=*/0, destination_recovery_key)) {
+  if (!ComputeHkdfWithInfoSuffix(
+          hkdf_secret, GetRecoveryKeyHkdfInfo(), request.dealer_pub_key,
+          /*hkdf_salt=*/brillo::Blob(), HkdfHash::kSha256,
+          /*symmetric_key_len=*/0, destination_recovery_key)) {
     LOG(ERROR) << "Failed to compute HKDF of destination_dh";
     return false;
   }

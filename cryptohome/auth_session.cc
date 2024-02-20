@@ -2907,8 +2907,7 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
       std::move(updated_vault_keyset));
   CreateAuthBlockStateAndKeyBlobs(
       AuthFactorType::kPassword, out_auth_block_type.value(), auth_input,
-      /*metadata=*/{},
-      /*CreateCallback*/ std::move(create_callback));
+      /*auth_factor_metadata=*/{}, std::move(create_callback));
 
   return out_auth_block_type.value();
 }

@@ -201,7 +201,7 @@ void ChallengeCredentialAuthBlock::CreateContinue(
 
   ScryptAuthBlock scrypt_auth_block;
   scrypt_auth_block.Create(
-      auth_input, /*metadata=*/{},
+      auth_input, /*auth_factor_metadata=*/{},
       base::BindOnce(&ChallengeCredentialAuthBlock::CreateContinueAfterScrypt,
                      weak_factory_.GetWeakPtr(), std::move(callback),
                      std::move(signature_challenge_info)));
