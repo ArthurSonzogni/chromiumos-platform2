@@ -28,7 +28,7 @@ namespace {
 class PrimaryActions : public std::bitset<kPrimaryActionEnumSize> {
  public:
   PrimaryActions() = default;
-  explicit PrimaryActions(std::initializer_list<PrimaryAction> init) {
+  PrimaryActions(std::initializer_list<PrimaryAction> init) {
     for (PrimaryAction action : init) {
       operator[](action) = true;
     }

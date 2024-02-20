@@ -136,7 +136,6 @@ OutOfProcessMountHelper::OutOfProcessMountHelper(bool legacy_home,
     : legacy_home_(legacy_home),
       bind_mount_downloads_(bind_mount_downloads),
       platform_(platform),
-      username_(),
       write_to_helper_(-1) {}
 
 bool OutOfProcessMountHelper::CanPerformEphemeralMount() const {

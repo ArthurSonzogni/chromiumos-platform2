@@ -227,7 +227,7 @@ bool StatefulRecovery::ParseFlagFile() {
     passkey_ = contents.substr(pos, delim - pos);
 
     return true;
-  } while (0);
+  } while (false);
 
   // TODO(ellyjones): UMA stat?
   LOG(ERROR) << "Bogus stateful recovery request file:" << contents;

@@ -54,7 +54,7 @@ constexpr size_t kPossibleActionEnumSize =
 class PossibleActions : public std::bitset<kPossibleActionEnumSize> {
  public:
   PossibleActions() = default;
-  explicit PossibleActions(std::initializer_list<PossibleAction> init) {
+  PossibleActions(std::initializer_list<PossibleAction> init) {
     for (PossibleAction action : init) {
       operator[](action) = true;
     }

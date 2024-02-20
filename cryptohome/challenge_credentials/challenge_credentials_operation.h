@@ -35,6 +35,10 @@ class ChallengeCredentialsOperation {
   using KeySignatureChallengeCallback = base::OnceCallback<void(
       CryptoStatusOr<std::unique_ptr<brillo::Blob>> signature)>;
 
+  ChallengeCredentialsOperation(const ChallengeCredentialsOperation&) = delete;
+  ChallengeCredentialsOperation& operator=(
+      const ChallengeCredentialsOperation&) = delete;
+
   virtual ~ChallengeCredentialsOperation();
 
   // Should begin the operation after this method is called.
@@ -57,9 +61,6 @@ class ChallengeCredentialsOperation {
   // created instance.
   explicit ChallengeCredentialsOperation(
       KeyChallengeService* key_challenge_service);
-  ChallengeCredentialsOperation(const ChallengeCredentialsOperation&) = delete;
-  ChallengeCredentialsOperation& operator=(
-      const ChallengeCredentialsOperation&) = delete;
 
   // Executes and resets the completion callback.
   // This method is intended to be used by subclasses, as the logic of
