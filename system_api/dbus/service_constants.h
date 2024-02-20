@@ -42,6 +42,7 @@
 #include "patchpanel/dbus-constants.h"
 #include "permission_broker/dbus-constants.h"
 #include "power_manager/dbus-constants.h"
+#include "primary_io_manager/dbus-constants.h"
 #include "printscanmgr/dbus-constants.h"
 #include "privacy_screen/dbus-constants.h"
 #include "regmon/dbus-constants.h"

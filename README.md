@@ -149,6 +149,7 @@ copies.
 | [policy_proto](./policy_proto/) | Build file to compile policy proto file |
 | [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
+| [primary_io_manager](./primary_io_manager/) | Tracks primary input devices for chromeboxes |
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [printscanmgr](./printscanmgr/) | ChromeOS Printing and Scanning Daemon |
 | [privacy](./privacy/) | ChromeOS privacy tools |

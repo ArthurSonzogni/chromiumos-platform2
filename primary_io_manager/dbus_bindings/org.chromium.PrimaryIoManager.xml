@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/PrimaryIoManager"
+xlmns:tp="http://telepathy.freedestkop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.PrimaryIoManager">
+    <method name="GetIoDevices">
+      <arg name="devices" type="as" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="UnsetPrimaryKeyboard">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="UnsetPrimaryMouse">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="IsPrimaryIoDevice">
+      <arg name="device" type="s" direction="in"/>
+      <arg name="primary" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>

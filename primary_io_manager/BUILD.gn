@@ -1,0 +1,88 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_minijail_conf",
+    ":primary_io_manager",
+  ]
+  if (use.test) {
+    deps += [ ":primary_io_manager_test" ]
+  }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/primary_io_manager.conf" ]
+  install_path = "minijail_conf"
+}
+
+pkg_config("target_default_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "libcros_config",
+    "libnet-base",
+    "libudev",
+    "libusb-1.0",
+    "protobuf-lite",
+  ]
+}
+
+config("target_defaults") {
+  configs = [ ":target_default_deps" ]
+  libs = [ "system_api" ]
+}
+
+generate_dbus_adaptors("primary_io_manager_adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/primary_io_manager/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.PrimaryIoManager.xml" ]
+}
+
+static_library("libprimary_io_manager") {
+  sources = [
+    "primary_io_manager.cc",
+    "udev.cc",
+    "udev_scopers.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "policy" ]
+  deps = [ ":primary_io_manager_adaptors" ]
+  pkg_deps = [ "libfeatures" ]
+}
+
+executable("primary_io_manager") {
+  sources = [ "primary_io_manager_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libprimary_io_manager" ]
+}
+
+if (use.test) {
+  pkg_config("primary_io_manager_test_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+  executable("primary_io_manager_test") {
+    sources = [
+      "fake_udev.h",
+      "primary_io_manager_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":primary_io_manager_test_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libprimary_io_manager",
+      "//common-mk/testrunner:testrunner",
+    ]
+    pkg_deps = [ "libfake_platform_features" ]
+  }
+}

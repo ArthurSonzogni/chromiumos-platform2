@@ -132,6 +132,7 @@ install_dbus_client_headers("install_dbus_headers") {
     "runtime_probe",
     "pciguard",
     "permission_broker",
+    "primary_io_manager",
     "printscanmgr",
     "power_manager",
     "rgbkbd",

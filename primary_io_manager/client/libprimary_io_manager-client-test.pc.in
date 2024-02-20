@@ -1,0 +1,6 @@
+include_dir=@INCLUDE_DIR@
+
+Name: libprimary_io_manager-client-test
+Version: 1.0
+Description: primary_io_manager client interface mock library
+Cflags: -I${include_dir}
