@@ -633,6 +633,15 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       base::BindRepeating(&Service::NotifyVmSwapping,
                           weak_ptr_factory_.GetWeakPtr(), vm_id);
 
+  std::unique_ptr<mm::BalloonMetrics> arcvm_balloon_metrics;
+
+  // ARCVM should only have balloon metrics if VMMMS is not enabled.
+  if (!vm_memory_management_service_) {
+    arcvm_balloon_metrics = std::make_unique<mm::BalloonMetrics>(
+        apps::VmType::ARCVM,
+        raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
+  }
+
   auto vm = ArcVm::Create(ArcVm::Config{
       .kernel = base::FilePath(kKernelPath),
       .vsock_cid = vsock_cid,
@@ -649,9 +658,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vm_swapping_notify_callback = std::move(vm_swapping_notify_callback),
       .virtio_blk_metrics = std::make_unique<VirtioBlkMetrics>(
           raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
-      .balloon_metrics = std::make_unique<mm::BalloonMetrics>(
-          apps::VmType::ARCVM,
-          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
+      .balloon_metrics = std::move(arcvm_balloon_metrics),
       .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),
