@@ -12,7 +12,6 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/posix/eintr_wrapper.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/vm_wl/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/error.h>

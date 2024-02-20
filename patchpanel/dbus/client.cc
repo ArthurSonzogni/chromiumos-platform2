@@ -18,7 +18,6 @@
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

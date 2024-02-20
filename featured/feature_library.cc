@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "featured/feature_library.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -17,9 +18,9 @@
 #include <base/strings/escape.h>
 #include <base/strings/strcat.h>
 #include <base/synchronization/lock.h>
+#include <base/synchronization/waitable_event.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/errors/error.h>
 #include <chromeos/constants/featured.h>
 #include <chromeos/dbus/service_constants.h>
@@ -31,6 +32,45 @@ namespace {
 
 // GetInstanceLock() must be held while using this variable.
 PlatformFeatures* g_instance = nullptr;
+
+// TODO(b/289932268): Consider removing this function.
+// This blocks both caller thread and D-Bus thread, which is not recommended.
+std::unique_ptr<dbus::Response> CallDBusMethod(scoped_refptr<dbus::Bus> bus,
+                                               dbus::ObjectProxy* proxy,
+                                               dbus::MethodCall* method_call,
+                                               int timeout_ms) {
+  // Core task to call D-Bus IPC. Should be called on D-Bus available thread.
+  auto task = base::BindOnce(
+      [](dbus::ObjectProxy* proxy, dbus::MethodCall* method_call,
+         int timeout_ms) -> std::unique_ptr<dbus::Response> {
+        return proxy->CallMethodAndBlock(method_call, timeout_ms)
+            .value_or(nullptr);
+      },
+      base::Unretained(proxy), base::Unretained(method_call), timeout_ms);
+
+  if (bus->HasDBusThread() &&
+      !bus->GetDBusTaskRunner()->RunsTasksInCurrentSequence()) {
+    // If D-Bus thread is available and it is not the current thread,
+    // post a task to there.
+    std::unique_ptr<dbus::Response> result;
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
+    bus->GetDBusTaskRunner()->PostTask(
+        FROM_HERE, std::move(task).Then(base::BindOnce(
+                       [](std::unique_ptr<dbus::Response>& out_result,
+                          base::WaitableEvent& event,
+                          std::unique_ptr<dbus::Response> result) {
+                         out_result = std::move(result);
+                         event.Signal();
+                       },
+                       std::ref(result), std::ref(event))));
+    event.Wait();
+    return result;
+  }
+
+  // Otherwise, run the task directly.
+  return std::move(task).Run();
+}
 
 }  // namespace
 
@@ -112,8 +152,8 @@ bool PlatformFeatures::IsEnabledBlockingWithTimeout(
                         chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
   dbus::MessageWriter writer(&call);
   writer.AppendString(feature.name);
-  std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
-      bus_, chrome_proxy_, &call, timeout_ms);
+  std::unique_ptr<dbus::Response> response =
+      CallDBusMethod(bus_, chrome_proxy_, &call, timeout_ms);
   if (!response) {
     return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
   }
@@ -194,7 +234,7 @@ PlatformFeatures::GetParamsAndEnabledBlocking(
                         chromeos::kChromeFeaturesServiceGetFeatureParamsMethod);
   dbus::MessageWriter writer(&call);
   EncodeGetParamsArgument(&writer, features);
-  std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
+  std::unique_ptr<dbus::Response> response = CallDBusMethod(
       bus_, chrome_proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   return ParseGetParamsResponse(response.get(), features);
 }

@@ -9,7 +9,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
 #include <power_manager/proto_bindings/suspend.pb.h>

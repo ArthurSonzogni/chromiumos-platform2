@@ -8,7 +8,7 @@
 
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/dbus/dbus_proxy_util.h>
+#include <dbus/bus.h>
 #include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/shadercached/dbus-constants.h>

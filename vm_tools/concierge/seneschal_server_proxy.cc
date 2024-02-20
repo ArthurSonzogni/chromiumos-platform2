@@ -6,8 +6,8 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <brillo/dbus/dbus_proxy_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>
