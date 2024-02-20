@@ -126,8 +126,18 @@ void CellularController::Init(Delegate* delegate,
   }
 #endif  // USE_CELLULAR
 
-  if (set_transmit_power_for_proximity_ || set_transmit_power_for_tablet_mode_)
-    CHECK_GE(dpr_gpio_number_, 0) << "DPR GPIO is unspecified or invalid";
+  if (dpr_gpio_number_ <= 0) {
+    if (set_transmit_power_for_proximity_) {
+      set_transmit_power_for_proximity_ = 0;
+      LOG(INFO) << "Disabling proximity sensor based switching as no DPR GPIO "
+                   "specified.";
+    }
+    if (set_transmit_power_for_tablet_mode_) {
+      set_transmit_power_for_tablet_mode_ = 0;
+      LOG(INFO)
+          << "Disabling device mode based switching as no DPR GPIO specified.";
+    }
+  }
 }
 
 void CellularController::InitPowerLevel(const std::string& power_levels) {

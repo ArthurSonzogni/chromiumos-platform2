@@ -128,11 +128,21 @@ TEST_F(CellularControllerTest, ProximityIgnoredWhenOff) {
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberNotSpecified) {
-  EXPECT_DEATH(Init(true, false, false, kUnknownDprGpioNumber), ".*");
+  Init(true, false, false, kUnknownDprGpioNumber);
+  controller_.ProximitySensorDetected(UserProximity::NEAR);
+  EXPECT_EQ(0, delegate_.num_set_calls());
+
+  controller_.HandleProximityChange(UserProximity::FAR);
+  EXPECT_EQ(0, delegate_.num_set_calls());
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberInvalid) {
-  EXPECT_DEATH(Init(true, false, false, kInvalidDprGpioNumber), ".*");
+  Init(false, true, false, kInvalidDprGpioNumber);
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(0, delegate_.num_set_calls());
+
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(0, delegate_.num_set_calls());
 }
 
 TEST_F(CellularControllerTest, TabletMode) {
