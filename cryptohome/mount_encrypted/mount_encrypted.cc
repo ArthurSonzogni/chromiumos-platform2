@@ -75,7 +75,7 @@ static result_code get_system_property(const char* prop,
   return rc == 0 ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }
 
-static int has_chromefw(void) {
+static int has_chromefw() {
   static int state = -1;
   char fw[PROP_SIZE];
 
@@ -440,8 +440,8 @@ int main(int argc, const char* argv[]) {
       // Report info from the encrypted mount.
       return report_info(encrypted_fs.get(), rootdir);
     } else if (args[0] == "set") {
-      return set_system_key(rootdir, args.size() >= 2 ? args[1].c_str() : NULL,
-                            &platform);
+      return set_system_key(
+          rootdir, args.size() >= 2 ? args[1].c_str() : nullptr, &platform);
     } else if (args[0] == "mount") {
       return mount_encrypted_partition(encrypted_fs.get(), rootdir, &platform,
                                        !FLAGS_unsafe);

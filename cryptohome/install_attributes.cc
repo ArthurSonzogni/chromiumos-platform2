@@ -192,7 +192,7 @@ bool InstallAttributes::Get(const std::string& name,
   int index = FindIndexByName(name);
   if (index == -1)
     return false;
-  return GetByIndex(index, NULL, value);
+  return GetByIndex(index, nullptr, value);
 }
 
 bool InstallAttributes::GetByIndex(int index,

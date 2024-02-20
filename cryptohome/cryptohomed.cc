@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
   user_data_auth_daemon.Run();
 
   // If PKCS #11 was initialized, this will tear it down.
-  C_Finalize(NULL);
+  C_Finalize(nullptr);
 
   return 0;
 }

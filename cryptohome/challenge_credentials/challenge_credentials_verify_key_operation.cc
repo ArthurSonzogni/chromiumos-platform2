@@ -89,7 +89,7 @@ bool IsValidSignature(const Blob& public_key_spki_der,
   }
   const unsigned char* asn1_ptr = public_key_spki_der.data();
   crypto::ScopedEVP_PKEY openssl_public_key(
-      d2i_PUBKEY(NULL, &asn1_ptr, public_key_spki_der.size()));
+      d2i_PUBKEY(nullptr, &asn1_ptr, public_key_spki_der.size()));
   if (!openssl_public_key) {
     LOG(ERROR)
         << "Error loading public key for challenge signature verification";

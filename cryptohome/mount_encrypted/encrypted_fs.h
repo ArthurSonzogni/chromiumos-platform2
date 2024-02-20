@@ -85,14 +85,14 @@ class EncryptedFs {
                     bool rebuild);
   // Purge - obliterate the sparse file. This should be called only
   // when the encrypted fs is not mounted.
-  bool Purge(void);
+  bool Purge();
   // Teardown - stepwise unmounts the | ext4 | dmcrypt | loopback | tower
   // on top of the sparse file.
-  result_code Teardown(void);
+  result_code Teardown();
   // CheckStates - Checks validity for the stateful mount before mounting.
-  result_code CheckStates(void);
+  result_code CheckStates();
   // ReportInfo - Reports the paths and bind mounts.
-  result_code ReportInfo(void) const;
+  result_code ReportInfo() const;
 
  private:
   friend class EncryptedFsTest;

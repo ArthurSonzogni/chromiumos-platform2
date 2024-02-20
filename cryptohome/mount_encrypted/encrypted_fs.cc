@@ -384,7 +384,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
   return RESULT_FAIL_FATAL;
 }
 
-result_code EncryptedFs::CheckStates(void) {
+result_code EncryptedFs::CheckStates() {
   // Verify stateful partition exists.
   if (platform_->Access(stateful_mount_, R_OK)) {
     LOG(INFO) << stateful_mount_ << "does not exist.";
@@ -429,7 +429,7 @@ result_code EncryptedFs::CheckStates(void) {
   return RESULT_SUCCESS;
 }
 
-result_code EncryptedFs::ReportInfo(void) const {
+result_code EncryptedFs::ReportInfo() const {
   printf("rootdir: %s\n", rootdir_.value().c_str());
   printf("stateful_mount: %s\n", stateful_mount_.value().c_str());
   printf("block_path: %s\n", block_path_.value().c_str());

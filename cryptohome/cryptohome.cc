@@ -2184,7 +2184,7 @@ int main(int argc, char** argv) {
 
     if (cl->HasSwitch(switches::kFlagsSwitch)) {
       std::string flags_str = cl->GetSwitchValueASCII(switches::kFlagsSwitch);
-      char* end = NULL;
+      char* end = nullptr;
       int32_t flags = strtol(flags_str.c_str(), &end, 0);
       if (end && *end != '\0') {
         printer.PrintHumanOutput("Bad flags value.\n");

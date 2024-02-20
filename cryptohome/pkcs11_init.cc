@@ -17,7 +17,6 @@
 #include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <errno.h>
 
 using base::FilePath;
 
@@ -55,15 +54,15 @@ std::string Pkcs11Init::GetTpmTokenLabelForUser(const Username& username) {
 bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,
                                         CK_SLOT_ID_PTR slot) {
   CK_RV rv;
-  rv = C_Initialize(NULL);
+  rv = C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
     LOG(WARNING) << __func__ << ": C_Initialize failed.";
     return false;
   }
   CK_ULONG num_slots = 0;
-  rv = C_GetSlotList(CK_TRUE, NULL, &num_slots);
+  rv = C_GetSlotList(CK_TRUE, nullptr, &num_slots);
   if (rv != CKR_OK) {
-    LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
+    LOG(WARNING) << __func__ << ": C_GetSlotList(nullptr) failed.";
     return false;
   }
   std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
@@ -89,15 +88,15 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,
 
 bool Pkcs11Init::IsUserTokenOK() {
   CK_RV rv;
-  rv = C_Initialize(NULL);
+  rv = C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
     LOG(WARNING) << __func__ << ": C_Initialize failed.";
     return false;
   }
   CK_ULONG num_slots = 0;
-  rv = C_GetSlotList(CK_TRUE, NULL, &num_slots);
+  rv = C_GetSlotList(CK_TRUE, nullptr, &num_slots);
   if (rv != CKR_OK) {
-    LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
+    LOG(WARNING) << __func__ << ": C_GetSlotList(nullptr) failed.";
     return false;
   }
   std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
@@ -130,15 +129,15 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
   CK_SESSION_INFO session_info;
   CK_TOKEN_INFO token_info;
 
-  rv = C_Initialize(NULL);
+  rv = C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
     LOG(WARNING) << "C_Initialize failed while checking token: " << std::hex
                  << rv;
     return false;
   }
 
-  rv = C_OpenSession(slot_id, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL,
-                     &session_handle);
+  rv = C_OpenSession(slot_id, CKF_RW_SESSION | CKF_SERIAL_SESSION, nullptr,
+                     nullptr, &session_handle);
   if (rv != CKR_OK) {
     LOG(WARNING) << "Could not open session on slot " << slot_id
                  << " while checking token." << std::hex << rv;

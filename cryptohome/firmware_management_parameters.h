@@ -95,14 +95,14 @@ class FirmwareManagementParameters
   // Returns
   // - true if a new space was instantiated or an old one could be used.
   // - false if the space cannot be created or claimed.
-  virtual bool Create(void);
+  virtual bool Create();
 
   // Loads the TPM NVRAM state date into memory
   //
   // Returns
   // - true if TPM NVRAM data is properly retrieved.
   // - false if the NVRAM data does not exist or is invalid.
-  virtual bool Load(void);
+  virtual bool Load();
 
   // Commits the in-memory data to TPM NVRAM
   //

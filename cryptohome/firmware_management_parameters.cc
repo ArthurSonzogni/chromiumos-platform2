@@ -121,7 +121,7 @@ bool FirmwareManagementParameters::SetFWMP(
   return true;
 }
 
-bool FirmwareManagementParameters::Destroy(void) {
+bool FirmwareManagementParameters::Destroy() {
   if (fwmp_type_ == hwsec::Space::kPlatformFirmwareManagementParameters) {
     return Store(/*flags=*/0, /*developer_key_hash=*/nullptr);
   }
@@ -150,7 +150,7 @@ bool FirmwareManagementParameters::Create() {
   return true;
 }
 
-bool FirmwareManagementParameters::Load(void) {
+bool FirmwareManagementParameters::Load() {
   if (loaded_) {
     return true;
   }
