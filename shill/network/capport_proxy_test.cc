@@ -108,9 +108,9 @@ TEST(CapportStatusTest, ParseFromJsonInvalidUserPortalUrl) {
 }
 
 TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {
-  // The user portal URL must be HTTPS, HTTP is considered invalid.
+  // The user portal URL should exists when captive is true.
   const std::string json = R"({
-   "captive": true,
+   "captive": true
 })";
 
   EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());
@@ -119,7 +119,7 @@ TEST(CapportStatusTest, ParseFromJsonMissingUserPortalUrl) {
 TEST(CapportStatusTest, ParseFromJsonInvalidVenueInfoUrl) {
   const std::string json = R"({
    "captive": true,
-   "venue-info-url": "invalid URL",
+   "venue-info-url": "invalid URL"
 })";
 
   EXPECT_FALSE(CapportStatus::ParseFromJson(json).has_value());

@@ -83,6 +83,11 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
     status->bytes_remaining = *value;
   }
 
+  if (status->is_captive && !status->user_portal_url.has_value()) {
+    LOG(WARNING) << "user_portal_url field is empty when is_captive is true";
+    return std::nullopt;
+  }
+
   // Clear the fields for the open state when the portal is captive.
   if (status->is_captive && status->seconds_remaining.has_value()) {
     LOG(WARNING) << "seconds_remaining should be empty when is_captive is true";
@@ -174,13 +179,6 @@ void CapportProxy::OnRequestSuccess(
     LOG(ERROR) << logging_tag_ << "The CAPPORT server found by RFC8910 ("
                << api_url_.ToString()
                << ") was not compliant, failed to parse JSON: " << json_str;
-    std::move(callback_).Run(std::nullopt);
-    return;
-  }
-
-  if (status->is_captive && !status->user_portal_url.has_value()) {
-    LOG(ERROR) << logging_tag_
-               << "user_portal_url field is empty when is_captive is true";
     std::move(callback_).Run(std::nullopt);
     return;
   }
