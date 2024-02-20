@@ -280,7 +280,7 @@ constexpr base::TimeDelta kControlSocketPathPollingInterval =
     base::Milliseconds(10);
 // Timeout for checking existence of control socket file path.
 constexpr base::TimeDelta kControlSocketPathPollingTimeout =
-    base::Milliseconds(1000);
+    base::Seconds(10);
 
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kVmMemoryManagementServiceFeature{
