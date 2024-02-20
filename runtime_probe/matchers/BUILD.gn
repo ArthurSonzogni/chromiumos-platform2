@@ -18,7 +18,10 @@ source_set("matchers") {
 
 if (use.test) {
   source_set("test") {
-    sources = [ "matcher_test.cc" ]
+    sources = [
+      "field_matcher_test.cc",
+      "matcher_test.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk:test",

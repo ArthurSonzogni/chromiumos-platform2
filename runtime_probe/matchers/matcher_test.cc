@@ -67,5 +67,51 @@ TEST(MatchersTest, UnknownOperator) {
                             )JSON"));
 }
 
+TEST(MatchersTest, StringMatcherMustHave2Operands) {
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "STRING_EQUAL",
+                                "operand": []
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "STRING_EQUAL",
+                                "operand": ["field_a"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "STRING_EQUAL",
+                                "operand": ["field_a", "value_a", "value_b"]
+                              }
+                            )JSON"));
+}
+
+TEST(MatchersTest, StringMatcher) {
+  auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
+      {
+        "operator": "STRING_EQUAL",
+        "operand": ["field_a", "value_a"]
+      }
+    )JSON"));
+  EXPECT_TRUE(matcher);
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_a"
+      }
+    )JSON")));
+  // Wrong value
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_b"
+      }
+    )JSON")));
+  // Field not found
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {}
+    )JSON")));
+}
+
 }  // namespace
 }  // namespace runtime_probe::matchers

@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/values.h>
 
+#include "runtime_probe/matchers/field_matcher.h"
+
 namespace runtime_probe {
 
 // static
@@ -29,7 +31,18 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
     return nullptr;
   }
 
-  // TODO(chungsheng): Implement matchers.
+  if (op == "STRING_EQUAL") {
+    if (operands->size() != 2 || !(*operands)[0].is_string() ||
+        !(*operands)[1].is_string()) {
+      LOG(ERROR) << "Matcher " << op << " takes 2 string operands, but got "
+                 << operands;
+      return nullptr;
+    }
+    std::string field_name = (*operands)[0].GetString();
+    std::string expected = (*operands)[1].GetString();
+
+    return StringEqualMatcher::Create(field_name, expected);
+  }
   LOG(ERROR) << "Unsupported matcher operator " << op;
   return nullptr;
 }
