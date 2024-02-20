@@ -51,4 +51,8 @@
     # TODO(b/296805310): readd modernize-use-emplace once its bugs are worked out.
     #- key:          modernize-use-emplace.IgnoreImplicitConstructors
     #  value:        1
+    - key:          modernize-loop-convert.MakeReverseRangeFunction
+      value:        base::Reversed
+    - key:          modernize-loop-convert.MakeReverseRangeHeader
+      value:        <base/containers/adapters.h>
 ...
