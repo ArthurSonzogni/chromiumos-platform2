@@ -4,6 +4,7 @@
 
 #include "shill/network/capport_proxy.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -75,11 +76,11 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
     status->can_extend_session = *value;
   }
   if (const std::optional<int> value = dict->FindInt(kSecondsRemainingKey);
-      value.has_value()) {
+      value.has_value() && *value >= 0) {
     status->seconds_remaining = base::Seconds(*value);
   }
   if (const std::optional<int> value = dict->FindInt(kBytesRemainingKey);
-      value.has_value()) {
+      value.has_value() && *value >= 0) {
     status->bytes_remaining = *value;
   }
 
@@ -137,6 +138,10 @@ CapportProxy::~CapportProxy() {
   if (has_seconds_remaining_.has_value()) {
     metrics_->SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining,
                             *has_seconds_remaining_);
+  }
+  if (max_seconds_remaining_.has_value()) {
+    metrics_->SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining,
+                        *max_seconds_remaining_);
   }
 }
 
@@ -198,6 +203,11 @@ void CapportProxy::OnRequestSuccess(
     // Once has_seconds_remaining_ is set to true, it will be stick to true.
     if (!has_seconds_remaining_.value_or(false)) {
       has_seconds_remaining_ = status->seconds_remaining.has_value();
+    }
+    if (status->seconds_remaining.has_value()) {
+      max_seconds_remaining_ =
+          std::max(static_cast<int>(status->seconds_remaining->InSeconds()),
+                   max_seconds_remaining_.value_or(0));
     }
   }
 

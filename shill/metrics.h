@@ -1244,6 +1244,16 @@ class Metrics {
   static constexpr char kMetricCapportContainsSecondsRemaining[] =
       "Network.Shill.CAPPORT.ContainsSecondsRemaining";
 
+  // Metric recording as an histogram the maximum of seconds-remaining from
+  // CAPPORT status.
+  static constexpr HistogramMetric<FixedName>
+      kMetricCapportMaxSecondsRemaining = {
+          .n = FixedName{"Network.Shill.CAPPORT.MaxSecondsRemaining"},
+          .min = 1,
+          .max = 60 * 60,  // 1 hour
+          .num_buckets = 40,
+  };
+
   // Metric counting whether the upstream network presents a portal or a Terms
   // and Conditions URL.
   enum TermsAndConditionsAggregateResult {

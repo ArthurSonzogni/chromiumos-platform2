@@ -148,6 +148,22 @@ TEST(CapportStatusTest, ClearRemainingFieldWhenPortalClose) {
   EXPECT_EQ(CapportStatus::ParseFromJson(json_str).value(), expected);
 }
 
+TEST(CapportStatusTest, InvalidMinusRemaining) {
+  const std::string json = R"({
+   "captive": false,
+   "seconds-remaining": -326,
+   "bytes-remaining": -65536
+})";
+
+  const CapportStatus expected{
+      .is_captive = false,
+      .seconds_remaining = std::nullopt,
+      .bytes_remaining = std::nullopt,
+  };
+
+  EXPECT_EQ(CapportStatus::ParseFromJson(json).value(), expected);
+}
+
 class CapportProxyTest : public testing::Test {
  protected:
   CapportProxyTest()
@@ -332,6 +348,9 @@ TEST_F(CapportProxyTest, SendMetricsContainSecondsRemaining) {
       metrics_,
       SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, true))
       .Times(1);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining, 326))
+      .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
 
   AddJSONReplyHandler(R"({
@@ -371,10 +390,20 @@ TEST_F(CapportProxyTest, SecondsRemainingInSecondRound) {
       metrics_,
       SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, true))
       .Times(1);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining, 326))
+      .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
 
   AddJSONReplyHandler(R"({
    "captive": false
+})");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+
+  AddJSONReplyHandler(R"({
+   "captive": false,
+   "seconds-remaining": 310
 })");
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
