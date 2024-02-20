@@ -43,11 +43,20 @@ std::optional<struct v4l2_mbus_framefmt> ParseSubdevFmt(YamlNode& map) {
   fmt.ycbcr_enc = map["ycbcr_enc"].ReadInt<__u16>(ok);
   fmt.quantization = map["quantization"].ReadInt<__u16>(ok);
   fmt.xfer_func = map["xfer_func"].ReadInt<__u16>(ok);
-#ifdef V4L2_MBUS_FRAMEFMT_SET_CSC
-  fmt.flags = map["flags"].ReadInt<__u16>(ok);
-#endif /* V4L2_MBUS_FRAMEFMT_SET_CSC */
   if (!ok)
     return std::nullopt;
+
+#ifdef V4L2_MBUS_FRAMEFMT_SET_CSC
+  /* The 'flags' member was introduced in later kernel versions,
+   * but mctk needs to be buildable against older kernel headers.
+   *
+   * Let's make it optional by moving its parsing after the "ok"
+   * check, and ignoring the return value.
+   * This way, dumps written by mctk built against 4.x kernels
+   * can be loaded by mctk built against 6.x kernels.
+   */
+  fmt.flags = map["flags"].ReadInt<__u16>(ok);
+#endif /* V4L2_MBUS_FRAMEFMT_SET_CSC */
 
   return std::optional<struct v4l2_mbus_framefmt>(fmt);
 }
