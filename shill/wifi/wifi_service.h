@@ -578,10 +578,6 @@ class WiFiService : public Service {
   Stringmap vendor_information_;
   // The country code reported by the current endpoint.
   std::string country_code_;
-  // If |security_class_| == kSecurityClass8021x, the crypto algorithm being
-  // used. (Otherwise, crypto algorithm is implied by
-  // |security_|/|security_class_|.)
-  CryptoAlgorithm cipher_8021x_;
 
   // Track the number of consecutive times our current credentials have
   // been called into question.

@@ -2093,7 +2093,6 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
 }
 
 TEST_F(WiFiServiceTest, ComputeCipher8021x) {
-  WiFiEndpoint::SecurityFlags open_flags;
   WiFiEndpoint::SecurityFlags wpa_flags;
   wpa_flags.wpa_psk = true;
   WiFiEndpoint::SecurityFlags rsn_flags;
@@ -2105,15 +2104,10 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
   // No endpoints.
   {
     const std::set<WiFiEndpointConstRefPtr> endpoints;
-    EXPECT_EQ(Service::kCryptoNone, WiFiService::ComputeCipher8021x(endpoints));
+    EXPECT_EQ(Service::kCryptoRc4, WiFiService::ComputeCipher8021x(endpoints));
   }
 
   // Single endpoint, various configs.
-  {
-    std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, open_flags));
-    EXPECT_EQ(Service::kCryptoNone, WiFiService::ComputeCipher8021x(endpoints));
-  }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
     endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wpa_flags));
@@ -2132,18 +2126,6 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
   }
 
   // Multiple endpoints.
-  {
-    std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, open_flags));
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, open_flags));
-    EXPECT_EQ(Service::kCryptoNone, WiFiService::ComputeCipher8021x(endpoints));
-  }
-  {
-    std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, open_flags));
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, wpa_flags));
-    EXPECT_EQ(Service::kCryptoNone, WiFiService::ComputeCipher8021x(endpoints));
-  }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
     endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wpa_flags));

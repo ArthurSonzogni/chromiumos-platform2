@@ -166,7 +166,6 @@ WiFiService::WiFiService(Manager* manager,
       frequency_(0),
       ap_physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
-      cipher_8021x_(kCryptoNone),
       suspected_credential_failures_(0),
       ssid_(ssid),
       expecting_disconnect_(false),
@@ -1643,9 +1642,6 @@ void WiFiService::UpdateSecurity() {
     }
   }
 
-  if (Is8021x())
-    cipher_8021x_ = ComputeCipher8021x(endpoints_);
-
   CryptoAlgorithm algorithm = kCryptoNone;
   bool key_rotation = false;
   bool endpoint_auth = false;
@@ -1665,7 +1661,7 @@ void WiFiService::UpdateSecurity() {
     key_rotation = true;
     endpoint_auth = false;
   } else if (security_class() == kSecurityClass8021x) {
-    algorithm = cipher_8021x_;
+    algorithm = ComputeCipher8021x(endpoints_);
     key_rotation = true;
     endpoint_auth = true;
   }
@@ -1675,8 +1671,10 @@ void WiFiService::UpdateSecurity() {
 // static
 Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
     const std::set<WiFiEndpointConstRefPtr>& endpoints) {
+  // If there are no endpoints available return minimal value possible. This
+  // will be updated upon endpoint discovery.
   if (endpoints.empty())
-    return kCryptoNone;  // Will update after scan results.
+    return kCryptoRc4;
 
   // Find weakest cipher (across endpoints) of the strongest ciphers
   // (per endpoint).
@@ -1685,12 +1683,9 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
     Service::CryptoAlgorithm endpoint_cipher;
     if (endpoint->has_rsn_property()) {
       endpoint_cipher = Service::kCryptoAes;
-    } else if (endpoint->has_wpa_property()) {
-      endpoint_cipher = Service::kCryptoRc4;
     } else {
-      // We could be in the Dynamic WEP case here. But that's okay,
-      // because |cipher_8021x_| is not defined in that case.
-      endpoint_cipher = Service::kCryptoNone;
+      DCHECK(endpoint->has_wpa_property());
+      endpoint_cipher = Service::kCryptoRc4;
     }
     cipher = std::min(cipher, endpoint_cipher);
   }

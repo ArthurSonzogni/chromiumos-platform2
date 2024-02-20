@@ -119,10 +119,10 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   // Result of ParseSecurity() depends on the contents of the information
   // elements so don't move this call prior to ParseIEs() call above.
   security_mode_ = ParseSecurity(properties, &security_flags_);
-  has_rsn_property_ =
-      properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN);
-  has_wpa_property_ =
-      properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA);
+  has_rsn_property_ = security_flags_.rsn_8021x_wpa3 ||
+                      security_flags_.rsn_8021x || security_flags_.rsn_owe ||
+                      security_flags_.rsn_psk || security_flags_.rsn_sae;
+  has_wpa_property_ = security_flags_.wpa_8021x || security_flags_.wpa_psk;
 
   ssid_string_ = std::string(ssid_.begin(), ssid_.end());
   WiFi::SanitizeSSID(&ssid_string_);
