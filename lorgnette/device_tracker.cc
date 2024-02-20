@@ -421,6 +421,7 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
   // without further probing.
   for (const auto& known_dev : known_devices_) {
     if (known_dev.name() == scanner_info->name()) {
+      canonical_scanners_.AddUsbDevice(*device, scanner_info->name());
       LOG(INFO) << __func__
                 << ": Returning entry from cache: " << known_dev.name();
       SendScannerAddedSignal(std::move(session_id), known_dev);

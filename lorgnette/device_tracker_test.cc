@@ -1325,6 +1325,95 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
   }
 }
 
+TEST_F(DeviceTrackerTest, DiscoverySessionCachedDevicePreferred) {
+  // Test the case with one unique device and a duplicate device.  The first
+  // discovery session will return both devices.  The second discovery session
+  // sets `preferred_only` to true so should just return the ippusb device (from
+  // the cache).
+  auto ippusb_device1 = MakeIPPUSBDevice("Scanner 1");
+  ippusb_device1.device->MutableDeviceDescriptor().idProduct = 0x1234;
+  ippusb_device1.device->Init();
+  CreateIPPUSBSocket(ippusb_device1);
+  CreateFakeScanner(ippusb_device1.connection_string);
+
+  // Duplicate of device 1 by VID:PID.  Should have the same ID.
+  std::string dup_by_vidpid =
+      base::StringPrintf("pixma:%04X%04X_%s", ippusb_device1.device->GetVid(),
+                         ippusb_device1.device->GetPid(),
+                         ippusb_device1.device->GetSerialNumber().c_str());
+  CreateFakeScanner(dup_by_vidpid, "GoogleTest", "eSCL Scanner 3001", "eSCL");
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(ippusb_device1.device));
+  libusb_->SetDevices(std::move(device_list));
+  sane_client_->SetListDevicesResult(true);
+  tracker_->SetCacheDirectoryForTesting(socket_dir_.GetPath());
+  base::FilePath cache_file = socket_dir_.GetPath().Append("known_devices");
+  brillo::DeleteFile(cache_file);  // Start off with no saved devices.
+
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
+      .WillRepeatedly([] {
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
+      });
+
+  // Session finds both scanners.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_preferred_only(false);
+  start_request1.set_client_id("discovery");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  open_sessions_.insert(response1.session_id());
+  run_loop1.Run();
+  std::map<std::string, std::set<std::string>> device_ids1;
+  std::string ippusb_device_id;
+  for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    device_ids1[scanner->device_uuid()].insert(scanner->name());
+    if (scanner->name() == ippusb_device1.ippusb_string) {
+      ippusb_device_id = scanner->device_uuid();
+    }
+  }
+  ASSERT_EQ(device_ids1.count(ippusb_device_id), 1);
+  EXPECT_THAT(
+      device_ids1[ippusb_device_id],
+      UnorderedElementsAre(ippusb_device1.ippusb_string, dup_by_vidpid));
+
+  // Cache file is non-empty after session.
+  int64_t file_size;
+  EXPECT_TRUE(base::GetFileSize(cache_file, &file_size));
+  EXPECT_GT(file_size, 0);
+
+  // Clear saved devices to simulate a lorgnette shutdown.  The second session
+  // returns the device from the cache and only returns the ippusb device since
+  // `preferred_only` is set to true.
+  tracker_->ClearKnownDevicesForTesting();
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_preferred_only(true);
+  start_request2.set_client_id("discovery");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  open_sessions_.insert(response2.session_id());
+  run_loop2.Run();
+  ASSERT_EQ(discovered_scanners_[response2.session_id()].size(), 1);
+  const std::unique_ptr<ScannerInfo>& scanner_info =
+      *discovered_scanners_[response2.session_id()].begin();
+  EXPECT_EQ(scanner_info->device_uuid(), ippusb_device_id);
+  EXPECT_EQ(scanner_info->name(), ippusb_device1.ippusb_string);
+}
+
 TEST_F(DeviceTrackerTest, OpenScannerEmptyDevice) {
   OpenScannerRequest request;
   request.set_client_id("DeviceTrackerTest");
