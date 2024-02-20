@@ -350,7 +350,7 @@ class MetricsCollector {
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
 
   // Parse sysfs to retrieve the timestamp of the latest kernel resume.
-  void UpdateLastKernelResumedTime();
+  base::TimeTicks GetLastKernelResumedTime();
 
   PrefsInterface* prefs_ = nullptr;
   policy::BacklightController* display_backlight_controller_ = nullptr;
@@ -424,9 +424,9 @@ class MetricsCollector {
   // True if suspend to idle (S0ix) is enabled.
   bool suspend_to_idle_ = false;
 
-  // Timestamp of the end of last kernel resume, get from
-  // /sys/power/suspend_stats/last_success_resume_time.
-  base::TimeTicks last_kernel_resumed_timestamp_;
+  // Timestamp of the start of the last suspend in CLOCK_MONOTONIC.
+  // This is used for checking last kernel resume timestamp is sane.
+  base::TimeTicks time_before_suspend_monotonic_;
 
   // If non-empty, contains a temp dir that will be prepended to paths.
   base::FilePath prefix_path_for_testing_;

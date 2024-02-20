@@ -262,10 +262,10 @@ void MetricsCollector::Init(
   }
 }
 
-void MetricsCollector::UpdateLastKernelResumedTime() {
+base::TimeTicks MetricsCollector::GetLastKernelResumedTime() {
   if (!base::PathExists(
           GetPrefixedFilePath(base::FilePath(kLastSuccessResumeTimePath)))) {
-    return;
+    return base::TimeTicks();
   }
   base::FilePath last_resume_time_path =
       base::FilePath(kLastSuccessResumeTimePath);
@@ -274,27 +274,37 @@ void MetricsCollector::UpdateLastKernelResumedTime() {
   // in MONOTONIC clock base.
   std::string last_resume_time;
   if (!base::ReadFileToString(last_resume_time_path, &last_resume_time)) {
-    return;
+    return base::TimeTicks();
   }
   // The timestamp tails a linefeed for human readability, trim it.
   base::TrimWhitespaceASCII(last_resume_time, base::TRIM_TRAILING,
                             &last_resume_time);
   double resume_time_sec;
   if (!base::StringToDouble(last_resume_time, &resume_time_sec)) {
-    return;
+    return base::TimeTicks();
   }
-  last_kernel_resumed_timestamp_ =
-      base::TimeTicks() + base::Seconds(resume_time_sec);
+  return base::TimeTicks() + base::Seconds(resume_time_sec);
 }
 
 void MetricsCollector::GenerateDisplayAfterResumeDurationMsMetric() {
-  if (last_kernel_resumed_timestamp_ == base::TimeTicks())
+  // Prohibit sending this metrics unless suspend sets the
+  // time_before_suspend_monotonic_,
+  if (time_before_suspend_monotonic_ == base::TimeTicks())
     return;
 
   base::TimeTicks now = clock_.GetCurrentTime();
-  base::TimeDelta duration = now - last_kernel_resumed_timestamp_;
 
-  last_kernel_resumed_timestamp_ = base::TimeTicks();
+  base::TimeTicks last_kernel_resumed_timestamp = GetLastKernelResumedTime();
+  // Check if the /sys/power/suspend_stats/last_success_resume_time is not
+  // updated yet.
+  if (last_kernel_resumed_timestamp < time_before_suspend_monotonic_)
+    return;
+
+  base::TimeDelta duration = now - last_kernel_resumed_timestamp;
+
+  // Reset time_before_suspend_monotonic_, which will be set again
+  // when the next suspend starts.
+  time_before_suspend_monotonic_ = base::TimeTicks();
 
   LOG(INFO) << "Display after resume duration is " << duration;
   SendMetricWithPowerSource(kDisplayAfterResumeDurationMsName,
@@ -469,6 +479,7 @@ void MetricsCollector::PrepareForSuspend() {
       static_cast<int>(round(last_power_status_.battery_percentage)),
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentBootTime();
+  time_before_suspend_monotonic_ = clock_.GetCurrentTime();
   for (auto& tracker : residency_trackers_)
     tracker.UpdatePreSuspend();
   GenerateRuntimeS0ixMetrics();
@@ -491,7 +502,6 @@ void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
     tracker.UpdatePostResume();
   if (suspend_to_idle_ && !hibernated)
     GenerateS2IdleS0ixMetrics();
-  UpdateLastKernelResumedTime();
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts,
