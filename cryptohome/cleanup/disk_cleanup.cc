@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/adapters.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
@@ -337,9 +338,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   }
 
   // Purge Dmcrypt cache vaults.
-  for (auto dir = normal_cleanup_homedirs.rbegin();
-       dir != normal_cleanup_homedirs.rend(); dir++) {
-    if (!routines_->DeleteCacheVault(dir->obfuscated))
+  for (const auto& normal_cleanup_homedir :
+       base::Reversed(normal_cleanup_homedirs)) {
+    if (!routines_->DeleteCacheVault(normal_cleanup_homedir.obfuscated))
       return_result = false;
 
     if (HasTargetFreeSpace()) {
@@ -398,9 +399,10 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
 
   // Clean Android cache directories for every unmounted user that has logged
   // out after after the last normal cleanup happened.
-  for (auto dir = aggressive_cleanup_homedirs.rbegin();
-       dir != aggressive_cleanup_homedirs.rend(); dir++) {
-    if (!routines_->DeleteUserAndroidCache(dir->obfuscated))
+  for (const auto& aggressive_cleanup_homedir :
+       base::Reversed(aggressive_cleanup_homedirs)) {
+    if (!routines_->DeleteUserAndroidCache(
+            aggressive_cleanup_homedir.obfuscated))
       return_result = false;
 
     if (HasTargetFreeSpace()) {
@@ -561,8 +563,8 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveCaches(
     const std::vector<HomeDirs::HomeDir>& homedirs) {
   DiskCleanupActionResult result;
 
-  for (auto dir = homedirs.rbegin(); dir != homedirs.rend(); dir++) {
-    if (!routines_->DeleteUserCache(dir->obfuscated))
+  for (const auto& homedir : base::Reversed(homedirs)) {
+    if (!routines_->DeleteUserCache(homedir.obfuscated))
       result.success = false;
 
     if (HasTargetFreeSpace()) {
@@ -589,8 +591,8 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
     return result;
   }
 
-  for (auto dir = homedirs.rbegin(); dir != homedirs.rend(); dir++) {
-    if (!routines_->DeleteUserGCache(dir->obfuscated))
+  for (const auto& homedir : base::Reversed(homedirs)) {
+    if (!routines_->DeleteUserGCache(homedir.obfuscated))
       result.success = false;
 
     if (HasTargetFreeSpace()) {
@@ -655,8 +657,8 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
   }
 
   auto old_free_disk_space = free_disk_space;
-  for (auto dir = homedirs.rbegin(); dir != homedirs.rend(); dir++) {
-    if (!routines_->DeleteDaemonStoreCache(dir->obfuscated))
+  for (const auto& homedir : base::Reversed(homedirs)) {
+    if (!routines_->DeleteDaemonStoreCache(homedir.obfuscated))
       result.success = false;
 
     if (HasTargetFreeSpace()) {
@@ -726,17 +728,17 @@ bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
 
   DiskCleanup::FreeSpaceState state;
 
-  for (auto dir = unmounted_homedirs.rbegin(); dir != unmounted_homedirs.rend();
-       dir++) {
-    if (dir->obfuscated == logging_in) {
+  for (const auto& unmounted_homedir : base::Reversed(unmounted_homedirs)) {
+    if (unmounted_homedir.obfuscated == logging_in) {
       LOG(INFO) << "Skipped deletion of the user logging in.";
       continue;
     }
 
-    LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
-    if (!routines_->DeleteUserProfile(dir->obfuscated))
+    LOG(INFO) << "Freeing disk space by deleting user "
+              << unmounted_homedir.obfuscated;
+    if (!routines_->DeleteUserProfile(unmounted_homedir.obfuscated))
       result = false;
-    timestamp_manager_->RemoveUser(dir->obfuscated);
+    timestamp_manager_->RemoveUser(unmounted_homedir.obfuscated);
 
     performed_cleanup = true;
 

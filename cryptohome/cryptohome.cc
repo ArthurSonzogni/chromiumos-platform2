@@ -1693,14 +1693,13 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Can not list shadow root.";
       return 1;
     }
-    for (std::vector<FilePath>::iterator it = user_dirs.begin();
-         it != user_dirs.end(); ++it) {
-      const std::string dir_name = it->BaseName().value();
+    for (const auto& user_dir : user_dirs) {
+      const std::string dir_name = user_dir.BaseName().value();
       if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
         continue;
       base::Time last_activity = base::Time::UnixEpoch();
 
-      FilePath timestamp_path = it->Append("timestamp");
+      FilePath timestamp_path = user_dir.Append("timestamp");
       brillo::Blob tcontents;
       if (platform.ReadFile(timestamp_path, &tcontents)) {
         cryptohome::Timestamp timestamp;

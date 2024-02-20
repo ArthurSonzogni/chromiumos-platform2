@@ -457,26 +457,26 @@ bool PrefixPresent(const std::vector<FilePath>& prefixes,
 void GroupDmcryptDeviceMounts(
     std::multimap<const FilePath, const FilePath>* mounts,
     std::multimap<const FilePath, const FilePath>* grouped_mounts) {
-  for (auto match = mounts->begin(); match != mounts->end(); ++match) {
+  for (const auto& mount : *mounts) {
     // Group dmcrypt-<>-data and dmcrypt-<>-cache mounts. Strip out last
     // '-' from the path.
-    size_t last_component_index = match->first.value().find_last_of("-");
+    size_t last_component_index = mount.first.value().find_last_of("-");
 
     if (last_component_index == std::string::npos) {
       continue;
     }
 
     base::FilePath device_group(
-        match->first.value().substr(0, last_component_index));
+        mount.first.value().substr(0, last_component_index));
     if (device_group.ReferencesParent()) {
       // This should probably never occur in practice, but seems useful from
       // the security hygiene perspective to explicitly prevent transforming
       // stuff like "/foo/..-" into "/foo/..".
       LOG(WARNING) << "Skipping malformed dm-crypt mount point: "
-                   << match->first;
+                   << mount.first;
       continue;
     }
-    grouped_mounts->insert({device_group, match->second});
+    grouped_mounts->insert({device_group, mount.second});
   }
 }
 
@@ -1369,12 +1369,11 @@ bool UserDataAuth::UnloadPkcs11Tokens(const std::vector<FilePath>& exclude) {
   std::vector<std::string> tokens;
   if (!chaps_client_->GetTokenList(isolate, &tokens))
     return false;
-  for (size_t i = 0; i < tokens.size(); ++i) {
-    if (tokens[i] != chaps::kSystemTokenPath &&
-        !PrefixPresent(exclude, tokens[i])) {
+  for (const std::string& token : tokens) {
+    if (token != chaps::kSystemTokenPath && !PrefixPresent(exclude, token)) {
       // It's not a system token and is not under one of the excluded path.
-      LOG(INFO) << "Unloading up PKCS #11 token: " << tokens[i];
-      chaps_client_->UnloadToken(isolate, FilePath(tokens[i]));
+      LOG(INFO) << "Unloading up PKCS #11 token: " << token;
+      chaps_client_->UnloadToken(isolate, FilePath(token));
     }
   }
   return true;
