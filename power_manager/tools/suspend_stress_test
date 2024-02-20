@@ -41,7 +41,8 @@ DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
-               "Ignore Intel s0ix substates and only check toplevel s0ix counter"
+               "Ignore Intel s0ix substates and \
+                only check toplevel s0ix counter"
 
 dmesg_last_cycle() {
   lines=0
@@ -357,8 +358,12 @@ log_s0ix_before() {
   last_pc10_count=$(get_pc10_count)
   last_toplevel_s0ix_count=$(get_toplevel_s0ix_count)
 
+  if [ -n "${last_pc10_count}" ]; then
+    last_package_cstate="$(cat /sys/kernel/debug/pmc_core/package_cstate_show)"
+  fi
   if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
-    s0ix_substate_before="$(grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies)"
+    last_s0ix_substate="$(grep 'S0i' \
+                          /sys/kernel/debug/pmc_core/substate_residencies)"
   fi
 }
 
@@ -370,16 +375,22 @@ log_s0ix_failure() {
   cur_pc10_count=$(get_pc10_count)
   cur_toplevel_s0ix_count=$(get_toplevel_s0ix_count)
 
-  if [ -e /sys/kernel/debug/pmc_core/package_cstate_show ] && \
-    [ "${cur_pc10_count}" = "${last_pc10_count}" ]; then
+  if [ -n "${last_pc10_count}" ] && \
+     [ "${cur_pc10_count}" = "${last_pc10_count}" ]; then
     echo "Suspend failed, pc10 count did not increment from ${last_pc10_count}"
+    echo "Package C-States before :"
+    echo "${last_package_cstate}"
+    echo "Package C-States Now :"
+    cat /sys/kernel/debug/pmc_core/package_cstate_show
     : $(( s0ix_pc10_errors += 1 ))
   elif [ "${cur_toplevel_s0ix_count}" = "${last_toplevel_s0ix_count}" ]; then
-    echo "Suspend failed, s0ix count did not increment from ${last_toplevel_s0ix_count}"
+    echo "Suspend failed, s0ix count did not increment from \
+      ${last_toplevel_s0ix_count}"
   elif [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
-    echo "Suspend failed, substate count did not increment from ${last_s0ix_count}"
+    echo "Suspend failed, substate count did not increment from \
+      ${last_s0ix_count}"
     echo "S0ix substate before :"
-    echo "${s0ix_substate_before}"
+    echo "${last_s0ix_substate}"
     echo "S0ix substate now :"
     grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies
     : $(( s0ix_substate_errors += 1 ))
