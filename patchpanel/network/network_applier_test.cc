@@ -21,6 +21,7 @@
 #include "patchpanel/network/mock_routing_table.h"
 #include "patchpanel/network/network_applier.h"
 #include "patchpanel/network/routing_table.h"
+#include "patchpanel/routing_service.h"
 
 using testing::_;
 using testing::Eq;
@@ -484,6 +485,11 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
   routing_fwmark.mask = 0xffff0000;
   const uint32_t kExpectedTable = 1011u;
 
+  RoutingPolicyEntry::FwMark route_on_vpn_fwmark = {
+      .value = kFwmarkRouteOnVpn.fwmark,
+      .mask = kFwmarkVpnMask.fwmark,
+  };
+
   auto user_uids = base::flat_map<std::string_view, fib_rule_uid_range>{
       {"chronos", fib_rule_uid_range{100u, 100u}}};
   EXPECT_CALL(*rule_table_, GetUserTrafficUids())
@@ -538,6 +544,12 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
       AddRule(kInterfaceIndex, IsValidUidRule(net_base::IPFamily::kIPv4, 32764u,
                                               100u, kExpectedTable)))
       .WillOnce(Return(true));
+  // 32764:  from all fwmark 0x8000/0xc000 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidFwMarkRule(net_base::IPFamily::kIPv4, 32764u,
+                                        route_on_vpn_fwmark, kExpectedTable)))
+      .WillOnce(Return(true));
 
   // IPv6 rules:
   // 10:    from all fwmark 0x3f30000/0xffff0000 lookup 1011
@@ -557,6 +569,12 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
       *rule_table_,
       AddRule(kInterfaceIndex, IsValidUidRule(net_base::IPFamily::kIPv6, 32764u,
                                               100u, kExpectedTable)))
+      .WillOnce(Return(true));
+  // 32764:  from all fwmark 0x8000/0xc000 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidFwMarkRule(net_base::IPFamily::kIPv6, 32764u,
+                                        route_on_vpn_fwmark, kExpectedTable)))
       .WillOnce(Return(true));
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));

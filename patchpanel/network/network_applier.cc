@@ -21,6 +21,7 @@
 #include "patchpanel/network/routing_policy_service.h"
 #include "patchpanel/network/routing_table.h"
 #include "patchpanel/network/routing_table_entry.h"
+#include "patchpanel/routing_service.h"
 
 namespace patchpanel {
 
@@ -151,12 +152,14 @@ void NetworkApplier::ApplyRoutingPolicy(
   bool is_primary_physical = priority.is_primary_physical;
   rule_table_->FlushRules(interface_index);
 
-  // b/177620923 Add uid rules just before the default rule to route to the VPN
-  // interface any untagged traffic owner by a uid routed through VPN
-  // connections. These rules are necessary for consistency between source IP
-  // address selection algorithm that ignores iptables fwmark tagging rules, and
-  // the actual routing of packets that have been tagged in iptables PREROUTING.
+  // Add rules just before the default rule to route to the VPN interface for
+  // certain traffic. These rules are necessary for consistency between source
+  // IP address selection algorithm that ignores iptables fwmark tagging rules,
+  // and the actual routing of packets that have been tagged in iptables
+  // PREROUTING or OUTPUT.
   if (technology == Technology::kVPN) {
+    // b/177620923 Add uid rules any untagged traffic owner by a uid routed
+    // through VPN connections.
     for (const auto& uid : rule_table_->GetUserTrafficUids()) {
       for (const auto family : net_base::kIPFamilies) {
         auto entry = RoutingPolicyEntry(family);
@@ -165,6 +168,18 @@ void NetworkApplier::ApplyRoutingPolicy(
         entry.uid_range = uid.second;
         rule_table_->AddRule(interface_index, entry);
       }
+    }
+
+    // Add rules for packets already tagged with ROUTE_ON_VPN.
+    for (const auto family : net_base::kIPFamilies) {
+      auto entry = RoutingPolicyEntry(family);
+      entry.priority = kVpnUidRulePriority;
+      entry.table = table_id;
+      entry.fw_mark = RoutingPolicyEntry::FwMark{
+          .value = kFwmarkRouteOnVpn.fwmark,
+          .mask = kFwmarkVpnMask.fwmark,
+      };
+      rule_table_->AddRule(interface_index, entry);
     }
   }
 
