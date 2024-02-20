@@ -570,8 +570,11 @@ TEST_F(ImageBurnerImplTest, IsSourcePathAllowed) {
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache/",
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/file",
       "/home/chronos/u-xyz3456789abcdef0123456789abcdef01234567/Downloads/file",
+      "/home/chronos/user/MyFiles",
+      "/home/chronos/user/MyFiles/",
       "/home/chronos/user/Downloads",
       "/home/chronos/user/Downloads/",
+      "/home/chronos/user/Downloads/file",
       "/home/chronos/user/GCache",
       "/home/chronos/user/GCache/",
       "/home/chronos/user/file",
@@ -590,7 +593,7 @@ TEST_F(ImageBurnerImplTest, IsSourcePathAllowed) {
   };
 
   for (const char* path : kPathsNotAllowed) {
-    EXPECT_FALSE(burner_->IsSourcePathAllowed(path));
+    EXPECT_FALSE(burner_->IsSourcePathAllowed(path)) << " for " << path;
   }
 
   static const char* const kPathsAllowed[] = {
@@ -598,21 +601,18 @@ TEST_F(ImageBurnerImplTest, IsSourcePathAllowed) {
       "/media/removable/disk1/file",
       "/media/removable/disk1/dir1/file",
       "/media/removable/test.zip/file",
-      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/Downloads/file",
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/MyFiles/file",
-
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/MyFiles/"
       "Downloads/file",
 
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache/file",
-      "/home/chronos/user/Downloads/file",
       "/home/chronos/user/MyFiles/file",
       "/home/chronos/user/MyFiles/Downloads/file",
       "/home/chronos/user/GCache/file",
   };
 
   for (const char* path : kPathsAllowed) {
-    EXPECT_TRUE(burner_->IsSourcePathAllowed(path));
+    EXPECT_TRUE(burner_->IsSourcePathAllowed(path)) << " for " << path;
   }
 }
 
