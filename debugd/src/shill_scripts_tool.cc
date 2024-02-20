@@ -42,7 +42,6 @@ const char * const kAllowedScripts[] = {
     "network_diag",
     "set_apn",
     "set_arpgw",
-    "set_cellular_ppp",
     "set_wake_on_lan",
 };
 // clang-format on
