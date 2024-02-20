@@ -101,6 +101,7 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForNormalReboot) {
 }
 
 TEST_F(ActionRunnerTest, EnableForceRebootActionForForceReboot) {
+  action_runner_.SetSyncFlag(false);
   action_runner_.EnableForceRebootAction();
   action_runner_.Run(mojom::ServiceName::kKiosk,
                      mojom::ActionType::kForceReboot);

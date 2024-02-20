@@ -57,6 +57,9 @@ class ActionRunner {
   // the reboot action.
   bool IsForceRebootTooManyTimes();
 
+  // Configure sync flag.
+  void SetSyncFlag(bool sync_flag);
+
  private:
   // Returns the normal reboot count after a certain time.
   int GetNormalRebootCount(const base::Time& time);
@@ -76,6 +79,8 @@ class ActionRunner {
   int sysrq_fd_ = -1;
   // Cache the BootRecord result to prevent unlimited reboot action.
   std::vector<BootRecord> boot_records_;
+  // Flag for whether sync before force reboot.
+  bool sync_flag_ = true;
 };
 
 }  // namespace heartd

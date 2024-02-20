@@ -73,3 +73,12 @@ sync: 1
 unlinkat: 1
 fdatasync: 1
 getdents64: 1
+# Used to launch a process to call "sync" before force reboot.
+execve: 1
+# For sync
+clone: 1
+wait4: 1
+# For sync
+prctl: 1
+# For sync
+kill: 1

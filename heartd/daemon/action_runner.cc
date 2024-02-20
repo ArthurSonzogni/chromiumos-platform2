@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <brillo/process/process.h>
 #include <power_manager/dbus-proxies.h>
 
 #include "heartd/daemon/boot_record.h"
@@ -86,9 +87,15 @@ void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
         break;
       case mojom::ActionType::kForceReboot:
         LOG(WARNING) << "Heartd starts to force reboot the device.";
-        // TODO(b/324023559): move sync call to background otherwise it blocks
-        // the reboot in case of IO freezes.
-        sync();
+        if (sync_flag_) {
+          brillo::ProcessImpl sync_process;
+          sync_process.AddArg("/bin/sync");
+          // We don't call `Wait()` because it may block the following flow.
+          // Instead, we sleep 10 seconds for sync.
+          sync_process.Start();
+          sleep(10);
+        }
+
         if (!write(sysrq_fd_, "c", 1)) {
           LOG(ERROR) << "Heartd failed to force reboot the device";
         }
@@ -180,6 +187,10 @@ bool ActionRunner::IsForceRebootTooManyTimes() {
   }
 
   return false;
+}
+
+void ActionRunner::SetSyncFlag(bool sync_flag) {
+  sync_flag_ = sync_flag;
 }
 
 }  // namespace heartd
