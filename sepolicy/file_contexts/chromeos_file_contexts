@@ -332,7 +332,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
-/var/lib/metrics/uma-events.d   u:object_r:cros_metrics_uma_events_dir:s0
+/var/lib/metrics/uma-events.d(/.*)?   u:object_r:cros_metrics_uma_events_file:s0
 /var/lib/misc                   u:object_r:cros_var_lib_misc:s0
 /var/lib/ml_core(/.*)?          u:object_r:cros_var_lib_ml_core:s0
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
