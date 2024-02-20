@@ -58,8 +58,6 @@ HomeDirs::HomeDirs(libstorage::Platform* platform,
       vault_factory_(vault_factory),
       remove_callback_(remove_callback) {}
 
-HomeDirs::~HomeDirs() {}
-
 void HomeDirs::LoadDevicePolicy() {
   policy_provider_->Reload();
 }

@@ -20,7 +20,7 @@ namespace cryptohome {
 // performed out-of-process.
 class MountHelperInterface {
  public:
-  virtual ~MountHelperInterface() {}
+  virtual ~MountHelperInterface() = default;
 
   // Ephemeral mounts cannot be performed twice, so cryptohome needs to be able
   // to check whether an ephemeral mount can be performed.

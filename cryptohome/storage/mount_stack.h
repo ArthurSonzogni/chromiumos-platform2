@@ -16,7 +16,7 @@ namespace cryptohome {
 // it's destroyed.
 class MountStack {
  public:
-  MountStack();
+  MountStack() = default;
   MountStack(const MountStack&) = delete;
   MountStack& operator=(const MountStack&) = delete;
 

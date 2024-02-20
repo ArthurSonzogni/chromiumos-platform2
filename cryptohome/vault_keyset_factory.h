@@ -14,11 +14,11 @@ class VaultKeyset;
 // objects are created.
 class VaultKeysetFactory {
  public:
-  VaultKeysetFactory();
+  VaultKeysetFactory() = default;
   VaultKeysetFactory(const VaultKeysetFactory&) = delete;
   VaultKeysetFactory& operator=(const VaultKeysetFactory&) = delete;
 
-  virtual ~VaultKeysetFactory();
+  virtual ~VaultKeysetFactory() = default;
   virtual VaultKeyset* New(libstorage::Platform* platform, Crypto* crypto);
   virtual VaultKeyset* NewBackup(libstorage::Platform* platform,
                                  Crypto* crypto);

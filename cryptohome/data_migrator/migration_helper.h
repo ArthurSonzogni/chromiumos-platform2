@@ -45,7 +45,7 @@ BRILLO_EXPORT extern const char kReferrerURLXattrName[];
 //   The destination filesystem needs to support flushing hardware buffers on
 //   fsync.  In the case of Ext4, this means not disabling the barrier mount
 //   option.
-class BRILLO_EXPORT MigrationHelper {
+class BRILLO_EXPORT MigrationHelper final {
  public:
   // Callback for monitoring migration progress.  The |current_bytes| is the
   // number of bytes migrated so far, and the |total_bytes| is the total number
@@ -71,7 +71,7 @@ class BRILLO_EXPORT MigrationHelper {
   MigrationHelper(const MigrationHelper&) = delete;
   MigrationHelper& operator=(const MigrationHelper&) = delete;
 
-  virtual ~MigrationHelper();
+  ~MigrationHelper();
 
   void set_num_job_threads_for_testing(size_t num_job_threads) {
     num_job_threads_ = num_job_threads;

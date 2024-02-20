@@ -289,7 +289,7 @@ MigrationHelper::MigrationHelper(libstorage::Platform* platform,
       max_job_list_size_(kDefaultMaxJobListSize),
       worker_pool_(new WorkerPool(this)) {}
 
-MigrationHelper::~MigrationHelper() {}
+MigrationHelper::~MigrationHelper() = default;
 
 bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;

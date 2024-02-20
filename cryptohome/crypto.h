@@ -38,8 +38,6 @@ class Crypto final {
   Crypto(const Crypto&) = delete;
   Crypto& operator=(const Crypto&) = delete;
 
-  ~Crypto();
-
   // Must be called before calling any other method (except test-only dependency
   // injectors).
   void Init();

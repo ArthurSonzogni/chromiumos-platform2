@@ -26,7 +26,7 @@ class CryptohomeVaultFactory {
                          std::unique_ptr<libstorage::StorageContainerFactory>
                              storage_container_factory);
 
-  virtual ~CryptohomeVaultFactory();
+  virtual ~CryptohomeVaultFactory() = default;
 
   virtual std::unique_ptr<CryptohomeVault> Generate(
       const ObfuscatedUsername& obfuscated_username,

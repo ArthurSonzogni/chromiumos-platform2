@@ -84,7 +84,7 @@ class HomeDirs {
   HomeDirs(const HomeDirs&) = delete;
   HomeDirs& operator=(const HomeDirs&) = delete;
 
-  virtual ~HomeDirs();
+  virtual ~HomeDirs() = default;
 
   // Removes all ephemeral cryptohomes except mounted owned by anyone other than
   // the owner user (if set) and non ephemeral users, regardless of free disk

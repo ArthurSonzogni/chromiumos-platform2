@@ -70,8 +70,6 @@ CryptohomeVaultFactory::CryptohomeVaultFactory(
     : platform_(platform),
       storage_container_factory_(std::move(storage_container_factory)) {}
 
-CryptohomeVaultFactory::~CryptohomeVaultFactory() {}
-
 std::unique_ptr<libstorage::StorageContainer>
 CryptohomeVaultFactory::GenerateStorageContainer(
     libstorage::StorageContainerType type,

@@ -122,7 +122,7 @@ class InstallAttributes : public InstallAttributesInterface {
 
  protected:
   // constructor for mock testing purpose.
-  InstallAttributes() {}
+  InstallAttributes() = default;
 
   // Helper to find a given entry index using its name.
   virtual int FindIndexByName(const std::string& name) const;

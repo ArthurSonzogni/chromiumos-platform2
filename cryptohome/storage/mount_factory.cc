@@ -14,9 +14,6 @@
 
 namespace cryptohome {
 
-MountFactory::MountFactory() {}
-MountFactory::~MountFactory() {}
-
 Mount* MountFactory::New(libstorage::Platform* platform,
                          HomeDirs* homedirs,
                          bool legacy_mount,

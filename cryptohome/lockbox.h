@@ -58,7 +58,7 @@ class Lockbox {
   Lockbox(const Lockbox&) = delete;
   Lockbox& operator=(const Lockbox&) = delete;
 
-  virtual ~Lockbox();
+  virtual ~Lockbox() = default;
 
   // Sets up the backend state needed for this lockbox.
   //
@@ -86,7 +86,7 @@ class Lockbox {
 
  protected:
   // constructor for mock testing purpose.
-  Lockbox() {}
+  Lockbox() = default;
 
  private:
   const hwsec::CryptohomeFrontend* hwsec_;

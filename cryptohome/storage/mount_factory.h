@@ -20,8 +20,8 @@ class Mount;
 // are created.
 class MountFactory {
  public:
-  MountFactory();
-  virtual ~MountFactory();
+  MountFactory() = default;
+  virtual ~MountFactory() = default;
   virtual Mount* New(libstorage::Platform*, HomeDirs*, bool, bool);
 };
 

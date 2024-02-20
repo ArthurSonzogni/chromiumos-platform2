@@ -64,8 +64,6 @@ Crypto::Crypto(const hwsec::CryptohomeFrontend* hwsec,
   // recovery_hwsec_ may be nullptr.
 }
 
-Crypto::~Crypto() {}
-
 void Crypto::Init() {
   cryptohome_keys_manager_->Init();
 

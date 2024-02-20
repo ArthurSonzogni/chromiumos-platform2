@@ -47,8 +47,6 @@ Lockbox::Lockbox(const hwsec::CryptohomeFrontend* hwsec, hwsec::Space space)
   CHECK(hwsec_);
 }
 
-Lockbox::~Lockbox() {}
-
 bool Lockbox::Reset(LockboxError* error) {
   uint32_t nvram_bytes = LockboxContents::kNvramSize;
   if (hwsec::Status status = hwsec_->PrepareSpace(space_, nvram_bytes);

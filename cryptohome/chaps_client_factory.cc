@@ -8,9 +8,6 @@
 
 namespace cryptohome {
 
-ChapsClientFactory::ChapsClientFactory() {}
-ChapsClientFactory::~ChapsClientFactory() {}
-
 chaps::TokenManagerClient* ChapsClientFactory::New() {
   return new chaps::TokenManagerClient();
 }

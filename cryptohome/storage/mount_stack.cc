@@ -15,8 +15,6 @@ namespace cryptohome {
 MountStack::MountInfo::MountInfo(const FilePath& src, const FilePath& dest)
     : src(src), dest(dest) {}
 
-MountStack::MountStack() {}
-
 MountStack::~MountStack() {
   if (!mounts_.empty()) {
     LOG(ERROR) << "MountStack destroyed with " << mounts_.size() << " mounts.";

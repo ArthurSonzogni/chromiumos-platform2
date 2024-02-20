@@ -42,8 +42,6 @@ class StorageError : public hwsec_foundation::status::Error {
   StorageError& operator=(const StorageError&) = default;
   StorageError& operator=(StorageError&&) = default;
 
-  ~StorageError() override {}
-
   MountError error() const { return error_; }
 
   std::string ToString() const override {
