@@ -944,21 +944,6 @@ cmd_set_apn() (
 )
 
 # shellcheck disable=SC2034
-USAGE_set_cellular_ppp='[-c] [-u <username>] [-p <password>]'
-# shellcheck disable=SC2034
-HELP_set_cellular_ppp='
-  Set the PPP username and/or password for an existing cellular connection.
-  If neither -u nor -p is provided, show the existing PPP username for
-  the cellular connection.
-
-  The -c option clears any existing PPP username and PPP password for an
-  existing cellular connection.
-'
-cmd_set_cellular_ppp() (
-  /usr/bin/set_cellular_ppp "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_connectivity=''
 # shellcheck disable=SC2034
 HELP_connectivity='
