@@ -474,7 +474,8 @@ TEST_F(DatapathTest, Start) {
       {IpFamily::kIPv6, "filter -A FORWARD -p ipv6-icmp -j ACCEPT -w"},
       // Asserts for OUTPUT CONNMARK restore rule
       {IpFamily::kDual,
-       "mangle -A OUTPUT -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
+       "mangle -A OUTPUT -m mark --mark 0x0/0xffff0000 -j CONNMARK "
+       "--restore-mark --mask 0xffff0000 -w"},
       // Asserts for apply_local_source_mark chain
       {IpFamily::kDual, "mangle -N apply_local_source_mark -w"},
       {IpFamily::kDual, "mangle -A OUTPUT -j apply_local_source_mark -w"},

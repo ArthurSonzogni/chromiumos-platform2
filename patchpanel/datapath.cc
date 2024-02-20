@@ -512,9 +512,12 @@ void Datapath::Start() {
   }
 
   // Applies the routing tag saved in conntrack for any established connection
-  // for sockets created in the host network namespace.
+  // for sockets created in the host network namespace. Do not overwrite the
+  // routing tag if the the fwmark of the packet already has it. This can happen
+  // if the socket fwmark is set with the TagSocket API.
   if (!ModifyConnmarkRestore(IpFamily::kDual, "OUTPUT", Iptables::Command::kA,
-                             /*iif=*/"", kFwmarkRoutingMask)) {
+                             /*iif=*/"", kFwmarkRoutingMask,
+                             /*skip_on_non_empty_mark=*/true)) {
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
   }
 
@@ -2133,10 +2136,14 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
                                      const std::string& chain,
                                      Iptables::Command op,
                                      const std::string& iif,
-                                     Fwmark mask) {
+                                     Fwmark mask,
+                                     bool skip_on_non_empty_mark) {
   std::vector<std::string> args;
   if (!iif.empty()) {
     args.insert(args.end(), {"-i", iif});
+  }
+  if (skip_on_non_empty_mark) {
+    args.insert(args.end(), {"-m", "mark", "--mark", "0x0/" + mask.ToString()});
   }
   args.insert(args.end(), {"-j", "CONNMARK", "--restore-mark", "--mask",
                            mask.ToString(), "-w"});

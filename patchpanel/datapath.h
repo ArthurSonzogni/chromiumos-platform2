@@ -546,7 +546,8 @@ class Datapath {
                              const std::string& chain,
                              Iptables::Command command,
                              const std::string& iif,
-                             Fwmark mask);
+                             Fwmark mask,
+                             bool skip_on_non_empty_mark = false);
   bool ModifyConnmarkSave(IpFamily family,
                           const std::string& chain,
                           Iptables::Command command,
