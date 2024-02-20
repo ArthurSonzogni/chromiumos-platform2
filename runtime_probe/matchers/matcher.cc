@@ -6,11 +6,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/values.h>
 
 #include "runtime_probe/matchers/field_matcher.h"
+#include "runtime_probe/matchers/logical_matcher.h"
 
 namespace runtime_probe {
 
@@ -39,6 +42,12 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
   }
   if (op == "HEX_EQUAL") {
     return HexEqualMatcher::Create(*operands);
+  }
+  if (op == "AND") {
+    return AndMatcher::Create(*operands);
+  }
+  if (op == "OR") {
+    return OrMatcher::Create(*operands);
   }
   LOG(ERROR) << "Unsupported matcher operator " << op;
   return nullptr;

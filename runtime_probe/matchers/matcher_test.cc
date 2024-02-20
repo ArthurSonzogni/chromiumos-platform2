@@ -154,6 +154,36 @@ TEST(MatchersTest, HexMatcherMustHaveHexStringOperands) {
                             )JSON"));
 }
 
+TEST(MatchersTest, LogicalMatcherMustHaveOperand) {
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "AND",
+                                "operand": []
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "OR",
+                                "operand": []
+                              }
+                            )JSON"));
+}
+
+TEST(MatchersTest, LogicalMatcherOperandMustBeMatchers) {
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "AND",
+                                "operand": ["no_a_matcher"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "OR",
+                                "operand": ["not_a_matcher"]
+                              }
+                            )JSON"));
+}
+
 TEST(MatchersTest, StringMatcher) {
   auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
       {
@@ -236,6 +266,76 @@ TEST(MatchersTest, HexMatcher) {
       }
     )JSON")));
   // Field not found
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {}
+    )JSON")));
+}
+
+TEST(MatchersTest, AndMatcher) {
+  auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
+      {
+        "operator": "AND",
+        "operand": [
+          {
+            "operator": "STRING_EQUAL",
+            "operand": ["field_a", "value_a"]
+          },
+          {
+            "operator": "STRING_EQUAL",
+            "operand": ["field_b", "value_b"]
+          }
+        ]
+      }
+    )JSON"));
+  EXPECT_TRUE(matcher);
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_a",
+        "field_b": "value_b"
+      }
+    )JSON")));
+  // One matcher not match.
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_a"
+      }
+    )JSON")));
+  // All matchers not match.
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {}
+    )JSON")));
+}
+
+TEST(MatchersTest, OrMatcher) {
+  auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
+      {
+        "operator": "OR",
+        "operand": [
+          {
+            "operator": "STRING_EQUAL",
+            "operand": ["field_a", "value_a"]
+          },
+          {
+            "operator": "STRING_EQUAL",
+            "operand": ["field_b", "value_b"]
+          }
+        ]
+      }
+    )JSON"));
+  EXPECT_TRUE(matcher);
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_a",
+        "field_b": "value_b"
+      }
+    )JSON")));
+  // One matcher not match.
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "value_a"
+      }
+    )JSON")));
+  // All matchers not match.
   EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
       {}
     )JSON")));
