@@ -43,8 +43,6 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   OutOfProcessMountHelper(const OutOfProcessMountHelper&) = delete;
   OutOfProcessMountHelper& operator=(const OutOfProcessMountHelper&) = delete;
 
-  ~OutOfProcessMountHelper() = default;
-
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome,
   // but does so out of process.
   StorageStatus PerformEphemeralMount(

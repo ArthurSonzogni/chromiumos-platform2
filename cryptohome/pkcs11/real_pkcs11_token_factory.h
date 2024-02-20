@@ -18,7 +18,6 @@ namespace cryptohome {
 
 class RealPkcs11TokenFactory final : public Pkcs11TokenFactory {
  public:
-  virtual ~RealPkcs11TokenFactory() = default;
   std::unique_ptr<Pkcs11Token> New(
       const Username& username,
       const base::FilePath& token_dir,

@@ -28,8 +28,6 @@ class FirmwareManagementParametersProxy
   FirmwareManagementParametersProxy& operator=(
       const FirmwareManagementParametersProxy&) = delete;
 
-  ~FirmwareManagementParametersProxy() = default;
-
   bool GetFWMP(user_data_auth::FirmwareManagementParameters* fwmp) override;
 
   bool SetFWMP(

@@ -25,7 +25,6 @@ enum class MigrationStatus {
 class Metrics : private MetricsLibrary {
  public:
   Metrics() = default;
-  virtual ~Metrics() = default;
 
   virtual void ReportInstallAttributesMigrationStatus(MigrationStatus status);
 

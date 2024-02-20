@@ -189,7 +189,7 @@ class AfDriverFullAuthUnsupported : public virtual AuthFactorDriver {
 template <bool is_repeatable>
 class AfDriverFullAuthIsRepeatable : public virtual AuthFactorDriver {
  private:
-  bool IsFullAuthRepeatable() const { return is_repeatable; }
+  bool IsFullAuthRepeatable() const final { return is_repeatable; }
 };
 
 // Common implementation of the verifier functions for drivers which do not

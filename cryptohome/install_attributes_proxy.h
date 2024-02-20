@@ -24,8 +24,6 @@ class InstallAttributesProxy : public InstallAttributesInterface {
   InstallAttributesProxy(const InstallAttributesProxy&) = delete;
   InstallAttributesProxy& operator=(const InstallAttributesProxy&) = delete;
 
-  ~InstallAttributesProxy() = default;
-
   // For the proxy class, this will just return true, as the actual
   // initialization will take place in device_management service.
   [[nodiscard]] bool Init() override { return true; };

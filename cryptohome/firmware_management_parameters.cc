@@ -2,15 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/crc.h"
 #include "cryptohome/firmware_management_parameters.h"
 
 #include <arpa/inet.h>
-#include <limits.h>
 #include <stdint.h>
 
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -19,13 +16,12 @@
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 
-using brillo::SecureBlob;
+#include "cryptohome/crc.h"
 
+namespace cryptohome {
 namespace {
 const uint32_t kNvramVersionV1_0 = 0x10;
 }
-
-namespace cryptohome {
 
 // Defines the raw NVRAM contents.
 struct FirmwareManagementParametersRawV1_0 {
@@ -77,7 +73,7 @@ FirmwareManagementParameters::FirmwareManagementParameters()
     : fwmp_type_(hwsec::Space::kFirmwareManagementParameters),
       hwsec_(nullptr) {}
 
-FirmwareManagementParameters::~FirmwareManagementParameters() {}
+FirmwareManagementParameters::~FirmwareManagementParameters() = default;
 
 bool FirmwareManagementParameters::GetFWMP(
     user_data_auth::FirmwareManagementParameters* fwmp) {
@@ -176,7 +172,7 @@ bool FirmwareManagementParameters::Load(void) {
     return false;
   }
 
-  SecureBlob nvram_data(data->begin(), data->end());
+  brillo::SecureBlob nvram_data(data->begin(), data->end());
 
   // Make sure we've read enough data for a 1.0 struct
   unsigned int nvram_size = nvram_data.size();

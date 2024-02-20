@@ -47,8 +47,6 @@ InstallAttributes::InstallAttributes(libstorage::Platform* platform,
   version_ = attributes_->version();  // versioning controlled by pb default.
 }
 
-InstallAttributes::~InstallAttributes() {}
-
 bool InstallAttributes::IsSecure() {
   if (!USE_TPM_INSECURE_FALLBACK) {
     // We should always enable the hardware protection if we don't enable the

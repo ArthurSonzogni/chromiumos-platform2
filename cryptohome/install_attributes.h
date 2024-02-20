@@ -46,8 +46,6 @@ class InstallAttributes : public InstallAttributesInterface {
   InstallAttributes(const InstallAttributes&) = delete;
   InstallAttributes& operator=(const InstallAttributes&) = delete;
 
-  virtual ~InstallAttributes();
-
   Status status() override { return status_; }
 
   // Sets status (for testing).
@@ -88,7 +86,7 @@ class InstallAttributes : public InstallAttributesInterface {
 
   // No-op in legacy install_attributes.
   void SetDeviceManagementProxy(
-      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override{};
+      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override {}
 
   // Return InstallAttributes version.
   // This is populated from the default value in install_attributes.proto and

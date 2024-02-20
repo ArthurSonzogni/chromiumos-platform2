@@ -268,7 +268,6 @@ class SystemKeyLoader {
 class FixedSystemKeyLoader : public SystemKeyLoader {
  public:
   explicit FixedSystemKeyLoader(const brillo::SecureBlob& key) : key_(key) {}
-  virtual ~FixedSystemKeyLoader() = default;
 
   result_code Load(brillo::SecureBlob* key) override {
     *key = key_;

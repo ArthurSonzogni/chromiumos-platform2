@@ -8,14 +8,15 @@
 #define CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 
 #include "cryptohome/firmware_management_parameters_interface.h"
-#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
-#include "libhwsec/frontend/cryptohome/frontend.h"
 
 #include <memory>
 
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <openssl/sha.h>
+
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
 
 namespace cryptohome {
 
@@ -65,7 +66,9 @@ class FirmwareManagementParameters
   FirmwareManagementParameters& operator=(const FirmwareManagementParameters&) =
       delete;
 
-  virtual ~FirmwareManagementParameters();
+  // This has to be defined in the .cc file because the destructor destroys
+  // members whose type definitions are incomplete in the header.
+  ~FirmwareManagementParameters() override;
 
   bool GetFWMP(user_data_auth::FirmwareManagementParameters* fwmp) override;
 
@@ -83,7 +86,7 @@ class FirmwareManagementParameters
 
   // No-op in legacy install_attributes.
   void SetDeviceManagementProxy(
-      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override{};
+      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override {}
 
   // Creates the backend state needed for this firmware management parameters.
   //
