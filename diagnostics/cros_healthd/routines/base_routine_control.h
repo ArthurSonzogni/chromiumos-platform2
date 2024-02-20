@@ -79,8 +79,8 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   // Calls the on_exception_ callback.
   void RaiseException(const std::string& reason);
 
-  // Set the percentage, this can only be called if the state is in running or
-  // waiting.
+  // Set the percentage, this can only be called if the state is currently
+  // running.
   void SetPercentage(uint8_t percentage);
 
   // Return a const reference of the current state.
