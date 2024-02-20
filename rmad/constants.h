@@ -31,6 +31,7 @@ inline constexpr char kJsonStoreFilePath[] = "state";
 inline constexpr char kTestDirPath[] = ".test";
 inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
 inline constexpr char kDisableCalibrationFilePath[] = ".disable_calibration";
+inline constexpr char kDisableRaccFilePath[] = ".disable_racc";
 inline constexpr char kFakeFeaturesInputFilePath[] = ".fake_features_input";
 inline constexpr char kFakeFeaturesOutputFilePath[] = ".fake_features_output";
 

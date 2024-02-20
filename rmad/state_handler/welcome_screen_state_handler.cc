@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
@@ -31,7 +32,8 @@ namespace rmad {
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback) {
+    : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(kDefaultWorkingDirPath) {
   hardware_verifier_client_ =
       std::make_unique<HardwareVerifierClientImpl>(GetSystemBus());
 }
@@ -39,8 +41,10 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<HardwareVerifierClient> hardware_verifier_client)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(working_dir_path),
       hardware_verifier_client_(std::move(hardware_verifier_client)) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
@@ -81,8 +85,15 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   bool is_compliant;
   std::vector<std::string> error_strings;
-  if (hardware_verifier_client_->GetHardwareVerificationResult(
-          &is_compliant, &error_strings)) {
+
+  if (IsRaccDisabled(working_dir_path_)) {
+    HardwareVerificationResult result;
+    result.set_is_compliant(true);
+    result.set_error_str("");
+    LOG(INFO) << "Component compliance check bypassed.";
+    daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
+  } else if (hardware_verifier_client_->GetHardwareVerificationResult(
+                 &is_compliant, &error_strings)) {
     // Use multi-line error string for UX.
     HardwareVerificationResult result;
     result.set_is_compliant(is_compliant);

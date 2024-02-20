@@ -96,6 +96,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Calibration related functions.
   bool IsCalibrationDisabled(const base::FilePath& working_dir_path) const;
 
+  // RACC related functions.
+  bool IsRaccDisabled(const base::FilePath& working_dir_path) const;
+
  protected:
   friend class base::RefCounted<BaseStateHandler>;
   virtual ~BaseStateHandler() = default;
@@ -109,13 +112,19 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   scoped_refptr<DaemonCallback> daemon_callback_;
 };
 
-#define ASSIGN_STATE(state) \
-  RmadState::StateCase GetStateCase() const override { return state; }
+#define ASSIGN_STATE(state)                            \
+  RmadState::StateCase GetStateCase() const override { \
+    return state;                                      \
+  }
 
-#define SET_REPEATABLE \
-  bool IsRepeatable() const override { return true; }
-#define SET_UNREPEATABLE \
-  bool IsRepeatable() const override { return false; }
+#define SET_REPEATABLE                 \
+  bool IsRepeatable() const override { \
+    return true;                       \
+  }
+#define SET_UNREPEATABLE               \
+  bool IsRepeatable() const override { \
+    return false;                      \
+  }
 
 }  // namespace rmad
 

@@ -21,10 +21,12 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   explicit WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |hardware_verifier_client_| for testing.
+  // Used to inject |working_dir_path| and |hardware_verifier_client_| for
+  // testing.
   explicit WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path,
       std::unique_ptr<HardwareVerifierClient> hardware_verifier_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
@@ -41,6 +43,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   void OnGetStateTask() const override;
 
  private:
+  base::FilePath working_dir_path_;
   // Helper utilities.
   std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
 };

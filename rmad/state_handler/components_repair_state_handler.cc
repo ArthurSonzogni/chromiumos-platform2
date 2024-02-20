@@ -141,7 +141,9 @@ RmadState ConvertDictionaryToState(
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback), active_(false) {
+    : BaseStateHandler(json_store, daemon_callback),
+      active_(false),
+      working_dir_path_(kDefaultWorkingDirPath) {
   cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
   runtime_probe_client_ =
       std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
@@ -151,11 +153,13 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<CryptohomeClient> cryptohome_client,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       active_(false),
+      working_dir_path_(working_dir_path),
       cryptohome_client_(std::move(cryptohome_client)),
       runtime_probe_client_(std::move(runtime_probe_client)),
       write_protect_utils_(std::move(write_protect_utils)) {}
@@ -181,7 +185,9 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
 
   // Call runtime_probe to get all probed components.
   ComponentsWithIdentifier probed_components;
-  if (!runtime_probe_client_->ProbeCategories({}, true, &probed_components)) {
+
+  if (!IsRaccDisabled(working_dir_path_) &&
+      !runtime_probe_client_->ProbeCategories({}, true, &probed_components)) {
     LOG(ERROR) << "Failed to get probe result from runtime_probe";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }

@@ -213,4 +213,11 @@ bool BaseStateHandler::IsCalibrationDisabled(
       working_dir_path.AppendASCII(kDisableCalibrationFilePath));
 }
 
+bool BaseStateHandler::IsRaccDisabled(
+    const base::FilePath& working_dir_path) const {
+  // |kDisableRaccFilePath| is a file for testing convenience. Manually touch
+  // this file if we want to skip RACC related checks during testing.
+  return base::PathExists(working_dir_path.AppendASCII(kDisableRaccFilePath));
+}
+
 }  // namespace rmad

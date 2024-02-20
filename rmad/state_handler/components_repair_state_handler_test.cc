@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -41,6 +42,7 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     ComponentsWithIdentifier probed_components = {};
     bool ccd_blocked = false;
     bool hwwp_enabled = true;
+    bool racc_bypassed = false;
   };
 
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
@@ -56,6 +58,10 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
         .WillByDefault(DoAll(SetArgPointee<2>(args.probed_components),
                              Return(args.runtime_probe_client_retval)));
+    if (args.racc_bypassed) {
+      EXPECT_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
+          .Times(0);
+    }
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
@@ -63,8 +69,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(args.hwwp_enabled));
 
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_cryptohome_client),
-        std::move(mock_runtime_probe_client),
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_cryptohome_client), std::move(mock_runtime_probe_client),
         std::move(mock_write_protect_utils));
   }
 
@@ -90,6 +96,14 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 
 TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler({});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+}
+
+TEST_F(ComponentsRepairStateHandlerTest, InitializeState_BypassRacc_Success) {
+  // Bypass hardware verification check.
+  ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
+
+  auto handler = CreateStateHandler({.racc_bypassed = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 

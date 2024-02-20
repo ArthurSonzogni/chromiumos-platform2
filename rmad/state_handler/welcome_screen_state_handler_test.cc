@@ -10,9 +10,11 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/logs/logs_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -54,6 +56,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool hw_verification_request_success = true;
     bool hw_verification_result = true;
+    bool hw_verification_bypassed = false;
   };
 
   scoped_refptr<WelcomeScreenStateHandler> CreateStateHandler(
@@ -74,6 +77,12 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
           return args.hw_verification_request_success;
         });
 
+    if (args.hw_verification_bypassed) {
+      EXPECT_CALL(*mock_hardware_verifier_client,
+                  GetHardwareVerificationResult(_, _))
+          .Times(0);
+    }
+
     // Register signal callback.
     daemon_callback_->SetHardwareVerificationSignalCallback(
         base::BindRepeating(&SignalSender::SendHardwareVerificationSignal,
@@ -81,7 +90,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
 
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
-        json_store_, daemon_callback_,
+        json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_hardware_verifier_client));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -124,6 +133,16 @@ TEST_F(WelcomeScreenStateHandlerTest,
   EXPECT_TRUE(verification_result->FindBool(kLogIsCompliant).has_value());
   EXPECT_TRUE(verification_result->FindBool(kLogIsCompliant).value());
   EXPECT_EQ("", *verification_result->FindString(kLogUnqualifiedComponents));
+}
+
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Succeeded_VerificationBypass_DoGetStateTask) {
+  // Bypass hardware verification check.
+  ASSERT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kDisableRaccFilePath)));
+
+  auto handler = CreateStateHandler({.hw_verification_bypassed = true});
+  RmadState state = handler->GetState(true);
+  ExpectSignal(true, "");
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
