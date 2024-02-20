@@ -134,6 +134,10 @@ CapportProxy::~CapportProxy() {
     metrics_->SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl,
                             *has_venue_info_url_);
   }
+  if (has_seconds_remaining_.has_value()) {
+    metrics_->SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining,
+                            *has_seconds_remaining_);
+  }
 }
 
 void CapportProxy::SendRequest(StatusCallback callback) {
@@ -187,6 +191,14 @@ void CapportProxy::OnRequestSuccess(
     has_venue_info_url_ = true;
   } else if (!has_venue_info_url_.has_value() && !status->is_captive) {
     has_venue_info_url_ = false;
+  }
+
+  // seconds_remaining is only meaningful at is_captive==false.
+  if (!status->is_captive) {
+    // Once has_seconds_remaining_ is set to true, it will be stick to true.
+    if (!has_seconds_remaining_.value_or(false)) {
+      has_seconds_remaining_ = status->seconds_remaining.has_value();
+    }
   }
 
   std::move(callback_).Run(std::move(status));

@@ -1233,6 +1233,17 @@ class Metrics {
   static constexpr char kMetricCapportContainsVenueInfoUrl[] =
       "Network.Shill.CAPPORT.ContainsVenueInfoURL";
 
+  // Boolean metric counting whether the CAPPORT status contains the
+  // seconds-remaining field. This metric is only recorded once for every
+  // CAPPORT session when we can determine the CAPPORT server contains it or
+  // not.
+  //
+  // The second-remaining field only exists when is_captive=false. When
+  // is_captive is always true, we cannot determine whether the CAPPORT status
+  // contains the field or not. In this case, this metric will not be sent.
+  static constexpr char kMetricCapportContainsSecondsRemaining[] =
+      "Network.Shill.CAPPORT.ContainsSecondsRemaining";
+
   // Metric counting whether the upstream network presents a portal or a Terms
   // and Conditions URL.
   enum TermsAndConditionsAggregateResult {

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@ namespace shill {
 namespace {
 
 using testing::_;
+using testing::AtMost;
 using testing::Eq;
 
 const net_base::HttpUrl kApiUrl = *net_base::HttpUrl::CreateFromString(
@@ -153,6 +155,18 @@ class CapportProxyTest : public testing::Test {
         proxy_(CapportProxy::Create(
             &metrics_, kInterfaceName, kApiUrl, fake_transport_)) {}
 
+  void AddJSONReplyHandler(std::string_view json_str) {
+    fake_transport_->AddSimpleReplyHandler(
+        kApiUrl.ToString(), brillo::http::request_type::kGet,
+        brillo::http::status_code::Ok, std::string(json_str),
+        "application/captive+json");
+  }
+
+  void IgnoreUninterstedBoolMetric(std::string_view metric_name) {
+    EXPECT_CALL(metrics_, SendBoolToUMA(std::string(metric_name), _))
+        .Times(AtMost(1));
+  }
+
   MockCapportClient client_;
   MockMetrics metrics_;
   std::shared_ptr<brillo::http::fake::Transport> fake_transport_;
@@ -178,10 +192,6 @@ TEST_F(CapportProxyTest, SendRequest) {
 }
 
 TEST_F(CapportProxyTest, SendRequestSuccess) {
-  const std::string json_str = R"({
-   "captive": true,
-   "user-portal-url": "https://example.org/portal.html"
-})";
   const CapportStatus status{
       .is_captive = true,
       .user_portal_url =
@@ -192,9 +202,10 @@ TEST_F(CapportProxyTest, SendRequestSuccess) {
       .bytes_remaining = std::nullopt,
   };
 
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str, "application/captive+json");
+  AddJSONReplyHandler(R"({
+   "captive": true,
+   "user-portal-url": "https://example.org/portal.html"
+})");
 
   // When the HTTP server replies a valid JSON string, the client should get
   // the valid status via callback.
@@ -240,15 +251,13 @@ TEST_F(CapportProxyTest, SendMetricsContainVenueInfoUrl) {
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
       .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
 
-  const std::string json_str = R"({
+  AddJSONReplyHandler(R"({
    "captive": false,
    "user-portal-url": "https://example.org/portal.html",
    "venue-info-url": "https://flight.example.com/entertainment"
-})";
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str, "application/captive+json");
+})");
 
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
@@ -262,14 +271,12 @@ TEST_F(CapportProxyTest, SendMetricsNotContainVenueInfoUrl) {
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, false))
       .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
 
-  const std::string json_str = R"({
+  AddJSONReplyHandler(R"({
    "captive": false,
    "user-portal-url": "https://example.org/portal.html"
-})";
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str, "application/captive+json");
+})");
 
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
@@ -278,33 +285,26 @@ TEST_F(CapportProxyTest, SendMetricsNotContainVenueInfoUrl) {
 }
 
 TEST_F(CapportProxyTest, VenueInfoUrlInSecondRound) {
-  // If the fisrt status doesn't contain the venue info URL but the second
+  // If the first status doesn't contain the venue info URL but the second
   // status contains it, then we treat the CAPPORT server contains the venue
   // info URL.
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
       .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
 
-  const std::string json_str_without_venue = R"({
+  AddJSONReplyHandler(R"({
    "captive": false,
    "user-portal-url": "https://example.org/portal.html"
-})";
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str_without_venue,
-      "application/captive+json");
+})");
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
 
-  const std::string json_str_with_venue = R"({
+  AddJSONReplyHandler(R"({
    "captive": false,
    "user-portal-url": "https://example.org/portal.html",
    "venue-info-url": "https://flight.example.com/entertainment"
-})";
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str_with_venue,
-      "application/captive+json");
+})");
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
 }
@@ -317,14 +317,94 @@ TEST_F(CapportProxyTest, DoesNotSendMetricsContainVenueInfoUrl) {
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, _))
       .Times(0);
 
-  const std::string json_str = R"({
+  AddJSONReplyHandler(R"({
    "captive": true,
    "user-portal-url": "https://example.org/portal.html"
-})";
-  fake_transport_->AddSimpleReplyHandler(
-      kApiUrl.ToString(), brillo::http::request_type::kGet,
-      brillo::http::status_code::Ok, json_str, "application/captive+json");
+})");
 
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, SendMetricsContainSecondsRemaining) {
+  // Send the metric only once even we receive the status twice.
+  EXPECT_CALL(
+      metrics_,
+      SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, true))
+      .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+
+  AddJSONReplyHandler(R"({
+   "captive": false,
+   "seconds-remaining": 326
+})");
+
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, SendMetricsNotContainSecondsRemaining) {
+  // If there is no seconds_remaining when the portal is open, then the CAPPORT
+  // server doesn't contain the seconds_remaining field.
+  EXPECT_CALL(
+      metrics_,
+      SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, false))
+      .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+
+  AddJSONReplyHandler(R"({
+   "captive": false
+})");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, SecondsRemainingInSecondRound) {
+  // If the first status doesn't contain the seconds_remaining but the second
+  // status contains it, then we consider the CAPPORT server contains the
+  // seconds_remaining field.
+  EXPECT_CALL(
+      metrics_,
+      SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, true))
+      .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+
+  AddJSONReplyHandler(R"({
+   "captive": false
+})");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+
+  AddJSONReplyHandler(R"({
+   "captive": false,
+   "seconds-remaining": 326
+})");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+
+  AddJSONReplyHandler(R"({
+   "captive": false
+})");
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, DoesNotSendMetricsContainSecondsRemaining) {
+  // The seconds_remaining field only exists when the portal is open. So we
+  // cannot determine if the CAPPORT server contains the field when the portal
+  // is still closed.
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, _))
+      .Times(0);
+
+  AddJSONReplyHandler(R"({
+   "captive": true,
+   "user-portal-url": "https://example.org/portal.html"
+})");
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
 }

@@ -108,6 +108,9 @@ class CapportProxy {
 
   // Indicates whether the CAPPORT server replies with a venue info URL.
   std::optional<bool> has_venue_info_url_ = std::nullopt;
+  // Indicates whether the CAPPORT server replies with a seconds-remaining
+  // field after is_captive has become false.
+  std::optional<bool> has_seconds_remaining_ = std::nullopt;
 
   base::WeakPtrFactory<CapportProxy> weak_ptr_factory_{this};
 };
