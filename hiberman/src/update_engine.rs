@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use anyhow::anyhow;
 use anyhow::Context as AnyhowContext;
 use anyhow::Result;
 use dbus::blocking::Connection;
@@ -19,14 +20,23 @@ use update_engine_dbus::client::OrgChromiumUpdateEngineInterface;
 /// call responses.
 const UPDATE_ENGINE_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(30);
 
-pub fn is_update_engine_idle() -> Result<bool> {
-    let status = get_status().context("Failed to get update engine status")?;
-    let current_operation = status.current_operation.enum_value();
-    if current_operation != Ok(Operation::IDLE) {
-        info!("Update engine status is {:?}", status.current_operation);
-    }
+pub fn is_update_in_progress() -> Result<bool> {
+    let not_in_progress_ops = [Operation::IDLE, Operation::CHECKING_FOR_UPDATE,
+                               Operation::UPDATE_AVAILABLE, Operation::DISABLED,
+                               Operation::NEED_PERMISSION_TO_UPDATE];
 
-    Ok(current_operation == Ok(Operation::IDLE))
+    let status = get_status().context("Failed to get update engine status")?;
+    let current_operation = match status.current_operation.enum_value() {
+        Ok(op) => op,
+        Err(e) => return Err(anyhow!("Failed to extract update engine enum value: {e}")),
+    };
+
+    if not_in_progress_ops.contains(&current_operation) {
+        Ok(false)
+    } else {
+        info!("Update engine status is {:?}", current_operation);
+        Ok(true)
+    }
 }
 
 fn get_status() -> Result<StatusResult> {

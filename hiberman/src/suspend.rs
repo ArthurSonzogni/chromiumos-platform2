@@ -61,7 +61,7 @@ use crate::swap_management::reclaim_all_processes;
 use crate::swap_management::swap_zram_mark_idle;
 use crate::swap_management::swap_zram_set_writeback_limit;
 use crate::swap_management::WritebackMode;
-use crate::update_engine::is_update_engine_idle;
+use crate::update_engine::is_update_in_progress;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
 use crate::volume::VOLUME_MANAGER;
@@ -181,7 +181,7 @@ impl SuspendConductor<'_> {
         // While an update is "pending reboot", the update engine might do
         // further checks for updates it can apply. So no state except idle is
         // safe.
-        if !is_update_engine_idle()? {
+        if is_update_in_progress()? {
             Self::log_suspend_abort(SuspendAbortReason::UpdateEngineActive);
             return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
         }
