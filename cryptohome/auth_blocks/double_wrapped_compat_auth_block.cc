@@ -85,6 +85,7 @@ void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,
                             PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, std::nullopt);
+    return;
   }
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
@@ -119,6 +120,7 @@ void DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt(
                             PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, std::nullopt);
+    return;
   }
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};

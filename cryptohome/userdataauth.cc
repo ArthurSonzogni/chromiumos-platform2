@@ -642,8 +642,9 @@ void RunWithAuthSessionWhenAvailable(
     RequestType request,
     UserDataAuth::OnDoneCallback<ReplyType> on_done,
     UserDataAuth::HandlerWithSessionCallback<RequestType, ReplyType> run_with) {
+  std::string auth_session_id = request.auth_session_id();
   RunWithAuthSessionWhenAvailable(auth_session_manager, std::move(err_loc),
-                                  request.auth_session_id(), std::move(request),
+                                  auth_session_id, std::move(request),
                                   std::move(on_done), std::move(run_with));
 }
 
@@ -664,8 +665,9 @@ void RunWithDecryptAuthSessionWhenAvailable(
   // if the session is authenticated. If the session is not okay or not
   // authenticated then call ReplyWithError, wrapping the session status.
   // Otherwise, call run_with and pass on all of the parameters.
+  std::string auth_session_id = request.auth_session_id();
   auth_session_manager->RunWhenAvailable(
-      request.auth_session_id(),
+      auth_session_id,
       base::BindOnce(
           [](CryptohomeError::ErrorLocationPair not_ok_err_loc,
              CryptohomeError::ErrorLocationPair not_auth_err_loc,
@@ -2010,8 +2012,9 @@ void UserDataAuth::StartMigrateToDircrypto(
 
   // Schedule the request to run with the username associated with the specified
   // auth session once that session is available to run.
+  std::string auth_session_id = request.auth_session_id();
   auth_session_manager_->RunWhenAvailable(
-      request.auth_session_id(),
+      auth_session_id,
       base::BindOnce(
           [](user_data_auth::StartMigrateToDircryptoRequest request,
              OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply>
@@ -2321,6 +2324,7 @@ void UserDataAuth::GetRecoverableKeyStores(
   // recoverable key stores generated.
   if (!is_persistent_user) {
     ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+    return;
   }
 
   // Load the AuthFactorMap.
@@ -3590,8 +3594,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
       authenticate_auth_factor_request, auth_factor_type_policy,
       base::BindOnce(&HandleAuthenticationResult,
                      std::move(auth_session).BindForCallback(),
-                     std::move(auth_factor_type_policy),
-                     std::move(on_done_with_signal)));
+                     auth_factor_type_policy, std::move(on_done_with_signal)));
 }
 
 void UserDataAuth::UpdateAuthFactor(

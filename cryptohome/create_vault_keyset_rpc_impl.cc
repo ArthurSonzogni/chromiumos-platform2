@@ -131,6 +131,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
           CRYPTOHOME_ERR_LOC(kLocCreateVaultKeysetRpcImplNoInitialVaultKeyset),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+      return;
     }
     auth_input.reset_seed = initial_vault_keyset_->GetResetSeed();
     auth_input.reset_salt = CreateRandomBlob(kAesBlockSize);
