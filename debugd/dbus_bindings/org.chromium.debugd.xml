@@ -425,6 +425,26 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetFeedbackBinaryLogs">
+      <tp:docstring>
+        Writes the contents of the binary logs to a list of files (typically
+        pipes) whose file descriptors are passed in the outfds argument.
+      </tp:docstring>
+      <arg name="username" type="s" direction="in">
+        <tp:docstring>
+          Username of the user for which the binary logs are requested.
+        </tp:docstring>
+      </arg>
+      <arg name="outfds" type="a{ih}" direction="in">
+        <tp:docstring>
+          List of binary files to be added to the report. The index of the map
+          has the type debugd::FeedbackBinaryLogType and the handle is the file
+          descriptor where debugd will write the content of the firmware dumps.
+          An empty array means no binary data will be included.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
     <method name="BackupArcBugReport">
       <tp:docstring>
         Retrieves the ARC bug report and saves it in debugd daemon store.

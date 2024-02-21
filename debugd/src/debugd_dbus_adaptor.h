@@ -136,6 +136,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void GetFeedbackLogsV3(const base::ScopedFD& fd,
                          const std::string& username,
                          const std::vector<int32_t>& requested_logs) override;
+  void GetFeedbackBinaryLogs(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::string& username,
+      const std::map<int32_t, base::ScopedFD>& outfds) override;
   void BackupArcBugReport(const std::string& username) override;
   void DeleteArcBugReportBackup(const std::string& username) override;
   std::string GetExample() override;

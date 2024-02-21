@@ -262,6 +262,14 @@ void DebugdDBusAdaptor::GetFeedbackLogsV3(
   log_tool_->GetFeedbackLogs(fd, username, perf_tool_.get(), requested_logs);
 }
 
+void DebugdDBusAdaptor::GetFeedbackBinaryLogs(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::string& username,
+    const std::map<int32_t, base::ScopedFD>& outfds) {
+  // TODO(b/291347317): Placeholder method. Implement binary log collection.
+  response->Return();
+}
+
 void DebugdDBusAdaptor::BackupArcBugReport(const std::string& username) {
   log_tool_->BackupArcBugReport(username);
 }
