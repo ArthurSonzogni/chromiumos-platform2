@@ -30,9 +30,8 @@ constexpr int kSyncWaitTimeoutMs = 300;
 }  // namespace
 
 bool SingleFrameUpsampler::Initialize() {
-  // Create instances of UpsampleWrapper for Lancet and LancetAlpha:
+  // Create instances of UpsampleWrapper for Lancet.
   lancet_runner_ = std::make_unique<UpsampleWrapper>();
-  lancet_alpha_runner_ = std::make_unique<UpsampleWrapper>();
 
   // Use NNAPI delegate for APU accelerator. Default to OpenCL for others.
   UpsampleWrapper::InferenceMode inference_mode =
@@ -40,15 +39,9 @@ bool SingleFrameUpsampler::Initialize() {
           ? UpsampleWrapper::InferenceMode::kNnApi
           : UpsampleWrapper::InferenceMode::kOpenCL;
 
-  if (!lancet_runner_->Init(inference_mode, /*use_lancet_alpha=*/false)) {
+  if (!lancet_runner_->Init(inference_mode, /*use_lancet_alpha=*/true)) {
     LOGF(ERROR) << "Failed to initialize Lancet upsampler engine";
     lancet_runner_ = nullptr;
-    return false;
-  }
-
-  if (!lancet_alpha_runner_->Init(inference_mode, /*use_lancet_alpha=*/true)) {
-    LOGF(ERROR) << "Failed to initialize LancetAlpha upsampler engine";
-    lancet_alpha_runner_ = nullptr;
     return false;
   }
 
@@ -58,9 +51,8 @@ bool SingleFrameUpsampler::Initialize() {
 std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
-    base::ScopedFD release_fence,
-    bool use_lancet_alpha) {
-  if (!lancet_runner_ || !lancet_alpha_runner_) {
+    base::ScopedFD release_fence) {
+  if (!lancet_runner_) {
     LOGF(ERROR) << "Upsampler engine is not initialized";
     return std::nullopt;
   }
@@ -107,11 +99,9 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
       .rgb_output_data = output_rgb_buf.data(),
   };
 
-  UpsampleWrapper* runner =
-      use_lancet_alpha ? lancet_alpha_runner_.get() : lancet_runner_.get();
+  UpsampleWrapper* runner = lancet_runner_.get();
   if (!runner->Upsample(upsample_request)) {
-    LOGF(ERROR) << "Failed to upsample frame with "
-                << (use_lancet_alpha ? "LancetAlpha" : "Lancet");
+    LOGF(ERROR) << "Failed to upsample frame with Lancet";
     return std::nullopt;
   }
 

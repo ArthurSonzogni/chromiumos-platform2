@@ -25,8 +25,7 @@ class SingleFrameUpsampler {
 
   std::optional<base::ScopedFD> ProcessRequest(buffer_handle_t input_buffer,
                                                buffer_handle_t output_buffer,
-                                               base::ScopedFD release_fence,
-                                               bool use_lancet_alpha);
+                                               base::ScopedFD release_fence);
 
  private:
   bool ConvertNV12ToRGB(const ScopedMapping& in_mapping,
@@ -38,7 +37,6 @@ class SingleFrameUpsampler {
                         const ScopedMapping& out_mapping);
 
   std::unique_ptr<UpsampleWrapper> lancet_runner_;
-  std::unique_ptr<UpsampleWrapper> lancet_alpha_runner_;
 };
 
 }  // namespace cros
