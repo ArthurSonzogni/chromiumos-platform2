@@ -90,10 +90,8 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
   const uint8_t kShortSelfTestRunning[] = {0x1, 0x1e, 0x0, 0x0, 0x0, 0x0,
                                            0x0, 0x0,  0x0, 0x0, 0x0, 0x0,
                                            0x0, 0x0,  0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kShortSelfTestRunning),
-                                 std::end(kShortSelfTestRunning)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kShortSelfTestRunning), std::end(kShortSelfTestRunning)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -110,10 +108,8 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
   const uint8_t kShortSelfTestSuccess[] = {0x0, 0x0, 0x0, 0x0, 0x10, 0x0,
                                            0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                            0x0, 0x0, 0x0, 0x0};
-  nvme_encoded_output.clear();
-  base::Base64Encode(std::string(std::begin(kShortSelfTestSuccess),
-                                 std::end(kShortSelfTestSuccess)),
-                     &nvme_encoded_output);
+  nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kShortSelfTestSuccess), std::end(kShortSelfTestSuccess)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -158,10 +154,8 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
   const uint8_t kShortSelfTestError[] = {0x0, 0x0, 0x0, 0x0, 0x13, 0x0,
                                          0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                          0x0, 0x0, 0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kShortSelfTestError),
-                                 std::end(kShortSelfTestError)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kShortSelfTestError), std::end(kShortSelfTestError)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -191,10 +185,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
   const uint8_t kShortSelfTestInvalidError[] = {0x0, 0x0, 0x0, 0x0, 0x1f, 0x0,
                                                 0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                                 0x0, 0x0, 0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kShortSelfTestInvalidError),
-                                 std::end(kShortSelfTestInvalidError)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output =
+      base::Base64Encode(std::string(std::begin(kShortSelfTestInvalidError),
+                                     std::end(kShortSelfTestInvalidError)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -224,10 +217,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
   const uint8_t kShortSelfTestInvalidType[] = {0x0, 0x0, 0x0, 0x0, 0xe3, 0x0,
                                                0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                                0x0, 0x0, 0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kShortSelfTestInvalidType),
-                                 std::end(kShortSelfTestInvalidType)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output =
+      base::Base64Encode(std::string(std::begin(kShortSelfTestInvalidType),
+                                     std::end(kShortSelfTestInvalidType)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -285,10 +277,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
   // Percent(byte-1): 0x1e for 30%
   const uint8_t kEightByteShortSelfTestRunning[] = {0x1, 0x1e, 0x0, 0x0,
                                                     0x0, 0x0,  0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kEightByteShortSelfTestRunning),
-                                 std::end(kEightByteShortSelfTestRunning)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output =
+      base::Base64Encode(std::string(std::begin(kEightByteShortSelfTestRunning),
+                                     std::end(kEightByteShortSelfTestRunning)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -364,10 +355,8 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
   const uint8_t kLongSelfTestRunning[] = {0x2, 0x0, 0x0, 0x0, 0x0, 0x0,
                                           0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
                                           0x0, 0x0, 0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(std::string(std::begin(kLongSelfTestRunning),
-                                 std::end(kLongSelfTestRunning)),
-                     &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kLongSelfTestRunning), std::end(kLongSelfTestRunning)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -384,10 +373,8 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
   const uint8_t kLongSelfTestSuccess[] = {0x0, 0x0, 0x0, 0x0, 0x20, 0x0,
                                           0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                           0x0, 0x0, 0x0, 0x0};
-  nvme_encoded_output.clear();
-  base::Base64Encode(std::string(std::begin(kLongSelfTestSuccess),
-                                 std::end(kLongSelfTestSuccess)),
-                     &nvme_encoded_output);
+  nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kLongSelfTestSuccess), std::end(kLongSelfTestSuccess)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
@@ -417,10 +404,8 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
   const uint8_t kLongSelfTestError[] = {0x0, 0x0, 0x0, 0x0, 0x24, 0x0,
                                         0x0, 0x0, 0x0, 0x0, 0x0,  0x0,
                                         0x0, 0x0, 0x0, 0x0};
-  std::string nvme_encoded_output;
-  base::Base64Encode(
-      std::string(std::begin(kLongSelfTestError), std::end(kLongSelfTestError)),
-      &nvme_encoded_output);
+  auto nvme_encoded_output = base::Base64Encode(std::string(
+      std::begin(kLongSelfTestError), std::end(kLongSelfTestError)));
   EXPECT_CALL(debugd_proxy_,
               NvmeLogAsync(NvmeSelfTestRoutine::kNvmeLogPageId,
                            NvmeSelfTestRoutine::kNvmeLogDataLength,
