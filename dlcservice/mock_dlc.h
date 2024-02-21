@@ -8,6 +8,8 @@
 #include <optional>
 #include <string>
 
+#include <gmock/gmock.h>
+
 #include <brillo/errors/error.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
