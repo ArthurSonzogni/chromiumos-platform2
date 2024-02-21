@@ -22,6 +22,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "base/synchronization/waitable_event.h"
 #include "camera/mojo/camera_common.mojom.h"
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/libcamera_connector/camera_client_ops.h"
@@ -258,6 +259,11 @@ class CameraClient : public mojom::CameraHalClient {
   // camera ID to SessionContext.
   SessionContext context_;
   std::queue<SessionRequest> pending_session_requests_;
+
+  // For synchronizing device close during client shutdown.
+  base::WaitableEvent device_closed_ = {
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::SIGNALED};
 };
 
 }  // namespace cros

@@ -118,6 +118,9 @@ int CameraClient::Exit() {
   auto future = cros::Future<int>::Create(nullptr);
   StopCurrentCapture(cros::GetFutureCallback(future));
   int ret = future->Get();
+  // API contract requires the close call to return in 1000 ms. 2 seconds is
+  // picked to allow for some IPC latency.
+  device_closed_.TimedWait(base::Seconds(2));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraClient::ResetOnIpcThread, base::Unretained(this)));
@@ -528,6 +531,7 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
   camera_module_->OpenDevice(
       context_.info.camera_id, std::move(device_ops_receiver),
       base::BindOnce(&CameraClient::OnOpenedDevice, base::Unretained(this)));
+  device_closed_.Reset();
   return 0;
 }
 
@@ -603,6 +607,8 @@ void CameraClient::OnClosedDevice(int32_t result) {
     LOGF(INFO) << "Camera closed successfully";
   }
 
+  device_closed_.Signal();
+
   // We transition the state to |SessionState::kIdle| here regardless of the
   // result to allow further retries. It's also possible that a device is
   // disconnected while the device is closing, and such an event would be
@@ -661,13 +667,8 @@ void CameraClient::SendCaptureResult(const cros_cam_capture_result_t& result) {
   if (ret != 0 || result.status == -ENODEV) {
     CHECK_EQ(context_.state, SessionState::kCapturing);
     // Flush all inflight session requests to stop the capture immediately.
-    FlushInflightSessionRequests(-EIO);
-    SessionRequest request = {.type = SessionRequestType::kStop,
-                              .info = context_.info,
-                              .result_callback = base::BindOnce(
-                                  &CameraClient::OnStoppedCaptureFromCallback,
-                                  base::Unretained(this))};
-    PushSessionRequestOnIpcThread(std::move(request));
+    StopCurrentCaptureOnIpcThread(base::BindOnce(
+        &CameraClient::OnStoppedCaptureFromCallback, base::Unretained(this)));
     CHECK_EQ(context_.state, SessionState::kStopping);
   }
 }
