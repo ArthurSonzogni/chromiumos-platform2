@@ -142,6 +142,11 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReleaseChannelDelegated(&bool_value));
   EXPECT_TRUE(bool_value);
 
+  std::optional<bool> extended_auto_update_enabled =
+      policy.GetDeviceExtendedAutoUpdateEnabled();
+  ASSERT_TRUE(extended_auto_update_enabled.has_value());
+  EXPECT_TRUE(*extended_auto_update_enabled);
+
   bool_value = true;
   ASSERT_TRUE(policy.GetUpdateDisabled(&bool_value));
   EXPECT_FALSE(bool_value);
@@ -314,6 +319,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetReportBootMode(&bool_value));
   EXPECT_FALSE(policy.GetEphemeralSettings(&ephemeral_settings));
   EXPECT_FALSE(policy.GetReleaseChannel(&string_value));
+  EXPECT_FALSE(policy.GetDeviceExtendedAutoUpdateEnabled().has_value());
   EXPECT_FALSE(policy.GetUpdateDisabled(&bool_value));
   EXPECT_FALSE(policy.GetTargetVersionPrefix(&string_value));
   EXPECT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
