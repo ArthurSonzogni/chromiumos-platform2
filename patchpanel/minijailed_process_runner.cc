@@ -53,6 +53,9 @@ constexpr uint64_t kIpNetnsCapMask =
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
+constexpr std::string_view kIptablesRestorePath = "/sbin/iptables-restore";
+constexpr std::string_view kIp6tablesRestorePath = "/sbin/ip6tables-restore";
+
 constexpr char kModprobePath[] = "/sbin/modprobe";
 constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
@@ -327,6 +330,28 @@ int MinijailedProcessRunner::conntrack(std::string_view command,
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
   mj_->UseCapabilities(jail, kNetAdminCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
+}
+
+int MinijailedProcessRunner::iptables_restore(std::string_view script_file,
+                                              bool log_failures) {
+  std::vector<std::string> args = {std::string(kIptablesRestorePath),
+                                   std::string(script_file)};
+
+  minijail* jail = mj_->New();
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask);
+  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
+}
+
+int MinijailedProcessRunner::ip6tables_restore(std::string_view script_file,
+                                               bool log_failures) {
+  std::vector<std::string> args = {std::string(kIp6tablesRestorePath),
+                                   std::string(script_file)};
+
+  minijail* jail = mj_->New();
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask);
+  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 

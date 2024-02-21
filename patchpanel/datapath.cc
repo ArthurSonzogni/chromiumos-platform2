@@ -57,33 +57,20 @@ constexpr char kDefaultDnsPort[] = "53";
 constexpr char kChronosUid[] = "chronos";
 constexpr uint16_t kAdbServerPort = 5555;
 
-// Constants used for dropping locally originated traffic bound to an incorrect
-// source IPv4 address.
-constexpr char kGuestIPv4Subnet[] = "100.115.92.0/23";
-// Interface name patterns matching all Cellular physical and virtual interfaces
-// supported on ChromeOS.
-constexpr std::array<const char*, 3> kCellularIfnamePrefixes{
-    {"wwan+", "mbimmux+", "qmapmux+"}};
-// Same as |kCellularIfnamePrefixes| but for other network technologies.
-constexpr std::array<const char*, 4> kOtherPhysicalIfnamePrefixes{
-    {"eth+", "wlan+", "mlan+", "usb+"}};
+constexpr std::string_view kIptablesStartScriptPath =
+    "/etc/patchpanel/iptables.start";
+constexpr std::string_view kIp6tablesStartScriptPath =
+    "/etc/patchpanel/ip6tables.start";
 
 // Chains for tagging egress traffic in the OUTPUT and PREROUTING chains of the
-// mangle table.
-constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
+// mangle table. Note that these value needs to be consistent with those in the
+// static iptables-start scripts.
 constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
-
-// Chains for allowing host services to receive ingress traffic on a downstream
-// interface configured with StartDownstreamNetwork.
-constexpr char kAcceptDownstreamNetworkChain[] = "accept_downstream_network";
 
 // Egress filter chain for dropping in the OUTPUT chain any local traffic
 // incorrectly bound to a static IPv4 address used for ARC or Crostini.
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
-// Egress filter chain for preemptively dropping in the FORWARD chain any ARC or
-// Crostini traffic that may not be correctly processed in SNAT.
-constexpr char kDropGuestInvalidIpv4Chain[] = "drop_guest_invalid_ipv4";
 
 // Egress nat chain for redirecting DNS queries from system services.
 // TODO(b/162788331) Remove once dns-proxy has become fully operational.
@@ -93,7 +80,6 @@ constexpr char kRedirectDnsChain[] = "redirect_dns";
 constexpr char kEnforceSourcePrefixChain[] = "enforce_ipv6_src_prefix";
 
 // VPN egress filter chains for the filter OUTPUT and FORWARD chains.
-constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
@@ -243,8 +229,6 @@ Datapath::Datapath(MinijailedProcessRunner* process_runner,
 }
 
 void Datapath::Start() {
-  // Restart from a clean iptables state in case of an unordered shutdown.
-  ResetIptables();
   // Enable IPv4 packet forwarding
   if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
@@ -261,414 +245,44 @@ void Datapath::Start() {
                << " IPv6 functionality may be broken.";
   }
 
-  // Creates all "stateless" iptables chains used by patchpanel and set up
-  // basic jump rules from the builtin chains. All chains that needs to carry
-  // some state when patchpanel restarts (for instance: chains for
-  // permission_broker rules, traffic accounting chains) are created separately.
-  static struct {
-    IpFamily family;
-    Iptables::Table table;
-    std::string chain;
-  } makeCommands[] = {
-      // Set up a mangle chain used in OUTPUT for applying the fwmark
-      // TrafficSource tag and tagging the local traffic that should be routed
-      // through a VPN.
-      {IpFamily::kDual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain},
-      // Set up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
-      // tagging applied through "apply_vpn_mark" chain. This is used to protect
-      // DNS traffic that should go to the DNS proxy.
-      {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain},
-      // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
-      // traffic that should be routed through a VPN.
-      {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain},
-      // Set up mangle chains used in OUTPUT and PREROUTING for applying fwmarks
-      // for QoS.
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectBorealisChain},
-      // Set up a mangle chain used in POSTROUTING for applying DSCP values for
-      // QoS. QoSService controls when to add the jump rules to this chain.
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
-      // Set up nat chains for redirecting egress DNS queries to the DNS proxy
-      // instances.
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain},
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain},
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain},
-      // Set up nat chains for SNAT-ing egress DNS queries to the DNS proxy
-      // instances.
-      {IpFamily::kDual, Iptables::Table::kNat, kSNATChromeDnsChain},
-      // For the case of non-Chrome "user" DNS queries, there is already an IPv4
-      // SNAT rule with the ConnectNamespace. Only IPv6 USER SNAT is needed.
-      {IpFamily::kIPv6, Iptables::Table::kNat, kSNATUserDnsChain},
-      // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS
-      // queries of system services. When a VPN is connected, a query routed
-      // through a physical network is redirected to the primary nameserver of
-      // that network.
-      {IpFamily::kIPv4, Iptables::Table::kNat, kRedirectDnsChain},
-      // Set up nat chains for redirecting ingress traffic to downstream guests.
-      // These chains are only created for IPv4 since downstream guests obtain
-      // their own addresses for IPv6.
-      {IpFamily::kIPv4, Iptables::Table::kNat, kIngressPortForwardingChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToArcChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToCrostiniChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToParallelsChain},
-      // Create filter subchains for managing the egress firewall VPN rules.
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnLockdownChain},
-      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain},
-      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain},
-      // Create filter subchains for hosting permission_broker firewall rules
-      {IpFamily::kDual, Iptables::Table::kFilter, kIngressPortFirewallChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kEgressPortFirewallChain},
-      // Create filter subchain for ingress firewall rules on downstream
-      // networks (Tethering, LocalOnlyNetwork).
-      {IpFamily::kDual, Iptables::Table::kFilter,
-       kAcceptDownstreamNetworkChain},
-      // Create OUTPUT filter chain to enforce source IP on egress IPv6 packets.
-      {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain},
-      // Create filter chains for tethering traffic.
-      {IpFamily::kDual, Iptables::Table::kFilter, kForwardTetheringChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kEgressTetheringChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kIngressTetheringChain},
-      // Create OUTPUT and FORWARD filter chains to drop host-to-bruschetta
-      // traffic.
-      {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain},
-      {IpFamily::kDual, Iptables::Table::kFilter,
-       kDropForwardToBruschettaChain},
-  };
-  for (const auto& c : makeCommands) {
-    if (!AddChain(c.family, c.table, c.chain)) {
-      LOG(ERROR) << "Failed to create " << c.chain << " chain in " << c.table
-                 << " table";
-    }
+  if (process_runner_->iptables_restore(kIptablesStartScriptPath) != 0) {
+    LOG(ERROR) << "Failed to call iptables_restore";
+  }
+  if (process_runner_->ip6tables_restore(kIp6tablesStartScriptPath) != 0) {
+    LOG(ERROR) << "Failed to call ip6tables_restore";
   }
 
-  // Create a FORWARD ACCEPT rule for connections already established.
-  if (process_runner_->iptables(
-          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
-          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
-           "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install forwarding rule for established"
-               << " connections.";
-  }
-  if (process_runner_->ip6tables(
-          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
-          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
-           "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install forwarding rule for established"
-               << " connections.";
-  }
+  // Rules for WebRTC detection. Notes:
+  // - In short, this is implemented by detecting the client hello packet in a
+  //   WebRTC connection, and mark the whole connection on success. See the
+  //   WebRTC detection section in go/cros-wifi-qos-dd for more details.
+  // - The BPF program will only be installed on 5.8+ kernels, where CAP_BPF is
+  //   available. We check if the existence of the program instead of the kernel
+  //   version here. That's why only WebRTC detection is done here dynamically
+  //   while other QoS detection rules are in the static iptables-start script.
+  // - Marking the whole connection is implemented by saving the mark into
+  //   connmark. To avoid saving the mark for unrelated connections, we check if
+  //   the packet already have a mark at first.
+  if (system_->IsEbpfEnabled()) {
+    const auto install_rule = [this](IpFamily family,
+                                     const std::vector<std::string>& args) {
+      ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
+                     kQoSDetectChain, args);
+    };
 
-  // Add all static jump commands from builtin chains to chains created by
-  // patchpanel.
-  static struct {
-    IpFamily family;
-    Iptables::Table table;
-    std::string jump_from;
-    std::string jump_to;
-    std::optional<Iptables::Command> op;
-  } jumpCommands[] = {
-      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT",
-       kApplyLocalSourceMarkChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT",
-       kQoSDetectStaticChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, "PREROUTING",
-       kQoSDetectStaticChain},
-      {IpFamily::kDual, Iptables::Table::kNat, "PREROUTING",
-       kRedirectDefaultDnsChain},
-      // "ingress_port_forwarding" must be traversed before
-      // the default "ingress_default_*" autoforwarding chains.
-      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kIngressPortForwardingChain},
-      // ARC default ingress forwarding is always first, Crostini second, and
-      // Parallels VM last.
-      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDNATToArcChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDNATToCrostiniChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDNATToParallelsChain},
-      // Jump to the chain accepting tethering traffic between the upstream and
-      // downstream network interfaces and reject any other forwarded traffic
-      // between the downstream and another network interface. Jump rules for
-      // the OUTPUT and INPUT filter chains are created dynamically.
-      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
-       kForwardTetheringChain},
-      // Jump to chains to drop packets into Bruschetta. OUTPUT one needs to be
-      // after --state NEW,RELATED,ESTABLISHED rule, and FORWARD one needs to be
-      // before --state RELATED,ESTABLISHED rule.
-      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
-       kDropOutputToBruschettaChain, Iptables::Command::kI},
-      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
-       kDropForwardToBruschettaChain},
-      // When VPN lockdown is enabled, a REJECT rule must stop
-      // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
-      // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
-      // lockdown is enabled and a VPN is connected, an ACCEPT rule protects the
-      // traffic tagged with the VPN routing mark from being reject by the VPN
-      // lockdown rule. This ACCEPT rule is added to |kVpnAcceptChain|.
-      // Therefore, egress traffic must:
-      //   - traverse kVpnAcceptChain before kVpnLockdownChain,
-      //   - traverse kVpnLockdownChain before other ACCEPT rules in OUTPUT and
-      //   FORWARD.
-      // Finally, egress VPN filter rules must be inserted in front of the
-      // OUTPUT chain to override basic rules set outside patchpanel.
-      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
-       kVpnEgressFiltersChain, Iptables::Command::kI},
-      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
-       kVpnEgressFiltersChain, Iptables::Command::kI},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
-       kVpnAcceptChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
-       kVpnLockdownChain},
-      // b/196898241: To ensure that the drop chains drop_guest_ipv4_prefix and
-      // drop_guest_invalid_ipv4 chain are traversed before vpn_accept and
-      // vpn_lockdown, they are inserted last in front of the OUTPUT chain and
-      // FORWARD chains respectively.
-      {IpFamily::kIPv4, Iptables::Table::kFilter, "OUTPUT",
-       kDropGuestIpv4PrefixChain, Iptables::Command::kI},
-      {IpFamily::kIPv4, Iptables::Table::kFilter, "FORWARD",
-       kDropGuestInvalidIpv4Chain, Iptables::Command::kI},
-      // Attach ingress and egress firewall chains for permission_broker rules.
-      {IpFamily::kDual, Iptables::Table::kFilter, "INPUT",
-       kIngressPortFirewallChain},
-      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
-       kEgressPortFirewallChain},
-  };
-  for (const auto& c : jumpCommands) {
-    auto op = c.op.value_or(Iptables::Command::kA);
-    ModifyJumpRule(c.family, c.table, op, c.jump_from, c.jump_to,
-                   /*iif=*/"", /*oif=*/"");
-  }
+    const std::string qos_mask = kFwmarkQoSCategoryMask.ToString();
+    const std::string default_mark = QoSFwmarkWithMask(QoSCategory::kDefault);
+    const std::string multimedia_conferencing_mark =
+        QoSFwmarkWithMask(QoSCategory::kMultimediaConferencing);
 
-  // Create a FORWARD ACCEPT rule for ICMP6.
-  if (process_runner_->ip6tables(
-          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
-          {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"}) != 0)
-    LOG(ERROR) << "Failed to install forwarding rule for ICMP6";
-
-  // chromium:898210: Drop any locally originated traffic that would exit a
-  // physical interface with a source IPv4 address from the subnet of IPs used
-  // for VMs, containers, and connected namespaces. This is needed to prevent
-  // packets leaking with an incorrect src IP when a local process binds to the
-  // wrong interface.
-  std::vector<std::string> prefixes;
-  prefixes.insert(prefixes.end(), kCellularIfnamePrefixes.begin(),
-                  kCellularIfnamePrefixes.end());
-  prefixes.insert(prefixes.end(), kOtherPhysicalIfnamePrefixes.begin(),
-                  kOtherPhysicalIfnamePrefixes.end());
-  for (const auto& oif : prefixes) {
-    if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
-      LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
-                   << kGuestIPv4Subnet << " exiting " << oif;
-    }
+    install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
+                                   "-j", "RETURN", "-w"});
+    install_rule(IpFamily::kDual,
+                 {"-m", "bpf", "--object-pinned", kWebRTCMatcherPinPath, "-j",
+                  "MARK", "--set-xmark", multimedia_conferencing_mark, "-w"});
+    install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--save-mark", "--nfmask",
+                                   qos_mask, "--ctmask", qos_mask, "-w"});
   }
-
-  // chromium:1050579: INVALID packets cannot be tracked by conntrack therefore
-  // need to be explicitly dropped as SNAT cannot be applied to them.
-  // b/196898241: To ensure that the INVALID DROP rule is traversed before
-  // vpn_accept and vpn_lockdown, insert it in front of the FORWARD chain last.
-  std::string snatMark =
-      kFwmarkLegacySNAT.ToString() + "/" + kFwmarkLegacySNAT.ToString();
-  if (process_runner_->iptables(
-          Iptables::Table::kFilter, Iptables::Command::kI,
-          kDropGuestInvalidIpv4Chain,
-          {"-m", "mark", "--mark", snatMark, "-m", "state", "--state",
-           "INVALID", "-j", "DROP", "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install FORWARD rule to drop INVALID packets";
-  }
-  // b/196899048: IPv4 TCP packets with TCP flags FIN,PSH coming from downstream
-  // guests need to be dropped explicitly because SNAT will not apply to them
-  // but the --state INVALID rule above will also not match for these packets.
-  // crbug/1241756: Make sure that only egress FINPSH packets are dropped.
-  for (const auto& oif : kCellularIfnamePrefixes) {
-    if (process_runner_->iptables(
-            Iptables::Table::kFilter, Iptables::Command::kI,
-            kDropGuestInvalidIpv4Chain,
-            {"-s", kGuestIPv4Subnet, "-p", "tcp", "--tcp-flags", "FIN,PSH",
-             "FIN,PSH", "-o", oif, "-j", "DROP", "-w"}) != 0) {
-      LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH "
-                    "packets egressing "
-                 << oif << " interfaces";
-    }
-  }
-
-  // Set static SNAT rules for any traffic originated from a guest (ARC,
-  // Crostini, ...) or a connected namespace.
-  // For IPv6, the SNAT rule is expected to only be triggered when static IPv6
-  // is used (without SLAAC). See AddDownstreamInterfaceRules for the method
-  // that sets up the SNAT mark.
-  if (process_runner_->iptables(
-          Iptables::Table::kNat, Iptables::Command::kA, "POSTROUTING",
-          {"-m", "mark", "--mark", snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install SNAT mark rules.";
-  }
-  if (process_runner_->ip6tables(
-          Iptables::Table::kNat, Iptables::Command::kA, "POSTROUTING",
-          {"-m", "mark", "--mark", snatMark, "-j", "MASQUERADE", "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install SNAT mark rules.";
-  }
-
-  // Applies the routing tag saved in conntrack for any established connection
-  // for sockets created in the host network namespace. Do not overwrite the
-  // routing tag if the the fwmark of the packet already has it. This can happen
-  // if the socket fwmark is set with the TagSocket API.
-  if (!ModifyConnmarkRestore(IpFamily::kDual, "OUTPUT", Iptables::Command::kA,
-                             /*iif=*/"", kFwmarkRoutingMask,
-                             /*skip_on_non_empty_mark=*/true)) {
-    LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
-  }
-
-  // Add a rule for skipping apply_local_source_mark if the packet already has a
-  // source mark (e.g., packets from a wireguard socket in the kernel).
-  ModifyIptables(
-      IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-      kApplyLocalSourceMarkChain,
-      {"-m", "mark", "!", "--mark", "0x0/" + kFwmarkAllSourcesMask.ToString(),
-       "-j", "RETURN", "-w"});
-  // Create rules for tagging local sources which should be routed on VPN by
-  // default with the source tag.
-  for (const auto& source : kLocalSourceTypes) {
-    if (source.is_on_vpn) {
-      if (!ModifyFwmarkLocalSourceTag(Iptables::Command::kA, source)) {
-        LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
-                   << " in " << kApplyLocalSourceMarkChain;
-      }
-    }
-  }
-  // Set ROUTE_ON_VPN policy if the packets does not have VPN policy bits set by
-  // itself, and source bits are changed by the above rules. Since we checked if
-  // source bits are set and return at the beginning of this chain, when the
-  // rule below matches, it must means that the packet should be routed on VPN
-  // by default.
-  if (!ModifyIptables(
-          IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-          kApplyLocalSourceMarkChain,
-          {// if VPN policy bits are not set
-           "-m", "mark", "--mark", "0x0/" + kFwmarkVpnMask.ToString(),
-           // and source bits are set by the above rules
-           "-m", "mark", "!", "--mark",
-           "0x0/" + kFwmarkAllSourcesMask.ToString(),
-           // then apply the ROUTE_ON_VPN policy.
-           "-j", "MARK", "--set-mark",
-           base::StrCat(
-               {kFwmarkRouteOnVpn.ToString(), "/", kFwmarkVpnMask.ToString()}),
-           "-w"})) {
-    LOG(ERROR) << "Failed to create fwmark tagging rule for ROUTE_ON_VPN in "
-               << kApplyLocalSourceMarkChain;
-  }
-  // Create rules for tagging local sources which should NOT be routed on VPN by
-  // default with the source tag.
-  for (const auto& source : kLocalSourceTypes) {
-    if (!source.is_on_vpn) {
-      if (!ModifyFwmarkLocalSourceTag(Iptables::Command::kA, source)) {
-        LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
-                   << " in " << kApplyLocalSourceMarkChain;
-      }
-    }
-  }
-  // Finally add a catch-all rule for tagging any remaining local sources with
-  // the SYSTEM source tag
-  if (!ModifyFwmarkDefaultLocalSourceTag(Iptables::Command::kA,
-                                         TrafficSource::kSystem))
-    LOG(ERROR) << "Failed to set up rule tagging traffic with default source";
-
-  // Set up jump chains to the DNS nat chains for egress traffic from local
-  // processes running on the host.
-  if (!ModifyRedirectDnsJumpRule(IpFamily::kDual, Iptables::Command::kA,
-                                 "OUTPUT",
-                                 /*ifname=*/"", kRedirectChromeDnsChain)) {
-    LOG(ERROR) << "Failed to add jump rule for chrome DNS redirection";
-  }
-  if (!ModifyRedirectDnsJumpRule(IpFamily::kDual, Iptables::Command::kA,
-                                 "OUTPUT",
-                                 /*ifname=*/"", kRedirectUserDnsChain,
-                                 kFwmarkRouteOnVpn, kFwmarkVpnMask,
-                                 /*redirect_on_mark=*/true)) {
-    LOG(ERROR) << "Failed to add jump rule for user DNS redirection";
-  }
-  if (!ModifyRedirectDnsJumpRule(
-          IpFamily::kDual, Iptables::Command::kA, "POSTROUTING", /*ifname=*/"",
-          kSNATChromeDnsChain, Fwmark::FromSource(TrafficSource::kChrome),
-          kFwmarkAllSourcesMask, /*redirect_on_mark=*/true)) {
-    LOG(ERROR) << "Failed to add jump rule for chrome DNS SNAT";
-  }
-  if (!ModifyRedirectDnsJumpRule(IpFamily::kIPv6, Iptables::Command::kA,
-                                 "POSTROUTING", /*ifname=*/"",
-                                 kSNATUserDnsChain, kFwmarkRouteOnVpn,
-                                 kFwmarkVpnMask, /*redirect_on_mark=*/true)) {
-    LOG(ERROR) << "Failed to add jump rule for user DNS SNAT";
-  }
-
-  // All local outgoing DNS traffic eligible to VPN routing should skip the VPN
-  // routing chain and instead go through DNS proxy.
-  if (!ModifyFwmarkSkipVpnJumpRule("OUTPUT", Iptables::Command::kA,
-                                   kChronosUid)) {
-    LOG(ERROR) << "Failed to add jump rule to skip VPN mark chain in mangle "
-               << "OUTPUT chain";
-  }
-
-  // All local outgoing traffic eligible to VPN routing should traverse the VPN
-  // marking chain.
-  if (!ModifyFwmarkVpnJumpRule("OUTPUT", Iptables::Command::kA,
-                               kFwmarkRouteOnVpn, kFwmarkVpnMask)) {
-    LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
-  }
-
-  // Add default IPv6 DROP rules to OUTPUT for any shill managed network
-  // interface configured with StartSourceIPv6PrefixEnforcement. These rules
-  // DROP any packet with global unicast or unique local source addresses that
-  // did not match the specific prefix configured with
-  // StartSourceIPv6PrefixEnforcement.
-  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                      Iptables::Command::kA, kEnforceSourcePrefixChain,
-                      {"-s", "2000::/3", "-j", "DROP", "-w"})) {
-    LOG(ERROR) << "Fail to add 2000::/3 DROP rule in "
-               << kEnforceSourcePrefixChain;
-  }
-  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                      Iptables::Command::kA, kEnforceSourcePrefixChain,
-                      {"-s", "fc00::/7", "-j", "DROP", "-w"})) {
-    LOG(ERROR) << "Fail to add fc00::/7 DROP rule in "
-               << kEnforceSourcePrefixChain;
-  }
-
-  // Create static tethering rules for ingress and egress traffic on the
-  // downstream network interface:
-  //   - allow ICMPv4 and ICMPv6 both ways.
-  //   - allow DHCPv4 in one direction (ChromeOS is the server).
-  //   - drop anything else.
-  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kEgressTetheringChain,
-                 {"-p", "icmp", "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kIngressTetheringChain,
-                 {"-p", "icmp", "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kEgressTetheringChain,
-                 {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kIngressTetheringChain,
-                 {"-p", "ipv6-icmp", "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kEgressTetheringChain,
-                 {"-p", "udp", "-m", "udp", "--sport", "67", "--dport", "68",
-                  "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kIngressTetheringChain,
-                 {"-p", "udp", "-m", "udp", "--sport", "68", "--dport", "67",
-                  "-j", "ACCEPT", "-w"});
-  ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kIngressTetheringChain,
-                 {"-j", "DROP", "-w"});
-  ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kA, kEgressTetheringChain,
-                 {"-j", "DROP", "-w"});
-
-  SetupQoSDetectChain();
-  SetupQoSApplyDSCPChain();
 }
 
 void Datapath::Stop() {
@@ -679,131 +293,6 @@ void Datapath::Stop() {
 
   if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "0")) {
     LOG(ERROR) << "Failed to restore net.ipv4.ip_forward.";
-  }
-}
-
-void Datapath::ResetIptables() {
-  // If they exists, remove jump rules from built-in chains to custom chains
-  // for any built-in chains that is not explicitly flushed.
-  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "OUTPUT", kDropGuestIpv4PrefixChain,
-                 /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "INPUT", kIngressPortFirewallChain,
-                 /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "OUTPUT", kEgressPortFirewallChain,
-                 /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kIngressPortForwardingChain, /*iif=*/"",
-                 /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDNATToArcChain, /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDNATToCrostiniChain, /*iif=*/"",
-                 /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDNATToParallelsChain, /*iif=*/"",
-                 /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kRedirectDefaultDnsChain, /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyFwmarkSkipVpnJumpRule("OUTPUT", Iptables::Command::kD, kChronosUid,
-                              /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "OUTPUT", kVpnEgressFiltersChain,
-                 /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "OUTPUT", kDropOutputToBruschettaChain,
-                 /*iif=*/"", /*oif=*/"",
-                 /*log_failures=*/false);
-
-  // Flush chains used for routing and fwmark tagging. Also delete additional
-  // chains made by patchpanel. Chains used by permission broker (nat
-  // PREROUTING, filter INPUT) and chains used for traffic counters (mangle
-  // {rx,tx}_{<iface>, vpn}) are not flushed.
-  // If there is any jump rule between from a chain to another chain that must
-  // be removed, the first chain must be flushed first.
-  // The "ingress_port_forwarding" chain is not flushed since it must hold port
-  // forwarding rules requested by permission_broker.
-  static struct {
-    IpFamily family;
-    Iptables::Table table;
-    std::string chain;
-    bool should_delete;
-  } resetOps[] = {
-      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, "FORWARD", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, "INPUT", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, "POSTROUTING", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, "PREROUTING", false},
-      {IpFamily::kDual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectBorealisChain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
-       true},
-      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kVpnLockdownChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain,
-       true},
-      {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kForwardTetheringChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kEgressTetheringChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kIngressTetheringChain, true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kFilter, kDropForwardToBruschettaChain,
-       true},
-      {IpFamily::kDual, Iptables::Table::kNat, "OUTPUT", false},
-      {IpFamily::kDual, Iptables::Table::kNat, "POSTROUTING", false},
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain, true},
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain, true},
-      {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain, true},
-      {IpFamily::kDual, Iptables::Table::kNat, kSNATChromeDnsChain, true},
-      {IpFamily::kIPv6, Iptables::Table::kNat, kSNATUserDnsChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kRedirectDnsChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToArcChain, true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToCrostiniChain,
-       true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDNATToParallelsChain,
-       true},
-  };
-  for (const auto& op : resetOps) {
-    // Chains to delete are custom chains and will not exist the first time
-    // patchpanel starts after boot. Skip flushing and delete these chains if
-    // they do not exist to avoid logging spurious error messages.
-    if (op.should_delete &&
-        !ModifyChain(op.family, op.table, Iptables::Command::kL, op.chain,
-                     /*log_failures=*/false)) {
-      continue;
-    }
-
-    if (!FlushChain(op.family, op.table, op.chain)) {
-      LOG(ERROR) << "Failed to flush " << op.chain << " chain in table "
-                 << op.table;
-    }
-
-    if (op.should_delete && !RemoveChain(op.family, op.table, op.chain)) {
-      LOG(ERROR) << "Failed to delete " << op.chain << " chain in table "
-                 << op.table;
-    }
   }
 }
 
@@ -2205,34 +1694,6 @@ bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
                       kFwmarkAllSourcesMask);
 }
 
-bool Datapath::ModifyFwmarkDefaultLocalSourceTag(Iptables::Command op,
-                                                 TrafficSource source) {
-  std::vector<std::string> args = {"-m",
-                                   "mark",
-                                   "--mark",
-                                   "0x0/" + kFwmarkAllSourcesMask.ToString(),
-                                   "-j",
-                                   "MARK",
-                                   "--set-mark",
-                                   Fwmark::FromSource(source).ToString() + "/" +
-                                       kFwmarkAllSourcesMask.ToString(),
-                                   "-w"};
-  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                        Iptables::Command::kA, kApplyLocalSourceMarkChain,
-                        args);
-}
-
-bool Datapath::ModifyFwmarkLocalSourceTag(Iptables::Command op,
-                                          const LocalSourceSpecs& source) {
-  if (std::string(source.uid_name).empty() && source.classid == 0)
-    return false;
-
-  Fwmark mark = Fwmark::FromSource(source.source_type);
-  return ModifyFwmark(IpFamily::kDual, kApplyLocalSourceMarkChain, op,
-                      /*iif=*/"", source.uid_name, source.classid, mark,
-                      kFwmarkAllSourcesMask);
-}
-
 bool Datapath::ModifyFwmark(IpFamily family,
                             const std::string& chain,
                             Iptables::Command op,
@@ -2301,19 +1762,6 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
                         args);
-}
-
-bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
-                                           Iptables::Command op,
-                                           const std::string& uid,
-                                           bool log_failures) {
-  std::vector<std::string> args;
-  if (!uid.empty()) {
-    args.insert(args.end(), {"-m", "owner", "!", "--uid-owner", uid});
-  }
-  args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
-                        args, log_failures);
 }
 
 bool Datapath::CheckChain(IpFamily family,
@@ -2614,112 +2062,6 @@ bool Datapath::ModifyPortRule(
     default:
       LOG(ERROR) << "Unknown operation " << request.op();
       return false;
-  }
-}
-
-void Datapath::SetupQoSDetectChain() {
-  const auto install_rule = [this](IpFamily family,
-                                   const std::vector<std::string>& args) {
-    ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
-                   kQoSDetectChain, args);
-  };
-
-  const std::string qos_mask = kFwmarkQoSCategoryMask.ToString();
-  const std::string default_mark = QoSFwmarkWithMask(QoSCategory::kDefault);
-  const std::string network_control_mark =
-      QoSFwmarkWithMask(QoSCategory::kNetworkControl);
-  const std::string multimedia_conferencing_mark =
-      QoSFwmarkWithMask(QoSCategory::kMultimediaConferencing);
-
-  // Reset the QoS-related bits in fwmark. Some sockets will set their own
-  // fwmarks when sending packets, while this is not compatible with the rules
-  // here. See b/303216552 for an example. Note that the matcher part in this
-  // rule (`--mark 0x0/0xe0`) is not a must, just for checking how many packets
-  // have their own fwmarks.
-  install_rule(IpFamily::kDual,
-               {"-m", "mark", "!", "--mark", default_mark, "-j", "MARK",
-                "--set-xmark", default_mark, "-w"});
-
-  // Skip QoS detection if DSCP value is already set.
-  install_rule(IpFamily::kDual,
-               {"-m", "dscp", "!", "--dscp", "0", "-j", "RETURN", "-w"});
-
-  // Restore the QoS bits from the conntrack mark to the fwmark of a packet.
-  // This is used by connections detected by ARC++ socket monitor and WebRTC
-  // detector. This will override the original fwmark on the packet (if the
-  // sender sets it) by intention.
-  install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--restore-mark", "--nfmask",
-                                 qos_mask, "--ctmask", qos_mask, "-w"});
-
-  // Add a jump rule to the Borealis detection chain. Rules in this chain will
-  // be installed dynamically in {Add,Remove}BorealisQoSRule.
-  install_rule(IpFamily::kDual, {"-j", kQoSDetectBorealisChain, "-w"});
-
-  // If the mark is not 0, skip the following detection.
-  install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
-                                 "-j", "RETURN", "-w"});
-
-  // Marking the first packet in the TCP handshake (SYN bit set and the ACK,RST
-  // and FIN bits cleared). We only care about the TCP connection initiated from
-  // the device now.
-  install_rule(IpFamily::kDual, {"-p", "tcp", "--syn", "-j", "MARK",
-                                 "--set-xmark", network_control_mark, "-w"});
-
-  // Marking ICMP packets.
-  install_rule(IpFamily::kIPv4, {"-p", "icmp", "-j", "MARK", "--set-xmark",
-                                 network_control_mark, "-w"});
-  install_rule(IpFamily::kIPv6, {"-p", "icmpv6", "-j", "MARK", "--set-xmark",
-                                 network_control_mark, "-w"});
-
-  // Marking DNS packets. 853 for DoT for Android is ignored here since it won't
-  // happen when dns-proxy is on.
-  install_rule(IpFamily::kDual, {"-p", "udp", "--dport", "53", "-j", "MARK",
-                                 "--set-xmark", network_control_mark, "-w"});
-  install_rule(IpFamily::kDual, {"-p", "tcp", "--dport", "53", "-j", "MARK",
-                                 "--set-xmark", network_control_mark, "-w"});
-
-  // Add a jump rule to the DoH detection chain. Rules in this chain will be
-  // installed dynamically in UpdateDoHProvidersForQoS().
-  install_rule(IpFamily::kDual, {"-j", kQoSDetectDoHChain, "-w"});
-
-  // Rules for WebRTC detection. Notes:
-  // - In short, this is implemented by detecting the client hello packet in a
-  //   WebRTC connection, and mark the whole connection on success. See the
-  //   WebRTC detection section in go/cros-wifi-qos-dd for more details.
-  // - The BPF program will only be installed on 5.8+ kernels, where CAP_BPF is
-  //   available. We check if the existence of the program instead of the kernel
-  //   version here.
-  // - Marking the whole connection is implemented by saving the mark into
-  //   connmark. To avoid saving the mark for unrelated connections, we check if
-  //   the packet already have a mark at first.
-  if (system_->IsEbpfEnabled()) {
-    install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
-                                   "-j", "RETURN", "-w"});
-    install_rule(IpFamily::kDual,
-                 {"-m", "bpf", "--object-pinned", kWebRTCMatcherPinPath, "-j",
-                  "MARK", "--set-xmark", multimedia_conferencing_mark, "-w"});
-    install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--save-mark", "--nfmask",
-                                   qos_mask, "--ctmask", qos_mask, "-w"});
-  }
-}
-
-void Datapath::SetupQoSApplyDSCPChain() {
-  // From QoS categories to DSCP values. See go/cros-qos-dscp-classes-1p for the
-  // mapping.
-  constexpr struct {
-    QoSCategory category;
-    std::string_view dscp;
-  } kDSCPApplyRules[] = {
-      {QoSCategory::kRealTimeInteractive, "32"},
-      {QoSCategory::kMultimediaConferencing, "34"},
-      {QoSCategory::kNetworkControl, "48"},
-      {QoSCategory::kWebRTC, "34"},
-  };
-  for (const auto& rule : kDSCPApplyRules) {
-    ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
-                   Iptables::Command::kA, kQoSApplyDSCPChain,
-                   {"-m", "mark", "--mark", QoSFwmarkWithMask(rule.category),
-                    "-j", "DSCP", "--set-dscp", std::string(rule.dscp), "-w"});
   }
 }
 

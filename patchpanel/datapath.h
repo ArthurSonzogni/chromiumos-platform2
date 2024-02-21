@@ -468,10 +468,6 @@ class Datapath {
   virtual bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
 
  private:
-  // Attempts to flush all built-in iptables chains used by patchpanel, and to
-  // delete all additionals chains created by patchpanel for routing. Traffic
-  // accounting chains are not deleted.
-  void ResetIptables();
   // Creates a virtual interface pair.
   bool AddVirtualInterfacePair(const std::string& netns_name,
                                const std::string& veth_ifname,
@@ -558,10 +554,6 @@ class Datapath {
   bool ModifyFwmarkSourceTag(const std::string& chain,
                              Iptables::Command command,
                              TrafficSource source);
-  bool ModifyFwmarkDefaultLocalSourceTag(Iptables::Command command,
-                                         TrafficSource source);
-  bool ModifyFwmarkLocalSourceTag(Iptables::Command command,
-                                  const LocalSourceSpecs& source);
   bool ModifyFwmark(IpFamily family,
                     const std::string& chain,
                     Iptables::Command command,
@@ -583,18 +575,10 @@ class Datapath {
                                Iptables::Command command,
                                Fwmark mark,
                                Fwmark mask);
-  bool ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
-                                   Iptables::Command command,
-                                   const std::string& uid,
-                                   bool log_failures = true);
   bool ModifyIPv4Rtentry(ioctl_req_t op, struct rtentry* route);
   bool ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route);
 
-  // Installs the static rules inside the qos_detect chain.
-  void SetupQoSDetectChain();
-  // Installs the static rules inside the qos_apply_dscp chain.
-  void SetupQoSApplyDSCPChain();
-  // Changing jump rules to the above two chains.
+  // Changing jump rules to qos_detect and qos_apply_dscp chains.
   void ModifyQoSDetectJumpRule(Iptables::Command command);
   void ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
                                   std::string_view ifname);

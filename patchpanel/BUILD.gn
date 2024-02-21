@@ -10,6 +10,7 @@ group("all") {
   deps = [
     ":install_dbus_config",
     ":install_init_config",
+    ":install_iptables_script",
     ":install_seccomp_policy",
     ":install_setuid_restriction",
     ":libpatchpanel",
@@ -59,6 +60,15 @@ install_config("install_seccomp_policy") {
 install_config("install_setuid_restriction") {
   sources = [ "setuid_restrictions/patchpaneld_uid_allowlist.txt" ]
   install_path = "/usr/share/cros/startup/process_management_policies"
+}
+
+# Install the static iptables scripts.
+install_config("install_iptables_script") {
+  sources = [
+    "iptables/ip6tables.start",
+    "iptables/iptables.start",
+  ]
+  install_path = "/etc/patchpanel"
 }
 
 pkg_config("target_defaults") {

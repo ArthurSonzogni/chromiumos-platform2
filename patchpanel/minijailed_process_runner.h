@@ -96,6 +96,11 @@ class MinijailedProcessRunner {
                         const std::vector<std::string>& argv,
                         bool log_failures = true);
 
+  virtual int iptables_restore(std::string_view script_file,
+                               bool log_failures = true);
+  virtual int ip6tables_restore(std::string_view script_file,
+                                bool log_failures = true);
+
  protected:
   // Used by ip() and ip6().
   // Runs a process (argv[0]) with optional arguments (argv[1]...)
