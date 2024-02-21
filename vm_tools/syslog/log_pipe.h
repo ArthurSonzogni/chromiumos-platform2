@@ -78,7 +78,7 @@ class LogPipeManager final : public LogCollector::Service {
 
   ~LogPipeManager() override;
 
-  bool Init(base::ScopedFD syslog_fd, bool only_forward_to_syslog);
+  bool Init(base::ScopedFD syslog_fd, bool copies_to_syslog);
 
   void OnVmStartingUpSignal(dbus::Signal* signal);
   void OnVmStoppedSignal(dbus::Signal* signal);
@@ -117,9 +117,10 @@ class LogPipeManager final : public LogCollector::Service {
   std::map<int64_t, std::unique_ptr<LogPipe>> log_pipes_
       GUARDED_BY(log_pipes_lock_);
 
-  bool only_forward_to_syslog_ = false;
-  // Used exclusively when |only_forward_to_syslog_| is true, otherwise used
-  // as a log destination for unrecognized VMs (cid not a key in |log_pipes_|).
+  // Log to syslog in addition to per-VM logs when true
+  bool copies_to_syslog_ = false;
+  // Log destination for unrecognized VMs (cid not a key in |log_pipes_|).
+  // Also all VM logs are copied if |copies_to_syslog_| is true
   std::unique_ptr<Forwarder> syslog_forwarder_;
 
   // Timer used for periodically rotating log files in |managed_log_dirs_|.

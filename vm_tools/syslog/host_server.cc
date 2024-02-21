@@ -47,15 +47,13 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  DEFINE_string(
-      log_destination, "",
-      "Path to unix domain datagram socket to which logs will be forwarded");
+  DEFINE_bool(syslog, false,
+              "Whether to forward logs to syslog in addition to VM logs");
   brillo::FlagHelper::Init(argc, argv, "VM log forwarding tool");
 
-  bool only_log_to_syslog = FLAGS_log_destination == kDevLog;
-
-  base::ScopedFD dest(socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0));
-  if (!dest.is_valid()) {
+  // Create a socket to connect to /dev/log.
+  base::ScopedFD syslog_fd(socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!syslog_fd.is_valid()) {
     PLOG(ERROR) << "Failed to create unix domain datagram socket";
     return EXIT_FAILURE;
   }
@@ -69,7 +67,7 @@ int main(int argc, char** argv) {
   // sun_path is zero-initialized above so we just need to copy the path.
   memcpy(un.sun_path, kDevLog, sizeof(kDevLog));
 
-  if (connect(dest.get(), reinterpret_cast<struct sockaddr*>(&un),
+  if (connect(syslog_fd.get(), reinterpret_cast<struct sockaddr*>(&un),
               sizeof(un)) != 0) {
     PLOG(ERROR) << "Failed to connect to " << kDevLog;
     return EXIT_FAILURE;
@@ -77,7 +75,7 @@ int main(int argc, char** argv) {
 
   base::RunLoop run_loop;
   vm_tools::syslog::LogPipeManager log_pipe_manager(run_loop.QuitClosure());
-  CHECK(log_pipe_manager.Init(std::move(dest), only_log_to_syslog));
+  CHECK(log_pipe_manager.Init(std::move(syslog_fd), FLAGS_syslog));
 
   grpc::ServerBuilder builder;
   builder.AddListeningPort(

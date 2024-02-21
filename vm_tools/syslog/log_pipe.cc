@@ -153,8 +153,7 @@ void LogPipeManager::CreateLogPipeForTesting(int64_t cid,
                                               weak_ptr_factory_.GetWeakPtr());
 }
 
-bool LogPipeManager::Init(base::ScopedFD syslog_fd,
-                          bool only_forward_to_syslog) {
+bool LogPipeManager::Init(base::ScopedFD syslog_fd, bool copies_to_syslog) {
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
   bus_ = new dbus::Bus(std::move(opts));
@@ -164,15 +163,12 @@ bool LogPipeManager::Init(base::ScopedFD syslog_fd,
     return false;
   }
 
-  if (syslog_fd.is_valid()) {
-    syslog_forwarder_ = std::make_unique<Forwarder>(std::move(syslog_fd), true);
-    only_forward_to_syslog_ = only_forward_to_syslog;
-  } else {
-    if (only_forward_to_syslog) {
-      LOG(ERROR) << "Forwarding to syslogd unavailable.";
-      return false;
-    }
+  if (!syslog_fd.is_valid()) {
+    LOG(ERROR) << "syslog socket FD is invalid.";
+    return false;
   }
+  syslog_forwarder_ = std::make_unique<Forwarder>(std::move(syslog_fd), true);
+  copies_to_syslog_ = copies_to_syslog;
 
   ConnectToConcierge();
   SetupSigtermHandler();
@@ -350,18 +346,20 @@ grpc::Status LogPipeManager::CollectUserLogs(grpc::ServerContext* ctx,
 
 grpc::Status LogPipeManager::WriteSyslogRecords(int64_t cid,
                                                 const LogRequest& log_request) {
-  if (only_forward_to_syslog_) {
-    return syslog_forwarder_->ForwardLogs(cid, log_request);
-  }
-
   base::AutoLock lock(log_pipes_lock_);
   auto it = log_pipes_.find(cid);
   if (it == log_pipes_.end()) {
-    if (syslog_forwarder_) {
-      return syslog_forwarder_->ForwardLogs(cid, log_request);
+    // Unknown VMs don't have per-VM logs, so log them to syslog.
+    return syslog_forwarder_->ForwardLogs(cid, log_request);
+  }
+
+  if (copies_to_syslog_) {
+    auto status = syslog_forwarder_->ForwardLogs(cid, log_request);
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to send records to syslog.  Error " << "code "
+                 << status.error_code() << ": " << status.error_message();
+      // Continue to write logs to the per-VM log_pipe
     }
-    LOG(ERROR) << "Unknown vm cid " << cid << " wants to write logs";
-    return grpc::Status(grpc::INTERNAL, "Unknown vm, no syslog forwarding");
   }
 
   return it->second->ForwardLogs(cid, log_request);

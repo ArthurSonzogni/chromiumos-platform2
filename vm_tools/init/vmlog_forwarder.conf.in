@@ -21,7 +21,6 @@ pre-start script
   grep -q vhost-vsock /proc/misc || modprobe -q vhost-vsock
 end script
 
-# When forwarding to /dev/log (the default), we run as syslog.
-# When forwarding to the user's cryptohome/ we run as user crosvm.
+# Forward logs to the user's cryptohome/
 exec minijail0 -l -p -r -v -N -n -c 0  -G -u crosvm -g crosvm \
-     -- /usr/bin/vmlog_forwarder --log_destination=/cryptohome/crosvm/log
+    -- /usr/bin/vmlog_forwarder --syslog=false
