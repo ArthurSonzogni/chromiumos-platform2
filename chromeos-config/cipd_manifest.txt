@@ -1,0 +1,4 @@
+# This is a "cipd ensure" file of dependencies that are installed for
+# unit tests.  Syntax documented here:
+#   https://pkg.go.dev/go.chromium.org/luci/cipd/client/cipd/ensure
+chromiumos/infra/tools/squashfs-tools    latest

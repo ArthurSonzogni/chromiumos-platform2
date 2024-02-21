@@ -1,0 +1,45 @@
+python_version: "3.11"
+wheel: <
+  name: "infra/python/wheels/jsonschema-py2_py3"
+  version: "version:3.2.0"
+>
+wheel: <
+  name: "infra/python/wheels/attrs-py3"
+  version: "version:23.1.0"
+>
+wheel: <
+  name: "infra/python/wheels/pyrsistent-py3"
+  version: "version:0.16.0"
+>
+wheel: <
+  name: "infra/python/wheels/six-py2_py3"
+  version: "version:1.16.0"
+>
+wheel: <
+  name: "infra/python/wheels/pyyaml-py3"
+  version: "version:6.0.1"
+>
+wheel: <
+  name: "infra/python/wheels/protobuf-py3"
+  version: "version:4.24.2"
+>
+wheel: <
+ name: "infra/python/wheels/lxml/${vpython_platform}"
+ version: "version:4.9.3"
+>
+wheel: <
+  name: "infra/python/wheels/pytest-py3"
+  version: "version:7.3.1"
+>
+wheel: <
+  name: "infra/python/wheels/iniconfig-py3"
+  version: "version:1.1.1"
+>
+wheel: <
+  name: "infra/python/wheels/packaging-py3"
+  version: "version:23.0"
+>
+wheel: <
+  name: "infra/python/wheels/pluggy-py3"
+  version: "version:0.13.1"
+>
