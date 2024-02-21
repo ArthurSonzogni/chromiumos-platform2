@@ -559,11 +559,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EstablishLinkMultiplexStatic);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
   FRIEND_TEST(CellularTest, Notify);
-  FRIEND_TEST(CellularTest, OnAfterResumeDisableInProgressWantDisabled);
-  FRIEND_TEST(CellularTest, OnAfterResumeDisableQueuedWantEnabled);
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantDisabled);
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
-  FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
   FRIEND_TEST(CellularTest, OnPPPDied);
   FRIEND_TEST(CellularTest, PendingConnect);
   FRIEND_TEST(CellularTest, PendingDisconnect);
