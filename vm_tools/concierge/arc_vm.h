@@ -28,7 +28,6 @@
 
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
-#include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/service_arc_utils.h"
 #include "vm_tools/concierge/virtio_blk_metrics.h"
@@ -65,10 +64,6 @@ struct ArcVmFeatures {
 
   // Apply the multi-arena config for jemalloc to low-RAM devices.
   bool low_mem_jemalloc_arenas_enabled;
-
-  // Whether LMKD in ARCVM should initialize the client and connect to the
-  // VmMemoryManagementService
-  bool use_vm_memory_management_client;
 };
 
 // Obtain virtiofs shared dir command-line parameter string for oem directory.
@@ -92,8 +87,6 @@ class ArcVm final : public VmBaseImpl {
     base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback;
     // The metrics sender for the virtio-blk performance.
     std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics;
-    // The metrics sender for virtio-balloon.
-    std::unique_ptr<mm::BalloonMetrics> balloon_metrics;
     // `guest_memory_size` is the size of the guest memory in bytes which is
     // specified in VmBuilder.
     int64_t guest_memory_size;
@@ -113,9 +106,8 @@ class ArcVm final : public VmBaseImpl {
   ~ArcVm() override;
 
   // TODO(b/256052459): ArcVmTest access the constructor of ArcVm directly
-  // because SetupLmkdVsock() and Start() which are called from ArcVm::Create()
-  // don't have tests. Add tests for them and use ArcVm::Create() directly for
-  // tests.
+  // because Start() which is called from ArcVm::Create() doesn't have tests.
+  // Add tests for Start() and use ArcVm::Create() directly for tests.
   friend class ArcVmTest;
 
   // The VM's cid.
@@ -161,8 +153,6 @@ class ArcVm final : public VmBaseImpl {
 
   void HandleSwapVmRequest(const SwapVmRequest& request,
                            SwapVmCallback callback) override;
-  // Public for testing purpose.
-  uint64_t DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size);
 
   void HandleStatefulUpdate(
       const spaced::StatefulDiskSpaceUpdate update) override;
@@ -197,16 +187,6 @@ class ArcVm final : public VmBaseImpl {
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel, VmBuilder vm_builder);
 
-  // Selects which balloon policy to use, and tries to initialize it, which may
-  // fail.
-  void InitializeBalloonPolicy(const MemoryMargins& margins,
-                               const std::string& vm);
-
-  // Listens for LMKD connections to the Vsock
-  bool SetupLmkdVsock();
-  void HandleLmkdVsockAccept();
-  void HandleLmkdVsockRead();
-
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
@@ -228,31 +208,6 @@ class ArcVm final : public VmBaseImpl {
 
   // Flags passed to vmc start.
   ArcVmFeatures features_;
-
-  // It may take a few tries to initialize a LimitCacheBalloonPolicy, but give
-  // up and log an error after too many failures.
-  int balloon_init_attempts_ = 30;
-
-  // TODO(cwd): When we are sure what synchronization is needed to make sure the
-  // host knows the correct zone sizes (which change during boot), then replace
-  // this timeout.
-  std::optional<base::Time> balloon_refresh_time_ = std::nullopt;
-
-  // Max size of a LMKD packet received over the Vsock
-  static constexpr size_t kLmkdPacketMaxSize = 8 * sizeof(int);
-  static constexpr size_t kLmkdKillDecisionRequestPacketSize = 4 * sizeof(int);
-  static constexpr size_t kLmkdKillDecisionReplyPacketSize = 3 * sizeof(int);
-
-  // Must be kept in sync with lmk_host_cmd::LMK_PROCKILL_CANDIDATE defined in
-  // arc_lmkd_hooks.h in Android
-  static constexpr int32_t kLmkProcKillCandidate = 0;
-
-  base::ScopedFD arcvm_lmkd_vsock_fd_;
-  base::ScopedFD lmkd_client_fd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller>
-      lmkd_vsock_accept_watcher_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller>
-      lmkd_vsock_read_watcher_;
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);
@@ -286,9 +241,6 @@ class ArcVm final : public VmBaseImpl {
   // Metrics reporter for virtio-blk performance.
   std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics_
       GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Metrics reporter for virtio-balloon events.
-  std::unique_ptr<mm::BalloonMetrics> balloon_metrics_;
 
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };

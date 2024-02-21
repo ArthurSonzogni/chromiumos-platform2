@@ -33,7 +33,6 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
-#include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 #include "vm_tools/concierge/network/arc_network.h"
@@ -1011,12 +1010,6 @@ class ArcVmTest : public ::testing::Test {
   }
 
   void OnVmSwapping(SwappingState state) { latest_vm_swapping_state_ = state; }
-
-  void InitializeBalloonPolicy() {
-    MemoryMargins margins;
-    vm_->balloon_init_attempts_ = 0;
-    vm_->InitializeBalloonPolicy(margins, "arcvm");
-  }
 
   bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
 

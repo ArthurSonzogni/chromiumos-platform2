@@ -24,7 +24,6 @@
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
-#include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/feature_util.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
@@ -362,9 +361,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       feature::PlatformFeatures::Get()->IsEnabledBlocking(
           kArcVmLowMemJemallocArenasFeature);
 
-  // If the VmMemoryManagementService is active and initialized, then ARC should
-  // connect to it instead of the normal lmkd vsock port.
-  features.use_vm_memory_management_client = true;
   params.emplace_back(base::StringPrintf(
       "androidboot.lmkd.vm_memory_management_kill_"
       "decision_timeout_ms=%" PRId64,
@@ -599,15 +595,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       base::BindRepeating(&Service::NotifyVmSwapping,
                           weak_ptr_factory_.GetWeakPtr(), vm_id);
 
-  std::unique_ptr<mm::BalloonMetrics> arcvm_balloon_metrics;
-
-  // ARCVM should only have balloon metrics if VMMMS is not enabled.
-  if (!vm_memory_management_service_) {
-    arcvm_balloon_metrics = std::make_unique<mm::BalloonMetrics>(
-        apps::VmType::ARCVM,
-        raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
-  }
-
   auto vm = ArcVm::Create(ArcVm::Config{
       .kernel = kernel_path,
       .vsock_cid = vsock_cid,
@@ -624,7 +611,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vm_swapping_notify_callback = std::move(vm_swapping_notify_callback),
       .virtio_blk_metrics = std::make_unique<VirtioBlkMetrics>(
           raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
-      .balloon_metrics = std::move(arcvm_balloon_metrics),
       .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),
       .data_disk_path = std::move(data_disk_path),

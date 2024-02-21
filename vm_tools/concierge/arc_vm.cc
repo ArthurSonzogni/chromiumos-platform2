@@ -108,10 +108,6 @@ constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 constexpr char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 constexpr char kUnknown[] = "unknown";
 
-// The amount of time after VM creation that we should wait to refresh counters
-// bassed on the zone watermarks, since they can change during boot.
-constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
-
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
 // Vmm-swap trim should be triggered 10 minutes after enable to let hot pages of
@@ -122,28 +118,6 @@ constexpr base::TimeDelta kVmmSwapTrimWaitPeriod = base::Minutes(10);
 // than 1GiB. Since only the core Android services should be running at this
 // point, this value is independent of the size of guest memory.
 constexpr int64_t kExpectedMaxShrunkArcVmSize = GiB(1);
-
-// The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
-static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
-    {
-        .reclaim_target_cache = KiB(322'560),
-        .critical_target_cache = KiB(322'560),
-        .moderate_target_cache = 0,
-        .responsive_max_deflate_bytes = MiB(256),
-};
-
-int GetIntFromVsockBuffer(const uint8_t* buf, size_t index) {
-  int ret = 0;
-  std::memcpy(&ret, &buf[index * sizeof(int)], sizeof(int));
-  ret = ntohl(ret);
-  return ret;
-}
-
-void SetIntInVsockBuffer(uint8_t* buf, size_t index, int val) {
-  val = htonl(val);
-  std::memcpy(&buf[sizeof(int) * index], &val, sizeof(int));
-  return;
-}
 
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was
@@ -249,7 +223,6 @@ ArcVm::ArcVm(Config config)
       }),
       data_disk_path_(config.data_disk_path),
       features_(config.features),
-      balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
       vmm_swap_metrics_(std::move(config.vmm_swap_metrics)),
       swap_policy_timer_(std::move(config.swap_policy_timer)),
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
@@ -260,7 +233,6 @@ ArcVm::ArcVm(Config config)
           std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
       virtio_blk_metrics_(std::move(config.virtio_blk_metrics)),
-      balloon_metrics_(std::move(config.balloon_metrics)),
       weak_ptr_factory_(this) {
   if (config.is_vmm_swap_enabled) {
     vmm_swap_usage_policy_.Init();
@@ -282,12 +254,6 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
   auto vm_builder = std::move(config.vm_builder);
 
   auto vm = base::WrapUnique(new ArcVm(std::move(config)));
-
-  // Set up LMKD VSOCK listener if VmMemoryManagementClient is disabled.
-  if (!vm->features_.use_vm_memory_management_client && !vm->SetupLmkdVsock()) {
-    LOG(ERROR) << "Failed to initialize LMKD VSOCK connection.";
-    return {};
-  }
 
   if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
     return {};
@@ -489,77 +455,11 @@ bool ArcVm::DetachNetDevice(uint8_t bus) {
   return vm_tools::concierge::DetachNetDevice(GetVmSocketPath(), bus);
 }
 
-namespace {
-
-std::optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
-  brillo::ProcessImpl vsh;
-  vsh.AddArg("/usr/bin/vsh");
-  vsh.AddArg(base::StringPrintf("--cid=%u", cid));
-  vsh.AddArg("--user=root");
-  vsh.AddArg("--");
-  vsh.AddArg("cat");
-  vsh.AddArg("/proc/zoneinfo");
-  vsh.RedirectUsingMemory(STDOUT_FILENO);
-  vsh.RedirectUsingMemory(STDERR_FILENO);
-
-  if (vsh.Run() != 0) {
-    if (log_on_error) {
-      LOG(ERROR) << "Failed to run vsh: " << vsh.GetOutputString(STDERR_FILENO);
-    }
-    return std::nullopt;
-  }
-
-  std::string zoneinfo = vsh.GetOutputString(STDOUT_FILENO);
-  return ParseZoneInfoStats(zoneinfo);
-}
-
-}  // namespace
-
-void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
-                                    const std::string& vm) {
-  // When the VmMemoryManagementClient is used, there is no balloon
-  // policy for ARCVM.
-  if (features_.use_vm_memory_management_client) {
-    return;
-  }
-
-  balloon_init_attempts_--;
-
-  // Only log on error if this is our last attempt. We expect some failures
-  // early in boot, so we shouldn't spam the log with them.
-  auto guest_stats = ArcVmZoneStats(vsock_cid_, balloon_init_attempts_ == 0);
-  auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
-  if (guest_stats && host_lwm) {
-    balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
-        margins, *host_lwm, *guest_stats, kArcVmLimitCachePolicyParams, vm,
-        raw_ref<mm::BalloonMetrics>::from_ptr(balloon_metrics_.get()));
-    return;
-  } else if (balloon_init_attempts_ > 0) {
-    // We still have attempts left. Leave balloon_policy_ uninitialized, and
-    // we will try again next time.
-    return;
-  } else {
-    LOG(ERROR) << "Failed to initialize LimitCacheBalloonPolicy, falling "
-               << "back to BalanceAvailableBalloonPolicy";
-  }
-
-  // No balloon policy parameters, so fall back to older policy.
-  // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
-  balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
-      margins.critical, MiB(48), vm);
-}
-
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (balloon_refresh_time_ && base::Time::Now() > *balloon_refresh_time_) {
-    balloon_policy_.reset();
-    balloon_refresh_time_.reset();
-  }
-  if (!balloon_policy_) {
-    InitializeBalloonPolicy(margins, vm);
-  }
-  return balloon_policy_;
+  static const std::unique_ptr<BalloonPolicyInterface> null_balloon_policy;
+  return null_balloon_policy;
 }
 
 void ArcVm::HandleSuspendImminent() {
@@ -740,153 +640,6 @@ void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
     if (!DisableVmmSwap(VmmSwapDisableReason::kLowDiskSpace, false)) {
       LOG(ERROR) << "Failure on crosvm swap command for disable";
     }
-  }
-}
-
-bool ArcVm::SetupLmkdVsock() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  arcvm_lmkd_vsock_fd_.reset(socket(AF_VSOCK, SOCK_STREAM, 0));
-
-  if (!arcvm_lmkd_vsock_fd_.is_valid()) {
-    PLOG(ERROR) << "Failed to create ArcVM LMKD vsock";
-    return false;
-  }
-
-  struct sockaddr_vm sa {};
-  sa.svm_family = AF_VSOCK;
-  sa.svm_cid = VMADDR_CID_ANY;
-  sa.svm_port = kLmkdKillDecisionPort;
-
-  if (bind(arcvm_lmkd_vsock_fd_.get(),
-           reinterpret_cast<const struct sockaddr*>(&sa), sizeof(sa)) == -1) {
-    PLOG(ERROR) << "Failed to bind arcvm LMKD VSOCK.";
-    return false;
-  }
-
-  // Only one ARCVM instance at a time, so a backlog of 1 is sufficient.
-  if (listen(arcvm_lmkd_vsock_fd_.get(), 1) == -1) {
-    PLOG(ERROR)
-        << "Failed to start listening for a connection on ArcVM LMKD VSOCK";
-    return false;
-  }
-
-  // The watchers are destroyed at the same time as the ArcVm instance, so this
-  // callback cannot be called after the ArcVm instance is destroyed. Therefore,
-  // Unretained is safe to use here.
-  lmkd_vsock_accept_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      arcvm_lmkd_vsock_fd_.get(),
-      base::BindRepeating(&ArcVm::HandleLmkdVsockAccept,
-                          base::Unretained(this)));
-  if (!lmkd_vsock_accept_watcher_) {
-    PLOG(ERROR) << "Failed to watch LMKD listening socket";
-    return false;
-  }
-
-  LOG(INFO) << "Waiting for LMKD socket connections...";
-
-  return true;
-}
-
-void ArcVm::HandleLmkdVsockAccept() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  lmkd_client_fd_.reset(
-      HANDLE_EINTR(accept(arcvm_lmkd_vsock_fd_.get(), nullptr, nullptr)));
-  if (!lmkd_client_fd_.is_valid()) {
-    PLOG(ERROR) << "LMKD failed to accept";
-    return;
-  }
-
-  // Don't listen for accepts anymore since we have a client
-  lmkd_vsock_accept_watcher_.reset();
-
-  LOG(INFO) << "Concierge accepted connection from LMKD";
-
-  // The watchers are destroyed at the same time as the ArcVm instance, so this
-  // callback cannot be called after the ArcVm instance is destroyed. Therefore,
-  // Unretained is safe to use here.
-  lmkd_vsock_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      lmkd_client_fd_.get(),
-      base::BindRepeating(&ArcVm::HandleLmkdVsockRead, base::Unretained(this)));
-
-  if (!lmkd_vsock_read_watcher_) {
-    PLOG(ERROR) << "Failed to start watching LMKD Vsock for reads";
-    lmkd_vsock_read_watcher_.reset();
-    return;
-  }
-}
-
-uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  uint64_t freed_space = 0;
-
-  uint64_t new_balloon_size = 0;
-  if (balloon_policy_ &&
-      balloon_policy_->DeflateBalloonToSaveProcess(
-          proc_size, oom_score_adj, new_balloon_size, freed_space)) {
-    SetBalloonSize(new_balloon_size);
-  }
-  return freed_space;
-}
-
-void ArcVm::HandleLmkdVsockRead() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(210075795) switch to using an int array for simplicity
-  uint8_t lmkd_read_buf[kLmkdPacketMaxSize];
-
-  if (!base::ReadFromFD(lmkd_client_fd_.get(),
-                        reinterpret_cast<char*>(lmkd_read_buf),
-                        kLmkdKillDecisionRequestPacketSize)) {
-    // On failure (except for EAGAIN), disconnect the socket and wait for new
-    // connection.
-    if (errno != EAGAIN) {
-      lmkd_vsock_read_watcher_.reset();
-      lmkd_client_fd_.reset();
-
-      // The watchers are destroyed at the same time as the ArcVm instance, so
-      // this callback cannot be called after the ArcVm instance is destroyed.
-      // Therefore, Unretained is safe to use here.
-      lmkd_vsock_accept_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-          arcvm_lmkd_vsock_fd_.get(),
-          base::BindRepeating(&ArcVm::HandleLmkdVsockAccept,
-                              base::Unretained(this)));
-      if (!lmkd_vsock_accept_watcher_) {
-        PLOG(ERROR) << "Failed to restart watching LMKD Vsock";
-      }
-    } else {
-      PLOG(ERROR) << "Failed to read from LMKD Vsock connection.";
-    }
-
-    return;
-  }
-
-  int cmd_id = GetIntFromVsockBuffer(lmkd_read_buf, 0);
-  int sequence_num = GetIntFromVsockBuffer(lmkd_read_buf, 1);
-  int proc_size_kb = GetIntFromVsockBuffer(lmkd_read_buf, 2);
-  int oom_score_adj = GetIntFromVsockBuffer(lmkd_read_buf, 3);
-
-  if (cmd_id != kLmkProcKillCandidate) {
-    LOG(ERROR) << "Unknown command received from LMKD: " << cmd_id;
-    return;
-  }
-
-  // Proc size comes from LMKD in KB units
-  uint64_t freed_space = DeflateBalloonOnLmkd(oom_score_adj, KiB(proc_size_kb));
-
-  // LMKD expects a response in KB units
-  int freed_space_kb = freed_space / KiB(1);
-
-  // TODO(210075795) switch to using an int array for simplicity
-  uint8_t lmkd_reply_buf[kLmkdPacketMaxSize];
-
-  SetIntInVsockBuffer(lmkd_reply_buf, 0, kLmkProcKillCandidate);
-  SetIntInVsockBuffer(lmkd_reply_buf, 1, sequence_num);
-  SetIntInVsockBuffer(lmkd_reply_buf, 2, freed_space_kb);
-
-  if (!base::WriteFileDescriptor(
-          lmkd_client_fd_.get(),
-          {lmkd_reply_buf, kLmkdKillDecisionReplyPacketSize})) {
-    PLOG(ERROR) << "Failed to write to LMKD VSOCK";
   }
 }
 
