@@ -17,6 +17,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/debugd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <vpd/vpd.h>
 
@@ -60,6 +61,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
   battery_tool_ = std::make_unique<BatteryTool>();
+  binary_log_tool_ = std::make_unique<BinaryLogTool>();
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   crosh_shell_tool_ = std::make_unique<CroshShellTool>();
@@ -266,7 +268,15 @@ void DebugdDBusAdaptor::GetFeedbackBinaryLogs(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& username,
     const std::map<int32_t, base::ScopedFD>& outfds) {
-  // TODO(b/291347317): Placeholder method. Implement binary log collection.
+  std::map<FeedbackBinaryLogType, base::ScopedFD> outfds_mapped;
+
+  if (outfds.contains(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP)) {
+    outfds_mapped[FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP] = base::ScopedFD(
+        dup(outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get()));
+  }
+
+  binary_log_tool_->GetBinaryLogs(username, outfds_mapped);
+
   response->Return();
 }
 

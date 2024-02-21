@@ -23,6 +23,7 @@
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
+#include "debugd/src/binary_log_tool.h"
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/crosh_shell_tool.h"
@@ -293,6 +294,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 
   std::unique_ptr<BatteryTool> battery_tool_;
+  std::unique_ptr<BinaryLogTool> binary_log_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CroshShellTool> crosh_shell_tool_;
