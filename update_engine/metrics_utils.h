@@ -59,15 +59,6 @@ void SetUpdateTimestampStart(const base::Time& update_start_time,
 void SetUpdateBootTimestampStart(const base::Time& update_start_boot_time,
                                  PrefsInterface* prefs);
 
-// Called at program startup if the device booted into a new update.
-// The |time_to_reboot| parameter contains the (monotonic-clock) duration
-// from when the update successfully completed (the value in
-// |kPrefsSystemUpdatedMarker|) until the device was booted into the update
-// (current monotonic-clock time).
-bool LoadAndReportTimeToReboot(MetricsReporterInterface* metrics_reporter,
-                               PrefsInterface* prefs,
-                               ClockInterface* clock);
-
 }  // namespace metrics_utils
 }  // namespace chromeos_update_engine
 

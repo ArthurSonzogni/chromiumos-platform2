@@ -176,13 +176,6 @@ class MetricsReporterInterface {
   // |kMetricFailedUpdateCount|
   virtual void ReportFailedUpdateCount(int target_attempt) = 0;
 
-  // Helper function to report the time interval in minutes between a
-  // successful update and the reboot into the updated system. The following
-  // metrics are reported:
-  //
-  // |kMetricTimeToRebootMinutes|
-  virtual void ReportTimeToReboot(int time_to_reboot_minutes) = 0;
-
   // Reported when the `kAttrInvalidateLastUpdate` is sent in the
   // updatecheck. Reports true if all parts of the invalidation were completed
   // successfully, false otherwise.

@@ -349,25 +349,5 @@ void SetUpdateBootTimestampStart(const base::Time& update_start_boot_time,
             << utils::ToString(update_start_boot_time);
 }
 
-bool LoadAndReportTimeToReboot(MetricsReporterInterface* metrics_reporter,
-                               PrefsInterface* prefs,
-                               ClockInterface* clock) {
-  CHECK(prefs);
-  CHECK(clock);
-  int64_t stored_value = GetPersistedValue(kPrefsSystemUpdatedMarker, prefs);
-  if (stored_value == 0)
-    return false;
-
-  Time system_updated_at = Time::FromInternalValue(stored_value);
-  TimeDelta time_to_reboot = clock->GetMonotonicTime() - system_updated_at;
-  if (time_to_reboot.ToInternalValue() < 0) {
-    LOG(ERROR) << "time_to_reboot is negative - system_updated_at: "
-               << utils::ToString(system_updated_at);
-    return false;
-  }
-  metrics_reporter->ReportTimeToReboot(time_to_reboot.InMinutes());
-  return true;
-}
-
 }  // namespace metrics_utils
 }  // namespace chromeos_update_engine

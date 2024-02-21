@@ -68,8 +68,6 @@ class MetricsReporterStub : public MetricsReporterInterface {
 
   void ReportFailedUpdateCount(int target_attempt) override {}
 
-  void ReportTimeToReboot(int time_to_reboot_minutes) override {}
-
   void ReportInvalidatedUpdate(bool success) override {}
 
   void ReportEnterpriseUpdateInvalidatedResult(bool success) override {}

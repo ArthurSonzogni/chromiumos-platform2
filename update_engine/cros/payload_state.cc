@@ -1255,10 +1255,6 @@ void PayloadState::UpdateEngineStarted() {
   if (!SystemState::Get()->system_rebooted())
     return;
 
-  // Report time_to_reboot if we booted into a new update.
-  metrics_utils::LoadAndReportTimeToReboot(
-      SystemState::Get()->metrics_reporter(), prefs_,
-      SystemState::Get()->clock());
   prefs_->Delete(kPrefsSystemUpdatedMarker);
 
   // Check if it is needed to send metrics about a failed reboot into a new

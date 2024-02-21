@@ -115,7 +115,6 @@ const char kMetricFailedUpdateCount[] = "UpdateEngine.FailedUpdateCount";
 const char kMetricInstallDateProvisioningSource[] =
     "UpdateEngine.InstallDateProvisioningSource";
 const char kMetricInvalidatedUpdate[] = "UpdateEngine.UpdateInvalidated";
-const char kMetricTimeToRebootMinutes[] = "UpdateEngine.TimeToRebootMinutes";
 
 // UpdateEngine.ConsecutiveUpdate.* metrics.
 const char kMetricConsecutiveUpdateCount[] =
@@ -452,14 +451,6 @@ void MetricsReporterOmaha::ReportFailedUpdateCount(int target_attempt) {
   metrics_lib_->SendToUMA(metric, target_attempt,
                           1,   // min value
                           50,  // max value
-                          kNumDefaultUmaBuckets);
-}
-
-void MetricsReporterOmaha::ReportTimeToReboot(int time_to_reboot_minutes) {
-  string metric = metrics::kMetricTimeToRebootMinutes;
-  metrics_lib_->SendToUMA(metric, time_to_reboot_minutes,
-                          0,             // min: 0 minute
-                          30 * 24 * 60,  // max: 1 month (approx)
                           kNumDefaultUmaBuckets);
 }
 

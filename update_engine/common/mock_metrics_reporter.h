@@ -66,8 +66,6 @@ class MockMetricsReporter : public MetricsReporterInterface {
 
   MOCK_METHOD1(ReportFailedUpdateCount, void(int target_attempt));
 
-  MOCK_METHOD1(ReportTimeToReboot, void(int time_to_reboot_minutes));
-
   MOCK_METHOD1(ReportInvalidatedUpdate, void(bool success));
 
   MOCK_METHOD(void,

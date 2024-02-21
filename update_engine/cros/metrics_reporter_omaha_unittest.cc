@@ -383,15 +383,6 @@ TEST_F(MetricsReporterOmahaTest, ReportFailedUpdateCount) {
   reporter_.ReportFailedUpdateCount(target_attempt);
 }
 
-TEST_F(MetricsReporterOmahaTest, ReportTimeToReboot) {
-  int time_to_reboot_minutes = 1000;
-  EXPECT_CALL(*mock_metrics_lib_, SendToUMA(metrics::kMetricTimeToRebootMinutes,
-                                            time_to_reboot_minutes, _, _, _))
-      .Times(1);
-
-  reporter_.ReportTimeToReboot(time_to_reboot_minutes);
-}
-
 TEST_F(MetricsReporterOmahaTest, ReportInvalidatedUpdateSuccess) {
   EXPECT_CALL(*mock_metrics_lib_,
               SendBoolToUMA(metrics::kMetricInvalidatedUpdate, true))

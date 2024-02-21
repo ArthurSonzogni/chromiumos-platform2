@@ -1082,46 +1082,6 @@ TEST_F(PayloadStateTest, DurationsAreCorrect) {
             16000000);
 }
 
-TEST_F(PayloadStateTest, RebootAfterSuccessfulUpdateTest) {
-  OmahaResponse response;
-
-  // Set the clock to a well-known time (t = 30 seconds).
-  auto* fake_clock = FakeSystemState::Get()->fake_clock();
-  fake_clock->SetMonotonicTime(
-      Time::FromInternalValue(30 * Time::kMicrosecondsPerSecond));
-
-  PayloadState payload_state;
-  EXPECT_TRUE(payload_state.Initialize());
-
-  // Make the update succeed.
-  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
-                             &response);
-  payload_state.UpdateSucceeded();
-
-  auto* fake_prefs = FakeSystemState::Get()->fake_prefs();
-  // Check that the marker was written.
-  EXPECT_TRUE(fake_prefs->Exists(kPrefsSystemUpdatedMarker));
-
-  // Now simulate a reboot and set the wallclock time to a later point
-  // (t = 500 seconds). We do this by using a new PayloadState object
-  // and checking that it emits the right UMA metric with the right
-  // value.
-  fake_clock->SetMonotonicTime(
-      Time::FromInternalValue(500 * Time::kMicrosecondsPerSecond));
-  PayloadState payload_state2;
-  EXPECT_TRUE(payload_state2.Initialize());
-
-  // Expect 500 - 30 seconds = 470 seconds ~= 7 min 50 sec
-  EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportTimeToReboot(7));
-  FakeSystemState::Get()->set_system_rebooted(true);
-
-  payload_state2.UpdateEngineStarted();
-
-  // Check that the marker was nuked.
-  EXPECT_FALSE(fake_prefs->Exists(kPrefsSystemUpdatedMarker));
-}
-
 TEST_F(PayloadStateTest, RestartAfterCrash) {
   PayloadState payload_state;
   testing::StrictMock<MockMetricsReporter> mock_metrics_reporter;
