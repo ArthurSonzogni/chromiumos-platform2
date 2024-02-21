@@ -33,6 +33,7 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::_;
 using ::testing::WithArg;
 
@@ -47,13 +48,13 @@ std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
   return std::nullopt;
 }
 
-class SystemUtilsTest : public BaseFileTest {
+class SystemFetcherTest : public BaseFileTest {
  public:
-  SystemUtilsTest(const SystemUtilsTest&) = delete;
-  SystemUtilsTest& operator=(const SystemUtilsTest&) = delete;
+  SystemFetcherTest(const SystemFetcherTest&) = delete;
+  SystemFetcherTest& operator=(const SystemFetcherTest&) = delete;
 
  protected:
-  SystemUtilsTest() = default;
+  SystemFetcherTest() = default;
 
   void SetUp() override {
     expected_system_info_ = mojom::SystemInfo::New();
@@ -309,27 +310,24 @@ class SystemUtilsTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  base::FilePath relative_vpd_rw_dir_;
-  base::FilePath relative_vpd_ro_dir_;
-  base::FilePath relative_dmi_info_path_;
   std::unique_ptr<base::test::ScopedChromeOSVersionInfo> chromeos_version_;
 };
 
 // Template for testing the missing field of vpd/dmi.
 #define TEST_MISSING_FIELD(info, field)                \
-  TEST_F(SystemUtilsTest, TestNo_##info##_##field) {   \
+  TEST_F(SystemFetcherTest, TestNo_##info##_##field) { \
     expected_system_info_->info->field = std::nullopt; \
     SetSystemInfo(expected_system_info_);              \
     SetPsrInfoResponse(/*err=*/std::nullopt);          \
     ExpectFetchSystemInfo();                           \
   }
 
-TEST_F(SystemUtilsTest, TestFetchSystemInfo) {
+TEST_F(SystemFetcherTest, TestFetchSystemInfo) {
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestNoVpdDir) {
+TEST_F(SystemFetcherTest, TestNoVpdDir) {
   expected_system_info_->vpd_info = nullptr;
   SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(true);
@@ -347,7 +345,7 @@ TEST_F(SystemUtilsTest, TestNoVpdDir) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestNoSkuNumber) {
+TEST_F(SystemFetcherTest, TestNoSkuNumber) {
   // Sku number file exists.
   SetSystemInfo(expected_system_info_);
   // Ensure that there is no sku number returned even if sku number exists.
@@ -373,7 +371,7 @@ TEST_MISSING_FIELD(vpd_info, serial_number);
 TEST_MISSING_FIELD(vpd_info, model_name);
 TEST_MISSING_FIELD(vpd_info, oem_name);
 
-TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
+TEST_F(SystemFetcherTest, TestNoSysDevicesVirtualDmiId) {
   expected_system_info_->dmi_info = nullptr;
   // Delete the whole directory |kRelativePathDmiInfo|.
   UnsetPath(kRelativePathDmiInfo);
@@ -392,14 +390,14 @@ TEST_MISSING_FIELD(dmi_info, product_name);
 TEST_MISSING_FIELD(dmi_info, product_version);
 TEST_MISSING_FIELD(dmi_info, sys_vendor);
 
-TEST_F(SystemUtilsTest, TestNoChassisType) {
+TEST_F(SystemFetcherTest, TestNoChassisType) {
   expected_system_info_->dmi_info->chassis_type = nullptr;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestBadChassisType) {
+TEST_F(SystemFetcherTest, TestBadChassisType) {
   // Overwrite the contents of |kChassisTypeFileName| with a chassis_type value
   // that cannot be parsed into an unsigned integer.
   std::string bad_chassis_type = "bad chassis type";
@@ -407,12 +405,12 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
   ExpectFetchProbeError(mojom::ErrorType::kParseError);
 }
 
-TEST_F(SystemUtilsTest, TestNoOsVersion) {
+TEST_F(SystemFetcherTest, TestNoOsVersion) {
   PopulateLsbRelease("");
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
-TEST_F(SystemUtilsTest, TestBadOsVersion) {
+TEST_F(SystemFetcherTest, TestBadOsVersion) {
   PopulateLsbRelease(
       "Milestone\n"
       "CHROMEOS_RELEASE_BUILD_NUMBER=1\n"
@@ -421,7 +419,7 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
-TEST_F(SystemUtilsTest, TestBootMode) {
+TEST_F(SystemFetcherTest, TestBootMode) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosSecure;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
@@ -465,7 +463,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
+TEST_F(SystemFetcherTest, TestEfiPlatformSize) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::kUnknown;
@@ -495,7 +493,7 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestOemName) {
+TEST_F(SystemFetcherTest, TestOemName) {
   expected_system_info_->os_info->oem_name = "FooOEM";
   expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
   SetSystemInfo(expected_system_info_);
@@ -523,7 +521,7 @@ TEST_F(SystemUtilsTest, TestOemName) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemUtilsTest, TestPsrError) {
+TEST_F(SystemFetcherTest, TestPsrError) {
   SetSystemInfo(expected_system_info_);
   expected_system_info_->psr_info = nullptr;
   SetPsrInfoResponse("GetPsr error");
