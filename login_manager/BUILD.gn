@@ -8,11 +8,19 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_dbus_config",
+    ":install_dbus_interface",
+    ":install_dev_conf",
+    ":install_init_scripts",
+    ":install_powerd_prefs",
     ":keygen",
     ":libsession_manager",
     ":session_manager",
     ":session_manager-adaptors",
   ]
+  if (!use.systemd) {
+    deps += [ ":install_upstart_scripts" ]
+  }
   if (use.test) {
     deps += [ ":session_manager_test" ]
   }
@@ -149,6 +157,12 @@ executable("keygen") {
     "system_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
+
+  # gnlint suggests "sbin" ("/usr/sbin") that's different from the current
+  # install path. For moving the install logic from ebuild to GN, no
+  # changes to installed files should be introduced.
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/sbin"
 }
 
 executable("session_manager") {
@@ -159,6 +173,63 @@ executable("session_manager") {
     "container",
   ]
   deps = [ ":libsession_manager" ]
+
+  # See the comment at "keygen".
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/sbin"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "SessionManager.conf" ]
+  install_path = "dbus_system_d"
+}
+
+install_config("install_dbus_interface") {
+  sources = [ "dbus_bindings/org.chromium.SessionManagerInterface.xml" ]
+  install_path = "/usr/share/dbus-1/interfaces"
+}
+
+install_config("install_dev_conf") {
+  sources = [ "chrome_dev.conf" ]
+  install_path = "/etc"
+}
+
+install_config("install_init_scripts") {
+  sources = [
+    "init/scripts/send-uptime-metrics",
+    "init/scripts/ui-collect-machine-info",
+    "init/scripts/ui-init-late",
+    "init/scripts/ui-killers-helper",
+    "init/scripts/ui-killers-helper_unittest",
+    "init/scripts/ui-post-stop",
+    "init/scripts/ui-pre-start",
+    "init/scripts/ui-respawn",
+    "init/scripts/write-machine-info",
+  ]
+  install_path = "/usr/share/cros/init"
+  type = "executable"
+}
+
+install_config("install_powerd_prefs") {
+  sources = [
+    "powerd_prefs/suspend_freezer_deps_session_manager_containers",
+    "powerd_prefs/suspend_freezer_deps_ui",
+  ]
+  install_path = "/usr/share/power_manager"
+}
+
+install_config("install_upstart_scripts") {
+  sources = [
+    "init/upstart/login.conf",
+    "init/upstart/logout.conf",
+    "init/upstart/machine-info.conf",
+    "init/upstart/send-uptime-metrics.conf",
+    "init/upstart/ui-collect-machine-info.conf",
+    "init/upstart/ui-init-late.conf",
+    "init/upstart/ui-respawn.conf",
+    "init/upstart/ui.conf",
+  ]
+  install_path = "upstart"
 }
 
 if (use.test) {
