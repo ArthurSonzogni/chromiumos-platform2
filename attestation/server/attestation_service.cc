@@ -60,9 +60,6 @@ namespace {
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
 
-const char kKnownBootModes[8][3] = {{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {0, 1, 1},
-                                    {1, 0, 0}, {1, 0, 1}, {1, 1, 0}, {1, 1, 1}};
-
 // Default identity features for newly created identities.
 constexpr int kDefaultIdentityFeatures =
     static_cast<int>(attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
@@ -284,14 +281,6 @@ const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
 
 // Default D-Bus call timeout.
 constexpr base::TimeDelta kPcaAgentDBusTimeout = base::Minutes(2);
-
-// Returns a human-readable description for a known 3-byte |mode|.
-std::string GetDescriptionForMode(const char* mode) {
-  return base::StringPrintf(
-      "Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s",
-      mode[0] ? "On" : "Off", mode[1] ? "On" : "Off",
-      mode[2] ? "Verified" : "Developer");
-}
 
 std::string GetHardwareID() {
   char buffer[VB_MAX_STRING_PROPERTY];
@@ -2101,41 +2090,9 @@ bool AttestationService::VerifyQuoteSignature(
   return true;
 }
 
-std::string AttestationService::GetPCRValueForMode(const char* mode) const {
-  std::string mode_str(mode, 3);
-  std::string mode_digest = base::SHA1HashString(mode_str);
-  std::string pcr_value;
-  if (tpm_utility_->GetVersion() == TPM_1_2) {
-    // Use SHA-1 digests for TPM 1.2.
-    std::string initial(base::kSHA1Length, 0);
-    pcr_value = base::SHA1HashString(initial + mode_digest);
-  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
-    // Use SHA-256 digests for TPM 2.0.
-    std::string initial(crypto::kSHA256Length, 0);
-    mode_digest.resize(crypto::kSHA256Length);
-    pcr_value = crypto::SHA256HashString(initial + mode_digest);
-  } else {
-    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
-  }
-  return pcr_value;
-}
-
 bool AttestationService::VerifyPCR0Quote(const std::string& aik_public_key_info,
                                          const Quote& pcr0_quote) {
-  if (!VerifyQuoteSignature(aik_public_key_info, pcr0_quote, 0)) {
-    return false;
-  }
-
-  // Check if the PCR0 value represents a known mode.
-  for (const auto& mode : kKnownBootModes) {
-    std::string pcr_value = GetPCRValueForMode(mode);
-    if (pcr0_quote.quoted_pcr_value() == pcr_value) {
-      LOG(INFO) << "PCR0: " << GetDescriptionForMode(mode);
-      return true;
-    }
-  }
-  LOG(WARNING) << "PCR0 value not recognized.";
-  return true;
+  return VerifyQuoteSignature(aik_public_key_info, pcr0_quote, 0);
 }
 
 bool AttestationService::VerifyPCR1Quote(const std::string& aik_public_key_info,
@@ -2362,9 +2319,10 @@ void AttestationService::VerifyTask(
     return;
   }
   if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
-    LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
+    LOG(ERROR) << __func__ << ": Invalid boot mode: " << result.status();
     return;
   }
+
   if (!VerifyPCR0Quote(identity_public_key_info,
                        identity_data.pcr_quotes().at(0))) {
     LOG(ERROR) << __func__ << ": Bad PCR0 quote.";
