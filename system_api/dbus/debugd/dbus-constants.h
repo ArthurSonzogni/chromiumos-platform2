@@ -160,6 +160,12 @@ enum FeedbackLogType {
   WIFI_FIRMWARE_DUMPS = 11,
 };
 
+// FeedbackBinaryLogType contains the enum representation of different
+// categories of binary data that can be added to feedback reports.
+enum FeedbackBinaryLogType {
+  WIFI_FIRMWARE_DUMP = 0,
+};
+
 // PrintscanDebugCategories flags. These values must align with those in
 // org.chromium.debug.xml.
 enum PrintscanDebugCategories {
