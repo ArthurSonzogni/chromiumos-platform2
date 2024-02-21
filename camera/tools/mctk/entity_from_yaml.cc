@@ -34,6 +34,10 @@
 #include "tools/mctk/yaml_tree.h"
 
 std::optional<struct v4l2_audio> ParseAudio(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_audio audio = {};
   bool ok = true;
 
@@ -42,12 +46,16 @@ std::optional<struct v4l2_audio> ParseAudio(YamlNode& map) {
   audio.capability = map["capability"].ReadInt<__u32>(ok);
   audio.mode = map["mode"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_audio");
 
   return std::optional<struct v4l2_audio>(audio);
 }
 
 std::optional<struct v4l2_audioout> ParseAudout(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_audioout audout = {};
   bool ok = true;
 
@@ -56,12 +64,16 @@ std::optional<struct v4l2_audioout> ParseAudout(YamlNode& map) {
   audout.capability = map["capability"].ReadInt<__u32>(ok);
   audout.mode = map["mode"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_audioout");
 
   return std::optional<struct v4l2_audioout>(audout);
 }
 
 std::optional<struct v4l2_dv_timings> ParseDvTimings(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_dv_timings dv_timings = {};
   bool ok = true;
 
@@ -89,12 +101,16 @@ std::optional<struct v4l2_dv_timings> ParseDvTimings(YamlNode& map) {
   dv_timings.bt.cea861_vic = map["bt"]["cea861_vic"].ReadInt<__u8>(ok);
   dv_timings.bt.hdmi_vic = map["bt"]["hdmi_vic"].ReadInt<__u8>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_dv_timings");
 
   return std::optional<struct v4l2_dv_timings>(dv_timings);
 }
 
 std::optional<struct v4l2_pix_format> ParsePixFormat(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_pix_format fmt_pix = {};
   bool ok = true;
 
@@ -111,12 +127,16 @@ std::optional<struct v4l2_pix_format> ParsePixFormat(YamlNode& map) {
   fmt_pix.quantization = map["quantization"].ReadInt<__u32>(ok);
   fmt_pix.xfer_func = map["xfer_func"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_pix_format");
 
   return std::optional<struct v4l2_pix_format>(fmt_pix);
 }
 
 std::optional<struct v4l2_vbi_format> ParseVbiFormat(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_vbi_format fmt_vbi = {};
   bool ok = true;
 
@@ -130,13 +150,17 @@ std::optional<struct v4l2_vbi_format> ParseVbiFormat(YamlNode& map) {
   fmt_vbi.start[1] = map["count"][1].ReadInt<__u32>(ok);
   fmt_vbi.flags = map["flags"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_vbi_format");
 
   return std::optional<struct v4l2_vbi_format>(fmt_vbi);
 }
 
 std::optional<struct v4l2_pix_format_mplane> ParsePixFormatMplane(
     YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_pix_format_mplane fmt_pix_mplane = {};
   bool ok = true;
 
@@ -159,36 +183,48 @@ std::optional<struct v4l2_pix_format_mplane> ParsePixFormatMplane(
   fmt_pix_mplane.quantization = map["quantization"].ReadInt<__u8>(ok);
   fmt_pix_mplane.xfer_func = map["xfer_func"].ReadInt<__u8>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_pix_format_mplane");
 
   return std::optional<struct v4l2_pix_format_mplane>(fmt_pix_mplane);
 }
 
 std::optional<struct v4l2_sdr_format> ParseSdrFormat(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_sdr_format fmt_sdr = {};
   bool ok = true;
 
   fmt_sdr.pixelformat = map["pixelformat"].ReadInt<__u32>(ok);
   fmt_sdr.buffersize = map["buffersize"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_sdr_format");
 
   return std::optional<struct v4l2_sdr_format>(fmt_sdr);
 }
 
 std::optional<struct v4l2_meta_format> ParseMetaFormat(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_meta_format fmt_meta = {};
   bool ok = true;
 
   fmt_meta.dataformat = map["dataformat"].ReadInt<__u32>(ok);
   fmt_meta.buffersize = map["buffersize"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_meta_format");
 
   return std::optional<struct v4l2_meta_format>(fmt_meta);
 }
 
 std::optional<struct v4l2_jpegcompression> ParseJpegcomp(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_jpegcompression jpegcomp = {};
   bool ok = true;
 
@@ -202,12 +238,16 @@ std::optional<struct v4l2_jpegcompression> ParseJpegcomp(YamlNode& map) {
                                    60, ok);
   jpegcomp.jpeg_markers = map["jpeg_markers"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_jpegcompression");
 
   return std::optional<struct v4l2_jpegcompression>(jpegcomp);
 }
 
 std::optional<struct v4l2_captureparm> ParseCaptureParm(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_captureparm parm = {};
   bool ok = true;
 
@@ -220,12 +260,16 @@ std::optional<struct v4l2_captureparm> ParseCaptureParm(YamlNode& map) {
   parm.extendedmode = map["extendedmode"].ReadInt<__u32>(ok);
   parm.readbuffers = map["readbuffers"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_captureparm");
 
   return std::optional<struct v4l2_captureparm>(parm);
 }
 
 std::optional<struct v4l2_outputparm> ParseOutputParm(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_outputparm parm = {};
   bool ok = true;
 
@@ -238,7 +282,7 @@ std::optional<struct v4l2_outputparm> ParseOutputParm(YamlNode& map) {
   parm.extendedmode = map["extendedmode"].ReadInt<__u32>(ok);
   parm.writebuffers = map["writebuffers"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_outputparm");
 
   return std::optional<struct v4l2_outputparm>(parm);
 }
@@ -386,7 +430,7 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromYamlNode(
         V4lMcControl::CreateFromYamlNode(*node_control);
 
     if (!new_control) {
-      MCTK_ASSERT(0);
+      MCTK_ERR("Failed to parse control, aborting.");
       return nullptr;
     }
 

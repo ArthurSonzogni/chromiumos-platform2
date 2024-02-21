@@ -23,6 +23,10 @@
 #include "tools/mctk/selection.h"
 
 std::optional<struct v4l2_rect> YamlNode::ReadRect() {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (this->IsEmpty())
+    return std::nullopt;
+
   struct v4l2_rect r;
   bool ok = true;
 
@@ -32,7 +36,7 @@ std::optional<struct v4l2_rect> YamlNode::ReadRect() {
   r.height = (*this)["height"].ReadInt<__u32>(ok);
 
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_rect");
 
   return std::optional<struct v4l2_rect>(r);
 }

@@ -32,6 +32,10 @@
 #include "tools/mctk/pad.h"
 
 std::optional<struct v4l2_mbus_framefmt> ParseSubdevFmt(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_mbus_framefmt fmt = {};
   bool ok = true;
 
@@ -44,7 +48,7 @@ std::optional<struct v4l2_mbus_framefmt> ParseSubdevFmt(YamlNode& map) {
   fmt.quantization = map["quantization"].ReadInt<__u16>(ok);
   fmt.xfer_func = map["xfer_func"].ReadInt<__u16>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse struct v4l2_mbus_framefmt");
 
 #ifdef V4L2_MBUS_FRAMEFMT_SET_CSC
   /* The 'flags' member was introduced in later kernel versions,
@@ -62,13 +66,17 @@ std::optional<struct v4l2_mbus_framefmt> ParseSubdevFmt(YamlNode& map) {
 }
 
 std::optional<struct v4l2_fract> ParseFrameInterval(YamlNode& map) {
+  /* If this YAML node does not exist, then there is nothing to parse */
+  if (map.IsEmpty())
+    return std::nullopt;
+
   struct v4l2_fract fract;
   bool ok = true;
 
   fract.numerator = map["numerator"].ReadInt<__u32>(ok);
   fract.denominator = map["denominator"].ReadInt<__u32>(ok);
   if (!ok)
-    return std::nullopt;
+    MCTK_PANIC("Failed to parse a pad's frame_interval");
 
   return std::optional<struct v4l2_fract>(fract);
 }
