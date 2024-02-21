@@ -523,20 +523,50 @@ void Datapath::Start() {
 
   // Add a rule for skipping apply_local_source_mark if the packet already has a
   // source mark (e.g., packets from a wireguard socket in the kernel).
-  // TODO(b/190683881): This will also skip setting VPN policy bits on the
-  // packet. Currently this rule will only be triggered for wireguard sockets so
-  // it has no side effect now. We may need to revisit this later.
   ModifyIptables(
       IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
       kApplyLocalSourceMarkChain,
       {"-m", "mark", "!", "--mark", "0x0/" + kFwmarkAllSourcesMask.ToString(),
        "-j", "RETURN", "-w"});
-  // Create rules for tagging local sources with the source tag and the vpn
-  // policy tag.
+  // Create rules for tagging local sources which should be routed on VPN by
+  // default with the source tag.
   for (const auto& source : kLocalSourceTypes) {
-    if (!ModifyFwmarkLocalSourceTag(Iptables::Command::kA, source)) {
-      LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
-                 << " in " << kApplyLocalSourceMarkChain;
+    if (source.is_on_vpn) {
+      if (!ModifyFwmarkLocalSourceTag(Iptables::Command::kA, source)) {
+        LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
+                   << " in " << kApplyLocalSourceMarkChain;
+      }
+    }
+  }
+  // Set ROUTE_ON_VPN policy if the packets does not have VPN policy bits set by
+  // itself, and source bits are changed by the above rules. Since we checked if
+  // source bits are set and return at the beginning of this chain, when the
+  // rule below matches, it must means that the packet should be routed on VPN
+  // by default.
+  if (!ModifyIptables(
+          IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
+          kApplyLocalSourceMarkChain,
+          {// if VPN policy bits are not set
+           "-m", "mark", "--mark", "0x0/" + kFwmarkVpnMask.ToString(),
+           // and source bits are set by the above rules
+           "-m", "mark", "!", "--mark",
+           "0x0/" + kFwmarkAllSourcesMask.ToString(),
+           // then apply the ROUTE_ON_VPN policy.
+           "-j", "MARK", "--set-mark",
+           base::StrCat(
+               {kFwmarkRouteOnVpn.ToString(), "/", kFwmarkVpnMask.ToString()}),
+           "-w"})) {
+    LOG(ERROR) << "Failed to create fwmark tagging rule for ROUTE_ON_VPN in "
+               << kApplyLocalSourceMarkChain;
+  }
+  // Create rules for tagging local sources which should NOT be routed on VPN by
+  // default with the source tag.
+  for (const auto& source : kLocalSourceTypes) {
+    if (!source.is_on_vpn) {
+      if (!ModifyFwmarkLocalSourceTag(Iptables::Command::kA, source)) {
+        LOG(ERROR) << "Failed to create fwmark tagging rule for uid " << source
+                   << " in " << kApplyLocalSourceMarkChain;
+      }
     }
   }
   // Finally add a catch-all rule for tagging any remaining local sources with
@@ -2198,12 +2228,9 @@ bool Datapath::ModifyFwmarkLocalSourceTag(Iptables::Command op,
     return false;
 
   Fwmark mark = Fwmark::FromSource(source.source_type);
-  if (source.is_on_vpn)
-    mark = mark | kFwmarkRouteOnVpn;
-
   return ModifyFwmark(IpFamily::kDual, kApplyLocalSourceMarkChain, op,
                       /*iif=*/"", source.uid_name, source.classid, mark,
-                      kFwmarkPolicyMask);
+                      kFwmarkAllSourcesMask);
 }
 
 bool Datapath::ModifyFwmark(IpFamily family,

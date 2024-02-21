@@ -484,34 +484,38 @@ TEST_F(DatapathTest, Start) {
        "RETURN -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner chronos -j MARK "
-       "--set-mark 0x00008100/0x0000ff00 -w"},
+       "--set-mark 0x00000100/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner debugd -j MARK "
-       "--set-mark 0x00008200/0x0000ff00 -w"},
+       "--set-mark 0x00000200/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner cups -j MARK "
-       "--set-mark 0x00008200/0x0000ff00 -w"},
+       "--set-mark 0x00000200/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner lpadmin -j MARK "
-       "--set-mark 0x00008200/0x0000ff00 -w"},
+       "--set-mark 0x00000200/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner kerberosd -j "
-       "MARK --set-mark 0x00008400/0x0000ff00 -w"},
+       "MARK --set-mark 0x00000400/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner kerberosd-exec "
-       "-j MARK --set-mark 0x00008400/0x0000ff00 -w"},
+       "-j MARK --set-mark 0x00000400/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner tlsdate -j MARK "
-       "--set-mark 0x00008400/0x0000ff00 -w"},
+       "--set-mark 0x00000400/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner pluginvm -j "
-       "MARK --set-mark 0x00008200/0x0000ff00 -w"},
+       "MARK --set-mark 0x00000200/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m owner --uid-owner fuse-smbfs -j "
-       "MARK --set-mark 0x00008400/0x0000ff00 -w"},
+       "MARK --set-mark 0x00000400/0x00003f00 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m cgroup --cgroup 0x00010001 -j "
-       "MARK --set-mark 0x00000300/0x0000ff00 -w"},
+       "MARK --set-mark 0x00000300/0x00003f00 -w"},
+      {IpFamily::kDual,
+       "mangle -A apply_local_source_mark -m mark --mark 0x0/0x0000c000 "
+       "-m mark ! --mark 0x0/0x00003f00 -j MARK --set-mark "
+       "0x00008000/0x0000c000 -w"},
       {IpFamily::kDual,
        "mangle -A apply_local_source_mark -m mark --mark 0x0/0x00003f00 -j "
        "MARK --set-mark 0x00000400/0x00003f00 -w"},
