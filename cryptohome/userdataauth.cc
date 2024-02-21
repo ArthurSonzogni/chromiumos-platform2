@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -91,8 +90,6 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/error/locations.h"
-#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/keyset_management.h"
@@ -102,12 +99,10 @@
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/user_secret_stash/manager.h"
-#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/username.h"
 #include "cryptohome/util/proto_enum.h"
-#include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
 using brillo::Blob;
@@ -168,6 +163,10 @@ void SignalAuthCompletedThenDone(
     signal.set_error(reply.error());
     *signal.mutable_error_info() = reply.error_info();
   }
+
+  signal.set_username(start_signal.username());
+  signal.set_sanitized_username(start_signal.sanitized_username());
+
   switch (start_signal.auth_factor_case()) {
     case user_data_auth::AuthenticateStarted::kAuthFactorType:
       signal.set_auth_factor_type(start_signal.auth_factor_type());
@@ -3116,6 +3115,8 @@ void UserDataAuth::CreatePersistentUserWithSession(
   user_data_auth::AuthenticateStarted start_signal;
   start_signal.set_operation_id(operation_id);
   start_signal.set_user_creation(true);
+  start_signal.set_username(*auth_session->username());
+  start_signal.set_sanitized_username(*auth_session->obfuscated_username());
   signalling_intf_->SendAuthenticateStarted(start_signal);
   auto on_done_with_signal = base::BindOnce(
       &SignalAuthCompletedThenDone<user_data_auth::CreatePersistentUserReply>,
@@ -3522,6 +3523,8 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
   user_data_auth::AuthenticateStarted start_signal;
   start_signal.set_operation_id(operation_id);
   start_signal.set_auth_factor_type(auth_factor_type_proto);
+  start_signal.set_username(*auth_session->username());
+  start_signal.set_sanitized_username(*auth_session->obfuscated_username());
   signalling_intf_->SendAuthenticateStarted(start_signal);
   auto on_done_with_signal = base::BindOnce(
       &SignalAuthCompletedThenDone<user_data_auth::AuthenticateAuthFactorReply>,

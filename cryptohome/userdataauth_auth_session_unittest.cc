@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/mock_firmware_management_parameters.h"
-#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -35,27 +33,21 @@
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
-#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
-#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_features.h"
-#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
-#include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
-#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/real_user_session.h"
@@ -2264,11 +2256,15 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
 
   // Verify
   EXPECT_THAT(started_signal.operation_id(), Ne(0));
+  EXPECT_FALSE(started_signal.username().empty());
+  EXPECT_FALSE(started_signal.sanitized_username().empty());
   EXPECT_THAT(completed_signal.operation_id(),
               Eq(started_signal.operation_id()));
   ASSERT_TRUE(completed_signal.has_error_info());
   EXPECT_THAT(completed_signal.error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+  EXPECT_FALSE(completed_signal.username().empty());
+  EXPECT_FALSE(completed_signal.sanitized_username().empty());
 }
 
 }  // namespace
