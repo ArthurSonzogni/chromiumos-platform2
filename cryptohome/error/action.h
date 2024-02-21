@@ -9,9 +9,7 @@
 
 #include <base/logging.h>
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // PrimaryActions are actions that cryptohome is sure about why the error
 // happened. Therefore when a primary actions is specified, no other possible
@@ -85,8 +83,6 @@ inline ErrorActionSet NoErrorAction() {
   return PossibleActions{};
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_ACTION_H_

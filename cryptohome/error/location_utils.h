@@ -11,9 +11,7 @@
 #include <string>
 #include <utility>
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // ErrorLocationSpecifier should be based on the ErrorLocation type to avoid
 // down/up casting.
@@ -34,8 +32,6 @@ static_assert(
           ::cryptohome::error::ErrorLocationSpecifier::x),              \
       std::string(#x)))
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_LOCATION_UTILS_H_

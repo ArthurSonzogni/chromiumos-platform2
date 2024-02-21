@@ -7,8 +7,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 // VerifyInclusion verifies the correctness of the inclusion proof for the leaf
 // with the specified hash and index, relatively to the tree of the given size
@@ -18,7 +17,6 @@ namespace cryptorecovery {
     const LedgerInfo& ledger_info,
     const OnboardingMetadata& metadata);
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_INCLUSION_PROOF_H_

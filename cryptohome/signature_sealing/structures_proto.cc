@@ -14,8 +14,7 @@
 using brillo::BlobFromString;
 using brillo::BlobToString;
 
-namespace cryptohome {
-namespace proto {
+namespace cryptohome::proto {
 
 // We don't need to export these functions.
 namespace {
@@ -235,5 +234,4 @@ SerializedChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj) {
   return result;
 }
 
-}  // namespace proto
-}  // namespace cryptohome
+}  // namespace cryptohome::proto

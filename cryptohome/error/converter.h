@@ -16,9 +16,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/reporting.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // This file hosts utilities that converts the CryptohomeError class into the
 // error format on the dbus.
@@ -87,8 +85,6 @@ void ReplyWithError(
   std::move(on_done).Run(reply);
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_CONVERTER_H_

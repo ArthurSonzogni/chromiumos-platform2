@@ -16,9 +16,7 @@
 using hwsec_foundation::status::NewStatus;
 using hwsec_foundation::status::StatusChain;
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 CryptohomeMountError::MakeStatusTrait::MountErrorUnset::MountErrorUnset(
     const ErrorLocationPair& loc,
@@ -101,6 +99,4 @@ CryptohomeMountError::CryptohomeMountError(
                                 MountErrorToCryptohomeError(mount_error))),
       mount_error_(mount_error) {}
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

@@ -17,8 +17,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 namespace {
 
@@ -1138,5 +1137,4 @@ bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
   return SerializeCborMap(cbor, serialized_cbor);
 }
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery

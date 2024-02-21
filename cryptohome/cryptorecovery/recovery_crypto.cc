@@ -20,8 +20,7 @@ using ::hwsec_foundation::EllipticCurve;
 using ::hwsec_foundation::Hkdf;
 using ::hwsec_foundation::HkdfHash;
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 const char RecoveryCrypto::kMediatorShareHkdfInfoValue[] = "HSM-Payload Key";
 
@@ -40,5 +39,4 @@ const unsigned int RecoveryCrypto::kHkdfSaltLength = 32;
 
 RecoveryCrypto::~RecoveryCrypto() = default;
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery

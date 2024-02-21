@@ -39,8 +39,7 @@ using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-namespace cryptohome {
-namespace revocation {
+namespace cryptohome::revocation {
 
 namespace {
 constexpr int kDefaultSecretSize = 32;
@@ -281,5 +280,4 @@ CryptoStatus Revoke(AuthBlockType auth_block_type,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-}  // namespace revocation
-}  // namespace cryptohome
+}  // namespace cryptohome::revocation

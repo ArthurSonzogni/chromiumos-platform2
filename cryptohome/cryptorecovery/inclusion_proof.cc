@@ -31,8 +31,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 namespace {
 
@@ -78,6 +77,7 @@ std::string SerializeSignatures(const std::vector<Signature> signatures) {
 // splitting point between them is where paths to leaves |index| and |size-1|
 // diverge. Returns lengths of the bottom proof parts.
 // clang-format off
+// NOLINTNEXTLINE(whitespace/line_length)
 // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=123.
 // clang-format on
 int CalculateInnerProofSize(int index, int size) {
@@ -93,6 +93,7 @@ int CalculateInnerProofSize(int index, int size) {
 }
 
 // clang-format off
+// NOLINTNEXTLINE(whitespace/line_length)
 // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=73.
 // clang-format on
 bool ReadSignatures(const std::string& text,
@@ -244,6 +245,7 @@ bool VerifySignature(const std::string& text,
 // * TODO(b/281486839): verify that the log origin is as expected.
 // Note: Only the ledger signature will be checked.
 // clang-format off
+// NOLINTNEXTLINE(whitespace/line_length)
 // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=65.
 // clang-format on
 bool ParseCheckPoint(std::string checkpoint_note_str,
@@ -268,6 +270,7 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
   // The ledger has signed this checkpoint. It is now safe to parse.
   // `checkpoint_fields` has the format: "{origin}\n{size}\n{base64_hash}".
   // clang-format off
+  // NOLINTNEXTLINE(whitespace/line_length)
   // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=109.
   // clang-format on
   std::vector<std::string> checkpoint_fields =
@@ -300,6 +303,7 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
 // given size, provided a leaf index and leaf content with the corresponding
 // inclusion proof. Requires 0 <= `leaf_index` < `size`.
 // clang-format off
+// NOLINTNEXTLINE(whitespace/line_length)
 // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=148.
 // clang-format on
 bool CalculateRootHash(const brillo::Blob& leaf,
@@ -428,6 +432,7 @@ bool VerifyMetadata(const LoggedRecord& logged_record,
 }  // namespace
 
 // clang-format off
+// NOLINTNEXTLINE(whitespace/line_length)
 // See google3/chromeos/identity/go/cryptorecovery/shared/ledger/ledgerproof.go?q=verify_proof, and
 //     google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?q=verify_proof.
 // clang-format on
@@ -464,5 +469,4 @@ bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
   return calculated_root_hash == check_point.hash;
 }
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery

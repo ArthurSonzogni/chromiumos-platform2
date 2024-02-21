@@ -6,8 +6,7 @@
 
 #include <libhwsec-foundation/crypto/sha.h>
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 namespace {
 constexpr int kLeafHashPrefix = 0;
@@ -26,5 +25,4 @@ brillo::Blob HashChildren(const brillo::Blob& left, const brillo::Blob& right) {
   return hwsec_foundation::Sha256(brillo::CombineBlobs({prefix, left, right}));
 }
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery

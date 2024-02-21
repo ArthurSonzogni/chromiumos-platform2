@@ -12,9 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 void ReapAndReportError(CryptohomeStatus status,
                         std::string error_bucket_name) {
@@ -52,6 +50,4 @@ void ReapRetryError(CryptohomeStatus status) {
   LOG(WARNING) << "This error caused a retry: " << status;
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

@@ -14,8 +14,7 @@
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-namespace cryptohome {
-namespace proto {
+namespace cryptohome::proto {
 
 ChallengeSignatureAlgorithm ToProto(SerializedChallengeSignatureAlgorithm obj);
 SerializedChallengeSignatureAlgorithm FromProto(
@@ -35,7 +34,6 @@ SerializedSignatureChallengeInfo FromProto(
 ChallengePublicKeyInfo ToProto(const SerializedChallengePublicKeyInfo& obj);
 SerializedChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj);
 
-}  // namespace proto
-}  // namespace cryptohome
+}  // namespace cryptohome::proto
 
 #endif  // CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_PROTO_H_

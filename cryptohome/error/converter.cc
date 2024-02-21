@@ -19,9 +19,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/reporting.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 namespace {
 
@@ -247,6 +245,4 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
   return result;
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

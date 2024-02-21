@@ -11,9 +11,7 @@
 
 #include "cryptohome/error/cryptohome_error.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // This function should be called when there's an error but the code wants to
 // perform some fallback action instead of surfacing the error. The error's
@@ -37,8 +35,6 @@ void ReapWorkingAsIntendedError(CryptohomeStatus status);
 // should be transferred into this function to be disposed of.
 void ReapRetryError(CryptohomeStatus status);
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_REAP_H_

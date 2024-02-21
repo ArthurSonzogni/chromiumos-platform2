@@ -14,8 +14,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 
-namespace cryptohome {
-namespace revocation {
+namespace cryptohome::revocation {
 
 bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec);
 
@@ -38,7 +37,6 @@ CryptoStatus Revoke(AuthBlockType auth_block_type,
                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
                     const RevocationState& revocation_state);
 
-}  // namespace revocation
-}  // namespace cryptohome
+}  // namespace cryptohome::revocation
 
 #endif  // CRYPTOHOME_AUTH_BLOCKS_REVOCATION_H_

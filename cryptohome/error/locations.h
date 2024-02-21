@@ -7,9 +7,7 @@
 
 #include "cryptohome/error/cryptohome_error.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // This file defines the various location code used by CryptohomeError
 // Each of the location should only be used in one error site.
@@ -2172,8 +2170,6 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
 // and libhwsec/error/tpm_error.h so that “Cryptohome.Error.LeafErrorWithTPM”
 // UMA will continue to work.
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_LOCATIONS_H_

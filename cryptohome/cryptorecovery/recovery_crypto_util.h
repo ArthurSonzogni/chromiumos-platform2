@@ -12,8 +12,7 @@
 #include <chromeos/cbor/values.h>
 #include <libhwsec/structures/explicit_init.h>
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 // These CBOR definitions should stay synchronized with their server side
 // definitions:
@@ -262,7 +261,6 @@ struct HsmResponsePlainText {
   brillo::SecureBlob key_auth_value;
 };
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_UTIL_H_

@@ -15,9 +15,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 namespace {
 
@@ -166,6 +164,4 @@ void ReportOperationStatus(const StatusChain<CryptohomeError>& err,
   ReportOperationStatus(err, base::JoinString(error_bucket_paths, "."));
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

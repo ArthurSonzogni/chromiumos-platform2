@@ -19,8 +19,7 @@
 #include "cryptohome/cryptorecovery/recovery_id_container.pb.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 // Cryptographic operations for cryptohome recovery performed on either CPU
 // (software emulation) or TPM modules depending on the TPM backend.
 class RecoveryCryptoImpl : public RecoveryCrypto {
@@ -123,7 +122,6 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   libstorage::Platform* const platform_;
 };
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_IMPL_H_

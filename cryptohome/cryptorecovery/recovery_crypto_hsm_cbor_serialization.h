@@ -12,8 +12,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 // Constants that will be used as keys in the CBOR map.
 extern const char kSchemaVersion[];
@@ -203,7 +202,6 @@ bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
 bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
                                 brillo::Blob* serialized_cbor);
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_HSM_CBOR_SERIALIZATION_H_

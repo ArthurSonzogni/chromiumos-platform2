@@ -12,9 +12,7 @@
 
 #include "cryptohome/error/cryptohome_error.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 // Report an instance of CryptohomeError status chain to UMA, it'll
 // automatically disect the status chain and figure out which UMAs need to be
@@ -50,8 +48,6 @@ void ReportOperationStatus(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
     base::span<const std::string> error_bucket_paths);
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error
 
 #endif  // CRYPTOHOME_ERROR_REPORTING_H_

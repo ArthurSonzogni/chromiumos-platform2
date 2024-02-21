@@ -16,9 +16,7 @@
 using hwsec_foundation::status::NewStatus;
 using hwsec_foundation::status::StatusChain;
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 CryptohomeError::MakeStatusTrait::Unactioned::Unactioned(
     const ErrorLocationPair& loc,
@@ -61,6 +59,4 @@ std::string CryptohomeError::ToString() const {
   return ss.str();
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

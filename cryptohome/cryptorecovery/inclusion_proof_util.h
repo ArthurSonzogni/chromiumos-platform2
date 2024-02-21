@@ -11,8 +11,7 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 constexpr char kInclusionProofSigSplit[] = "\n\n";
 constexpr char kInclusionProofNewline[] = "\n";
@@ -35,7 +34,6 @@ brillo::Blob HashLeaf(const brillo::Blob& leaf_text);
 // HashChildren computes interior nodes.
 brillo::Blob HashChildren(const brillo::Blob& left, const brillo::Blob& right);
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_INCLUSION_PROOF_UTIL_H_

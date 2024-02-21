@@ -16,9 +16,7 @@
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/error/action.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 namespace {
 
@@ -99,6 +97,4 @@ StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(
   return FromTPMErrorBase(std::move(status));
 }
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

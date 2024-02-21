@@ -7,9 +7,7 @@
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/utilities.h"
 
-namespace cryptohome {
-
-namespace error {
+namespace cryptohome::error {
 
 template <typename ErrorType>
 bool PrimaryActionIs(
@@ -45,6 +43,4 @@ template bool PossibleActionsInclude(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
     PossibleAction action);
 
-}  // namespace error
-
-}  // namespace cryptohome
+}  // namespace cryptohome::error

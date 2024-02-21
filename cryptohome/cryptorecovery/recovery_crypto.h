@@ -22,8 +22,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/username.h"
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 // RecoveryCrypto input parameters for function GenerateHsmPayload.
 struct GenerateHsmPayloadRequest {
@@ -186,7 +185,6 @@ class RecoveryCrypto {
       HsmResponsePlainText* response_plain_text) const = 0;
 };
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
 
 #endif  // CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_H_

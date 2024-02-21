@@ -60,8 +60,7 @@ using ::hwsec_foundation::SecureBlobToBigNum;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-namespace cryptohome {
-namespace cryptorecovery {
+namespace cryptohome::cryptorecovery {
 
 namespace {
 
@@ -1283,5 +1282,4 @@ bool RecoveryCryptoImpl::PersistRecoveryIdContainer(
   return true;
 }
 
-}  // namespace cryptorecovery
-}  // namespace cryptohome
+}  // namespace cryptohome::cryptorecovery
