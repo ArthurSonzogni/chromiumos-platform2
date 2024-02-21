@@ -118,15 +118,6 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
   return UpdateCpuShares(base::FilePath(cpu_cgroup), cpu_shares);
 }
 
-// static
-void VmBaseImpl::RunFailureAggressiveBalloonCallback(
-    AggressiveBalloonCallback callback, std::string failure_reason) {
-  AggressiveBalloonResponse response;
-  response.set_success(false);
-  response.set_failure_reason(failure_reason);
-  std::move(callback).Run(response);
-}
-
 bool VmBaseImpl::StartProcess(base::StringPairs args) {
   std::string command_line_for_log{};
 
@@ -188,16 +179,6 @@ void VmBaseImpl::HandleSwapVmRequest(const SwapVmRequest& request,
   response.set_success(false);
   response.set_failure_reason("vmm-swap is not supported on this vm");
   std::move(callback).Run(response);
-}
-
-void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
-  RunFailureAggressiveBalloonCallback(std::move(callback),
-                                      "Unsupported by target VM");
-}
-
-void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
-  response.set_success(false);
-  response.set_failure_reason("Unsupported by target VM");
 }
 
 }  // namespace vm_tools::concierge

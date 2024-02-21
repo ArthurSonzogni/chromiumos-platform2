@@ -86,8 +86,6 @@ class VmBaseImpl {
   };
 
   using SwapVmCallback = base::OnceCallback<void(SwapVmResponse response)>;
-  using AggressiveBalloonCallback =
-      base::OnceCallback<void(AggressiveBalloonResponse response)>;
 
   // Suspends the VM.
   void Suspend() {
@@ -206,12 +204,6 @@ class VmBaseImpl {
   virtual void HandleSwapVmRequest(const SwapVmRequest& request,
                                    SwapVmCallback callback);
 
-  // Inflate balloon until perceptible processes are tried to kill.
-  virtual void InflateAggressiveBalloon(AggressiveBalloonCallback callback);
-
-  // Stop inflating aggressive balloon.
-  virtual void StopAggressiveBalloon(AggressiveBalloonResponse& response);
-
   // Handle the low disk notification from spaced.
   virtual void HandleStatefulUpdate(
       const spaced::StatefulDiskSpaceUpdate update) = 0;
@@ -222,9 +214,6 @@ class VmBaseImpl {
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                   const char* cpu_cgroup);
-
-  static void RunFailureAggressiveBalloonCallback(
-      AggressiveBalloonCallback callback, std::string failure_reason);
 
   // Starts |process_| with |args|. Returns true iff started successfully.
   bool StartProcess(base::StringPairs args);

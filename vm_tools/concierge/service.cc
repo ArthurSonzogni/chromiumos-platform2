@@ -3810,34 +3810,30 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
   }
 
   auto type = iter->second->GetInfo().type;
-  if (vm_memory_management_service_ &&
-      mm::MmService::ManagedVms().contains(type)) {
-    auto cid = iter->second->GetInfo().cid;
-    if (request.enable()) {
-      LOG(INFO) << "Starting Aggressive Baloon for CID: " << cid;
-      auto cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
-          &Service::OnAggressiveBalloonFinished, weak_ptr_factory_.GetWeakPtr(),
-          std::move(response_cb), cid));
-      vm_memory_management_service_->ReclaimUntilBlocked(
-          cid, mm::ResizePriority::kAggressiveBalloon, std::move(cb));
-    } else {
-      LOG(INFO) << "Stopping Aggressive Baloon for CID: " << cid;
-      vm_memory_management_service_->StopReclaimUntilBlocked(cid);
-      response.set_success(true);
-      response_cb->Return(response);
-    }
+
+  if (!vm_memory_management_service_ ||
+      !mm::MmService::ManagedVms().contains(type)) {
+    LOG(ERROR) << "Requested VM " << vm_id.name()
+               << " does not support aggressive balloon";
+    response.set_failure_reason(
+        "Requested VM does not support aggressive balloon");
+    response_cb->Return(response);
+    return;
+  }
+
+  auto cid = iter->second->GetInfo().cid;
+  if (request.enable()) {
+    LOG(INFO) << "Starting Aggressive Baloon for CID: " << cid;
+    auto cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
+        &Service::OnAggressiveBalloonFinished, weak_ptr_factory_.GetWeakPtr(),
+        std::move(response_cb), cid));
+    vm_memory_management_service_->ReclaimUntilBlocked(
+        cid, mm::ResizePriority::kAggressiveBalloon, std::move(cb));
   } else {
-    if (request.enable()) {
-      iter->second->InflateAggressiveBalloon(base::BindOnce(
-          [](AggressiveBalloonResponder response_sender,
-             AggressiveBalloonResponse response) {
-            std::move(response_sender)->Return(response);
-          },
-          std::move(response_cb)));
-    } else {
-      iter->second->StopAggressiveBalloon(response);
-      response_cb->Return(response);
-    }
+    LOG(INFO) << "Stopping Aggressive Baloon for CID: " << cid;
+    vm_memory_management_service_->StopReclaimUntilBlocked(cid);
+    response.set_success(true);
+    response_cb->Return(response);
   }
 }
 

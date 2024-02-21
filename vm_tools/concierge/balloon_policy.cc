@@ -398,10 +398,6 @@ bool LimitCacheBalloonPolicy::DeflateBalloonToSaveProcess(
   }
 }
 
-void LimitCacheBalloonPolicy::UpdateCurrentBalloonSize(uint64_t size) {
-  current_balloon_size_ = size;
-}
-
 int64_t LimitCacheBalloonPolicy::MaxFree() {
   return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE;
 }

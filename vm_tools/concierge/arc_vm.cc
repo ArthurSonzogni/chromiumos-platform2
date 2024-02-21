@@ -225,12 +225,6 @@ std::string GetChromeOsChannelFromLsbRelease() {
   return value.erase(value.find(kChannelSuffix), kChannelSuffix.size());
 }
 
-bool DoInflateBalloon(std::string socket_path,
-                      uint64_t target,
-                      base::TimeDelta timeout) {
-  return CrosvmControl::Get()->SetBalloonSize(socket_path, target, timeout);
-}
-
 }  // namespace
 
 SharedDataParam GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
@@ -288,11 +282,6 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
   auto vm_builder = std::move(config.vm_builder);
 
   auto vm = base::WrapUnique(new ArcVm(std::move(config)));
-
-  if (!vm->balloon_request_thread_.Start()) {
-    LOG(ERROR) << "Failed to start balloon stats thread";
-    return {};
-  }
 
   // Set up LMKD VSOCK listener if VmMemoryManagementClient is disabled.
   if (!vm->features_.use_vm_memory_management_client && !vm->SetupLmkdVsock()) {
@@ -563,12 +552,6 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // While it is enabling vmm-swap, balloon policy is suspended and the balloon
-  // is kept as big as possible to keep guest memory minimized.
-  if (aggressive_balloon_running_) {
-    static const std::unique_ptr<BalloonPolicyInterface> null_balloon_policy;
-    return null_balloon_policy;
-  }
   if (balloon_refresh_time_ && base::Time::Now() > *balloon_refresh_time_) {
     balloon_policy_.reset();
     balloon_refresh_time_.reset();
@@ -738,110 +721,6 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
   std::move(callback).Run(response);
 }
 
-void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (aggressive_balloon_callback_) {
-    LOG(WARNING) << "Aggressive balloon is already ongoing";
-    RunFailureAggressiveBalloonCallback(
-        std::move(callback), "aggressive balloon is already ongoing");
-    return;
-  }
-  aggressive_balloon_callback_ = std::move(callback);
-  balloon_request_thread_.task_runner()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&vm_tools::concierge::GetBalloonStats, GetVmSocketPath(),
-                     std::nullopt),
-      base::BindOnce(&ArcVm::StartAggressiveBalloonInflation,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ArcVm::StartAggressiveBalloonInflation(
-    std::optional<BalloonStats> stats_opt) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!aggressive_balloon_callback_) {
-    return;
-  }
-  if (!stats_opt) {
-    LOG(ERROR) << "Failed to get latest balloon stats";
-    RunFailureAggressiveBalloonCallback(std::move(aggressive_balloon_callback_),
-                                        "failed to get latest balloon stats");
-    return;
-  }
-  LOG(INFO) << "Inflating aggressive balloon";
-  aggressive_balloon_target_ = stats_opt->balloon_actual;
-  aggressive_balloon_running_ = true;
-  aggressive_balloon_interval_ = kInitAggressiveBalloonInterval;
-  DoAggressiveBalloonStep();
-}
-
-void ArcVm::DoAggressiveBalloonStep() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!aggressive_balloon_running_)
-    return;
-
-  aggressive_balloon_target_ += kAggressiveBalloonIncrementSize;
-
-  balloon_request_thread_.task_runner()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&DoInflateBalloon, GetVmSocketPath(),
-                     aggressive_balloon_target_, kAggressiveBalloonPuffTimeout),
-      base::BindOnce(&ArcVm::OnAggressiveBalloonStepDone,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ArcVm::OnAggressiveBalloonStepDone(bool success) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!aggressive_balloon_running_)
-    return;
-
-  if (success) {
-    if (balloon_policy_) {
-      balloon_policy_->UpdateCurrentBalloonSize(aggressive_balloon_target_);
-    }
-
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&ArcVm::DoAggressiveBalloonStep,
-                       weak_ptr_factory_.GetWeakPtr()),
-        aggressive_balloon_interval_);
-    return;
-  }
-
-  if (aggressive_balloon_interval_ >= kMaxAggressiveBalloonInterval) {
-    LOG(INFO)
-        << "Aggressive balloon timed out, assuming guest memory is shrunk.";
-    aggressive_balloon_running_ = false;
-    if (aggressive_balloon_callback_) {
-      AggressiveBalloonResponse response;
-      response.set_success(true);
-      std::move(aggressive_balloon_callback_).Run(response);
-    }
-    return;
-  }
-
-  aggressive_balloon_target_ =
-      aggressive_balloon_target_ > kAggressiveBalloonBackoffBytes
-          ? aggressive_balloon_target_ - kAggressiveBalloonBackoffBytes
-          : 0;
-  // We didn't get an LMKD kill request - likely due to userspace locking
-  // up. Increase the puff interval to give LMKD more time to respond.
-  aggressive_balloon_interval_ *= 2;
-  // Immediately execute a step to apply the new reduced balloon target, since
-  // a puff failure generally means the guest is OOM and is thus locked up.
-  DoAggressiveBalloonStep();
-}
-
-void ArcVm::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  LOG(INFO) << "Stop aggressive balloon";
-  if (aggressive_balloon_callback_) {
-    RunFailureAggressiveBalloonCallback(std::move(aggressive_balloon_callback_),
-                                        "aggressive balloon is disabled");
-  }
-  aggressive_balloon_running_ = false;
-  response.set_success(true);
-}
-
 void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Should not disable vmm-swap if vmm-swap is not enabled because there is a
@@ -940,40 +819,6 @@ void ArcVm::HandleLmkdVsockAccept() {
 uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   uint64_t freed_space = 0;
-  if (aggressive_balloon_running_) {
-    if (oom_score_adj <= kPlatformPerceptibleMaxOmmScoreAdjValue) {
-      // Load the latest actual balloon size. LMKD may notify multiple process
-      // in a very short period and balloon size target can be not reflected to
-      // the actual balloon size.
-      auto stats_opt = GetBalloonStats(base::Milliseconds(500));
-      uint64_t balloon_actual;
-      if (stats_opt) {
-        balloon_actual = stats_opt->balloon_actual;
-      } else {
-        LOG(WARNING) << "Failed to query balloon stats, using target as actual";
-        // Use the latest aggressive_balloon_target_ - last incremented size as
-        // the pessimistic balloon actual size.
-        balloon_actual =
-            aggressive_balloon_target_ > kAggressiveBalloonIncrementSize
-                ? aggressive_balloon_target_ - kAggressiveBalloonIncrementSize
-                : 0;
-      }
-      uint64_t balloon_target =
-          proc_size > balloon_actual ? 0 : balloon_actual - proc_size;
-      freed_space = balloon_actual - balloon_target;
-      LOG(INFO) << "Deflated VirtIO balloon to save process (OOM Score: "
-                << oom_score_adj << ", Size: " << proc_size << ") Balloon: ("
-                << balloon_actual << ") -> (" << balloon_target << ")";
-      SetBalloonSize(balloon_target);
-      aggressive_balloon_running_ = false;
-      if (aggressive_balloon_callback_) {
-        AggressiveBalloonResponse response;
-        response.set_success(true);
-        std::move(aggressive_balloon_callback_).Run(response);
-      }
-    }
-    return freed_space;
-  }
 
   uint64_t new_balloon_size = 0;
   if (balloon_policy_ &&
