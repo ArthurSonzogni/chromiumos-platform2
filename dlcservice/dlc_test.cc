@@ -48,7 +48,7 @@ class DlcBaseTest : public BaseTest {
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kSuccessNewInstall));
     EXPECT_TRUE(dlc->Install(&err_));
-    InstallWithUpdateEngine({id});
+    InstallViaInstaller({id});
     dlc->InstallCompleted(&err_);
     dlc->FinishInstall(/*installed_by_ue=*/true, &err_);
     return dlc;
@@ -227,7 +227,7 @@ TEST_F(DlcBaseTest, InstallWithUECompletion) {
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
   EXPECT_TRUE(dlc.Install(&err_));
-  InstallWithUpdateEngine({kFirstDlc});
+  InstallViaInstaller({kFirstDlc});
   // UE calls this.
   dlc.InstallCompleted(&err_);
   EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
@@ -250,7 +250,7 @@ TEST_F(DlcBaseTest, InstallWithoutUECompletion) {
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
   EXPECT_TRUE(dlc.Install(&err_));
-  InstallWithUpdateEngine({kFirstDlc});
+  InstallViaInstaller({kFirstDlc});
   // UE doesn't call InstallComplete anymore. But we still verify.
   EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
 
@@ -473,7 +473,7 @@ TEST_F(DlcBaseTest, PreloadingSkippedOnAlreadyVerifiedDlc) {
   // were to be called.
   EXPECT_TRUE(ResizeFile(SetUpDlcPreloadedImage(kThirdDlc), 1));
   SetUpDlcWithSlots(kThirdDlc);
-  InstallWithUpdateEngine({kThirdDlc});
+  InstallViaInstaller({kThirdDlc});
 
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
@@ -498,7 +498,7 @@ TEST_F(DlcBaseTest, PreloadingSkippedOnAlreadyExistingAndVerifiableDlc) {
   // were to be called.
   EXPECT_TRUE(ResizeFile(SetUpDlcPreloadedImage(kThirdDlc), 1));
   SetUpDlcWithSlots(kThirdDlc);
-  InstallWithUpdateEngine({kThirdDlc});
+  InstallViaInstaller({kThirdDlc});
 
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
@@ -716,7 +716,7 @@ TEST_F(DlcBaseTest, ImageOnDiskButNotVerifiedInstalls) {
   dlc.Initialize();
 
   SetUpDlcWithSlots(kSecondDlc);
-  InstallWithUpdateEngine({kSecondDlc});
+  InstallViaInstaller({kSecondDlc});
 
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
@@ -736,7 +736,7 @@ TEST_F(DlcBaseTest, ImageOnDiskVerifiedInstalls) {
   EXPECT_TRUE(Prefs(dlc, SystemState::Get()->active_boot_slot())
                   .Create(kDlcPrefVerified));
   SetUpDlcWithSlots(kSecondDlc);
-  InstallWithUpdateEngine({kSecondDlc});
+  InstallViaInstaller({kSecondDlc});
 
   dlc.Initialize();
 
@@ -769,7 +769,7 @@ TEST_F(DlcBaseTest, VerifyDlcImageOnUEFailureToCompleteInstall) {
   EXPECT_TRUE(dlc.IsInstalling());
 
   // Intentionally skip over setting verified mark before |FinishInstall()|.
-  InstallWithUpdateEngine({kSecondDlc});
+  InstallViaInstaller({kSecondDlc});
 
   EXPECT_TRUE(dlc.FinishInstall(/*installed_by_ue=*/true, &err_));
   EXPECT_TRUE(dlc.IsInstalled());
@@ -869,7 +869,7 @@ TEST_F(DlcBaseTest, MountFileCreated) {
   // |kFirstDlc| has 'mount-file-required' as true in the manifest.
   DlcBase dlc(kFirstDlc);
   SetUpDlcWithSlots(kFirstDlc);
-  InstallWithUpdateEngine({kFirstDlc});
+  InstallViaInstaller({kFirstDlc});
   dlc.Initialize();
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -890,7 +890,7 @@ TEST_F(DlcBaseTest, MountFileNotCreated) {
   // |kSecondDlc| has 'mount-file-required' as false in the manifest.
   DlcBase dlc(kSecondDlc);
   SetUpDlcWithSlots(kSecondDlc);
-  InstallWithUpdateEngine({kSecondDlc});
+  InstallViaInstaller({kSecondDlc});
   dlc.Initialize();
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -910,7 +910,7 @@ TEST_F(DlcBaseTest, MountFileNotCreated) {
 TEST_F(DlcBaseTest, MountFileRequiredDeletionOnUninstall) {
   DlcBase dlc(kFirstDlc);
   SetUpDlcWithSlots(kFirstDlc);
-  InstallWithUpdateEngine({kFirstDlc});
+  InstallViaInstaller({kFirstDlc});
   dlc.Initialize();
 
   // Process |Install()|.
@@ -1041,7 +1041,7 @@ TEST_F(DlcBaseTest, IsInstalledButUnmounted) {
   DlcBase dlc(kThirdDlc);
   dlc.Initialize();
   SetUpDlcWithSlots(kThirdDlc);
-  InstallWithUpdateEngine({kThirdDlc});
+  InstallViaInstaller({kThirdDlc});
 
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);

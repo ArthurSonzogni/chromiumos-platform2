@@ -205,7 +205,7 @@ void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
   }
 }
 
-void BaseTest::InstallWithUpdateEngine(const vector<string>& ids) {
+void BaseTest::InstallViaInstaller(const vector<string>& ids) {
   for (const auto& id : ids) {
     auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
     base::FilePath image_path = GetDlcImagePath(

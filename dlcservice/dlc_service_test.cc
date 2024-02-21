@@ -925,7 +925,7 @@ class DlcServiceTestLegacy : public BaseTest {
     EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
         .WillOnce(DoAll(
             WithArg<0>(Invoke([this](const auto& ia) {
-              InstallWithUpdateEngine({ia.id});
+              InstallViaInstaller({ia.id});
               brillo::ErrorPtr err;
               dlc_service_->InstallCompleted({ia.id}, &err);
             })),

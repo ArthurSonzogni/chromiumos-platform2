@@ -93,7 +93,7 @@ class BaseTest : public testing::Test {
   void SetUpDlcWithSlots(const DlcId& id);
 
   // Mimics an installation form update_engine on the current boot slot.
-  void InstallWithUpdateEngine(const std::vector<std::string>& ids);
+  void InstallViaInstaller(const std::vector<std::string>& ids);
 
   void SetMountPath(const std::string& mount_path_expected);
 

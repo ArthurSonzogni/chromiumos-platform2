@@ -152,9 +152,8 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck);
   FRIEND_TEST(DlcServiceTestLegacy, UpdateEngineBecomesAvailable);
 
-  // Install the DLC with ID |id| through update_engine by sending a request to
-  // it.
-  void InstallWithUpdateEngine(
+  // Install the DLC with installer.
+  void InstallViaInstaller(
       const InstallRequest& install_request,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 

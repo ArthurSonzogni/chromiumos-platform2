@@ -296,10 +296,10 @@ void DlcService::Install(
     return ret_func(std::move(response), &err);
   }
 
-  InstallWithUpdateEngine(install_request, std::move(response));
+  InstallViaInstaller(install_request, std::move(response));
 }
 
-void DlcService::InstallWithUpdateEngine(
+void DlcService::InstallViaInstaller(
     const InstallRequest& install_request,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   auto ret_func =
