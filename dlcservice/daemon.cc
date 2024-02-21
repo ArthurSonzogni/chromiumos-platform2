@@ -100,6 +100,7 @@ void Daemon::RegisterDBusObjectsAsync(
           bus_for_proxies_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
           bus_for_proxies_),
+      std::make_unique<Installer>(),
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(
           bus_for_proxies_),
       dbus_adaptor_.get(), std::move(boot_slot), std::move(metrics),

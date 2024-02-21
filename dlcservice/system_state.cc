@@ -16,7 +16,7 @@
 #include <brillo/blkdev_utils/lvm_device.h>
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-#include "dlcservice/boot/boot_device.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/state_change_reporter_interface.h"
 
 namespace dlcservice {
@@ -31,6 +31,7 @@ SystemState::SystemState(
         image_loader_proxy,
     std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
         update_engine_proxy,
+    std::unique_ptr<InstallerInterface> installer,
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager_proxy,
     StateChangeReporterInterface* state_change_reporter,
@@ -53,6 +54,7 @@ SystemState::SystemState(
 #endif  // USE_LVM_STATEFUL_PARTITION
       image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
+      installer_(std::move(installer)),
       session_manager_proxy_(std::move(session_manager_proxy)),
       state_change_reporter_(state_change_reporter),
       boot_slot_(std::move(boot_slot)),
@@ -79,6 +81,7 @@ void SystemState::Initialize(
         image_loader_proxy,
     std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
         update_engine_proxy,
+    std::unique_ptr<InstallerInterface> installer,
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager_proxy,
     StateChangeReporterInterface* state_change_reporter,
@@ -103,11 +106,11 @@ void SystemState::Initialize(
       std::move(lvmd_proxy_wrapper),
 #endif  // USE_LVM_STATEFUL_PARTITION
       std::move(image_loader_proxy), std::move(update_engine_proxy),
-      std::move(session_manager_proxy), state_change_reporter,
-      std::move(boot_slot), std::move(metrics), std::move(system_properties),
-      manifest_dir, preloaded_content_dir, factory_install_dir,
-      deployed_content_dir, content_dir, prefs_dir, users_dir,
-      verification_file, hibernate_resuming_file, clock));
+      std::move(installer), std::move(session_manager_proxy),
+      state_change_reporter, std::move(boot_slot), std::move(metrics),
+      std::move(system_properties), manifest_dir, preloaded_content_dir,
+      factory_install_dir, deployed_content_dir, content_dir, prefs_dir,
+      users_dir, verification_file, hibernate_resuming_file, clock));
 }
 
 // static
@@ -138,6 +141,10 @@ org::chromium::ImageLoaderInterfaceProxyInterface* SystemState::image_loader()
 org::chromium::UpdateEngineInterfaceProxyInterface* SystemState::update_engine()
     const {
   return update_engine_proxy_.get();
+}
+
+InstallerInterface* SystemState::installer() const {
+  return installer_.get();
 }
 
 org::chromium::SessionManagerInterfaceProxyInterface*

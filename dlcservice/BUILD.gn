@@ -150,6 +150,7 @@ static_library("libdlcservice") {
     "dlc_base.cc",
     "dlc_base_creator.cc",
     "dlc_service.cc",
+    "installer.cc",
     "prefs.cc",
     "system_properties.cc",
   ]

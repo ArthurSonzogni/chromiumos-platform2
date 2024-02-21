@@ -4,7 +4,6 @@
 
 #include "dlcservice/dlc_service.h"
 
-#include <algorithm>
 #include <memory>
 #include <unordered_set>
 #include <utility>
@@ -339,20 +338,12 @@ void DlcService::InstallWithUpdateEngine(
                       "Update Engine applied update, device needs a reboot."));
   }
 
-  LOG(INFO) << "Sending request to update_engine to install DLC=" << id;
-  // Invokes update_engine to install the DLC.
-  update_engine::InstallParams install_params;
-  install_params.set_id(id);
-  install_params.set_omaha_url(install_request.omaha_url());
+  LOG(INFO) << "Sending request to install DLC=" << id;
   brillo::ErrorPtr err;
   auto* dlc = GetDlc(id, &err);
   if (dlc == nullptr) {
     return ret_func(std::move(response), err->Clone());
   }
-  install_params.set_scaled(dlc->IsScaled());
-  install_params.set_force_ota(dlc->IsForceOTA() ||
-                               install_request.force_ota());
-  ErrorPtr tmp_err;
   // TODO(kimjae): need update engine to propagate correct error message by
   // passing in |ErrorPtr| and being set within update engine, current default
   // is to indicate that update engine is updating because there is no way an
@@ -372,16 +363,22 @@ void DlcService::InstallWithUpdateEngine(
             }
           },
           std::move(response)));
-  SystemState::Get()->update_engine()->InstallAsync(
-      install_params,
-      base::BindOnce(&DlcService::OnUpdateEngineInstallAsyncSuccess,
+
+  SystemState::Get()->installer()->Install(
+      Installer::InstallArgs{
+          .id = id,
+          .url = install_request.omaha_url(),
+          .scaled = dlc->IsScaled(),
+          .force_ota = dlc->IsForceOTA() || install_request.force_ota(),
+      },
+      base::BindOnce(&DlcService::OnInstallSuccess,
                      weak_ptr_factory_.GetWeakPtr(), std::move(response_bind1)),
-      base::BindOnce(&DlcService::OnUpdateEngineInstallAsyncError,
+      base::BindOnce(&DlcService::OnInstallFailure,
                      weak_ptr_factory_.GetWeakPtr(),
                      std::move(response_bind2)));
 }
 
-void DlcService::OnUpdateEngineInstallAsyncSuccess(
+void DlcService::OnInstallSuccess(
     base::OnceCallback<void(brillo::ErrorPtr)> response_func) {
   // By now the update_engine is installing the DLC, so schedule a periodic
   // install checker in case we miss update_engine signals.
@@ -389,7 +386,7 @@ void DlcService::OnUpdateEngineInstallAsyncSuccess(
   std::move(response_func).Run(nullptr);
 }
 
-void DlcService::OnUpdateEngineInstallAsyncError(
+void DlcService::OnInstallFailure(
     base::OnceCallback<void(brillo::ErrorPtr)> response_func,
     brillo::Error* err) {
   // Handled during other signal/response.

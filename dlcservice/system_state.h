@@ -6,7 +6,6 @@
 #define DLCSERVICE_SYSTEM_STATE_H_
 
 #include <memory>
-#include <string>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
@@ -19,6 +18,7 @@
 #include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/installer.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -44,6 +44,7 @@ class SystemState {
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
           update_engine_proxy,
+      std::unique_ptr<InstallerInterface> installer,
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manage_proxy,
       StateChangeReporterInterface* state_change_reporter,
@@ -74,6 +75,7 @@ class SystemState {
 #endif  // USE_LVM_STATEFUL_PARTITION
   org::chromium::ImageLoaderInterfaceProxyInterface* image_loader() const;
   org::chromium::UpdateEngineInterfaceProxyInterface* update_engine() const;
+  InstallerInterface* installer() const;
   org::chromium::SessionManagerInterfaceProxyInterface* session_manager() const;
   BootSlotInterface* boot_slot() const;
   Metrics* metrics() const;
@@ -121,6 +123,7 @@ class SystemState {
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
           update_engine_proxy,
+      std::unique_ptr<InstallerInterface> installer,
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manager_proxy,
       StateChangeReporterInterface* state_change_reporter,
@@ -149,6 +152,7 @@ class SystemState {
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
   bool update_engine_service_available_ = false;
+  std::unique_ptr<InstallerInterface> installer_;
   bool not_resuming_from_hibernate_ = false;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;

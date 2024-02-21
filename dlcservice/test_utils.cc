@@ -29,8 +29,7 @@
 #include <update_engine/dbus-proxy-mocks.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/dlc_base.h"
-#include "dlcservice/metrics.h"
+#include "dlcservice/mock_installer.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -79,6 +78,9 @@ BaseTest::BaseTest() {
       std::make_unique<StrictMock<UpdateEngineProxyMock>>();
   mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
 
+  mock_installer_ = std::make_unique<MockInstaller>();
+  mock_installer_ptr_ = mock_installer_.get();
+
   mock_session_manager_proxy_ =
       std::make_unique<StrictMock<SessionManagerProxyMock>>();
   mock_session_manager_proxy_ptr_ = mock_session_manager_proxy_.get();
@@ -106,12 +108,12 @@ void BaseTest::SetUp() {
       std::move(mock_lvmd_proxy_wrapper_),
 #endif  // USE_LVM_STATEFUL_PARTITION
       std::move(mock_image_loader_proxy_), std::move(mock_update_engine_proxy_),
-      std::move(mock_session_manager_proxy_), &mock_state_change_reporter_,
-      std::move(mock_boot_slot_), std::move(mock_metrics),
-      std::move(mock_system_properties), manifest_path_,
-      preloaded_content_path_, factory_install_path_, deployed_content_path_,
-      content_path_, prefs_path_, users_path_, verification_file_path_,
-      resume_in_progress_path_, &clock_,
+      std::move(mock_installer_), std::move(mock_session_manager_proxy_),
+      &mock_state_change_reporter_, std::move(mock_boot_slot_),
+      std::move(mock_metrics), std::move(mock_system_properties),
+      manifest_path_, preloaded_content_path_, factory_install_path_,
+      deployed_content_path_, content_path_, prefs_path_, users_path_,
+      verification_file_path_, resume_in_progress_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 #if USE_LVM_STATEFUL_PARTITION

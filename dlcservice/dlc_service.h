@@ -191,14 +191,14 @@ class DlcService : public DlcServiceInterface {
   void GetUpdateEngineStatusAsync();
   void OnGetUpdateEngineStatusAsyncError(brillo::Error* err);
 
-  // Callback when interacting with update_engine's |InstallAsync| DBus API.
-  void OnUpdateEngineInstallAsyncSuccess(
+  // Callback when interacting with installer.
+  void OnInstallSuccess(
       base::OnceCallback<void(brillo::ErrorPtr)> response_func);
-  void OnUpdateEngineInstallAsyncError(
+  void OnInstallFailure(
       base::OnceCallback<void(brillo::ErrorPtr)> response_func,
       brillo::Error* err);
 
-  FRIEND_TEST(DlcServiceTest, OnUpdateEngineInstallAsyncErrorNoInstallation);
+  FRIEND_TEST(DlcServiceTest, OnInstallFailure);
 
   // Called on receiving update_engine's |StatusUpdate| signal.
   void OnStatusUpdateAdvancedSignal(

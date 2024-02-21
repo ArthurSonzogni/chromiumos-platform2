@@ -338,7 +338,7 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
 
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(
           WithArg<2>(Invoke([](auto&& arg) { std::move(arg).Run(nullptr); })));
 
@@ -365,7 +365,7 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
 
   SystemState::Get()->set_update_engine_service_available(true);
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
@@ -842,16 +842,15 @@ TEST_F(DlcServiceTest,
                                                       false);
 }
 
-// Tests related to `OnUpdateEngineInstallAsyncError`.
+// Tests related to `OnInstallFailure`.
 
-TEST_F(DlcServiceTest, OnUpdateEngineInstallAsyncErrorNoInstallation) {
+TEST_F(DlcServiceTest, OnInstallFailure) {
   auto assert_cb = [](brillo::ErrorPtr) {
     ASSERT_TRUE(false) << "Should not be called.";
   };
   auto err_ptr = brillo::Error::CreateNoLog(FROM_HERE, "(domain)", "(code)",
                                             "(msg)", nullptr);
-  dlc_service_->OnUpdateEngineInstallAsyncError(base::BindOnce(assert_cb),
-                                                err_ptr.get());
+  dlc_service_->OnInstallFailure(base::BindOnce(assert_cb), err_ptr.get());
 }
 
 TEST_F(DlcServiceTest, UnloadDlcs) {
@@ -923,12 +922,12 @@ class DlcServiceTestLegacy : public BaseTest {
 
   // Successfully install a DLC.
   void Install(const DlcId& id) {
-    EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+    EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
         .WillOnce(DoAll(
-            WithArg<0>(Invoke([this](const auto& ip) {
-              InstallWithUpdateEngine({ip.id()});
+            WithArg<0>(Invoke([this](const auto& ia) {
+              InstallWithUpdateEngine({ia.id});
               brillo::ErrorPtr err;
-              dlc_service_->InstallCompleted({ip.id()}, &err);
+              dlc_service_->InstallCompleted({ia.id}, &err);
             })),
             WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); }))));
     EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
@@ -1133,7 +1132,7 @@ TEST_F(DlcServiceTestLegacy, UninstallUpdateEngineBusyFailureTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, UninstallInstallingFails) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_,
@@ -1154,7 +1153,7 @@ TEST_F(DlcServiceTestLegacy, UninstallInstallingFails) {
 TEST_F(DlcServiceTestLegacy, UninstallInstallingButInstalledFails) {
   Install(kFirstDlc);
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
@@ -1196,7 +1195,7 @@ TEST_F(DlcServiceTestLegacy, InstallTest) {
   Install(kFirstDlc);
 
   SetMountPath(mount_path_.value());
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
@@ -1243,7 +1242,7 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
   Install(kFirstDlc);
 
   // Keep |kSecondDlc| installing.
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
@@ -1282,7 +1281,7 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
 
 TEST_F(DlcServiceTestLegacy, InstallCannotSetDlcActiveValue) {
   SetMountPath(mount_path_.value());
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
@@ -1328,7 +1327,7 @@ TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
 
   // We need to make sure the state is intalling so, rescheduling periodic check
   // happens.
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
@@ -1378,7 +1377,7 @@ TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
       .WillOnce(WithArg<0>(Invoke(
           [status_list](auto&& arg) { std::move(arg).Run(status_list[1]); })));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
@@ -1406,7 +1405,7 @@ TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
 }
 
 TEST_F(DlcServiceTestLegacy, InstallFailureCleansUp) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(
           WithArg<2>(Invoke([](auto&& arg) { std::move(arg).Run(nullptr); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1426,10 +1425,10 @@ TEST_F(DlcServiceTestLegacy, InstallFailureCleansUp) {
 }
 
 TEST_F(DlcServiceTestLegacy, InstallUrlTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(
           DoAll(WithArg<0>(Invoke([](const auto& arg) {
-                  EXPECT_EQ(arg.omaha_url(), kDefaultOmahaUrl);
+                  EXPECT_EQ(arg.url, kDefaultOmahaUrl);
                 })),
                 WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); }))));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -1493,7 +1492,7 @@ TEST_F(DlcServiceTestLegacy, InstallFailsToCreateDirectory) {
 TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
   Install(kFirstDlc);
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
@@ -1536,7 +1535,7 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
 TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
   Install(kFirstDlc);
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
@@ -1566,7 +1565,7 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
@@ -1599,7 +1598,7 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, MountFailureTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(""), Return(true)));
@@ -1629,7 +1628,7 @@ TEST_F(DlcServiceTestLegacy, MountFailureTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, ReportingFailureCleanupTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
@@ -1663,7 +1662,7 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureCleanupTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, ReportingFailureSignalTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
@@ -1696,7 +1695,7 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureSignalTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, SignalToleranceCapTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
@@ -1727,7 +1726,7 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, SignalToleranceCapResetTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
@@ -1774,7 +1773,7 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapResetTest) {
 }
 
 TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+  EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
@@ -1820,7 +1819,7 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
 TEST_F(DlcServiceTestLegacy,
        OnStatusUpdateSignalSubsequentialBadOrNonInstalledDlcsNonBlocking) {
   for (int i = 0; i < 5; i++) {
-    EXPECT_CALL(*mock_update_engine_proxy_ptr_, InstallAsync(_, _, _, _))
+    EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
         .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
     EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
         .WillOnce(Return(false));

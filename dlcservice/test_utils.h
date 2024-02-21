@@ -30,8 +30,7 @@
 #include <update_engine/dbus-proxy-mocks.h>
 
 #include "dlcservice/boot/mock_boot_slot.h"
-#include "dlcservice/dlc_base.h"
-#include "dlcservice/dlc_service.h"
+#include "dlcservice/mock_installer.h"
 #include "dlcservice/mock_metrics.h"
 #include "dlcservice/mock_state_change_reporter.h"
 #include "dlcservice/mock_system_properties.h"
@@ -131,6 +130,9 @@ class BaseTest : public testing::Test {
   using UpdateEngineProxyMock = org::chromium::UpdateEngineInterfaceProxyMock;
   std::unique_ptr<UpdateEngineProxyMock> mock_update_engine_proxy_;
   UpdateEngineProxyMock* mock_update_engine_proxy_ptr_;
+
+  std::unique_ptr<MockInstaller> mock_installer_;
+  MockInstaller* mock_installer_ptr_;
 
   using SessionManagerProxyMock =
       org::chromium::SessionManagerInterfaceProxyMock;
