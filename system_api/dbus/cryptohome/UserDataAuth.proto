@@ -1680,6 +1680,12 @@ message AuthenticateStarted {
     // creation operation.
     bool user_creation = 3;
   }
+
+  // The user that is authenticating.
+  string username = 4;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 5;
 }
 
 // Used to signal the completion of an authentication operation.
@@ -1701,6 +1707,11 @@ message AuthenticateAuthFactorCompleted {
     // See AuthenticateStarted.user_creation.
     bool user_creation = 4;
   }
+
+  // See AuthenticateStarted.username.
+  string username = 6;
+  // See AuthenticateStarted.sanitized_username.
+  string sanitized_username = 7;
 }
 
 // Used to signal the start of a Mount operation.
