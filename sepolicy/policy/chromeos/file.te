@@ -226,7 +226,6 @@ type cros_vm_concierge_exec, exec_type, file_type, cros_file_type, cros_system_f
 type cros_vmlog_forwarder_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_vshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_vtpmd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_wilco_dtc_supportd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 # SYSTEM_EXE_END_HERE
 
