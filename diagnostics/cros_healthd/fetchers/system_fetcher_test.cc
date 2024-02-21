@@ -315,51 +315,63 @@ class SystemFetcherTest : public BaseFileTest {
 
 // Template for testing the missing field of vpd/dmi.
 #define TEST_MISSING_FIELD(info, field)                \
-  TEST_F(SystemFetcherTest, TestNo_##info##_##field) { \
+  TEST_F(SystemFetcherTest, No_##info##_##field) {     \
     expected_system_info_->info->field = std::nullopt; \
     SetSystemInfo(expected_system_info_);              \
     SetPsrInfoResponse(/*err=*/std::nullopt);          \
     ExpectFetchSystemInfo();                           \
   }
 
-TEST_F(SystemFetcherTest, TestFetchSystemInfo) {
+TEST_F(SystemFetcherTest, FetchSystemInfo) {
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestNoVpdDir) {
+TEST_F(SystemFetcherTest, NoVpdDirSkuNumberRequired) {
   expected_system_info_->vpd_info = nullptr;
   SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(true);
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
+}
 
-  SetHasSkuNumber(false);
-  SetPsrInfoResponse(std::nullopt);
-  ExpectFetchSystemInfo();
-
-  // Test if the fallback logic triggered by missing OEM name in cros-config
-  // works when there's no VPD.
-  expected_system_info_->os_info->oem_name = std::nullopt;
+TEST_F(SystemFetcherTest, NoVpdDirSkuNumberNotRequired) {
+  expected_system_info_->vpd_info = nullptr;
   SetSystemInfo(expected_system_info_);
+  SetHasSkuNumber(false);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestNoSkuNumber) {
-  // Sku number file exists.
+TEST_F(SystemFetcherTest, NoVpdDirAndNoOemNameInCrosconfig) {
+  // Test if the fallback logic triggered by missing OEM name in cros-config
+  // works when there's no VPD.
+  expected_system_info_->vpd_info = nullptr;
+  expected_system_info_->os_info->oem_name = std::nullopt;
   SetSystemInfo(expected_system_info_);
-  // Ensure that there is no sku number returned even if sku number exists.
+  SetHasSkuNumber(false);
+  SetPsrInfoResponse(std::nullopt);
+  ExpectFetchSystemInfo();
+}
+
+TEST_F(SystemFetcherTest, SkuNumberExistsButNotRequired) {
+  SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(false);
   expected_system_info_->vpd_info->sku_number = std::nullopt;
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
-  // Sku number file doesn't exist.
+TEST_F(SystemFetcherTest, NoSkuNumberWhenItIsNotRequired) {
+  expected_system_info_->vpd_info->sku_number = std::nullopt;
   SetSystemInfo(expected_system_info_);
+  SetHasSkuNumber(false);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
-  // Sku number file doesn't exist but should have.
+TEST_F(SystemFetcherTest, NoSkuNumberWhenItIsRequired) {
+  expected_system_info_->vpd_info->sku_number = std::nullopt;
+  SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(true);
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
@@ -390,14 +402,14 @@ TEST_MISSING_FIELD(dmi_info, product_name);
 TEST_MISSING_FIELD(dmi_info, product_version);
 TEST_MISSING_FIELD(dmi_info, sys_vendor);
 
-TEST_F(SystemFetcherTest, TestNoChassisType) {
+TEST_F(SystemFetcherTest, NoChassisType) {
   expected_system_info_->dmi_info->chassis_type = nullptr;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestBadChassisType) {
+TEST_F(SystemFetcherTest, BadChassisType) {
   // Overwrite the contents of |kChassisTypeFileName| with a chassis_type value
   // that cannot be parsed into an unsigned integer.
   std::string bad_chassis_type = "bad chassis type";
@@ -405,12 +417,12 @@ TEST_F(SystemFetcherTest, TestBadChassisType) {
   ExpectFetchProbeError(mojom::ErrorType::kParseError);
 }
 
-TEST_F(SystemFetcherTest, TestNoOsVersion) {
+TEST_F(SystemFetcherTest, NoOsVersion) {
   PopulateLsbRelease("");
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
-TEST_F(SystemFetcherTest, TestBadOsVersion) {
+TEST_F(SystemFetcherTest, BadOsVersion) {
   PopulateLsbRelease(
       "Milestone\n"
       "CHROMEOS_RELEASE_BUILD_NUMBER=1\n"
@@ -419,12 +431,14 @@ TEST_F(SystemFetcherTest, TestBadOsVersion) {
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
-TEST_F(SystemFetcherTest, TestBootMode) {
+TEST_F(SystemFetcherTest, BootModeCrosSecure) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosSecure;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, BootModeCrosEfi) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   // Use string constructor to prevent string truncation from null bytes.
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
@@ -433,17 +447,23 @@ TEST_F(SystemFetcherTest, TestBootMode) {
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, BootModeCrosLegacy) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosLegacy;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, BootModeUnknown) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kUnknown;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, BootModeCrosEfiSecure) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
   // Use string constructor to prevent string truncation from null bytes.
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
@@ -452,9 +472,11 @@ TEST_F(SystemFetcherTest, TestBootMode) {
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, BootModeDefaultToCrosEfi) {
   // Test that the executor fails to read UEFISecureBoot file content and
-  // returns kCrosEfi as default value
+  // returns kCrosEfi as default value.
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable, "");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
@@ -463,7 +485,7 @@ TEST_F(SystemFetcherTest, TestBootMode) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestEfiPlatformSize) {
+TEST_F(SystemFetcherTest, EfiPlatformSizeUnknown) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::kUnknown;
@@ -473,7 +495,10 @@ TEST_F(SystemFetcherTest, TestEfiPlatformSize) {
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, EfiPlatformSize64) {
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::k64;
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "64");
@@ -482,7 +507,10 @@ TEST_F(SystemFetcherTest, TestEfiPlatformSize) {
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, EfiPlatformSize32) {
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::k32;
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "32");
@@ -493,25 +521,31 @@ TEST_F(SystemFetcherTest, TestEfiPlatformSize) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestOemName) {
+TEST_F(SystemFetcherTest, OemName) {
   expected_system_info_->os_info->oem_name = "FooOEM";
   expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, OemNameVpdEmpty) {
   expected_system_info_->os_info->oem_name = "FooOEM";
   expected_system_info_->vpd_info->oem_name = "";
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, OemNameMissing) {
   expected_system_info_->os_info->oem_name = std::nullopt;
   expected_system_info_->vpd_info->oem_name = std::nullopt;
   SetSystemInfo(expected_system_info_);
   SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
+}
 
+TEST_F(SystemFetcherTest, OemNameOsFallbackToVpd) {
   // Test the fallback logic triggered by missing OEM name in cros-config.
   expected_system_info_->os_info->oem_name = std::nullopt;
   expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
@@ -521,7 +555,7 @@ TEST_F(SystemFetcherTest, TestOemName) {
   ExpectFetchSystemInfo();
 }
 
-TEST_F(SystemFetcherTest, TestPsrError) {
+TEST_F(SystemFetcherTest, PsrError) {
   SetSystemInfo(expected_system_info_);
   expected_system_info_->psr_info = nullptr;
   SetPsrInfoResponse("GetPsr error");
