@@ -865,8 +865,8 @@ std::string ResourceManager::ProcessFlushContext(
   } else if (IsSessionHandle(raw_handle)) {
     SessionHandle handle{.handle = raw_handle, .sender = command_info.sender};
     auto iter = session_handles_.find(handle);
-    if (iter == session_handles_.end() || !iter->second.is_loaded) {
-      // The handle wasn't loaded so no need to bother the TPM.
+    if (iter == session_handles_.end()) {
+      // The handle doesn't exist so no need to bother the TPM.
       CleanupFlushedHandle(handle);
       return CreateErrorResponse(TPM_RC_SUCCESS);
     }
