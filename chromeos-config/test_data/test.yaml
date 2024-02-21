@@ -293,7 +293,11 @@ chromeos:
                 depthcharge: "another"
                 libpayload: "another"
                 zephyr-ec: "some/{{$name}}"
+                zephyr-detachable-base: "another_zephyr_base"
               firmware-config: 0xFFFFFFFF
+            detachable-base:
+              ec-image-name: "another_zephyr_base"
+              touch-image-name: "another_zephyr_base-touch.fw"
             ui:
               <<: *ui_common
               extra-ash-flags:

@@ -541,6 +541,10 @@
             "ucm-suffix": "another"
           }
         },
+        "detachable-base": {
+          "ec-image-name": "another_zephyr_base",
+          "touch-image-name": "another_zephyr_base-touch.fw"
+        },
         "displays": [
           {
             "connector-type": 14,

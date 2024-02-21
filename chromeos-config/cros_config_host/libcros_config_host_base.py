@@ -503,6 +503,34 @@ class CrosConfigBaseImpl:
         """
         return self._GetFiles("GetDetachableBaseFirmwareFiles")
 
+    def GetDetachableBaseTouchFirmwareFiles(self) -> Dict[str, str]:
+        """Get a dict of detachable keyboard and touchpad firmware mapping
+
+        Returns:
+            Dict mapping from keyboard project name to touchpad firmware
+            filename.
+        """
+        result: Dict[str, str] = {}
+        for device in self.GetDeviceConfigs():
+            project = device.GetProperty(
+                "/firmware/build-targets", "zephyr-detachable-base"
+            )
+            touch_image_name = device.GetProperty(
+                "/detachable-base", "touch-image-name"
+            )
+
+            if not project or not touch_image_name:
+                continue
+
+            if project in result and result[project] != touch_image_name:
+                raise ValueError(
+                    f"Inconsistent touchpad image name for {project}: "
+                    f"({touch_image_name}, {result[project]}"
+                )
+
+            result[project] = touch_image_name
+        return result
+
     def GetBcsUri(self, overlay, path):
         """Form a valid BCS URI for downloading files.
 

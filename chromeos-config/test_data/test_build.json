@@ -909,6 +909,10 @@
             "ucm-suffix": "another"
           }
         },
+        "detachable-base": {
+          "ec-image-name": "another_zephyr_base",
+          "touch-image-name": "another_zephyr_base-touch.fw"
+        },
         "displays": [
           {
             "connector-type": 14,
@@ -937,6 +941,7 @@
             ],
             "gsc": "another",
             "libpayload": "another",
+            "zephyr-detachable-base": "another_zephyr_base",
             "zephyr-ec": "some/another"
           },
           "detachable-ui": true,
