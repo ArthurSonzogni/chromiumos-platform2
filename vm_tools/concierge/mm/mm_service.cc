@@ -27,9 +27,11 @@ MmService::MmService(const raw_ref<MetricsLibraryInterface> metrics)
 MmService::~MmService() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  negotiation_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadStop,
-                                weak_ptr_factory_.GetWeakPtr()));
+  if (negotiation_thread_.task_runner()) {
+    negotiation_thread_.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(&MmService::NegotiationThreadStop,
+                                  weak_ptr_factory_.GetWeakPtr()));
+  }
 
   // Wait for the balloons thread to be cleaned up before continuing.
   negotiation_thread_.Stop();

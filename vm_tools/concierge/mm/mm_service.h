@@ -31,39 +31,39 @@ class MmService {
 
   explicit MmService(const raw_ref<MetricsLibraryInterface> metrics);
 
-  ~MmService();
+  virtual ~MmService();
 
   // Starts the VM Memory Management Service. Returns true on success, false
   // otherwise.
-  bool Start();
+  virtual bool Start();
 
   // Called to notify the service that a new VM has started.
-  void NotifyVmStarted(apps::VmType vm_type,
-                       int vm_cid,
-                       const std::string& socket);
+  virtual void NotifyVmStarted(apps::VmType vm_type,
+                               int vm_cid,
+                               const std::string& socket);
 
   // Called to notify the service that a VM has completed it's boot sequence.
-  void NotifyVmBootComplete(int vm_cid);
+  virtual void NotifyVmBootComplete(int vm_cid);
 
   // Called to notify the service that a VM will stop soon.
-  void NotifyVmStopping(int vm_cid);
+  virtual void NotifyVmStopping(int vm_cid);
 
   // Callback for when ReclaimUntilBlocked() completes.
   using ReclaimUntilBlockedCallback =
       BalloonBroker::ReclaimUntilBlockedCallback;
   // Reclaims all memory from |vm_cid| that is needed at less than |priority|.
-  void ReclaimUntilBlocked(int vm_cid,
-                           ResizePriority priority,
-                           ReclaimUntilBlockedCallback cb);
+  virtual void ReclaimUntilBlocked(int vm_cid,
+                                   ResizePriority priority,
+                                   ReclaimUntilBlockedCallback cb);
 
   // Stop the ongoing ReclaimUntilBlocked() request.
-  void StopReclaimUntilBlocked(int vm_cid);
+  virtual void StopReclaimUntilBlocked(int vm_cid);
 
   // Returns an open FD to the kills server.
-  base::ScopedFD GetKillsServerConnection();
+  virtual base::ScopedFD GetKillsServerConnection();
 
   // Clears the blockers for |vm_cid| at or below |priority|.
-  void ClearBlockersUpToInclusive(int vm_cid, ResizePriority priority);
+  virtual void ClearBlockersUpToInclusive(int vm_cid, ResizePriority priority);
 
  private:
   // Retrieves the lowest priority that won't be blocked from the BalloonBroker.

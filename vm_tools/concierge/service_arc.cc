@@ -205,12 +205,6 @@ void Service::StartArcVm(
   // We change to a success status later if necessary.
   response.set_status(VM_STATUS_FAILURE);
 
-  // VMMMS must be initialized before ARCVM boot.
-  if (!InitVmMemoryManagementService()) {
-    response_cb->Return(response);
-    return;
-  }
-
   if (!CheckStartVmPreconditions(request, &response)) {
     response_cb->Return(response);
     return;

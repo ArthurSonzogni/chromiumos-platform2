@@ -86,6 +86,9 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
 class Service final : public org::chromium::VmConciergeInterface,
                       public spaced::SpacedObserverInterface {
  public:
+  using MmServiceFactory = base::OnceCallback<std::unique_ptr<mm::MmService>(
+      const raw_ref<MetricsLibraryInterface>)>;
+
   // Creates and hosts a service asynchronously on the current sequence, using
   // |signal_fd| to monitor for exits of pending VMs. Invokes |on_hosted| when
   // the service is up (with a service object) or when it fails to start (with
@@ -101,6 +104,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   static void CreateAndHost(
       scoped_refptr<dbus::Bus> bus,
       int signal_fd,
+      MmServiceFactory mm_service_factory,
       base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
 
   // Services should not be moved or copied.
@@ -127,19 +131,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   };
 
   // TODO(b/296025701): Move code out of this method and into async helpers.
-  bool Init();
+  bool Init(MmServiceFactory mm_service_factory);
 
-  // Initialize VmMemoryManagementService and handle any pending kills
-  // connection requests.
+  // Initialize VmMemoryManagementService.
   // Returns true on success, false if a VMMMS prerequisite was not met (i.e.
   // unsupported host kernel version), or if an error occurred.
-  bool InitVmMemoryManagementService();
-
-  // Helper for VmMemoryManagementService that does the feature check and
-  // actual initialization.
-  // Returns true on success, false if a VMMMS prerequisite was not met (i.e.
-  // unsupported host kernel version), or if an error occurred.
-  bool DoInitVmMemoryManagementService();
+  bool InitVmMemoryManagementService(MmServiceFactory mm_service_factory);
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   //
@@ -421,9 +418,6 @@ class Service final : public org::chromium::VmConciergeInterface,
       const vm_tools::concierge::GetVmMemoryManagementKillsConnectionRequest&
           in_request) override;
 
-  // Helper for sending the GetVmMemoryManagementKillsConnection response.
-  void SendGetVmmmsKillConnectionResponse();
-
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();
 
@@ -670,16 +664,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The VM Memory Management service
   std::unique_ptr<mm::MmService> vm_memory_management_service_
       GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Flag indicating that VM Memory Management service initialization has
-  // already been done. This can be true even if vm_memory_management_service_
-  // is null - for example when the feature is disabled.
-  bool vmmms_init_done_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
-
-  // Pending response for GetVmmmsKillsConnectionResponse.
-  GetVmmmsKillsConnectionResponseSender
-      get_vmmms_kills_connection_response_sender_
-          GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Proxy for interacting with spaced.
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;

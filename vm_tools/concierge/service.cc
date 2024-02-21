@@ -1121,7 +1121,13 @@ void Service::CreateAndHost(
               std::move(on_hosted).Run(nullptr);
               return;
             }
-            CreateAndHost(std::move(bus), signal_fd, std::move(on_hosted));
+            CreateAndHost(
+                std::move(bus), signal_fd,
+                base::BindOnce(
+                    [](const raw_ref<MetricsLibraryInterface> metrics) {
+                      return std::make_unique<mm::MmService>(metrics);
+                    }),
+                std::move(on_hosted));
           },
           std::move(bus), signal_fd, std::move(on_hosted)));
 }
@@ -1130,11 +1136,12 @@ void Service::CreateAndHost(
 void Service::CreateAndHost(
     scoped_refptr<dbus::Bus> bus,
     int signal_fd,
+    MmServiceFactory mm_service_factory,
     base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
   // Bus should be connected when using this API.
   CHECK(bus->IsConnected());
   auto service = base::WrapUnique(new Service(signal_fd, std::move(bus)));
-  if (!service->Init()) {
+  if (!service->Init(std::move(mm_service_factory))) {
     std::move(on_hosted).Run(nullptr);
     return;
   }
@@ -1171,7 +1178,7 @@ Service::~Service() {
   }
 }
 
-bool Service::Init() {
+bool Service::Init(MmServiceFactory mm_service_factory) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VMT_TRACE_BEGIN(kCategory, "Service::Init");
 
@@ -1291,28 +1298,17 @@ bool Service::Init() {
   // is safe to continue using regardless of the result.
   vmm_swap_tbw_policy_->Init();
 
-  return true;
-}
-
-bool Service::InitVmMemoryManagementService() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (!vmmms_init_done_) {
-    if (!DoInitVmMemoryManagementService()) {
-      return false;
-    }
-
-    vmmms_init_done_ = true;
-
-    if (get_vmmms_kills_connection_response_sender_) {
-      SendGetVmmmsKillConnectionResponse();
-    }
+  // Initialize the VM Memory Management service which handles incoming
+  // connections from VMs and resourced.
+  if (!InitVmMemoryManagementService(std::move(mm_service_factory))) {
+    return false;
   }
 
   return true;
 }
 
-bool Service::DoInitVmMemoryManagementService() {
+bool Service::InitVmMemoryManagementService(
+    MmServiceFactory mm_service_factory) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // The VM Memory Management Service has a dependency on VSOCK Loopback and
@@ -1324,8 +1320,9 @@ bool Service::DoInitVmMemoryManagementService() {
     return false;
   }
 
-  vm_memory_management_service_ = std::make_unique<mm::MmService>(
-      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
+  vm_memory_management_service_ =
+      std::move(mm_service_factory)
+          .Run(raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
 
   if (!vm_memory_management_service_->Start()) {
     vm_memory_management_service_.reset();
@@ -3873,47 +3870,29 @@ void Service::GetVmMemoryManagementKillsConnection(
     const GetVmMemoryManagementKillsConnectionRequest& in_request) {
   ASYNC_SERVICE_METHOD();
 
-  if (get_vmmms_kills_connection_response_sender_) {
-    GetVmMemoryManagementKillsConnectionResponse response;
-    std::vector<base::ScopedFD> fds;
-
-    static constexpr char error[] =
-        "Overlapping requests, cancelling earlier request";
-    LOG(ERROR) << error;
-    response.set_failure_reason(error);
-
-    auto local = std::move(get_vmmms_kills_connection_response_sender_);
-    local->Return(response, fds);
-  }
-
-  get_vmmms_kills_connection_response_sender_ = std::move(response_cb);
-  if (vmmms_init_done_) {
-    SendGetVmmmsKillConnectionResponse();
-  }
-}
-
-void Service::SendGetVmmmsKillConnectionResponse() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   GetVmMemoryManagementKillsConnectionResponse response;
   std::vector<base::ScopedFD> fds;
 
-  if (vm_memory_management_service_) {
-    auto fd = vm_memory_management_service_->GetKillsServerConnection();
-    if (fd.is_valid()) {
-      fds.push_back(std::move(fd));
-    } else {
-      static constexpr char error[] = "Failed to connect.";
-      LOG(ERROR) << error;
-      response.set_failure_reason(error);
-    }
-  } else {
+  if (!vm_memory_management_service_) {
     static constexpr char error[] = "Service is not enabled.";
     LOG(ERROR) << error;
     response.set_failure_reason(error);
+    std::move(response_cb)->Return(response, fds);
+    return;
   }
 
-  response.set_success(!fds.empty());
+  auto fd = vm_memory_management_service_->GetKillsServerConnection();
+  if (!fd.is_valid()) {
+    static constexpr char error[] = "Failed to connect.";
+    LOG(ERROR) << error;
+    response.set_failure_reason(error);
+    std::move(response_cb)->Return(response, fds);
+    return;
+  }
+
+  fds.push_back(std::move(fd));
+
+  response.set_success(true);
 
   // The timeout that the host (resourced) should use when waiting on a kill
   // decision response from VMMMS.
@@ -3922,9 +3901,7 @@ void Service::SendGetVmmmsKillConnectionResponse() {
 
   response.set_host_kill_request_timeout_ms(
       kVmMemoryManagementHostKillDecisionTimeout.InMilliseconds());
-
-  auto local = std::move(get_vmmms_kills_connection_response_sender_);
-  local->Return(response, fds);
+  std::move(response_cb)->Return(response, fds);
 }
 
 void Service::OnResolvConfigChanged(std::vector<std::string> nameservers,

@@ -160,6 +160,7 @@ if (use.test) {
       "mm/fake_balloon.cc",
       "mm/fake_balloon_blocker.cc",
       "mm/fake_kills_server.cc",
+      "mm/fake_mm_service.cc",
       "mm/fake_reclaim_server.cc",
       "mm/fake_vm_socket.cc",
       "mm/mglru_test.cc",

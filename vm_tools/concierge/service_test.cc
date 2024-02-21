@@ -24,6 +24,8 @@
 #include "dbus/vm_concierge/dbus-constants.h"
 #include "featured/feature_library.h"
 
+#include "vm_tools/concierge/mm/fake_mm_service.h"
+
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
@@ -32,6 +34,11 @@ using ::testing::Return;
 namespace vm_tools::concierge {
 
 namespace {
+
+std::unique_ptr<mm::MmService> FakeMmServiceFactory(
+    const raw_ref<MetricsLibraryInterface> metrics) {
+  return std::make_unique<mm::FakeMmService>(metrics);
+}
 
 dbus::Bus::Options GetDbusOptions() {
   dbus::Bus::Options options;
@@ -79,7 +86,8 @@ class ServiceTest : public testing::Test {
   }
 
  protected:
-  base::test::TaskEnvironment task_env_;
+  base::test::TaskEnvironment task_env_{
+      base::test::SingleThreadTaskEnvironment::MainThreadType::IO};
   scoped_refptr<base::SequencedTaskRunner> task_runner_{
       base::ThreadPool::CreateSequencedTaskRunner({})};
 
@@ -110,7 +118,7 @@ TEST_F(ServiceTest, InitializationSuccess) {
 
   base::RunLoop loop;
   Service::CreateAndHost(
-      mock_bus_.get(), -1,
+      mock_bus_.get(), -1, base::BindOnce(&FakeMmServiceFactory),
       base::BindLambdaForTesting([&](std::unique_ptr<Service> service) {
         EXPECT_TRUE(service);
         loop.Quit();
@@ -130,7 +138,7 @@ TEST_F(ServiceTest, InitializationFailureToOwnInterface) {
 
   base::RunLoop loop;
   Service::CreateAndHost(
-      mock_bus_.get(), -1,
+      mock_bus_.get(), -1, base::BindOnce(&FakeMmServiceFactory),
       base::BindLambdaForTesting([&](std::unique_ptr<Service> service) {
         EXPECT_FALSE(service);
         loop.Quit();
