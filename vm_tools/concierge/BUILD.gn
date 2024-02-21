@@ -144,7 +144,6 @@ if (use.test) {
   executable("concierge_test") {
     sources = [
       "arc_vm_test.cc",
-      "balloon_policy_test.cc",
       "dlc_helper_test.cc",
       "fake_crosvm_control.cc",
       "feature_util_test.cc",

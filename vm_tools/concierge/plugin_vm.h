@@ -63,7 +63,7 @@ class PluginVm final : public VmBaseImpl {
   bool Shutdown() override;
   VmBaseImpl::Info GetInfo() const override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
-      const MemoryMargins& margins, const std::string& vm) override {
+      uint64_t critical_margin, const std::string& vm) override {
     // Never initialized, so a balloon policy will not run.
     return balloon_policy_;
   }

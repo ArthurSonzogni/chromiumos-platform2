@@ -523,12 +523,11 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   std::optional<int64_t> GetAvailableMemory();
   std::optional<int64_t> GetForegroundAvailableMemory();
-  std::optional<MemoryMargins> GetMemoryMargins();
-  std::optional<ComponentMemoryMargins> GetComponentMemoryMargins();
+  std::optional<uint64_t> GetCriticalMemoryMargin();
   std::optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
   void FinishBalloonPolicy(
-      MemoryMargins memory_margins,
+      uint64_t critical_margin,
       std::vector<std::pair<uint32_t, BalloonStats>> stats);
 
   bool ListVmDisksInLocation(const std::string& cryptohome_id,

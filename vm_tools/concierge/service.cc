@@ -758,7 +758,7 @@ std::optional<int64_t> Service::GetForegroundAvailableMemory() {
   return KiB(available_kb);
 }
 
-std::optional<MemoryMargins> Service::GetMemoryMargins() {
+std::optional<uint64_t> Service::GetCriticalMemoryMargin() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
   auto dbus_response =
@@ -769,86 +769,15 @@ std::optional<MemoryMargins> Service::GetMemoryMargins() {
     return std::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
-  MemoryMargins margins;
-  if (!reader.PopUint64(&margins.critical)) {
+  uint64_t critical_margin;
+  if (!reader.PopUint64(&critical_margin)) {
     LOG(ERROR)
         << "Failed to read available critical margin from the D-Bus response";
     return std::nullopt;
   }
-  if (!reader.PopUint64(&margins.moderate)) {
-    LOG(ERROR)
-        << "Failed to read available moderate margin from the D-Bus response";
-    return std::nullopt;
-  }
-  margins.critical *= KiB(1);
-  margins.moderate *= KiB(1);
-  return margins;
-}
 
-std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
-  static constexpr char kChromeCriticalKey[] = "ChromeCritical";
-  static constexpr char kChromeModerateKey[] = "ChromeModerate";
-  static constexpr char kArcvmForegroundKey[] = "ArcvmForeground";
-  static constexpr char kArcvmPerceptibleKey[] = "ArcvmPerceptible";
-  static constexpr char kArcvmCachedKey[] = "ArcvmCached";
-  static constexpr char kArcContainerForeground[] = "ArcContainerForeground";
-  static constexpr char kArcContainerPerceptible[] = "ArcContainerPerceptible";
-  static constexpr char kArcContainerCached[] = "ArcContainerCached";
-
-  dbus::MethodCall method_call(
-      resource_manager::kResourceManagerInterface,
-      resource_manager::kGetComponentMemoryMarginsKBMethod);
-  auto dbus_response =
-      CallDBusMethod(bus_, resource_manager_service_proxy_, &method_call,
-                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to get component margin sizes from resourced.";
-    return std::nullopt;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  dbus::MessageReader array_reader(nullptr);
-  if (!reader.PopArray(&array_reader)) {
-    LOG(ERROR) << "Failed parsing component memory margins";
-    return std::nullopt;
-  }
-
-  ComponentMemoryMargins margins;
-
-  while (array_reader.HasMoreData()) {
-    dbus::MessageReader dict_entry_reader(nullptr);
-    if (array_reader.PopDictEntry(&dict_entry_reader)) {
-      std::string key;
-      uint64_t value;
-      if (!dict_entry_reader.PopString(&key) ||
-          !dict_entry_reader.PopUint64(&value)) {
-        LOG(ERROR) << "Error popping dictionary entry from D-Bus message";
-        return std::nullopt;
-      }
-      value *= KiB(1);
-      if (key == kChromeCriticalKey) {
-        margins.chrome_critical = value;
-      } else if (key == kChromeModerateKey) {
-        margins.chrome_moderate = value;
-      } else if (key == kArcvmForegroundKey) {
-        margins.arcvm_foreground = value;
-      } else if (key == kArcvmPerceptibleKey) {
-        margins.arcvm_perceptible = value;
-      } else if (key == kArcvmCachedKey) {
-        margins.arcvm_cached = value;
-      } else if (key == kArcContainerForeground) {
-        margins.arc_container_foreground = value;
-      } else if (key == kArcContainerPerceptible) {
-        margins.arc_container_perceptible = value;
-      } else if (key == kArcContainerCached) {
-        margins.arc_container_cached = value;
-      } else {
-        LOG(ERROR) << "Unrecognized dict entry '" << key
-                   << "' for component memory margins";
-      }
-    }
-  }
-  return margins;
+  critical_margin *= KiB(1);
+  return critical_margin;
 }
 
 std::optional<resource_manager::GameMode> Service::GetGameMode() {
@@ -891,12 +820,12 @@ void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
 
-  std::optional<MemoryMargins> memory_margins_opt = GetMemoryMargins();
-  if (!memory_margins_opt) {
+  std::optional<uint64_t> critical_margin_opt = GetCriticalMemoryMargin();
+  if (!critical_margin_opt) {
     LOG(ERROR) << "Failed to get ChromeOS memory margins";
     return;
   }
-  MemoryMargins memory_margins = *memory_margins_opt;
+  uint64_t critical_margin = *critical_margin_opt;
 
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
@@ -915,13 +844,6 @@ void Service::RunBalloonPolicy() {
     }
   }
 
-  std::optional<ComponentMemoryMargins> component_margins =
-      GetComponentMemoryMargins();
-  if (!component_margins) {
-    LOG(ERROR) << "Failed to get component memory margins";
-    return;
-  }
-
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
@@ -931,7 +853,7 @@ void Service::RunBalloonPolicy() {
     }
 
     const std::unique_ptr<BalloonPolicyInterface>& policy =
-        vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
+        vm->GetBalloonPolicy(critical_margin, vm_entry.first.name());
     if (!policy) {
       // Skip VMs that don't have a memory policy. It may just not be ready
       // yet.
@@ -951,9 +873,8 @@ void Service::RunBalloonPolicy() {
     const int64_t available_memory_for_vm =
         is_in_game_mode ? *foreground_available_memory : *available_memory;
 
-    int64_t delta = policy->ComputeBalloonDelta(
-        stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name(),
-        *available_memory, *component_margins);
+    int64_t delta = policy->ComputeBalloonDelta(stats, available_memory_for_vm,
+                                                vm_entry.first.name());
 
     uint64_t target =
         std::max(static_cast<int64_t>(0),

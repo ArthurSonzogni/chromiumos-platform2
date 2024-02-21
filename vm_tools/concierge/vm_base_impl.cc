@@ -57,10 +57,10 @@ bool VmBaseImpl::SetBalloonWorkingSetConfig(const BalloonWSRConfigFfi* config) {
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
-    const MemoryMargins& margins, const std::string& vm) {
+    uint64_t critical_margin, const std::string& vm) {
   if (!balloon_policy_) {
-    balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
-        margins.critical, 0, vm);
+    balloon_policy_ =
+        std::make_unique<BalanceAvailableBalloonPolicy>(critical_margin, 0, vm);
   }
   return balloon_policy_;
 }

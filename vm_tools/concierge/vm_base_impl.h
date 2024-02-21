@@ -123,7 +123,7 @@ class VmBaseImpl {
 
   // Get the virtio_balloon sizing policy for this VM.
   virtual const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
-      const MemoryMargins& margins, const std::string& vm);
+      uint64_t critical_margin, const std::string& vm);
 
   // Attach a host network tap device with tap_name.
   virtual bool AttachNetDevice(const std::string& tap_name, uint8_t* out_bus);

@@ -456,7 +456,7 @@ bool ArcVm::DetachNetDevice(uint8_t bus) {
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
-    const MemoryMargins& margins, const std::string& vm) {
+    uint64_t critical_margin, const std::string& vm) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   static const std::unique_ptr<BalloonPolicyInterface> null_balloon_policy;
   return null_balloon_policy;

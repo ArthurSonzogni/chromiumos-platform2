@@ -4,16 +4,13 @@
 #ifndef VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 #define VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 
-#include <crosvm/crosvm_control.h>
-
-#include <limits>
-#include <memory>
-#include <optional>
 #include <stdint.h>
+
 #include <string>
 
+#include <crosvm/crosvm_control.h>
+
 #include "vm_tools/concierge/byte_unit.h"
-#include "vm_tools/concierge/mm/balloon_metrics.h"
 
 namespace vm_tools::concierge {
 
@@ -55,40 +52,6 @@ struct BalloonWorkingSet {
   uint64_t FileMemoryAt(int i) const { return working_set_ffi.ws[i].bytes[1]; }
 };
 
-// Add the respective bins for two working sets and return a new one.
-BalloonWorkingSet SumWorkingSets(const BalloonWorkingSet& lhs,
-                                 const BalloonWorkingSet& rhs);
-
-struct MemoryMargins {
-  uint64_t critical;
-  uint64_t moderate;
-};
-
-struct ComponentMemoryMargins {
-  uint64_t chrome_critical;
-  uint64_t chrome_moderate;
-  uint64_t arcvm_foreground;
-  uint64_t arcvm_perceptible;
-  uint64_t arcvm_cached;
-  uint64_t arc_container_foreground;
-  uint64_t arc_container_perceptible;
-  uint64_t arc_container_cached;
-};
-
-struct BalloonDeflationLimit {
-  uint64_t min_balloon_size = std::numeric_limits<uint64_t>::max();
-  int32_t oom_score_adj = std::numeric_limits<int32_t>::max();
-};
-
-// Re-defined from Android KillEventsMonitor.java. Must be kept in sync.
-static constexpr int32_t kAppAdjForegroundMax = 0;
-static constexpr int32_t kAppAdjPerceptibleMax = 900 - 1;
-static constexpr int32_t kAppAdjCachedMax = 999;
-
-// The max oom score for perceptible processes. This is from Android
-// ProcessList.java.
-static constexpr int32_t kPlatformPerceptibleMaxOmmScoreAdjValue = 250;
-
 class BalloonPolicyInterface {
  public:
   BalloonPolicyInterface();
@@ -97,18 +60,9 @@ class BalloonPolicyInterface {
   // Calculates the amount of memory to be shifted between a VM and the host.
   // Positive value means that the policy wants to move that amount of memory
   // from the guest to the host.
-  virtual int64_t ComputeBalloonDelta(
-      const BalloonStats& stats,
-      uint64_t host_available,
-      bool game_mode,
-      const std::string& vm,
-      int64_t total_available_memory,
-      ComponentMemoryMargins component_margins) = 0;
-
-  virtual bool DeflateBalloonToSaveProcess(int proc_size,
-                                           int proc_oom_score,
-                                           uint64_t& new_balloon_size,
-                                           uint64_t& freed_space) = 0;
+  virtual int64_t ComputeBalloonDelta(const BalloonStats& stats,
+                                      uint64_t host_available,
+                                      const std::string& vm) = 0;
 
  protected:
   // Returns true if the a balloon trace should be logged.
@@ -129,18 +83,9 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
                                 int64_t guest_available_bias,
                                 const std::string& vm);
 
-  int64_t ComputeBalloonDelta(
-      const BalloonStats& stats,
-      uint64_t host_available,
-      bool game_mode,
-      const std::string& vm,
-      int64_t total_available_memory,
-      ComponentMemoryMargins component_margins) override;
-
-  bool DeflateBalloonToSaveProcess(int proc_size,
-                                   int proc_oom_score,
-                                   uint64_t& new_balloon_size,
-                                   uint64_t& freed_space) override;
+  int64_t ComputeBalloonDelta(const BalloonStats& stats,
+                              uint64_t host_available,
+                              const std::string& vm) override;
 
  private:
   // ChromeOS's critical margin.
@@ -168,117 +113,6 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
   BalanceAvailableBalloonPolicy& operator=(
       const BalanceAvailableBalloonPolicy&) = delete;
 };
-
-struct ZoneInfoStats {
-  int64_t sum_low;
-  int64_t totalreserve;
-};
-
-class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
- public:
-  struct Params {
-    // The maximum amount of page cache the guest should have if ChromeOS is
-    // reclaiming.
-    int64_t reclaim_target_cache;
-
-    // The maximum amount of page cache the guest should have if ChromeOS has
-    // critical memory pressure.
-    int64_t critical_target_cache;
-
-    // The maximum amount of page cache the guest should have if ChromeOS has
-    // moderate memory pressure.
-    int64_t moderate_target_cache;
-
-    // If >0, enable responsive balloon sizing. Concierge will listen on a VSOCK
-    // for connections from LMKD in Android. When LMKD is about to kill an App,
-    // it will signal the balloon sizing code, which may deflate the balloon
-    // instead of killing the app.
-    int64_t responsive_max_deflate_bytes;
-  };
-  LimitCacheBalloonPolicy(const MemoryMargins& margins,
-                          int64_t host_lwm,
-                          ZoneInfoStats guest_zoneinfo,
-                          const Params& params,
-                          const std::string& vm,
-                          raw_ref<mm::BalloonMetrics> metrics);
-
-  int64_t ComputeBalloonDelta(
-      const BalloonStats& stats,
-      uint64_t host_available,
-      bool game_mode,
-      const std::string& vm,
-      int64_t total_available_memory,
-      ComponentMemoryMargins component_margins) override;
-
-  int64_t ComputeBalloonDeltaImpl(int64_t host_free,
-                                  const BalloonStats& stats,
-                                  int64_t host_available,
-                                  bool game_mode,
-                                  const std::string& vm,
-                                  int64_t total_available_memory,
-                                  ComponentMemoryMargins component_margins);
-
-  bool DeflateBalloonToSaveProcess(int proc_size,
-                                   int proc_oom_score,
-                                   uint64_t& new_balloon_size,
-                                   uint64_t& freed_space) override;
-
-  // Updates the deflation limits when the balloon policy is refreshed
-  void UpdateBalloonDeflationLimits(ComponentMemoryMargins component_margins,
-                                    int64_t total_available_mem,
-                                    int64_t balloon_size);
-
-  // Expose the minimum target for guest free memory for testing. The balloon
-  // will be sized so that guest free memory is not below this amount.
-  int64_t MinFree() { return guest_zoneinfo_.sum_low - MiB(1); }
-
-  // Expose the maximum target for guest free memory for testing. The balloon
-  // will be sized so that guest free memory is not above this amount.
-  int64_t MaxFree();
-
- private:
-  // ChromeOS's memory margins.
-  const MemoryMargins margins_;
-
-  // The sum of all the host's zone's low memory watermarks.
-  const int64_t host_lwm_;
-
-  // Stats from the guest's zoneinfo.
-  const ZoneInfoStats guest_zoneinfo_;
-
-  // Tunable parameters of the policy.
-  const Params params_;
-
-  // The current balloon size in bytes
-  uint64_t current_balloon_size_ = 0;
-
-  // Number of deflation limits. Currently 3 (foreground, perceptible,
-  // cached).
-  static constexpr size_t kDeflationLimitCount = 3;
-  BalloonDeflationLimit balloon_deflation_limits_[kDeflationLimitCount]{};
-
-  const raw_ref<mm::BalloonMetrics> metrics_;
-
-  LimitCacheBalloonPolicy(const LimitCacheBalloonPolicy&) = delete;
-  LimitCacheBalloonPolicy& operator=(const LimitCacheBalloonPolicy&) = delete;
-
-  // Calculates the balloon size limit given the specified margin
-  static uint64_t GetBalloonSizeLimitForMargin(int64_t total_available_mem,
-                                               int64_t balloon_size,
-                                               int64_t margin);
-};
-
-// Computes the sum of all of ChromeOS's zone's low watermarks. To help
-// initialize LimitCacheBalloonPolicy. Returns std::nullopt on error.
-std::optional<uint64_t> HostZoneLowSum(bool log_on_error);
-
-// Computes the sum of all the zone low watermarks from the contents of
-// /proc/zoneinfo.
-uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo);
-
-// Computes statistics so that a balloon policy can know when Linux is close to
-// reclaiming memory, or Android's LMKD is close to killing Apps.
-std::optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo);
 
 }  // namespace vm_tools::concierge
 

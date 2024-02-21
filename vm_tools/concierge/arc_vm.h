@@ -129,7 +129,7 @@ class ArcVm final : public VmBaseImpl {
   bool AttachNetDevice(const std::string& tap_name, uint8_t* out_bus) override;
   bool DetachNetDevice(uint8_t bus) override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
-      const MemoryMargins& margins, const std::string& vm) override;
+      uint64_t critical_margin, const std::string& vm) override;
   bool UsesExternalSuspendSignals() override { return true; }
   bool SetResolvConfig(
       const std::vector<std::string>& nameservers,
