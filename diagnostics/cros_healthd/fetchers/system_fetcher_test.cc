@@ -38,6 +38,14 @@ using ::testing::_;
 using ::testing::SizeIs;
 using ::testing::WithArg;
 
+MATCHER(IsNullMojoPtr, "") {
+  return arg.is_null();
+}
+
+MATCHER(NotNullMojoPtr, "") {
+  return !arg.is_null();
+}
+
 template <typename T>
 std::optional<std::string> GetMockValue(const T& value) {
   return value;
@@ -251,6 +259,10 @@ class SystemFetcherTest : public BaseFileTest {
  protected:
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
+  FakeSystemConfig* fake_system_config() {
+    return mock_context_.fake_system_config();
+  }
+
   mojom::SystemResultPtr FetchSystemInfoSync() {
     base::test::TestFuture<mojom::SystemResultPtr> future;
     FetchSystemInfo(&mock_context_, future.GetCallback());
@@ -266,99 +278,248 @@ class SystemFetcherTest : public BaseFileTest {
   std::unique_ptr<base::test::ScopedChromeOSVersionInfo> chromeos_version_;
 };
 
-// Template for testing the missing field of vpd/dmi.
-#define TEST_MISSING_FIELD(info, field)                \
-  TEST_F(SystemFetcherTest, No_##info##_##field) {     \
-    expected_system_info_->info->field = std::nullopt; \
-    SetSystemInfo(expected_system_info_);              \
-    ExpectFetchSystemInfo();                           \
-  }
-
 TEST_F(SystemFetcherTest, FetchSystemInfo) {
   ExpectFetchSystemInfo();
 }
 
 TEST_F(SystemFetcherTest, NoVpdDirSkuNumberRequired) {
-  expected_system_info_->vpd_info = nullptr;
-  SetSystemInfo(expected_system_info_);
+  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
   SetHasSkuNumber(true);
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
 TEST_F(SystemFetcherTest, NoVpdDirSkuNumberNotRequired) {
-  expected_system_info_->vpd_info = nullptr;
-  SetSystemInfo(expected_system_info_);
+  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
   SetHasSkuNumber(false);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  EXPECT_THAT(system_info->vpd_info, IsNullMojoPtr());
 }
 
+// Test if the fallback logic triggered by missing OEM name in cros-config works
+// when there's no VPD.
 TEST_F(SystemFetcherTest, NoVpdDirAndNoOemNameInCrosconfig) {
-  // Test if the fallback logic triggered by missing OEM name in cros-config
-  // works when there's no VPD.
-  expected_system_info_->vpd_info = nullptr;
-  expected_system_info_->os_info->oem_name = std::nullopt;
-  SetSystemInfo(expected_system_info_);
+  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
+  fake_system_config()->SetOemName(std::nullopt);
   SetHasSkuNumber(false);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->oem_name, std::nullopt);
 }
 
 TEST_F(SystemFetcherTest, SkuNumberExistsButNotRequired) {
-  SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(false);
-  expected_system_info_->vpd_info->sku_number = std::nullopt;
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->sku_number, std::nullopt);
 }
 
 TEST_F(SystemFetcherTest, NoSkuNumberWhenItIsNotRequired) {
-  expected_system_info_->vpd_info->sku_number = std::nullopt;
-  SetSystemInfo(expected_system_info_);
+  UnsetPath({kRelativePathVpdRo, kFileNameSkuNumber});
   SetHasSkuNumber(false);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->sku_number, std::nullopt);
 }
 
 TEST_F(SystemFetcherTest, NoSkuNumberWhenItIsRequired) {
-  expected_system_info_->vpd_info->sku_number = std::nullopt;
-  SetSystemInfo(expected_system_info_);
+  UnsetPath({kRelativePathVpdRo, kFileNameSkuNumber});
   SetHasSkuNumber(true);
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
-TEST_MISSING_FIELD(vpd_info, activate_date);
-TEST_MISSING_FIELD(vpd_info, region);
-TEST_MISSING_FIELD(vpd_info, mfg_date);
-TEST_MISSING_FIELD(vpd_info, serial_number);
-TEST_MISSING_FIELD(vpd_info, model_name);
-TEST_MISSING_FIELD(vpd_info, oem_name);
+TEST_F(SystemFetcherTest, NoVpdActivateDate) {
+  UnsetPath({kRelativePathVpdRw, kFileNameActivateDate});
 
-TEST_F(SystemFetcherTest, TestNoSysDevicesVirtualDmiId) {
-  expected_system_info_->dmi_info = nullptr;
-  // Delete the whole directory |kRelativePathDmiInfo|.
-  UnsetPath(kRelativePathDmiInfo);
-  ExpectFetchSystemInfo();
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->activate_date, std::nullopt);
 }
 
-TEST_MISSING_FIELD(dmi_info, bios_vendor);
-TEST_MISSING_FIELD(dmi_info, bios_version);
-TEST_MISSING_FIELD(dmi_info, board_name);
-TEST_MISSING_FIELD(dmi_info, board_vendor);
-TEST_MISSING_FIELD(dmi_info, board_version);
-TEST_MISSING_FIELD(dmi_info, chassis_vendor);
-TEST_MISSING_FIELD(dmi_info, product_family);
-TEST_MISSING_FIELD(dmi_info, product_name);
-TEST_MISSING_FIELD(dmi_info, product_version);
-TEST_MISSING_FIELD(dmi_info, sys_vendor);
+TEST_F(SystemFetcherTest, NoVpdRegion) {
+  UnsetPath({kRelativePathVpdRo, kFileNameRegion});
 
-TEST_F(SystemFetcherTest, NoChassisType) {
-  expected_system_info_->dmi_info->chassis_type = nullptr;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->region, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoVpdMfgDate) {
+  UnsetPath({kRelativePathVpdRo, kFileNameMfgDate});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->mfg_date, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoVpdSerialNumber) {
+  UnsetPath({kRelativePathVpdRo, kFileNameSerialNumber});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->serial_number, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoVpdModelName) {
+  UnsetPath({kRelativePathVpdRo, kFileNameModelName});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->model_name, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoVpdOemName) {
+  UnsetPath({kRelativePathVpdRo, kFileNameOemName});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->oem_name, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoSysDevicesVirtualDmiId) {
+  UnsetPath(kRelativePathDmiInfo);
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  EXPECT_THAT(system_info->dmi_info, IsNullMojoPtr());
+}
+
+TEST_F(SystemFetcherTest, NoDmiBiosVendor) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameBiosVendor});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->bios_vendor, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiBiosVersion) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameBiosVersion});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->bios_version, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiBoardName) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameBoardName});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_name, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiBoardVendor) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameBoardVendor});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_vendor, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiBoardVersion) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameBoardVersion});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_version, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiChassisVendor) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameChassisVendor});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->chassis_vendor, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiChassisType) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameChassisType});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_THAT(system_info->dmi_info->chassis_type, IsNullMojoPtr());
+}
+
+TEST_F(SystemFetcherTest, NoDmiProductFamily) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameProductFamily});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_family, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiProductName) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameProductName});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_name, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiProductVersion) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameProductVersion});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_version, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, NoDmiSysVendor) {
+  UnsetPath({kRelativePathDmiInfo, kFileNameSysVendor});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->sys_vendor, std::nullopt);
 }
 
 TEST_F(SystemFetcherTest, BadChassisType) {
-  // Overwrite the contents of |kChassisTypeFileName| with a chassis_type value
-  // that cannot be parsed into an unsigned integer.
-  std::string bad_chassis_type = "bad chassis type";
-  SetMockFile({kRelativePathDmiInfo, kFileNameChassisType}, bad_chassis_type);
+  SetMockFile({kRelativePathDmiInfo, kFileNameChassisType}, "bad chassis type");
   ExpectFetchProbeError(mojom::ErrorType::kParseError);
 }
 
@@ -377,114 +538,170 @@ TEST_F(SystemFetcherTest, BadOsVersion) {
 }
 
 TEST_F(SystemFetcherTest, BootModeCrosSecure) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosSecure;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  SetBootModeInProcCmd(mojom::BootMode::kCrosSecure);
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kCrosSecure);
 }
 
 TEST_F(SystemFetcherTest, BootModeCrosEfi) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfi);
   // Use string constructor to prevent string truncation from null bytes.
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kCrosEfi);
 }
 
 TEST_F(SystemFetcherTest, BootModeCrosLegacy) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosLegacy;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  SetBootModeInProcCmd(mojom::BootMode::kCrosLegacy);
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kCrosLegacy);
 }
 
 TEST_F(SystemFetcherTest, BootModeUnknown) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kUnknown;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  SetBootModeInProcCmd(mojom::BootMode::kUnknown);
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kUnknown);
 }
 
 TEST_F(SystemFetcherTest, BootModeCrosEfiSecure) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfiSecure);
   // Use string constructor to prevent string truncation from null bytes.
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x01", 5));
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kCrosEfiSecure);
 }
 
 TEST_F(SystemFetcherTest, BootModeDefaultToCrosEfi) {
   // Test that the executor fails to read UEFISecureBoot file content and
   // returns kCrosEfi as default value.
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfi);
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable, "");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->boot_mode, mojom::BootMode::kCrosEfi);
 }
 
 TEST_F(SystemFetcherTest, EfiPlatformSizeUnknown) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  expected_system_info_->os_info->efi_platform_size =
-      mojom::OsInfo::EfiPlatformSize::kUnknown;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfi);
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->efi_platform_size,
+            mojom::OsInfo::EfiPlatformSize::kUnknown);
 }
 
 TEST_F(SystemFetcherTest, EfiPlatformSize64) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  expected_system_info_->os_info->efi_platform_size =
-      mojom::OsInfo::EfiPlatformSize::k64;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfi);
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "64");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->efi_platform_size,
+            mojom::OsInfo::EfiPlatformSize::k64);
 }
 
 TEST_F(SystemFetcherTest, EfiPlatformSize32) {
-  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  expected_system_info_->os_info->efi_platform_size =
-      mojom::OsInfo::EfiPlatformSize::k32;
+  SetBootModeInProcCmd(mojom::BootMode::kCrosEfi);
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "32");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->efi_platform_size,
+            mojom::OsInfo::EfiPlatformSize::k32);
 }
 
 TEST_F(SystemFetcherTest, OemName) {
-  expected_system_info_->os_info->oem_name = "FooOEM";
-  expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  fake_system_config()->SetOemName("FooOEM");
+  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->oem_name, "FooOEM");
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->oem_name, "FooOEM-VPD");
 }
 
 TEST_F(SystemFetcherTest, OemNameVpdEmpty) {
-  expected_system_info_->os_info->oem_name = "FooOEM";
-  expected_system_info_->vpd_info->oem_name = "";
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  fake_system_config()->SetOemName("FooOEM");
+  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->oem_name, "FooOEM");
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->oem_name, "");
 }
 
 TEST_F(SystemFetcherTest, OemNameMissing) {
-  expected_system_info_->os_info->oem_name = std::nullopt;
-  expected_system_info_->vpd_info->oem_name = std::nullopt;
-  SetSystemInfo(expected_system_info_);
-  ExpectFetchSystemInfo();
+  fake_system_config()->SetOemName(std::nullopt);
+  UnsetPath({kRelativePathVpdRo, kFileNameOemName});
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->oem_name, std::nullopt);
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->oem_name, std::nullopt);
 }
 
 TEST_F(SystemFetcherTest, OemNameOsFallbackToVpd) {
   // Test the fallback logic triggered by missing OEM name in cros-config.
-  expected_system_info_->os_info->oem_name = std::nullopt;
-  expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
-  SetSystemInfo(expected_system_info_);
-  expected_system_info_->os_info->oem_name = "FooOEM-VPD";
-  ExpectFetchSystemInfo();
+  fake_system_config()->SetOemName(std::nullopt);
+  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->oem_name, "FooOEM-VPD");
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->oem_name, "FooOEM-VPD");
 }
 
 TEST_F(SystemFetcherTest, PsrInfo) {
@@ -540,12 +757,12 @@ TEST_F(SystemFetcherTest, PsrInfo) {
 
   ASSERT_THAT(psr_info->events, SizeIs(2));
   auto& event0 = psr_info->events[0];
-  ASSERT_TRUE(!event0.is_null());
+  ASSERT_THAT(event0, NotNullMojoPtr());
   EXPECT_EQ(event0->type, mojom::PsrEvent::EventType::kLogStart);
   EXPECT_EQ(event0->time, 163987200);
   EXPECT_EQ(event0->data, 342897977);
   auto& event1 = psr_info->events[1];
-  ASSERT_TRUE(!event1.is_null());
+  ASSERT_THAT(event1, NotNullMojoPtr());
   EXPECT_EQ(event1->type, mojom::PsrEvent::EventType::kPrtcFailure);
   EXPECT_EQ(event1->time, 453987200);
   EXPECT_EQ(event1->data, 643897977);
@@ -559,7 +776,7 @@ TEST_F(SystemFetcherTest, PsrError) {
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
 
-  EXPECT_TRUE(system_info->psr_info.is_null());
+  EXPECT_THAT(system_info->psr_info, IsNullMojoPtr());
 }
 
 }  // namespace
