@@ -66,9 +66,13 @@ constexpr uint32_t kPhysicalPriorityOffset = 1000;
 // rules and sent out of the wrong interface, but the routes added to
 // |table_id| will not be ignored.
 constexpr uint32_t kDstRulePriority =
-    RoutingPolicyService::kRulePriorityMain - 4;
+    RoutingPolicyService::kRulePriorityMain - 5;
 // Priority for rules routing traffic from certain VMs through CLAT.
 constexpr uint32_t kClatRulePriority =
+    RoutingPolicyService::kRulePriorityMain - 4;
+// Priority for rules routing traffic with BYPASS_VPN mark to the default
+// physical network.
+constexpr uint32_t kBypassVpnRulePriority =
     RoutingPolicyService::kRulePriorityMain - 3;
 // Priority for VPN rules routing traffic or specific uids with the routing
 // table of a VPN connection.
@@ -206,6 +210,22 @@ void NetworkApplier::ApplyRoutingPolicy(
       catch_all_rule.priority = kCatchallPriority;
       catch_all_rule.table = table_id;
       rule_table_->AddRule(interface_index, catch_all_rule);
+    }
+    // Add a rule right before the VPN uid rules to match packets with
+    // BYPASS_VPN mark and point them to the default table. Similar to the VPN
+    // uid rules, the main purpose of this rule is for src ip selection,
+    // otherwise a packet from a user socket with BYPASS_VPN will be matched by
+    // the VPN uid rules. This rule has to have a lower priority than the rules
+    // for routing tags.
+    for (const auto family : net_base::kIPFamilies) {
+      auto rule = RoutingPolicyEntry(family);
+      rule.priority = kBypassVpnRulePriority;
+      rule.table = table_id;
+      rule.fw_mark = RoutingPolicyEntry::FwMark{
+          .value = kFwmarkBypassVpn.fwmark,
+          .mask = kFwmarkVpnMask.fwmark,
+      };
+      rule_table_->AddRule(interface_index, rule);
     }
   }
 

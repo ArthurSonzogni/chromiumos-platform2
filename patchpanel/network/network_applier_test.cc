@@ -357,6 +357,11 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
   routing_fwmark.mask = 0xffff0000;
   const uint32_t kExpectedTable = 1003u;
 
+  RoutingPolicyEntry::FwMark bypass_vpn_fwmark = {
+      .value = kFwmarkBypassVpn.fwmark,
+      .mask = kFwmarkVpnMask.fwmark,
+  };
+
   EXPECT_CALL(*rule_table_, FlushRules(kInterfaceIndex));
 
   // IPv4 rules:
@@ -389,34 +394,40 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
       AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv4, 1010u,
                                               "eth0", kExpectedTable)))
       .WillOnce(Return(true));
-  // 32763: from 100.115.92.24/29 lookup 249
-  // 32763: from 100.115.92.32/27 lookup 249
-  // 32763: from 100.115.92.64/26 lookup 249
-  // 32763: from 100.115.92.192/26 lookup 249
+  // 32762: from 100.115.92.24/29 lookup 249
+  // 32762: from 100.115.92.32/27 lookup 249
+  // 32762: from 100.115.92.64/26 lookup 249
+  // 32762: from 100.115.92.192/26 lookup 249
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.24/29"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.32/27"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.64/26"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.192/26"),
                                  249u)));
+  // 32763: from all fwmark 0x4000/0xc000 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidFwMarkRule(net_base::IPFamily::kIPv4, 32763u,
+                                        bypass_vpn_fwmark, kExpectedTable)))
+      .WillOnce(Return(true));
   // 32765: from all lookup 1003
   EXPECT_CALL(
       *rule_table_,
@@ -453,6 +464,12 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
       *rule_table_,
       AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv6, 1010u,
                                               "eth0", kExpectedTable)))
+      .WillOnce(Return(true));
+  // 32763: from all fwmark 0x4000/0xc000 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidFwMarkRule(net_base::IPFamily::kIPv6, 32763u,
+                                        bypass_vpn_fwmark, kExpectedTable)))
       .WillOnce(Return(true));
   // 32765: from all lookup 1003
   EXPECT_CALL(
@@ -510,31 +527,31 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv4, 10u,
                                               "tun0", kExpectedTable)))
       .WillOnce(Return(true));
-  // 32763: from 100.115.92.24/29 lookup 249
-  // 32763: from 100.115.92.32/27 lookup 249
-  // 32763: from 100.115.92.64/26 lookup 249
-  // 32763: from 100.115.92.192/26 lookup 249
+  // 32762: from 100.115.92.24/29 lookup 249
+  // 32762: from 100.115.92.32/27 lookup 249
+  // 32762: from 100.115.92.64/26 lookup 249
+  // 32762: from 100.115.92.192/26 lookup 249
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.24/29"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.32/27"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.64/26"),
                                  249u)));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(-1, IsValidSrcRule(net_base::IPFamily::kIPv4, 32762u,
                                  *net_base::IPCIDR::CreateFromCIDRString(
                                      "100.115.92.192/26"),
                                  249u)));
@@ -632,17 +649,17 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv4, 1020u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 32762:  from all to 203.0.113.0/26 lookup 1004
-  // 32762:  from all to 203.0.113.128/26 lookup 1004
+  // 32761:  from all to 203.0.113.0/26 lookup 1004
+  // 32761:  from all to 203.0.113.128/26 lookup 1004
   EXPECT_CALL(
       *rule_table_,
-      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32762u,
+      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32761u,
                                               net_base::IPCIDR(rfc3442_dsts[0]),
                                               kExpectedTable)))
       .WillOnce(Return(true));
   EXPECT_CALL(
       *rule_table_,
-      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32762u,
+      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32761u,
                                               net_base::IPCIDR(rfc3442_dsts[1]),
                                               kExpectedTable)))
       .WillOnce(Return(true));
