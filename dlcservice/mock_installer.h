@@ -18,12 +18,15 @@ class MockInstaller : public InstallerInterface {
   MockInstaller(const MockInstaller&) = delete;
   MockInstaller& operator=(const MockInstaller&) = delete;
 
+  MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(void,
               Install,
               (const InstallArgs& install_args,
                InstallSuccessCallback success_callback,
                InstallFailureCallback failure_callback),
               (override));
+  MOCK_METHOD(bool, IsReady, (), (override));
+  MOCK_METHOD(void, OnReady, (OnReadyCallback), (override));
 };
 
 }  // namespace dlcservice

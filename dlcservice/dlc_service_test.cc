@@ -103,16 +103,9 @@ class DlcServiceTest : public BaseTest {
 TEST_F(DlcServiceTest, InitializeTest) {
   // TODO(kimjae): Mock the scanning instead of depending on BaseTest setup.
   // This should make it much easier to test with.
-
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
       .Times(1);
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetObjectProxy())
-      .WillOnce(Return(mock_update_engine_object_proxy_.get()));
-  EXPECT_CALL(*mock_update_engine_object_proxy_,
-              DoWaitForServiceToBeAvailable(_))
-      .Times(1);
-
   auto mock_dlc_1 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_2 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_3 = std::make_unique<StrictMock<MockDlc>>();
@@ -227,8 +220,7 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  SystemState::Get()->set_update_engine_service_available(false);
-
+  ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(false));
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
@@ -252,8 +244,7 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  SystemState::Get()->set_update_engine_service_available(false);
-
+  ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(false));
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
@@ -277,7 +268,6 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  SystemState::Get()->set_update_engine_service_available(true);
   update_engine::StatusResult ue_status;
   ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
   SystemState::Get()->set_update_engine_status(ue_status);
@@ -306,7 +296,6 @@ TEST_F(DlcServiceTest,
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  SystemState::Get()->set_update_engine_service_available(true);
   update_engine::StatusResult ue_status;
   ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
   SystemState::Get()->set_update_engine_status(ue_status);
@@ -334,8 +323,6 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  SystemState::Get()->set_update_engine_service_available(true);
-
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
   EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
@@ -362,8 +349,6 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
   DlcMap supported;
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
-
-  SystemState::Get()->set_update_engine_service_available(true);
 
   EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
@@ -894,12 +879,6 @@ class DlcServiceTestLegacy : public BaseTest {
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
                 DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
         .Times(1);
-    EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetObjectProxy())
-        .WillOnce(Return(mock_update_engine_object_proxy_.get()));
-    EXPECT_CALL(*mock_update_engine_object_proxy_,
-                DoWaitForServiceToBeAvailable(_))
-        .Times(1);
-
     auto dlc_creator =
 #if USE_LVM_STATEFUL_PARTITION
         std::make_unique<DlcLvmCreator>();
@@ -1858,17 +1837,6 @@ TEST_F(DlcServiceTestLegacy, UpdateCompleted) {
   EXPECT_TRUE(dlc_service_->UpdateCompleted({kFirstDlc, kSecondDlc}, &err_));
   EXPECT_TRUE(
       Prefs(DlcBase(kSecondDlc), inactive_boot_slot).Exists(kDlcPrefVerified));
-}
-
-TEST_F(DlcServiceTestLegacy, UpdateEngineBecomesAvailable) {
-  auto* system_state = SystemState::Get();
-  system_state->set_update_engine_service_available(false);
-
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
-      .Times(1);
-
-  dlc_service_->OnWaitForUpdateEngineServiceToBeAvailable(true);
-  EXPECT_TRUE(system_state->IsUpdateEngineServiceAvailable());
 }
 
 }  // namespace dlcservice

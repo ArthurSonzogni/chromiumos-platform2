@@ -66,9 +66,6 @@ class SystemState {
   // Gets the pointer to the current |SystemState|.
   static SystemState* Get();
 
-  bool IsUpdateEngineServiceAvailable() const;
-  void set_update_engine_service_available(bool available);
-
   // Getters for states that |SystemState| holds.
 #if USE_LVM_STATEFUL_PARTITION
   LvmdProxyWrapperInterface* lvmd_wrapper() const;
@@ -151,7 +148,6 @@ class SystemState {
       image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
-  bool update_engine_service_available_ = false;
   std::unique_ptr<InstallerInterface> installer_;
   bool not_resuming_from_hibernate_ = false;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>

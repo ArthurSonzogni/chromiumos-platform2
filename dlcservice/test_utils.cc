@@ -115,7 +115,7 @@ void BaseTest::SetUp() {
       deployed_content_path_, content_path_, prefs_path_, users_path_,
       verification_file_path_, resume_in_progress_path_, &clock_,
       /*for_test=*/true);
-  SystemState::Get()->set_update_engine_service_available(true);
+  ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(true));
 #if USE_LVM_STATEFUL_PARTITION
   SystemState::Get()->SetIsLvmStackEnabled(true);
 #endif  // USE_LVM_STATEFUL_PARTITION

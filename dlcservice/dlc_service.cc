@@ -94,16 +94,8 @@ void DlcService::Initialize() {
       base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignalConnected,
                      weak_ptr_factory_.GetWeakPtr()));
 
-  // Default for update_engine status.
-  StatusResult status;
-  status.set_current_operation(Operation::IDLE);
-  status.set_is_install(false);
-  system_state->set_update_engine_status(status);
-  // Asynchronously schedule to get the actual update_engine status.
-  // In the meantime, early installation requests will fail.
-  update_engine->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::BindOnce(&DlcService::OnWaitForUpdateEngineServiceToBeAvailable,
-                     weak_ptr_factory_.GetWeakPtr()));
+  system_state->installer()->OnReady(base::BindOnce(
+      &DlcService::OnReadyInstaller, weak_ptr_factory_.GetWeakPtr()));
 
   supported_.clear();
   auto initialize_dlc = [this](const DlcId& id) -> void {
@@ -205,9 +197,8 @@ void DlcService::CleanupUnsupportedLvs() {
 }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
-  LOG(INFO) << "Update Engine service available=" << available;
-  SystemState::Get()->set_update_engine_service_available(available);
+void DlcService::OnReadyInstaller(bool available) {
+  LOG(INFO) << "Installer service available=" << available;
   GetUpdateEngineStatusAsync();
 }
 
@@ -323,8 +314,8 @@ void DlcService::InstallViaInstaller(
   // If update_engine needs to handle the installation, wait for the service to
   // be up and DBus object exported. Returning busy error will allow Chrome
   // client to retry the installation.
-  if (!SystemState::Get()->IsUpdateEngineServiceAvailable()) {
-    string err_str = "Installation called before update_engine is available.";
+  if (!SystemState::Get()->installer()->IsReady()) {
+    string err_str = "Installation called before installer is available.";
     return ret_func(std::move(response),
                     Error::Create(FROM_HERE, kErrorBusy, err_str));
   }

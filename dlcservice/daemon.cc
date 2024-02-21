@@ -19,6 +19,7 @@
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_base_creator.h"
 #include "dlcservice/dlc_service.h"
+#include "dlcservice/installer.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/dlc_lvm_creator.h"
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
@@ -91,6 +92,9 @@ void Daemon::RegisterDBusObjectsAsync(
   auto boot_slot = std::make_unique<BootSlot>(std::make_unique<BootDevice>());
   CHECK(boot_slot->Init());
 
+  auto installer = std::make_unique<UpdateEngineInstaller>();
+  auto* installer_ptr = installer.get();
+
   SystemState::Initialize(
 #if USE_LVM_STATEFUL_PARTITION
       std::make_unique<LvmdProxyWrapper>(
@@ -100,7 +104,7 @@ void Daemon::RegisterDBusObjectsAsync(
           bus_for_proxies_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
           bus_for_proxies_),
-      std::make_unique<Installer>(),
+      std::move(installer),
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(
           bus_for_proxies_),
       dbus_adaptor_.get(), std::move(boot_slot), std::move(metrics),
@@ -115,6 +119,9 @@ void Daemon::RegisterDBusObjectsAsync(
       base::FilePath(hiberman::kHibernateResumeInProgressFile),
       base::DefaultClock::GetInstance());
   CHECK(SystemState::Get());
+
+  // Only initialize installer after `SystemState` is set.
+  CHECK(installer_ptr->Init());
 
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

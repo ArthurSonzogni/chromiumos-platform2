@@ -150,7 +150,6 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTestLegacy, PeriodicInstallCheck);
   FRIEND_TEST(DlcServiceTestLegacy, InstallUpdateEngineBusyThenFreeTest);
   FRIEND_TEST(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck);
-  FRIEND_TEST(DlcServiceTestLegacy, UpdateEngineBecomesAvailable);
 
   // Install the DLC with installer.
   void InstallViaInstaller(
@@ -211,7 +210,7 @@ class DlcService : public DlcServiceInterface {
               OnStatusUpdateAdvancedSignalConnectedTestVerifyFailureAlert);
 
   // Called on when update_engine service becomes available.
-  void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
+  void OnReadyInstaller(bool available);
 
   // Removes all unsupported/deprecated DLCs.
   void CleanupUnsupported();

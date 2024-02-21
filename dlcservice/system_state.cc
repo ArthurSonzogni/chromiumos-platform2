@@ -119,14 +119,6 @@ SystemState* SystemState::Get() {
   return g_instance_.get();
 }
 
-bool SystemState::IsUpdateEngineServiceAvailable() const {
-  return update_engine_service_available_;
-}
-
-void SystemState::set_update_engine_service_available(bool available) {
-  update_engine_service_available_ = available;
-}
-
 #if USE_LVM_STATEFUL_PARTITION
 LvmdProxyWrapperInterface* SystemState::lvmd_wrapper() const {
   return lvmd_proxy_wrapper_.get();
