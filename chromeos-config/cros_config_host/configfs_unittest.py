@@ -6,24 +6,15 @@
 
 """Unit tests for ConfigFS data file generator."""
 
-from __future__ import print_function
-
 import functools
 import json
 import os
+from pathlib import Path
 import subprocess
-import sys
 import tempfile
+import unittest
 
-import configfs  # pylint: disable=import-error
-
-
-# Find chromite!  Assume this code only runs inside the SDK.
-sys.path.insert(0, "/mnt/host/source")
-
-# pylint: disable=wrong-import-position
-from chromite.lib import cros_test_lib
-from chromite.lib import osutils
+from cros_config_host import configfs
 
 
 this_dir = os.path.dirname(__file__)
@@ -65,7 +56,7 @@ def TestConfigs(*args):
     return _Decorator
 
 
-class ConfigFSTests(cros_test_lib.TestCase):
+class ConfigFSTests(unittest.TestCase):
     """Tests for ConfigFS."""
 
     def testSerialize(self):
@@ -85,7 +76,7 @@ class ConfigFSTests(cros_test_lib.TestCase):
             else:
                 self.assertTrue(os.path.isfile(path))
                 self.assertEqual(
-                    osutils.ReadFile(path, mode="rb"),
+                    Path(path).read_bytes(),
                     configfs.Serialize(config),
                 )
                 return
@@ -98,4 +89,4 @@ class ConfigFSTests(cros_test_lib.TestCase):
 
 
 if __name__ == "__main__":
-    cros_test_lib.main(module=__name__)
+    unittest.main(module=__name__)

@@ -9,15 +9,10 @@ import contextlib
 import io
 import os
 import re
+import unittest
 
-# pylint: disable=import-error
-import cros_config_schema
-import jsonschema
-
-from chromite.lib import cros_test_lib
-
-
-# pylint: enable=import-error
+from cros_config_host import cros_config_schema
+import jsonschema  # pylint: disable=import-error
 
 
 this_dir = os.path.dirname(__file__)
@@ -63,7 +58,7 @@ chromeos:
 """
 
 
-class MergeDictionaries(cros_test_lib.TestCase):
+class MergeDictionaries(unittest.TestCase):
     def testBaseKeyMerge(self):
         primary = {"a": {"b": 1, "c": 2}}
         overlay = {"a": {"c": 3}, "b": 4}
@@ -77,7 +72,7 @@ class MergeDictionaries(cros_test_lib.TestCase):
         self.assertEqual({"a": {"b": 1, "c": [1, 2, 3, 4]}}, primary)
 
 
-class ParseArgsTests(cros_test_lib.TestCase):
+class ParseArgsTests(unittest.TestCase):
     def testParseArgs(self):
         argv = ["-s", "schema", "-c", "config", "-o", "output", "-f", "True"]
         args = cros_config_schema.ParseArgs(argv)
@@ -93,7 +88,7 @@ class ParseArgsTests(cros_test_lib.TestCase):
         self.assertEqual(args.configs, ["m1", "m2", "m3"])
 
 
-class TransformConfigTests(cros_test_lib.TestCase):
+class TransformConfigTests(unittest.TestCase):
     def testBasicTransform(self):
         json_dict = cros_config_schema.TransformConfig(BASIC_CONFIG)
         self.assertEqual(len(json_dict), 1)
@@ -204,7 +199,7 @@ chromeos:
         self.assertEqual("overridden-by-device-scope", audio_main["ucm-suffix"])
 
 
-class ValidateConfigSchemaTests(cros_test_lib.TestCase):
+class ValidateConfigSchemaTests(unittest.TestCase):
     def setUp(self):
         self._schema = cros_config_schema.ReadSchema()
 
@@ -247,7 +242,7 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
         self.assertIn("sku-id", str(ctx.exception))
 
 
-class ValidateFingerprintSchema(cros_test_lib.TestCase):
+class ValidateFingerprintSchema(unittest.TestCase):
     def setUp(self):
         self._schema = cros_config_schema.ReadSchema()
 
@@ -292,7 +287,7 @@ class ValidateFingerprintSchema(cros_test_lib.TestCase):
         )
 
 
-class ValidateCameraSchema(cros_test_lib.TestCase):
+class ValidateCameraSchema(unittest.TestCase):
     def setUp(self):
         self._schema = cros_config_schema.ReadSchema()
 
@@ -437,7 +432,7 @@ INVALID_CUSTOM_LABEL_CONFIG_FEATURE = """
 """
 
 
-class ValidateConfigTests(cros_test_lib.TestCase):
+class ValidateConfigTests(unittest.TestCase):
     def testBasicValidation(self):
         cros_config_schema.ValidateConfig(
             cros_config_schema.TransformConfig(BASIC_CONFIG)
@@ -818,7 +813,7 @@ chromeos:
             self.fail("ValidationError not raised")
 
 
-class FilterBuildElements(cros_test_lib.TestCase):
+class FilterBuildElements(unittest.TestCase):
     def testBasicFilterBuildElements(self):
         json_dict = cros_config_schema.FilterBuildElements(
             cros_config_schema.TransformConfig(BASIC_CONFIG), ["/firmware"]
@@ -826,7 +821,7 @@ class FilterBuildElements(cros_test_lib.TestCase):
         self.assertNotIn("firmware", json_dict["chromeos"]["configs"][0])
 
 
-class GetValidSchemaProperties(cros_test_lib.TestCase):
+class GetValidSchemaProperties(unittest.TestCase):
     def testGetValidSchemaProperties(self):
         schema_props = cros_config_schema.GetValidSchemaProperties()
         self.assertIn("cras-config-dir", schema_props["/audio/main"])
@@ -836,7 +831,7 @@ class GetValidSchemaProperties(cros_test_lib.TestCase):
         self.assertIn("count", schema_props["/camera"])
 
 
-class SchemaContentsTests(cros_test_lib.TestCase):
+class SchemaContentsTests(unittest.TestCase):
     def testSchemaPropertyNames(self):
         """Validate that all property names use hyphen-case"""
 
@@ -861,7 +856,7 @@ class SchemaContentsTests(cros_test_lib.TestCase):
             )
 
 
-class MainTests(cros_test_lib.TestCase):
+class MainTests(unittest.TestCase):
     def testIdentityTableOut(self):
         base_path = os.path.join(this_dir, "../test_data")
         output = io.BytesIO()
@@ -881,4 +876,4 @@ class MainTests(cros_test_lib.TestCase):
 
 
 if __name__ == "__main__":
-    cros_test_lib.main(module=__name__)
+    unittest.main(module=__name__)
