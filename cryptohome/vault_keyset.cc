@@ -72,17 +72,6 @@ const char kKeyLegacyPrefix[] = "legacy-";
 
 namespace cryptohome {
 
-VaultKeyset::VaultKeyset()
-    : platform_(nullptr),
-      crypto_(nullptr),
-      loaded_(false),
-      encrypted_(false),
-      flags_(0),
-      backup_vk_(false),
-      migrated_vk_(false),
-      legacy_index_(-1),
-      auth_locked_(false) {}
-
 void VaultKeyset::Initialize(libstorage::Platform* platform, Crypto* crypto) {
   platform_ = platform;
   crypto_ = crypto;

@@ -89,7 +89,7 @@ class StatefulRecovery {
   // IsOwnerFunction returns true if the given user is the owner.
   bool IsOwner(const std::string& username);
 
-  bool requested_;
+  bool requested_ = false;
   libstorage::Platform* platform_;
   org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy_;
   policy::PolicyProvider* policy_provider_;

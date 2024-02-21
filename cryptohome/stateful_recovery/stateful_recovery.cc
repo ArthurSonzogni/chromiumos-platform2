@@ -48,8 +48,7 @@ StatefulRecovery::StatefulRecovery(
     org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
     policy::PolicyProvider* policy_provider,
     std::string flag_file)
-    : requested_(false),
-      platform_(platform),
+    : platform_(platform),
       userdataauth_proxy_(userdataauth_proxy),
       policy_provider_(policy_provider),
       flag_file_(FilePath(flag_file)),

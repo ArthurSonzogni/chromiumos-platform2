@@ -28,9 +28,7 @@ RealPkcs11Token::RealPkcs11Token(
     : username_(username),
       token_dir_(token_dir),
       auth_data_(auth_data),
-      chaps_client_factory_(std::move(chaps_client_factory)),
-      ready_(false),
-      need_restore_(false) {}
+      chaps_client_factory_(std::move(chaps_client_factory)) {}
 
 RealPkcs11Token::~RealPkcs11Token() {
   Remove();

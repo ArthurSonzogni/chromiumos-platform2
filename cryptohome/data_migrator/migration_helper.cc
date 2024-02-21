@@ -275,19 +275,8 @@ MigrationHelper::MigrationHelper(libstorage::Platform* platform,
       to_base_path_(to),
       status_files_dir_(status_files_dir),
       max_chunk_size_(max_chunk_size),
-      effective_chunk_size_(0),
-      total_byte_count_(0),
-      total_directory_byte_count_(0),
-      n_files_(0),
-      n_dirs_(0),
-      n_symlinks_(0),
-      migrated_byte_count_(0),
-      failed_operation_type_(kMigrationFailedAtOtherOperation),
-      failed_error_type_(base::File::FILE_OK),
-      no_space_failure_free_space_bytes_(0),
-      num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
-      worker_pool_(new WorkerPool(this)) {}
+      worker_pool_(std::make_unique<WorkerPool>(this)) {}
 
 MigrationHelper::~MigrationHelper() = default;
 
@@ -319,9 +308,9 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
 
-  initial_dest_free_space_bytes_ =
+  int64_t initial_dest_free_space_bytes =
       platform_->AmountOfFreeDiskSpace(to_base_path_);
-  if (initial_dest_free_space_bytes_ < 0) {
+  if (initial_dest_free_space_bytes < 0) {
     LOG(ERROR) << "Failed to determine free disk space on destination";
     return false;
   }
@@ -402,7 +391,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
                                         failed_error_type_);
     if (failed_error_type_ == base::File::FILE_ERROR_NO_SPACE) {
       delegate_->ReportFailedNoSpace(
-          initial_dest_free_space_bytes_ / (1024 * 1024),
+          initial_dest_free_space_bytes / (1024 * 1024),
           no_space_failure_free_space_bytes_ / (1024 * 1024));
     }
     return false;

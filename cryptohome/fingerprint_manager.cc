@@ -80,10 +80,7 @@ std::unique_ptr<FingerprintManager> FingerprintManager::Create(
 }
 
 FingerprintManager::FingerprintManager()
-    : proxy_(nullptr),
-      connected_to_auth_scan_done_signal_(false),
-      weak_factory_(this),
-      mount_thread_id_(base::PlatformThread::CurrentId()) {}
+    : mount_thread_id_(base::PlatformThread::CurrentId()) {}
 
 FingerprintManager::~FingerprintManager() = default;
 

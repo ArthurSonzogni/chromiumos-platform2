@@ -99,7 +99,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   // Pipe used to communicate with the helper process.
   // This file descriptor is owned by |helper_process_|, so it's not
   // scoped.
-  int write_to_helper_;
+  int write_to_helper_ = -1;
 
   // Set of mounts returned by the helper.
   std::set<std::string> mounted_paths_;

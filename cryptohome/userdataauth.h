@@ -1004,7 +1004,7 @@ class UserDataAuth {
 
   // The actual Fingerprint Manager object that is used by this class, but
   // can be overridden for testing.
-  FingerprintManager* fingerprint_manager_;
+  FingerprintManager* fingerprint_manager_ = nullptr;
 
   // The fingerprint service object that wraps the fingerprint manager for auth
   // block usage.
@@ -1015,7 +1015,7 @@ class UserDataAuth {
 
   // The actual Biometrics Service object that is used by this class, but
   // can be overridden for testing.
-  BiometricsAuthBlockService* biometrics_service_;
+  BiometricsAuthBlockService* biometrics_service_ = nullptr;
 
   // The default Recoverable Key Store Backend Cert Provider object for
   // recoverable key store generation.
@@ -1024,7 +1024,7 @@ class UserDataAuth {
 
   // The actual Recoverable Key Store Backend Cert Provider object that is used
   // by this class, but can be overridden for testing.
-  RecoverableKeyStoreBackendCertProvider* key_store_cert_provider_;
+  RecoverableKeyStoreBackendCertProvider* key_store_cert_provider_ = nullptr;
 
   // The object that handles construction and saving of VaultKeysets to disk,
   // used for testing purposes.
@@ -1038,7 +1038,7 @@ class UserDataAuth {
 
   // Whether this device is an enterprise owned device. Write access should only
   // happen on mount thread.
-  bool enterprise_owned_;
+  bool enterprise_owned_ = false;
 
   // =============== Mount Related Variables ===============
 
@@ -1069,7 +1069,7 @@ class UserDataAuth {
   // testing.
   // This is to be accessed from the mount thread only because there's no
   // guarantee on thread safety of the HomeDirs object.
-  HomeDirs* homedirs_;
+  HomeDirs* homedirs_ = nullptr;
 
   // Default challenge credential helper utility object. This object is required
   // for doing a challenge response style login, and is only lazily created when
@@ -1094,7 +1094,7 @@ class UserDataAuth {
   // auth_block_utility. This is usually set to default_auth_block_utility_, but
   // can be overridden for testing. This is to be accessed from the mount thread
   // only because there's no guarantee on thread safety of the HomeDirs object.
-  AuthBlockUtility* auth_block_utility_;
+  AuthBlockUtility* auth_block_utility_ = nullptr;
 
   // Manager of the auth factor drivers.
   std::unique_ptr<AuthFactorDriverManager> default_auth_factor_driver_manager_;
@@ -1112,7 +1112,7 @@ class UserDataAuth {
   std::unique_ptr<AuthSessionManager> default_auth_session_manager_;
   // Usually set to default_auth_session_manager_, but can be overridden for
   // tests.
-  AuthSessionManager* auth_session_manager_;
+  AuthSessionManager* auth_session_manager_ = nullptr;
 
   // The low_disk_space_handler_ object in normal operation
   std::unique_ptr<LowDiskSpaceHandler> default_low_disk_space_handler_;
@@ -1121,7 +1121,7 @@ class UserDataAuth {
   // cleanup.
   // This is to be accessed from the mount thread only because there's no
   // guarantee on thread safety of the HomeDirs object.
-  LowDiskSpaceHandler* low_disk_space_handler_;
+  LowDiskSpaceHandler* low_disk_space_handler_ = nullptr;
 
   // TODO(dlunev): This three variables are a hack to pass cleanup parameters
   // from main to the actual object. The reason it is done like this is that
@@ -1145,7 +1145,7 @@ class UserDataAuth {
   std::unique_ptr<UserSessionFactory> default_user_session_factory_;
 
   // The user session factory instance that can be overridden for tests.
-  UserSessionFactory* user_session_factory_;
+  UserSessionFactory* user_session_factory_ = nullptr;
 
   // This holds the salt that is used to derive the passkey for public mounts.
   brillo::SecureBlob public_mount_salt_;
@@ -1165,20 +1165,20 @@ class UserDataAuth {
 
   // Force the use of eCryptfs. If eCryptfs is not used, then dircrypto (the
   // ext4 directory encryption) is used.
-  bool force_ecryptfs_;
+  bool force_ecryptfs_ = true;
 
   // Force v2 version for fscrypt interface.
-  bool fscrypt_v2_;
+  bool fscrypt_v2_ = false;
 
   // Enable creation of LVM volumes for applications.
-  bool enable_application_containers_;
+  bool enable_application_containers_ = false;
 
   // Whether we are using legacy mount. See Mount::MountLegacyHome()'s comment
   // for more information.
-  bool legacy_mount_;
+  bool legacy_mount_ = true;
 
   // Whether Downloads/ should be bind mounted.
-  bool bind_mount_downloads_;
+  bool bind_mount_downloads_ = true;
 
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.
@@ -1192,7 +1192,7 @@ class UserDataAuth {
   std::unique_ptr<Features> default_features_;
 
   // This holds the object that checks for feature enabled.
-  Features* features_;
+  Features* features_ = nullptr;
   AsyncInitFeatures async_init_features_;
 
   friend class AuthSessionTestWithKeysetManagement;

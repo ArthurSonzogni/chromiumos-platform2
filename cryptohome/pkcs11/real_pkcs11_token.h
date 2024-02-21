@@ -46,8 +46,8 @@ class RealPkcs11Token final : public Pkcs11Token {
 
   const std::unique_ptr<ChapsClientFactory> chaps_client_factory_;
 
-  bool ready_;
-  bool need_restore_;
+  bool ready_ = false;
+  bool need_restore_ = false;
 
   friend class RealPkcs11TokenFactory;
 };

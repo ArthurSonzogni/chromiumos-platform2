@@ -153,8 +153,8 @@ class FingerprintManager {
   std::unique_ptr<biod::BiometricsManagerProxyBase> default_proxy_;
   // The actual BiometricsManagerProxyBase object used in this class.
   // Can be overridden for testing.
-  biod::BiometricsManagerProxyBase* proxy_;
-  bool connected_to_auth_scan_done_signal_;
+  biod::BiometricsManagerProxyBase* proxy_ = nullptr;
+  bool connected_to_auth_scan_done_signal_ = false;
   ResultCallback auth_scan_done_callback_;
   SignalCallback signal_callback_;
   State state_ = State::NO_AUTH_SESSION;
@@ -162,8 +162,8 @@ class FingerprintManager {
   ObfuscatedUsername current_user_;
   // The number of retries left in the current auth session.
   int retry_left_ = 0;
-  base::WeakPtrFactory<FingerprintManager> weak_factory_;
   base::PlatformThreadId mount_thread_id_;
+  base::WeakPtrFactory<FingerprintManager> weak_factory_{this};
 };
 
 }  // namespace cryptohome

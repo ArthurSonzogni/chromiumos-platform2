@@ -135,8 +135,7 @@ OutOfProcessMountHelper::OutOfProcessMountHelper(bool legacy_home,
                                                  libstorage::Platform* platform)
     : legacy_home_(legacy_home),
       bind_mount_downloads_(bind_mount_downloads),
-      platform_(platform),
-      write_to_helper_(-1) {}
+      platform_(platform) {}
 
 bool OutOfProcessMountHelper::CanPerformEphemeralMount() const {
   return !helper_process_ || helper_process_->pid() == 0;

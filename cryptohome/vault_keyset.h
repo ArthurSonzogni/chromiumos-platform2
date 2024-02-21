@@ -40,7 +40,7 @@ struct VaultKeysetKeys {
 class VaultKeyset {
  public:
   // Constructors and destructors.
-  VaultKeyset();
+  VaultKeyset() = default;
   VaultKeyset(VaultKeyset&&) = default;
   VaultKeyset(const VaultKeyset&) = default;
   VaultKeyset& operator=(const VaultKeyset&) = default;
@@ -325,10 +325,10 @@ class VaultKeyset {
   CryptoStatus DecryptVaultKeysetEx(const KeyBlobs& key_blobs);
 
   // These store run time state for the class.
-  libstorage::Platform* platform_;
-  Crypto* crypto_;
-  bool loaded_;
-  bool encrypted_;
+  libstorage::Platform* platform_ = nullptr;
+  Crypto* crypto_ = nullptr;
+  bool loaded_ = false;
+  bool encrypted_ = false;
   base::FilePath source_file_;
 
   // The following data members are grouped into three categories. Each category
@@ -336,11 +336,11 @@ class VaultKeyset {
 
   // Group 1. AuthBlockState. This is metadata used to derive the keys,
   // persisted as plaintext.
-  int32_t flags_;
+  int32_t flags_ = 0;
   // Field to tag the VaultKeyset as a backup VaultKeyset for USS.
-  bool backup_vk_;
+  bool backup_vk_ = false;
   // Field to tag the VaultKeyset as a migrated VaultKeyset to USS.
-  bool migrated_vk_;
+  bool migrated_vk_ = false;
   // The salt used to derive the user input in auth block.
   brillo::Blob auth_salt_;
   // The IV used to encrypt the encryption key.
@@ -349,8 +349,8 @@ class VaultKeyset {
   // due to previous plans to fully switch to label-based addressing, which,
   // unfortunately, wasn't followed through.
   // TODO(dlunev): rename it not to say legacy.
-  int legacy_index_;
-  bool auth_locked_;
+  int legacy_index_ = -1;
+  bool auth_locked_ = false;
   // This is used by the TPM AuthBlocks to make sure the keyset was sealed to
   // the TPM on this system. It's not a security check, but a diagnostic.
   std::optional<brillo::Blob> tpm_public_key_hash_;
