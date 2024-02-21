@@ -16,18 +16,23 @@
 #ifndef CRASH_REPORTER_ANOMALY_DETECTOR_TEXT_FILE_READER_H_
 #define CRASH_REPORTER_ANOMALY_DETECTOR_TEXT_FILE_READER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file.h>
+#include <base/memory/raw_ptr.h>
 #include <base/files/file_util.h>
+#include <featured/feature_library.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <soul/gravedigger.h>
 
 namespace anomaly {
 
 class TextFileReader {
  public:
-  explicit TextFileReader(const base::FilePath& path);
+  TextFileReader(const base::FilePath& path,
+                 feature::PlatformFeaturesInterface* feature_library);
   ~TextFileReader();
 
   // If it finds the next line delimited with '\n', it returns true and assigns
@@ -62,13 +67,22 @@ class TextFileReader {
 
   // Check inode number of the file pointed by file_path_ against the current
   // inode number stored. It uses stat(2) system call.
-  bool CheckForNewFile();
+  bool CheckForNewFile() const;
+
+  // Check if gravedigger should be used to read log files or base::File.
+  bool IsGravediggerEnabled() const;
+
+  // Returns `true` if the file path from the constructor could be opened.
+  // Returning `false` usually means that the file doesn't exist, yet.
+  bool HaveOpenLogFile() const;
 
   const base::FilePath file_path_;
-  base::File file_;
+  base::File direct_file_;
+  std::unique_ptr<gravedigger::LogFile> gravedigger_file_;
   static constexpr int kBufferSize_ = 1024;
   std::vector<char> buf_;
   std::vector<char> line_fragment_;
+  base::raw_ptr<feature::PlatformFeaturesInterface> feature_library_;
   // Current position of read within buf_.
   int pos_ = 0;
   // The end position of the used part of the buf_.
@@ -83,16 +97,11 @@ class TextFileReader {
   // Limit of consecutive unsuccessful Open method call before giving up.
   static constexpr int kMaxOpenRetries_ = 10;
 
-  FRIEND_TEST(AnomalyDetectorFileReaderTest, InvalidFileTest);
-  FRIEND_TEST(AnomalyDetectorFileReaderTest, OpenFileTest);
-  FRIEND_TEST(AnomalyDetectorFileReaderTest, ReopenFileOnMoveTest);
-  FRIEND_TEST(AnomalyDetectorFileReaderConcurrentTest, ReadAppendedTextTest);
+  friend class AnomalyDetectorFileReaderTest;
   FRIEND_TEST(AnomalyDetectorFileReaderConcurrentTest,
               ReadLineLongerThanBufferTest);
-  FRIEND_TEST(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryTest);
   FRIEND_TEST(AnomalyDetectorFileReaderConcurrentTest,
               OpenFileRetryExceededTest);
-  FRIEND_TEST(AnomalyDetectorFileReaderConcurrentTest, HandleFileMoveTest);
 };
 
 }  // namespace anomaly

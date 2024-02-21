@@ -329,6 +329,10 @@ executable("anomaly_detector") {
     "system_api-metrics_event-protos",
     "system_api-anomaly_detector-protos",
   ]
+  pkg_deps = [
+    "libfeatures",
+    "libgravedigger",
+  ]
   deps = [ ":libcrash" ]
 }
 
@@ -565,6 +569,7 @@ if (use.test) {
       ":libcrash",
       "//common-mk/testrunner:testrunner",
     ]
+    pkg_deps = [ "libfake_platform_features" ]
   }
 
   executable("anomaly_detector_text_file_reader_test") {
@@ -580,6 +585,11 @@ if (use.test) {
       ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
+    pkg_deps = [
+      "libfake_platform_features",
+      "libfeatures",
+      "libgravedigger",
+    ]
     deps = [
       ":libcrash",
       "//common-mk/testrunner:testrunner",
@@ -600,6 +610,10 @@ if (use.test) {
       ":libcrash_reporter_config",
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
+    pkg_deps = [
+      "libfeatures",
+      "libgravedigger",
+    ]
     deps = [
       ":libcrash",
       "//common-mk/testrunner:testrunner",

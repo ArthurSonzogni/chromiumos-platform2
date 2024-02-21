@@ -11,10 +11,28 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
+namespace {
+feature::PlatformFeaturesInterface* GetFeatureLibrary() {
+  feature::PlatformFeaturesInterface* feature_lib =
+      feature::PlatformFeatures::Get();
+  if (!feature_lib) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+    if (!feature::PlatformFeatures::Initialize(bus)) {
+      LOG(ERROR) << "Failed to initialize dbus for feature lib.";
+    }
+    feature_lib = feature::PlatformFeatures::Get();
+  }
+
+  return feature_lib;
+}
+}  // namespace
+
 namespace anomaly {
 
 LogReader::LogReader(const base::FilePath& path)
-    : log_file_path_(path), log_file_(path) {
+    : log_file_path_(path), log_file_(path, GetFeatureLibrary()) {
   // Go directly to the end of the file.  We don't want to parse the same
   // anomalies multiple times on reboot/restart.  We might miss some
   // anomalies, but so be it---it's too hard to keep track reliably of the

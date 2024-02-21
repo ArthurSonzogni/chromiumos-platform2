@@ -14,18 +14,31 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <dbus/bus.h>
+#include <featured/feature_library.h>
+
+namespace {
+
+const struct VariationsFeature kGravediggerEnabledFeature = {
+    .name = "CrOSLateBootGravedigger",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
+}  // namespace
 
 namespace anomaly {
 
-TextFileReader::TextFileReader(const base::FilePath& path)
-    : file_path_(path), buf_(kBufferSize_) {
+TextFileReader::TextFileReader(
+    const base::FilePath& path,
+    feature::PlatformFeaturesInterface* feature_library)
+    : file_path_(path), buf_(kBufferSize_), feature_library_(feature_library) {
   Open();
 }
 
 TextFileReader::~TextFileReader() {}
 
 bool TextFileReader::GetLine(std::string* line) {
-  if (!file_.IsValid() && !Open())
+  if (!HaveOpenLogFile() && !Open())
     return false;
 
   bool end_of_file = false;
@@ -62,13 +75,32 @@ bool TextFileReader::Open() {
     return false;
   }
   open_tries_++;
+  gravedigger_file_.reset();
+  direct_file_.Close();
 
-  file_ = base::File(file_path_, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (IsGravediggerEnabled()) {
+    if (gravedigger::LogFile::PathExists(file_path_)) {
+      gravedigger_file_ = gravedigger::LogFile::Open(file_path_);
+      LOG_IF(WARNING, !gravedigger_file_)
+          << " Try #" << open_tries_
+          << " failed to open logfile: " << file_path_.value();
+    } else {
+      LOG(WARNING) << "Try #" << open_tries_
+                   << " no such logfile: " << file_path_.value();
+    }
+  } else {
+    direct_file_ =
+        base::File(file_path_, base::File::FLAG_OPEN | base::File::FLAG_READ);
 
-  if (!file_.IsValid()) {
-    PLOG(WARNING) << "Try #" << open_tries_
-                  << " Failed to open file: " << file_path_.value();
-
+    if (!direct_file_.IsValid()) {
+      PLOG(WARNING) << "Try #" << open_tries_
+                    << " Failed to open file: " << file_path_.value();
+    }
+  }
+  if (HaveOpenLogFile()) {
+    // Reset open_tries_ upon successful Open().
+    open_tries_ = 0;
+  } else {
     if (kMaxOpenRetries_ == open_tries_) {
       LOG(ERROR) << "Max number of retries to open file " << file_path_.value()
                  << " reached.";
@@ -76,14 +108,16 @@ bool TextFileReader::Open() {
     return false;
   }
 
-  // Reset open_tries_ upon successful Open().
-  open_tries_ = 0;
-
-  struct stat st;
-  // Use fstat instead of stat to make sure that it gets the inode number for
-  // the file that was opened.
-  CHECK_GE(fstat(file_.GetPlatformFile(), &st), 0);
-  inode_number_ = st.st_ino;
+  if (gravedigger_file_) {
+    inode_number_ = gravedigger_file_->GetInode();
+    CHECK_GT(inode_number_, 0);
+  } else {
+    struct stat st;
+    // Use fstat instead of stat to make sure that it gets the inode number for
+    // the file that was opened.
+    CHECK_GE(fstat(direct_file_.GetPlatformFile(), &st), 0);
+    inode_number_ = st.st_ino;
+  }
   Clear();
   return true;
 }
@@ -92,7 +126,14 @@ bool TextFileReader::LoadToBuffer() {
   pos_ = 0;
   end_pos_ = 0;
 
-  int64_t bytes_read = file_.ReadAtCurrentPos(buf_.data(), buf_.size());
+  int bytes_read = -1;
+  if (gravedigger_file_) {
+    bytes_read =
+        gravedigger_file_->ReadAtCurrentPosition(buf_.data(), buf_.size())
+            .value_or(-1);
+  } else {
+    bytes_read = direct_file_.ReadAtCurrentPos(buf_.data(), buf_.size());
+  }
   if (bytes_read > 0) {
     end_pos_ = bytes_read;
     return true;
@@ -112,8 +153,11 @@ bool TextFileReader::LoadToBuffer() {
   return false;
 }
 
-bool TextFileReader::CheckForNewFile() {
+bool TextFileReader::CheckForNewFile() const {
   struct stat st;
+
+  // TODO(b/329593782): Update file rotation logic once gravedigger handles
+  // split files.
 
   int result = stat(file_path_.value().c_str(), &st);
 
@@ -125,28 +169,57 @@ bool TextFileReader::CheckForNewFile() {
   return inode_number_ != st.st_ino;
 }
 
+bool TextFileReader::HaveOpenLogFile() const {
+  if (gravedigger_file_) {
+    return true;
+  } else {
+    return direct_file_.IsValid();
+  }
+}
+
 void TextFileReader::SeekToEnd() {
-  if (!file_.IsValid())
+  if (!HaveOpenLogFile())
     return;
 
   skip_next_ = true;
   Clear();
-  file_.Seek(base::File::FROM_END, -1);
+  if (gravedigger_file_) {
+    gravedigger_file_->SeekBeforeEnd();
+  } else {
+    direct_file_.Seek(base::File::FROM_END, -1);
+  }
 }
 
 void TextFileReader::SeekToBegin() {
-  if (!file_.IsValid())
+  if (!HaveOpenLogFile())
     return;
 
   skip_next_ = false;
   Clear();
-  file_.Seek(base::File::FROM_BEGIN, 0);
+  if (gravedigger_file_) {
+    gravedigger_file_->SeekToBegin();
+  } else {
+    direct_file_.Seek(base::File::FROM_BEGIN, 0);
+  }
 }
 
 void TextFileReader::Clear() {
   line_fragment_.clear();
   end_pos_ = 0;
   pos_ = 0;
+}
+
+bool TextFileReader::IsGravediggerEnabled() const {
+  bool enabled;
+  if (feature_library_) {
+    enabled = feature_library_->IsEnabledBlocking(kGravediggerEnabledFeature);
+  } else {
+    enabled = (kGravediggerEnabledFeature.default_state ==
+               FeatureState::FEATURE_ENABLED_BY_DEFAULT);
+  }
+  LOG(INFO) << "Using gravedigger to read log files: "
+            << (enabled ? "yes" : "no");
+  return enabled;
 }
 
 }  // namespace anomaly
