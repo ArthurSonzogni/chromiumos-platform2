@@ -567,7 +567,7 @@ TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
   SetMockDevices(
       {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
 
-  EXPECT_CALL(*throttler_, ThrottleInterfaces(_, _, _)).Times(1);
+  EXPECT_CALL(*throttler_, ThrottleInterfaces).Times(1);
   EXPECT_CALL(*throttler_, ApplyThrottleToNewInterface(_)).Times(2);
 
   manager()->RegisterDevice(mock_devices_[0]);
@@ -585,10 +585,10 @@ TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
   int ulrate = 1024;
   int dlrate = 2048;
 
-  EXPECT_CALL(*throttler_, ThrottleInterfaces(_, ulrate, dlrate));
+  EXPECT_CALL(*throttler_, ThrottleInterfaces(_, ulrate, dlrate, _));
   manager()->SetNetworkThrottlingStatus(base::DoNothing(), true, ulrate,
                                         dlrate);
-  EXPECT_CALL(*throttler_, DisableThrottlingOnAllInterfaces(_));
+  EXPECT_CALL(*throttler_, DisableThrottlingOnAllInterfaces);
   manager()->SetNetworkThrottlingStatus(base::DoNothing(), false, ulrate,
                                         dlrate);
 }

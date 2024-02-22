@@ -10,7 +10,6 @@
 
 #include "shill/mock_control.h"
 #include "shill/mock_file_io.h"
-#include "shill/mock_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -25,9 +24,7 @@ namespace shill {
 
 class ThrottlerTest : public Test {
  public:
-  ThrottlerTest()
-      : mock_manager_(&control_interface_, &dispatcher_, nullptr),
-        throttler_(&dispatcher_, &mock_manager_) {
+  ThrottlerTest() : throttler_(&dispatcher_) {
     throttler_.process_manager_ = &mock_process_manager_;
     throttler_.file_io_ = &mock_file_io_;
   }
@@ -43,7 +40,6 @@ class ThrottlerTest : public Test {
 
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
-  StrictMock<MockManager> mock_manager_;
   NiceMock<net_base::MockProcessManager> mock_process_manager_;
   NiceMock<MockFileIO> mock_file_io_;
   Throttler throttler_;
@@ -59,9 +55,7 @@ const pid_t ThrottlerTest::kPID3 = 9902;
 const uint32_t ThrottlerTest::kThrottleRate = 100;
 
 TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
-  std::vector<std::string> interfaces = {kIfaceName0, kIfaceName1};
-  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
-      .WillOnce(Return(interfaces));
+  const std::vector<std::string> interfaces = {kIfaceName0, kIfaceName1};
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   EXPECT_CALL(
       mock_process_manager_,
@@ -83,8 +77,8 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  throttler_.ThrottleInterfaces(base::DoNothing(), kThrottleRate,
-                                kThrottleRate);
+  throttler_.ThrottleInterfaces(base::DoNothing(), kThrottleRate, kThrottleRate,
+                                interfaces);
   throttler_.OnProcessExited(0);
   throttler_.OnProcessExited(0);
   EXPECT_TRUE(throttler_.desired_throttling_enabled_);
@@ -118,9 +112,7 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   throttler_.desired_throttling_enabled_ = true;
   throttler_.desired_upload_rate_kbits_ = kThrottleRate;
   throttler_.desired_download_rate_kbits_ = kThrottleRate;
-  std::vector<std::string> interfaces = {kIfaceName0};
-  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
-      .WillOnce(Return(interfaces));
+  const std::vector<std::string> interfaces = {kIfaceName0};
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   EXPECT_CALL(
       mock_process_manager_,
@@ -138,7 +130,7 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing());
+  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing(), interfaces);
   throttler_.OnProcessExited(0);
   EXPECT_FALSE(throttler_.desired_throttling_enabled_);
   EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);
@@ -149,9 +141,7 @@ TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
   throttler_.desired_throttling_enabled_ = false;
   throttler_.desired_upload_rate_kbits_ = 0;
   throttler_.desired_download_rate_kbits_ = 0;
-  std::vector<std::string> interfaces = {kIfaceName0};
-  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
-      .WillOnce(Return(interfaces));
+  const std::vector<std::string> interfaces = {kIfaceName0};
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
   EXPECT_CALL(
       mock_process_manager_,
@@ -169,7 +159,7 @@ TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing());
+  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing(), interfaces);
   throttler_.OnProcessExited(1);
   EXPECT_FALSE(throttler_.desired_throttling_enabled_);
   EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);

@@ -14,8 +14,8 @@
 #include <net-base/process_manager.h>
 
 #include "shill/callbacks.h"
+#include "shill/event_dispatcher.h"
 #include "shill/file_io.h"
-#include "shill/manager.h"
 
 namespace shill {
 
@@ -35,16 +35,18 @@ namespace shill {
 
 class Throttler {
  public:
-  Throttler(EventDispatcher* dispatcher, Manager* manager);
+  explicit Throttler(EventDispatcher* dispatcher);
   Throttler(const Throttler&) = delete;
   Throttler& operator=(const Throttler&) = delete;
 
   virtual ~Throttler();
 
-  virtual bool DisableThrottlingOnAllInterfaces(ResultCallback callback);
+  virtual bool DisableThrottlingOnAllInterfaces(
+      ResultCallback callback, const std::vector<std::string>& interfaces);
   virtual bool ThrottleInterfaces(ResultCallback callback,
                                   uint32_t upload_rate_kbits,
-                                  uint32_t download_rate_kbits);
+                                  uint32_t download_rate_kbits,
+                                  const std::vector<std::string>& interfaces);
 
   virtual bool ApplyThrottleToNewInterface(const std::string& interface_name);
 
@@ -111,8 +113,6 @@ class Throttler {
   virtual void ClearTCState();
   virtual void ClearThrottleStatus();
 
-  // To get a list of interfaces to throttle
-  Manager* manager_;
   // For spawning 'tc'
   net_base::ProcessManager* process_manager_;
 

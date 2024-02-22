@@ -180,7 +180,7 @@ Manager::Manager(ControlInterface* control_interface,
       vpn_provider_(new VPNProvider(this)),
       supplicant_manager_(new SupplicantManager(this)),
       wifi_provider_(new WiFiProvider(this)),
-      throttler_(new Throttler(dispatcher, this)),
+      throttler_(new Throttler(dispatcher)),
       resolver_(Resolver::GetInstance()),
       running_(false),
       last_default_physical_service_(nullptr),
@@ -1209,7 +1209,8 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
       IsPrimaryConnectivityTechnology(to_manage->technology())) {
     if (devices_.size() == 1) {
       throttler_->ThrottleInterfaces(base::DoNothing(), upload_rate_kbits_,
-                                     download_rate_kbits_);
+                                     download_rate_kbits_,
+                                     GetDeviceInterfaceNames());
     } else {
       // Apply any existing network bandwidth throttling.
       throttler_->ApplyThrottleToNewInterface(to_manage->link_name());
@@ -3199,9 +3200,11 @@ bool Manager::SetNetworkThrottlingStatus(ResultCallback callback,
     LOG(INFO) << "Asked for upload rate (kbits/s) : " << upload_rate_kbits_
               << " download rate (kbits/s) : " << download_rate_kbits_;
     result = throttler_->ThrottleInterfaces(
-        std::move(callback), upload_rate_kbits_, download_rate_kbits_);
+        std::move(callback), upload_rate_kbits_, download_rate_kbits_,
+        GetDeviceInterfaceNames());
   } else {
-    result = throttler_->DisableThrottlingOnAllInterfaces(std::move(callback));
+    result = throttler_->DisableThrottlingOnAllInterfaces(
+        std::move(callback), GetDeviceInterfaceNames());
   }
   return result;
 }

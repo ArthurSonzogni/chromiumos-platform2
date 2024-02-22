@@ -50,11 +50,10 @@ const char kTemplateBurst[] = "${BURST}";
 const char Throttler::kTCUser[] = "nobody";
 const char Throttler::kTCGroup[] = "nobody";
 
-Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
+Throttler::Throttler(EventDispatcher* dispatcher)
     : file_io_(FileIO::GetInstance()),
       tc_stdin_(-1),
       tc_pid_(0),
-      manager_(manager),
       process_manager_(net_base::ProcessManager::GetInstance()) {
   SLOG(2) << __func__;
 }
@@ -71,10 +70,10 @@ void Throttler::ClearTCState() {
   callback_.Reset();
 }
 
-bool Throttler::DisableThrottlingOnAllInterfaces(ResultCallback callback) {
+bool Throttler::DisableThrottlingOnAllInterfaces(
+    ResultCallback callback, const std::vector<std::string>& interfaces) {
   bool result = false;
 
-  std::vector<std::string> interfaces = manager_->GetDeviceInterfaceNames();
   std::vector<std::string> commands;
 
   for (const auto& interface_name : interfaces) {
@@ -118,7 +117,8 @@ void Throttler::Done(ResultCallback callback,
 
 bool Throttler::ThrottleInterfaces(ResultCallback callback,
                                    uint32_t upload_rate_kbits,
-                                   uint32_t download_rate_kbits) {
+                                   uint32_t download_rate_kbits,
+                                   const std::vector<std::string>& interfaces) {
   // At least one of upload/download should be throttled.
   // 0 value indicates no throttling.
   if ((upload_rate_kbits == 0) && (download_rate_kbits == 0)) {
@@ -127,7 +127,7 @@ bool Throttler::ThrottleInterfaces(ResultCallback callback,
     return false;
   }
 
-  tc_interfaces_to_throttle_ = manager_->GetDeviceInterfaceNames();
+  tc_interfaces_to_throttle_ = interfaces;
 
   std::string interface_name = GetNextInterface();
 

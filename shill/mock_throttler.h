@@ -24,12 +24,13 @@ class MockThrottler : public Throttler {
 
   MOCK_METHOD(bool,
               DisableThrottlingOnAllInterfaces,
-              (ResultCallback),
+              (ResultCallback, const std::vector<std::string>&),
               (override));
-  MOCK_METHOD(bool,
-              ThrottleInterfaces,
-              (ResultCallback, uint32_t, uint32_t),
-              (override));
+  MOCK_METHOD(
+      bool,
+      ThrottleInterfaces,
+      (ResultCallback, uint32_t, uint32_t, const std::vector<std::string>&),
+      (override));
   MOCK_METHOD(bool,
               ApplyThrottleToNewInterface,
               (const std::string&),
