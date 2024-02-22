@@ -9,6 +9,7 @@ pub mod dbus;
 mod dbus_ownership_listener;
 pub mod feature;
 pub mod memory;
+mod metrics;
 mod power;
 mod proc;
 pub mod process_stats;

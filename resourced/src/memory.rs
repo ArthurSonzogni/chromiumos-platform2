@@ -23,6 +23,7 @@ use system_api::vm_memory_management::ResizePriority;
 
 use crate::common;
 use crate::common::read_from_file;
+use crate::metrics;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
@@ -577,20 +578,13 @@ async fn try_vmms_reclaim_memory(
 }
 
 fn report_vmms_reclaim_memory_duration(duration: Duration) -> Result<()> {
-    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
-
-    // Shall panic on poisoned mutex.
-    metrics
-        .lock()
-        .expect("Lock MetricsLibrary object failed")
-        .send_to_uma(
-            "Platform.Resourced.VmmsReclaimMemoryDuration", // Metric name
-            duration.as_millis() as i32,                    // Sample
-            0,                                              // Min
-            1000,                                           // Max
-            50,                                             // Number of buckets
-        )?;
-    Ok(())
+    metrics::send_to_uma(
+        "Platform.Resourced.VmmsReclaimMemoryDuration", // Metric name
+        duration.as_millis() as i32,                    // Sample
+        0,                                              // Min
+        1000,                                           // Max
+        50,                                             // Number of buckets
+    )
 }
 
 pub async fn get_memory_pressure_status(

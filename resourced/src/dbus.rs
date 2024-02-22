@@ -36,6 +36,7 @@ use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
 use crate::memory;
+use crate::metrics;
 use crate::power;
 use crate::proc::load_euid;
 use crate::process_stats;
@@ -718,34 +719,23 @@ async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
 }
 
 fn report_notification_count(notification_count: i32) -> Result<()> {
-    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
-
-    // Shall panic on poisoned mutex.
-    metrics
-        .lock()
-        .expect("Lock MetricsLibrary object failed")
-        .send_to_uma(
-            "Platform.Resourced.MemoryNotificationCountTenMinutes", // Metric name
-            notification_count,                                     // Sample
-            0,                                                      // Min
-            1000,                                                   // Max
-            50,                                                     // Number of buckets
-        )?;
-    Ok(())
+    metrics::send_to_uma(
+        "Platform.Resourced.MemoryNotificationCountTenMinutes", // Metric name
+        notification_count,                                     // Sample
+        0,                                                      // Min
+        1000,                                                   // Max
+        50,                                                     // Number of buckets
+    )
 }
 
 fn report_memory_stats(stats: process_stats::MemStats) -> Result<()> {
-    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
-    // Shall panic on poisoned mutex.
-    let mut metrics = metrics.lock().expect("Lock MetricsLibrary object failed");
-
     for (process_kind, stats) in stats.iter().enumerate() {
         for (mem_kind, usage_bytes) in stats.iter().enumerate() {
             // Max process allocation size in megabytes, used as an upper bound
             // for UMA histograms (these are all consumer devices, and 64 GB
             // should be good for a few more years).
             const MAX_MEM_SIZE_MIB: i32 = 64 * 1024;
-            metrics.send_to_uma(
+            metrics::send_to_uma(
                 &process_stats::get_metric_name(process_kind, mem_kind),
                 (usage_bytes / 1024 / 1024) as i32,
                 1,
