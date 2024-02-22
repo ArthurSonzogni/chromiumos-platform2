@@ -194,6 +194,13 @@ interface VolumeButtonObserver {
   OnEvent(Button button, ButtonState button_state);
 };
 
+// Either Platform Service Record (PSR) information or an error when retrieving
+// the information.
+union GetPsrResult {
+  PsrInfo info;
+  string error;
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -367,9 +374,8 @@ interface Executor {
   // Get Platform Service Record (PSR) information.
   //
   // The response:
-  // * |result| - PSR information result.
-  // * |err| - Error message if existed.
-  GetPsr() => (PsrInfo result, string? err);
+  // * |result| - information about the PSR or an error.
+  GetPsr() => (GetPsrResult result);
 
   // Run fio and return the result.
   //

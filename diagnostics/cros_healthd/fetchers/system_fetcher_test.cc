@@ -100,8 +100,10 @@ class SystemFetcherTest : public BaseFileTest {
 
     // Default response for PSR info.
     ON_CALL(*mock_executor(), GetPsr(_))
-        .WillByDefault(
-            base::test::RunOnceCallback<0>(nullptr, "Default error"));
+        .WillByDefault([](mojom::Executor::GetPsrCallback callback) {
+          std::move(callback).Run(
+              mojom::GetPsrResult::NewError("Default error"));
+        });
   }
 
   void SetSystemInfo(const mojom::SystemInfoPtr& system_info) {
@@ -513,8 +515,8 @@ TEST_F(SystemFetcherTest, PsrInfo) {
   result->is_supported = true;
 
   EXPECT_CALL(*mock_executor(), GetPsr(_))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(result.Clone(), /*err=*/std::nullopt));
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::GetPsrResult::NewInfo(std::move(result))));
 
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
@@ -551,8 +553,8 @@ TEST_F(SystemFetcherTest, PsrInfo) {
 
 TEST_F(SystemFetcherTest, PsrError) {
   EXPECT_CALL(*mock_executor(), GetPsr(_))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*result=*/nullptr, "GetPsr error"));
+      .WillOnce(base::test::RunOnceCallback<0>(
+          mojom::GetPsrResult::NewError("GetPsr error")));
 
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));

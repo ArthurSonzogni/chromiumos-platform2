@@ -493,9 +493,9 @@ void Executor::GetPsr(GetPsrCallback callback) {
       });
 
   auto* delegate_ptr = delegate.get();
-  delegate_ptr->remote()->GetPsr(
-      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
-                                 mojom::PsrInfo::New(), kFailToLaunchDelegate));
+  delegate_ptr->remote()->GetPsr(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::GetPsrResult::NewError(kFailToLaunchDelegate)));
   delegate_ptr->StartAsync();
 }
 

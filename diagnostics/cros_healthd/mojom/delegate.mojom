@@ -88,9 +88,8 @@ interface Delegate {
   // Get Platform Service Record (PSR) information.
   //
   // The response:
-  // * |result| - PSR information result.
-  // * |err| - Error message if existed.
-  GetPsr() => (PsrInfo result, string? err);
+  // * |result| - information about the PSR or an error.
+  GetPsr() => (GetPsrResult result);
 
   // Returns a map of connector_ids to display info that records the
   // active external display connectors.

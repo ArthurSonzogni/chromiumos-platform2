@@ -436,7 +436,7 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
 
   // Treat a device that doesn't have /dev/mei0 as not supporting PSR.
   if (!base::PathExists(base::FilePath(psr::kCrosMeiPath))) {
-    std::move(callback).Run(std::move(result), std::nullopt);
+    std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
     return;
   }
 
@@ -444,24 +444,27 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
   if (std::optional<bool> check_psr_result =
           psr_cmd.CheckPlatformServiceRecord();
       !check_psr_result.has_value()) {
-    std::move(callback).Run(std::move(result), "Check PSR is not working.");
+    std::move(callback).Run(
+        mojom::GetPsrResult::NewError("Check PSR is not working."));
     return;
   } else if (!check_psr_result.value()) {
     // PSR is not supported.
-    std::move(callback).Run(std::move(result), std::nullopt);
+    std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
     return;
   }
 
   psr::PsrHeciResp psr_res;
   result->is_supported = true;
   if (!psr_cmd.GetPlatformServiceRecord(psr_res)) {
-    std::move(callback).Run(std::move(result), "Get PSR is not working.");
+    std::move(callback).Run(
+        mojom::GetPsrResult::NewError("Get PSR is not working."));
     return;
   }
 
   if (psr_res.psr_version.major != psr::kPsrVersionMajor ||
       psr_res.psr_version.minor != psr::kPsrVersionMinor) {
-    std::move(callback).Run(std::move(result), "Requires PSR 2.0 version.");
+    std::move(callback).Run(
+        mojom::GetPsrResult::NewError("Requires PSR 2.0 version."));
     return;
   }
 
@@ -536,7 +539,7 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
     result->events.push_back(std::move(tmp_event));
   }
 
-  std::move(callback).Run(std::move(result), std::nullopt);
+  std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
 }
 
 void DelegateImpl::GetConnectedExternalDisplayConnectors(
