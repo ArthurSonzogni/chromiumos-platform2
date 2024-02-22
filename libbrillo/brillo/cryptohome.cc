@@ -22,9 +22,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
-namespace brillo {
-namespace cryptohome {
-namespace home {
+namespace brillo::cryptohome::home {
 namespace {
 
 using base::FilePath;
@@ -90,31 +88,42 @@ FilePath GetRootPathPrefix() {
   return FilePath(kRootHomePrefix);
 }
 
-FilePath GetHashedUserPath(const ObfuscatedUsername& hashed_username) {
-  return FilePath(
-      base::StringPrintf("%s%s", g_user_home_prefix, hashed_username->c_str()));
-}
-
 FilePath GetUserPath(const Username& username) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
   return GetHashedUserPath(SanitizeUserName(username));
 }
 
+FilePath GetUserPath(const ObfuscatedUsername& username) {
+  return FilePath(
+      base::StringPrintf("%s%s", g_user_home_prefix, username->c_str()));
+}
+
+FilePath GetHashedUserPath(const ObfuscatedUsername& hashed_username) {
+  return GetUserPath(hashed_username);
+}
+
 FilePath GetRootPath(const Username& username) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
-  return FilePath(base::StringPrintf("%s%s", kRootHomePrefix,
-                                     SanitizeUserName(username)->c_str()));
+  return GetRootPath(SanitizeUserName(username));
+}
+
+FilePath GetRootPath(const ObfuscatedUsername& username) {
+  return FilePath(
+      base::StringPrintf("%s%s", kRootHomePrefix, username->c_str()));
 }
 
 FilePath GetDaemonStorePath(const Username& username,
                             const std::string& daemon) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
-  return FilePath(kDaemonStorePath)
-      .Append(daemon)
-      .Append(*SanitizeUserName(username));
+  return GetDaemonStorePath(SanitizeUserName(username), daemon);
+}
+
+FilePath GetDaemonStorePath(const ObfuscatedUsername& username,
+                            const std::string& daemon) {
+  return FilePath(kDaemonStorePath).Append(daemon).Append(*username);
 }
 
 bool IsSanitizedUserName(const std::string& sanitized) {
@@ -203,6 +212,4 @@ SystemSaltLoader::SystemSaltLoader(std::vector<base::FilePath> file_paths)
   g_system_salt_loader = this;
 }
 
-}  // namespace home
-}  // namespace cryptohome
-}  // namespace brillo
+}  // namespace brillo::cryptohome::home

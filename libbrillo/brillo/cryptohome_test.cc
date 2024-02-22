@@ -14,9 +14,40 @@
 
 #include "brillo/fake_cryptohome.h"
 
-namespace brillo {
-namespace cryptohome {
-namespace home {
+namespace brillo::cryptohome::home {
+namespace {
+
+TEST(Cryptohome, GetUserPath) {
+  const Username kUsername("fakeuser");
+  FakeSystemSaltLoader fake_salt("01234567890123456789");
+
+  EXPECT_EQ(GetUserPath(kUsername).value(),
+            "/home/user/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(GetUserPath(SanitizeUserName(kUsername)).value(),
+            "/home/user/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+}
+
+TEST(Cryptohome, GetRootPath) {
+  const Username kUsername("fakeuser");
+  FakeSystemSaltLoader fake_salt("01234567890123456789");
+
+  EXPECT_EQ(GetRootPath(kUsername).value(),
+            "/home/root/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(GetRootPath(SanitizeUserName(kUsername)).value(),
+            "/home/root/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+}
+
+TEST(Cryptohome, GetDaemonStorePath) {
+  const Username kUsername("fakeuser");
+  FakeSystemSaltLoader fake_salt("01234567890123456789");
+
+  EXPECT_EQ(
+      GetDaemonStorePath(kUsername, "mydaemon").value(),
+      "/run/daemon-store/mydaemon/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(
+      GetDaemonStorePath(SanitizeUserName(kUsername), "mydaemon").value(),
+      "/run/daemon-store/mydaemon/856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+}
 
 TEST(Cryptohome, SanitizeUsername) {
   const Username kUsername("fakeuser");
@@ -72,6 +103,5 @@ TEST(Cryptohome, FakeSystemSaltLoaderPath) {
   EXPECT_EQ(fake_salt.value(), kSalt);
 }
 
-}  // namespace home
-}  // namespace cryptohome
-}  // namespace brillo
+}  // namespace
+}  // namespace brillo::cryptohome::home

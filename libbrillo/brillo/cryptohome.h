@@ -17,9 +17,7 @@
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
-namespace brillo {
-namespace cryptohome {
-namespace home {
+namespace brillo::cryptohome::home {
 
 // Types that define the types of "username" values that cryptohome uses to
 // manage user identities. This corresponds to the identifier that a user uses
@@ -54,16 +52,17 @@ BRILLO_EXPORT base::FilePath GetRootPathPrefix();
 // Returns the path at which the user home for |username| will be mounted.
 // Returns "" for failures.
 BRILLO_EXPORT base::FilePath GetUserPath(const Username& username);
+BRILLO_EXPORT base::FilePath GetUserPath(const ObfuscatedUsername& username);
 
-// Returns the path at which the user home for |hashed_username| will be
-// mounted. Useful when you already have the username hashed.
-// Returns "" for failures.
+// Legacy version of GetUserPath(ObfuscatedUsername) from when the two different
+// types of usernames were not actual distinct types.
 BRILLO_EXPORT base::FilePath GetHashedUserPath(
     const ObfuscatedUsername& hashed_username);
 
 // Returns the path at which the root home for |username| will be mounted.
 // Returns "" for failures.
 BRILLO_EXPORT base::FilePath GetRootPath(const Username& username);
+BRILLO_EXPORT base::FilePath GetRootPath(const ObfuscatedUsername& username);
 
 // Returns the path at which the daemon |daemon| should store per-user data.
 // This function returns '/run/daemon-stores/<daemon-name>/<hash>' which is
@@ -72,6 +71,8 @@ BRILLO_EXPORT base::FilePath GetRootPath(const Username& username);
 // for more details.
 BRILLO_EXPORT base::FilePath GetDaemonStorePath(const Username& username,
                                                 const std::string& daemon);
+BRILLO_EXPORT base::FilePath GetDaemonStorePath(
+    const ObfuscatedUsername& username, const std::string& daemon);
 
 // Checks whether |sanitized| has the format of a sanitized username.
 BRILLO_EXPORT bool IsSanitizedUserName(const std::string& sanitized);
@@ -141,8 +142,6 @@ class BRILLO_EXPORT SystemSaltLoader {
   std::string* value_override_for_testing_ = nullptr;
 };
 
-}  // namespace home
-}  // namespace cryptohome
-}  // namespace brillo
+}  // namespace brillo::cryptohome::home
 
 #endif  // LIBBRILLO_BRILLO_CRYPTOHOME_H_
