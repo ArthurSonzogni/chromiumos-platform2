@@ -265,9 +265,6 @@ void sl_internal_toplevel_configure(struct sl_window* window,
                                     int32_t width,
                                     int32_t height,
                                     struct wl_array* states) {
-  int activated = 0;
-  uint32_t* state;
-  int i = 0;
   if (!window->managed ||
       (window->ctx->ignore_stateless_toplevel_configure && states->size == 0)) {
     // Ignore requests for non-managed windows.
@@ -279,7 +276,7 @@ void sl_internal_toplevel_configure(struct sl_window* window,
   if (width && height) {
     int32_t width_in_pixels = width;
     int32_t height_in_pixels = height;
-    int i = 0;
+    int value_idx = 0;
 
     // We are receiving a request to resize a window (in logical dimensions)
     // If the request is equal to the cached values we used to make adjustments
@@ -359,55 +356,62 @@ void sl_internal_toplevel_configure(struct sl_window* window,
           window->ctx, window->paired_surface, &guest_x, &guest_y);
 
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      window->next_config.values[i++] = guest_x;
-      window->next_config.values[i++] = guest_y;
+      window->next_config.values[value_idx++] = guest_x;
+      window->next_config.values[value_idx++] = guest_y;
     } else if (!(window->size_flags & (US_POSITION | P_POSITION))) {
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       const sl_host_output* output = window->paired_surface
                                          ? window->paired_surface->output.get()
                                          : nullptr;
       if (output) {
-        window->next_config.values[i++] =
+        window->next_config.values[value_idx++] =
             output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
-        window->next_config.values[i++] =
+        window->next_config.values[value_idx++] =
             (output->virt_rotated_height - height_in_pixels) / 2;
       } else {
-        window->next_config.values[i++] =
+        window->next_config.values[value_idx++] =
             window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
-        window->next_config.values[i++] =
+        window->next_config.values[value_idx++] =
             window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
       }
     }
     if (window->viewport_override) {
-      window->next_config.values[i++] = window->width;
-      window->next_config.values[i++] = window->height;
-      window->next_config.values[i++] = 0;
+      window->next_config.values[value_idx++] = window->width;
+      window->next_config.values[value_idx++] = window->height;
+      window->next_config.values[value_idx++] = 0;
     } else {
-      window->next_config.values[i++] = width_in_pixels;
-      window->next_config.values[i++] = height_in_pixels;
-      window->next_config.values[i++] = 0;
+      window->next_config.values[value_idx++] = width_in_pixels;
+      window->next_config.values[value_idx++] = height_in_pixels;
+      window->next_config.values[value_idx++] = 0;
     }
   }
 
+  // States: https://wayland.app/protocols/xdg-shell#xdg_toplevel:enum:state
+  // Note that if there are no states specified, it is not-maximized,
+  // not-fullscreen, not-currently-being-resized and not-activated window.
+  int activated = 0;
   window->allow_resize = 1;
   window->compositor_fullscreen = 0;
+
+  uint32_t* state;
+  int state_idx = 0;
   sl_array_for_each(state, states) {
     if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
       window->allow_resize = 0;
-      window->next_config.states[i++] =
+      window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
       window->compositor_fullscreen = 1;
     }
     if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
       window->allow_resize = 0;
-      window->next_config.states[i++] =
+      window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
-      window->next_config.states[i++] =
+      window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
     }
     if (*state == XDG_TOPLEVEL_STATE_ACTIVATED) {
       activated = 1;
-      window->next_config.states[i++] =
+      window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
     }
     if (*state == XDG_TOPLEVEL_STATE_RESIZING)
@@ -422,7 +426,8 @@ void sl_internal_toplevel_configure(struct sl_window* window,
     window->activated = activated;
   }
 
-  window->next_config.states_length = i;
+  // Override previous state definitions
+  window->next_config.states_length = state_idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
