@@ -348,6 +348,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/reporting/crash_events(/.*)?   u:object_r:cros_var_lib_reporting_crash_events:s0
 /var/lib/reporting(/.*)?        u:object_r:cros_var_lib_reporting:s0
 /var/lib/rmad(/.*)?             u:object_r:cros_var_lib_rmad:s0
+/var/lib/secagentd(/.*)?        u:object_r:cros_var_lib_secagentd:s0
 /var/lib/shill(/.*)?            u:object_r:cros_var_lib_shill:s0
 /var/lib/tpm(/.*)?              u:object_r:cros_var_lib_tpm:s0
 /var/lib/tpm_manager(/.*)?      u:object_r:cros_var_lib_tpm_manager:s0
