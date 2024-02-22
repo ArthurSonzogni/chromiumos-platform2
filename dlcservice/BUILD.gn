@@ -233,6 +233,7 @@ if (use.test) {
       "dlc_service_test.cc",
       "dlc_test.cc",
       "error_test.cc",
+      "installer_test.cc",
       "metrics_test.cc",
       "prefs_test.cc",
       "system_state_test.cc",

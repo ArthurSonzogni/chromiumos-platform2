@@ -12,8 +12,10 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <base/gtest_prod_util.h>
 #include <brillo/errors/error.h>
 #include <dbus/update_engine/dbus-constants.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
@@ -135,6 +137,11 @@ class UpdateEngineInstaller : public Installer {
   void StatusSync() override;
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(UpdateEngineInstallerWithBoolParamsTest,
+                           OnReadyTest);
+  FRIEND_TEST_ALL_PREFIXES(UpdateEngineInstallerWithStatusParamsTest,
+                           StatusSyncTest);
+
   // Callback for `WaitForServiceToBeAvailable` from DBus.
   void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
 
