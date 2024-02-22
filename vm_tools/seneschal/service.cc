@@ -737,7 +737,6 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   // Validate owner_id.
   base::FilePath owner_id(request.owner_id());
   bool owner_id_required =
-      request.storage_location() == SharePathRequest::DOWNLOADS ||
       request.storage_location() == SharePathRequest::MY_FILES ||
       request.storage_location() == SharePathRequest::LINUX_FILES ||
       request.storage_location() == SharePathRequest::GUEST_OS_FILES;
@@ -828,10 +827,6 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   const size_t prefix_len = dst.value().size() + 1;
 
   switch (request.storage_location()) {
-    case SharePathRequest::DOWNLOADS:
-      src = base::FilePath("/home/user/").Append(owner_id).Append("Downloads");
-      dst = dst.Append("MyFiles").Append("Downloads");
-      break;
     case SharePathRequest::DRIVEFS_MY_DRIVE:
       src = base::FilePath("/media/fuse/")
                 .Append(drivefs_mount_name)
@@ -1143,6 +1138,7 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
   // In reverse order, unmount paths.
   for (auto& mount_point : std::ranges::reverse_view(mount_points)) {
     if (umount(mount_point.value().c_str()) != 0) {
+      // TODO(b/326840839): Revisit this after Downloads bind mount is removed.
       // When MyFiles is shared, its MyFiles/Downloads mount propagates. It
       // seems that the kernel does not allow us to unmount MyFiles/Downloads
       // with EINVAL, and then also fails to unmount MyFiles with EBUSY even

@@ -30,7 +30,6 @@ using std::string;
 
 namespace {
 
-constexpr char kStorageDownloads[] = "downloads";
 constexpr char kStorageMyFiles[] = "myfiles";
 constexpr char kStorageMyDrive[] = "mydrive";
 constexpr char kStorageTeamDrives[] = "teamdrives";
@@ -174,13 +173,7 @@ int SharePath(dbus::ObjectProxy* proxy,
   }
 
   vm_tools::seneschal::SharePathRequest_StorageLocation location;
-  if (storage_location == kStorageDownloads) {
-    if (owner_id.empty()) {
-      LOG(ERROR) << "--owner_id is required for --storage_location=downloads";
-      return EXIT_FAILURE;
-    }
-    location = vm_tools::seneschal::SharePathRequest::DOWNLOADS;
-  } else if (storage_location == kStorageMyFiles) {
+  if (storage_location == kStorageMyFiles) {
     if (owner_id.empty()) {
       LOG(ERROR) << "--owner_id is required for --storage_location=myfiles";
       return EXIT_FAILURE;
@@ -232,7 +225,7 @@ int SharePath(dbus::ObjectProxy* proxy,
     location = vm_tools::seneschal::SharePathRequest::GUEST_OS_FILES;
   } else {
     LOG(ERROR) << "--storage_location is required "
-                  "(myfiles|downloads|mydrive|teamdrives|computers|removable|"
+                  "(myfiles|mydrive|teamdrives|computers|removable|"
                   "playfiles|linuxfiles|guestosfiles)";
     return EXIT_FAILURE;
   }
@@ -420,7 +413,7 @@ int main(int argc, char** argv) {
       "The mount directory name within /media/fuse for DriveFS or GuestOs");
   DEFINE_string(storage_location, kStorageMyFiles,
                 "The storage location of path to share "
-                "(myfiles|downloads|mydrive|teamdrives|computers|removable|"
+                "(myfiles|mydrive|teamdrives|computers|removable|"
                 "playfiles|linuxfiles|guestosfiles)");
   DEFINE_uint64(handle, 0, "The handle for the server");
   DEFINE_uint64(port, 0, "Port number on which the server should listen");

@@ -127,7 +127,7 @@ message SharePathRequest {
   enum StorageLocation {
     // The user's Downloads/ directory /home/user/<owner_id>/Downloads.
     // Note: This field is deprecated.  MY_FILES should be used.
-    DOWNLOADS = 0;
+    DEPRECATED_DOWNLOADS = 0;
     // DriveFS directory /media/fuse/<drivefs_mount_name>/root.
     DRIVEFS_MY_DRIVE = 1;
     // DriveFS directory /media/fuse/<drivefs_mount_name>/team_drives.
