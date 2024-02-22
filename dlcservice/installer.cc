@@ -13,8 +13,17 @@
 #include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/system_state.h"
+#include "dlcservice/utils.h"
 
 namespace dlcservice {
+
+void Installer::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void Installer::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
 
 bool Installer::Init() {
   return true;
@@ -43,18 +52,34 @@ void Installer::ScheduleOnReady(OnReadyCallback callback, bool ready) {
                      std::move(callback), ready));
 }
 
+void Installer::StatusSync() {
+  NotifyStatusSync({});
+}
+
+void Installer::NotifyStatusSync(const Status& status) {
+  for (Observer& observer : observers_)
+    observer.OnStatusSync(status);
+}
+
+UpdateEngineInstaller::UpdateEngineInstaller() : weak_ptr_factory_(this) {}
+
 bool UpdateEngineInstaller::Init() {
-  // Default for update_engine status.
-  update_engine::StatusResult status;
-  status.set_current_operation(update_engine::Operation::IDLE);
-  status.set_is_install(false);
-  SystemState::Get()->set_update_engine_status(status);
-  SystemState::Get()
-      ->update_engine()
-      ->GetObjectProxy()
-      ->WaitForServiceToBeAvailable(base::BindOnce(
-          &UpdateEngineInstaller::OnWaitForUpdateEngineServiceToBeAvailable,
-          base::Unretained(this)));
+  SystemState::Get()->set_installer_status(Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = false,
+      .progress = 0.,
+  });
+
+  auto* update_engine = SystemState::Get()->update_engine();
+  update_engine->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
+      &UpdateEngineInstaller::OnWaitForUpdateEngineServiceToBeAvailable,
+      base::Unretained(this)));
+  update_engine->RegisterStatusUpdateAdvancedSignalHandler(
+      base::BindRepeating(&UpdateEngineInstaller::OnStatusUpdateAdvancedSignal,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(
+          &UpdateEngineInstaller::OnStatusUpdateAdvancedSignalConnected,
+          weak_ptr_factory_.GetWeakPtr()));
   return true;
 }
 
@@ -83,6 +108,19 @@ void UpdateEngineInstaller::OnReady(OnReadyCallback callback) {
   // Service is not available yet, waiting..
 }
 
+void UpdateEngineInstaller::StatusSync() {
+  SystemState::Get()->update_engine()->GetStatusAdvancedAsync(
+      base::BindOnce(&UpdateEngineInstaller::OnStatusUpdateAdvancedSignal,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce([](brillo::Error* err) {
+        if (err) {
+          auto err_ptr = err->Clone();
+          LOG(ERROR) << "Failed to get update_engine status, err="
+                     << Error::ToString(err_ptr);
+        }
+      }));
+}
+
 void UpdateEngineInstaller::OnWaitForUpdateEngineServiceToBeAvailable(
     bool available) {
   update_engine_service_available_ = available;
@@ -90,6 +128,45 @@ void UpdateEngineInstaller::OnWaitForUpdateEngineServiceToBeAvailable(
     Installer::ScheduleOnReady(std::move(callback), available);
   }
   on_ready_callbacks_.clear();
+}
+
+void UpdateEngineInstaller::OnStatusUpdateAdvancedSignal(
+    const update_engine::StatusResult& status_result) {
+  Status status;
+  switch (status_result.current_operation()) {
+    case update_engine::Operation::UPDATED_NEED_REBOOT:
+      status.state = Status::State::BLOCKED;
+      break;
+    case update_engine::Operation::IDLE:
+      status.state = Status::State::OK;
+      break;
+    case update_engine::Operation::REPORTING_ERROR_EVENT:
+      status.state = Status::State::ERROR;
+      break;
+    case update_engine::Operation::VERIFYING:
+      status.state = Status::State::VERIFYING;
+      break;
+    case update_engine::Operation::DOWNLOADING:
+      status.state = Status::State::DOWNLOADING;
+      break;
+    default:
+      status.state = Status::State::CHECKING;
+      break;
+  }
+  status.is_install = status_result.is_install();
+  status.progress = status_result.progress();
+
+  Installer::NotifyStatusSync(status);
+}
+
+void UpdateEngineInstaller::OnStatusUpdateAdvancedSignalConnected(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << AlertLogTag(kCategoryInit)
+               << "Failed to connect to update_engine's StatusUpdate signal.";
+  }
 }
 
 }  // namespace dlcservice

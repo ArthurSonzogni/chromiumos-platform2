@@ -217,18 +217,18 @@ base::Clock* SystemState::clock() const {
   return clock_;
 }
 
-void SystemState::set_update_engine_status(
-    const update_engine::StatusResult& status) {
-  last_update_engine_status_ = status;
-  last_update_engine_status_timestamp_ = clock_->Now();
+void SystemState::set_installer_status(
+    const InstallerInterface::Status& status) {
+  last_installer_status_ = status;
+  last_installer_status_timestamp_ = clock_->Now();
 }
 
-const update_engine::StatusResult& SystemState::update_engine_status() {
-  return last_update_engine_status_;
+const InstallerInterface::Status& SystemState::installer_status() {
+  return last_installer_status_;
 }
 
-const base::Time& SystemState::update_engine_status_timestamp() {
-  return last_update_engine_status_timestamp_;
+const base::Time& SystemState::installer_status_timestamp() {
+  return last_installer_status_timestamp_;
 }
 
 bool SystemState::resuming_from_hibernate() {

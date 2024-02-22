@@ -30,6 +30,7 @@
 #include <lvmd/proto_bindings/lvmd.pb.h>
 
 #include "dlcservice/error.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils.h"
@@ -38,8 +39,6 @@
 using brillo::ErrorPtr;
 using brillo::MessageLoop;
 using std::string;
-using update_engine::Operation;
-using update_engine::StatusResult;
 
 namespace dlcservice {
 
@@ -49,7 +48,7 @@ namespace {
 constexpr size_t kPeriodicInstallCheckSecondsDelay = 10;
 
 // This value here is the tolerance cap (allowance) of non-install signals
-// broadcasted by `update_engine`. Keep in mind when changing of it's relation
+// broadcasted by `installer`. Keep in mind when changing of it's relation
 // with the periodic install check delay as that will also determine the max
 // idle period before an installation of a DLC is halted.
 constexpr size_t kToleranceCap = 30;
@@ -75,9 +74,8 @@ DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
 DlcService::~DlcService() {
   if (periodic_install_check_id_ != MessageLoop::kTaskIdNull &&
       !brillo::MessageLoop::current()->CancelTask(periodic_install_check_id_))
-    LOG(ERROR)
-        << AlertLogTag(kCategoryCleanup)
-        << "Failed to cancel delayed update_engine check during cleanup.";
+    LOG(ERROR) << AlertLogTag(kCategoryCleanup)
+               << "Failed to cancel delayed installer check during cleanup.";
 }
 
 void DlcService::Initialize() {
@@ -88,14 +86,7 @@ void DlcService::Initialize() {
         << "Failed to create dlc prefs directory: " << prefs_dir;
   }
 
-  // Register D-Bus signal callbacks.
-  auto* update_engine = system_state->update_engine();
-  update_engine->RegisterStatusUpdateAdvancedSignalHandler(
-      base::BindRepeating(&DlcService::OnStatusUpdateAdvancedSignal,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignalConnected,
-                     weak_ptr_factory_.GetWeakPtr()));
-
+  system_state->installer()->AddObserver(this);
   system_state->installer()->OnReady(base::BindOnce(
       &DlcService::OnReadyInstaller, weak_ptr_factory_.GetWeakPtr()));
 
@@ -201,7 +192,7 @@ void DlcService::CleanupUnsupportedLvs() {
 
 void DlcService::OnReadyInstaller(bool available) {
   LOG(INFO) << "Installer service available=" << available;
-  GetUpdateEngineStatusAsync();
+  SystemState::Get()->installer()->StatusSync();
 }
 
 void DlcService::Install(
@@ -226,7 +217,7 @@ void DlcService::Install(
   };
 
   brillo::ErrorPtr err;
-  // Try to install and figure out if install through update_engine is needed.
+  // Try to install and figure out if install through installer is needed.
   bool external_install_needed = false;
   auto manager_install = [this](const InstallRequest& install_request,
                                 bool* external_install_needed, ErrorPtr* err) {
@@ -254,7 +245,7 @@ void DlcService::Install(
     }
 
     // If the DLC is now in installing state, it means it now needs
-    // update_engine installation.
+    // installer installation.
     *external_install_needed = dlc->IsInstalling();
     return true;
   };
@@ -263,7 +254,7 @@ void DlcService::Install(
     return ret_func(std::move(response), &err);
   }
 
-  // Install through update_engine only if needed.
+  // Install through installer only if needed.
   if (!external_install_needed) {
     std::move(response)->Return();
     return;
@@ -303,7 +294,7 @@ void DlcService::InstallViaInstaller(
                << "Failed to install DLC=" << install_request.id();
     SystemState::Get()->metrics()->SendInstallResultFailure(&err);
     Error::ConvertToDbusError(&err);
-    // dlcservice must cancel the install as update_engine won't be able to
+    // dlcservice must cancel the install as installer won't be able to
     // install the initialized DLC.
     CancelInstall(err);
     std::move(response)->ReplyWithError(err.get());
@@ -313,7 +304,7 @@ void DlcService::InstallViaInstaller(
   // Need to set in order for the cancellation of DLC setup.
   installing_dlc_id_ = id;
 
-  // If update_engine needs to handle the installation, wait for the service to
+  // If installer needs to handle the installation, wait for the service to
   // be up and DBus object exported. Returning busy error will allow Chrome
   // client to retry the installation.
   if (!SystemState::Get()->installer()->IsReady()) {
@@ -322,13 +313,13 @@ void DlcService::InstallViaInstaller(
                     Error::Create(FROM_HERE, kErrorBusy, err_str));
   }
 
-  // Check what state update_engine is in.
-  if (SystemState::Get()->update_engine_status().current_operation() ==
-      update_engine::UPDATED_NEED_REBOOT) {
+  // Check what state installer is in.
+  if (SystemState::Get()->installer_status().state ==
+      InstallerInterface::Status::State::BLOCKED) {
     return ret_func(
         std::move(response),
         Error::Create(FROM_HERE, kErrorNeedReboot,
-                      "Update Engine applied update, device needs a reboot."));
+                      "Installer is blocked, device needs a reboot."));
   }
 
   LOG(INFO) << "Sending request to install DLC=" << id;
@@ -373,8 +364,8 @@ void DlcService::InstallViaInstaller(
 
 void DlcService::OnInstallSuccess(
     base::OnceCallback<void(brillo::ErrorPtr)> response_func) {
-  // By now the update_engine is installing the DLC, so schedule a periodic
-  // install checker in case we miss update_engine signals.
+  // By now the installer is installing the DLC, so schedule a periodic
+  // install checker in case we miss installer signals.
   SchedulePeriodicInstallCheck();
   std::move(response_func).Run(nullptr);
 }
@@ -386,15 +377,15 @@ void DlcService::OnInstallFailure(
   if (!installing_dlc_id_)
     return;
   // Keep this double logging until tagging is removed/updated.
-  LOG(ERROR) << "Update Engine failed to install requested DLCs: "
+  LOG(ERROR) << "Installer failed to install requested DLCs: "
              << (err ? Error::ToString(err->Clone())
-                     : "Missing error from update engine proxy.");
+                     : "Missing error from installer.");
   LOG(ERROR) << AlertLogTag(kCategoryInstall)
              << "Failed to install DLC=" << installing_dlc_id_.value();
   auto ret_err =
       Error::Create(FROM_HERE, kErrorBusy,
-                    "Update Engine failed to schedule install operations.");
-  // dlcservice must cancel the install as update_engine won't be able to
+                    "Installer failed to schedule install operations.");
+  // dlcservice must cancel the install as installer won't be able to
   // install the initialized DLC.
   CancelInstall(ret_err);
   SystemState::Get()->metrics()->SendInstallResultFailure(&ret_err);
@@ -596,8 +587,8 @@ void DlcService::PeriodicInstallCheck() {
       base::Seconds(kPeriodicInstallCheckSecondsDelay);
   auto* system_state = SystemState::Get();
   if ((system_state->clock()->Now() -
-       system_state->update_engine_status_timestamp()) > kNotSeenStatusDelay) {
-    GetUpdateEngineStatusAsync();
+       system_state->installer_status_timestamp()) > kNotSeenStatusDelay) {
+    system_state->installer()->StatusSync();
   }
 
   SchedulePeriodicInstallCheck();
@@ -616,25 +607,24 @@ void DlcService::SchedulePeriodicInstallCheck() {
       kUECheckTimeout);
 }
 
-bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
+bool DlcService::HandleStatus(brillo::ErrorPtr* err) {
   // If we are not installing any DLC(s), no need to even handle status result.
   if (!installing_dlc_id_) {
     tolerance_count_ = 0;
     return true;
   }
 
-  const StatusResult& status = SystemState::Get()->update_engine_status();
-  if (!status.is_install()) {
+  const auto& status = SystemState::Get()->installer_status();
+  if (!status.is_install) {
     if (++tolerance_count_ <= kToleranceCap) {
-      LOG(WARNING)
-          << "Signal from update_engine indicates that it's not for an "
-             "install, but dlcservice was waiting for an install.";
+      LOG(WARNING) << "Signal from installer indicates that it's not for an "
+                      "install, but dlcservice was waiting for an install.";
       return true;
     }
     tolerance_count_ = 0;
     *err = Error::CreateInternal(
         FROM_HERE, error::kFailedInstallInUpdateEngine,
-        "Signal from update_engine indicates that it's not for an install, but "
+        "Signal from installer indicates that it's not for an install, but "
         "dlcservice was waiting for an install.");
     CancelInstall(*err);
     SystemState::Get()->metrics()->SendInstallResultFailure(err);
@@ -644,15 +634,14 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
   // Reset the tolerance if a valid status is handled.
   tolerance_count_ = 0;
 
-  switch (status.current_operation()) {
-    case update_engine::UPDATED_NEED_REBOOT:
-      *err =
-          Error::Create(FROM_HERE, kErrorNeedReboot,
-                        "Update Engine applied update, device needs a reboot.");
+  switch (status.state) {
+    case InstallerInterface::Status::State::BLOCKED:
+      *err = Error::Create(FROM_HERE, kErrorNeedReboot,
+                           "Installer is blocked, device needs a reboot.");
       break;
-    case Operation::IDLE:
+    case InstallerInterface::Status::State::OK:
       LOG(INFO)
-          << "Signal from update_engine, proceeding to complete installation.";
+          << "Signal from installer, proceeding to complete installation.";
       // Send metrics in |DlcBase::FinishInstall| and not here since we might
       // be executing this call for multiple DLCs.
       if (!FinishInstall(err)) {
@@ -660,16 +649,16 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
         return false;
       }
       return true;
-    case Operation::REPORTING_ERROR_EVENT:
+    case InstallerInterface::Status::State::ERROR:
       *err =
           Error::CreateInternal(FROM_HERE, error::kFailedInstallInUpdateEngine,
-                                "update_engine indicates reporting failure.");
+                                "installer indicates failure.");
       break;
-    // Only when update_engine's |Operation::DOWNLOADING| should the DLC send
-    // |DlcState::INSTALLING|. Majority of the install process for DLC(s) is
-    // during |Operation::DOWNLOADING|, this also means that only a single
-    // growth from 0.0 to 1.0 for progress reporting will happen.
-    case Operation::DOWNLOADING: {
+    // Only when installer's `DOWNLOADING` should the DLC send
+    // `DlcState::INSTALLING`. Majority of the install process for DLC(s) is
+    // during `DOWNLOADING`, this also means that only a single growth from
+    // 0.0 to 1.0 for progress reporting will happen.
+    case InstallerInterface::Status::State::DOWNLOADING: {
       auto manager_change_progress = [this](double progress) {
         for (auto& pr : supported_) {
           auto& dlc = pr.second;
@@ -678,7 +667,7 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
           }
         }
       };
-      manager_change_progress(status.progress());
+      manager_change_progress(status.progress);
 
       [[fallthrough]];
     }
@@ -691,38 +680,12 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
   return false;
 }
 
-void DlcService::GetUpdateEngineStatusAsync() {
-  SystemState::Get()->update_engine()->GetStatusAdvancedAsync(
-      base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignal,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DlcService::OnGetUpdateEngineStatusAsyncError,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void DlcService::OnGetUpdateEngineStatusAsyncError(brillo::Error* err) {
-  if (err) {
-    auto err_ptr = err->Clone();
-    LOG(ERROR) << "Failed to get update_engine status, err="
-               << Error::ToString(err_ptr);
-  }
-}
-
-void DlcService::OnStatusUpdateAdvancedSignal(
-    const StatusResult& status_result) {
-  // Always set the status.
-  SystemState::Get()->set_update_engine_status(status_result);
+void DlcService::OnStatusSync(const InstallerInterface::Status& status) {
+  SystemState::Get()->set_installer_status(status);
 
   ErrorPtr err;
-  if (!HandleStatusResult(&err))
+  if (!HandleStatus(&err))
     DCHECK(err.get());
-}
-
-void DlcService::OnStatusUpdateAdvancedSignalConnected(
-    const string& interface_name, const string& signal_name, bool success) {
-  if (!success) {
-    LOG(ERROR) << AlertLogTag(kCategoryInit)
-               << "Failed to connect to update_engine's StatusUpdate signal.";
-  }
 }
 
 bool DlcService::Unload(const std::string& id, brillo::ErrorPtr* err) {

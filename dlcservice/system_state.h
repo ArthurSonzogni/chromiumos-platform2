@@ -104,9 +104,9 @@ class SystemState {
   // Returns the clock object.
   base::Clock* clock() const;
 
-  void set_update_engine_status(const update_engine::StatusResult& status);
-  const update_engine::StatusResult& update_engine_status();
-  const base::Time& update_engine_status_timestamp();
+  void set_installer_status(const InstallerInterface::Status& status);
+  const InstallerInterface::Status& installer_status();
+  const base::Time& installer_status_timestamp();
 
   // Returns true if the system is resuming from hibernation.
   bool resuming_from_hibernate();
@@ -171,8 +171,8 @@ class SystemState {
   base::Clock* clock_;
 
   // Keep the last status result we saw.
-  update_engine::StatusResult last_update_engine_status_;
-  base::Time last_update_engine_status_timestamp_;
+  InstallerInterface::Status last_installer_status_;
+  base::Time last_installer_status_timestamp_;
 
   static std::unique_ptr<SystemState> g_instance_;
 

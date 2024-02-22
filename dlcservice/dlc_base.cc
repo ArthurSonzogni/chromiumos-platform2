@@ -25,6 +25,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include "dlcservice/error.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
@@ -714,8 +715,8 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
         // Check if the failure was because update_engine finished the
         // installation with "noupdate".
         if (installed_by_ue &&
-            SystemState::Get()->update_engine_status().last_attempt_error() ==
-                static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate)) {
+            SystemState::Get()->installer_status().last_attempt_error ==
+                update_engine::ErrorCode::kNoUpdate) {
           *err = Error::CreateInternal(
               FROM_HERE, kErrorNoImageFound,
               base::StringPrintf(
@@ -886,11 +887,10 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
 bool DlcBase::Uninstall(ErrorPtr* err) {
   // If the DLC is not verified, its not being updated, so there is no danger
   // purging it.
-  auto ue_operation =
-      SystemState::Get()->update_engine_status().current_operation();
-  bool ue_is_busy = ue_operation != update_engine::IDLE &&
-                    ue_operation != update_engine::UPDATED_NEED_REBOOT;
-  if (IsVerified() && ue_is_busy) {
+  auto state = SystemState::Get()->installer_status().state;
+  bool installer_is_busy = state != InstallerInterface::Status::State::OK &&
+                           state != InstallerInterface::Status::State::BLOCKED;
+  if (IsVerified() && installer_is_busy) {
     *err = Error::Create(FROM_HERE, kErrorBusy,
                          "Install or update is in progress.");
     return false;

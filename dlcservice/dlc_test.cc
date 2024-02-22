@@ -14,6 +14,7 @@
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/boot/mock_boot_slot.h"
 #include "dlcservice/dlc_base.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/metrics.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
@@ -786,11 +787,10 @@ TEST_F(DlcBaseTest, NoImageFoundOnUEFailureToDownloadDlc) {
   EXPECT_TRUE(dlc.Install(&err_));
   EXPECT_TRUE(dlc.IsInstalling());
 
-  // Make sure the `last_attempt_error` in update_engine is set to `kNoUpdate`.
-  update_engine::StatusResult ue_status;
-  ue_status.set_last_attempt_error(
-      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
-  SystemState::Get()->set_update_engine_status(ue_status);
+  // Make sure the `last_attempt_error` in installer is set to `NOT_FOUND`.
+  InstallerInterface::Status status;
+  status.last_attempt_error = update_engine::ErrorCode::kNoUpdate;
+  SystemState::Get()->set_installer_status(status);
 
   EXPECT_FALSE(dlc.FinishInstall(/*installed_by_ue=*/true, &err_));
 }
@@ -955,10 +955,9 @@ TEST_F(DlcBaseTest, ReserveInstall) {
   EXPECT_TRUE(dlc.Install(&err_));
   EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
 
-  update_engine::StatusResult ue_status;
-  ue_status.set_last_attempt_error(
-      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
-  SystemState::Get()->set_update_engine_status(ue_status);
+  InstallerInterface::Status status;
+  status.last_attempt_error = update_engine::ErrorCode::kNoUpdate;
+  SystemState::Get()->set_installer_status(status);
 
   dlc.FinishInstall(/*installed_by_ue=*/true, &err_);
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
@@ -982,10 +981,9 @@ TEST_F(DlcBaseTest, UnReservedInstall) {
   EXPECT_TRUE(dlc.Install(&err_));
   EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
 
-  update_engine::StatusResult ue_status;
-  ue_status.set_last_attempt_error(
-      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
-  SystemState::Get()->set_update_engine_status(ue_status);
+  InstallerInterface::Status status;
+  status.last_attempt_error = update_engine::ErrorCode::kNoUpdate;
+  SystemState::Get()->set_installer_status(status);
 
   dlc.FinishInstall(/*installed_by_ue=*/true, &err_);
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);

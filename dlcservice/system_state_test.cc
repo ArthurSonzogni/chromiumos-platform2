@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 
@@ -41,11 +42,11 @@ TEST_F(SystemStateTest, GettersTest) {
 
   EXPECT_EQ(system_state->clock(), &clock_);
 
-  update_engine::StatusResult status;
-  status.set_current_operation(update_engine::Operation::DOWNLOADING);
-  system_state->set_update_engine_status(status);
-  EXPECT_EQ(system_state->update_engine_status().current_operation(),
-            update_engine::Operation::DOWNLOADING);
+  InstallerInterface::Status status;
+  status.state = InstallerInterface::Status::State::DOWNLOADING;
+  SystemState::Get()->set_installer_status(status);
+  EXPECT_EQ(system_state->installer_status().state,
+            InstallerInterface::Status::State::DOWNLOADING);
 }
 
 #if USE_LVM_STATEFUL_PARTITION

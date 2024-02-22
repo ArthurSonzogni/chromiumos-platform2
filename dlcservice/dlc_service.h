@@ -21,11 +21,10 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxies.h>
-#include <update_engine/proto_bindings/update_engine.pb.h>
-#include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_creator_interface.h"
+#include "dlcservice/installer.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils/utils_interface.h"
@@ -42,7 +41,7 @@ class DlcServiceInterface {
   // DLC Installation Flow
   //
   // To start an install, the initial requirement is to call this function.
-  // During this phase, all necessary setup for update_engine to successfully
+  // During this phase, all necessary setup for installer to successfully
   // install DLC(s) and other files that require creation are handled.
   // Args:
   //   install_request: The DLC install request.
@@ -101,7 +100,8 @@ class DlcServiceInterface {
 
 // DlcService manages life-cycles of DLCs (Downloadable Content) and provides an
 // API for the rest of the system to install/uninstall DLCs.
-class DlcService : public DlcServiceInterface {
+class DlcService : public DlcServiceInterface,
+                   public InstallerInterface::Observer {
  public:
   static constexpr base::TimeDelta kUECheckTimeout = base::Seconds(5);
 
@@ -126,6 +126,9 @@ class DlcService : public DlcServiceInterface {
   bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
   bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
 
+  // Overrides for `InstallerInterface::Observer`.
+  void OnStatusSync(const InstallerInterface::Status& status) override;
+
   // For testing only.
   void SetSupportedForTesting(DlcMap supported) {
     supported_ = std::move(supported);
@@ -148,7 +151,6 @@ class DlcService : public DlcServiceInterface {
       DlcServiceTestLegacy,
       OnStatusUpdateSignalSubsequentialBadOrNonInstalledDlcsNonBlocking);
   FRIEND_TEST(DlcServiceTestLegacy, PeriodicInstallCheck);
-  FRIEND_TEST(DlcServiceTestLegacy, InstallUpdateEngineBusyThenFreeTest);
   FRIEND_TEST(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck);
 
   // Install the DLC with installer.
@@ -172,22 +174,18 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTest, CancelInstallDlcCancelFailureResetsTest);
   FRIEND_TEST(DlcServiceTest, CancelInstallResetsTest);
 
-  // Handles status result from update_engine. Returns true if the installation
-  // is going fine, false otherwise.
-  bool HandleStatusResult(brillo::ErrorPtr* err);
+  // Handles status from installer. Returns true if the installation is going
+  // fine, false otherwise.
+  bool HandleStatus(brillo::ErrorPtr* err);
 
-  // The periodic check that runs as a delayed task that checks update_engine
-  // status during an install to make sure update_engine is active. This is
-  // basically a fallback mechanism in case we miss some of the update_engine's
+  // The periodic check that runs as a delayed task that checks installer
+  // status during an install to make sure installer is active. This is
+  // basically a fallback mechanism in case we miss some of the installer's
   // signals so we don't block forever.
   void PeriodicInstallCheck();
 
   // Schedules the method |PeriodicInstallCheck()| to be ran at a later time,
   void SchedulePeriodicInstallCheck();
-
-  // Gets update_engine's operation status and saves it in |SystemState|.
-  void GetUpdateEngineStatusAsync();
-  void OnGetUpdateEngineStatusAsyncError(brillo::Error* err);
 
   // Callback when interacting with installer.
   void OnInstallSuccess(
@@ -198,18 +196,10 @@ class DlcService : public DlcServiceInterface {
 
   FRIEND_TEST(DlcServiceTest, OnInstallFailure);
 
-  // Called on receiving update_engine's |StatusUpdate| signal.
-  void OnStatusUpdateAdvancedSignal(
-      const update_engine::StatusResult& status_result);
-
-  // Called on being connected to update_engine's |StatusUpdate| signal.
-  void OnStatusUpdateAdvancedSignalConnected(const std::string& interface_name,
-                                             const std::string& signal_name,
-                                             bool success);
   FRIEND_TEST(DlcServiceTest,
               OnStatusUpdateAdvancedSignalConnectedTestVerifyFailureAlert);
 
-  // Called on when update_engine service becomes available.
+  // Called on when installer service becomes available.
   void OnReadyInstaller(bool available);
 
   // Perform an action on mounted DLCs, optionally only on selected ones.
@@ -230,7 +220,7 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvs);
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-  // Holds the DLC that is being installed by update_engine.
+  // Holds the DLC that is being installed by installer.
   std::optional<DlcId> installing_dlc_id_;
 
   // Holds the tolerance signal count during an installation.

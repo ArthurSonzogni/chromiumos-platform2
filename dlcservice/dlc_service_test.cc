@@ -26,6 +26,7 @@
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_base_creator.h"
 #include "dlcservice/dlc_service.h"
+#include "dlcservice/installer.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/dlc_lvm.h"
 #include "dlcservice/lvm/dlc_lvm_creator.h"
@@ -104,9 +105,6 @@ class DlcServiceTest : public BaseTest {
 TEST_F(DlcServiceTest, InitializeTest) {
   // TODO(kimjae): Mock the scanning instead of depending on BaseTest setup.
   // This should make it much easier to test with.
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
-      .Times(1);
   auto mock_dlc_1 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_2 = std::make_unique<StrictMock<MockDlc>>();
   auto mock_dlc_3 = std::make_unique<StrictMock<MockDlc>>();
@@ -269,9 +267,9 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  update_engine::StatusResult ue_status;
-  ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
-  SystemState::Get()->set_update_engine_status(ue_status);
+  InstallerInterface::Status status;
+  status.state = InstallerInterface::Status::State::BLOCKED;
+  SystemState::Get()->set_installer_status(status);
 
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedNeedReboot));
@@ -297,9 +295,9 @@ TEST_F(DlcServiceTest,
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  update_engine::StatusResult ue_status;
-  ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
-  SystemState::Get()->set_update_engine_status(ue_status);
+  InstallerInterface::Status status;
+  status.state = InstallerInterface::Status::State::BLOCKED;
+  SystemState::Get()->set_installer_status(status);
 
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedNeedReboot));
@@ -813,21 +811,6 @@ TEST_F(DlcServiceTest, CleanupUnsupportedLvs) {
 }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-// Tests related to `OnStatusUpdateAdvancedSignalConnected`.
-
-TEST_F(DlcServiceTest,
-       OnStatusUpdateAdvancedSignalConnectedTestVerifyFailureAlert) {
-  // Setup a mock logger to ensure alert is printed on a failed connect
-  base::test::MockLog mock_log;
-  mock_log.StartCapturingLogs();
-  // Logger expectation.
-  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
-                            HasSubstr(AlertLogTag(kCategoryInit).c_str())));
-
-  dlc_service_->OnStatusUpdateAdvancedSignalConnected("test_iface", "test_name",
-                                                      false);
-}
-
 // Tests related to `OnInstallFailure`.
 
 TEST_F(DlcServiceTest, OnInstallFailure) {
@@ -877,9 +860,6 @@ class DlcServiceTestLegacy : public BaseTest {
   }
 
   void InitializeDlcService() {
-    EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-                DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
-        .Times(1);
     auto dlc_creator =
 #if USE_LVM_STATEFUL_PARTITION
         std::make_unique<DlcLvmCreator>();
@@ -928,10 +908,10 @@ class DlcServiceTestLegacy : public BaseTest {
 
     CheckDlcState(id, DlcState::INSTALLING);
 
-    StatusResult status_result;
-    status_result.set_is_install(true);
-    status_result.set_current_operation(Operation::IDLE);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = InstallerInterface::Status::State::OK,
+        .is_install = true,
+    });
 
     CheckDlcState(id, DlcState::INSTALLED);
   }
@@ -1101,9 +1081,9 @@ TEST_F(DlcServiceTestLegacy, UninstallImageLoaderFailureTest) {
 TEST_F(DlcServiceTestLegacy, UninstallUpdateEngineBusyFailureTest) {
   Install(kFirstDlc);
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::CHECKING_FOR_UPDATE);
-  SystemState::Get()->set_update_engine_status(status_result);
+  InstallerInterface::Status status;
+  status.state = InstallerInterface::Status::State::CHECKING;
+  SystemState::Get()->set_installer_status(status);
   EXPECT_CALL(*mock_metrics_,
               SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
 
@@ -1282,33 +1262,36 @@ TEST_F(DlcServiceTestLegacy, InstallCannotSetDlcActiveValue) {
   EXPECT_TRUE(called);
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  StatusResult status_result;
-  status_result.set_is_install(true);
-  status_result.set_current_operation(Operation::IDLE);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
 
 TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
-  vector<StatusResult> status_list;
-  for (const auto& op :
-       {Operation::CHECKING_FOR_UPDATE, Operation::DOWNLOADING}) {
-    StatusResult status;
-    status.set_current_operation(op);
-    status.set_is_install(true);
-    status_list.push_back(status);
+  vector<InstallerInterface::Status> status_list;
+  for (const auto& state : {InstallerInterface::Status::State::CHECKING,
+                            InstallerInterface::Status::State::DOWNLOADING}) {
+    status_list.push_back(decltype(status_list)::value_type{
+        .state = state,
+        .is_install = true,
+    });
   }
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
-      .WillOnce(WithArg<0>(Invoke(
-          [status_list](auto&& arg) { std::move(arg).Run(status_list[0]); })))
-      .WillOnce(WithArg<0>(Invoke(
-          [status_list](auto&& arg) { std::move(arg).Run(status_list[0]); })))
-      .WillOnce(WithArg<0>(Invoke(
-          [status_list](auto&& arg) { std::move(arg).Run(status_list[1]); })));
+  EXPECT_CALL(*mock_installer_ptr_, StatusSync())
+      .WillOnce(Invoke([this, status_list]() {
+        dlc_service_->OnStatusSync(status_list[0]);
+      }))
+      .WillOnce(Invoke([this, status_list]() {
+        dlc_service_->OnStatusSync(status_list[0]);
+      }))
+      .WillOnce(Invoke([this, status_list]() {
+        dlc_service_->OnStatusSync(status_list[1]);
+      }));
 
-  // We need to make sure the state is intalling so, rescheduling periodic check
-  // happens.
+  // We need to make sure the state is installing so, rescheduling periodic
+  // check happens.
   EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -1324,41 +1307,43 @@ TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
   // The first time it should not get the status because enough time hasn't
   // passed yet.
   dlc_service_->SchedulePeriodicInstallCheck();
-  EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
-            Operation::IDLE);
+  EXPECT_EQ(SystemState::Get()->installer_status().state,
+            InstallerInterface::Status::State::OK);
 
   // Now advance clock and make sure that first time we do get status.
   clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
-  EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
-            Operation::CHECKING_FOR_UPDATE);
+  EXPECT_EQ(SystemState::Get()->installer_status().state,
+            InstallerInterface::Status::State::CHECKING);
 
   // Now advance the clock even more, this time fail the get status. The status
   // should remain same.
   clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
-  EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
-            Operation::CHECKING_FOR_UPDATE);
+  EXPECT_EQ(SystemState::Get()->installer_status().state,
+            InstallerInterface::Status::State::CHECKING);
 
   // Now advance a little bit more to see we got the new status.
   clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
-  EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
-            Operation::DOWNLOADING);
+  EXPECT_EQ(SystemState::Get()->installer_status().state,
+            InstallerInterface::Status::State::DOWNLOADING);
 }
 
 TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
-  vector<StatusResult> status_list;
-  for (const auto& op : {Operation::CHECKING_FOR_UPDATE, Operation::IDLE}) {
-    StatusResult status;
-    status.set_current_operation(op);
-    status.set_is_install(true);
-    status_list.push_back(status);
+  vector<InstallerInterface::Status> status_list;
+  for (const auto& state : {InstallerInterface::Status::State::CHECKING,
+                            InstallerInterface::Status::State::OK}) {
+    status_list.push_back(decltype(status_list)::value_type{
+        .state = state,
+        .is_install = true,
+    });
   }
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
-      .WillOnce(WithArg<0>(Invoke(
-          [status_list](auto&& arg) { std::move(arg).Run(status_list[1]); })));
+  EXPECT_CALL(*mock_installer_ptr_, StatusSync())
+      .WillOnce(Invoke([this, status_list]() {
+        dlc_service_->OnStatusSync(status_list[1]);
+      }));
   EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1374,7 +1359,7 @@ TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // The checking for update comes from signal.
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_list[0]);
+  dlc_service_->OnStatusSync(status_list[0]);
 
   // Now advance clock and make sure that periodic install check is scheduled
   // and eventually called.
@@ -1497,10 +1482,10 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
 
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(true);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
@@ -1540,10 +1525,10 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
 
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(true);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 }
 
 TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
@@ -1570,10 +1555,10 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
 
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(true);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
@@ -1599,10 +1584,10 @@ TEST_F(DlcServiceTestLegacy, MountFailureTest) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(true);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   EXPECT_FALSE(dlc_service_->GetDlc(kSecondDlc, &err_)->IsVerified());
@@ -1626,18 +1611,14 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureCleanupTest) {
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
-  {
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::REPORTING_ERROR_EVENT);
-    status_result.set_is_install(true);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
-  }
-  {
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::IDLE);
-    status_result.set_is_install(false);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
-  }
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::ERROR,
+      .is_install = true,
+  });
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
@@ -1660,18 +1641,14 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureSignalTest) {
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
-  {
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::REPORTING_ERROR_EVENT);
-    status_result.set_is_install(true);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
-  }
-  {
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::IDLE);
-    status_result.set_is_install(false);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
-  }
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::ERROR,
+      .is_install = true,
+  });
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
@@ -1693,16 +1670,19 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapTest) {
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(false);
   for (int i = 0; i < 30; ++i) {
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = InstallerInterface::Status::State::OK,
+        .is_install = false,
+    });
     EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
     CheckDlcState(kSecondDlc, DlcState::INSTALLING);
   }
 
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = false,
+  });
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
@@ -1724,32 +1704,35 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapResetTest) {
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
-  StatusResult status_result;
-  status_result.set_current_operation(Operation::IDLE);
-  status_result.set_is_install(false);
   for (int i = 0; i < 30; ++i) {
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = InstallerInterface::Status::State::OK,
+        .is_install = false,
+    });
     EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
     CheckDlcState(kSecondDlc, DlcState::INSTALLING);
   }
-
-  {
-    StatusResult status_result;
-    status_result.set_current_operation(Operation::VERIFYING);
-    status_result.set_is_install(true);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
-    EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
-    CheckDlcState(kSecondDlc, DlcState::INSTALLING);
-  }
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::VERIFYING,
+      .is_install = true,
+  });
+  EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+  CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // A good status handle should reset the tolerance count.
   for (int i = 0; i < 30; ++i) {
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = InstallerInterface::Status::State::OK,
+        .is_install = false,
+    });
     EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
     CheckDlcState(kSecondDlc, DlcState::INSTALLING);
   }
 
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = false,
+  });
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
@@ -1775,25 +1758,27 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
   EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
-  StatusResult status_result;
-  status_result.set_is_install(true);
-
-  const vector<Operation> install_operation_sequence = {
-      Operation::CHECKING_FOR_UPDATE, Operation::UPDATE_AVAILABLE,
-      Operation::FINALIZING};
-
-  for (const auto& op : install_operation_sequence) {
-    status_result.set_current_operation(op);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  const vector<Installer::InstallerInterface::Status::State> state_sequence = {
+      InstallerInterface::Status::State::CHECKING,
+      InstallerInterface::Status::State::VERIFYING};
+  for (const auto& state : state_sequence) {
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = state,
+        .is_install = true,
+    });
   }
 
-  status_result.set_current_operation(Operation::DOWNLOADING);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::DOWNLOADING,
+      .is_install = true,
+  });
 
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-  status_result.set_current_operation(Operation::IDLE);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  dlc_service_->OnStatusSync(InstallerInterface::Status{
+      .state = InstallerInterface::Status::State::OK,
+      .is_install = true,
+  });
 
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
@@ -1819,10 +1804,10 @@ TEST_F(DlcServiceTestLegacy,
 
     EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
-    StatusResult status_result;
-    status_result.set_is_install(true);
-    status_result.set_current_operation(Operation::IDLE);
-    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    dlc_service_->OnStatusSync(InstallerInterface::Status{
+        .state = InstallerInterface::Status::State::OK,
+        .is_install = true,
+    });
     EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
     CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
   }
