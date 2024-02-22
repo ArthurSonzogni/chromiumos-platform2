@@ -1154,9 +1154,14 @@ void LogTool::ParallelLogCollector::EndGetLogs(base::Value::Dict* dict) {
         if (data.size() > log.GetMaxBytes()) {
           data.erase(0, data.size() - log.GetMaxBytes());
         }
-        std::string encoded_data =
-            LogTool::EncodeString(std::move(data), log.GetEncoding());
-        dict->Set(log.GetName(), std::move(encoded_data));
+        // For types other than kCommand the output has already been encoded.
+        if (log.GetType() == kCommand) {
+          std::string encoded_data =
+              LogTool::EncodeString(std::move(data), log.GetEncoding());
+          dict->Set(log.GetName(), std::move(encoded_data));
+        } else {
+          dict->Set(log.GetName(), std::move(data));
+        }
       }
     } else {
       LOG(ERROR) << "EndGetLogs: failed to read file=" << pair.first.value()
