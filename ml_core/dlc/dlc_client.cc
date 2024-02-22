@@ -79,12 +79,16 @@ class DlcClientImpl : public cros::DlcClient {
                   << "% installing DLC: " << kDlcId;
         break;
       case dlcservice::DlcState::NOT_INSTALLED: {
-        metrics_.RecordFinalInstallResult(
-            cros::DlcFinalInstallResult::kDlcServiceError);
         metrics_.RecordFinalInstallDlcServiceError(
             cros::DlcErrorCodeEnumFromString(dlc_state.last_error_code()));
-        InvokeErrorCb(base::StrCat({"Failed to install DLC: ", kDlcId,
-                                    " Error: ", dlc_state.last_error_code()}));
+        // "BUSY" error code is not considered an installation failure.
+        if (dlc_state.last_error_code() != dlcservice::kErrorBusy) {
+          metrics_.RecordFinalInstallResult(
+              cros::DlcFinalInstallResult::kDlcServiceError);
+          InvokeErrorCb(
+              base::StrCat({"Failed to install DLC: ", kDlcId,
+                            " Error: ", dlc_state.last_error_code()}));
+        }
         break;
       }
       default:
