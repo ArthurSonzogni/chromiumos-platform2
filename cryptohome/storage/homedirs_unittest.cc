@@ -355,7 +355,7 @@ TEST_P(HomeDirsTest, CreateCryptohome) {
       brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
 
-  EXPECT_TRUE(homedirs_->Create(kNewUserId));
+  EXPECT_TRUE(homedirs_->Create(kHashedNewUserId));
   EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
 }
 
@@ -365,7 +365,7 @@ TEST_P(HomeDirsTest, RemoveCryptohome) {
       brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
 
-  EXPECT_TRUE(homedirs_->Create(kNewUserId));
+  EXPECT_TRUE(homedirs_->Create(kHashedNewUserId));
   EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
 
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillOnce(Return(true));
@@ -396,7 +396,7 @@ TEST_P(HomeDirsTest, ComputeDiskUsage) {
 
   const int64_t expected_bytes =
       ShouldTestEcryptfs() ? vault_bytes : mount_bytes;
-  EXPECT_EQ(expected_bytes, homedirs_->ComputeDiskUsage(users_[0].name));
+  EXPECT_EQ(expected_bytes, homedirs_->ComputeDiskUsage(users_[0].obfuscated));
 }
 
 TEST_P(HomeDirsTest, ComputeDiskUsageEphemeral) {
@@ -418,13 +418,13 @@ TEST_P(HomeDirsTest, ComputeDiskUsageEphemeral) {
       .WillRepeatedly(Return(userdir_bytes));
 
   int64_t expected_bytes = userdir_bytes;
-  EXPECT_EQ(expected_bytes, homedirs_->ComputeDiskUsage(users_[0].name));
+  EXPECT_EQ(expected_bytes, homedirs_->ComputeDiskUsage(users_[0].obfuscated));
 }
 
 TEST_P(HomeDirsTest, ComputeDiskUsageWithNonexistentUser) {
   // If the specified user doesn't exist, there is no directory for the user, so
   // ComputeDiskUsage should return 0.
-  const Username kNonExistentUserId("non_existent_user");
+  const ObfuscatedUsername kNonExistentUserId("non_existent_user");
   EXPECT_EQ(0, homedirs_->ComputeDiskUsage(kNonExistentUserId));
 }
 

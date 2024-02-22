@@ -2086,7 +2086,7 @@ int64_t UserDataAuth::GetAccountDiskUsage(const AccountIdentifier& account) {
   AssertOnMountThread();
   // Note that if the given |account| is invalid or non-existent, then HomeDirs'
   // implementation of ComputeDiskUsage is specified to return 0.
-  return homedirs_->ComputeDiskUsage(GetAccountId(account));
+  return homedirs_->ComputeDiskUsage(SanitizeUserName(GetAccountId(account)));
 }
 
 bool UserDataAuth::Pkcs11IsTpmTokenReady() {
@@ -2122,7 +2122,7 @@ user_data_auth::TpmTokenInfo UserDataAuth::Pkcs11GetTpmTokenInfo(
     // Get the label and pin for user token.
     pkcs11_init_->GetTpmTokenInfoForUser(username, &label, &pin);
 
-    token_path = homedirs_->GetChapsTokenDir(username);
+    token_path = homedirs_->GetChapsTokenDir(SanitizeUserName(username));
   }
 
   result.set_label(label);
@@ -2523,8 +2523,8 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
 
 bool UserDataAuth::OwnerUserExists() {
   AssertOnOriginThread();
-  Username owner;
-  return homedirs_->GetPlainOwner(&owner);
+  ObfuscatedUsername owner;
+  return homedirs_->GetOwner(&owner);
 }
 
 bool UserDataAuth::IsArcQuotaSupported() {
@@ -3176,7 +3176,7 @@ void UserDataAuth::CreatePersistentUserWithSession(
   // and because that would require going the full sequence of mount and unmount
   // because of ecryptfs possibility).
   if (!homedirs_->Exists(obfuscated_username) &&
-      !homedirs_->Create(auth_session->username())) {
+      !homedirs_->Create(obfuscated_username)) {
     LOG(ERROR) << "Failed to create shadow directory for: "
                << obfuscated_username;
     ReplyWithError(std::move(on_done_with_signal), reply,

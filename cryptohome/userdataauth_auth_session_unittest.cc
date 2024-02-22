@@ -128,9 +128,10 @@ constexpr base::TimeDelta kDefaultTimeAfterAuthenticate = base::Seconds(300);
 constexpr base::TimeDelta kDefaultExtensionDuration = base::Seconds(60);
 
 void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
-  EXPECT_CALL(homedirs, GetPlainOwner(_))
+  EXPECT_CALL(homedirs, GetOwner(_))
       .WillRepeatedly(
-          DoAll(SetArgPointee<0>(Username(username)), Return(true)));
+          DoAll(SetArgPointee<0>(SanitizeUserName(Username(username))),
+                Return(true)));
 }
 
 }  // namespace
@@ -598,7 +599,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
 
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Create(SanitizeUserName(kUsername)))
+      .WillOnce(Return(false));
   auto reply = CreatePersistentUserImpl(serialized_token);
   ASSERT_THAT(reply.error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
@@ -1502,7 +1504,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     // Create the user.
     EXPECT_CALL(homedirs_, CryptohomeExists(obfuscated_username))
         .WillOnce(ReturnValue(false));
-    EXPECT_CALL(homedirs_, Create(username)).WillRepeatedly(Return(true));
+    EXPECT_CALL(homedirs_, Create(obfuscated_username))
+        .WillRepeatedly(Return(true));
     EXPECT_THAT(CreatePersistentUserImpl(serialized_token).has_error_info(),
                 IsFalse());
 

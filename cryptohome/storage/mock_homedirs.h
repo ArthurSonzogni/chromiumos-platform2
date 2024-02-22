@@ -33,35 +33,37 @@ class MockHomeDirs : public HomeDirs {
               (),
               (override));
   MOCK_METHOD(bool, GetOwner, (ObfuscatedUsername*), (override));
-  MOCK_METHOD(bool, GetPlainOwner, (Username*), (override));
   MOCK_METHOD(bool,
               GetEphemeralSettings,
               (policy::DevicePolicy::EphemeralSettings*),
               (override));
   MOCK_METHOD(bool, KeylockerForStorageEncryptionEnabled, (), (override));
   MOCK_METHOD(bool, MustRunAutomaticCleanupOnLogin, (), (override));
-  MOCK_METHOD(bool, Create, (const Username&), (override));
+  MOCK_METHOD(bool, Create, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(bool, Remove, (const ObfuscatedUsername&), (override));
-  MOCK_METHOD(int64_t, ComputeDiskUsage, (const Username&), (override));
-  MOCK_METHOD(bool, Exists, (const ObfuscatedUsername&), (const, override));
-  MOCK_METHOD(bool,
-              DmcryptCacheContainerExists,
-              (const ObfuscatedUsername&),
-              (const, override));
   MOCK_METHOD(bool,
               RemoveDmcryptCacheContainer,
               (const ObfuscatedUsername&),
               (override));
+  MOCK_METHOD(int64_t,
+              ComputeDiskUsage,
+              (const ObfuscatedUsername&),
+              (override));
+  MOCK_METHOD(bool, Exists, (const ObfuscatedUsername&), (const, override));
   MOCK_METHOD(StorageStatusOr<bool>,
               CryptohomeExists,
               (const ObfuscatedUsername&),
               (const, override));
-  MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
+  MOCK_METHOD(bool,
+              DmcryptCacheContainerExists,
+              (const ObfuscatedUsername&),
+              (const, override));
 
   MOCK_METHOD(bool,
               NeedsDircryptoMigration,
               (const ObfuscatedUsername&),
               (const, override));
+  MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 
   MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(std::vector<HomeDir>, GetHomeDirs, (), (override));

@@ -26,6 +26,7 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_device_management_client_proxy.h"
@@ -95,7 +96,11 @@ class RealUserSessionTest : public ::testing::Test {
 
     PrepareDirectoryStructure();
 
-    homedirs_->Create(Username(kUser0));
+    Username username(kUser0);
+    ObfuscatedUsername obfuscated =
+        brillo::cryptohome::home::SanitizeUserName(username);
+
+    homedirs_->Create(obfuscated);
     users_[0].user_fs_keyset = FileSystemKeyset::CreateRandom();
 
     mount_ = new NiceMock<MockMount>();
@@ -108,8 +113,8 @@ class RealUserSessionTest : public ::testing::Test {
         });
 
     session_ = std::make_unique<RealUserSession>(
-        Username(kUser0), homedirs_.get(),
-        user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
+        username, homedirs_.get(), user_activity_timestamp_manager_.get(),
+        &pkcs11_token_factory_, mount_);
   }
 
  protected:
@@ -124,7 +129,8 @@ class RealUserSessionTest : public ::testing::Test {
 
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
-  NiceMock<libstorage::MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_{
+      std::make_unique<FakePlatform>()};
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_

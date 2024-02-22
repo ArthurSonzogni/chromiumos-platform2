@@ -120,30 +120,28 @@ bool HomeDirs::SetLockedToSingleUser() const {
   return platform_->TouchFileDurable(base::FilePath(kLockedToSingleUserFile));
 }
 
-bool HomeDirs::Exists(const ObfuscatedUsername& obfuscated_username) const {
-  FilePath user_dir = UserPath(obfuscated_username);
+bool HomeDirs::Exists(const ObfuscatedUsername& username) const {
+  FilePath user_dir = UserPath(username);
   return platform_->DirectoryExists(user_dir);
 }
 
 StorageStatusOr<bool> HomeDirs::CryptohomeExists(
-    const ObfuscatedUsername& obfuscated_username) const {
-  ASSIGN_OR_RETURN(bool dircrypto_exists,
-                   DircryptoCryptohomeExists(obfuscated_username));
-  return EcryptfsCryptohomeExists(obfuscated_username) || dircrypto_exists ||
-         DmcryptCryptohomeExists(obfuscated_username);
+    const ObfuscatedUsername& username) const {
+  ASSIGN_OR_RETURN(bool dircrypto_exists, DircryptoCryptohomeExists(username));
+  return EcryptfsCryptohomeExists(username) || dircrypto_exists ||
+         DmcryptCryptohomeExists(username);
 }
 
 bool HomeDirs::EcryptfsCryptohomeExists(
-    const ObfuscatedUsername& obfuscated_username) const {
+    const ObfuscatedUsername& username) const {
   // Check for the presence of a vault directory for ecryptfs.
-  return platform_->DirectoryExists(
-      GetEcryptfsUserVaultPath(obfuscated_username));
+  return platform_->DirectoryExists(GetEcryptfsUserVaultPath(username));
 }
 
 StorageStatusOr<bool> HomeDirs::DircryptoCryptohomeExists(
-    const ObfuscatedUsername& obfuscated_username) const {
+    const ObfuscatedUsername& username) const {
   // Check for the presence of an encrypted mount directory for dircrypto.
-  FilePath mount_path = GetUserMountDirectory(obfuscated_username);
+  FilePath mount_path = GetUserMountDirectory(username);
 
   if (!platform_->DirectoryExists(mount_path)) {
     return false;
@@ -166,25 +164,23 @@ StorageStatusOr<bool> HomeDirs::DircryptoCryptohomeExists(
 }
 
 bool HomeDirs::DmcryptContainerExists(
-    const ObfuscatedUsername& obfuscated_username,
+    const ObfuscatedUsername& username,
     const std::string& container_suffix) const {
   // Check for the presence of the logical volume for the user's data container.
   std::string logical_volume_container =
-      LogicalVolumePrefix(obfuscated_username).append(container_suffix);
+      LogicalVolumePrefix(username).append(container_suffix);
 
   return vault_factory_->ContainerExists(logical_volume_container);
 }
 
 bool HomeDirs::DmcryptCryptohomeExists(
-    const ObfuscatedUsername& obfuscated_username) const {
-  return DmcryptContainerExists(obfuscated_username,
-                                kDmcryptDataContainerSuffix);
+    const ObfuscatedUsername& username) const {
+  return DmcryptContainerExists(username, kDmcryptDataContainerSuffix);
 }
 
 bool HomeDirs::DmcryptCacheContainerExists(
-    const ObfuscatedUsername& obfuscated_username) const {
-  return DmcryptContainerExists(obfuscated_username,
-                                kDmcryptCacheContainerSuffix);
+    const ObfuscatedUsername& username) const {
+  return DmcryptContainerExists(username, kDmcryptCacheContainerSuffix);
 }
 
 HomeDirs::CryptohomesRemovedStatus HomeDirs::RemoveCryptohomesBasedOnPolicy() {
@@ -351,25 +347,24 @@ libstorage::StorageContainerType HomeDirs::ChooseVaultType() {
 }
 
 StorageStatusOr<libstorage::StorageContainerType> HomeDirs::GetVaultType(
-    const ObfuscatedUsername& obfuscated_username) {
-  ASSIGN_OR_RETURN(bool dircrypto_exists,
-                   DircryptoCryptohomeExists(obfuscated_username),
+    const ObfuscatedUsername& username) {
+  ASSIGN_OR_RETURN(bool dircrypto_exists, DircryptoCryptohomeExists(username),
                    (_.LogError() << "Can't get vault type"));
 
-  if (EcryptfsCryptohomeExists(obfuscated_username)) {
+  if (EcryptfsCryptohomeExists(username)) {
     if (dircrypto_exists) {
       return libstorage::StorageContainerType::kEcryptfsToFscrypt;
     }
-    if (DmcryptCryptohomeExists(obfuscated_username)) {
+    if (DmcryptCryptohomeExists(username)) {
       return libstorage::StorageContainerType::kEcryptfsToDmcrypt;
     }
     return libstorage::StorageContainerType::kEcryptfs;
   } else if (dircrypto_exists) {
-    if (DmcryptCryptohomeExists(obfuscated_username)) {
+    if (DmcryptCryptohomeExists(username)) {
       return libstorage::StorageContainerType::kFscryptToDmcrypt;
     }
     return libstorage::StorageContainerType::kFscrypt;
-  } else if (DmcryptCryptohomeExists(obfuscated_username)) {
+  } else if (DmcryptCryptohomeExists(username)) {
     return libstorage::StorageContainerType::kDmcrypt;
   }
   return libstorage::StorageContainerType::kUnknown;
@@ -382,11 +377,11 @@ bool HomeDirs::enterprise_owned() const {
 }
 
 StorageStatusOr<libstorage::StorageContainerType> HomeDirs::PickVaultType(
-    const ObfuscatedUsername& obfuscated_username,
+    const ObfuscatedUsername& username,
     const CryptohomeVault::Options& options) {
   // See if the vault exists.
   ASSIGN_OR_RETURN(libstorage::StorageContainerType vault_type,
-                   GetVaultType(obfuscated_username));
+                   GetVaultType(username));
   // If existing vault is ecryptfs and migrate == true - make migrating vault.
   if (vault_type == libstorage::StorageContainerType::kEcryptfs &&
       options.migrate) {
@@ -454,37 +449,32 @@ void HomeDirs::CreateAndSetDeviceManagementClientProxy(
   device_management_client_ = default_device_management_client_.get();
 }
 
-bool HomeDirs::GetPlainOwner(Username* owner) {
+bool HomeDirs::GetOwner(ObfuscatedUsername* owner) {
   LoadDevicePolicy();
-  if (!policy_provider_->device_policy_is_loaded())
+  if (!policy_provider_->device_policy_is_loaded()) {
     return false;
+  }
   std::string owner_str;
   policy_provider_->GetDevicePolicy().GetOwner(&owner_str);
-  *owner = Username(owner_str);
-  return true;
-}
-
-bool HomeDirs::GetOwner(ObfuscatedUsername* owner) {
-  Username plain_owner;
-  if (!GetPlainOwner(&plain_owner) || plain_owner->empty())
+  Username plain_owner(owner_str);
+  if (plain_owner->empty()) {
     return false;
-
+  }
   *owner = SanitizeUserName(plain_owner);
   return true;
 }
 
-bool HomeDirs::IsOrWillBeOwner(const Username& account_id) {
-  Username owner;
-  GetPlainOwner(&owner);
-  return !enterprise_owned() && (owner->empty() || account_id == owner);
+bool HomeDirs::IsOrWillBeOwner(const ObfuscatedUsername& username) {
+  ObfuscatedUsername owner;
+  GetOwner(&owner);
+  return !enterprise_owned() && (owner->empty() || username == owner);
 }
 
-bool HomeDirs::Create(const Username& username) {
+bool HomeDirs::Create(const ObfuscatedUsername& username) {
   brillo::ScopedUmask scoped_umask(libstorage::kDefaultUmask);
-  ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
   // Create the user's entry in the shadow root
-  FilePath user_dir = UserPath(obfuscated_username);
+  FilePath user_dir = UserPath(username);
   if (!platform_->CreateDirectory(user_dir)) {
     return false;
   }
@@ -492,13 +482,13 @@ bool HomeDirs::Create(const Username& username) {
   return true;
 }
 
-bool HomeDirs::Remove(const ObfuscatedUsername& obfuscated) {
-  remove_callback_.Run(obfuscated);
-  FilePath user_dir = UserPath(obfuscated);
+bool HomeDirs::Remove(const ObfuscatedUsername& username) {
+  remove_callback_.Run(username);
+  FilePath user_dir = UserPath(username);
   FilePath user_path =
-      brillo::cryptohome::home::GetUserPathPrefix().Append(*obfuscated);
+      brillo::cryptohome::home::GetUserPathPrefix().Append(*username);
   FilePath root_path =
-      brillo::cryptohome::home::GetRootPathPrefix().Append(*obfuscated);
+      brillo::cryptohome::home::GetRootPathPrefix().Append(*username);
 
   if (platform_->IsDirectoryMounted(user_path) ||
       platform_->IsDirectoryMounted(root_path)) {
@@ -508,10 +498,10 @@ bool HomeDirs::Remove(const ObfuscatedUsername& obfuscated) {
 
   bool ret = true;
 
-  if (DmcryptCryptohomeExists(obfuscated)) {
-    auto vault = vault_factory_->Generate(
-        obfuscated, libstorage::FileSystemKeyReference(),
-        libstorage::StorageContainerType::kDmcrypt);
+  if (DmcryptCryptohomeExists(username)) {
+    auto vault =
+        vault_factory_->Generate(username, libstorage::FileSystemKeyReference(),
+                                 libstorage::StorageContainerType::kDmcrypt);
     ret = vault->Purge();
   }
 
@@ -520,13 +510,12 @@ bool HomeDirs::Remove(const ObfuscatedUsername& obfuscated) {
          platform_->DeletePathRecursively(root_path);
 }
 
-bool HomeDirs::RemoveDmcryptCacheContainer(
-    const ObfuscatedUsername& obfuscated) {
-  if (!DmcryptCacheContainerExists(obfuscated))
+bool HomeDirs::RemoveDmcryptCacheContainer(const ObfuscatedUsername& username) {
+  if (!DmcryptCacheContainerExists(username))
     return false;
 
   auto vault =
-      vault_factory_->Generate(obfuscated, libstorage::FileSystemKeyReference(),
+      vault_factory_->Generate(username, libstorage::FileSystemKeyReference(),
                                libstorage::StorageContainerType::kDmcrypt);
   if (!vault)
     return false;
@@ -538,24 +527,18 @@ bool HomeDirs::RemoveDmcryptCacheContainer(
   return vault->PurgeCacheContainer();
 }
 
-int64_t HomeDirs::ComputeDiskUsage(const Username& account_id) {
-  // SanitizeUserNameWithSalt below doesn't accept empty username.
-  if (account_id->empty()) {
-    // Empty account is always non-existent, return 0 as specified.
-    return 0;
-  }
-
+int64_t HomeDirs::ComputeDiskUsage(const ObfuscatedUsername& username) {
   // Note that for ephemeral mounts, there could be a vault that's not
   // ephemeral, but the current mount is ephemeral. In this case,
   // ComputeDiskUsage() return the non ephemeral on disk vault's size.
-  ObfuscatedUsername obfuscated = SanitizeUserName(account_id);
-  FilePath user_dir = UserPath(obfuscated);
+  FilePath user_dir = UserPath(username);
 
   int64_t size = 0;
   if (!platform_->DirectoryExists(user_dir)) {
     // It's either ephemeral or the user doesn't exist. In either case, we check
     // /home/user/$hash.
-    FilePath user_home_dir = brillo::cryptohome::home::GetUserPath(account_id);
+    FilePath user_home_dir =
+        brillo::cryptohome::home::GetHashedUserPath(username);
     size = platform_->ComputeDirectoryDiskUsage(user_home_dir);
   } else {
     // Note that we'll need to handle both ecryptfs and dircrypto.
@@ -586,12 +569,13 @@ namespace {
 const char* kChapsDaemonName = "chaps";
 }  // namespace
 
-FilePath HomeDirs::GetChapsTokenDir(const Username& user) const {
-  return brillo::cryptohome::home::GetDaemonStorePath(user, kChapsDaemonName);
+FilePath HomeDirs::GetChapsTokenDir(const ObfuscatedUsername& username) const {
+  return brillo::cryptohome::home::GetDaemonStorePath(username,
+                                                      kChapsDaemonName);
 }
 
 bool HomeDirs::NeedsDircryptoMigration(
-    const ObfuscatedUsername& obfuscated_username) const {
+    const ObfuscatedUsername& username) const {
   // Bail if dircrypto is not supported.
   const dircrypto::KeyState state =
       platform_->GetDirCryptoKeyState(ShadowRoot());
@@ -604,7 +588,7 @@ bool HomeDirs::NeedsDircryptoMigration(
   // dircrypto migration. eCryptfs test is adapted from
   // Mount::DoesEcryptfsCryptohomeExist.
   const FilePath user_ecryptfs_vault_dir =
-      UserPath(obfuscated_username).Append(kEcryptfsVaultDir);
+      UserPath(username).Append(kEcryptfsVaultDir);
   return platform_->DirectoryExists(user_ecryptfs_vault_dir);
 }
 

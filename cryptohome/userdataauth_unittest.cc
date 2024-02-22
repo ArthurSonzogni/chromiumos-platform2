@@ -2369,7 +2369,7 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   account.set_account_id(*kUsername1);
 
   constexpr int64_t kHomedirSize = 12345678912345;
-  EXPECT_CALL(homedirs_, ComputeDiskUsage(kUsername1))
+  EXPECT_CALL(homedirs_, ComputeDiskUsage(SanitizeUserName(kUsername1)))
       .WillOnce(Return(kHomedirSize));
   EXPECT_EQ(kHomedirSize, userdataauth_->GetAccountDiskUsage(account));
 }
@@ -5378,8 +5378,9 @@ TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithEphemeralVault) {
   scoped_refptr<MockMount> mount = new MockMount();
   EXPECT_CALL(*mount, MountEphemeralCryptohome(_))
       .WillOnce(ReturnOk<StorageError>());
-  EXPECT_CALL(homedirs_, GetPlainOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
+  EXPECT_CALL(homedirs_, GetOwner(_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(SanitizeUserName(kUsername2)), Return(true)));
   new_mounts_.push_back(mount.get());
 
   // Prepare the ephemeral vault.
@@ -5435,8 +5436,9 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
       .WillOnce(ReturnError<StorageError>(FROM_HERE, kTestErrorString,
                                           MOUNT_ERROR_FATAL, false));
   new_mounts_.push_back(mount.get());
-  EXPECT_CALL(homedirs_, GetPlainOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
+  EXPECT_CALL(homedirs_, GetOwner(_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(SanitizeUserName(kUsername2)), Return(true)));
 
   // Make the call to check that the result is correct.
   user_data_auth::PrepareEphemeralVaultRequest prepare_req;

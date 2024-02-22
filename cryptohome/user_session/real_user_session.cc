@@ -116,7 +116,7 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
     NOTREACHED() << "MountEphemeral username mismatch.";
   }
 
-  if (homedirs_->IsOrWillBeOwner(username)) {
+  if (homedirs_->IsOrWillBeOwner(obfuscated_username_)) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserSessionOwnerNotSupportedInMountEphemeral),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -222,7 +222,8 @@ const brillo::SecureBlob& RealUserSession::GetWebAuthnSecretHash() const {
 void RealUserSession::PrepareChapsKey(const brillo::SecureBlob& chaps_key) {
   if (!pkcs11_token_) {
     pkcs11_token_ = pkcs11_token_factory_->New(
-        username_, homedirs_->GetChapsTokenDir(username_), chaps_key);
+        username_, homedirs_->GetChapsTokenDir(obfuscated_username_),
+        chaps_key);
   } else if (pkcs11_token_->NeedRestore()) {
     pkcs11_token_->RestoreAuthData(chaps_key);
   }
