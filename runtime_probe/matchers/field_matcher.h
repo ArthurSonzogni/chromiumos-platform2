@@ -17,8 +17,13 @@
 namespace runtime_probe {
 namespace internal {
 
+// Parses an integer string and format it to a general format (trimmed, no
+// leading 0). Returns nullopt if it is not an integer string.
+std::optional<std::string> ParseAndFormatIntegerString(const std::string& in);
+
 enum class FieldEqualMatcherType : uint8_t {
   kString,
+  kInteger,
 };
 
 // Implements a matcher that matches a field in probe result. The field value
@@ -60,11 +65,19 @@ class FieldEqualMatcher : public Matcher {
    public:
     // Creates from a string.
     static std::optional<FieldValue> FromString(const std::string& value) {
+      std::optional<std::string> parsed_value;
       if constexpr (T == FieldEqualMatcherType::kString) {
-        return FieldValue{value};
+        parsed_value = value;
+      } else if constexpr (T == FieldEqualMatcherType::kInteger) {
+        parsed_value = ParseAndFormatIntegerString(value);
       } else {
         static_assert(false, "Unsupported field type");
       }
+
+      if (parsed_value) {
+        return FieldValue{*parsed_value};
+      }
+      return std::nullopt;
     }
 
     FieldValue(const FieldValue&) = default;
@@ -90,6 +103,8 @@ class FieldEqualMatcher : public Matcher {
 
 using StringEqualMatcher =
     internal::FieldEqualMatcher<internal::FieldEqualMatcherType::kString>;
+using IntegerEqualMatcher =
+    internal::FieldEqualMatcher<internal::FieldEqualMatcherType::kInteger>;
 
 }  // namespace runtime_probe
 

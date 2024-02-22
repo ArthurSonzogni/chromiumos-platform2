@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/values.h>
 
 #include "runtime_probe/matchers/field_matcher.h"
@@ -31,7 +32,7 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
     return nullptr;
   }
 
-  if (op == "STRING_EQUAL") {
+  if (op == "STRING_EQUAL" || op == "INTEGER_EQUAL") {
     if (operands->size() != 2 || !(*operands)[0].is_string() ||
         !(*operands)[1].is_string()) {
       LOG(ERROR) << "Matcher " << op << " takes 2 string operands, but got "
@@ -40,8 +41,13 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
     }
     std::string field_name = (*operands)[0].GetString();
     std::string expected = (*operands)[1].GetString();
-
-    return StringEqualMatcher::Create(field_name, expected);
+    if (op == "STRING_EQUAL") {
+      return StringEqualMatcher::Create(field_name, expected);
+    }
+    if (op == "INTEGER_EQUAL") {
+      return IntegerEqualMatcher::Create(field_name, expected);
+    }
+    NOTREACHED();
   }
   LOG(ERROR) << "Unsupported matcher operator " << op;
   return nullptr;

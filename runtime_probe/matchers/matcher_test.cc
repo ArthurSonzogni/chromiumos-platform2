@@ -88,6 +88,39 @@ TEST(MatchersTest, StringMatcherMustHave2Operands) {
                             )JSON"));
 }
 
+TEST(MatchersTest, IntegerMatcherMustHaveDigitalStringOperands) {
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "INTEGER_EQUAL",
+                                "operand": []
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "INTEGER_EQUAL",
+                                "operand": ["field_a"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "INTEGER_EQUAL",
+                                "operand": ["field_a", "value_a", "value_b"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "INTEGER_EQUAL",
+                                "operand": ["field_a", 123]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "INTEGER_EQUAL",
+                                "operand": ["field_a", "not_int"]
+                              }
+                            )JSON"));
+}
+
 TEST(MatchersTest, StringMatcher) {
   auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
       {
@@ -105,6 +138,37 @@ TEST(MatchersTest, StringMatcher) {
   EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
       {
         "field_a": "value_b"
+      }
+    )JSON")));
+  // Field not found
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {}
+    )JSON")));
+}
+
+TEST(MatchersTest, IntegerMatcher) {
+  auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
+      {
+        "operator": "INTEGER_EQUAL",
+        "operand": ["field_a", "123"]
+      }
+    )JSON"));
+  EXPECT_TRUE(matcher);
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "00123"
+      }
+    )JSON")));
+  // Wrong value
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "456"
+      }
+    )JSON")));
+  // Not integer
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "not int"
       }
     )JSON")));
   // Field not found

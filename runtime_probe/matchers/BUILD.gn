@@ -12,7 +12,10 @@ pkg_config("target_defaults") {
 }
 
 source_set("matchers") {
-  sources = [ "matcher.cc" ]
+  sources = [
+    "field_matcher.cc",
+    "matcher.cc",
+  ]
   configs += [ ":target_defaults" ]
 }
 

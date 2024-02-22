@@ -4,6 +4,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -34,6 +35,48 @@ TEST(StringEqualMatcherTest, Match) {
   EXPECT_FALSE(MakeMatcher<StringEqualMatcher>("value")->Match(
       MakeComponent("not_value")));
 }
+
+class IntegerEqualMathcerTest
+    : public testing::TestWithParam<
+          std::pair<std::string_view, std::string_view>> {};
+
+TEST_P(IntegerEqualMathcerTest, Match) {
+  EXPECT_TRUE(MakeMatcher<IntegerEqualMatcher>(GetParam().first)
+                  ->Match(MakeComponent(GetParam().second)));
+  EXPECT_TRUE(MakeMatcher<IntegerEqualMatcher>(GetParam().second)
+                  ->Match(MakeComponent(GetParam().first)));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    IntegerEqualMathcerTest,
+    testing::ValuesIn(
+        std::vector<std::pair<std::string_view, std::string_view>>{
+            {"123", "123"},
+            {"123", "  123   "},
+            {"123", "  000123  "},
+            {"-123", "-123"},
+            {"-123", "  -123  "},
+            {"-123", "  -000123  "},
+            {"0", "0"},
+            {"0", "000"},
+            {"0", "-000"},
+            {"0", "  000  "},
+            {"0", "  -000  "}}));
+
+class IntegerEqualMathcerInvalidTest
+    : public testing::TestWithParam<std::string_view> {};
+
+TEST_P(IntegerEqualMathcerInvalidTest, NotMatch) {
+  EXPECT_FALSE(MakeMatcher<IntegerEqualMatcher>(GetParam()));
+  EXPECT_FALSE(MakeMatcher<IntegerEqualMatcher>("123")->Match(
+      MakeComponent(GetParam())));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    IntegerEqualMathcerInvalidTest,
+    testing::Values("", "   ", "-", "  -  ", "abc", "-abc", "123a"));
 
 }  // namespace
 }  // namespace runtime_probe::internal
