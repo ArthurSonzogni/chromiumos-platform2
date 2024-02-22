@@ -128,7 +128,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     brillo::SecureBlob passkey(password);
 
     user = {username, obfuscated, passkey, UserPath(obfuscated),
-            brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
+            brillo::cryptohome::home::GetUserPath(obfuscated)};
   }
 
   void PrepareDirectoryStructure() {

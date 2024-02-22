@@ -251,7 +251,7 @@ std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
   std::transform(
       ret.begin(), ret.end(), std::back_inserter(user_paths),
       [](const HomeDirs::HomeDir& homedir) {
-        return brillo::cryptohome::home::GetHashedUserPath(homedir.obfuscated);
+        return brillo::cryptohome::home::GetUserPath(homedir.obfuscated);
       });
 
   auto is_mounted = platform_->AreDirectoriesMounted(user_paths);
@@ -537,8 +537,7 @@ int64_t HomeDirs::ComputeDiskUsage(const ObfuscatedUsername& username) {
   if (!platform_->DirectoryExists(user_dir)) {
     // It's either ephemeral or the user doesn't exist. In either case, we check
     // /home/user/$hash.
-    FilePath user_home_dir =
-        brillo::cryptohome::home::GetHashedUserPath(username);
+    FilePath user_home_dir = brillo::cryptohome::home::GetUserPath(username);
     size = platform_->ComputeDirectoryDiskUsage(user_home_dir);
   } else {
     // Note that we'll need to handle both ecryptfs and dircrypto.

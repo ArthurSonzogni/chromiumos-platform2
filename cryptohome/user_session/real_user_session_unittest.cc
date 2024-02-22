@@ -151,7 +151,7 @@ class RealUserSessionTest : public ::testing::Test {
     brillo::SecureBlob passkey(password);
 
     UserInfo info = {username, obfuscated, passkey, UserPath(obfuscated),
-                     brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
+                     brillo::cryptohome::home::GetUserPath(obfuscated)};
     users_.push_back(info);
   }
 

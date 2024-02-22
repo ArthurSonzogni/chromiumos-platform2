@@ -284,7 +284,7 @@ base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
   if (obfuscated->empty()) {
     return base::FilePath();
   }
-  return brillo::cryptohome::home::GetHashedUserPath(obfuscated)
+  return brillo::cryptohome::home::GetUserPath(obfuscated)
       .Append(kRecoveryIdFile);
 }
 
