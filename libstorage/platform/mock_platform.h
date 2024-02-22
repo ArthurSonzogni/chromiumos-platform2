@@ -299,6 +299,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               GetLogicalVolumeManager,
               (),
               (override));
+  MOCK_METHOD(crossystem::Crossystem*, GetCrosssystem, (), (override));
 
   // Calls which do not have a corresponding fake in FakePlatform.
 

@@ -78,7 +78,10 @@ source_set("libstorage_fake_platform_sources") {
     "util/get_random_suffix.cc",
   ]
   libs = [ "hwsec-foundation" ]
-  pkg_deps = [ "libbrillo-test" ]
+  pkg_deps = [
+    "libbrillo-test",
+    "libcrossystem-test",
+  ]
   all_dependent_configs = [
     ":target_defaults",
     "//common-mk:test",

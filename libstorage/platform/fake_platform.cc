@@ -23,6 +23,7 @@
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/secure_blob.h>
+#include <libcrossystem/crossystem_fake.h>
 
 #include "libstorage/platform/util/get_random_suffix.h"
 
@@ -139,9 +140,10 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 // Constructor/destructor
 
 FakePlatform::FakePlatform()
-    : fake_loop_device_manager_(
-          std::make_unique<brillo::fake::FakeLoopDeviceManager>()),
-      mock_lvm_(std::make_unique<brillo::MockLogicalVolumeManager>()) {
+    : Platform(std::make_unique<brillo::fake::FakeLoopDeviceManager>(),
+               std::make_unique<brillo::MockLogicalVolumeManager>(),
+               std::make_unique<crossystem::Crossystem>(
+                   std::make_unique<crossystem::fake::CrossystemFake>())) {
   CHECK(base::GetTempDir(&tmpfs_rootfs_));
   CHECK(tmpfs_rootfs_.IsAbsolute()) << "tmpfs_rootfs_=" << tmpfs_rootfs_;
   tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
@@ -187,19 +189,6 @@ void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
 }
 
 // Platform API
-
-brillo::LoopDeviceManager* FakePlatform::GetLoopDeviceManager() {
-  return fake_loop_device_manager_.get();
-}
-
-brillo::LogicalVolumeManager* FakePlatform::GetLogicalVolumeManager() {
-  return mock_lvm_.get();
-}
-
-brillo::MockLogicalVolumeManager* FakePlatform::GetMockLogicalVolumeManager() {
-  return mock_lvm_.get();
-}
-
 bool FakePlatform::Rename(const base::FilePath& from,
                           const base::FilePath& to) {
   return real_platform_.Rename(TestFilePath(from), TestFilePath(to));

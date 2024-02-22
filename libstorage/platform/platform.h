@@ -219,6 +219,10 @@ class BRILLO_EXPORT Platform {
   Platform(const Platform&) = delete;
   Platform& operator=(const Platform&) = delete;
 
+  Platform(std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager,
+           std::unique_ptr<brillo::LogicalVolumeManager> lvm,
+           std::unique_ptr<crossystem::Crossystem> crossystem);
+
   virtual ~Platform();
 
   // Calls the platform mount
@@ -951,6 +955,8 @@ class BRILLO_EXPORT Platform {
   virtual brillo::LoopDeviceManager* GetLoopDeviceManager();
 
   virtual brillo::LogicalVolumeManager* GetLogicalVolumeManager();
+
+  virtual crossystem::Crossystem* GetCrosssystem();
 
   // Creates a random unguessable token. The result is a non-null token.
   virtual base::UnguessableToken CreateUnguessableToken();

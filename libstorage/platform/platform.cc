@@ -141,15 +141,21 @@ namespace libstorage {
 
 const char kLoopPrefix[] = "/dev/loop";
 
-// TODO(b/232566569): Pass dependencies (lvm, loop device manager) into platform
-// explicitly instead of creating in place.
 Platform::Platform()
+    : Platform(std::make_unique<brillo::LoopDeviceManager>(),
+               std::make_unique<brillo::LogicalVolumeManager>(),
+               std::make_unique<crossystem::Crossystem>()) {}
+
+Platform::Platform(
+    std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager,
+    std::unique_ptr<brillo::LogicalVolumeManager> lvm,
+    std::unique_ptr<crossystem::Crossystem> crossystem)
     : mount_info_path_(FilePath(kProcDir)
                            .Append(std::to_string(getpid()))
                            .Append(kMountInfoFile)),
-      loop_device_manager_(std::make_unique<brillo::LoopDeviceManager>()),
-      lvm_(std::make_unique<brillo::LogicalVolumeManager>()),
-      crossystem_(std::make_unique<crossystem::Crossystem>()) {}
+      loop_device_manager_(std::move(loop_device_manager)),
+      lvm_(std::move(lvm)),
+      crossystem_(std::move(crossystem)) {}
 
 Platform::~Platform() {}
 
@@ -159,6 +165,10 @@ brillo::LoopDeviceManager* Platform::GetLoopDeviceManager() {
 
 brillo::LogicalVolumeManager* Platform::GetLogicalVolumeManager() {
   return lvm_.get();
+}
+
+crossystem::Crossystem* Platform::GetCrosssystem() {
+  return crossystem_.get();
 }
 
 std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {

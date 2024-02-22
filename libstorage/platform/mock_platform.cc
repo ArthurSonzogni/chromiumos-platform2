@@ -186,6 +186,9 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
   ON_CALL(*this, GetLogicalVolumeManager())
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetLogicalVolumeManager));
+  ON_CALL(*this, GetCrosssystem())
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetCrosssystem));
 
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(

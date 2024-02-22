@@ -610,7 +610,8 @@ class HomeDirsVaultTest : public ::testing::Test {
     EXPECT_CALL(*platform, IsStatefulLogicalVolumeSupported())
         .WillRepeatedly(Return(true));
     brillo::MockLogicalVolumeManager* lvm =
-        platform->GetFake()->GetMockLogicalVolumeManager();
+        (brillo::MockLogicalVolumeManager*)platform->GetFake()
+            ->GetLogicalVolumeManager();
     if (existing_cryptohome) {
       EXPECT_CALL(*lvm, GetLogicalVolume(_, _)).WillRepeatedly(Return(lv));
     } else {
