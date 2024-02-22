@@ -14,6 +14,7 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
+#include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_loader.h"
 #include "ml_core/effects_pipeline.h"
 #include "ml_core/tests/png_io.h"
@@ -109,7 +110,7 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch("nodlc")) {
     DlcPath = base::FilePath("/usr/local/lib64");
   } else {
-    cros::DlcLoader client;
+    cros::DlcLoader client(cros::dlc_client::kMlCoreDlcId);
     client.Run();
     if (!client.DlcLoaded()) {
       LOG(ERROR) << "Failed to load DLC";

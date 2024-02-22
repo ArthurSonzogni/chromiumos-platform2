@@ -11,8 +11,11 @@
 
 namespace cros {
 
+DlcLoader::DlcLoader(const std::string& dlc_id) : dlc_id_(dlc_id) {}
+
 int DlcLoader::OnEventLoopStarted() {
   dlc_client_ = cros::DlcClient::Create(
+      dlc_id_,
       base::BindOnce(
           [](DlcLoader* loader, const base::FilePath& dlc_path) {
             LOG(INFO) << "DLC Installed";

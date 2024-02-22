@@ -41,35 +41,35 @@ void DlcMetrics::SetMetricsBaseName(const std::string& metrics_base_name) {
 void DlcMetrics::RecordBeginInstallResult(const DlcBeginInstallResult result) {
   if (!metrics_base_name_.empty()) {
     metrics_library_.SendEnumToUMA(
-        metrics_base_name_ + ".MlCore.DlcBeginInstallResult", result);
+        metrics_base_name_ + ".DlcBeginInstallResult", result);
   }
 }
 
 void DlcMetrics::RecordBeginInstallDlcServiceError(const DlcErrorCode error) {
   if (!metrics_base_name_.empty()) {
     metrics_library_.SendEnumToUMA(
-        metrics_base_name_ + ".MlCore.DlcBeginInstallDlcServiceError", error);
+        metrics_base_name_ + ".DlcBeginInstallDlcServiceError", error);
   }
 }
 
 void DlcMetrics::RecordFinalInstallResult(const DlcFinalInstallResult result) {
   if (!metrics_base_name_.empty()) {
     metrics_library_.SendEnumToUMA(
-        metrics_base_name_ + ".MlCore.DlcFinalInstallResult", result);
+        metrics_base_name_ + ".DlcFinalInstallResult", result);
   }
 }
 
 void DlcMetrics::RecordFinalInstallDlcServiceError(const DlcErrorCode error) {
   if (!metrics_base_name_.empty()) {
     metrics_library_.SendEnumToUMA(
-        metrics_base_name_ + ".MlCore.DlcFinalInstallDlcServiceError", error);
+        metrics_base_name_ + ".DlcFinalInstallDlcServiceError", error);
   }
 }
 
 void DlcMetrics::RecordInstallAttemptCount(int n, int max) {
   if (!metrics_base_name_.empty()) {
     metrics_library_.SendLinearToUMA(
-        metrics_base_name_ + ".MlCore.DlcInstallAttemptCount", n, max);
+        metrics_base_name_ + ".DlcInstallAttemptCount", n, max);
   }
 }
 

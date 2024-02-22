@@ -20,6 +20,7 @@
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/bindings/self_owned_receiver.h>
+#include <ml_core/dlc/dlc_ids.h>
 #include <tensorflow/lite/model.h>
 #include <unicode/putil.h>
 #include <unicode/udata.h>
@@ -889,6 +890,7 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
   // Create ml core dlc client for this worker process.
   auto split = base::SplitOnceCallback(std::move(callback));
   ml_core_dlc_client_ = cros::DlcClient::Create(
+      cros::dlc_client::kMlCoreDlcId,
       base::BindOnce(&MachineLearningServiceImpl::InternalLoadImageAnnotator,
                      base::Unretained(this), std::move(config),
                      std::move(receiver), std::move(split.first)),
@@ -904,7 +906,7 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     return;
   }
-  ml_core_dlc_client_->SetMetricsBaseName("MachineLearningService");
+  ml_core_dlc_client_->SetMetricsBaseName("MachineLearningService.MlCore");
   ml_core_dlc_client_->InstallDlc();
 }
 

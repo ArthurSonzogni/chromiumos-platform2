@@ -11,6 +11,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
+#include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_loader.h"
 #include "ml_core/tests/test_utilities.h"
 
@@ -390,7 +391,7 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("nodlc")) {
     dlc_path = base::FilePath("/usr/local/lib64");
   } else {
-    cros::DlcLoader client;
+    cros::DlcLoader client(cros::dlc_client::kMlCoreDlcId);
     client.Run();
     if (!client.DlcLoaded()) {
       LOG(ERROR) << "Failed to load DLC";

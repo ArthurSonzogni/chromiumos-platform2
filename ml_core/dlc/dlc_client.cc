@@ -10,6 +10,8 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
+#include <base/location.h>
+#include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <dbus/bus.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -19,31 +21,31 @@
 #include "ml_core/dlc/dlc_metrics.h"
 
 namespace {
-constexpr char kDlcId[] = "ml-core-internal";
-constexpr uint8_t kMaxInstallAttempts = 5;
-constexpr uint16_t kDlcInstallTimeout = 50000;
-const base::TimeDelta kRetryDelays[kMaxInstallAttempts] = {
-    base::Seconds(5), base::Seconds(10), base::Seconds(20), base::Seconds(40),
-    base::Seconds(80)};
+constexpr int kMaxInstallAttempts = 5;
+constexpr int kDlcInstallTimeout = 50000;
+constexpr base::TimeDelta kBaseDelay = base::Seconds(5);
 
 class DlcClientImpl : public cros::DlcClient {
  public:
-  DlcClientImpl() = default;
+  explicit DlcClientImpl(const std::string& dlc_id)
+      : dlc_id_(dlc_id),
+        task_runner_(base::SequencedTaskRunner::GetCurrentDefault()) {}
   ~DlcClientImpl() override = default;
 
-  void Initialize(
+  bool Initialize(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
       base::OnceCallback<void(const std::string&)> error_cb) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     dlc_root_path_cb_ = std::move(dlc_root_path_cb);
     error_cb_ = std::move(error_cb);
     LOG(INFO) << "Setting up DlcClient";
 
     dbus::Bus::Options opts;
     opts.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(std::move(opts));
+    bus_ = base::MakeRefCounted<dbus::Bus>(std::move(opts));
     if (!bus_->Connect()) {
       LOG(ERROR) << "Failed to connect to system bus";
-      return;
+      return false;
     }
     LOG(INFO) << "Connected to system bus";
 
@@ -56,67 +58,24 @@ class DlcClientImpl : public cros::DlcClient {
         base::BindOnce(&DlcClientImpl::OnDlcStateChangedConnect, weak_this));
 
     LOG(INFO) << "DlcClient setup complete";
-  }
-
-  void OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
-    LOG(INFO) << "OnDlcStateChanged (" << dlc_state.id()
-              << "): " << dlcservice::DlcState::State_Name(dlc_state.state());
-
-    if (dlc_state.id() != kDlcId) {
-      return;
-    }
-
-    switch (dlc_state.state()) {
-      case dlcservice::DlcState::INSTALLED:
-        metrics_.RecordFinalInstallResult(
-            cros::DlcFinalInstallResult::kSuccess);
-        LOG(INFO) << "Successfully installed DLC " << kDlcId << " at "
-                  << dlc_state.root_path();
-        InvokeSuccessCb(base::FilePath(dlc_state.root_path()));
-        break;
-      case dlcservice::DlcState::INSTALLING:
-        LOG(INFO) << static_cast<int>(dlc_state.progress() * 100)
-                  << "% installing DLC: " << kDlcId;
-        break;
-      case dlcservice::DlcState::NOT_INSTALLED: {
-        metrics_.RecordFinalInstallDlcServiceError(
-            cros::DlcErrorCodeEnumFromString(dlc_state.last_error_code()));
-        // "BUSY" error code is not considered an installation failure.
-        if (dlc_state.last_error_code() != dlcservice::kErrorBusy) {
-          metrics_.RecordFinalInstallResult(
-              cros::DlcFinalInstallResult::kDlcServiceError);
-          InvokeErrorCb(
-              base::StrCat({"Failed to install DLC: ", kDlcId,
-                            " Error: ", dlc_state.last_error_code()}));
-        }
-        break;
-      }
-      default:
-        InvokeErrorCb(base::StrCat({"Unknown error when installing: ", kDlcId,
-                                    " Error: ", dlc_state.last_error_code()}));
-        break;
-    }
-  }
-
-  void OnDlcStateChangedConnect(const std::string& interface,
-                                const std::string& signal,
-                                const bool success) {
-    LOG(INFO) << "OnDlcStateChangedConnect (" << interface << ":" << signal
-              << "): " << (success ? "true" : "false");
-    if (!success) {
-      InvokeErrorCb(
-          base::StrCat({"Error connecting ", interface, ". ", signal}));
-    }
+    return true;
   }
 
   void SetMetricsBaseName(const std::string& metrics_base_name) override {
     metrics_.SetMetricsBaseName(metrics_base_name);
   }
 
-  void InstallDlc() override { Install(/*attempt=*/1); }
+  void InstallDlc() override {
+    task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&DlcClientImpl::Install, weak_factory_.GetWeakPtr(), 1));
+  }
 
+ private:
   void Install(int attempt) {
-    LOG(INFO) << "InstallDlc called for " << kDlcId << ", attempt: " << attempt;
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    LOG(INFO) << "InstallDlc called for " << dlc_id_
+              << ", attempt: " << attempt;
     if (!bus_->IsConnected()) {
       metrics_.RecordBeginInstallResult(
           cros::DlcBeginInstallResult::kDBusNotConnected);
@@ -128,11 +87,11 @@ class DlcClientImpl : public cros::DlcClient {
 
     brillo::ErrorPtr error;
     dlcservice::InstallRequest install_request;
-    install_request.set_id(kDlcId);
+    install_request.set_id(dlc_id_);
 
     if (!dlcservice_client_->Install(install_request, &error,
                                      kDlcInstallTimeout)) {
-      LOG(ERROR) << "Error calling dlcservice_client_->Install for " << kDlcId;
+      LOG(ERROR) << "Error calling dlcservice_client_->Install for " << dlc_id_;
       if (error == nullptr) {
         metrics_.RecordBeginInstallResult(
             cros::DlcBeginInstallResult::kUnknownDlcServiceFailure);
@@ -151,7 +110,7 @@ class DlcClientImpl : public cros::DlcClient {
           metrics_.RecordBeginInstallResult(
               cros::DlcBeginInstallResult::kDlcServiceBusyWillAbort);
           auto err = base::StrCat(
-              {"Install attempts for ", kDlcId, " exhausted, aborting."});
+              {"Install attempts for ", dlc_id_, " exhausted, aborting."});
           LOG(ERROR) << err;
           InvokeErrorCb(err);
           return;
@@ -159,10 +118,10 @@ class DlcClientImpl : public cros::DlcClient {
 
         metrics_.RecordBeginInstallResult(
             cros::DlcBeginInstallResult::kDlcServiceBusyWillRetry);
-        auto retry_delay = kRetryDelays[attempt - 1];
+        auto retry_delay = kBaseDelay * std::exp2(attempt - 1);
         LOG(ERROR) << "dlcservice is busy. Retrying in " << retry_delay;
 
-        base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        task_runner_->PostDelayedTask(
             FROM_HERE,
             base::BindOnce(&DlcClientImpl::Install, weak_factory_.GetWeakPtr(),
                            attempt),
@@ -180,7 +139,60 @@ class DlcClientImpl : public cros::DlcClient {
     }
 
     metrics_.RecordBeginInstallResult(cros::DlcBeginInstallResult::kSuccess);
-    LOG(INFO) << "InstallDlc successfully initiated for " << kDlcId;
+    LOG(INFO) << "InstallDlc successfully initiated for " << dlc_id_;
+  }
+
+  void OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    LOG(INFO) << "OnDlcStateChanged (" << dlc_state.id()
+              << "): " << dlcservice::DlcState::State_Name(dlc_state.state());
+
+    if (dlc_state.id() != dlc_id_) {
+      return;
+    }
+
+    switch (dlc_state.state()) {
+      case dlcservice::DlcState::INSTALLED:
+        metrics_.RecordFinalInstallResult(
+            cros::DlcFinalInstallResult::kSuccess);
+        LOG(INFO) << "Successfully installed DLC " << dlc_id_ << " at "
+                  << dlc_state.root_path();
+        InvokeSuccessCb(base::FilePath(dlc_state.root_path()));
+        break;
+      case dlcservice::DlcState::INSTALLING:
+        LOG(INFO) << static_cast<int>(dlc_state.progress() * 100)
+                  << "% installing DLC: " << dlc_id_;
+        break;
+      case dlcservice::DlcState::NOT_INSTALLED: {
+        metrics_.RecordFinalInstallDlcServiceError(
+            cros::DlcErrorCodeEnumFromString(dlc_state.last_error_code()));
+        // "BUSY" error code is not considered an installation failure.
+        if (dlc_state.last_error_code() != dlcservice::kErrorBusy) {
+          metrics_.RecordFinalInstallResult(
+              cros::DlcFinalInstallResult::kDlcServiceError);
+          InvokeErrorCb(
+              base::StrCat({"Failed to install DLC: ", dlc_id_,
+                            " Error: ", dlc_state.last_error_code()}));
+        }
+        break;
+      }
+      default:
+        InvokeErrorCb(base::StrCat({"Unknown error when installing: ", dlc_id_,
+                                    " Error: ", dlc_state.last_error_code()}));
+        break;
+    }
+  }
+
+  void OnDlcStateChangedConnect(const std::string& interface,
+                                const std::string& signal,
+                                const bool success) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    LOG(INFO) << "OnDlcStateChangedConnect (" << interface << ":" << signal
+              << "): " << (success ? "true" : "false");
+    if (!success) {
+      InvokeErrorCb(
+          base::StrCat({"Error connecting ", interface, ". ", signal}));
+    }
   }
 
   void InvokeSuccessCb(const base::FilePath& dlc_root_path) {
@@ -197,6 +209,7 @@ class DlcClientImpl : public cros::DlcClient {
     }
   }
 
+  const std::string dlc_id_;
   cros::DlcMetrics metrics_;
   std::string metrics_base_name_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
@@ -204,6 +217,8 @@ class DlcClientImpl : public cros::DlcClient {
   scoped_refptr<dbus::Bus> bus_;
   base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;
   base::OnceCallback<void(const std::string&)> error_cb_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<DlcClientImpl> weak_factory_{this};
 };
 
@@ -212,7 +227,7 @@ class DlcClientForTest : public cros::DlcClient {
   DlcClientForTest(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
       base::OnceCallback<void(const std::string&)> error_cb,
-      const base::FilePath path)
+      const base::FilePath& path)
       : dlc_root_path_cb_(std::move(dlc_root_path_cb)),
         error_cb_(std::move(error_cb)),
         path_(path) {}
@@ -238,31 +253,37 @@ class DlcClientForTest : public cros::DlcClient {
 
 }  // namespace
 
+namespace {
+base::FilePath path_for_test;
+}  // namespace
+
 namespace cros {
 
-#ifdef USE_LOCAL_ML_CORE_INTERNAL
-// TODO(nbowe): work out why this is building this lib once for ml_core
-// then again for ml
-const base::FilePath* path_for_test = new base::FilePath("/usr/local/lib64");
-#else
-const base::FilePath* path_for_test = nullptr;
-#endif
-
 std::unique_ptr<DlcClient> DlcClient::Create(
+    const std::string& dlc_id,
     base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
     base::OnceCallback<void(const std::string&)> error_cb) {
-  if (path_for_test) {
+  if (!path_for_test.empty()) {
+    LOG(INFO) << "Using predefined path " << path_for_test << " for DLC "
+              << dlc_id;
     auto client = std::make_unique<DlcClientForTest>(
-        std::move(dlc_root_path_cb), std::move(error_cb), *path_for_test);
+        std::move(dlc_root_path_cb), std::move(error_cb), path_for_test);
     return client;
   } else {
-    auto client = std::make_unique<DlcClientImpl>();
-    client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb));
-    return client;
+    auto client = std::make_unique<DlcClientImpl>(dlc_id);
+    if (client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb))) {
+      return client;
+    }
+    return nullptr;
   }
 }
+
 void DlcClient::SetDlcPathForTest(const base::FilePath* path) {
-  path_for_test = path;
+  if (path) {
+    path_for_test = *path;
+  } else {
+    path_for_test.clear();
+  }
 }
 
 }  // namespace cros

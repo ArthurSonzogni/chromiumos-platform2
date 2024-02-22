@@ -6,6 +6,7 @@
 #define ML_CORE_DLC_DLC_LOADER_H_
 
 #include <memory>
+#include <string>
 
 #include <brillo/daemons/daemon.h>
 
@@ -13,20 +14,21 @@
 
 namespace cros {
 
-// Class to load the ml-core-internal DLC, primarily designed
+// Class to load a DLC, primarily designed
 // around a CLI application. Create an instance of this class,
 // call Run(), and after the method returns you can use DlcLoaded()
 // to check if it was successful, and GetDlcRootPath() for the
 // root directory of the installed DLC.
 class DlcLoader : public brillo::Daemon {
  public:
-  DlcLoader() = default;
+  explicit DlcLoader(const std::string& dlc_id);
   ~DlcLoader() override = default;
 
   bool DlcLoaded();
   const base::FilePath& GetDlcRootPath();
 
  private:
+  const std::string dlc_id_;
   int OnEventLoopStarted() override;
   base::FilePath dlc_root_path_;
   std::unique_ptr<cros::DlcClient> dlc_client_;
