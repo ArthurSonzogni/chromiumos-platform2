@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
@@ -94,6 +95,7 @@ using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
+using ::testing::MockFunction;
 using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::Ref;
@@ -3480,6 +3482,31 @@ TEST_F(WiFiMainTest, DisconnectReasonCleared) {
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
   EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_,
             IEEE_80211::kReasonCodeInvalid);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonGenerateWiFiFirmwareDump) {
+  constexpr auto kExpectedDisconnection =
+      base::MakeFixedFlatSet<int32_t>({-IEEE_80211::kReasonCodeSenderHasLeft});
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  MockFunction<void(std::string)> check;
+  {
+    InSequence s;
+    for (int32_t reason = -IEEE_80211::kReasonCodeMax + 1;
+         reason < IEEE_80211::kReasonCodeMax; reason++) {
+      EXPECT_CALL(*manager(),
+                  GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+          .Times(base::Contains(kExpectedDisconnection, reason) ? 0 : 1);
+      EXPECT_CALL(
+          check, Call("Check point for reason code:" + std::to_string(reason)));
+    }
+  }
+  for (int32_t reason = -IEEE_80211::kReasonCodeMax + 1;
+       reason < IEEE_80211::kReasonCodeMax; reason++) {
+    ReportDisconnectReasonChanged(reason);
+    check.Call("Check point for reason code:" + std::to_string(reason));
+  }
 }
 
 TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUserDisconnection) {

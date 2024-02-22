@@ -134,6 +134,10 @@ class MockManager : public Manager {
               (const ServiceRefPtr&),
               (const, override));
   MOCK_METHOD(void, ConnectToBestWiFiService, (), (override));
+  MOCK_METHOD(void,
+              GenerateFirmwareDumpForTechnology,
+              (Technology),
+              (override));
   MOCK_METHOD(const ManagerProperties&, GetProperties, (), (const, override));
   MOCK_METHOD(std::vector<DeviceRefPtr>,
               FilterByTechnology,

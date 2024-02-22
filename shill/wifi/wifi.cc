@@ -1286,6 +1286,14 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
                                               : Metrics::kDisconnectedByAp;
   metrics()->Notify80211Disconnect(by_whom, new_reason);
 
+  // Generate firmware dump for unexpected disconnections. Here we rule out one
+  // condition that mostly consists of expected disconnections -- locally
+  // generated reason code 3 (|-IEEE_80211::kReasonCodeSenderHasLeft|). Examples
+  // include suspend/resume, user-triggered disconnections, etc.
+  if (!(new_reason == IEEE_80211::kReasonCodeSenderHasLeft && new_value < 0)) {
+    manager()->GenerateFirmwareDumpForTechnology(Technology::kWiFi);
+  }
+
   WiFiService* affected_service =
       current_service_.get() ? current_service_.get() : pending_service_.get();
 

@@ -245,7 +245,7 @@ class Manager {
   mockable void ConnectToBestWiFiService();
 
   // Generate firmware dump for a device driver, e.g. WiFi.
-  void GenerateFirmwareDumpForTechnology(Technology technology);
+  mockable void GenerateFirmwareDumpForTechnology(Technology technology);
 
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);
