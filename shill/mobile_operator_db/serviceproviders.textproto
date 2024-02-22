@@ -14086,6 +14086,12 @@ mno {
     mccmnc: "311270"
     mccmnc: "311480"
     tethering_allowed: false
+    # Cellular device requires IMS support, e.g. for SMS over IMS.
+    mobile_apn {
+      apn: "ims"
+      ip_type: IPV4V6
+      type: IA
+    }
     mobile_apn {
       apn: "vzwinternet"
       localized_name {
