@@ -406,6 +406,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Handles additional steps for VM startup after control socket is ready
   // asynchronously.
   void HandleControlSocketReady(const VmId& vm_id);
+  void OnControlSocketChange(const VmId& vm_id,
+                             const base::FilePath&,
+                             bool error);
   void OnControlSocketReady(const VmId& vm_id);
   void SendVmStartedSignal(const VmId& vm_id, const VmBaseImpl::Info& vm_info);
   void SendVmStartingUpSignal(const VmId& vm_id,
@@ -640,6 +643,9 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Watcher to monitor changes to the system timezone file.
   base::FilePathWatcher localtime_watcher_;
+
+  // Watchers to monitor for the vm socket becoming available.
+  std::map<VmId, base::FilePathWatcher> vm_socket_ready_watchers_;
 
   // The vmm swap TBW (total bytes written) policy managing TBW from each VM on
   // vmm-swap. This is instantiated by Service and shared with each VM.

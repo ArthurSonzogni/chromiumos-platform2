@@ -30,6 +30,7 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -275,12 +276,6 @@ constexpr char kVmMemoryManagementHostKillDecisionMsTimeoutParam[] =
     "HostMsTimeout";
 // Default value for kVmMemoryManagementHostKillDecisionMsTimeoutParam
 constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
-// Polling interval for checking existence of control socket file path.
-constexpr base::TimeDelta kControlSocketPathPollingInterval =
-    base::Milliseconds(10);
-// Timeout for checking existence of control socket file path.
-constexpr base::TimeDelta kControlSocketPathPollingTimeout =
-    base::Seconds(10);
 
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kVmMemoryManagementServiceFeature{
@@ -735,27 +730,6 @@ bool ShutdownVm(VmBaseImpl* vm,
   metrics::DurationRecorder duration_recorder(
       metrics, vm->GetInfo().type, metrics::DurationRecorder::Event::kVmStop);
   return vm->Shutdown();
-}
-
-// Delays run of callback until path exists, or print error when timeout.
-void WaitUntilControlSocketPathExist(
-    const base::FilePath& path,
-    base::OnceCallback<void()> callback_on_success,
-    base::TimeDelta timeout) {
-  if (base::PathExists(path)) {
-    std::move(callback_on_success).Run();
-    return;
-  }
-  if (timeout <= kControlSocketPathPollingInterval) {
-    LOG(ERROR) << "Timeout while waiting on path " << path;
-    return;
-  }
-  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&WaitUntilControlSocketPathExist, path,
-                     std::move(callback_on_success),
-                     timeout - kControlSocketPathPollingInterval),
-      kControlSocketPathPollingInterval);
 }
 
 }  // namespace
@@ -4044,25 +4018,53 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
 void Service::HandleControlSocketReady(const VmId& vm_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&WaitUntilControlSocketPathExist,
-                     base::FilePath(vms_[vm_id]->GetVmSocketPath()),
-                     base::BindOnce(&Service::OnControlSocketReady,
-                                    weak_ptr_factory_.GetWeakPtr(), vm_id),
-                     kControlSocketPathPollingTimeout));
+  auto path = base::FilePath(vms_[vm_id]->GetVmSocketPath());
+
+  // Initialize the watcher before we check if the path exists
+  // to avoid racing with the socket being created.
+  vm_socket_ready_watchers_.emplace(std::piecewise_construct,
+                                    std::make_tuple(vm_id), std::make_tuple());
+  if (!vm_socket_ready_watchers_[vm_id].Watch(
+          path, base::FilePathWatcher::Type::kNonRecursive,
+          base::BindRepeating(&Service::OnControlSocketChange,
+                              weak_ptr_factory_.GetWeakPtr(), vm_id))) {
+    PLOG(ERROR) << "Failed to initialize file watcher " << vm_id;
+    vm_socket_ready_watchers_.erase(vm_id);
+  }
+
+  if (base::PathExists(path)) {
+    OnControlSocketReady(vm_id);
+  }
 }
 
-void Service::OnControlSocketReady(const VmId& vm_id) {
+void Service::OnControlSocketChange(const VmId& vm_id,
+                                    const base::FilePath&,
+                                    bool error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "VM " << vm_id.name() << " stopped prematurely";
+    vm_socket_ready_watchers_.erase(vm_id);
     return;
   }
 
-  std::unique_ptr<VmBaseImpl>& vm = iter->second;
+  if (error) {
+    LOG(ERROR) << "Control socket watcher error " << vm_id;
+    vm_socket_ready_watchers_.erase(vm_id);
+  }
+
+  if (base::PathExists(base::FilePath(iter->second->GetVmSocketPath()))) {
+    OnControlSocketReady(vm_id);
+  }
+}
+
+void Service::OnControlSocketReady(const VmId& vm_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  vm_socket_ready_watchers_.erase(vm_id);
+
+  std::unique_ptr<VmBaseImpl>& vm = vms_[vm_id];
   VmBaseImpl::Info info = vm->GetInfo();
 
   if (vm_memory_management_service_) {
