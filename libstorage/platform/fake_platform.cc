@@ -141,7 +141,9 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 
 FakePlatform::FakePlatform()
     : Platform(std::make_unique<brillo::fake::FakeLoopDeviceManager>(),
-               std::make_unique<brillo::MockLogicalVolumeManager>(),
+               USE_DEVICE_MAPPER
+                   ? std::make_unique<brillo::MockLogicalVolumeManager>()
+                   : std::unique_ptr<brillo::MockLogicalVolumeManager>(),
                std::make_unique<crossystem::Crossystem>(
                    std::make_unique<crossystem::fake::CrossystemFake>())) {
   CHECK(base::GetTempDir(&tmpfs_rootfs_));

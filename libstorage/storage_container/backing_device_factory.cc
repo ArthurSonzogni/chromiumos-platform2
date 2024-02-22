@@ -8,7 +8,11 @@
 
 #include "libstorage/platform/platform.h"
 #include "libstorage/storage_container/backing_device.h"
+
+#if USE_DEVICE_MAPPER
 #include "libstorage/storage_container/logical_volume_backing_device.h"
+#endif
+
 #include "libstorage/storage_container/ramdisk_device.h"
 
 namespace libstorage {
@@ -25,8 +29,10 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
       return RamdiskDevice::Generate(config.ramdisk.backing_file_path,
                                      platform_);
     case BackingDeviceType::kLogicalVolumeBackingDevice:
+#if USE_DEVICE_MAPPER
       return std::make_unique<LogicalVolumeBackingDevice>(
           config, platform_->GetLogicalVolumeManager());
+#endif
     default:
       return nullptr;
   }

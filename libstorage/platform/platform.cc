@@ -57,7 +57,11 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
+
+#if USE_DEVICE_MAPPER
 #include <brillo/blkdev_utils/device_mapper.h>
+#endif
+
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
@@ -143,7 +147,9 @@ const char kLoopPrefix[] = "/dev/loop";
 
 Platform::Platform()
     : Platform(std::make_unique<brillo::LoopDeviceManager>(),
-               std::make_unique<brillo::LogicalVolumeManager>(),
+               USE_DEVICE_MAPPER
+                   ? std::make_unique<brillo::LogicalVolumeManager>()
+                   : std::unique_ptr<brillo::LogicalVolumeManager>(),
                std::make_unique<crossystem::Crossystem>()) {}
 
 Platform::Platform(

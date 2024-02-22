@@ -13,7 +13,11 @@
 #include <libstorage/platform/platform.h>
 
 #include "libstorage/storage_container/backing_device_factory.h"
+
+#if USE_DEVICE_MAPPER
 #include "libstorage/storage_container/dmcrypt_container.h"
+#endif
+
 #include "libstorage/storage_container/ecryptfs_container.h"
 #include "libstorage/storage_container/ephemeral_container.h"
 #include "libstorage/storage_container/ext4_container.h"
@@ -66,17 +70,6 @@ std::unique_ptr<StorageContainer> StorageContainerFactory::Generate(
                                              std::move(backing_device),
                                              platform_, metrics_);
     }
-    case StorageContainerType::kDmcrypt: {
-      auto backing_device = backing_device_factory_->Generate(
-          config.dmcrypt_config.backing_device_config);
-      if (!backing_device) {
-        LOG(ERROR) << "Could not create backing device for dmcrypt container";
-        return nullptr;
-      }
-      return std::make_unique<DmcryptContainer>(
-          config.dmcrypt_config, std::move(backing_device), key_reference,
-          platform_, keyring_.get());
-    }
     case StorageContainerType::kEphemeral: {
       auto backing_device =
           RamdiskDevice::Generate(config.backing_file_path, platform_);
@@ -87,6 +80,20 @@ std::unique_ptr<StorageContainer> StorageContainerFactory::Generate(
       return std::make_unique<EphemeralContainer>(std::move(backing_device),
                                                   platform_);
     }
+    case StorageContainerType::kDmcrypt:
+#if USE_DEVICE_MAPPER
+    {
+      auto backing_device = backing_device_factory_->Generate(
+          config.dmcrypt_config.backing_device_config);
+      if (!backing_device) {
+        LOG(ERROR) << "Could not create backing device for dmcrypt container";
+        return nullptr;
+      }
+      return std::make_unique<DmcryptContainer>(
+          config.dmcrypt_config, std::move(backing_device), key_reference,
+          platform_, keyring_.get());
+    }
+#endif
     case StorageContainerType::kEcryptfsToFscrypt:
     case StorageContainerType::kEcryptfsToDmcrypt:
     case StorageContainerType::kFscryptToDmcrypt:

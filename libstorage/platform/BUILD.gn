@@ -41,6 +41,10 @@ pkg_config("target_defaults") {
     "rootdev",
     "secure_erase_file",
   ]
+  defines = [
+    "USE_SELINUX=${use.selinux}",
+    "USE_DEVICE_MAPPER=${use.device_mapper}",
+  ]
   if (use.selinux) {
     libs += [ "selinux" ]
   }
@@ -62,7 +66,6 @@ source_set("libstorage_sources") {
     "keyring/utils.cc",
     "platform.cc",
   ]
-  defines = [ "USE_SELINUX=${use.selinux}" ]
   all_dependent_configs = [ ":target_defaults" ]
   configs += [ "//common-mk:pic" ]
 }

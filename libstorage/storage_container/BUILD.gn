@@ -24,16 +24,20 @@ shared_library("libstorage_storage_container") {
   output_name = "libstorage_storage_container"
   sources = [
     "backing_device_factory.cc",
-    "dmcrypt_container.cc",
     "ecryptfs_container.cc",
     "ephemeral_container.cc",
     "ext4_container.cc",
     "fscrypt_container.cc",
-    "logical_volume_backing_device.cc",
     "loopback_device.cc",
     "ramdisk_device.cc",
     "storage_container_factory.cc",
   ]
+  if (use.device_mapper) {
+    sources += [
+      "dmcrypt_container.cc",
+      "logical_volume_backing_device.cc",
+    ]
+  }
   include_dirs = [ "//libstorage/platform" ]
   libs = [
     "ext2fs",
@@ -82,15 +86,19 @@ install_config("install_libstorage_container_headers") {
 if (use.test) {
   executable("storage_container_testrunner") {
     sources = [
-      "dmcrypt_container_test.cc",
       "ecryptfs_container_test.cc",
       "ephemeral_container_test.cc",
       "ext4_container_test.cc",
       "fscrypt_container_test.cc",
-      "logical_volume_backing_device_test.cc",
       "loopback_device_test.cc",
       "ramdisk_device_test.cc",
     ]
+    if (use.device_mapper) {
+      sources += [
+        "dmcrypt_container_test.cc",
+        "logical_volume_backing_device_test.cc",
+      ]
+    }
     pkg_deps = [ "libbrillo-test" ]
     configs += [ "//common-mk:test" ]
     include_dirs = [ "//libstorage/platform" ]

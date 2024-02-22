@@ -10,7 +10,11 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+
+#if USE_DEVICE_MAPPER
 #include <brillo/blkdev_utils/device_mapper.h>
+#endif
+
 #include <brillo/brillo_export.h>
 #include <libstorage/platform/platform.h>
 
