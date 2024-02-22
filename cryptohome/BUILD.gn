@@ -302,7 +302,10 @@ install_config("install_udev_rule") {
 }
 
 install_config("install_tmpfilesd_cryptohome") {
-  sources = [ "tmpfiles.d/cryptohome.conf" ]
+  sources = [
+    "tmpfiles.d/cryptohome.conf",
+    "tmpfiles.d/cryptohome_freezer.conf",
+  ]
   install_path = "tmpfilesd"
 }
 
