@@ -157,7 +157,7 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   if (g_args.dump_buffer) {
     fixture_.DumpBuffers(testing::UnitTest::GetInstance()
                              ->current_test_info()
-                             ->test_case_name());
+                             ->test_suite_name());
   }
 }
 
