@@ -4,11 +4,15 @@
 
 #include "shill/wifi/p2p_device.h"
 
+#include <sys/socket.h>
+
 #include <memory>
 #include <string>
 #include <utility>
 
+#include <base/files/scoped_file.h>
 #include <base/test/mock_callback.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <net-base/byte_utils.h>
 #include <net-base/mac_address.h>
 
@@ -53,6 +57,22 @@ const uint32_t kP2PFrequency = 2437;
 
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
+
+class MockPatchpanelClient : public patchpanel::FakeClient {
+ public:
+  MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() override = default;
+
+  MOCK_METHOD(bool,
+              CreateLocalOnlyNetwork,
+              (const std::string&,
+               patchpanel::Client::CreateLocalOnlyNetworkCallback),
+              (override));
+};
+
+base::ScopedFD MakeFd() {
+  return base::ScopedFD(socket(AF_INET, SOCK_DGRAM, 0));
+}
 }  // namespace
 
 class P2PDeviceTest : public testing::Test {
@@ -81,12 +101,18 @@ class P2PDeviceTest : public testing::Test {
         supplicant_group_proxy_(new NiceMock<MockSupplicantGroupProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()) {
+    // Replace the Manager's patchpanel DBus client with a mock.
+    auto patchpanel = std::make_unique<MockPatchpanelClient>();
+    patchpanel_ = patchpanel.get();
+    manager_.set_patchpanel_client_for_testing(std::move(patchpanel));
     // Replace the WiFi provider's P2PManager with a mock.
     wifi_provider_->p2p_manager_.reset(p2p_manager_);
     // Replace the Manager's WiFi provider with a mock.
     manager_.wifi_provider_.reset(wifi_provider_);
     // Update the Manager's map from technology to provider.
     manager_.UpdateProviderMapping();
+    ON_CALL(*patchpanel_, CreateLocalOnlyNetwork(kInterfaceName, _))
+        .WillByDefault(Return(true));
     ON_CALL(*wifi_provider_, GetPhyAtIndex(kPhyIndex))
         .WillByDefault(Return(&wifi_phy_));
     ON_CALL(*supplicant_primary_p2pdevice_proxy_, GroupAdd(_))
@@ -165,6 +191,7 @@ class P2PDeviceTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
+  MockPatchpanelClient* patchpanel_;
   MockWiFiProvider* wifi_provider_;
   MockWiFiPhy wifi_phy_;
   MockP2PManager* p2p_manager_;
@@ -231,8 +258,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
   go_device_->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  DispatchPendingEvents();
-
+  // Emulate OnGroupNetworkStarted callback from patchpanel.
+  go_device_->OnGroupNetworkStarted(MakeFd());
   group_info = go_device_->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<uint32_t>(kP2PGroupInfoShillIDProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
@@ -639,7 +666,9 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
   EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  DispatchPendingEvents();
+
+  // Emulate OnGroupNetworkStarted callback from patchpanel.
+  go_device_->OnGroupNetworkStarted(MakeFd());
 
   // Attempting to create group again should be a no-op and and return false.
   auto service1 = std::make_unique<MockP2PService>(
@@ -1187,7 +1216,8 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOActive) {
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  DispatchPendingEvents();
+  // Emulate OnGroupNetworkStarted callback from patchpanel.
+  go_device_->OnGroupNetworkStarted(MakeFd());
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
@@ -1397,8 +1427,7 @@ TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOStarting) {
   CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
-// TODO(b/295056306): Re-enable once patchpanel interaction is implemented.
-TEST_F(P2PDeviceTest, DISABLED_StartingTimerExpired_WhileGOConfiguring) {
+TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOConfiguring) {
   // Start device
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
   EXPECT_TRUE(go_device_->Start());
@@ -1456,7 +1485,8 @@ TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOActive) {
   EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
   EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  DispatchPendingEvents();
+  // Emulate OnGroupNetworkStarted callback from patchpanel.
+  go_device_->OnGroupNetworkStarted(MakeFd());
 
   // Ignore group creation timeout while in active state
   FastForwardBy(kStartTimeout);
@@ -1498,7 +1528,8 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping) {
   EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
   EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  DispatchPendingEvents();
+  // Emulate OnGroupNetworkStarted callback from patchpanel.
+  go_device_->OnGroupNetworkStarted(MakeFd());
 
   // Remove group.
   EXPECT_TRUE(go_device_->RemoveGroup());
@@ -1676,6 +1707,45 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting) {
   // Stop device
   client_device_->Stop();
   CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, GO_StartGroupNetworkImmediateFail) {
+  // Start device
+  EXPECT_TRUE(go_device_->Start());
+  auto service = std::make_unique<MockP2PService>(
+      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(go_device_->CreateGroup(std::move(service)));
+  EXPECT_CALL(*patchpanel_, CreateLocalOnlyNetwork(kInterfaceName, _))
+      .WillOnce(Return(false));
+  go_device_->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Stop device
+  go_device_->Stop();
+  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, GO_StartGroupNetworkFail) {
+  // Start device
+  EXPECT_TRUE(go_device_->Start());
+  auto service = std::make_unique<MockP2PService>(
+      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(go_device_->CreateGroup(std::move(service)));
+  go_device_->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
+  DispatchPendingEvents();
+  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+
+  // Emulate OnGroupNetworkStarted callback from patchpanel with invalid FD.
+  go_device_->OnGroupNetworkStarted(base::ScopedFD(-1));
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Stop device
+  go_device_->Stop();
+  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
 }  // namespace shill

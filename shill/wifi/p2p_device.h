@@ -181,6 +181,7 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileNotExpected);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOStarting);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOConfiguring);
   FRIEND_TEST(P2PDeviceTest, DISABLED_StartingTimerExpired_WhileGOConfiguring);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOActive);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping);
@@ -189,6 +190,8 @@ class P2PDevice : public LocalDevice,
               DISABLED_StartingTimerExpired_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting);
+  FRIEND_TEST(P2PDeviceTest, GO_StartGroupNetworkImmediateFail);
+  FRIEND_TEST(P2PDeviceTest, GO_StartGroupNetworkFail);
 
   // This helper method converts GO peer properties to D-Bus properties.
   Stringmaps GroupInfoClients() const;
@@ -262,17 +265,13 @@ class P2PDevice : public LocalDevice,
   // internally in response to events from Shill::Network.
   void EmulateClientIPAcquired();
 
-  // TODO(b/299915001): The OnGroupNetworkStarted handler should be called
-  // internally in response to events from patchpanel.
-  void EmulateGroupNetworkStarted();
-
   // These helper methods provide operation required for network setup/teardown.
   // Depending on device role, they may be called in response to events either
   // from patchpanel or Shill::Network, in case of GO and Client, respectively.
   void AcquireClientIP();
   void OnClientIPAcquired();
-  void StartGroupNetwork();
-  void OnGroupNetworkStarted();
+  bool StartGroupNetwork();
+  void OnGroupNetworkStarted(base::ScopedFD network_fd);
   void NetworkFinished();
   void NetworkFailure(const std::string& reason);
 
@@ -340,6 +339,10 @@ class P2PDevice : public LocalDevice,
   // Executes when the p2p group stop timer expires. Calls
   // StoppingTimerExpired.
   base::CancelableOnceClosure stop_timer_callback_;
+
+  // File descriptor representing the group network setup managed by
+  // patchpanel. Closing this file descriptor tears down the group network.
+  base::ScopedFD group_network_fd_;
 };
 
 }  // namespace shill

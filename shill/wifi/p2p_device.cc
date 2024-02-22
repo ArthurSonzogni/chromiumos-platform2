@@ -285,8 +285,9 @@ bool P2PDevice::RemoveGroup() {
                  << P2PDeviceStateName(state_);
     return false;
   }
-  FinishSupplicantGroup();
   SetState(P2PDeviceState::kGOStopping);
+  group_network_fd_.reset();
+  FinishSupplicantGroup();
   // TODO(b/308081318): delete service on GroupFinished
   DeleteService();
   return true;
@@ -584,8 +585,12 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   }
 
   link_name_ = GetInterfaceName();
-  if (!link_name_.value().empty())
+  if (link_name_.value().empty()) {
+    LOG(ERROR) << log_name() << ": Failed to get interface name";
+    return false;
+  } else {
     LOG(INFO) << log_name() << ": Link name configured: " << link_name_.value();
+  }
 
   group_ssid_ = GetGroupSSID();
   if (!group_ssid_.empty())
@@ -776,22 +781,22 @@ void P2PDevice::EmulateClientIPAcquired() {
       base::BindOnce(&P2PDevice::OnClientIPAcquired, base::Unretained(this)));
 }
 
-// TODO(b/299915001): The NetworkStarted handler should be called internally
-// in response to events from patchpanel.
-void P2PDevice::EmulateGroupNetworkStarted() {
-  Dispatcher()->PostTask(FROM_HERE,
-                         base::BindOnce(&P2PDevice::OnGroupNetworkStarted,
-                                        base::Unretained(this)));
-}
-
 // TODO(b/299915001): Actually trigger IP acquisition via Shill::Network.
 void P2PDevice::AcquireClientIP() {
   EmulateClientIPAcquired();
 }
 
-// TODO(b/299915001): Actually trigger network creation via patchpanel.
-void P2PDevice::StartGroupNetwork() {
-  EmulateGroupNetworkStarted();
+bool P2PDevice::StartGroupNetwork() {
+  if (!manager()->patchpanel_client() ||
+      !manager()->patchpanel_client()->CreateLocalOnlyNetwork(
+          link_name().value(), base::BindOnce(&P2PDevice::OnGroupNetworkStarted,
+                                              base::Unretained(this)))) {
+    LOG(ERROR) << log_name() << ": Failed to create local only network";
+    PostDeviceEvent(DeviceEvent::kNetworkFailure);
+    return false;
+  }
+
+  return true;
 }
 
 void P2PDevice::OnClientIPAcquired() {
@@ -821,31 +826,25 @@ void P2PDevice::OnClientIPAcquired() {
   }
 }
 
-void P2PDevice::OnGroupNetworkStarted() {
-  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
-            << P2PDeviceStateName(state_);
-  switch (state_) {
-    // Expected P2P GO state for NetworkStarted signal
-    case P2PDeviceState::kGOConfiguring:
-      SetState(P2PDeviceState::kGOActive);
-      PostDeviceEvent(DeviceEvent::kNetworkUp);
-      break;
-    // Common states for all roles.
-    case P2PDeviceState::kUninitialized:
-    case P2PDeviceState::kReady:
-    // P2P client states.
-    case P2PDeviceState::kClientAssociating:
-    case P2PDeviceState::kClientConfiguring:
-    case P2PDeviceState::kClientConnected:
-    case P2PDeviceState::kClientDisconnecting:
-    // P2P GO states.
-    case P2PDeviceState::kGOStarting:
-    case P2PDeviceState::kGOActive:
-    case P2PDeviceState::kGOStopping:
-      LOG(WARNING) << log_name() << ": Ignored " << __func__
-                   << " while in state " << P2PDeviceStateName(state_);
-      break;
+void P2PDevice::OnGroupNetworkStarted(base::ScopedFD network_fd) {
+  if (state_ != P2PDeviceState::kGOConfiguring) {
+    LOG(WARNING) << log_name() << ": Ignored " << __func__ << " while in state "
+                 << P2PDeviceStateName(state_);
+    return;
   }
+
+  if (!network_fd.is_valid()) {
+    LOG(ERROR) << log_name() << ": Failed to create group network on "
+               << link_name().value();
+    PostDeviceEvent(DeviceEvent::kNetworkFailure);
+    return;
+  }
+
+  LOG(INFO) << log_name() << ": Established downstream network on "
+            << link_name().value();
+  group_network_fd_ = std::move(network_fd);
+  SetState(P2PDeviceState::kGOActive);
+  PostDeviceEvent(DeviceEvent::kNetworkUp);
 }
 
 void P2PDevice::NetworkFinished() {
