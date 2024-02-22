@@ -32,7 +32,7 @@ class GtkTestBase : public ::testing::Test {
   GtkTestBase() {
     auto test_info = ::testing::UnitTest::GetInstance()->current_test_info();
     std::string full_name =
-        std::string(test_info->test_case_name()) + "." + test_info->name();
+        std::string(test_info->test_suite_name()) + "." + test_info->name();
     setenv("CROS_TEST_FULL_NAME", full_name.c_str(), true);
 
     application_ = Gtk::Application::create(full_name.c_str());
