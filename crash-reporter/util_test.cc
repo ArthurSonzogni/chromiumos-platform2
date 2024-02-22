@@ -877,4 +877,33 @@ TEST_F(CrashCommonUtilTest, ExtractChromeVersionFromMetadata_VersionNotString) {
                     HasSubstr("version is not a string but instead a int")));
 }
 
+TEST_F(CrashCommonUtilTest, IsIgnoredRustPanicSignature_ignored) {
+  EXPECT_TRUE(IsIgnoredRustPanicSignature(
+      "panicked at 'failed printing to stdout: Input/output error (os error 5)'"
+      ", library/std/src/io/stdio.rs:1019:9"));
+  EXPECT_TRUE(IsIgnoredRustPanicSignature(
+      "panicked at 'failed printing to stdout: Input/output error (os error 5)'"
+      ", library/std/src/io/stdio.rs:1008:9"));
+  EXPECT_TRUE(IsIgnoredRustPanicSignature(
+      "panicked at 'failed printing to stderr: Input/output error (os error 5)'"
+      ", library/std/src/io/stdio.rs:1019:9"));
+  EXPECT_TRUE(IsIgnoredRustPanicSignature(
+      "panicked at 'failed printing to stdout: Broken pipe (os error 32)', "
+      "library/std/src/io/stdio.rs:1019:9"));
+}
+
+TEST_F(CrashCommonUtilTest, IsIgnoredRustPanicSignature_notignored) {
+  EXPECT_FALSE(IsIgnoredRustPanicSignature(
+      "panicked at 'failed printing to stdin: Input/output error (os error 5)',"
+      " library/std/src/io/stdio.rs:1019:9"));
+  EXPECT_FALSE(IsIgnoredRustPanicSignature(
+      "panicked at '<unknown>, src/crosvm/sys/linux/jail_warden.rs:129:21"));
+  EXPECT_FALSE(IsIgnoredRustPanicSignature(
+      "panicked at 'called `Result::unwrap()` on an `Err` value: Error(9)', "
+      "devices/src/virtio/video/decoder/mod.rs:1232:22"));
+  EXPECT_FALSE(IsIgnoredRustPanicSignature(
+      "panicked at 'panicked at 'assertion failed: final_collection_time <= "
+      "clip_end_time + CLIP_COLLECTION_SPAN_MS', src/main.rs:1199:21"));
+}
+
 }  // namespace util

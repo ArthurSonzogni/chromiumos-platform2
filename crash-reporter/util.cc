@@ -772,4 +772,22 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
   return *version_string;
 }
 
+bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig) {
+  static constexpr LazyRE2 known_issues[] = {
+      // Hang-ups like when crosh is closed trigger this and since the panic
+      // happens in the std library there isn't a good way to get rid of it,
+      // so detect the case and don't collect a crash for it.
+      //
+      // It is meant to match both stdout and stderr.
+      {R"(^panicked at 'failed printing to std(?:out|err))"},
+  };
+
+  for (const auto& known_issue : known_issues) {
+    if (RE2::PartialMatch(rust_panic_sig, *known_issue)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace util

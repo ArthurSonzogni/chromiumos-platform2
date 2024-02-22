@@ -347,28 +347,37 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
   }
 
+  bool send_this_crash = true;
   std::string rust_panic_sig;
   if (GetRustSignature(pid, &rust_panic_sig)) {
+    // Ignore expected panics
+    if (util::IsIgnoredRustPanicSignature(rust_panic_sig)) {
+      LOG(INFO) << "Skipped collecting (" << exec << ":" << pid
+                << "): " << rust_panic_sig;
+      send_this_crash = false;
+    }
     AddCrashMetaData("sig", rust_panic_sig);
   }
 
-  ErrorType error_type =
-      ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
-  if (error_type != kErrorNone) {
-    if (error_type != kErrorReadCoreData)
-      LOG(INFO) << "Leaving core file at " << core_path.value()
-                << " due to conversion error";
-    return error_type;
-  } else {
-    base::FilePath target;
-    if (!NormalizeFilePath(minidump_path, &target))
-      target = minidump_path;
+  if (send_this_crash) {
+    ErrorType error_type =
+        ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
+    if (error_type != kErrorNone) {
+      if (error_type != kErrorReadCoreData)
+        LOG(INFO) << "Leaving core file at " << core_path.value()
+                  << " due to conversion error";
+      return error_type;
+    } else {
+      base::FilePath target;
+      if (!NormalizeFilePath(minidump_path, &target))
+        target = minidump_path;
 
-    // TODO(crbug.com/1053847) The executable name is sensitive user data inside
-    // the VM, so don't log this message. Eventually we will move the VM logs
-    // inside the cryptohome and this will be unnecessary.
-    if (!VmSupport::Get()) {
-      LOG(INFO) << "Stored minidump to " << target.value();
+      // TODO(crbug.com/1053847) The executable name is sensitive user data
+      // inside the VM, so don't log this message. Eventually we will move the
+      // VM logs inside the cryptohome and this will be unnecessary.
+      if (!VmSupport::Get()) {
+        LOG(INFO) << "Stored minidump to " << target.value();
+      }
     }
   }
 
@@ -393,10 +402,12 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     LOG(WARNING) << "Failed to get process uptime.";
   }
 
-  // Here we commit to sending this file.  We must not return false
-  // after this point or we will generate a log report as well as a
-  // crash report.
-  FinishCrash(meta_path, exec, minidump_path.BaseName().value());
+  if (send_this_crash) {
+    // Here we commit to sending this file.  We must not return false
+    // after this point or we will generate a log report as well as a
+    // crash report.
+    FinishCrash(meta_path, exec, minidump_path.BaseName().value());
+  }
 
   if (!util::IsDeveloperImage()) {
     base::DeleteFile(core_path);

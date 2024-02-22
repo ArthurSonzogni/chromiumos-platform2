@@ -217,6 +217,10 @@ bool RedactDigests(std::string* to_filter);
 std::optional<std::string> ExtractChromeVersionFromMetadata(
     const base::FilePath& metadata_path);
 
+// Returns true if the specified panic signature matches one of the known cases
+// that should be ignored rather than collected as a crash.
+bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_
