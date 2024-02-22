@@ -61,9 +61,6 @@ pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 // 60seconds which is long enough for booting a VM on low-end DUTs.
 const DEFAULT_VM_BOOT_TIMEOUT: Duration = Duration::from_secs(60);
 
-const VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME: &str =
-    "CrOSLateBootResourcedVariableTimeMemorySignal";
-
 type PowerPreferencesManager =
     power::DirectoryPowerPreferencesManager<power::DirectoryPowerSourceProvider>;
 
@@ -668,53 +665,45 @@ async fn init_battery_saver_mode(context: DbusContext, conn: Arc<SyncConnection>
 }
 
 async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
-    const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
+    // Stop waiting if there is 150 ms stall time in 1000 ms window.
+    const STALL_MS: u64 = 150;
+    const WINDOW_MS: u64 = 1000;
 
-    match feature::is_feature_enabled(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME) {
-        Ok(true) => {
-            // Stop waiting if there is 150 ms stall time in 1000 ms window.
-            const STALL_MS: u64 = 150;
-            const WINDOW_MS: u64 = 1000;
+    // Wait longer when the current memory pressure is low.
+    const MIN_WAITING_MS: u64 = 500;
+    const MAX_WAITING_MS_NO_PRESSURE: u64 = 10000;
+    const MAX_WAITING_MS_MODERATE_PRESSURE: u64 = 5000;
+    const MAX_WAITING_MS_CRITICAL_PRESSURE: u64 = 1000;
 
-            // Wait longer when the current memory pressure is low.
-            const MIN_WAITING_MS: u64 = 500;
-            const MAX_WAITING_MS_NO_PRESSURE: u64 = 10000;
-            const MAX_WAITING_MS_MODERATE_PRESSURE: u64 = 5000;
-            const MAX_WAITING_MS_CRITICAL_PRESSURE: u64 = 1000;
-
-            let max_waiting_ms = match pressure_result {
-                Ok(pressure_status) => match pressure_status.chrome_level {
-                    memory::PressureLevelChrome::None => MAX_WAITING_MS_NO_PRESSURE,
-                    memory::PressureLevelChrome::Moderate => MAX_WAITING_MS_MODERATE_PRESSURE,
-                    memory::PressureLevelChrome::Critical => MAX_WAITING_MS_CRITICAL_PRESSURE,
-                },
-                Err(e) => {
-                    error!("get_memory_pressure_status() failed: {}", e);
-                    MAX_WAITING_MS_NO_PRESSURE
-                }
-            };
-
-            // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
-            // threshold.
-            let wait_result = psi::wait_psi_monitor_memory_event(
-                STALL_MS,
-                WINDOW_MS,
-                MIN_WAITING_MS,
-                max_waiting_ms,
-            )
-            .await;
-            if wait_result.is_err() {
-                error!(
-                    "wait_psi_monitor_memory_event returns error: {:?}",
-                    wait_result
-                );
-                // Fallback to 1 second waiting.
-                tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
-            }
+    let max_waiting_ms = match pressure_result {
+        Ok(pressure_status) => match pressure_status.chrome_level {
+            memory::PressureLevelChrome::None => MAX_WAITING_MS_NO_PRESSURE,
+            memory::PressureLevelChrome::Moderate => MAX_WAITING_MS_MODERATE_PRESSURE,
+            memory::PressureLevelChrome::Critical => MAX_WAITING_MS_CRITICAL_PRESSURE,
+        },
+        Err(e) => {
+            error!("get_memory_pressure_status() failed: {}", e);
+            MAX_WAITING_MS_NO_PRESSURE
         }
-        _ => {
-            tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
-        }
+    };
+
+    // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
+    // threshold.
+    let wait_result = psi::wait_psi_monitor_memory_event(
+        STALL_MS,
+        WINDOW_MS,
+        MIN_WAITING_MS,
+        max_waiting_ms,
+    )
+    .await;
+    if wait_result.is_err() {
+        error!(
+            "wait_psi_monitor_memory_event returns error: {:?}",
+            wait_result
+        );
+        // Fallback to 1 second waiting.
+        const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
+        tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
     }
 }
 
@@ -897,13 +886,6 @@ pub async fn service_main() -> Result<()> {
             }
         }),
     );
-
-    if let Err(err) = feature::initialize_feature(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, false) {
-        error!(
-            "Failed to update feature {}: {}",
-            VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, err
-        );
-    }
 
     // Reports memory pressure notification count and memory stats every 10 minutes.
     let notification_count = Arc::new(AtomicI32::new(0));
