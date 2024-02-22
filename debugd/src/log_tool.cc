@@ -851,7 +851,7 @@ std::string Log::GetLogData() const {
   // be constructed statically. Switching to heap allocated subclasses of Log
   // makes the code that declares all of the log entries much more verbose
   // and harder to understand.
-  std::string output;
+  base::expected<std::string, std::string> output;
   switch (type_) {
     case kCommand:
       output = GetCommandLogData();
@@ -866,18 +866,23 @@ std::string Log::GetLogData() const {
       DCHECK(false) << "unknown log type";
       return "<unknown log type>";
   }
-
-  if (output.empty())
+  if (!output.has_value()) {
+    if (output.error().empty())
+      return kLogEmpty;
+    else
+      return output.error();
+  }
+  if (output->empty())
     return kLogEmpty;
 
-  return LogTool::EncodeString(std::move(output), encoding_);
+  return LogTool::EncodeString(std::move(*output), encoding_);
 }
 
 // TODO(ellyjones): sandbox. crosbug.com/35122
-std::string Log::GetCommandLogData() const {
+base::expected<std::string, std::string> Log::GetCommandLogData() const {
   DCHECK_EQ(type_, kCommand);
   if (type_ != kCommand)
-    return "<log type mismatch>";
+    return base::unexpected("<log type mismatch>");
   std::string tailed_cmdline =
       base::StringPrintf("%s | tail -c %" PRId64, data_.c_str(), max_bytes_);
   ProcessWithOutput p;
@@ -891,56 +896,61 @@ std::string Log::GetCommandLogData() const {
   // policy causes issues on jacuzzi. See b/267050115.
   std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
   if (!p.Init(minijail_args))
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   p.AddArg(kShell);
   p.AddStringOption("-c", tailed_cmdline);
   if (p.Run())
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   std::string output;
   p.GetOutput(&output);
-  return output;
+  return base::ok(output);
 }
 
 // static
-std::string Log::GetFileData(const base::FilePath& path,
-                             int64_t max_bytes,
-                             const std::string& user,
-                             const std::string& group) {
+base::expected<std::string, std::string> Log::GetFileData(
+    const base::FilePath& path,
+    int64_t max_bytes,
+    const std::string& user,
+    const std::string& group) {
   uid_t old_euid = geteuid();
   uid_t new_euid = UidForUser(user);
   gid_t old_egid = getegid();
   gid_t new_egid = GidForGroup(group);
 
   if (new_euid == -1 || new_egid == -1) {
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   }
 
   // Make sure to set group first, since if we set user first we lose root
   // and therefore the ability to set our effective gid to arbitrary gids.
   if (setegid(new_egid)) {
     PLOG(ERROR) << "Failed to set effective group id to " << new_egid;
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   }
   if (seteuid(new_euid)) {
     PLOG(ERROR) << "Failed to set effective user id to " << new_euid;
     if (setegid(old_egid))
       PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   }
 
-  std::string contents;
+  base::expected<std::string, std::string> result;
   // Handle special files that don't properly report length/allow lseek.
   if (base::FilePath("/dev").IsParent(path) ||
       base::FilePath("/proc").IsParent(path) ||
       base::FilePath("/sys").IsParent(path)) {
-    if (!base::ReadFileToString(path, &contents))
-      contents = kLogNotAvailable;
-    if (contents.size() > max_bytes)
-      contents.erase(0, contents.size() - max_bytes);
+    std::string contents;
+    if (!base::ReadFileToString(path, &contents)) {
+      result = base::unexpected(kLogNotAvailable);
+    } else {
+      if (contents.size() > max_bytes)
+        contents.erase(0, contents.size() - max_bytes);
+      result = base::ok(std::move(contents));
+    }
   } else {
     base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
     if (!file.IsValid()) {
-      contents = kLogNotAvailable;
+      result = base::unexpected(kLogNotAvailable);
     } else {
       int64_t length = file.GetLength();
       if (length > max_bytes) {
@@ -951,8 +961,9 @@ std::string Log::GetFileData(const base::FilePath& path,
       int read = file.ReadAtCurrentPos(buf.data(), buf.size());
       if (read < 0) {
         PLOG(ERROR) << "Could not read from file " << path.value();
+        result = base::unexpected(kLogNotAvailable);
       } else {
-        contents = std::string(buf.begin(), buf.begin() + read);
+        result = base::ok(std::string(buf.begin(), buf.begin() + read));
       }
     }
   }
@@ -964,21 +975,21 @@ std::string Log::GetFileData(const base::FilePath& path,
   if (setegid(old_egid))
     PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
 
-  return contents;
+  return result;
 }
 
-std::string Log::GetFileLogData() const {
+base::expected<std::string, std::string> Log::GetFileLogData() const {
   DCHECK_EQ(type_, kFile);
   if (type_ != kFile)
-    return "<log type mismatch>";
+    return base::unexpected("<log type mismatch>");
 
   return GetFileData(base::FilePath(data_), max_bytes_, user_, group_);
 }
 
-std::string Log::GetGlobLogData() const {
+base::expected<std::string, std::string> Log::GetGlobLogData() const {
   DCHECK_EQ(type_, kGlob);
   if (type_ != kGlob)
-    return "<log type mismatch>";
+    return base::unexpected("<log type mismatch>");
 
   // NB: base::FileEnumerator requires a directory to walk, and a pattern to
   // match against each result.  Here we accept full paths with globs in them.
@@ -987,11 +998,11 @@ std::string Log::GetGlobLogData() const {
   int gret = glob(data_.c_str(), 0, nullptr, &g);
   if (gret == GLOB_NOMATCH) {
     globfree(&g);
-    return "<no matches>";
+    return base::unexpected("<no matches>");
   } else if (gret) {
     globfree(&g);
     PLOG(ERROR) << "glob " << data_ << " failed";
-    return kLogNotAvailable;
+    return base::unexpected(kLogNotAvailable);
   }
 
   // The results array will hold 2 entries per file: the filename, and the
@@ -1002,7 +1013,14 @@ std::string Log::GetGlobLogData() const {
 
   for (size_t pathc = 0; pathc < g.gl_pathc; ++pathc) {
     const base::FilePath path(g.gl_pathv[pathc]);
-    std::string contents = GetFileData(path, max_bytes_, user_, group_);
+    base::expected<std::string, std::string> result =
+        GetFileData(path, max_bytes_, user_, group_);
+    std::string contents;
+    if (result.has_value())
+      contents = result.value();
+    else
+      contents = result.error();
+
     // NB: The 3 represents the bytes we add in the output string below.
     output_size += path.value().size() + contents.size() + 3;
     results.push_back(path.value());
@@ -1020,7 +1038,7 @@ std::string Log::GetGlobLogData() const {
     output += *iter + "\n";
   }
 
-  return output;
+  return base::ok(output);
 }
 
 void Log::DisableMinijailForTest() {

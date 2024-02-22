@@ -79,9 +79,9 @@ class LogTool : public debugd::LogProvider {
     virtual std::string GetLogData() const;
     int64_t GetMaxBytes() const;
 
-    std::string GetCommandLogData() const;
-    std::string GetFileLogData() const;
-    std::string GetGlobLogData() const;
+    base::expected<std::string, std::string> GetCommandLogData() const;
+    base::expected<std::string, std::string> GetFileLogData() const;
+    base::expected<std::string, std::string> GetGlobLogData() const;
 
     void DisableMinijailForTest();
     // Config and start the child process to collect log. The log data will be
@@ -95,10 +95,11 @@ class LogTool : public debugd::LogProvider {
    private:
     static uid_t UidForUser(const std::string& name);
     static gid_t GidForGroup(const std::string& group);
-    static std::string GetFileData(const base::FilePath& path,
-                                   int64_t max_bytes,
-                                   const std::string& user,
-                                   const std::string& group);
+    static base::expected<std::string, std::string> GetFileData(
+        const base::FilePath& path,
+        int64_t max_bytes,
+        const std::string& user,
+        const std::string& group);
 
     LogType type_;
     std::string name_;
