@@ -165,6 +165,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->fullscreen_mode = ZAURA_SURFACE_FULLSCREEN_MODE_IMMERSIVE;
   ctx->allow_xwayland_emulate_screen_pos_size = false;
   ctx->ignore_stateless_toplevel_configure = false;
+  ctx->only_client_can_exit_fullscreen = false;
   ctx->default_seat = nullptr;
   ctx->selection_window = XCB_WINDOW_NONE;
   ctx->selection_owner = XCB_WINDOW_NONE;

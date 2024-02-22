@@ -4022,6 +4022,8 @@ int real_main(int argc, char** argv) {
       ctx.allow_xwayland_emulate_screen_pos_size = true;
     } else if (strstr(arg, "--ignore-stateless-toplevel-configure") == arg) {
       ctx.ignore_stateless_toplevel_configure = true;
+    } else if (strstr(arg, "--only-client-can-exit-fullscreen") == arg) {
+      ctx.only_client_can_exit_fullscreen = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

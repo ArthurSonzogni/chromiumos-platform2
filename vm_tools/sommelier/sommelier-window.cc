@@ -298,6 +298,9 @@ void sl_internal_toplevel_configure(struct sl_window* window,
 
     // Workaround using viewport for when Exo sets sizes that are not
     // within the bounds the client requested.
+    // TODO(b/316990641): Implement resizing via viewports if
+    // window->fullscreen==true but window->compositor_fullscreen==false.
+    // Only do this when --only-client-can-exit-fullscreen is set.
     if (window->ctx->viewport_resize &&
         ((window->max_width != 0 && width_in_pixels > window->max_width) ||
          (window->min_width != 0 && width_in_pixels < window->min_width) ||
@@ -395,11 +398,26 @@ void sl_internal_toplevel_configure(struct sl_window* window,
 
   uint32_t* state;
   int state_idx = 0;
+
+  if (window->ctx->only_client_can_exit_fullscreen && window->fullscreen) {
+    // If the window has been set to full screen by the client, do not try to
+    // revert it back. Many games and applications fail to adapt to changes
+    // enforced by the WM (ie. the fullscreen state must be toggled via the
+    // game's UI).
+    window->next_config.states[state_idx++] =
+        window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
+    window->allow_resize = 0;
+  }
+
   sl_array_for_each(state, states) {
     if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
+      if (state_idx == 0) {
+        // Only add fullscreen state if it was previously not added by
+        // --only-client-can-exit-fullscreen
+        window->next_config.states[state_idx++] =
+            window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
+      }
       window->allow_resize = 0;
-      window->next_config.states[state_idx++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
       window->compositor_fullscreen = 1;
     }
     if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
