@@ -91,16 +91,12 @@ FilePath GetRootPathPrefix() {
 FilePath GetUserPath(const Username& username) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
-  return GetHashedUserPath(SanitizeUserName(username));
+  return GetUserPath(SanitizeUserName(username));
 }
 
 FilePath GetUserPath(const ObfuscatedUsername& username) {
   return FilePath(
       base::StringPrintf("%s%s", g_user_home_prefix, username->c_str()));
-}
-
-FilePath GetHashedUserPath(const ObfuscatedUsername& hashed_username) {
-  return GetUserPath(hashed_username);
 }
 
 FilePath GetRootPath(const Username& username) {

@@ -54,11 +54,6 @@ BRILLO_EXPORT base::FilePath GetRootPathPrefix();
 BRILLO_EXPORT base::FilePath GetUserPath(const Username& username);
 BRILLO_EXPORT base::FilePath GetUserPath(const ObfuscatedUsername& username);
 
-// Legacy version of GetUserPath(ObfuscatedUsername) from when the two different
-// types of usernames were not actual distinct types.
-BRILLO_EXPORT base::FilePath GetHashedUserPath(
-    const ObfuscatedUsername& hashed_username);
-
 // Returns the path at which the root home for |username| will be mounted.
 // Returns "" for failures.
 BRILLO_EXPORT base::FilePath GetRootPath(const Username& username);
