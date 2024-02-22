@@ -13,6 +13,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <set>
 #include <string>
 #include <string_view>
@@ -332,7 +333,7 @@ void Manager::Start() {
   LOG(INFO) << "Manager started.";
   supplicant_manager_->Start();
   tethering_manager_->Start();
-  power_manager_.reset(new PowerManager(control_interface_));
+  power_manager_ = std::make_unique<PowerManager>(control_interface_);
   power_manager_->Start(
       kTerminationActionsTimeout,
       base::BindRepeating(&Manager::OnSuspendImminent,
@@ -340,7 +341,7 @@ void Manager::Start() {
       base::BindRepeating(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
       base::BindRepeating(&Manager::OnDarkSuspendImminent,
                           weak_factory_.GetWeakPtr()));
-  upstart_.reset(new Upstart(control_interface_));
+  upstart_ = std::make_unique<Upstart>(control_interface_);
 #if !defined(DISABLE_FLOSS)
   if (!bluetooth_manager_->Start()) {
     LOG(ERROR) << "Failed to start BT manager interface.";
@@ -1553,8 +1554,8 @@ void Manager::UpdateDevice(const DeviceRefPtr& to_update) {
   // updating profile would be the DefaultProfile at the bottom of the stack.
   // Autotests, differ from the normal scenario, however, in that they push a
   // second test-only DefaultProfile.
-  for (auto rit = profiles_.rbegin(); rit != profiles_.rend(); ++rit) {
-    if ((*rit)->UpdateDevice(to_update)) {
+  for (auto& profile : std::ranges::reverse_view(profiles_)) {
+    if (profile->UpdateDevice(to_update)) {
       return;
     }
   }
@@ -2061,8 +2062,8 @@ void Manager::DevicePresenceStatusCheck() {
 }
 
 bool Manager::MatchProfileWithService(const ServiceRefPtr& service) {
-  for (auto it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
-    if ((*it)->ConfigureService(service)) {
+  for (auto& profile : std::ranges::reverse_view(profiles_)) {
+    if (profile->ConfigureService(service)) {
       return true;
     }
   }
