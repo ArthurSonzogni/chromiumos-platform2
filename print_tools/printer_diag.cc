@@ -166,6 +166,8 @@ int main(int argc, char** argv) {
   ipp::Frame request(ipp::Operation::Get_Printer_Attributes, version);
   ipp::Collection& grp = request.Groups(ipp::GroupTag::operation_attributes)[0];
   grp.AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
+  grp.AddAttr("requested-attributes", ipp::ValueTag::keyword,
+              std::vector<std::string>{"all", "media-col-database"});
   std::vector<uint8_t> data = ipp::BuildBinaryFrame(request);
   // Resolve the IP after setting printer-uri so the printer can see the
   // original name.
