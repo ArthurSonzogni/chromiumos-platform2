@@ -114,20 +114,28 @@ class P2PManagerTest : public testing::Test {
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
-  void CreateP2PGroup(MockP2PDevice* p2p_device) {
+  KeyValueStore CreateP2PGroupWithProperties(MockP2PDevice* p2p_device,
+                                             KeyValueStore properties) {
+    KeyValueStore response_dict;
+    base::MockOnceCallback<void(KeyValueStore)> cb;
+    EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
+        .WillOnce(Return(p2p_device));
+    EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
+    p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+    EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+    SetDefaultDeviceLinkName(p2p_device);
+    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
+                                   p2p_device);
+    DispatchPendingEvents();
+    return response_dict;
+  }
+
+  KeyValueStore CreateP2PGroup(MockP2PDevice* p2p_device) {
     KeyValueStore properties;
     properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
     properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
     properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
-    base::MockOnceCallback<void(KeyValueStore)> cb;
-    ON_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
-        .WillByDefault(Return(p2p_device));
-    ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
-    p2p_manager_->CreateP2PGroup(cb.Get(), properties);
-    EXPECT_CALL(cb, Run(_)).Times(1);
-    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
-                                   p2p_device);
-    DispatchPendingEvents();
+    return CreateP2PGroupWithProperties(p2p_device, properties);
   }
 
   std::string DefaultInterfaceName(uint32_t shill_id) {
@@ -365,15 +373,10 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
 }
 
 TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
-  KeyValueStore properties;
-  properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
-  properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-  properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
   MockP2PDevice* p2p_device =
       new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
                                   "wlan0", 0, 0, event_cb_.Get());
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  KeyValueStore response_dict;
   uint32_t expected_shill_id = p2p_manager_->next_unique_id_;
 
   KeyValueStore info_pattern;
@@ -385,16 +388,7 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   info_result = GetGroupInfos(p2p_manager_);
   ASSERT_EQ(info_result.size(), 0);
 
-  EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
-      .WillOnce(Return(p2p_device));
-  EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
-  p2p_manager_->CreateP2PGroup(cb.Get(), properties);
-
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
-  SetDefaultDeviceLinkName(p2p_device);
-  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
-                                 p2p_device);
-  DispatchPendingEvents();
+  KeyValueStore response_dict = CreateP2PGroup(p2p_device);
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
   ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID), expected_shill_id);
@@ -482,14 +476,9 @@ TEST_F(P2PManagerTest, ShillIDs) {
     // Each group owner needs a unique SSID.
     std::string ssid = "DIRECT-ab-" + std::to_string(i);
     properties.Set<std::string>(kP2PDeviceSSID, ssid);
-    EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
-        .WillOnce(Return(p2p_device));
-    EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
-    p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+    CreateP2PGroupWithProperties(p2p_device, properties);
     EXPECT_EQ(p2p_manager_->p2p_group_owners_[current_id], p2p_device);
     PostGroupStarted(current_id);
-    p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
-                                   p2p_device);
     current_id++;
   }
 }
@@ -500,17 +489,10 @@ TEST_F(P2PManagerTest, MissingArgs_CreateGroup) {
       new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
                                   "wlan0", 0, 0, event_cb_.Get());
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  KeyValueStore response_dict;
   uint32_t expected_shill_id = p2p_manager_->next_unique_id_;
 
-  EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
-      .WillOnce(Return(p2p_device));
-  EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
-  p2p_manager_->CreateP2PGroup(cb.Get(), properties);
-  EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
-  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
-                                 p2p_device);
-  DispatchPendingEvents();
+  KeyValueStore response_dict =
+      CreateP2PGroupWithProperties(p2p_device, properties);
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
   ASSERT_EQ(p2p_manager_->p2p_group_owners_[expected_shill_id], p2p_device);
