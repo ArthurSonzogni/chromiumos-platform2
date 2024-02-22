@@ -41,27 +41,17 @@ buffers: {
     fill_policy: DISCARD
 }
 
-# Events from cros-camera. Enable more categories as you see fit.
+# Events from cros-camera and Chrome. Enable more categories as you see fit.
+# cros-camera use camera.*. Chrome uses "camera"
 
 data_sources: {
     config {
         name: "track_event"
         target_buffer: 0
         track_event_config {
+            enabled_categories: "camera"
             enabled_categories: "camera.*"
             disabled_categories: "*"
-        }
-    }
-}
-
-# Camera related events from Chrome.
-
-data_sources: {
-    config {
-        name: "org.chromium.trace_event"
-        target_buffer: 0
-        chrome_config {
-            trace_config: "{\"record_mode\":\"record-until-full\",\"included_categories\":[\"camera\"],\"memory_dump_config\":{}}"
         }
     }
 }

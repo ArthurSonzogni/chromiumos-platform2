@@ -65,16 +65,6 @@ data_sources: {{
     }}
 }}
 
-data_sources: {{
-    config {{
-        name: "org.chromium.trace_event"
-        target_buffer: 0
-        chrome_config {{
-            trace_config: "{{\\"record_mode\\":\\"record-until-full\\",\\"included_categories\\":[\\"camera\\"],\\"memory_dump_config\\": {{}}}}"
-        }}
-    }}
-}}
-
 # Event-driven recording of frequency and idle state changes.
 
 data_sources: {{
@@ -467,7 +457,7 @@ def set_up_subcommand_parser(subparsers):
     record_parser.add_argument(
         "--enabled_categories",
         type=str,
-        default="camera.*",
+        default="camera,camera.*",
         help=(
             "Comma-separated track event categories to enable "
             "(default='%(default)s')"
