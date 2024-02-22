@@ -500,7 +500,7 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
 
   // TODO(b/274706377): remove when the GPU Hang issue is resolved.
   if (builder->UseFlagIsSet("disable_webrtc_hw_decoding"))
-    builder->AddArg("--disable-webrtc-hw-decoding");
+    builder->AddFeatureDisableOverride("webrtc-hw-decoding");
 
   // In ash, we use mojo service manager as the mojo broker so disable it here.
   builder->AddArg("--disable-mojo-broker");
