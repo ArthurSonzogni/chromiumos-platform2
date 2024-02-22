@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/process/process.h>
+#include <brillo/syslog_logging.h>
 #include <libec/ec_command_factory.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
@@ -296,6 +297,7 @@ struct SELinuxRestorer {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  brillo::InitLog(brillo::kLogToSyslog);
   if (!base::PathExists(base::FilePath(kCpufreqConfPath)))
     return 0;
 
