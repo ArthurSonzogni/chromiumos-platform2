@@ -38,6 +38,7 @@
 #include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/passpoint_credentials.h"
+#include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_rf.h"
@@ -1380,19 +1381,38 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDeviceForTest(
   }
 }
 
-P2PDeviceRefPtr WiFiProvider::CreateP2PDevice(
+bool WiFiProvider::RequestP2PDeviceCreation(
     LocalDevice::IfaceType iface_type,
     LocalDevice::EventCallback callback,
-    uint32_t shill_id) {
+    uint32_t shill_id,
+    WiFiPhy::Priority priority,
+    base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+    base::OnceCallback<void()> fail_cb) {
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&WiFiProvider::CreateP2PDevice,
+                                weak_ptr_factory_while_started_.GetWeakPtr(),
+                                iface_type, callback, shill_id,
+                                std::move(success_cb), std::move(fail_cb)));
+  return true;
+}
+
+void WiFiProvider::CreateP2PDevice(
+    LocalDevice::IfaceType iface_type,
+    LocalDevice::EventCallback callback,
+    uint32_t shill_id,
+    base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+    base::OnceCallback<void()> fail_cb) {
   if (iface_type != LocalDevice::IfaceType::kP2PGO &&
       iface_type != LocalDevice::IfaceType::kP2PClient) {
     LOG(ERROR) << "Failed to create P2PDevice, invalid interface type: "
                << iface_type;
-    return nullptr;
+    std::move(fail_cb).Run();
+    return;
   }
   if (wifi_phys_.empty()) {
     LOG(ERROR) << "No WiFiPhy available.";
-    return nullptr;
+    std::move(fail_cb).Run();
+    return;
   }
 
   // TODO(b/257340615) Select capable WiFiPhy according to capabilities.
@@ -1401,12 +1421,13 @@ P2PDeviceRefPtr WiFiProvider::CreateP2PDevice(
   const std::string primary_link_name = GetPrimaryLinkName();
   if (primary_link_name.empty()) {
     LOG(ERROR) << "Failed to get primary link name.";
-    return nullptr;
+    std::move(fail_cb).Run();
+    return;
   }
 
   P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type, primary_link_name,
                                       phy_index, shill_id, callback);
-  return dev;
+  std::move(success_cb).Run(dev);
 }
 
 void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {

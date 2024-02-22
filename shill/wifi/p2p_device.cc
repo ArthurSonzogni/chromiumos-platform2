@@ -24,6 +24,7 @@
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 

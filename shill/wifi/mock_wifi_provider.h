@@ -16,6 +16,7 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/p2p_device.h"
 #include "shill/wifi/passpoint_credentials.h"
+#include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -114,11 +115,22 @@ class MockWiFiProvider : public WiFiProvider {
                WiFiSecurity,
                LocalDevice::EventCallback),
               (override));
-  MOCK_METHOD(P2PDeviceRefPtr,
+  MOCK_METHOD(bool,
+              RequestP2PDeviceCreation,
+              (LocalDevice::IfaceType,
+               LocalDevice::EventCallback,
+               uint32_t shill_id,
+               WiFiPhy::Priority priority,
+               base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+               base::OnceCallback<void()> fail_cb),
+              (override));
+  MOCK_METHOD(void,
               CreateP2PDevice,
               (LocalDevice::IfaceType,
                LocalDevice::EventCallback,
-               uint32_t shill_id),
+               uint32_t shill_id,
+               base::OnceCallback<void(P2PDeviceRefPtr)>,
+               base::OnceCallback<void()>),
               (override));
   MOCK_METHOD(void, RegisterLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));

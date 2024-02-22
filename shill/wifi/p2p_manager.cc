@@ -21,6 +21,7 @@
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 
@@ -33,7 +34,6 @@ P2PManager::P2PManager(Manager* manager)
 }
 
 P2PManager::~P2PManager() = default;
-
 void P2PManager::InitPropertyStore(PropertyStore* store) {
   HelpRegisterDerivedBool(store, kP2PAllowedProperty, &P2PManager::GetAllowed,
                           &P2PManager::SetAllowed);
@@ -168,7 +168,6 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
                std::move(result_callback_));
     return;
   }
-  LOG(INFO) << "Priority argument value: " << priority;
 
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << "Failed to create P2P group, primary P2PDevice proxy "
@@ -177,39 +176,23 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
                std::move(callback));
     return;
   }
-
-  P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
+  bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
       LocalDevice::IfaceType::kP2PGO,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
                           base::Unretained(this)),
-      next_unique_id_);
+      next_unique_id_, priority,
+      base::BindOnce(&P2PManager::OnDeviceCreated, base::Unretained(this),
+                     LocalDevice::IfaceType::kP2PGO, ssid, passphrase, freq),
+      base::BindOnce(&P2PManager::OnDeviceCreationFailed,
+                     base::Unretained(this), LocalDevice::IfaceType::kP2PGO));
   next_unique_id_++;
-
-  if (!p2p_dev) {
-    LOG(ERROR) << "Failed to create a WiFi P2P interface.";
-    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+  if (!request_accepted) {
+    LOG(INFO)
+        << "Failed to create a WiFi P2P interface due to concurrency conflict.";
+    PostResult(kCreateP2PGroupResultConcurrencyNotSupported, std::nullopt,
                std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
-    return;
   }
-  if (!p2p_dev->SetEnabled(true)) {
-    LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
-    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(result_callback_));
-    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
-    return;
-  }
-  p2p_group_owners_[p2p_dev->shill_id()] = p2p_dev;
-  std::unique_ptr<P2PService> service =
-      std::make_unique<P2PService>(p2p_dev, ssid, passphrase, freq);
-  if (!p2p_dev->CreateGroup(std::move(service))) {
-    LOG(ERROR) << "Failed to initiate group creation";
-    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(result_callback_));
-    DeleteP2PDevice(p2p_dev);
-    return;
-  }
-  supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
 }
 
 void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
@@ -263,7 +246,6 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
                std::move(result_callback_));
     return;
   }
-  LOG(INFO) << "Priority argument value: " << priority;
 
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << "Failed to connect to P2P group, primary P2PDevice proxy "
@@ -272,38 +254,25 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
                std::move(callback));
     return;
   }
-
-  P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
+  bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
       LocalDevice::IfaceType::kP2PClient,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
                           base::Unretained(this)),
-      next_unique_id_);
+      next_unique_id_, priority,
+      base::BindOnce(&P2PManager::OnDeviceCreated, base::Unretained(this),
+                     LocalDevice::IfaceType::kP2PClient, ssid, passphrase,
+                     freq),
+      base::BindOnce(&P2PManager::OnDeviceCreationFailed,
+                     base::Unretained(this),
+                     LocalDevice::IfaceType::kP2PClient));
   next_unique_id_++;
-  if (!p2p_dev) {
-    LOG(ERROR) << "Failed to create a WiFi P2P interface.";
-    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+  if (!request_accepted) {
+    LOG(INFO)
+        << "Failed to create a WiFi P2P interface due to concurrency conflict.";
+    PostResult(kConnectToP2PGroupResultConcurrencyNotSupported, std::nullopt,
                std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
-    return;
   }
-  if (!p2p_dev->SetEnabled(true)) {
-    LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
-    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(result_callback_));
-    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
-    return;
-  }
-  p2p_clients_[p2p_dev->shill_id()] = p2p_dev;
-  std::unique_ptr<P2PService> service =
-      std::make_unique<P2PService>(p2p_dev, ssid, passphrase, freq);
-  if (!p2p_dev->Connect(std::move(service))) {
-    LOG(ERROR) << "Failed to initiate connection";
-    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(result_callback_));
-    DeleteP2PDevice(p2p_dev);
-    return;
-  }
-  supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
 }
 
 void P2PManager::DestroyP2PGroup(P2PResultCallback callback,
@@ -643,6 +612,91 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
                  << " event which has not been implemented.";
       break;
   }
+}
+
+void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
+                                 std::optional<std::string> ssid,
+                                 std::optional<std::string> passphrase,
+                                 std::optional<uint32_t> freq,
+                                 P2PDeviceRefPtr device) {
+  if (!result_callback_) {
+    LOG(ERROR) << "P2PDevice was created with no pending callback.";
+    return;
+  }
+
+  if (iface_type != device->iface_type()) {
+    LOG(ERROR) << "P2PDevice created with type " << device->iface_type()
+               << " which does not match requested type " << iface_type;
+    return;
+  }
+
+  if (device->iface_type() != LocalDevice::IfaceType::kP2PGO &&
+      device->iface_type() != LocalDevice::IfaceType::kP2PClient) {
+    LOG(ERROR) << "P2PDevice created "
+               << device->link_name().value_or("(no link name)")
+               << " with invalid type " << device->iface_type();
+    return;
+  }
+  bool is_go = device->iface_type() == LocalDevice::IfaceType::kP2PGO;
+
+  if (!device) {
+    LOG(ERROR) << "Failed to create a WiFi P2P interface.";
+    PostResult(is_go ? kCreateP2PGroupResultOperationFailed
+                     : kConnectToP2PGroupResultOperationFailed,
+               std::nullopt, std::move(result_callback_));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+    return;
+  }
+  if (!device->SetEnabled(true)) {
+    LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
+    PostResult(is_go ? kCreateP2PGroupResultOperationFailed
+                     : kConnectToP2PGroupResultOperationFailed,
+               std::nullopt, std::move(result_callback_));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+    return;
+  }
+
+  std::unique_ptr<P2PService> service =
+      std::make_unique<P2PService>(device, ssid, passphrase, freq);
+  if (is_go) {
+    p2p_group_owners_[device->shill_id()] = device;
+    if (!device->CreateGroup(std::move(service))) {
+      LOG(ERROR) << "Failed to initiate group creation";
+      PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+                 std::move(result_callback_));
+      DeleteP2PDevice(device);
+      return;
+    }
+  } else {
+    p2p_clients_[device->shill_id()] = device;
+    if (!device->Connect(std::move(service))) {
+      LOG(ERROR) << "Failed to initiate connection";
+      PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+                 std::move(result_callback_));
+      DeleteP2PDevice(device);
+      return;
+    }
+  }
+  supplicant_primary_p2pdevice_pending_event_delegate_ = device.get();
+}
+
+void P2PManager::OnDeviceCreationFailed(LocalDevice::IfaceType iface_type) {
+  if (!result_callback_) {
+    LOG(ERROR) << "P2PDevice was created with no pending callback.";
+    return;
+  }
+
+  if (iface_type != LocalDevice::IfaceType::kP2PGO &&
+      iface_type != LocalDevice::IfaceType::kP2PClient) {
+    LOG(ERROR) << "Received DeviceCreationFailed event for invalid type "
+               << iface_type;
+  }
+  bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
+  LOG(ERROR) << "Failed create P2PDevice.";
+  PostResult(is_go ? kCreateP2PGroupResultOperationFailed
+                   : kConnectToP2PGroupResultOperationFailed,
+             std::nullopt, std::move(result_callback_));
+  DisconnectFromSupplicantPrimaryP2PDeviceProxy();
 }
 
 void P2PManager::P2PNetworkStarted(P2PDeviceRefPtr device) {

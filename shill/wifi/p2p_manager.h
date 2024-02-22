@@ -80,6 +80,17 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
     return supplicant_primary_p2pdevice_proxy_.get();
   }
 
+  // Indicates that a P2PDevice has been created by WiFiProvider. Initiates
+  // connection/group construction on the device.
+  void OnDeviceCreated(LocalDevice::IfaceType iface_type,
+                       std::optional<std::string> ssid,
+                       std::optional<std::string> passphrase,
+                       std::optional<uint32_t> freq,
+                       P2PDeviceRefPtr device);
+
+  // Indicates that P2PDevice creation has failed.
+  void OnDeviceCreationFailed(LocalDevice::IfaceType iface_type);
+
  private:
   friend class P2PManagerTest;
   FRIEND_TEST(P2PManagerTest, SetP2PAllowed);

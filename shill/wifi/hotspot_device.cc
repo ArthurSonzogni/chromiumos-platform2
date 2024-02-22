@@ -20,6 +20,7 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_service.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 

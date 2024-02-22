@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/ethernet/mock_ethernet_provider.h"
+#include "shill/wifi/wifi_provider.h"
 
 using testing::_;
 using testing::Invoke;

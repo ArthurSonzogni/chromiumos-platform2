@@ -26,6 +26,7 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/p2p_manager.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_rf.h"
 
 namespace shill {
@@ -34,7 +35,6 @@ class Error;
 class KeyValueStore;
 class Manager;
 class WiFiEndpoint;
-class WiFiPhy;
 class WiFiService;
 class WiFiSecurity;
 
@@ -267,11 +267,20 @@ class WiFiProvider : public ProviderInterface {
       uint32_t device_phy_index_for_test,
       LocalDevice::EventCallback callback);
 
-  // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
-  // kP2PClient.
-  mockable P2PDeviceRefPtr CreateP2PDevice(LocalDevice::IfaceType iface_type,
-                                           LocalDevice::EventCallback callback,
-                                           uint32_t shill_id);
+  // Request the creation of a P2P device. The device will be sent to
+  // P2PManager::OnDeviceCreated when it is ready, or
+  // P2PManager::OnDeviceCreationFailed will be called if creating the device
+  // fails. This may happen immiately or after some time, so P2PManager must
+  // only call this function when it is ready to receive a device via
+  // P2PManager::OnDeviceCreated. Returns true if the device creation will be
+  // attempted, false otherwise.
+  mockable bool RequestP2PDeviceCreation(
+      LocalDevice::IfaceType iface_type,
+      LocalDevice::EventCallback callback,
+      uint32_t shill_id,
+      WiFiPhy::Priority priority,
+      base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+      base::OnceCallback<void()> fail_cb);
 
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
@@ -388,6 +397,15 @@ class WiFiProvider : public ProviderInterface {
 
   // Sort the internal list of services.
   void SortServices();
+
+  // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
+  // kP2PClient.
+  mockable void CreateP2PDevice(
+      LocalDevice::IfaceType iface_type,
+      LocalDevice::EventCallback callback,
+      uint32_t shill_id,
+      base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+      base::OnceCallback<void()> fail_cb);
 
   Manager* manager_;
   net_base::NetlinkManager* netlink_manager_;

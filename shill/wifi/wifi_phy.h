@@ -10,11 +10,13 @@
 #include <vector>
 
 #include "shill/mockable.h"
+#include "shill/wifi/local_device.h"
 #include "shill/wifi/nl80211_message.h"
-#include "shill/wifi/wifi.h"
-#include "shill/wifi/wifi_provider.h"
+#include "shill/wifi/wifi_rf.h"
 
 namespace shill {
+class WiFi;
+class WiFiProvider;
 
 struct IfaceLimit {
   std::vector<nl80211_iftype> iftypes;

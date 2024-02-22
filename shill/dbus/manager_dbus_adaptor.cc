@@ -20,6 +20,7 @@
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
 #include "shill/tethering_manager.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 

@@ -12,6 +12,8 @@
 #include <net-base/netlink_attribute.h>
 
 #include "shill/logging.h"
+
+#include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_phy.h"
 
 namespace shill {
