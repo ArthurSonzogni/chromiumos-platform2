@@ -24,6 +24,13 @@ site.addsitedir(BOXSTER_PYTHON_PATH)
 def main(argv: Optional[List[str]]) -> int:
     """The main function."""
 
+    # Don't run on pre-upload.  We only want to run if called directly or in
+    # fullcheckout-presubmit builder.
+    presubmit_commit = os.environ.get("PRESUBMIT_COMMIT", "")
+    if presubmit_commit not in ("", "pre-submit"):
+        print(f"Exit as PRESUBMIT_COMMIT={presubmit_commit}", file=sys.stderr)
+        return 0
+
     # Ensure the cipd dependencies and put it in PATH.
     cache_dir = Path(
         os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")
