@@ -48,7 +48,6 @@
 using brillo::GetFDPath;
 using brillo::SafeFD;
 using brillo::ScopedDIR;
-using brillo::cryptohome::home::GetHashedUserPath;
 using org::chromium::SessionManagerInterfaceProxy;
 
 namespace usb_bouncer {
