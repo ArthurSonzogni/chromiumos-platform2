@@ -73,7 +73,7 @@ class BRILLO_EXPORT VolumeGroup {
   bool Repair();
   bool Deactivate();
   bool Remove();
-  bool Rename(const std::string& volume_group_name);
+  bool Rename(const std::string& new_name);
   std::string GetName() const { return volume_group_name_; }
   bool IsValid() { return !volume_group_name_.empty(); }
   base::FilePath GetPath() const;
@@ -120,6 +120,7 @@ class BRILLO_EXPORT LogicalVolume {
   bool Deactivate();
   bool Remove();
   bool Resize(int64_t size);
+  bool Rename(const std::string& new_name);
   bool IsValid() { return !logical_volume_name_.empty(); }
   base::FilePath GetPath();
   std::optional<int64_t> GetSize();

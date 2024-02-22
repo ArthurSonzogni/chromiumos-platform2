@@ -166,12 +166,12 @@ bool VolumeGroup::Remove() {
   return ret;
 }
 
-bool VolumeGroup::Rename(const std::string& volume_group_name) {
-  if (volume_group_name_.empty() || volume_group_name.empty() || !lvm_)
+bool VolumeGroup::Rename(const std::string& new_name) {
+  if (volume_group_name_.empty() || new_name.empty() || !lvm_)
     return false;
-  if (!lvm_->RunCommand({"vgrename", volume_group_name_, volume_group_name}))
+  if (!lvm_->RunCommand({"vgrename", volume_group_name_, new_name}))
     return false;
-  volume_group_name_ = volume_group_name;
+  volume_group_name_ = new_name;
   return true;
 }
 
@@ -243,6 +243,17 @@ bool LogicalVolume::Resize(int64_t size) {
     return false;
   const auto& size_str = base::StringPrintf("-L%" PRId64 "m", size);
   return lvm_->RunCommand({"lvresize", "--force", size_str, GetName()});
+}
+
+bool LogicalVolume::Rename(const std::string& new_name) {
+  if (volume_group_name_.empty() || new_name.empty() || !lvm_)
+    return false;
+  bool ret = lvm_->RunCommand(
+      {"lvrename", volume_group_name_, logical_volume_name_, new_name});
+  if (ret) {
+    logical_volume_name_ = new_name;
+  }
+  return ret;
 }
 
 std::optional<int64_t> LogicalVolume::ParseReportedSize(

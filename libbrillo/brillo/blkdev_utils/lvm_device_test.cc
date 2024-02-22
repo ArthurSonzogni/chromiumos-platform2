@@ -132,6 +132,10 @@ TEST(LogicalVolumeTest, LogicalVolumeSanityTest) {
   EXPECT_EQ("Bar/Foo", lv.GetName());
   EXPECT_EQ("Foo", lv.GetRawName());
   EXPECT_EQ("Bar", lv.GetVolumeGroupName());
+  EXPECT_TRUE(lv.Rename("Baz"));
+  EXPECT_EQ("Bar/Baz", lv.GetName());
+  EXPECT_EQ("Baz", lv.GetRawName());
+  EXPECT_EQ("Bar", lv.GetVolumeGroupName());
   EXPECT_TRUE(lv.Remove());
   EXPECT_EQ("", lv.GetName());
 }
