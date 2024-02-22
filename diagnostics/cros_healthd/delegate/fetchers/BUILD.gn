@@ -18,12 +18,14 @@ source_set("fetchers") {
   sources = [
     "boot_performance.cc",
     "display_fetcher.cc",
+    "psr_fetcher.cc",
     "touchpad_fetcher.cc",
   ]
   configs += [ ":target_default" ]
   libs = [ "bootstat" ]
   deps = [
     "//diagnostics/base",
+    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

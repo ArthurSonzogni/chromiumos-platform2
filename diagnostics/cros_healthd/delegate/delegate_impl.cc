@@ -54,13 +54,12 @@
 #include "diagnostics/cros_healthd/delegate/events/volume_button_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/psr_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
-#include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
-#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -126,17 +125,6 @@ enum ec_led_colors ToEcLedColor(mojom::LedColor color) {
     case mojom::LedColor::kUnmappedEnumField:
       LOG(WARNING) << "LedColor UnmappedEnumField";
       return EC_LED_COLOR_COUNT;
-  }
-}
-
-mojom::PsrInfo::LogState LogStateToMojo(diagnostics::psr::LogState log_state) {
-  switch (log_state) {
-    case diagnostics::psr::LogState::kNotStarted:
-      return mojom::PsrInfo::LogState::kNotStarted;
-    case diagnostics::psr::LogState::kStarted:
-      return mojom::PsrInfo::LogState::kStarted;
-    case diagnostics::psr::LogState::kStopped:
-      return mojom::PsrInfo::LogState::kStopped;
   }
 }
 
@@ -432,114 +420,7 @@ void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
 }
 
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
-  auto result = mojom::PsrInfo::New();
-
-  // Treat a device that doesn't have /dev/mei0 as not supporting PSR.
-  if (!base::PathExists(base::FilePath(psr::kCrosMeiPath))) {
-    std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
-    return;
-  }
-
-  auto psr_cmd = psr::PsrCmd(psr::kCrosMeiPath);
-  if (std::optional<bool> check_psr_result =
-          psr_cmd.CheckPlatformServiceRecord();
-      !check_psr_result.has_value()) {
-    std::move(callback).Run(
-        mojom::GetPsrResult::NewError("Check PSR is not working."));
-    return;
-  } else if (!check_psr_result.value()) {
-    // PSR is not supported.
-    std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
-    return;
-  }
-
-  psr::PsrHeciResp psr_res;
-  result->is_supported = true;
-  if (!psr_cmd.GetPlatformServiceRecord(psr_res)) {
-    std::move(callback).Run(
-        mojom::GetPsrResult::NewError("Get PSR is not working."));
-    return;
-  }
-
-  if (psr_res.psr_version.major != psr::kPsrVersionMajor ||
-      psr_res.psr_version.minor != psr::kPsrVersionMinor) {
-    std::move(callback).Run(
-        mojom::GetPsrResult::NewError("Requires PSR 2.0 version."));
-    return;
-  }
-
-  result->log_state = LogStateToMojo(psr_res.log_state);
-  result->uuid =
-      psr_cmd.IdToHexString(psr_res.psr_record.uuid, psr::kUuidLength);
-  result->upid =
-      psr_cmd.IdToHexString(psr_res.psr_record.upid, psr::kUpidLength);
-  result->log_start_date = psr_res.psr_record.genesis_info.genesis_date;
-  result->oem_name =
-      reinterpret_cast<char*>(psr_res.psr_record.genesis_info.oem_info);
-  result->oem_make =
-      reinterpret_cast<char*>(psr_res.psr_record.genesis_info.oem_make_info);
-  result->oem_model =
-      reinterpret_cast<char*>(psr_res.psr_record.genesis_info.oem_model_info);
-  result->manufacture_country = reinterpret_cast<char*>(
-      psr_res.psr_record.genesis_info.manufacture_country);
-  result->oem_data =
-      reinterpret_cast<char*>(psr_res.psr_record.genesis_info.oem_data);
-  result->uptime_seconds =
-      psr_res.psr_record.ledger_info
-          .ledger_counter[psr::LedgerCounterIndex::kS0Seconds];
-  result->s5_counter = psr_res.psr_record.ledger_info
-                           .ledger_counter[psr::LedgerCounterIndex::kS0ToS5];
-  result->s4_counter = psr_res.psr_record.ledger_info
-                           .ledger_counter[psr::LedgerCounterIndex::kS0ToS4];
-  result->s3_counter = psr_res.psr_record.ledger_info
-                           .ledger_counter[psr::LedgerCounterIndex::kS0ToS3];
-  result->warm_reset_counter =
-      psr_res.psr_record.ledger_info
-          .ledger_counter[psr::LedgerCounterIndex::kWarmReset];
-
-  for (int i = 0; i < psr_res.psr_record.events_count; ++i) {
-    auto event = psr_res.psr_record.events_info[i];
-    auto tmp_event = mojom::PsrEvent::New();
-
-    switch (event.event_type) {
-      case psr::EventType::kLogStart:
-        tmp_event->type = mojom::PsrEvent::EventType::kLogStart;
-        break;
-      case psr::EventType::kLogEnd:
-        tmp_event->type = mojom::PsrEvent::EventType::kLogEnd;
-        break;
-      case psr::EventType::kMissing:
-        tmp_event->type = mojom::PsrEvent::EventType::kMissing;
-        break;
-      case psr::EventType::kInvalid:
-        tmp_event->type = mojom::PsrEvent::EventType::kInvalid;
-        break;
-      case psr::EventType::kPrtcFailure:
-        tmp_event->type = mojom::PsrEvent::EventType::kPrtcFailure;
-        break;
-      case psr::EventType::kCsmeRecovery:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeRecovery;
-        break;
-      case psr::EventType::kCsmeDamState:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeDamState;
-        break;
-      case psr::EventType::kCsmeUnlockState:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeUnlockState;
-        break;
-      case psr::EventType::kSvnIncrease:
-        tmp_event->type = mojom::PsrEvent::EventType::kSvnIncrease;
-        break;
-      case psr::EventType::kFwVersionChanged:
-        tmp_event->type = mojom::PsrEvent::EventType::kFwVersionChanged;
-        break;
-    }
-
-    tmp_event->time = event.timestamp;
-    tmp_event->data = event.data;
-    result->events.push_back(std::move(tmp_event));
-  }
-
-  std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
+  std::move(callback).Run(FetchPsrInfo());
 }
 
 void DelegateImpl::GetConnectedExternalDisplayConnectors(
