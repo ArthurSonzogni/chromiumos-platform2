@@ -1181,6 +1181,135 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   }
 }
 
+// If one client opens a scanner and a second client performs a discovery while
+// that scanner is open, the discovery session should return all SANE-discovered
+// devices from the cache instead of querying SANE.  libusb devices will still
+// be discovered as usual.
+TEST_F(DeviceTrackerTest, DiscoverySessionWithOpenScanner) {
+  // This scanner will be discovered by libusb.
+  auto ippusb_device1 = MakeIPPUSBDevice("Scanner 1");
+  ippusb_device1.device->MutableDeviceDescriptor().idProduct = 0x1234;
+  ippusb_device1.device->Init();
+  CreateIPPUSBSocket(ippusb_device1);
+  CreateFakeScanner(ippusb_device1.connection_string);
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(ippusb_device1.device));
+  libusb_->SetDevices(std::move(device_list));
+  sane_client_->SetListDevicesResult(true);
+
+  // This scanner will be discovered by SANE.
+  CreateFakeScanner("pixma:04A91234_5555", "GoogleTest",
+                    "Unique VIDPID Scanner", "USB");
+
+  EXPECT_CALL(*firewall_manager_, RequestPortsForDiscovery())
+      .WillRepeatedly([] {
+        std::vector<PortToken> retval;
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+        retval.emplace_back(
+            PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+        return retval;
+      });
+
+  // First session finds the scanners.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("Client1");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  open_sessions_.insert(response1.session_id());
+  run_loop1.Run();
+
+  std::set<std::string> device_names1;
+  for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
+    device_names1.insert(scanner->name());
+  }
+  EXPECT_THAT(device_names1,
+              UnorderedElementsAre("pixma:04A91234_5555",
+                                   ippusb_device1.ippusb_string));
+
+  // Open a discovered device.
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string(
+      ippusb_device1.ippusb_string);
+  open_request.set_client_id("Client1");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  EXPECT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+  ASSERT_TRUE(open_response.has_config());
+  auto& handle = open_response.config().scanner();
+  EXPECT_FALSE(handle.token().empty());
+
+  // Remove the existing SANE-discovered scanner and add a new one.  The second
+  // discovery will still return the first one (from the cache) and will not
+  // find the new one.
+  sane_client_->RemoveDeviceListing("pixma:04A91234_5555");
+  CreateFakeScanner("epson2:libusb:002:003", "GoogleTest",
+                    "Unique BUSDEV Scanner", "USB");
+  // Add a new libusb scanner.  The second discovery will find this.
+  auto ippusb_device2 = MakeIPPUSBDevice("Scanner 2");
+  ippusb_device2.device->MutableDeviceDescriptor().idProduct = 0x2345;
+  ippusb_device2.device->Init();
+  CreateIPPUSBSocket(ippusb_device2);
+  CreateFakeScanner(ippusb_device2.connection_string);
+  libusb_->AppendDevice(std::move(ippusb_device2.device));
+
+  // A discovery session started by a second client.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("Client2");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  open_sessions_.insert(response2.session_id());
+  run_loop2.Run();
+
+  std::set<std::string> device_names2;
+  for (const auto& scanner : discovered_scanners_[response2.session_id()]) {
+    device_names2.insert(scanner->name());
+  }
+
+  EXPECT_THAT(
+      device_names2,
+      UnorderedElementsAre("pixma:04A91234_5555", ippusb_device1.ippusb_string,
+                           ippusb_device2.ippusb_string));
+
+  // Close the scanner that was open.  After this is closed, the final discovery
+  // session should return the new SANE-discovered scanners and all the libusb
+  // scanners.
+  CloseScannerRequest close_request;
+  *close_request.mutable_scanner() = handle;
+  CloseScannerResponse close_response = tracker_->CloseScanner(close_request);
+  EXPECT_THAT(close_request.scanner(), EqualsProto(handle));
+  EXPECT_EQ(close_response.result(), OPERATION_RESULT_SUCCESS);
+
+  base::RunLoop run_loop3;
+  SetQuitClosure(run_loop3.QuitClosure());
+  StartScannerDiscoveryRequest start_request3;
+  start_request3.set_client_id("Client2");
+  StartScannerDiscoveryResponse response3 =
+      tracker_->StartScannerDiscovery(start_request3);
+  EXPECT_TRUE(response3.started());
+  EXPECT_FALSE(response3.session_id().empty());
+  open_sessions_.insert(response3.session_id());
+  run_loop3.Run();
+
+  std::set<std::string> device_names3;
+  for (const auto& scanner : discovered_scanners_[response3.session_id()]) {
+    device_names3.insert(scanner->name());
+  }
+
+  EXPECT_THAT(device_names3,
+              UnorderedElementsAre("epson2:libusb:002:003",
+                                   ippusb_device1.ippusb_string,
+                                   ippusb_device2.ippusb_string));
+}
+
 TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
   auto ippusb_device1 = MakeIPPUSBDevice("Scanner 1");
   ippusb_device1.device->MutableDeviceDescriptor().idProduct = 0x1234;

@@ -180,6 +180,11 @@ class DeviceTracker {
   // responsibility.
   void ClearJobsForScanner(const std::string& scanner_handle);
 
+  // These methods will return a list of scanners either by making a SANE
+  // library call or by returning scanners from the cache.
+  std::vector<ScannerInfo> GetDevicesFromSANE(bool local_only);
+  std::vector<ScannerInfo> GetDevicesFromCache(bool local_only);
+
   // Individual phases of discovery.  Each function is posted as a separate task
   // on the event loop to break up the amount of time spent blocking.
   // Because other events can be processed in between, each function needs to

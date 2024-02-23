@@ -112,6 +112,15 @@ std::string ProtocolTypeForScanner(const ScannerInfo& scanner) {
   }
 }
 
+bool IsIppUsbDevice(const std::string& connection_string) {
+  if (connection_string.starts_with("airscan:") ||
+      connection_string.starts_with("ippusb:")) {
+    return true;
+  }
+
+  return false;
+}
+
 void ScannerMatcher::AddUsbDevice(UsbDevice& device, const std::string& id) {
   std::string bus_dev = base::StringPrintf("%03d:%03d", device.GetBusNumber(),
                                            device.GetDeviceAddress());

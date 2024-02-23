@@ -25,4 +25,8 @@ void LibusbWrapperFake::SetDevices(
   devices_ = std::move(devices);
 }
 
+void LibusbWrapperFake::AppendDevice(std::unique_ptr<UsbDevice> device) {
+  devices_.emplace_back(std::move(device));
+}
+
 }  // namespace lorgnette

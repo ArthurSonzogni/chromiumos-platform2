@@ -135,5 +135,15 @@ TEST(ScannerMatchTest, ProtocolTypeOther) {
   EXPECT_EQ(ProtocolTypeForScanner(info), "fujitsu");
 }
 
+TEST(ScannerMatchTest, IppUsbDevice) {
+  EXPECT_TRUE(IsIppUsbDevice("airscan:otherstuff"));
+  EXPECT_TRUE(IsIppUsbDevice("ippusb:otherstuff"));
+
+  EXPECT_FALSE(IsIppUsbDevice("pixma:otherstuff"));
+  EXPECT_FALSE(IsIppUsbDevice("epson2:otherstuff"));
+  EXPECT_FALSE(IsIppUsbDevice("epsonds:otherstuff"));
+  EXPECT_FALSE(IsIppUsbDevice("fujitsu:otherstuff"));
+}
+
 }  // namespace
 }  // namespace lorgnette

@@ -461,6 +461,45 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
   known_devices_.push_back(std::move(*scanner_info));
 }
 
+std::vector<ScannerInfo> DeviceTracker::GetDevicesFromSANE(bool local_only) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  brillo::ErrorPtr error_ptr;
+  std::optional<std::vector<ScannerInfo>> devices =
+      sane_client_->ListDevices(&error_ptr, local_only);
+
+  if (!devices.has_value()) {
+    LOG(ERROR) << __func__
+               << ": Failed to get SANE devices: " << error_ptr->GetMessage();
+    return std::vector<ScannerInfo>();
+  }
+
+  LOG(INFO) << __func__ << ": Returning " << devices->size()
+            << " devices from SANE";
+  return devices.value();
+}
+
+std::vector<ScannerInfo> DeviceTracker::GetDevicesFromCache(bool local_only) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // This only returns the SANE devices (which, in this context, are the
+  // non-ippusb devices).
+  std::vector<ScannerInfo> scanners;
+  for (const ScannerInfo& info : known_devices_) {
+    if (IsIppUsbDevice(info.name())) {
+      continue;
+    }
+    if (local_only && info.connection_type() != lorgnette::CONNECTION_USB) {
+      continue;
+    }
+    scanners.emplace_back(info);
+  }
+
+  LOG(INFO) << __func__ << ": Returning " << scanners.size()
+            << " devices from cache";
+  return scanners;
+}
+
 void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -473,17 +512,14 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Checking for SANE devices in " << session_id;
 
-  brillo::ErrorPtr error_ptr;
-  std::optional<std::vector<ScannerInfo>> devices =
-      sane_client_->ListDevices(&error_ptr, session->local_only);
+  // If there are any open scanners, running a new SANE discovery can possibly
+  // corrupt the memory of the open scanners (depending on the backend).  To
+  // prevent this, use the cached scanners in this case.
+  std::vector<ScannerInfo> devices =
+      NumOpenScanners() > 0 ? GetDevicesFromCache(session->local_only)
+                            : GetDevicesFromSANE(session->local_only);
 
-  if (!devices.has_value()) {
-    LOG(ERROR) << __func__ << ": Failed to get SANE devices";
-    // Loop over nothing so we can still tell the client the session ended.
-    devices = std::vector<ScannerInfo>{};
-  }
-
-  for (ScannerInfo& scanner_info : devices.value()) {
+  for (ScannerInfo& scanner_info : devices) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DeviceTracker::ProbeSANEDevice,
                                   weak_factory_.GetWeakPtr(), session_id,

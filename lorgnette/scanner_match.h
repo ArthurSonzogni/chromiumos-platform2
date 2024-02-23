@@ -44,6 +44,9 @@ std::string DisplayNameForScanner(const ScannerInfo& scanner);
 // or epson2.
 std::string ProtocolTypeForScanner(const ScannerInfo& scanner);
 
+// Return true if `connection_string` refers to an IPPUSB device, false if not.
+bool IsIppUsbDevice(const std::string& connection_string);
+
 // Associate a string value with known USB devices and allow looking up stored
 // values based on a ScannerInfo.  This is conceptually similar to a map that
 // has multiple keys for each value.

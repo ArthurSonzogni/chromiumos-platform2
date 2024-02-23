@@ -24,6 +24,8 @@ class LibusbWrapperFake : public LibusbWrapper {
 
   void SetDevices(std::vector<std::unique_ptr<UsbDevice>> devices);
 
+  void AppendDevice(std::unique_ptr<UsbDevice> device);
+
  private:
   std::vector<std::unique_ptr<UsbDevice>> devices_;
 };
