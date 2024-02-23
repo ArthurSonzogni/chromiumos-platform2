@@ -66,6 +66,8 @@ const QuirksMap& GetQuirksMap() {
       {{"5959", "59bf"}, kQuirkPreferLargePreviewResolution},
       // LCE-Optics LSN060BF
       {{"5959", "60bf"}, kQuirkPreferLargePreviewResolution},
+      // Kingcome KPNB752 (b/326004301)
+      {{"2b7e", "b752"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }

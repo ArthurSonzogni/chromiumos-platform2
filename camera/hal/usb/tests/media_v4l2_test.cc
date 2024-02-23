@@ -288,7 +288,8 @@ class V4L2TestEnvironment : public ::testing::Environment {
       }
       // The camera module sometimes generate out-of-order buffer timestamps.
       // See b/158957477 for detail.
-      if (usb_info_.vid_pid == "0c45:6a05") {
+      if (usb_info_.vid_pid == "0c45:6a05" ||
+          usb_info_.vid_pid == "2b7e:b752") {
         check_timestamps_in_order_ = false;
       }
     } else if (test_list == kCertificationTestList) {
