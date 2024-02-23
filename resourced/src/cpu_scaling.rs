@@ -442,7 +442,6 @@ impl DeviceCpuStatus {
 mod tests {
     use std::collections::HashSet;
 
-    use anyhow::Result;
     use tempfile::tempdir;
 
     use super::*;
@@ -457,18 +456,15 @@ mod tests {
     }
 
     #[test]
-    fn test_get_pl0() -> Result<()> {
-        let root = tempdir()?;
+    fn test_get_pl0() {
+        let root = tempdir().unwrap();
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
         setup_mock_cpu_files(root.path()).unwrap();
         write_mock_cpu(root.path(), 0, 3200000, 3000000, 400000, 1000000).unwrap();
         write_mock_pl0(root.path(), 15000000).unwrap();
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
-        assert!(mock_cpu_dev_res.is_ok());
-        let mock_cpu_dev = mock_cpu_dev_res?;
-        assert_eq!(mock_cpu_dev.get_pl0_curr()?, 15000000);
-
-        Ok(())
+        let mock_cpu_dev = mock_cpu_dev_res.unwrap();
+        assert_eq!(mock_cpu_dev.get_pl0_curr().unwrap(), 15000000);
     }
 
     #[test]
@@ -523,8 +519,8 @@ mod tests {
     }
 
     #[test]
-    fn test_cpu_read_write_reset() -> Result<()> {
-        let root = tempdir()?;
+    fn test_cpu_read_write_reset() {
+        let root = tempdir().unwrap();
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
         setup_mock_cpu_files(root.path()).unwrap();
         for cpu in 0..MOCK_NUM_CPU {
@@ -533,54 +529,53 @@ mod tests {
 
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
         assert!(mock_cpu_dev_res.is_ok());
-        let mock_cpu_dev = mock_cpu_dev_res?;
+        let mock_cpu_dev = mock_cpu_dev_res.unwrap();
         assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
 
-        mock_cpu_dev.set_all_max_cpu_freq(2000000)?;
+        mock_cpu_dev.set_all_max_cpu_freq(2000000).unwrap();
         assert_eq!(get_cpu0_freq_max(root.path()), 2000000);
 
-        mock_cpu_dev.set_all_min_cpu_freq(1200000)?;
+        mock_cpu_dev.set_all_min_cpu_freq(1200000).unwrap();
         assert_eq!(get_cpu0_freq_min(root.path()), 1200000);
 
-        mock_cpu_dev.reset_all_max_min_cpu_freq()?;
+        mock_cpu_dev.reset_all_max_min_cpu_freq().unwrap();
         assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
         assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
 
-        mock_cpu_dev.set_all_max_cpu_freq(1600000)?;
+        mock_cpu_dev.set_all_max_cpu_freq(1600000).unwrap();
         assert_eq!(get_cpu0_freq_max(root.path()), 1600000);
 
-        mock_cpu_dev.set_all_max_cpu_freq(2800000)?;
+        mock_cpu_dev.set_all_max_cpu_freq(2800000).unwrap();
         assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
-
-        Ok(())
     }
 
     #[test]
-    pub fn test_intel_i7_func() -> anyhow::Result<()> {
-        let root = tempdir()?;
+    pub fn test_intel_i7_func() {
+        let root = tempdir().unwrap();
         let path = root.path().join("proc");
 
-        std::fs::create_dir_all(path.clone())?;
-        std::fs::File::create(path.join("cpuinfo"))?;
+        std::fs::create_dir_all(path.clone()).unwrap();
+        std::fs::File::create(path.join("cpuinfo")).unwrap();
 
         std::fs::write(
             path.join("cpuinfo"),
             "model name	: Intel(R) Core(TM) i7-4700HQ CPU @ 2.40GHz",
-        )?;
-        assert!(intel_i7_or_above(Path::new(root.path()))?);
+        )
+        .unwrap();
+        assert!(intel_i7_or_above(Path::new(root.path())).unwrap());
 
         std::fs::write(
             path.join("cpuinfo"),
             "model name	: Intel(R) Core(TM) i5-4400HQ CPU @ 2.20GHz",
-        )?;
-        assert!(!intel_i7_or_above(Path::new(root.path()))?);
+        )
+        .unwrap();
+        assert!(!intel_i7_or_above(Path::new(root.path())).unwrap());
 
         std::fs::write(
             path.join("cpuinfo"),
             "model name: AMD Ryzen Threadripper PRO 3995WX 64-Cores",
-        )?;
-        assert!(!intel_i7_or_above(Path::new(root.path()))?);
-
-        Ok(())
+        )
+        .unwrap();
+        assert!(!intel_i7_or_above(Path::new(root.path())).unwrap());
     }
 }

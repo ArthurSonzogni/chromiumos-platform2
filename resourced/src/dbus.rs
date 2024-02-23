@@ -689,13 +689,9 @@ async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
 
     // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
     // threshold.
-    let wait_result = psi::wait_psi_monitor_memory_event(
-        STALL_MS,
-        WINDOW_MS,
-        MIN_WAITING_MS,
-        max_waiting_ms,
-    )
-    .await;
+    let wait_result =
+        psi::wait_psi_monitor_memory_event(STALL_MS, WINDOW_MS, MIN_WAITING_MS, max_waiting_ms)
+            .await;
     if wait_result.is_err() {
         error!(
             "wait_psi_monitor_memory_event returns error: {:?}",

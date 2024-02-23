@@ -300,7 +300,7 @@ mod tests {
     use crate::test_utils::*;
 
     #[test]
-    fn test_power_is_intel_hybrid_system() -> Result<()> {
+    fn test_power_is_intel_hybrid_system() {
         // cpuid with EAX=0: Highest Function Parameter and Manufacturer ID.
         // This returns the CPU's manufacturer ID string.
         // The largest value that EAX can be set to before calling CPUID is returned in EAX.
@@ -327,7 +327,7 @@ mod tests {
             _ => (false, 0),
         };
 
-        let intel_hybrid_platform = is_intel_hybrid_platform()?;
+        let intel_hybrid_platform = is_intel_hybrid_platform().unwrap();
 
         // If system is not Intel platform, hybrid should be false.
         if !intel_platform {
@@ -344,12 +344,10 @@ mod tests {
             "Does platform support Intel hybrid feature? {}",
             intel_hybrid_platform
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_platform_feature_media_dynamic_cgroup_enabled() -> Result<()> {
+    fn test_power_platform_feature_media_dynamic_cgroup_enabled() {
         let platform_media_dynamic_cgroup =
             platform_feature_media_dynamic_cgroup_enabled(&PathBuf::from("/"));
 
@@ -359,12 +357,10 @@ mod tests {
             "Does platform support media dynamic cgroup? {}",
             platform_media_dynamic_cgroup.unwrap()
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_get_intel_hybrid_core_num() -> Result<()> {
+    fn test_power_get_intel_hybrid_core_num() {
         let root = TempDir::new().unwrap();
 
         // Create fake sysfs ../cpufreq/policy*/cpuinfo_max_freq.
@@ -376,7 +372,7 @@ mod tests {
                 cpu
             ));
             test_create_parent_dir(&max_freq_path);
-            std::fs::write(max_freq_path, "6000")?;
+            std::fs::write(max_freq_path, "6000").unwrap();
         }
 
         // Check (total_core_num, total_ecore_num).
@@ -391,14 +387,12 @@ mod tests {
                 cpu
             ));
             test_create_parent_dir(&max_freq_path);
-            std::fs::write(max_freq_path, "4000")?;
+            std::fs::write(max_freq_path, "4000").unwrap();
         }
 
         // Check (total_core_num, total_ecore_num).
         let core_num = get_intel_hybrid_core_num(root.path()).unwrap();
         assert_eq!(core_num, (12, 8));
-
-        Ok(())
     }
 
     fn test_write_cpusets(root: &Path, cpus_content: &str) {
@@ -428,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_default_cpusets_with_scheduler_tune() -> Result<()> {
+    fn test_write_default_cpusets_with_scheduler_tune() {
         // Setup.
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-7");
@@ -436,7 +430,7 @@ mod tests {
         test_write_scheduler_tune_cpuset_nonurgent(root.path(), "0-5");
 
         // Call function to test.
-        write_default_cpusets(root.path())?;
+        write_default_cpusets(root.path()).unwrap();
 
         // Check result.
         for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
@@ -444,11 +438,10 @@ mod tests {
             test_check_file_content(&path, "0-7");
         }
         test_check_file_content(&root.path().join(SCHEDULER_NONURGENT_PATH), "0-5");
-        Ok(())
     }
 
     #[test]
-    fn test_write_default_cpusets_without_little_cores() -> Result<()> {
+    fn test_write_default_cpusets_without_little_cores() {
         // Setup.
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-7");
@@ -456,7 +449,7 @@ mod tests {
         test_write_ui_use_flags(root.path(), "");
 
         // Call function to test.
-        write_default_cpusets(root.path())?;
+        write_default_cpusets(root.path()).unwrap();
 
         // Check result.
         for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
@@ -466,11 +459,10 @@ mod tests {
         for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
             test_check_file_content(&root.path().join(cpuset_path), "0-7");
         }
-        Ok(())
     }
 
     #[test]
-    fn test_write_default_cpusets_with_little_cores_capacity() -> Result<()> {
+    fn test_write_default_cpusets_with_little_cores_capacity() {
         // Setup.
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-7");
@@ -484,7 +476,7 @@ mod tests {
         }
 
         // Call function to test.
-        write_default_cpusets(root.path())?;
+        write_default_cpusets(root.path()).unwrap();
 
         // Check result.
         for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
@@ -496,11 +488,10 @@ mod tests {
             // is no auto conversion in the test temp files.
             test_check_file_content(&root.path().join(cpuset_path), "0-5");
         }
-        Ok(())
     }
 
     #[test]
-    fn test_write_default_cpusets_with_little_cores_max_freq() -> Result<()> {
+    fn test_write_default_cpusets_with_little_cores_max_freq() {
         // Setup.
         let root = TempDir::new().unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-11");
@@ -514,7 +505,7 @@ mod tests {
         }
 
         // Call function to test.
-        write_default_cpusets(root.path())?;
+        write_default_cpusets(root.path()).unwrap();
 
         // Check result.
         for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
@@ -524,8 +515,6 @@ mod tests {
         for cpuset_path in CGROUP_CPUSET_NONURGENT.iter() {
             test_check_file_content(&root.path().join(cpuset_path), "0-7");
         }
-
-        Ok(())
     }
 
     #[test]

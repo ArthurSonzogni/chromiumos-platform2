@@ -484,102 +484,94 @@ mod tests {
     use crate::test_utils::*;
 
     #[test]
-    fn test_parse_power_supply_status() -> anyhow::Result<()> {
+    fn test_parse_power_supply_status() {
         assert_eq!(
-            PowerSupplyStatus::from_str("Unknown\n")?,
+            PowerSupplyStatus::from_str("Unknown\n").unwrap(),
             PowerSupplyStatus::Unknown
         );
         assert_eq!(
-            PowerSupplyStatus::from_str("Charging\n")?,
+            PowerSupplyStatus::from_str("Charging\n").unwrap(),
             PowerSupplyStatus::Charging
         );
         assert_eq!(
-            PowerSupplyStatus::from_str("Discharging\n")?,
+            PowerSupplyStatus::from_str("Discharging\n").unwrap(),
             PowerSupplyStatus::Discharging
         );
         assert_eq!(
-            PowerSupplyStatus::from_str("Not charging\n")?,
+            PowerSupplyStatus::from_str("Not charging\n").unwrap(),
             PowerSupplyStatus::NotCharging
         );
         assert_eq!(
-            PowerSupplyStatus::from_str("Full\n")?,
+            PowerSupplyStatus::from_str("Full\n").unwrap(),
             PowerSupplyStatus::Full
         );
 
         assert!(PowerSupplyStatus::from_str("").is_err());
         assert!(PowerSupplyStatus::from_str("abc").is_err());
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_source_provider_empty_root() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_source_provider_empty_root() {
+        let root = tempdir().unwrap();
 
         let provider = DirectoryPowerSourceProvider {
             root: root.path().to_path_buf(),
         };
 
-        let power_source = provider.get_power_source()?;
+        let power_source = provider.get_power_source().unwrap();
 
         assert_eq!(power_source, PowerSourceType::DC);
-
-        Ok(())
     }
 
     const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 
     #[test]
-    fn test_power_source_provider_empty_path() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_source_provider_empty_path() {
+        let root = tempdir().unwrap();
 
         let path = root.path().join(POWER_SUPPLY_PATH);
-        fs::create_dir_all(path)?;
+        fs::create_dir_all(path).unwrap();
 
         let provider = DirectoryPowerSourceProvider {
             root: root.path().to_path_buf(),
         };
 
-        let power_source = provider.get_power_source()?;
+        let power_source = provider.get_power_source().unwrap();
 
         assert_eq!(power_source, PowerSourceType::DC);
-
-        Ok(())
     }
 
     /// Tests that the `DirectoryPowerSourceProvider` can parse the charger sysfs
     /// `online` and `status` attributes.
     #[test]
-    fn test_power_source_provider_disconnected_then_connected() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_source_provider_disconnected_then_connected() {
+        let root = tempdir().unwrap();
 
         let path = root.path().join(POWER_SUPPLY_PATH);
-        fs::create_dir_all(&path)?;
+        fs::create_dir_all(&path).unwrap();
 
         let provider = DirectoryPowerSourceProvider {
             root: root.path().to_path_buf(),
         };
 
         let charger = path.join("charger-1");
-        fs::create_dir_all(&charger)?;
+        fs::create_dir_all(&charger).unwrap();
         let online = charger.join("online");
 
-        fs::write(&online, b"0")?;
-        let power_source = provider.get_power_source()?;
+        fs::write(&online, b"0").unwrap();
+        let power_source = provider.get_power_source().unwrap();
         assert_eq!(power_source, PowerSourceType::DC);
 
         let status = charger.join("status");
-        fs::write(&online, b"1")?;
-        fs::write(&status, b"Charging\n")?;
-        let power_source = provider.get_power_source()?;
+        fs::write(&online, b"1").unwrap();
+        fs::write(&status, b"Charging\n").unwrap();
+        let power_source = provider.get_power_source().unwrap();
         assert_eq!(power_source, PowerSourceType::AC);
 
-        fs::write(&online, b"1")?;
-        fs::write(&status, b"Not Charging\n")?;
-        let power_source = provider.get_power_source()?;
+        fs::write(&online, b"1").unwrap();
+        fs::write(&status, b"Not Charging\n").unwrap();
+        let power_source = provider.get_power_source().unwrap();
         assert_eq!(power_source, PowerSourceType::DC);
-
-        Ok(())
     }
 
     struct FakePowerSourceProvider {
@@ -755,8 +747,8 @@ mod tests {
     }
 
     #[test]
-    fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_wrong_governor() {
+        let root = tempdir().unwrap();
 
         test_write_cpuset_root_cpus(root.path(), "0-3");
         let power_source_provider = FakePowerSourceProvider {
@@ -772,27 +764,27 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
         // We shouldn't have written anything.
         let powersave_bias = read_global_powersave_bias(root.path());
         assert!(powersave_bias.is_err());
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_none() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_none() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -808,29 +800,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "0");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "2000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_default_ac() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_default_ac() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -858,29 +850,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_default_dc() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_default_dc() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -908,29 +900,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "2000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_default_rtc_active() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_default_rtc_active() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -958,29 +950,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Active,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Active,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "4000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_rtc_active() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_rtc_active() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -1008,27 +1000,27 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Active,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Active,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
-
-        Ok(())
     }
 
     #[test]
     /// Tests default battery saver mode
-    fn test_power_update_power_preferences_battery_saver_active() -> Result<()> {
-        let temp_dir = tempdir()?;
+    fn test_power_update_power_preferences_battery_saver_active() {
+        let temp_dir = tempdir().unwrap();
         let root = temp_dir.path();
 
         test_write_cpuset_root_cpus(root, "0-3");
@@ -1112,13 +1104,15 @@ mod tests {
             };
             let policies = vec![policy0, policy1];
             write_per_policy_scaling_governor(root, policies);
-            manager.update_power_preferences(
-                common::RTCAudioActive::Inactive,
-                common::FullscreenVideo::Inactive,
-                common::GameMode::Arc,
-                common::VmBootMode::Inactive,
-                test.0,
-            )?;
+            manager
+                .update_power_preferences(
+                    common::RTCAudioActive::Inactive,
+                    common::FullscreenVideo::Inactive,
+                    common::GameMode::Arc,
+                    common::VmBootMode::Inactive,
+                    test.0,
+                )
+                .unwrap();
 
             let mut expected_governors = vec![test.2, test.2];
             if test.3.is_empty() {
@@ -1130,28 +1124,28 @@ mod tests {
         // Test device with EPP path
         let orig_epp = "balance_performance";
         for test in tests {
-            write_epp(root, orig_epp, test.3)?;
-            manager.update_power_preferences(
-                common::RTCAudioActive::Inactive,
-                common::FullscreenVideo::Inactive,
-                common::GameMode::Arc,
-                common::VmBootMode::Inactive,
-                test.0,
-            )?;
+            write_epp(root, orig_epp, test.3).unwrap();
+            manager
+                .update_power_preferences(
+                    common::RTCAudioActive::Inactive,
+                    common::FullscreenVideo::Inactive,
+                    common::GameMode::Arc,
+                    common::VmBootMode::Inactive,
+                    test.0,
+                )
+                .unwrap();
 
-            let epp = read_epp(root)?;
+            let epp = read_epp(root).unwrap();
             let mut expected_epp = test.1;
             if test.3.is_empty() {
                 expected_epp = orig_epp;
             }
             assert_eq!(epp, expected_epp);
         }
-
-        Ok(())
     }
 
     #[test]
-    fn test_apply_hotplug_cpus() -> Result<()> {
+    fn test_apply_hotplug_cpus() {
         struct Test<'a> {
             cpus: &'a str,
             big_little: bool,
@@ -1254,7 +1248,7 @@ mod tests {
 
         for test in tests {
             //Setup
-            let temp_dir = tempdir()?;
+            let temp_dir = tempdir().unwrap();
             let root = temp_dir.path();
             let fake_config = FakeConfig::new();
             let config_provider = fake_config.provider();
@@ -1295,7 +1289,7 @@ mod tests {
             }
 
             // Call function to test
-            manager.apply_cpu_hotplug(test.preferences)?;
+            manager.apply_cpu_hotplug(test.preferences).unwrap();
 
             // Check result.
             if test.smt_offlined {
@@ -1316,16 +1310,14 @@ mod tests {
                 );
             }
         }
-
-        Ok(())
     }
 
     #[test]
     /// Tests the various EPP permutations
-    fn test_power_update_power_preferences_epp() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_epp() {
+        let root = tempdir().unwrap();
 
-        write_epp(root.path(), "balance_performance", AFFECTED_CPU0)?;
+        write_epp(root.path(), "balance_performance", AFFECTED_CPU0).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let tests = [
@@ -1406,28 +1398,28 @@ mod tests {
                 power_source_provider: test.0,
             };
 
-            manager.update_power_preferences(
-                test.1,
-                test.2,
-                common::GameMode::Off,
-                common::VmBootMode::Inactive,
-                common::BatterySaverMode::Inactive,
-            )?;
+            manager
+                .update_power_preferences(
+                    test.1,
+                    test.2,
+                    common::GameMode::Off,
+                    common::VmBootMode::Inactive,
+                    common::BatterySaverMode::Inactive,
+                )
+                .unwrap();
 
-            let epp = read_epp(root.path())?;
+            let epp = read_epp(root.path()).unwrap();
 
             assert_eq!(epp, test.3);
         }
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_fullscreen_active() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_fullscreen_active() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -1455,29 +1447,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Active,
-            common::GameMode::Off,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Active,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_borealis_gaming_active() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_borealis_gaming_active() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -1505,29 +1497,29 @@ mod tests {
             power_source_provider,
         };
 
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Borealis,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Borealis,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_power_update_power_preferences_arcvm_gaming_active() -> Result<()> {
-        let root = tempdir()?;
+    fn test_power_update_power_preferences_arcvm_gaming_active() {
+        let root = tempdir().unwrap();
 
-        write_global_powersave_bias(root.path(), 0)?;
-        write_global_sampling_rate(root.path(), 2000)?;
+        write_global_powersave_bias(root.path(), 0).unwrap();
+        write_global_sampling_rate(root.path(), 2000).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -1554,26 +1546,26 @@ mod tests {
             config_provider,
             power_source_provider,
         };
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Arc,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Arc,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
 
-        let powersave_bias = read_global_powersave_bias(root.path())?;
+        let powersave_bias = read_global_powersave_bias(root.path()).unwrap();
         assert_eq!(powersave_bias, "200");
 
-        let sampling_rate = read_global_sampling_rate(root.path())?;
+        let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
-
-        Ok(())
     }
 
     #[test]
-    fn test_per_policy_ondemand_governor() -> Result<()> {
-        let temp_dir = tempdir()?;
+    fn test_per_policy_ondemand_governor() {
+        let temp_dir = tempdir().unwrap();
         let root = temp_dir.path();
 
         const INIT_POWERSAVE_BIAS: u32 = 0;
@@ -1625,22 +1617,23 @@ mod tests {
             config_provider,
             power_source_provider,
         };
-        manager.update_power_preferences(
-            common::RTCAudioActive::Inactive,
-            common::FullscreenVideo::Inactive,
-            common::GameMode::Arc,
-            common::VmBootMode::Inactive,
-            common::BatterySaverMode::Inactive,
-        )?;
+        manager
+            .update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Arc,
+                common::VmBootMode::Inactive,
+                common::BatterySaverMode::Inactive,
+            )
+            .unwrap();
         check_per_policy_scaling_governor(root, vec![ondemand, ondemand]);
         check_per_policy_powersave_bias(root, CONFIG_POWERSAVE_BIAS);
         check_per_policy_sampling_rate(root, CONFIG_SAMPLING_RATE);
-        Ok(())
     }
 
     #[test]
-    fn test_scaling_governors() -> Result<()> {
-        let temp_dir = tempdir()?;
+    fn test_scaling_governors() {
+        let temp_dir = tempdir().unwrap();
         let root = temp_dir.path();
 
         test_write_cpuset_root_cpus(root, "0-3");
@@ -1693,17 +1686,17 @@ mod tests {
                 power_source_provider,
             };
 
-            manager.update_power_preferences(
-                common::RTCAudioActive::Inactive,
-                common::FullscreenVideo::Inactive,
-                common::GameMode::Arc,
-                common::VmBootMode::Inactive,
-                common::BatterySaverMode::Inactive,
-            )?;
+            manager
+                .update_power_preferences(
+                    common::RTCAudioActive::Inactive,
+                    common::FullscreenVideo::Inactive,
+                    common::GameMode::Arc,
+                    common::VmBootMode::Inactive,
+                    common::BatterySaverMode::Inactive,
+                )
+                .unwrap();
 
             check_per_policy_scaling_governor(root, vec![governor, governor]);
         }
-
-        Ok(())
     }
 }
