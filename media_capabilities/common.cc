@@ -126,6 +126,7 @@ std::string Capability::ToString() const {
   switch (profile_) {
     case Profile::kNone:
       LOG(FATAL) << "Profile must be specified in codec capability";
+      return "Invalid";
     case Profile::kH264Baseline:
       output = "h264_baseline";
       break;
@@ -157,6 +158,7 @@ std::string Capability::ToString() const {
   switch (resolution_) {
     case Resolution::kNone:
       LOG(FATAL) << "Resolution must be specified";
+      return "Invalid";
     case Resolution::k1080p:
       output += "_1080p";
       break;
@@ -168,6 +170,7 @@ std::string Capability::ToString() const {
   switch (subsampling_) {
     case Subsampling::kNone:
       LOG(FATAL) << "Subsampling must be specified";
+      return "Invalid";
     case Subsampling::kYUV420:
       // Regular subsampling. Nothing is appended.
       break;
@@ -182,6 +185,7 @@ std::string Capability::ToString() const {
   switch (color_depth_) {
     case ColorDepth::kNone:
       LOG(FATAL) << "Color depth must be specified";
+      break;
     case ColorDepth::k8bit:
       // Regular color depth. Nothing is appended.
       break;

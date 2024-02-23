@@ -84,6 +84,9 @@ void Daemon::ConnectToMojoServiceManager() {
 
   if (!service_manager_remote) {
     LOGF(FATAL) << "Failed to connect to Mojo Service Manager";
+
+    Quit();
+    return;
   }
 
   service_manager_.Bind(std::move(service_manager_remote));

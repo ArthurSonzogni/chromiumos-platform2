@@ -37,6 +37,8 @@ GpuDelegateApi GpuDelegateApiFromString(const std::string& string) {
     return GpuDelegateApi::UNKNOWN;
   }
   LOG(FATAL) << "Unknown GPU delegate API '" << string << "'";
+  NOTREACHED();
+  return GpuDelegateApi::UNKNOWN;
 }
 
 }  // namespace ml

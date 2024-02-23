@@ -27,6 +27,7 @@ std::vector<NVRAMQuoteType> NullNvramQuoter::GetListForEnrollmentCertificate()
 
 bool NullNvramQuoter::Certify(NVRAMQuoteType, const std::string&, Quote&) {
   LOG(FATAL) << __func__ << ": null implemenetion called.";
+  return false;
 }
 
 }  // namespace attestation

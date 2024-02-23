@@ -66,6 +66,7 @@ power_manager::PowerManagementPolicy_Action GetAction(
     return power_manager::PowerManagementPolicy_Action_DO_NOTHING;
   else
     LOG(FATAL) << "Invalid action \"" << action << "\"";
+  return power_manager::PowerManagementPolicy_Action_DO_NOTHING;
 }
 
 }  // namespace

@@ -36,6 +36,7 @@ int main(int arg, char** argv) {
 
   if (pid == -1) {
     PLOG(FATAL) << "Failed to fork";
+    return EXIT_FAILURE;
   }
 
   if (pid == 0) {

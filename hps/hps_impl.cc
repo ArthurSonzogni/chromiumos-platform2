@@ -632,6 +632,7 @@ bool HPS_impl::IsRunning() {
   LogStateOnError();
   LOG(FATAL) << "Terminating for fatal error at " << location.ToString() << ": "
              << msg;
+  abort();
 }
 
 void HPS_impl::OnTransientBootFault(const base::Location& location,
@@ -650,6 +651,7 @@ void HPS_impl::OnTransientBootFault(const base::Location& location,
   LogStateOnError();
   LOG(FATAL) << "Terminating for boot fault at " << location.ToString() << ": "
              << msg;
+  abort();
 }
 
 void HPS_impl::LogStateOnError() {

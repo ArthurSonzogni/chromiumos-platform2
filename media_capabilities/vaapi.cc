@@ -69,6 +69,7 @@ Subsampling VARtFormatToSubsampling(uint32_t va_rt_format) {
       return Subsampling::kYUV444;
     default:
       LOG(FATAL) << "Unexpected va_rt_format: " << va_rt_format;
+      return Subsampling::kNone;
   }
 }
 
@@ -89,6 +90,7 @@ std::vector<VAEntrypoint> GetVAEntrypoints(Profile profile, bool decode) {
     case Profile::kNone:
     default:
       LOG(FATAL) << "Unexpected profile: " << static_cast<int32_t>(profile);
+      return {};
   }
 }
 
@@ -113,6 +115,7 @@ std::vector<uint32_t> GetVARTFormats(Profile profile, bool decode) {
     case Profile::kNone:
     default:
       LOG(FATAL) << "Unexpected profile: " << static_cast<int32_t>(profile);
+      return {VA_RT_FORMAT_YUV420};
   }
 }
 

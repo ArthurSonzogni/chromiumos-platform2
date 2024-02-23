@@ -238,6 +238,7 @@ chromeos::machine_learning::mojom::LangIdEventPtr LangIdEventFromProto(
       break;
     default:
       LOG(FATAL) << "Unknown langid asr_switch_result_type.";
+      break;
   }
   return langid_event;
 }

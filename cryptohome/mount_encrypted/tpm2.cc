@@ -231,6 +231,7 @@ result_code Tpm2SystemKeyLoader::SetupTpm() {
 result_code Tpm2SystemKeyLoader::GenerateForPreservation(
     brillo::SecureBlob* previous_key, brillo::SecureBlob* fresh_key) {
   LOG(FATAL) << "Preservation not implemented for TPM 2.0";
+  return RESULT_FAIL_FATAL;
 }
 
 result_code Tpm2SystemKeyLoader::CheckLockbox(bool* valid) {

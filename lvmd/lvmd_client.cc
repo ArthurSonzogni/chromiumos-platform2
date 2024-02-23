@@ -359,6 +359,7 @@ int LvmdClient::ProcessFlags() {
 
   // Should never reach here.
   LOG(FATAL) << "Client missed handling a flag, please file a bug.";
+  return EX_SOFTWARE;
 }
 
 int LvmdClient::GetPhysicalVolume(const std::string& device_path) {

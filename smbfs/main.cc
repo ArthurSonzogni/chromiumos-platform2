@@ -78,6 +78,7 @@ int ParseOptionsCallback(void* data,
 
     default:
       LOG(FATAL) << "Invalid option key: " << key;
+      return -1;
   }
 }
 
