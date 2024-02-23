@@ -275,7 +275,6 @@ std::string EnumToString(mojom::VulnerabilityInfo::Status status) {
   switch (status) {
     case mojom::VulnerabilityInfo::Status::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::VulnerabilityInfo::Status::kNotAffected:
       return "Not affected";
     case mojom::VulnerabilityInfo::Status::kVulnerable:
@@ -293,7 +292,6 @@ std::string EnumToString(mojom::CpuVirtualizationInfo::Type type) {
   switch (type) {
     case mojom::CpuVirtualizationInfo::Type::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::CpuVirtualizationInfo::Type::kVMX:
       return "VMX";
     case mojom::CpuVirtualizationInfo::Type::kSVM:
@@ -322,7 +320,6 @@ std::string EnumToString(mojom::InputDevice::ConnectionType type) {
   switch (type) {
     case mojom::InputDevice::ConnectionType::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::InputDevice::ConnectionType::kInternal:
       return "Internal";
     case mojom::InputDevice::ConnectionType::kUSB:
@@ -349,7 +346,6 @@ std::string EnumToString(mojom::OsInfo::EfiPlatformSize size) {
   switch (size) {
     case mojom::OsInfo::EfiPlatformSize::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::OsInfo::EfiPlatformSize::kUnknown:
       return "unknown";
     case mojom::OsInfo::EfiPlatformSize::k64:
@@ -397,7 +393,6 @@ std::string EnumToString(mojom::UsbVersion version) {
   switch (version) {
     case mojom::UsbVersion::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::UsbVersion::kUnknown:
       return "Unknown";
     case mojom::UsbVersion::kUsb1:
@@ -413,10 +408,8 @@ std::string EnumToString(mojom::UsbSpecSpeed spec_speed) {
   switch (spec_speed) {
     case mojom::UsbSpecSpeed::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::UsbSpecSpeed::kDeprecatedSpeed:
       LOG(FATAL) << "Got Deprecated";
-      return "Deprecated";
     case mojom::UsbSpecSpeed::kUnknown:
       return "Unknown";
     case mojom::UsbSpecSpeed::k1_5Mbps:
@@ -438,7 +431,6 @@ std::string EnumToString(mojom::PsrInfo::LogState state) {
   switch (state) {
     case mojom::PsrInfo::LogState::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::PsrInfo::LogState::kStarted:
       return "Started";
     case mojom::PsrInfo::LogState::kNotStarted:
@@ -452,7 +444,6 @@ std::string EnumToString(mojom::PsrEvent::EventType type) {
   switch (type) {
     case mojom::PsrEvent::EventType::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::PsrEvent::EventType::kLogStart:
       return "LogStarted";
     case mojom::PsrEvent::EventType::kLogEnd:
@@ -518,7 +509,6 @@ std::string EnumToString(mojom::MemtesterTestItemEnum test_item) {
       return "Unknown";
     case mojom::MemtesterTestItemEnum::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "Unmapped Enum Field";
   }
 }
 
@@ -526,7 +516,6 @@ std::string EnumToString(mojom::HardwarePresenceStatus status) {
   switch (status) {
     case mojom::HardwarePresenceStatus::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::HardwarePresenceStatus::kMatched:
       return "Matched";
     case mojom::HardwarePresenceStatus::kNotMatched:
@@ -540,7 +529,6 @@ std::string EnumToString(mojom::ThermalSensorInfo::ThermalSensorSource source) {
   switch (source) {
     case mojom::ThermalSensorInfo::ThermalSensorSource::kUnmappedEnumField:
       LOG(FATAL) << "Got UnmappedEnumField";
-      return "UnmappedEnumField";
     case mojom::ThermalSensorInfo::ThermalSensorSource::kEc:
       return "EC";
     case mojom::ThermalSensorInfo::ThermalSensorSource::kSysFs:
@@ -568,7 +556,6 @@ void OutputSupportStatus(const mojom::SupportStatusPtr status) {
   switch (status->which()) {
     case mojom::SupportStatus::Tag::kUnmappedUnionField:
       LOG(FATAL) << "Got mojom::SupportStatus::Tag::kUnmappedUnionField";
-      break;
     case mojom::SupportStatus::Tag::kException:
       output.Set("status", "Exception");
       output.Set("debug_message", status->get_exception()->debug_message);

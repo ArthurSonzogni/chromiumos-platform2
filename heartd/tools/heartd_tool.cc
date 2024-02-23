@@ -131,7 +131,6 @@ int main(int argc, char* argv[]) {
                               std::cout << "Registration success" << std::endl;
                             } else {
                               LOG(FATAL) << "Registration fail";
-                              std::cout << "Registration fail" << std::endl;
                             }
                             std::move(quit_closure).Run();
                           },

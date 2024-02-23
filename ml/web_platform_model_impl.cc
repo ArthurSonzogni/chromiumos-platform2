@@ -251,8 +251,6 @@ bool WebPlatformModelImpl::Load(
   } else {
     LOG(FATAL) << "Unknown type of input BigBuffer. Please check if "
                   "mojom::BigBuffer has been extended.";
-    request_metrics.RecordRequestEvent(
-        MetricEventForLoad::kUnknownTypeOfInputBigBuffer);
   }
 
   if (model_ == nullptr) {

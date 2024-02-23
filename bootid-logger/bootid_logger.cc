@@ -103,7 +103,6 @@ std::optional<std::deque<std::string>> ReadPreviousBootEntries(
         static_cast<char*>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
     if (buffer == NULL) {
       PLOG(FATAL) << "mmap failed";
-      return std::nullopt;
     }
 
     // Set the buffer to the stream.
@@ -149,7 +148,6 @@ base::Time GetCurrentBootTime() {
   struct timespec boot_timespec;
   if (clock_gettime(CLOCK_BOOTTIME, &boot_timespec) == -1) {
     PLOG(FATAL) << "clock_gettime failed";
-    exit(EXIT_FAILURE);
   }
 
   return base::Time::Now() - base::TimeDelta::FromTimeSpec(boot_timespec);
@@ -178,7 +176,6 @@ std::string GetCurrentBootId() {
   std::string boot_id;
   if (!base::ReadFileToString(base::FilePath(kBootIdProcPath), &boot_id)) {
     LOG(FATAL) << "Reading the log file failed";
-    exit(EXIT_FAILURE);
   }
   base::RemoveChars(boot_id, "-\r\n", &boot_id);
   CHECK_EQ(kBootIdLength, boot_id.length());
@@ -206,19 +203,16 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
            S_IRUSR | S_IWUSR | S_IROTH | S_IRGRP /* 0644 */)));
   if (fd.get() == -1) {
     PLOG(FATAL) << "open failed";
-    return false;
   }
 
   if (HANDLE_EINTR(flock(fd.get(), LOCK_EX)) == -1) {
     PLOG(FATAL) << "flock failed";
-    return false;
   }
 
   auto ret =
       ReadPreviousBootEntries(fd.get(), first_timestamp_to_keep, max_entries);
   if (!ret.has_value()) {
     LOG(FATAL) << "Reading the log file failed";
-    return false;
   }
   std::deque<std::string> previous_boot_entries = std::move(*ret);
 
@@ -237,13 +231,11 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
   // Update the current pos to the beginning of the file.
   if (lseek(fd.get(), 0, SEEK_SET) != 0) {
     PLOG(FATAL) << "lseek failed";
-    return false;
   }
 
   // Shrink the file to zero.
   if (HANDLE_EINTR(ftruncate(fd.get(), 0)) != 0) {
     PLOG(FATAL) << "ftruncate failed";
-    return false;
   }
 
   // Rewrite the existing entries.
@@ -252,7 +244,6 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
 
     if (!base::WriteFileDescriptor(fd.get(), boot_entry)) {
       PLOG(FATAL) << "Writing to the file failed";
-      return false;
     }
   }
 

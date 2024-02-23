@@ -62,12 +62,6 @@ void DoubleWrappedCompatAuthBlock::Create(
     const AuthFactorMetadata& auth_factor_metadata,
     CreateCallback callback) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
-  std::move(callback).Run(
-      MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockUnsupportedInCreate),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-          CryptoError::CE_OTHER_CRYPTO),
-      nullptr, nullptr);
 }
 
 void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,

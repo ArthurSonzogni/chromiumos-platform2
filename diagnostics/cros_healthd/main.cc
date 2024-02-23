@@ -81,7 +81,6 @@ int main(int argc, char** argv) {
 
   if (pid == -1) {
     PLOG(FATAL) << "Failed to fork";
-    return EXIT_FAILURE;
   }
 
   if (pid == 0) {
@@ -92,7 +91,6 @@ int main(int argc, char** argv) {
     // Let the mojo disconnect handler handle the lifecycle of executor process.
     if (setpgid(0, 0) < 0) {
       PLOG(FATAL) << "Failed to set pgid";
-      return EXIT_FAILURE;
     }
 
     // Put the root-level executor in a light sandbox.
@@ -109,13 +107,11 @@ int main(int argc, char** argv) {
   auto udev = brillo::Udev::Create();
   if (!udev) {
     LOG(FATAL) << "Failed to initialize udev object.";
-    return EXIT_FAILURE;
   }
 
   auto udev_monitor = udev->CreateMonitorFromNetlink("udev");
   if (!udev_monitor) {
     LOG(FATAL) << "Failed to create udev monitor.";
-    return EXIT_FAILURE;
   }
 
   // Sandbox the Healthd process.

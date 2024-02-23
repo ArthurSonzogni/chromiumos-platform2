@@ -187,7 +187,6 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
         break;
       case cros_ml_effects_LogSeverity_Fatal:
         LOG(FATAL) << std::string(msg, len);
-        break;
     }
   }
 

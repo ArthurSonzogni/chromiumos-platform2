@@ -95,7 +95,6 @@ http::RequestID Transport::StartAsyncTransfer(
     ErrorCallback /* error_callback */) {
   // Fake transport doesn't use this method.
   LOG(FATAL) << "This method should not be called on fake transport";
-  return 0;
 }
 
 bool Transport::CancelRequest(RequestID /* request_id */) {

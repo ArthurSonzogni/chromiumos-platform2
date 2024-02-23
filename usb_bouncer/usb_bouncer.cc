@@ -195,7 +195,6 @@ int HandleAuthorizeAll(const Configuration& config,
 
   if (!usb_bouncer::AuthorizeAll()) {
     LOG(FATAL) << "authorize-all failed!";
-    return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
 }

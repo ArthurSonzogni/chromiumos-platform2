@@ -296,7 +296,6 @@ class CrashSenderUtilTest : public testing::Test {
     LOG(FATAL)
         << "lock_file_tester failed before exiting; complete wait status "
         << test_result;
-    return false;
   }
 
   // Lock the indicated file |file_name| using base::File::Lock() so that
