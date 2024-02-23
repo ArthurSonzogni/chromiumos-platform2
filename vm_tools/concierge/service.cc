@@ -1701,6 +1701,11 @@ StartVmResponse Service::StartVmInternal(
     network = BruschettaNetwork::Create(bus_, vsock_cid);
   } else if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
     network = BorealisNetwork::Create(bus_, vsock_cid);
+  } else if (classification == apps::BAGUETTE) {
+    // Steal borealis network for Baguette
+    // TODO(b/339679659): Use separate network for Baguette after patchpanel change
+    LOG(INFO) << "Steal borealis network for Baguette";
+    network = BorealisNetwork::Create(bus_, vsock_cid);
   } else {
     network = TerminaNetwork::Create(bus_, vsock_cid);
   }
@@ -1800,8 +1805,10 @@ StartVmResponse Service::StartVmInternal(
                           .writable = request.writable_rootfs()});
   }
 
-  VmWlInterface::Result wl_result =
-      VmWlInterface::CreateWaylandServer(bus_, vm_id, classification);
+  // Spoof baguette vm as termina to wayland server
+  VmWlInterface::Result wl_result = VmWlInterface::CreateWaylandServer(
+      bus_, vm_id,
+      classification == apps::BAGUETTE ? apps::TERMINA : classification);
   if (!wl_result.has_value()) {
     response.set_failure_reason("Unable to start a wayland server: " +
                                 wl_result.error());
@@ -3973,6 +3980,7 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   request.set_cid(cid);
   request.set_vm_token(std::move(vm_token));
   request.set_pid(pid);
+  // TODO(b/320329723): Add special handling to cicerone if needed
   request.set_vm_type(vm_type);
   writer.AppendProtoAsArrayOfBytes(request);
   if (!CallDBusMethod(bus_, cicerone_service_proxy_, &method_call,

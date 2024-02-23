@@ -120,6 +120,7 @@ message VmKernelLogRequest {
     PLUGIN_VM = 3;
     BOREALIS = 4;
     BRUSCHETTA = 5;
+    BAGUETTE = 6;
   };
 
   VmType vm_type = 1;

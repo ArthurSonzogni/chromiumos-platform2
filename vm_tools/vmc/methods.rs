@@ -1345,6 +1345,7 @@ impl Methods {
                 "PLUGIN_VM" => VmType::PLUGIN_VM,
                 "BOREALIS" => VmType::BOREALIS,
                 "BRUSCHETTA" => VmType::BRUSCHETTA,
+                "BAGUETTE" => VmType::BAGUETTE,
                 _ => return Err(NoSuchVmType.into()),
             }
             .into();

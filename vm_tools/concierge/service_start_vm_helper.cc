@@ -46,6 +46,9 @@ namespace internal {
 // this is undesirable. Instead we should provide the type in the request, and
 // determine its properties from that.
 apps::VmType ClassifyVm(const StartVmRequest& request) {
+  // Identify Baguette VM by vm_type only
+  if (request.vm_type() == VmInfo::BAGUETTE)
+    return apps::VmType::BAGUETTE;
   if (request.vm_type() == VmInfo::BOREALIS ||
       request.vm().dlc_id() == kBorealisBiosDlcId)
     return apps::VmType::BOREALIS;

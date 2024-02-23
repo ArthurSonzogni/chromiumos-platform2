@@ -235,7 +235,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optopt(
             "",
             "vm-type",
-            "type of VM (TERMINA / ARC_VM / PLUGIN_VM / BOREALIS / BRUSCHETTA)",
+            "type of VM (TERMINA / ARC_VM / PLUGIN_VM / BOREALIS / BRUSCHETTA / BAGUETTE)",
             "TYPE",
         );
         opts.optflag(
@@ -266,8 +266,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
+        opts.optflag("", "help-start", "print this help menu");
 
         let matches = opts.parse(self.args)?;
+
+        if matches.opt_present("help-start") {
+            println!("{}", opts.usage("Usage: vmc start [options] <name>"));
+            return Ok(());
+        }
 
         if matches.free.len() != 1 {
             return Err(ExpectedName.into());
