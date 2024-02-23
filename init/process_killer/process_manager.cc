@@ -21,15 +21,43 @@
 #include <base/strings/stringprintf.h>
 #include <init/process_killer/process.h>
 
+namespace init {
 namespace {
 constexpr char kCommPath[] = "comm";
 constexpr char kMountInfoPath[] = "mountinfo";
 constexpr char kFDPath[] = "fd";
+constexpr char kMapFilesPath[] = "map_files";
 constexpr char kMntNsPath[] = "ns/mnt";
 constexpr pid_t kInitPid = 1;
-}  // namespace
 
-namespace init {
+void PopulateFileDescriptors(const base::FilePath& path,
+                             std::vector<OpenFileDescriptor>* fds) {
+  // Iterate through path and find all open files.
+  base::FileEnumerator enumerator(
+      path, false /* recursive */,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+
+  for (base::FilePath fd = enumerator.Next(); !fd.empty();
+       fd = enumerator.Next()) {
+    // stat() the file descriptor to get the path of the link and the device id
+    // for the device this file belongs on. Additionally, only consider symlinks
+    // and ignore everything else.
+    struct stat statbuf;
+    if (lstat(fd.value().c_str(), &statbuf) || !S_ISLNK(statbuf.st_mode))
+      continue;
+
+    OpenFileDescriptor fd_target;
+
+    if (!base::ReadSymbolicLink(fd, &fd_target.path)) {
+      PLOG_IF(ERROR, errno != ENOENT)
+          << "Failed to read link " << fd_target.path.value();
+      continue;
+    }
+    fds->push_back(fd_target);
+  }
+}
+
+}  // namespace
 
 ProcessManager::ProcessManager(const base::FilePath& proc) : proc_path_(proc) {}
 
@@ -65,31 +93,18 @@ std::vector<ActiveMount> ProcessManager::GetMountsForProcess(pid_t pid) {
 std::vector<OpenFileDescriptor> ProcessManager::GetFileDescriptorsForProcess(
     pid_t pid) {
   std::vector<OpenFileDescriptor> ret;
+
+  // Iterate through /proc/<pid>/fd and find all open file descriptors.
   base::FilePath fdinfo_path = base::FilePath(
       base::StringPrintf("%s/%d/%s", proc_path_.value().c_str(), pid, kFDPath));
+  PopulateFileDescriptors(fdinfo_path, &ret);
 
-  base::FileEnumerator enumerator(
-      fdinfo_path, false /* recursive */,
-      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
-
-  for (base::FilePath fd = enumerator.Next(); !fd.empty();
-       fd = enumerator.Next()) {
-    // stat() the file descriptor to get the path of the link and the device id
-    // for the device this file belongs on. Additionally, only consider symlinks
-    // and ignore everything else.
-    struct stat statbuf;
-    if (lstat(fd.value().c_str(), &statbuf) || !S_ISLNK(statbuf.st_mode))
-      continue;
-
-    OpenFileDescriptor fd_target;
-
-    if (!base::ReadSymbolicLink(fd, &fd_target.path)) {
-      PLOG_IF(ERROR, errno != ENOENT)
-          << "Failed to read link " << fd_target.path.value();
-      continue;
-    }
-    ret.push_back(fd_target);
-  }
+  // Iterate through /proc/<pid>/map_files and find all open file maps.
+  // Note that this may not work in some cases and is expected to be best
+  // effort.
+  base::FilePath map_files_path = base::FilePath(base::StringPrintf(
+      "%s/%d/%s", proc_path_.value().c_str(), pid, kMapFilesPath));
+  PopulateFileDescriptors(map_files_path, &ret);
 
   return ret;
 }

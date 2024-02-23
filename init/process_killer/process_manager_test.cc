@@ -38,7 +38,8 @@ class ProcessManagerTest : public ::testing::Test {
                     const std::string& mnt_ns,
                     const std::string& comm,
                     const std::string& mountinfo_contents,
-                    const std::vector<OpenFileDescriptor>& fds) {
+                    const std::vector<OpenFileDescriptor>& fds,
+                    const std::vector<OpenFileDescriptor>& maps) {
     base::FilePath pid_dir =
         tmp_dir_.GetPath().AppendASCII(base::NumberToString(pid));
     ASSERT_TRUE(base::CreateDirectory(pid_dir));
@@ -61,6 +62,10 @@ class ProcessManagerTest : public ::testing::Test {
     ASSERT_TRUE(base::WriteFile(fd_dir.AppendASCII("1"), "bar"));
     ASSERT_TRUE(base::WriteFile(fd_dir.AppendASCII("2"), "baz"));
 
+    // Set up map_files.
+    base::FilePath map_files = pid_dir.AppendASCII("map_files");
+    ASSERT_TRUE(base::WriteFile(map_files, "foo"));
+
     int current_fd = 3;
     // Target dir contains the targets for the symbolic links.
     base::FilePath target_dir = tmp_dir_.GetPath().AppendASCII("targets");
@@ -70,6 +75,13 @@ class ProcessManagerTest : public ::testing::Test {
       base::FilePath symlink =
           fd_dir.AppendASCII(base::NumberToString(current_fd++));
       base::FilePath target = target_dir.AppendASCII(fd.path.value());
+      ASSERT_TRUE(base::WriteFile(target, "foo"));
+      ASSERT_TRUE(base::CreateSymbolicLink(target, symlink));
+    }
+
+    for (auto& map : maps) {
+      base::FilePath symlink = fd_dir.AppendASCII(map.path.value());
+      base::FilePath target = target_dir.AppendASCII(map.path.value());
       ASSERT_TRUE(base::WriteFile(target, "foo"));
       ASSERT_TRUE(base::CreateSymbolicLink(target, symlink));
     }
@@ -93,7 +105,8 @@ class ProcessManagerTest : public ::testing::Test {
     std::string mountinfo =
         "21 12 8:1 /var /var rw,noexec - ext3 /dev/sda1 rw\n";
     OpenFileDescriptor fd = {base::FilePath("foo")};
-    SetUpProcess(1, "init_mnt_ns", "/sbin/init", mountinfo, {fd});
+    OpenFileDescriptor maps = {base::FilePath("abcd")};
+    SetUpProcess(1, "init_mnt_ns", "/sbin/init", mountinfo, {fd}, {maps});
   }
 
  protected:
@@ -111,7 +124,8 @@ TEST_F(ProcessManagerTest, ValidProcessTest) {
   std::string mountinfo = "21 12 8:1 /var /var rw,noexec - ext3 /dev/sda1 rw\n";
 
   OpenFileDescriptor fd = {base::FilePath("foo")};
-  SetUpProcess(2, "init_mnt_ns", "foo", mountinfo, {fd});
+  OpenFileDescriptor maps = {base::FilePath("abcd")};
+  SetUpProcess(2, "init_mnt_ns", "foo", mountinfo, {fd}, {maps});
 
   std::vector<ActiveProcess> list = pm_->GetProcessList(true, true);
   EXPECT_EQ(list.size(), 2);
@@ -119,6 +133,7 @@ TEST_F(ProcessManagerTest, ValidProcessTest) {
   EXPECT_TRUE(p);
 
   EXPECT_TRUE(p->HasFileOpenOnMount(re2::RE2("foo")));
+  EXPECT_TRUE(p->HasFileOpenOnMount(re2::RE2("abcd")));
   EXPECT_TRUE(p->HasMountOpenFromDevice(re2::RE2("/dev/sda1")));
   EXPECT_TRUE(p->InInitMountNamespace());
 }
@@ -127,7 +142,8 @@ TEST_F(ProcessManagerTest, ValidNamespacedProcessTest) {
   std::string mountinfo = "21 12 8:1 /var /var rw,noexec - ext3 /dev/sda1 rw\n";
 
   OpenFileDescriptor fd = {base::FilePath("foo")};
-  SetUpProcess(2, "separate_mnt_ns", "foo", mountinfo, {fd});
+  OpenFileDescriptor maps = {base::FilePath("abcd")};
+  SetUpProcess(2, "separate_mnt_ns", "foo", mountinfo, {fd}, {maps});
 
   std::vector<ActiveProcess> list = pm_->GetProcessList(true, true);
   EXPECT_EQ(list.size(), 2);
@@ -135,6 +151,7 @@ TEST_F(ProcessManagerTest, ValidNamespacedProcessTest) {
   EXPECT_TRUE(p);
 
   EXPECT_TRUE(p->HasFileOpenOnMount(re2::RE2("foo")));
+  EXPECT_TRUE(p->HasFileOpenOnMount(re2::RE2("abcd")));
   EXPECT_TRUE(p->HasMountOpenFromDevice(re2::RE2("/dev/sda1")));
   EXPECT_FALSE(p->InInitMountNamespace());
 }
