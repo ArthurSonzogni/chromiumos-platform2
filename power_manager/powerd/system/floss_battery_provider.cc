@@ -108,7 +108,7 @@ void FlossBatteryProvider::Init(DBusWrapperInterface* dbus_wrapper) {
 }
 
 void FlossBatteryProvider::Reset() {
-  is_registered_with_provider_manager_ = false;
+  UnregisterAsBatteryProvider();
   dbus_wrapper_->RegisterForInterfaceAvailability(
       provider_manager_object_manager_,
       battery_manager::kFlossBatteryProviderManagerInterface,
@@ -227,6 +227,22 @@ void FlossBatteryProvider::RegisterAsBatteryProvider(
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
+void FlossBatteryProvider::UnregisterAsBatteryProvider() {
+  if (!is_registered_with_provider_manager_) {
+    return;
+  }
+  dbus::MethodCall method_call(
+      battery_manager::kFlossBatteryProviderManagerInterface,
+      kFlossBatteryProviderManagerUnregisterBatteryProvider);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendUint32(battery_provider_id_);
+  dbus_wrapper_->CallMethodAsync(
+      provider_manager_object_proxy_, &method_call,
+      kFlossBatteryProviderDBusTimeout,
+      base::BindOnce(&FlossBatteryProvider::OnUnregisteredAsBatteryProvider,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
 void FlossBatteryProvider::OnRegisteredAsBatteryProvider(
     dbus::Response* response) {
   if (!response) {
@@ -243,6 +259,11 @@ void FlossBatteryProvider::OnRegisteredAsBatteryProvider(
   LOG(INFO) << __func__ << ": Registered as a battery provider with id: "
             << battery_provider_id_;
   is_registered_with_provider_manager_ = true;
+}
+
+void FlossBatteryProvider::OnUnregisteredAsBatteryProvider(
+    dbus::Response* response) {
+  is_registered_with_provider_manager_ = false;
 }
 
 // No-op

@@ -108,6 +108,16 @@ class FlossBatteryProviderTest : public TestEnvironment {
     }
     if (service_path ==
         battery_manager::kFlossBatteryProviderManagerServicePath) {
+      // When the provider attempts to unregister, make sure it provides the
+      // appropriate battery provider ID.
+      if (method_name == FlossBatteryProvider::
+                             kFlossBatteryProviderManagerUpdateDeviceBattery) {
+        dbus::MessageReader reader(call);
+        uint32_t battery_provider_id;
+        EXPECT_TRUE(reader.PopUint32(&battery_provider_id));
+        EXPECT_EQ(battery_provider_id, battery_provider_id_);
+      }
+
       // When the provider sends battery data, ensure the sent data is in a
       // valid format.
       if (method_name == FlossBatteryProvider::
@@ -231,6 +241,13 @@ class FlossBatteryProviderTest : public TestEnvironment {
     floss_battery_provider_.OnRegisteredAsBatteryProvider(response.get());
   }
 
+  // Trigger the provider to unregister the provider as a battery provider.
+  void UnregisterAsBatteryProvider() {
+    floss_battery_provider_.UnregisterAsBatteryProvider();
+    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    floss_battery_provider_.OnUnregisteredAsBatteryProvider(response.get());
+  }
+
   // Constants.
   uint32_t battery_provider_id_ = 42;
   std::string address_ = "01-23-45-67-89-AB";
@@ -316,6 +333,15 @@ TEST_F(FlossBatteryProviderTest, AdapterNotPresent) {
   // Shouldn't be able to send any battery updates.
   UpdateDeviceBattery(address_, level_);
   EXPECT_EQ(GetDBusMethodCalls(), "");
+  EXPECT_FALSE(IsRegistered());
+}
+
+// Ensure the provider can unregister successfully when requested to do so.
+TEST_F(FlossBatteryProviderTest, UnregisterAsBatteryProvider) {
+  TestInit(true, true);
+
+  EXPECT_TRUE(IsRegistered());
+  UnregisterAsBatteryProvider();
   EXPECT_FALSE(IsRegistered());
 }
 

@@ -55,7 +55,9 @@ class FlossBatteryProvider : public BluetoothBatteryProvider,
   // FlossBatteryProviderManagerInterface overrides.
   void RegisterAsBatteryProvider(const std::string& interface_name,
                                  bool available) override;
+  void UnregisterAsBatteryProvider() override;
   void OnRegisteredAsBatteryProvider(dbus::Response* response) override;
+  void OnUnregisteredAsBatteryProvider(dbus::Response* response) override;
   void RefreshBatteryInfo(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender) override;

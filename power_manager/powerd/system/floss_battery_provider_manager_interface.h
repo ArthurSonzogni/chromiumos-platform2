@@ -17,6 +17,9 @@ class FlossBatteryProviderManagerInterface {
   // DBus methods.
   static constexpr char kFlossBatteryProviderManagerRegisterBatteryProvider[] =
       "RegisterBatteryProvider";
+  static constexpr char
+      kFlossBatteryProviderManagerUnregisterBatteryProvider[] =
+          "UnregisterBatteryProvider";
   static constexpr char kFlossBatteryProviderManagerUpdateDeviceBattery[] =
       "SetBatteryInfo";
 
@@ -28,9 +31,15 @@ class FlossBatteryProviderManagerInterface {
   virtual void RegisterAsBatteryProvider(const std::string& interface_name,
                                          bool available) = 0;
 
+  // Unregister as a Floss BatteryProvider.
+  virtual void UnregisterAsBatteryProvider() = 0;
+
   // Runs when this provider has been registered for BatteryProviderManager
   // updates.
   virtual void OnRegisteredAsBatteryProvider(dbus::Response* response) = 0;
+
+  // Runs when this provider has been unregistered for updates.
+  virtual void OnUnregisteredAsBatteryProvider(dbus::Response* response) = 0;
 
   // Runs when Floss BatteryProviderManager requests updated battery info.
   virtual void RefreshBatteryInfo(
