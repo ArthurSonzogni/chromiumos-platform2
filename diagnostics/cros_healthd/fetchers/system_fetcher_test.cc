@@ -26,7 +26,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/cros_healthd/utils/mojo_type_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -65,24 +64,12 @@ class SystemFetcherTest : public BaseFileTest {
   SystemFetcherTest() = default;
 
   void SetUp() override {
-    expected_system_info_ = mojom::SystemInfo::New();
-    expected_system_info_->vpd_info = mojom::VpdInfo::New();
-    expected_system_info_->dmi_info = mojom::DmiInfo::New();
-    auto& os_info = expected_system_info_->os_info;
-    os_info = mojom::OsInfo::New();
-    os_info->code_name = "CodeName";
-    os_info->marketing_name = "Latitude 1234 Chromebook Enterprise";
-    os_info->oem_name = "FooOEM";
-    os_info->boot_mode = mojom::BootMode::kCrosSecure;
-    os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::kUnknown;
-    auto& os_version = os_info->os_version;
-    os_version = mojom::OsVersion::New();
-    os_version->release_milestone = "87";
-    os_version->build_number = "13544";
-    os_version->branch_number = "59";
-    os_version->patch_number = "0";
-    os_version->release_channel = "stable-channel";
-    SetSystemInfo(expected_system_info_);
+    PopulateLsbRelease(
+        "CHROMEOS_RELEASE_CHROME_MILESTONE=87\n"
+        "CHROMEOS_RELEASE_BUILD_NUMBER=13544\n"
+        "CHROMEOS_RELEASE_BRANCH_NUMBER=59\n"
+        "CHROMEOS_RELEASE_PATCH_NUMBER=0\n"
+        "CHROMEOS_RELEASE_TRACK=stable-channel\n");
     SetHasSkuNumber(false);
     SetVpdDir();
     SetDmiDir();
@@ -93,10 +80,6 @@ class SystemFetcherTest : public BaseFileTest {
           std::move(callback).Run(
               mojom::GetPsrResult::NewError("Default error"));
         });
-  }
-
-  void SetSystemInfo(const mojom::SystemInfoPtr& system_info) {
-    SetOsInfo(system_info->os_info);
   }
 
   void SetVpdDir() {
@@ -112,30 +95,8 @@ class SystemFetcherTest : public BaseFileTest {
     base::CreateDirectory(GetPathUnderRoot(kRelativePathDmiInfo));
   }
 
-  void SetOsInfo(const mojom::OsInfoPtr& os_info) {
-    ASSERT_FALSE(os_info.is_null());
-    mock_context_.fake_system_config()->SetMarketingName(
-        os_info->marketing_name);
-    mock_context_.fake_system_config()->SetOemName(os_info->oem_name);
-    mock_context_.fake_system_config()->SetCodeName(os_info->code_name);
-    SetOsVersion(os_info->os_version);
-    SetBootModeInProcCmd(os_info->boot_mode);
-  }
-
-  void SetOsVersion(const mojom::OsVersionPtr& os_version) {
-    PopulateLsbRelease(base::StringPrintf(
-        "CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
-        "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
-        "CHROMEOS_RELEASE_BRANCH_NUMBER=%s\n"
-        "CHROMEOS_RELEASE_PATCH_NUMBER=%s\n"
-        "CHROMEOS_RELEASE_TRACK=%s\n",
-        os_version->release_milestone.c_str(), os_version->build_number.c_str(),
-        os_version->branch_number.value().c_str(),
-        os_version->patch_number.c_str(), os_version->release_channel.c_str()));
-  }
-
   void SetBootModeInProcCmd(const mojom::BootMode& boot_mode) {
-    std::optional<std::string> proc_cmd;
+    std::string proc_cmd;
     switch (boot_mode) {
       case mojom::BootMode::kCrosSecure:
         proc_cmd = "Foo Bar=1 cros_secure Foo Bar=1";
@@ -153,7 +114,7 @@ class SystemFetcherTest : public BaseFileTest {
         proc_cmd = "Foo Bar=1 Foo Bar=1";
         break;
     }
-    SetMockFile(kFilePathProcCmdline, proc_cmd);
+    SetFile(kFilePathProcCmdline, proc_cmd);
   }
 
   void SetMockExecutorReadFile(mojom::Executor::File file_enum,
@@ -161,18 +122,6 @@ class SystemFetcherTest : public BaseFileTest {
     // Set the mock executor response.
     EXPECT_CALL(*mock_executor(), ReadFile(file_enum, _))
         .WillOnce(base::test::RunOnceCallback<1>(content));
-  }
-
-  // Sets the mock file with |value|. If the |value| is omitted, deletes the
-  // file.
-  template <typename T>
-  void SetMockFile(const PathType& path, const T& value) {
-    auto mock = GetMockValue(value);
-    if (mock) {
-      SetFile(path, mock.value());
-    } else {
-      UnsetPath(path);
-    }
   }
 
   void SetHasSkuNumber(bool val) {
@@ -196,16 +145,6 @@ class SystemFetcherTest : public BaseFileTest {
     system_info = std::move(system_result->get_system_info());
   }
 
-  void ExpectFetchSystemInfo() {
-    auto system_result = FetchSystemInfoSync();
-    ASSERT_FALSE(system_result.is_null());
-    ASSERT_FALSE(system_result->is_error());
-    ASSERT_TRUE(system_result->is_system_info());
-    auto res = std::move(system_result->get_system_info());
-    EXPECT_EQ(res, expected_system_info_)
-        << GetDiffString(res, expected_system_info_);
-  }
-
   void ExpectFetchProbeError(const mojom::ErrorType& expected) {
     auto system_result = FetchSystemInfoSync();
     ASSERT_TRUE(system_result->is_error());
@@ -225,18 +164,12 @@ class SystemFetcherTest : public BaseFileTest {
     return future.Take();
   }
 
-  mojom::SystemInfoPtr expected_system_info_;
-
  private:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
   std::unique_ptr<base::test::ScopedChromeOSVersionInfo> chromeos_version_;
 };
-
-TEST_F(SystemFetcherTest, FetchSystemInfo) {
-  ExpectFetchSystemInfo();
-}
 
 TEST_F(SystemFetcherTest, NoVpdDirSkuNumberRequired) {
   UnsetVpdDir();
@@ -648,8 +581,29 @@ TEST_F(SystemFetcherTest, NoDmiSysVendor) {
 }
 
 TEST_F(SystemFetcherTest, BadChassisType) {
-  SetMockFile({kRelativePathDmiInfo, kFileNameChassisType}, "bad chassis type");
+  SetFile({kRelativePathDmiInfo, kFileNameChassisType}, "bad chassis type");
   ExpectFetchProbeError(mojom::ErrorType::kParseError);
+}
+
+TEST_F(SystemFetcherTest, OsVersion) {
+  PopulateLsbRelease(
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=87\n"
+      "CHROMEOS_RELEASE_BUILD_NUMBER=13544\n"
+      "CHROMEOS_RELEASE_BRANCH_NUMBER=59\n"
+      "CHROMEOS_RELEASE_PATCH_NUMBER=0\n"
+      "CHROMEOS_RELEASE_TRACK=stable-channel\n");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  auto& os_version = system_info->os_info->os_version;
+  ASSERT_THAT(os_version, NotNullMojoPtr());
+  EXPECT_EQ(os_version->release_milestone, "87");
+  EXPECT_EQ(os_version->build_number, "13544");
+  EXPECT_EQ(os_version->branch_number, "59");
+  EXPECT_EQ(os_version->patch_number, "0");
+  EXPECT_EQ(os_version->release_channel, "stable-channel");
 }
 
 TEST_F(SystemFetcherTest, NoOsVersion) {
@@ -782,7 +736,7 @@ TEST_F(SystemFetcherTest, EfiPlatformSize32) {
 
 TEST_F(SystemFetcherTest, OemName) {
   fake_system_config()->SetOemName("FooOEM");
-  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
+  SetFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
 
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
@@ -795,7 +749,7 @@ TEST_F(SystemFetcherTest, OemName) {
 
 TEST_F(SystemFetcherTest, OemNameVpdEmpty) {
   fake_system_config()->SetOemName("FooOEM");
-  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "");
+  SetFile({kRelativePathVpdRo, kFileNameOemName}, "");
 
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
@@ -822,7 +776,7 @@ TEST_F(SystemFetcherTest, OemNameMissing) {
 TEST_F(SystemFetcherTest, OemNameOsFallbackToVpd) {
   // Test the fallback logic triggered by missing OEM name in cros-config.
   fake_system_config()->SetOemName(std::nullopt);
-  SetMockFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
+  SetFile({kRelativePathVpdRo, kFileNameOemName}, "FooOEM-VPD");
 
   mojom::SystemInfoPtr system_info;
   ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
@@ -831,6 +785,27 @@ TEST_F(SystemFetcherTest, OemNameOsFallbackToVpd) {
   EXPECT_EQ(system_info->os_info->oem_name, "FooOEM-VPD");
   ASSERT_TRUE(system_info->vpd_info);
   EXPECT_EQ(system_info->vpd_info->oem_name, "FooOEM-VPD");
+}
+
+TEST_F(SystemFetcherTest, CodeName) {
+  fake_system_config()->SetCodeName("CodeName");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->code_name, "CodeName");
+}
+
+TEST_F(SystemFetcherTest, MarketingName) {
+  fake_system_config()->SetMarketingName("Latitude 1234 Chromebook Enterprise");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->os_info);
+  EXPECT_EQ(system_info->os_info->marketing_name,
+            "Latitude 1234 Chromebook Enterprise");
 }
 
 TEST_F(SystemFetcherTest, PsrInfo) {
