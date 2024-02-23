@@ -9,10 +9,16 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/files/file_util.h>
+#include <base/native_library.h>
 #include <base/system/sys_info.h>
+#include <cros-camera/libupsample/upsample_wrapper_bindings.h>
+#include <cros-camera/libupsample/upsample_wrapper_types.h>
 #include <hardware/gralloc.h>
 #include <libyuv.h>
 #include <libyuv/convert_argb.h>
@@ -23,25 +29,94 @@ namespace cros {
 
 namespace {
 
+constexpr char kLibraryName[] = "libupsampler.so";
 constexpr char kGeraltModelName[] = "GERALT";
 constexpr uint32_t kRGBNumOfChannels = 3;
 constexpr int kSyncWaitTimeoutMs = 300;
 
+base::NativeLibrary g_library = nullptr;
+cros_camera_CreateUpsampleWrapperFn g_create_fn = nullptr;
+cros_camera_DeleteUpsampleWrapperFn g_delete_fn = nullptr;
+cros_camera_InitUpsamplerFn g_init_upsampler_fn = nullptr;
+cros_camera_UpsampleFn g_upsample_fn = nullptr;
+
+bool LoadUpsamplerLibrary(const base::FilePath& dlc_root_path) {
+  if (g_library) {
+    return true;
+  }
+  base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
+  base::NativeLibraryOptions native_library_options;
+  base::NativeLibraryLoadError load_error;
+  native_library_options.prefer_own_symbols = true;
+  g_library = base::LoadNativeLibraryWithOptions(
+      lib_path, native_library_options, &load_error);
+
+  if (!g_library) {
+    LOG(ERROR) << "Upsampler library load error: " << load_error.ToString();
+    return false;
+  }
+
+  LOGF(INFO) << "Loading upsampler library from: " << lib_path;
+
+  g_create_fn = reinterpret_cast<cros_camera_CreateUpsampleWrapperFn>(
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_camera_CreateUpsampleWrapper"));
+  g_delete_fn = reinterpret_cast<cros_camera_DeleteUpsampleWrapperFn>(
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_camera_DeleteUpsampleWrapper"));
+  g_init_upsampler_fn = reinterpret_cast<cros_camera_InitUpsamplerFn>(
+      base::GetFunctionPointerFromNativeLibrary(g_library,
+                                                "cros_camera_InitUpsampler"));
+  g_upsample_fn = reinterpret_cast<cros_camera_UpsampleFn>(
+      base::GetFunctionPointerFromNativeLibrary(g_library,
+                                                "cros_camera_Upsample"));
+
+  bool load_ok = (g_create_fn != nullptr) && (g_delete_fn != nullptr) &&
+                 (g_init_upsampler_fn != nullptr) && (g_upsample_fn != nullptr);
+
+  if (!load_ok) {
+    LOGF(ERROR) << "g_create_fn: " << g_create_fn;
+    LOGF(ERROR) << "g_delete_fn: " << g_delete_fn;
+    LOGF(ERROR) << "g_init_upsampler_fn: " << g_init_upsampler_fn;
+    LOGF(ERROR) << "g_upsample_fn: " << g_upsample_fn;
+
+    LOGF(ERROR) << "Upsampler library cannot load the expected functions";
+    g_library = nullptr;
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
-bool SingleFrameUpsampler::Initialize() {
-  // Create instances of UpsampleWrapper for Lancet.
-  lancet_runner_ = std::make_unique<UpsampleWrapper>();
+SingleFrameUpsampler::~SingleFrameUpsampler() {
+  if (runner_ && g_delete_fn) {
+    g_delete_fn(runner_);
+  }
+}
+
+bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
+  if (!LoadUpsamplerLibrary(dlc_root_path)) {
+    LOGF(ERROR) << "Failed to load upsampler library";
+    return false;
+  }
+
+  // Create a function pointer of UpsampleWrapper.
+  runner_ = g_create_fn();
 
   // Use NNAPI delegate for APU accelerator. Default to OpenCL for others.
-  UpsampleWrapper::InferenceMode inference_mode =
+  InferenceMode inference_mode =
       base::SysInfo::HardwareModelName() == kGeraltModelName
-          ? UpsampleWrapper::InferenceMode::kNnApi
-          : UpsampleWrapper::InferenceMode::kOpenCL;
+          ? cros::InferenceMode::kNnApi
+          : cros::InferenceMode::kOpenCL;
 
-  if (!lancet_runner_->Init(inference_mode, /*use_lancet_alpha=*/true)) {
+  // Initialize the Upsampler engine.
+  CHECK(g_init_upsampler_fn);
+  if (!g_init_upsampler_fn(runner_, inference_mode,
+                           /*use_lancet_alpha=*/true)) {
     LOGF(ERROR) << "Failed to initialize Lancet upsampler engine";
-    lancet_runner_ = nullptr;
+    runner_ = nullptr;
     return false;
   }
 
@@ -52,7 +127,7 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
     base::ScopedFD release_fence) {
-  if (!lancet_runner_) {
+  if (!runner_) {
     LOGF(ERROR) << "Upsampler engine is not initialized";
     return std::nullopt;
   }
@@ -90,7 +165,7 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     return std::nullopt;
   }
 
-  UpsampleWrapper::Request upsample_request = {
+  UpsampleRequest upsample_request = {
       .input_width = static_cast<int>(input_width),
       .input_height = static_cast<int>(input_height),
       .output_width = static_cast<int>(output_width),
@@ -99,8 +174,8 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
       .rgb_output_data = output_rgb_buf.data(),
   };
 
-  UpsampleWrapper* runner = lancet_runner_.get();
-  if (!runner->Upsample(upsample_request)) {
+  CHECK(g_upsample_fn);
+  if (!g_upsample_fn(runner_, &upsample_request)) {
     LOGF(ERROR) << "Failed to upsample frame with Lancet";
     return std::nullopt;
   }
