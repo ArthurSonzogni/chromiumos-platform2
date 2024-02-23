@@ -29,7 +29,7 @@ class RuleDBStorage {
   // The default constructor makes an invalid RuleDBStorage() instance. This
   // supports the case where a user isn't signed in so EntryManager::user_db_ is
   // invalid.
-  RuleDBStorage();
+  RuleDBStorage() = default;
   explicit RuleDBStorage(const base::FilePath& db_dir);
 
   // Allow safe assignment and moving so the value can be changed after the

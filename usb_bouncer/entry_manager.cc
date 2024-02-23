@@ -79,8 +79,6 @@ EntryManager::EntryManager(const std::string& root_dir,
   }
 }
 
-EntryManager::~EntryManager() {}
-
 bool EntryManager::GarbageCollect() {
   size_t num_removed = GarbageCollectInternal(false);
 

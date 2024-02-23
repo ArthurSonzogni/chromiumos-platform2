@@ -23,8 +23,6 @@ namespace {
 constexpr size_t kMaxFileSize = 64 * 1024 * 1024;
 }  // namespace
 
-RuleDBStorage::RuleDBStorage() {}
-
 RuleDBStorage::RuleDBStorage(const base::FilePath& db_dir) {
   fd_ = OpenStateFile(db_dir.DirName(), db_dir.BaseName().value(),
                       kDefaultDbName, true /* lock */);
