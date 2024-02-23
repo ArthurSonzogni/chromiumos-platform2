@@ -31,7 +31,7 @@ constexpr char const* kSessionMountRegexes[] = {
     "/run/daemon-store",
 };
 
-constexpr char const* kSystemMountRegexes[] = {"/var", "/home",
+constexpr char const* kSystemMountRegexes[] = {"/var", "/home", "/usr/local",
                                                "/mnt/stateful_partition"};
 
 constexpr char const* kSessionDeviceRegexes[] = {

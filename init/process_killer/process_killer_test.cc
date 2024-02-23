@@ -62,6 +62,13 @@ ActiveProcess GetCryptohomeProcess(pid_t pid,
       {{base::FilePath("/home/chronos/user/foo")}});
 }
 
+ActiveProcess GetUsrLocalProcess(pid_t pid,
+                                 const std::string& comm,
+                                 bool root_ns) {
+  return ActiveProcess(pid, root_ns, comm, {{}},
+                       {{base::FilePath("/usr/local/foo")}});
+}
+
 TEST(ProcessKiller, SessionIrrelevantProcessTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
@@ -168,6 +175,21 @@ TEST(ProcessKiller, ShutdownFileAndMountOpenTest) {
   FakeProcessManager* fake_pm = pm.get();
   fake_pm->SetProcessListForTesting(
       {GetEncstatefulProcess(7, "dlcservice", false)});
+
+  std::unique_ptr<ProcessKiller> process_killer =
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+  process_killer->SetProcessManagerForTesting(std::move(pm));
+  process_killer->KillProcesses(true, true);
+
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
+}
+
+TEST(ProcessKiller, ShutdownFileOnUsrLocalOpenTest) {
+  std::unique_ptr<FakeProcessManager> pm =
+      std::make_unique<FakeProcessManager>();
+  FakeProcessManager* fake_pm = pm.get();
+  fake_pm->SetProcessListForTesting(
+      {GetUsrLocalProcess(7, "node_exporter", true)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
