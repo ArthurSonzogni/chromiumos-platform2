@@ -23,6 +23,7 @@ class BluetoothManagerProxyInterface;
 #endif  // DISABLE_FLOSS
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxy;
+class DebugdProxyInterface;
 class Device;
 class DeviceAdaptorInterface;
 class DHCPCDListenerInterface;
@@ -127,6 +128,8 @@ class ControlInterface {
   CreateSupplicantPeerProxy(const RpcIdentifier& object_path) = 0;
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
+
+  virtual std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() = 0;
 
   virtual std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
       DHCPProvider* provider) = 0;

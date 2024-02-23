@@ -32,6 +32,7 @@
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/geolocation_info.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_debugd_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_log.h"
 #include "shill/mock_power_manager.h"
@@ -174,6 +175,10 @@ class ManagerTest : public PropertyStoreTest {
     auto client = std::make_unique<MockPatchpanelClient>();
     patchpanel_client_ = client.get();
     manager()->patchpanel_client_ = std::move(client);
+
+    auto debugd_proxy = std::make_unique<MockDebugdProxy>();
+    debugd_proxy_ = debugd_proxy.get();
+    manager()->debugd_proxy_ = std::move(debugd_proxy);
   }
 
   void TearDown() override {
@@ -525,6 +530,7 @@ class ManagerTest : public PropertyStoreTest {
   MockUpstart* upstart_;
   NiceMock<MockResolver> resolver_;
   MockPatchpanelClient* patchpanel_client_;
+  MockDebugdProxy* debugd_proxy_;
 };
 
 const char ManagerTest::TerminationActionTest::kActionName[] = "action";
@@ -3625,6 +3631,24 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // no actual state changes have occurred, we should expect that the
   // service sorting order will not have changed.
   EXPECT_TRUE(ServiceOrderIs(wifi_service0, cellular_service1));
+}
+
+TEST_F(ManagerTest, GenerateFirmwareDumpForWiFi) {
+  EXPECT_CALL(*debugd_proxy_,
+              GenerateFirmwareDump(debugd::FirmwareDumpType::WIFI));
+  manager()->GenerateFirmwareDumpForTechnology(Technology::kWiFi);
+}
+
+TEST_F(ManagerTest, GenerateFirmwareDumpForUnsupportedTechnology) {
+  std::vector<Technology> unsupported_techs = {
+      Technology::kEthernet, Technology::kCellular, Technology::kUnknown};
+  ScopedMockLog log;
+  EXPECT_CALL(*debugd_proxy_, GenerateFirmwareDump(_)).Times(0);
+  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _, _))
+      .Times(unsupported_techs.size());
+  for (Technology tech : unsupported_techs) {
+    manager()->GenerateFirmwareDumpForTechnology(tech);
+  }
 }
 
 TEST_F(ManagerTest, CreateConnectivityReport) {

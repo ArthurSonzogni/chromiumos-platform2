@@ -26,6 +26,7 @@
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
+#include "shill/debugd_proxy_interface.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
@@ -121,6 +122,11 @@ class MockControl : public ControlInterface {
 
   MOCK_METHOD(std::unique_ptr<UpstartProxyInterface>,
               CreateUpstartProxy,
+              (),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<DebugdProxyInterface>,
+              CreateDebugdProxy,
               (),
               (override));
 

@@ -342,6 +342,7 @@ void Manager::Start() {
       base::BindRepeating(&Manager::OnDarkSuspendImminent,
                           weak_factory_.GetWeakPtr()));
   upstart_ = std::make_unique<Upstart>(control_interface_);
+  debugd_proxy_ = control_interface_->CreateDebugdProxy();
 #if !defined(DISABLE_FLOSS)
   if (!bluetooth_manager_->Start()) {
     LOG(ERROR) << "Failed to start BT manager interface.";
@@ -413,6 +414,7 @@ void Manager::Stop() {
   power_manager_->Stop();
   power_manager_.reset();
   patchpanel_client_.reset();
+  debugd_proxy_.reset();
 }
 
 void Manager::InitializeProfiles() {
@@ -2241,6 +2243,19 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
               << " strength: " << service->strength()
               << " sorted: " << compare_reason;
     }
+  }
+}
+
+void Manager::GenerateFirmwareDumpForTechnology(Technology technology) {
+  switch (technology) {
+    case Technology::kWiFi:
+      debugd_proxy_->GenerateFirmwareDump(debugd::FirmwareDumpType::WIFI);
+      break;
+    default:
+      LOG(ERROR)
+          << __func__
+          << ": Firmware dump generation is not supported for technology: "
+          << TechnologyName(technology);
   }
 }
 

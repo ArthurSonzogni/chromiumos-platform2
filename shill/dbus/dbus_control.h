@@ -79,6 +79,8 @@ class DBusControl : public ControlInterface {
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
 
+  std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() override;
+
   std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
       DHCPProvider* provider) override;
 

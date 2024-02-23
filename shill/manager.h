@@ -25,6 +25,7 @@
 #include <metrics/timer.h>
 
 #include "shill/cellular/power_opt.h"
+#include "shill/debugd_proxy_interface.h"
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -242,6 +243,9 @@ class Manager {
   // For WiFi services, connect to the "best" service available,  as determined
   // by sorting all services independent of their current state.
   mockable void ConnectToBestWiFiService();
+
+  // Generate firmware dump for a device driver, e.g. WiFi.
+  void GenerateFirmwareDumpForTechnology(Technology technology);
 
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);
@@ -867,6 +871,7 @@ class Manager {
   ProfileRefPtr ephemeral_profile_;
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
+  std::unique_ptr<DebugdProxyInterface> debugd_proxy_;
 #if !defined(DISABLE_FLOSS)
   std::unique_ptr<BluetoothManagerInterface> bluetooth_manager_;
 #endif  // DISABLE_FLOSS

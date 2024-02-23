@@ -21,6 +21,7 @@
 #endif  // DISABLE_FLOSS
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 #include "shill/dbus/dbus_properties_proxy.h"
+#include "shill/dbus/debugd_proxy.h"
 #include "shill/dbus/device_dbus_adaptor.h"
 #include "shill/dbus/dhcpcd_listener.h"
 #include "shill/dbus/dhcpcd_proxy.h"
@@ -221,6 +222,10 @@ std::unique_ptr<DHCPProxyInterface> DBusControl::CreateDHCPProxy(
 
 std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {
   return std::make_unique<UpstartProxy>(proxy_bus_);
+}
+
+std::unique_ptr<DebugdProxyInterface> DBusControl::CreateDebugdProxy() {
+  return std::make_unique<DebugdProxy>(proxy_bus_);
 }
 
 std::unique_ptr<DBusPropertiesProxy> DBusControl::CreateDBusPropertiesProxy(
