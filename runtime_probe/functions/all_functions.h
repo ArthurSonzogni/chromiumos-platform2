@@ -32,6 +32,7 @@
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"
 #include "runtime_probe/functions/tcpc.h"
+#include "runtime_probe/functions/tpm.h"
 #include "runtime_probe/functions/ufs_storage.h"
 #include "runtime_probe/functions/usb_camera.h"
 #include "runtime_probe/functions/vpd_cached.h"
@@ -64,6 +65,7 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     ShellFunction,
                                     SysfsFunction,
                                     TcpcFunction,
+                                    TpmFunction,
                                     UfsStorageFunction,
                                     UsbCameraFunction,
                                     VPDCached,
@@ -88,6 +90,7 @@ using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
                                                 NetworkFunction,
                                                 NvmeStorageFunction,
                                                 TcpcFunction,
+                                                TpmFunction,
                                                 UfsStorageFunction,
                                                 UsbCameraFunction,
                                                 WirelessNetworkFunction>;

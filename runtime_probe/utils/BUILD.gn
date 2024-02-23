@@ -6,8 +6,11 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
+    "libmojo",
+    "mojo_service_manager",
   ]
 }
 
@@ -32,6 +35,7 @@ if (use.test) {
     sources = [
       "file_test_utils.cc",
       "function_test_utils.cc",
+      "mojo_test_utils.cc",
     ]
     public_deps = [ "//runtime_probe/system:test_utils" ]
   }

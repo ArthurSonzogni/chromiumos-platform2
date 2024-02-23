@@ -16,6 +16,7 @@
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
 #include "runtime_probe/utils/function_test_utils.h"
+#include "runtime_probe/utils/mojo_test_utils.h"
 
 namespace runtime_probe {
 
@@ -42,39 +43,6 @@ cros_healthd_mojom::PhysicalCpuInfoPtr CreatePhysicalCpuInfo(
   physical_cpu_info->model_name = model_name;
   return physical_cpu_info;
 }
-
-// Fake CrosHealthdProbeService for testing.
-class FakeCrosHealthdProbeService
-    : public cros_healthd_mojom::CrosHealthdProbeService {
- public:
-  void ProbeTelemetryInfo(
-      const std::vector<cros_healthd_mojom::ProbeCategoryEnum>&,
-      ProbeTelemetryInfoCallback callback) override {
-    std::move(callback).Run(std::move(telemetry_info_ptr_));
-  }
-
-  // Unused mocked function.
-  void ProbeProcessInfo(uint32_t process_id,
-                        ProbeProcessInfoCallback callback) override {
-    NOTREACHED_NORETURN();
-  };
-
-  // Unused mocked function.
-  void ProbeMultipleProcessInfo(
-      const std::optional<std::vector<uint32_t>>& process_ids,
-      bool ignore_single_process_error,
-      ProbeMultipleProcessInfoCallback callback) override {
-    NOTREACHED_NORETURN();
-  };
-
-  void SetCpuResult(cros_healthd_mojom::CpuResultPtr cpu_result) {
-    telemetry_info_ptr_->cpu_result = std::move(cpu_result);
-  }
-
- private:
-  cros_healthd_mojom::TelemetryInfoPtr telemetry_info_ptr_{
-      cros_healthd_mojom::TelemetryInfo::New()};
-};
 
 }  // namespace
 

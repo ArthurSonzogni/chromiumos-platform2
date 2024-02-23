@@ -48,6 +48,7 @@ source_set("functions") {
     "sequence.cc",
     "sysfs.cc",
     "tcpc.cc",
+    "tpm.cc",
     "ufs_storage.cc",
     "usb_camera.cc",
     "vpd_cached.cc",
@@ -78,6 +79,7 @@ if (use.test) {
       "sequence_test.cc",
       "sysfs_test.cc",
       "tcpc_test.cc",
+      "tpm_test.cc",
       "ufs_storage_test.cc",
       "usb_camera_test.cc",
     ]
