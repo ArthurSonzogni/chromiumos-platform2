@@ -78,5 +78,43 @@ INSTANTIATE_TEST_SUITE_P(
     IntegerEqualMathcerInvalidTest,
     testing::Values("", "   ", "-", "  -  ", "abc", "-abc", "123a"));
 
+class HexEqualMathcerTest : public testing::TestWithParam<
+                                std::pair<std::string_view, std::string_view>> {
+};
+
+TEST_P(HexEqualMathcerTest, Match) {
+  EXPECT_TRUE(MakeMatcher<HexEqualMatcher>(GetParam().first)
+                  ->Match(MakeComponent(GetParam().second)));
+  EXPECT_TRUE(MakeMatcher<HexEqualMatcher>(GetParam().second)
+                  ->Match(MakeComponent(GetParam().first)));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    HexEqualMathcerTest,
+    testing::ValuesIn(
+        std::vector<std::pair<std::string_view, std::string_view>>{
+            {"1a2b", "0x1a2b"},
+            {"1a2b", "  0x1a2b  "},
+            {"1a2b", "1a2b"},
+            {"1a2b", "0x1A2B"},
+            {"1a2b", "0X1a2b"},
+            {"1a2b", "0x00001a2b"},
+            {"0", "  0x0000  "}}));
+
+class HexEqualMathcerInvalidTest
+    : public testing::TestWithParam<std::string_view> {};
+
+TEST_P(HexEqualMathcerInvalidTest, NotMatch) {
+  EXPECT_FALSE(MakeMatcher<HexEqualMatcher>(GetParam()));
+  EXPECT_FALSE(
+      MakeMatcher<HexEqualMatcher>("123")->Match(MakeComponent(GetParam())));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    HexEqualMathcerInvalidTest,
+    testing::Values("", "   ", "0x", "0X", "g", "0x1a2bg"));
+
 }  // namespace
 }  // namespace runtime_probe::internal

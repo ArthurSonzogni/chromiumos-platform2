@@ -21,9 +21,15 @@ namespace internal {
 // leading 0). Returns nullopt if it is not an integer string.
 std::optional<std::string> ParseAndFormatIntegerString(const std::string& in);
 
+// Parses an hex string and format it to a general format (trimmed, no 0x
+// prefix, no leading 0, lowercase). Returns nullopt if it is not an hex
+// string. We assume that all hex string is unsigned.
+std::optional<std::string> ParseAndFormatHexString(const std::string& in);
+
 enum class FieldEqualMatcherType : uint8_t {
   kString,
   kInteger,
+  kHex,
 };
 
 // Implements a matcher that matches a field in probe result. The field value
@@ -70,6 +76,8 @@ class FieldEqualMatcher : public Matcher {
         parsed_value = value;
       } else if constexpr (T == FieldEqualMatcherType::kInteger) {
         parsed_value = ParseAndFormatIntegerString(value);
+      } else if constexpr (T == FieldEqualMatcherType::kHex) {
+        parsed_value = ParseAndFormatHexString(value);
       } else {
         static_assert(false, "Unsupported field type");
       }
@@ -105,6 +113,8 @@ using StringEqualMatcher =
     internal::FieldEqualMatcher<internal::FieldEqualMatcherType::kString>;
 using IntegerEqualMatcher =
     internal::FieldEqualMatcher<internal::FieldEqualMatcherType::kInteger>;
+using HexEqualMatcher =
+    internal::FieldEqualMatcher<internal::FieldEqualMatcherType::kHex>;
 
 }  // namespace runtime_probe
 

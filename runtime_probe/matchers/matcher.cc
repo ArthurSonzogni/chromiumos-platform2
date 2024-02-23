@@ -32,7 +32,7 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
     return nullptr;
   }
 
-  if (op == "STRING_EQUAL" || op == "INTEGER_EQUAL") {
+  if (op == "STRING_EQUAL" || op == "INTEGER_EQUAL" || op == "HEX_EQUAL") {
     if (operands->size() != 2 || !(*operands)[0].is_string() ||
         !(*operands)[1].is_string()) {
       LOG(ERROR) << "Matcher " << op << " takes 2 string operands, but got "
@@ -46,6 +46,9 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
     }
     if (op == "INTEGER_EQUAL") {
       return IntegerEqualMatcher::Create(field_name, expected);
+    }
+    if (op == "HEX_EQUAL") {
+      return HexEqualMatcher::Create(field_name, expected);
     }
     NOTREACHED();
   }

@@ -47,4 +47,25 @@ std::optional<std::string> ParseAndFormatIntegerString(const std::string& in) {
   return res + std::string{trimmed};
 }
 
+std::optional<std::string> ParseAndFormatHexString(const std::string& in) {
+  std::string_view trimmed =
+      TrimWhitespaceASCII(in, base::TrimPositions::TRIM_ALL);
+  if (base::StartsWith(trimmed, "0x", base::CompareCase::INSENSITIVE_ASCII)) {
+    trimmed = trimmed.substr(2);
+  }
+  if (trimmed.empty()) {
+    return std::nullopt;
+  }
+  trimmed = RemoveLeadingZero(trimmed);
+  if (trimmed.empty()) {
+    return "0";
+  }
+  for (char c : trimmed) {
+    if (!base::IsHexDigit(c)) {
+      return std::nullopt;
+    }
+  }
+  return base::ToLowerASCII(trimmed);
+}
+
 }  // namespace runtime_probe::internal
