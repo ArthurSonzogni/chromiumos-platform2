@@ -166,18 +166,30 @@ bool WriteWithTimeout(
   return false;
 }
 
+constexpr bool IsSkippableFailure(int err) {
+  // EPIPE: wireless USB device that fails in usb_get_device_descriptor().
+  // ENODEV: device that disappears before they can be authorized or fails
+  //   during usb_autoresume_device()
+  // EPROTO: usb_set_configuration() failed, but the device is still
+  //   authorized. This is often caused by the device not having adequate
+  //   power.
+  // ENOENT: the path does not exist.
+  return (err == EPIPE || err == ENODEV || err == EPROTO || err == ENOENT);
+}
+
 bool WriteWithTimeoutIfExists(SafeFD* dir,
                               const base::FilePath name,
                               const std::string& value) {
   SafeFD::Error err;
   SafeFD file;
+  errno = 0;
   std::tie(file, err) =
       dir->OpenExistingFile(name, O_CLOEXEC | O_RDWR | O_NONBLOCK);
+
   if (err == SafeFD::Error::kDoesNotExist) {
     return true;
   } else if (SafeFD::IsError(err)) {
-    LOG(ERROR) << "Failed to open authorized_default for '"
-               << GetFDPath(dir->get()).value() << "'";
+    PLOG(ERROR) << "Failed to open '" << GetFDPath(dir->get()).value() << "'";
     return false;
   }
 
@@ -237,21 +249,16 @@ bool AuthorizeAllImpl(SafeFD* dir,
   if (subsystem == Subsystem::kUsb) {
     if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorizedDefault),
                                   kSysFSEnabled)) {
-      success = false;
+      if (!IsSkippableFailure(errno)) {
+        success = false;
+      }
     }
 
     if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorized),
                                   kSysFSEnabled)) {
-      // EPIPE: wireless USB device that fails in usb_get_device_descriptor().
-      // ENODEV: device that disappears before they can be authorized or fails
-      //   during usb_autoresume_device()
-      // EPROTO: usb_set_configuration() failed, but the device is still
-      //   authorized. This is often caused by the device not having adequate
-      //   power.
-      if (errno == EPIPE || errno == ENODEV || errno == EPROTO) {
-        PLOG(WARNING) << "Failed to authorize USB device: '"
-                      << GetFDPath(dir->get()).value() << "'";
-      } else {
+      if (!IsSkippableFailure(errno)) {
+        PLOG(ERROR) << "Failed to authorize USB device: '"
+                    << GetFDPath(dir->get()).value() << "'";
         success = false;
       }
     }
@@ -261,7 +268,7 @@ bool AuthorizeAllImpl(SafeFD* dir,
   int dup_fd = dup(dir->get());
   if (dup_fd < 0) {
     PLOG(ERROR) << "dup failed for '" << GetFDPath(dir->get()).value() << "'";
-    return false;
+    return success && IsSkippableFailure(errno);
   }
 
   ScopedDIR listing(fdopendir(dup_fd));
@@ -269,16 +276,12 @@ bool AuthorizeAllImpl(SafeFD* dir,
     PLOG(ERROR) << "fdopendir failed for '" << GetFDPath(dir->get()).value()
                 << "'";
     IGNORE_EINTR(close(dup_fd));
-    return false;
+    return success && IsSkippableFailure(errno);
   }
 
   struct stat dir_info;
   if (fstat(dir->get(), &dir_info) != 0) {
-    // If the directory no longer exists, skip it.
-    if (errno == ENOENT) {
-      return success;
-    }
-    return false;
+    return success && IsSkippableFailure(errno);
   }
 
   for (;;) {
@@ -288,8 +291,9 @@ bool AuthorizeAllImpl(SafeFD* dir,
       break;
     }
 
+    errno = 0;
     SafeFD::SafeFDResult subdir = OpenIfSubdirectory(dir, dir_info, *entry);
-    if (SafeFD::IsError(subdir.second)) {
+    if (SafeFD::IsError(subdir.second) && !IsSkippableFailure(errno)) {
       success = false;
     }
 
@@ -307,7 +311,7 @@ bool AuthorizeAllImpl(SafeFD* dir,
   if (errno != 0) {
     PLOG(ERROR) << "readdir failed for '" << GetFDPath(dir->get()).value()
                 << "'";
-    return false;
+    return success && IsSkippableFailure(errno);
   }
 
   // Check sub directories
