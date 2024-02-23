@@ -235,20 +235,26 @@ bool DeviceUser::UpdateDeviceUser() {
       return true;
     }
 
-    // Check if username file exists in daemon-store.
-    std::string username_file_path =
-        "run/daemon-store/secagentd/" + sanitized + "/username";
-    base::FilePath username_file = root_path_.Append(username_file_path);
-    if (base::PathExists(username_file)) {
+    // Check if sanitzed username directory exists.
+    base::FilePath directory_path =
+        root_path_.Append(kSecagentdDirectory).Append(sanitized);
+    if (base::DirectoryExists(directory_path)) {
       int64_t file_size;
-      if (!base::GetFileSize(username_file, &file_size) || file_size == 0) {
+      std::string uuid;
+      if (base::PathExists(directory_path.Append("affiliated"))) {
+        device_user_ = username;
+        return true;
+      } else if (!base::GetFileSize(directory_path.Append("unaffiliated"),
+                                    &file_size) ||
+                 file_size == 0) {
         LOG(ERROR)
             << "Failed to get username file size. Checking policy instead";
-      } else if (!base::ReadFileToString(username_file, &username) ||
+      } else if (!base::ReadFileToString(directory_path.Append("unaffiliated"),
+                                         &uuid) ||
                  username.empty()) {
-        LOG(ERROR) << "Failed to read username. Checking policy instead";
+        LOG(ERROR) << "Failed to read uuid. Checking policy instead";
       } else {
-        device_user_ = username;
+        device_user_ = uuid;
         return true;
       }
     }
@@ -258,7 +264,8 @@ bool DeviceUser::UpdateDeviceUser() {
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&DeviceUser::HandleUserPolicyAndNotifyListeners,
-                       weak_ptr_factory_.GetWeakPtr(), username, username_file),
+                       weak_ptr_factory_.GetWeakPtr(), username,
+                       directory_path),
         base::Seconds(2));
   }
 
@@ -339,7 +346,16 @@ bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
 }
 
 void DeviceUser::HandleUserPolicyAndNotifyListeners(
-    std::string username, base::FilePath username_file) {
+    std::string username, base::FilePath user_directory) {
+  bool directory_exists = false;
+  if (base::DirectoryExists(user_directory) ||
+      base::CreateDirectory(user_directory)) {
+    directory_exists = true;
+  } else {
+    LOG(ERROR)
+        << "Failed to create user directory. Not saving affiliation status.";
+  }
+
   // Retrieve user policy information.
   auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
   if (!response.ok()) {
@@ -351,13 +367,20 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
     // Fill in device_user if user is affiliated.
     if (IsAffiliated(policy_data)) {
       device_user_ = username;
+      user_directory = user_directory.Append("affiliated");
+      // Do not store the real name on the device, just mark as affiliated.
+      if (directory_exists &&
+          !base::ImportantFileWriter::WriteFileAtomically(user_directory, "")) {
+        LOG(ERROR) << "Failed to write username to file";
+      }
     } else {
       device_user_ = kUnaffiliatedPrefix +
                      base::Uuid::GenerateRandomV4().AsLowercaseString();
-    }
-    if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
-                                                        device_user_)) {
-      LOG(ERROR) << "Failed to write username to file";
+      user_directory = user_directory.Append("unaffiliated");
+      if (directory_exists && !base::ImportantFileWriter::WriteFileAtomically(
+                                  user_directory, device_user_)) {
+        LOG(ERROR) << "Failed to write username to file";
+      }
     }
   }
 
@@ -382,6 +405,34 @@ bool DeviceUser::GetIsUnaffiliated() {
   // affiliated it will be their email which contains the @ symbol.
   return (!reporting_values.contains(device_user_) &&
           device_user_.find("@") == std::string::npos);
+}
+
+std::string DeviceUser::GetUsernameBasedOnAffiliation(
+    const std::string& username, const std::string& sanitized_username) {
+  base::FilePath directory_path =
+      root_path_.Append(kSecagentdDirectory).Append(sanitized_username);
+
+  if (base::DirectoryExists(directory_path)) {
+    int64_t file_size;
+    std::string uuid;
+    if (base::PathExists(directory_path.Append("affiliated"))) {
+      return username;
+    } else if (!base::GetFileSize(directory_path.Append("unaffiliated"),
+                                  &file_size) ||
+               file_size == 0) {
+      LOG(ERROR) << "Failed to get username file size.";
+      return "Unknown";
+    } else if (!base::ReadFileToString(directory_path.Append("unaffiliated"),
+                                       &uuid) ||
+               username.empty()) {
+      LOG(ERROR) << "Failed to read uuid.";
+      return "Unknown";
+    } else {
+      return uuid;
+    }
+  }
+
+  return "Unknown";
 }
 
 void DeviceUser::SetFlushCallback(base::RepeatingCallback<void()> cb) {

@@ -39,6 +39,11 @@ class MockDeviceUser : public DeviceUserInterface {
               (),
               (override));
   MOCK_METHOD(bool, GetIsUnaffiliated, (), (override));
+  MOCK_METHOD(std::string,
+              GetUsernameBasedOnAffiliation,
+              (const std::string& username,
+               const std::string& sanitized_username),
+              (override));
   MOCK_METHOD(void,
               SetFlushCallback,
               (base::RepeatingCallback<void()> cb),

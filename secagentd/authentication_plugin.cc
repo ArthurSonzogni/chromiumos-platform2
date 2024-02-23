@@ -327,10 +327,10 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
           failure_event->mutable_failure()->mutable_authentication();
       authentication->set_num_failed_attempts(1);
       FillAuthFactor(authentication);
-
-      device_user_->GetDeviceUserAsync(base::BindOnce(
-          &AuthenticationPlugin::OnDeviceUserRetrieved,
-          weak_ptr_factory_.GetWeakPtr(), std::move(failure_event)));
+      OnDeviceUserRetrieved(
+          std::move(failure_event),
+          device_user_->GetUsernameBasedOnAffiliation(
+              completed.username(), completed.sanitized_username()));
     }
   }
 }

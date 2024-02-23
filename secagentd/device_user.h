@@ -35,6 +35,7 @@ static constexpr char kStopping[] = "stopping";
 static constexpr char kStopped[] = "stopped";
 static constexpr char kInit[] = "init";
 static constexpr char kUnaffiliatedPrefix[] = "UnaffiliatedUser-";
+static constexpr char kSecagentdDirectory[] = "var/lib/secagentd";
 
 namespace testing {
 class DeviceUserTestFixture;
@@ -55,6 +56,8 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
       base::OnceCallback<void(const std::string& device_user)> cb) = 0;
   virtual std::list<std::string> GetUsernamesForRedaction() = 0;
   virtual bool GetIsUnaffiliated() = 0;
+  virtual std::string GetUsernameBasedOnAffiliation(
+      const std::string& username, const std::string& sanitized_username) = 0;
   virtual void SetFlushCallback(base::RepeatingCallback<void()>) = 0;
 
   virtual ~DeviceUserInterface() = default;
@@ -95,6 +98,11 @@ class DeviceUser : public DeviceUserInterface {
   // Returns if the user is unaffilaited to determine if events should be
   // reported.
   bool GetIsUnaffiliated() override;
+  // Returns either the username when affiliated or the random UUID for
+  // unaffiliated users.
+  std::string GetUsernameBasedOnAffiliation(
+      const std::string& username,
+      const std::string& sanitized_username) override;
   // The flush callback to be called when a new sign in occurs to avoid
   // reporting unaffiliated events.
   void SetFlushCallback(base::RepeatingCallback<void()>) override;

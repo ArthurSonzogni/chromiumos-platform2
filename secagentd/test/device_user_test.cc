@@ -33,10 +33,10 @@ using ::testing::WithArg;
 using ::testing::WithArgs;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
-constexpr char kSanitized[] = "C02gxaaci";
+constexpr char kSanitized[] = "943cebc444e3e19da9a2dbf9c8a473bc7cc16d9d";
 constexpr char kGuest[] = "GuestUser";
 constexpr char kUnknown[] = "Unknown";
-constexpr char kAffiliationID[] = "affiliation_id";
+constexpr char kAffiliationID[] = "C02gxaaci";
 
 class DeviceUserTestFixture : public ::testing::Test {
  protected:
@@ -48,9 +48,8 @@ class DeviceUserTestFixture : public ::testing::Test {
     session_manager_ref_ = session_manager_.get();
 
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
-    daemon_store_directory_ =
-        fake_root_.GetPath().Append("run/daemon-store/secagentd/");
-    ASSERT_TRUE(base::CreateDirectory(daemon_store_directory_));
+    secagentd_directory_ = fake_root_.GetPath().Append(kSecagentdDirectory);
+    ASSERT_TRUE(base::CreateDirectory(secagentd_directory_));
 
     device_user_ = DeviceUser::CreateForTesting(std::move(session_manager_),
                                                 fake_root_.GetPath());
@@ -145,7 +144,7 @@ class DeviceUserTestFixture : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
-  base::FilePath daemon_store_directory_;
+  base::FilePath secagentd_directory_;
   base::ScopedTempDir fake_root_;
   base::OnceCallback<void(const std::string&, const std::string&, bool)>
       registration_result_cb_;
@@ -234,7 +233,7 @@ TEST_F(DeviceUserTestFixture, TestUserAlreadySignedIn) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
-TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
+TEST_F(DeviceUserTestFixture, TestStoredUserAffiliated) {
   EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
       .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
         *is_guest = false;
@@ -262,8 +261,6 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
         *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
         return true;
       })));
-  ASSERT_TRUE(
-      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
 
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
@@ -271,12 +268,9 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
   EXPECT_EQ(kDeviceUser, GetUser());
-  base::FilePath username_file =
-      daemon_store_directory_.Append(kSanitized).Append("username");
-  ASSERT_TRUE(base::PathExists(username_file));
-  std::string username;
-  ASSERT_TRUE(base::ReadFileToString(username_file, &username));
-  EXPECT_EQ(kDeviceUser, username);
+  base::FilePath affiliated_file =
+      secagentd_directory_.Append(kSanitized).Append("affiliated");
+  ASSERT_TRUE(base::PathExists(affiliated_file));
 
   // Trigger callback again to verify the file is read from.
   SetDeviceUser("");
@@ -287,7 +281,7 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
 
-TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
+TEST_F(DeviceUserTestFixture, TestStoredUserUnaffiliated) {
   EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
       .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
         *is_guest = false;
@@ -315,8 +309,6 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
         *out_blob = CreatePolicyFetchResponseBlob("user", "DifferentID");
         return true;
       })));
-  ASSERT_TRUE(
-      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
 
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
@@ -329,11 +321,11 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
               base::Uuid::ParseCaseInsensitive(
                   GetUser().substr(strlen(kUnaffiliatedPrefix)))
                   .is_valid());
-  base::FilePath username_file =
-      daemon_store_directory_.Append(kSanitized).Append("username");
-  ASSERT_TRUE(base::PathExists(username_file));
+  base::FilePath unaffiliated_file =
+      secagentd_directory_.Append(kSanitized).Append("unaffiliated");
+  ASSERT_TRUE(base::PathExists(unaffiliated_file));
   std::string username;
-  ASSERT_TRUE(base::ReadFileToString(username_file, &username));
+  ASSERT_TRUE(base::ReadFileToString(unaffiliated_file, &username));
   EXPECT_TRUE(username.starts_with(kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
                   username.substr(strlen(kUnaffiliatedPrefix)))
@@ -612,7 +604,7 @@ TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   EXPECT_EQ("", GetUser());
 }
 
-TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutMultipleTimesForRedaction) {
+TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
   int times = 3;
   EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
       .Times(times)
@@ -627,9 +619,6 @@ TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutMultipleTimesForRedaction) {
     auto sanitized_name = absl::StrFormat("sanitized%d", i);
 
     device_users.push_back(device_user);
-
-    ASSERT_TRUE(
-        base::CreateDirectory(daemon_store_directory_.Append(sanitized_name)));
 
     EXPECT_CALL(*session_manager_ref_,
                 RetrievePolicyEx(
@@ -689,7 +678,7 @@ TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutMultipleTimesForRedaction) {
   }
 }
 
-TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {
+TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameAffiliated) {
   EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
       .Times(2)
       .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
@@ -704,8 +693,6 @@ TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {
             *sanitized = kSanitized;
             return true;
           })));
-  ASSERT_TRUE(
-      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
   EXPECT_CALL(
       *session_manager_ref_,
       RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
@@ -737,7 +724,67 @@ TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
   registration_cb_.Run(kStarted);
+  EXPECT_EQ(kDeviceUser, GetUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", GetUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+}
+
+TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameUnaffiliated) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .Times(2)
+      .WillRepeatedly(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .Times(1)
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", "differentID");
+        return true;
+      })));
+
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+  registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
+
+  std::string unaffiliated_user = GetUser();
+  EXPECT_TRUE(unaffiliated_user.starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  unaffiliated_user.substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStopped);
+  EXPECT_EQ("", GetUser());
+  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
+  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+
+  registration_cb_.Run(kStarted);
+  EXPECT_EQ(unaffiliated_user, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
@@ -850,6 +897,77 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+}
+
+TEST_F(DeviceUserTestFixture, TestGetUsernameBasedOnAffiliation) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })))
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = "different_sanitized";
+            return true;
+          })));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .Times(2)
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+        return true;
+      })))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", "DifferentID");
+        return true;
+      })));
+
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+  // Login and logout affililiated.
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(kDelayForFirstUserInit);
+  registration_cb_.Run(kStopped);
+  base::FilePath affiliated_file =
+      secagentd_directory_.Append(kSanitized).Append("affiliated");
+  ASSERT_TRUE(base::PathExists(affiliated_file));
+  int64_t file_size;
+  EXPECT_TRUE(base::GetFileSize(affiliated_file, &file_size));
+  EXPECT_EQ(0, file_size);
+  std::string username =
+      device_user_->GetUsernameBasedOnAffiliation(kDeviceUser, kSanitized);
+  EXPECT_EQ(kDeviceUser, username);
+
+  // Login and logout unaffililiated.
+  registration_cb_.Run(kStarted);
+  task_environment_.FastForwardBy(kDelayForFirstUserInit);
+  registration_cb_.Run(kStopped);
+  base::FilePath unaffiliated_file =
+      secagentd_directory_.Append("different_sanitized").Append("unaffiliated");
+  ASSERT_TRUE(base::PathExists(unaffiliated_file));
+  username = device_user_->GetUsernameBasedOnAffiliation(kDeviceUser,
+                                                         "different_sanitized");
+  EXPECT_TRUE(username.starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  username.substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
 }
 
 }  // namespace secagentd::testing
