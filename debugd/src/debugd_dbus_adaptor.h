@@ -207,6 +207,9 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void GenerateFirmwareDump(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
       uint32_t type) override;
+  void ClearFirmwareDumpBuffer(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      uint32_t type) override;
   std::string SetWifiPowerSave(bool enable) override;
   std::string GetWifiPowerSave() override;
   bool RunShillScriptStart(brillo::ErrorPtr* error,

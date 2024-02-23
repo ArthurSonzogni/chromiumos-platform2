@@ -32,7 +32,9 @@ constexpr auto kDirectoryToSearchMap =
 constexpr auto kDumperFileMap =
     base::MakeFixedFlatMap<debugd::FirmwareDumpOperation, std::string_view>(
         {{debugd::FirmwareDumpOperation::GenerateFirmwareDump,
-          "iwlmvm/fw_dbg_collect"}});
+          "iwlmvm/fw_dbg_collect"},
+         {debugd::FirmwareDumpOperation::ClearFirmwareDumpBuffer,
+          "iwlmvm/fw_dbg_clear"}});
 
 }  // namespace
 
@@ -98,6 +100,32 @@ void GenerateFirmwareDumpHelper(
     case FirmwareDumpType::WIFI:
       if (!WriteToDebugfs(fwdump_type,
                           FirmwareDumpOperation::GenerateFirmwareDump, "1")) {
+        response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                 DBUS_ERROR_FAILED,
+                                 "Failed to write to debugfs");
+        return;
+      }
+      break;
+    default:
+      response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+          "Firmware dump operation is not supported for type: " +
+              std::to_string(static_cast<uint32_t>(fwdump_type)));
+      return;
+  }
+  // Response indicates success/failure of the debugfs call. So far we delegate
+  // to the driver and assume the low-level execution is successful.
+  response->Return(true);
+}
+
+void ClearFirmwareDumpBufferHelper(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    const FirmwareDumpType& fwdump_type) {
+  switch (fwdump_type) {
+    case FirmwareDumpType::WIFI:
+      if (!WriteToDebugfs(fwdump_type,
+                          FirmwareDumpOperation::ClearFirmwareDumpBuffer,
+                          "1")) {
         response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                                  DBUS_ERROR_FAILED,
                                  "Failed to write to debugfs");

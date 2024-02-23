@@ -539,6 +539,20 @@ void DebugdDBusAdaptor::GenerateFirmwareDump(
   return GenerateFirmwareDumpHelper(std::move(response), fwdump_type.value());
 }
 
+void DebugdDBusAdaptor::ClearFirmwareDumpBuffer(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    uint32_t type) {
+  const auto fwdump_type = ConvertFirmwareDumpType(type);
+  if (!fwdump_type.has_value()) {
+    response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+        "Invalid firmware dump type: " + std::to_string(type));
+    return;
+  }
+  return ClearFirmwareDumpBufferHelper(std::move(response),
+                                       fwdump_type.value());
+}
+
 std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {
   return wifi_power_tool_->SetWifiPowerSave(enable);
 }

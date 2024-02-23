@@ -17,6 +17,7 @@ namespace debugd {
 // Firmware dump operations supported by this utility.
 enum class FirmwareDumpOperation {
   GenerateFirmwareDump,
+  ClearFirmwareDumpBuffer,
 };
 
 // Find debugfs path based on |dumper_dir_to_search| and |dumper_file|.
@@ -34,6 +35,11 @@ bool WriteToDebugfs(const FirmwareDumpType& fwdump_type,
 
 // Trigger firmware dump.
 void GenerateFirmwareDumpHelper(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    const FirmwareDumpType& fwdump_type);
+
+// Clear the buffer that is used to generate firmware dump.
+void ClearFirmwareDumpBufferHelper(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const FirmwareDumpType& fwdump_type);
 

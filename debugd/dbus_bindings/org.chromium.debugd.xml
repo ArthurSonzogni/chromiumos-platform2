@@ -1278,6 +1278,24 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
+    <method name="ClearFirmwareDumpBuffer">
+      <tp:docstring>
+        Clear firmware dump buffer for a specific firmware dump type.
+      </tp:docstring>
+      <arg name="type" type="u" direction="in" />
+        <tp:docstring>
+          The type of firmware dump for which its buffer to be cleared, such as
+          the firmware dump buffer for iwlwifi (Intel WiFi driver).
+          Please refer to the enum type "FirmwareDumpType" for a complete list
+          of supported types.
+        </tp:docstring>
+      <arg name="output" type="b" direction="out">
+        <tp:docstring>
+          Indicates success/failure of the command.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
     <tp:enum name="FirmwareDumpType">
       <tp:docstring>
         Enum values for different firmware dump types. Used as an input in

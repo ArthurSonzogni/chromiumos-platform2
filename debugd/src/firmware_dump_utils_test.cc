@@ -267,4 +267,45 @@ TEST_F(FirmwareDumpUtilsTest, GenerateFirmwareDumpForWiFiError) {
   EXPECT_FALSE(response);
 }
 
+TEST_F(FirmwareDumpUtilsTest, ClearFirmwareDumpBufferForAll) {
+  bool response = false;
+  // |ALL| is reserved and we don't support for now.
+  auto mocked_method_response = BuildMockDBusResponse(&response);
+  EXPECT_CALL(
+      *mocked_method_response,
+      ReplyWithError(_, _, _,
+                     "Firmware dump operation is not supported for type: 0"));
+  ClearFirmwareDumpBufferHelper(std::move(mocked_method_response),
+                                FirmwareDumpType::ALL);
+  EXPECT_FALSE(response);
+}
+
+TEST_F(FirmwareDumpUtilsTest, ClearFirmwareDumpBufferForWiFiSuccess) {
+  bool response = false;
+  auto mocked_method_response = BuildMockDBusResponse(&response);
+  CreateDebugfsFile(
+      "/sys/kernel/debug/iwlwifi/0000:00:14.3/iwlmvm/fw_dbg_clear");
+  EXPECT_CALL(*mocked_method_response, ReplyWithError(_, _, _, _)).Times(0);
+  ClearFirmwareDumpBufferHelper(std::move(mocked_method_response),
+                                FirmwareDumpType::WIFI);
+  EXPECT_TRUE(response);
+  std::string content;
+  EXPECT_TRUE(base::ReadFileToString(
+      path_utils::GetFilePath(
+          "/sys/kernel/debug/iwlwifi/0000:00:14.3/iwlmvm/fw_dbg_clear"),
+      &content));
+  EXPECT_EQ("1", content);
+}
+
+TEST_F(FirmwareDumpUtilsTest, ClearFirmwareDumpBufferForWiFiError) {
+  bool response = false;
+  auto mocked_method_response = BuildMockDBusResponse(&response);
+  CreateDebugfsFile("/sys/kernel/debug/iwlwifi/0000:00:14.3/iwlmvm/fake_file");
+  EXPECT_CALL(*mocked_method_response,
+              ReplyWithError(_, _, _, "Failed to write to debugfs"));
+  ClearFirmwareDumpBufferHelper(std::move(mocked_method_response),
+                                FirmwareDumpType::WIFI);
+  EXPECT_FALSE(response);
+}
+
 }  // namespace debugd
