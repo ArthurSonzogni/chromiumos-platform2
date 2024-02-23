@@ -46,15 +46,14 @@ MATCHER(NotNullMojoPtr, "") {
   return !arg.is_null();
 }
 
+// Use a custom matcher since |EXPECT_EQ| doesn't work for NullableUint64Ptr.
+MATCHER_P(PointeeValueIs, value, "") {
+  return arg && arg->value == value;
+}
+
 template <typename T>
 std::optional<std::string> GetMockValue(const T& value) {
   return value;
-}
-
-std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
-  if (ptr)
-    return base::NumberToString(ptr->value);
-  return std::nullopt;
 }
 
 class SystemFetcherTest : public BaseFileTest {
@@ -67,28 +66,8 @@ class SystemFetcherTest : public BaseFileTest {
 
   void SetUp() override {
     expected_system_info_ = mojom::SystemInfo::New();
-    auto& vpd_info = expected_system_info_->vpd_info;
-    vpd_info = mojom::VpdInfo::New();
-    vpd_info->activate_date = "2020-40";
-    vpd_info->mfg_date = "2019-01-01";
-    vpd_info->model_name = "XX ModelName 007 XY";
-    vpd_info->region = "us";
-    vpd_info->serial_number = "8607G03EDF";
-    vpd_info->sku_number = "ABCD&^A";
-    vpd_info->oem_name = "FooOEM-VPD";
-    auto& dmi_info = expected_system_info_->dmi_info;
-    dmi_info = mojom::DmiInfo::New();
-    dmi_info->bios_vendor = "Google";
-    dmi_info->bios_version = "Google_BoardName.12200.68.0";
-    dmi_info->board_name = "BoardName";
-    dmi_info->board_vendor = "Google";
-    dmi_info->board_version = "rev1234";
-    dmi_info->chassis_vendor = "Google";
-    dmi_info->chassis_type = mojom::NullableUint64::New(9);
-    dmi_info->product_family = "FooFamily";
-    dmi_info->product_name = "BarProductName";
-    dmi_info->product_version = "rev1234";
-    dmi_info->sys_vendor = "Google";
+    expected_system_info_->vpd_info = mojom::VpdInfo::New();
+    expected_system_info_->dmi_info = mojom::DmiInfo::New();
     auto& os_info = expected_system_info_->os_info;
     os_info = mojom::OsInfo::New();
     os_info->code_name = "CodeName";
@@ -104,7 +83,9 @@ class SystemFetcherTest : public BaseFileTest {
     os_version->patch_number = "0";
     os_version->release_channel = "stable-channel";
     SetSystemInfo(expected_system_info_);
-    SetHasSkuNumber(true);
+    SetHasSkuNumber(false);
+    SetVpdDir();
+    SetDmiDir();
 
     // Default response for PSR info.
     ON_CALL(*mock_executor(), GetPsr(_))
@@ -115,45 +96,20 @@ class SystemFetcherTest : public BaseFileTest {
   }
 
   void SetSystemInfo(const mojom::SystemInfoPtr& system_info) {
-    SetVpdInfo(system_info->vpd_info);
-    SetDmiInfo(system_info->dmi_info);
     SetOsInfo(system_info->os_info);
   }
 
-  void SetVpdInfo(const mojom::VpdInfoPtr& vpd_info) {
-    const auto& ro = kRelativePathVpdRo;
-    const auto& rw = kRelativePathVpdRw;
-    if (vpd_info.is_null()) {
-      // Delete the whole vpd dir.
-      UnsetPath(base::FilePath(ro).DirName());
-      return;
-    }
-    SetMockFile({rw, kFileNameActivateDate}, vpd_info->activate_date);
-    SetMockFile({ro, kFileNameMfgDate}, vpd_info->mfg_date);
-    SetMockFile({ro, kFileNameModelName}, vpd_info->model_name);
-    SetMockFile({ro, kFileNameRegion}, vpd_info->region);
-    SetMockFile({ro, kFileNameSerialNumber}, vpd_info->serial_number);
-    SetMockFile({ro, kFileNameSkuNumber}, vpd_info->sku_number);
-    SetMockFile({ro, kFileNameOemName}, vpd_info->oem_name);
+  void SetVpdDir() {
+    base::CreateDirectory(GetPathUnderRoot(kRelativePathVpdRo));
+    base::CreateDirectory(GetPathUnderRoot(kRelativePathVpdRw));
   }
 
-  void SetDmiInfo(const mojom::DmiInfoPtr& dmi_info) {
-    const auto& dmi = kRelativePathDmiInfo;
-    if (dmi_info.is_null()) {
-      UnsetPath(dmi);
-      return;
-    }
-    SetMockFile({dmi, kFileNameBiosVendor}, dmi_info->bios_vendor);
-    SetMockFile({dmi, kFileNameBiosVersion}, dmi_info->bios_version);
-    SetMockFile({dmi, kFileNameBoardName}, dmi_info->board_name);
-    SetMockFile({dmi, kFileNameBoardVendor}, dmi_info->board_vendor);
-    SetMockFile({dmi, kFileNameBoardVersion}, dmi_info->board_version);
-    SetMockFile({dmi, kFileNameChassisVendor}, dmi_info->chassis_vendor);
-    SetMockFile({dmi, kFileNameChassisType}, dmi_info->chassis_type);
-    SetMockFile({dmi, kFileNameProductFamily}, dmi_info->product_family);
-    SetMockFile({dmi, kFileNameProductName}, dmi_info->product_name);
-    SetMockFile({dmi, kFileNameProductVersion}, dmi_info->product_version);
-    SetMockFile({dmi, kFileNameSysVendor}, dmi_info->sys_vendor);
+  void UnsetVpdDir() {
+    UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
+  }
+
+  void SetDmiDir() {
+    base::CreateDirectory(GetPathUnderRoot(kRelativePathDmiInfo));
   }
 
   void SetOsInfo(const mojom::OsInfoPtr& os_info) {
@@ -283,13 +239,13 @@ TEST_F(SystemFetcherTest, FetchSystemInfo) {
 }
 
 TEST_F(SystemFetcherTest, NoVpdDirSkuNumberRequired) {
-  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
+  UnsetVpdDir();
   SetHasSkuNumber(true);
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
 TEST_F(SystemFetcherTest, NoVpdDirSkuNumberNotRequired) {
-  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
+  UnsetVpdDir();
   SetHasSkuNumber(false);
 
   mojom::SystemInfoPtr system_info;
@@ -301,7 +257,7 @@ TEST_F(SystemFetcherTest, NoVpdDirSkuNumberNotRequired) {
 // Test if the fallback logic triggered by missing OEM name in cros-config works
 // when there's no VPD.
 TEST_F(SystemFetcherTest, NoVpdDirAndNoOemNameInCrosconfig) {
-  UnsetPath(base::FilePath(kRelativePathVpdRo).DirName());
+  UnsetVpdDir();
   fake_system_config()->SetOemName(std::nullopt);
   SetHasSkuNumber(false);
 
@@ -312,7 +268,19 @@ TEST_F(SystemFetcherTest, NoVpdDirAndNoOemNameInCrosconfig) {
   EXPECT_EQ(system_info->os_info->oem_name, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, SkuNumber) {
+  SetFile({kRelativePathVpdRo, kFileNameSkuNumber}, "ABCD&^A");
+  SetHasSkuNumber(true);
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->sku_number, "ABCD&^A");
+}
+
 TEST_F(SystemFetcherTest, SkuNumberExistsButNotRequired) {
+  SetFile({kRelativePathVpdRo, kFileNameSkuNumber}, "ABCD&^A");
   SetHasSkuNumber(false);
 
   mojom::SystemInfoPtr system_info;
@@ -339,6 +307,16 @@ TEST_F(SystemFetcherTest, NoSkuNumberWhenItIsRequired) {
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
+TEST_F(SystemFetcherTest, VpdActivateDate) {
+  SetFile({kRelativePathVpdRw, kFileNameActivateDate}, "2020-40");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->activate_date, "2020-40");
+}
+
 TEST_F(SystemFetcherTest, NoVpdActivateDate) {
   UnsetPath({kRelativePathVpdRw, kFileNameActivateDate});
 
@@ -347,6 +325,16 @@ TEST_F(SystemFetcherTest, NoVpdActivateDate) {
 
   ASSERT_TRUE(system_info->vpd_info);
   EXPECT_EQ(system_info->vpd_info->activate_date, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, VpdRegion) {
+  SetFile({kRelativePathVpdRo, kFileNameRegion}, "us");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->region, "us");
 }
 
 TEST_F(SystemFetcherTest, NoVpdRegion) {
@@ -359,6 +347,16 @@ TEST_F(SystemFetcherTest, NoVpdRegion) {
   EXPECT_EQ(system_info->vpd_info->region, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, VpdMfgDate) {
+  SetFile({kRelativePathVpdRo, kFileNameMfgDate}, "2019-01-01");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->mfg_date, "2019-01-01");
+}
+
 TEST_F(SystemFetcherTest, NoVpdMfgDate) {
   UnsetPath({kRelativePathVpdRo, kFileNameMfgDate});
 
@@ -369,6 +367,16 @@ TEST_F(SystemFetcherTest, NoVpdMfgDate) {
   EXPECT_EQ(system_info->vpd_info->mfg_date, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, VpdSerialNumber) {
+  SetFile({kRelativePathVpdRo, kFileNameSerialNumber}, "8607G03EDF");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->serial_number, "8607G03EDF");
+}
+
 TEST_F(SystemFetcherTest, NoVpdSerialNumber) {
   UnsetPath({kRelativePathVpdRo, kFileNameSerialNumber});
 
@@ -377,6 +385,16 @@ TEST_F(SystemFetcherTest, NoVpdSerialNumber) {
 
   ASSERT_TRUE(system_info->vpd_info);
   EXPECT_EQ(system_info->vpd_info->serial_number, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, VpdModelName) {
+  SetFile({kRelativePathVpdRo, kFileNameModelName}, "XX ModelName 007 XY");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->vpd_info);
+  EXPECT_EQ(system_info->vpd_info->model_name, "XX ModelName 007 XY");
 }
 
 TEST_F(SystemFetcherTest, NoVpdModelName) {
@@ -408,6 +426,16 @@ TEST_F(SystemFetcherTest, NoSysDevicesVirtualDmiId) {
   EXPECT_THAT(system_info->dmi_info, IsNullMojoPtr());
 }
 
+TEST_F(SystemFetcherTest, DmiBiosVendor) {
+  SetFile({kRelativePathDmiInfo, kFileNameBiosVendor}, "Google");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->bios_vendor, "Google");
+}
+
 TEST_F(SystemFetcherTest, NoDmiBiosVendor) {
   UnsetPath({kRelativePathDmiInfo, kFileNameBiosVendor});
 
@@ -416,6 +444,17 @@ TEST_F(SystemFetcherTest, NoDmiBiosVendor) {
 
   ASSERT_TRUE(system_info->dmi_info);
   EXPECT_EQ(system_info->dmi_info->bios_vendor, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, DmiBiosVersion) {
+  SetFile({kRelativePathDmiInfo, kFileNameBiosVersion},
+          "Google_BoardName.12200.68.0");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->bios_version, "Google_BoardName.12200.68.0");
 }
 
 TEST_F(SystemFetcherTest, NoDmiBiosVersion) {
@@ -428,6 +467,16 @@ TEST_F(SystemFetcherTest, NoDmiBiosVersion) {
   EXPECT_EQ(system_info->dmi_info->bios_version, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, DmiBoardName) {
+  SetFile({kRelativePathDmiInfo, kFileNameBoardName}, "BoardName");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_name, "BoardName");
+}
+
 TEST_F(SystemFetcherTest, NoDmiBoardName) {
   UnsetPath({kRelativePathDmiInfo, kFileNameBoardName});
 
@@ -436,6 +485,16 @@ TEST_F(SystemFetcherTest, NoDmiBoardName) {
 
   ASSERT_TRUE(system_info->dmi_info);
   EXPECT_EQ(system_info->dmi_info->board_name, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, DmiBoardVendor) {
+  SetFile({kRelativePathDmiInfo, kFileNameBoardVendor}, "Google");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_vendor, "Google");
 }
 
 TEST_F(SystemFetcherTest, NoDmiBoardVendor) {
@@ -448,6 +507,16 @@ TEST_F(SystemFetcherTest, NoDmiBoardVendor) {
   EXPECT_EQ(system_info->dmi_info->board_vendor, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, DmiBoardVersion) {
+  SetFile({kRelativePathDmiInfo, kFileNameBoardVersion}, "rev1234");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->board_version, "rev1234");
+}
+
 TEST_F(SystemFetcherTest, NoDmiBoardVersion) {
   UnsetPath({kRelativePathDmiInfo, kFileNameBoardVersion});
 
@@ -456,6 +525,16 @@ TEST_F(SystemFetcherTest, NoDmiBoardVersion) {
 
   ASSERT_TRUE(system_info->dmi_info);
   EXPECT_EQ(system_info->dmi_info->board_version, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, DmiChassisVendor) {
+  SetFile({kRelativePathDmiInfo, kFileNameChassisVendor}, "Google");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->chassis_vendor, "Google");
 }
 
 TEST_F(SystemFetcherTest, NoDmiChassisVendor) {
@@ -468,6 +547,16 @@ TEST_F(SystemFetcherTest, NoDmiChassisVendor) {
   EXPECT_EQ(system_info->dmi_info->chassis_vendor, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, DmiChassisType) {
+  SetFile({kRelativePathDmiInfo, kFileNameChassisType}, "9");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_THAT(system_info->dmi_info->chassis_type, PointeeValueIs(9));
+}
+
 TEST_F(SystemFetcherTest, NoDmiChassisType) {
   UnsetPath({kRelativePathDmiInfo, kFileNameChassisType});
 
@@ -476,6 +565,16 @@ TEST_F(SystemFetcherTest, NoDmiChassisType) {
 
   ASSERT_TRUE(system_info->dmi_info);
   EXPECT_THAT(system_info->dmi_info->chassis_type, IsNullMojoPtr());
+}
+
+TEST_F(SystemFetcherTest, DmiProductFamily) {
+  SetFile({kRelativePathDmiInfo, kFileNameProductFamily}, "FooFamily");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_family, "FooFamily");
 }
 
 TEST_F(SystemFetcherTest, NoDmiProductFamily) {
@@ -488,6 +587,16 @@ TEST_F(SystemFetcherTest, NoDmiProductFamily) {
   EXPECT_EQ(system_info->dmi_info->product_family, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, DmiProductName) {
+  SetFile({kRelativePathDmiInfo, kFileNameProductName}, "BarProductName");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_name, "BarProductName");
+}
+
 TEST_F(SystemFetcherTest, NoDmiProductName) {
   UnsetPath({kRelativePathDmiInfo, kFileNameProductName});
 
@@ -498,6 +607,16 @@ TEST_F(SystemFetcherTest, NoDmiProductName) {
   EXPECT_EQ(system_info->dmi_info->product_name, std::nullopt);
 }
 
+TEST_F(SystemFetcherTest, DmiProductVersion) {
+  SetFile({kRelativePathDmiInfo, kFileNameProductVersion}, "rev1234");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->product_version, "rev1234");
+}
+
 TEST_F(SystemFetcherTest, NoDmiProductVersion) {
   UnsetPath({kRelativePathDmiInfo, kFileNameProductVersion});
 
@@ -506,6 +625,16 @@ TEST_F(SystemFetcherTest, NoDmiProductVersion) {
 
   ASSERT_TRUE(system_info->dmi_info);
   EXPECT_EQ(system_info->dmi_info->product_version, std::nullopt);
+}
+
+TEST_F(SystemFetcherTest, DmiSysVendor) {
+  SetFile({kRelativePathDmiInfo, kFileNameSysVendor}, "Google");
+
+  mojom::SystemInfoPtr system_info;
+  ASSERT_NO_FATAL_FAILURE(SaveSystemInfo(system_info));
+
+  ASSERT_TRUE(system_info->dmi_info);
+  EXPECT_EQ(system_info->dmi_info->sys_vendor, "Google");
 }
 
 TEST_F(SystemFetcherTest, NoDmiSysVendor) {
