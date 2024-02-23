@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,10 @@ class MetricsUtilsTest : public ::testing::Test {
     EXPECT_CALL(metrics_library_,
                 SendEnumToUMA(name, static_cast<int>(sample), _))
         .WillOnce(Return(true));
+  }
+
+  void ExpectNoSendEnumToUMA(const std::string& name) {
+    EXPECT_CALL(metrics_library_, SendEnumToUMA(name, _, _)).Times(0);
   }
 
   void SendTelemetryResult(const std::set<mojom::ProbeCategoryEnum>& categories,
@@ -359,12 +364,68 @@ TEST_F(MetricsUtilsTest, SendDiagnosticNotRunResult) {
                        mojom::DiagnosticRoutineStatusEnum::kNotRun);
 }
 
-TEST_F(MetricsUtilsTest, SendEventCategory) {
-  // The choice of event category is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kEventSubscription,
-                      CrosHealthdEventCategory::kUsb);
-  SendEventCategory(mojom::EventCategoryEnum::kUsb);
+TEST_F(MetricsUtilsTest, SendNoUmaForUnrecognizedEventCategory) {
+  ExpectNoSendEnumToUMA(metrics_name::kEventSubscription);
+  SendEventCategory(mojom::EventCategoryEnum::kUnmappedEnumField);
 }
+
+struct EventCategoryTestCase {
+  CrosHealthdEventCategory uma_value;
+  mojom::EventCategoryEnum category;
+};
+
+class EventCategoryTest
+    : public MetricsUtilsTest,
+      public ::testing::WithParamInterface<EventCategoryTestCase> {};
+
+// Verify that the UMA enum value matches the event category.
+TEST_P(EventCategoryTest, SendEventCategory) {
+  const EventCategoryTestCase& test_case = GetParam();
+  ExpectSendEnumToUMA(metrics_name::kEventSubscription, test_case.uma_value);
+  SendEventCategory(test_case.category);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllEventCategory,
+    EventCategoryTest,
+    ::testing::ValuesIn<EventCategoryTestCase>(
+        {{.uma_value = CrosHealthdEventCategory::kUsb,
+          .category = mojom::EventCategoryEnum::kUsb},
+         {.uma_value = CrosHealthdEventCategory::kThunderbolt,
+          .category = mojom::EventCategoryEnum::kThunderbolt},
+         {.uma_value = CrosHealthdEventCategory::kLid,
+          .category = mojom::EventCategoryEnum::kLid},
+         {.uma_value = CrosHealthdEventCategory::kBluetooth,
+          .category = mojom::EventCategoryEnum::kBluetooth},
+         {.uma_value = CrosHealthdEventCategory::kPower,
+          .category = mojom::EventCategoryEnum::kPower},
+         {.uma_value = CrosHealthdEventCategory::kAudio,
+          .category = mojom::EventCategoryEnum::kAudio},
+         {.uma_value = CrosHealthdEventCategory::kAudioJack,
+          .category = mojom::EventCategoryEnum::kAudioJack},
+         {.uma_value = CrosHealthdEventCategory::kSdCard,
+          .category = mojom::EventCategoryEnum::kSdCard},
+         {.uma_value = CrosHealthdEventCategory::kNetwork,
+          .category = mojom::EventCategoryEnum::kNetwork},
+         {.uma_value = CrosHealthdEventCategory::kKeyboardDiagnostic,
+          .category = mojom::EventCategoryEnum::kKeyboardDiagnostic},
+         {.uma_value = CrosHealthdEventCategory::kTouchpad,
+          .category = mojom::EventCategoryEnum::kTouchpad},
+         {.uma_value = CrosHealthdEventCategory::kExternalDisplay,
+          .category = mojom::EventCategoryEnum::kExternalDisplay},
+         {.uma_value = CrosHealthdEventCategory::kTouchscreen,
+          .category = mojom::EventCategoryEnum::kTouchscreen},
+         {.uma_value = CrosHealthdEventCategory::kStylusGarage,
+          .category = mojom::EventCategoryEnum::kStylusGarage},
+         {.uma_value = CrosHealthdEventCategory::kStylus,
+          .category = mojom::EventCategoryEnum::kStylus},
+         {.uma_value = CrosHealthdEventCategory::kCrash,
+          .category = mojom::EventCategoryEnum::kCrash}}),
+    [](const testing::TestParamInfo<EventCategoryTest::ParamType>& info) {
+      std::stringstream ss;
+      ss << info.param.category;
+      return ss.str();
+    });
 
 }  // namespace
 }  // namespace diagnostics
