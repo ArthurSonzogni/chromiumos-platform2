@@ -191,7 +191,6 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
   }
 }

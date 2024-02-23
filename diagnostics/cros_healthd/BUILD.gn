@@ -90,7 +90,6 @@ if (use.test) {
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
       "//diagnostics/dbus_bindings",
       "//diagnostics/mojom:libmojom_utils_test",
     ]

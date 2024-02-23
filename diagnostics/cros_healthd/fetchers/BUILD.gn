@@ -114,7 +114,6 @@ if (use.test) {
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
   }
 }

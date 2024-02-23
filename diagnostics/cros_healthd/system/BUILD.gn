@@ -101,7 +101,6 @@ if (use.test || use.fuzzer) {
       ":libcros_healthd_system",
       "//diagnostics/base",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
     sources = [
       "fake_bluez_event_hub.cc",
@@ -143,7 +142,6 @@ if (use.test) {
       ":libcros_healthd_system_test_utils",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
   }
 }

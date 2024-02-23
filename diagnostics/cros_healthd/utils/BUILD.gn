@@ -36,21 +36,6 @@ source_set("libcros_healthd_utils") {
   ]
 }
 
-if (use.test || use.fuzzer) {
-  pkg_config("libcros_healthd_utils_test_utils_pkg_deps") {
-    pkg_deps = [
-      "libchrome",
-      "libmojo",
-    ]
-  }
-
-  source_set("libcros_healthd_utils_test_utils") {
-    configs += [ ":libcros_healthd_utils_test_utils_pkg_deps" ]
-    deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
-    sources = [ "mojo_type_utils.cc" ]
-  }
-}
-
 if (use.test) {
   pkg_config("libcros_healthd_utils_test_pkg_deps") {
     pkg_deps = [
@@ -77,7 +62,6 @@ if (use.test) {
     configs += [ ":libcros_healthd_utils_test_pkg_deps" ]
     deps = [
       ":libcros_healthd_utils",
-      ":libcros_healthd_utils_test_utils",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
     ]
