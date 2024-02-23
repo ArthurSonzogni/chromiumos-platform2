@@ -380,7 +380,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
 /var/log/extensions.log         u:object_r:cros_var_log_extensions:s0
 /var/log/faillog                u:object_r:cros_var_log_faillog:s0
-/var/log/fbpreprocessord        u:object_r:cros_var_log_fbpreprocessord:s0
 /var/log/fpstudy(/.*)?          u:object_r:cros_var_log_fpstudy:s0
 /var/log/fpstudy-audit.log      u:object_r:cros_syslog:s0
 /var/log/fwupd.log              u:object_r:cros_var_log_fwupd:s0
