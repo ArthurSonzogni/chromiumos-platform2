@@ -12,8 +12,8 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
-#include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <libstorage/platform/platform.h>
 #include <metrics/bootstat.h>
 #include <vpd/vpd.h>
 
@@ -37,13 +37,13 @@ class ChromeosStartup {
   static void ParseFlags(Flags* flags, int argc, char* argv[]);
 
   // Constructor for the class
-  ChromeosStartup(crossystem::Crossystem* crossystem,
-                  std::unique_ptr<vpd::Vpd> vpd,
+  ChromeosStartup(std::unique_ptr<vpd::Vpd> vpd,
                   const Flags& flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
+                  libstorage::Platform* platform,
                   StartupDep* startup_dep,
                   std::unique_ptr<MountHelper> mount_helper,
                   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl);
@@ -159,7 +159,7 @@ class ChromeosStartup {
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
-  raw_ptr<crossystem::Crossystem> crossystem_;
+  raw_ptr<libstorage::Platform> platform_;
   std::unique_ptr<vpd::Vpd> vpd_;
   const Flags flags_;
   const base::FilePath lsb_file_;

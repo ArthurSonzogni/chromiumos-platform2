@@ -168,14 +168,14 @@ namespace startup {
 StatefulMount::StatefulMount(const Flags& flags,
                              const base::FilePath& root,
                              const base::FilePath& stateful,
+                             libstorage::Platform* platform,
                              StartupDep* startup_dep,
-                             std::unique_ptr<brillo::LogicalVolumeManager> lvm,
                              MountHelper* mount_helper)
     : flags_(flags),
       root_(root),
       stateful_(stateful),
+      platform_(platform),
       startup_dep_(startup_dep),
-      lvm_(std::move(lvm)),
       mount_helper_(mount_helper) {}
 
 bool StatefulMount::GetImageVars(base::FilePath json_file,
@@ -408,10 +408,12 @@ void StatefulMount::MountStateful() {
 
     bool should_mount_lvm = false;
     if (USE_LVM_STATEFUL_PARTITION) {
+      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+
       // Attempt to get a valid volume group name.
       bootstat_.LogEvent("pre-lvm-activation");
       std::optional<brillo::PhysicalVolume> pv =
-          lvm_->GetPhysicalVolume(state_dev_);
+          lvm->GetPhysicalVolume(state_dev_);
 
       if (!pv && USE_LVM_MIGRATION) {
         // Attempt to migrate to thinpool if migration is enabled: if the
@@ -422,17 +424,17 @@ void StatefulMount::MountStateful() {
           LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
         } else {
           // Reset the physical volume on success from thinpool migration.
-          pv = lvm_->GetPhysicalVolume(state_dev_);
+          pv = lvm->GetPhysicalVolume(state_dev_);
         }
       }
 
       if (pv && pv->IsValid()) {
-        volume_group_ = lvm_->GetVolumeGroup(*pv);
+        volume_group_ = lvm->GetVolumeGroup(*pv);
         if (volume_group_ && volume_group_->IsValid()) {
           // First attempt to activate the thinpool. If the activation of the
           // thinpool fails, run thin_check to check all mappings.
           std::optional<brillo::Thinpool> thinpool =
-              lvm_->GetThinpool(*volume_group_, "thinpool");
+              lvm->GetThinpool(*volume_group_, "thinpool");
 
           if (!thinpool) {
             LOG(ERROR) << "Thinpool does not exist";
@@ -449,7 +451,7 @@ void StatefulMount::MountStateful() {
 
           // Attempt to now activate the unencrypted stateful logical volume.
           std::optional<brillo::LogicalVolume> unencrypted_lv =
-              lvm_->GetLogicalVolume(*volume_group_, "unencrypted");
+              lvm->GetLogicalVolume(*volume_group_, "unencrypted");
 
           if (!unencrypted_lv || !unencrypted_lv->Activate()) {
             LOG(ERROR) << "Failed to activate unencrypted stateful logical "
@@ -609,8 +611,10 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       // Remove the cryptohome LVs.
       if (volume_group_ && volume_group_->IsValid()) {
         volume_group_->Activate();
+        brillo::LogicalVolumeManager* lvm =
+            platform_->GetLogicalVolumeManager();
         std::vector<brillo::LogicalVolume> lvs =
-            lvm_->ListLogicalVolumes(volume_group_.value(), "cryptohome*");
+            lvm->ListLogicalVolumes(volume_group_.value(), "cryptohome*");
         for (auto& lv : lvs) {
           if (!lv.Remove()) {
             LOG(WARNING) << "Failed to remove logical volume: " << lv.GetName();
@@ -740,7 +744,8 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   if (!device.empty()) {
     if (USE_LVM_STATEFUL_PARTITION && volume_group_ &&
         volume_group_->IsValid()) {
-      auto lg = lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
+      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+      auto lg = lvm->GetLogicalVolume(volume_group_.value(), "unencrypted");
       lg->Activate();
       startup_dep_->Mount(device, stateful_dev, "",
                           MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,

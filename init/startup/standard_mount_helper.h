@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -21,7 +22,8 @@ namespace startup {
 // image or in factory mode.
 class StandardMountHelper : public startup::MountHelper {
  public:
-  explicit StandardMountHelper(StartupDep* startup_dep,
+  explicit StandardMountHelper(libstorage::Platform* platform,
+                               StartupDep* startup_dep,
                                const startup::Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,

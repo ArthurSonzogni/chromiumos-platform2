@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/startup_dep_impl.h"
@@ -32,7 +33,8 @@ enum class MountHelperType {
 // and StandardMountHelper classes.
 class MountHelper {
  public:
-  MountHelper(StartupDep* startup_dep,
+  MountHelper(libstorage::Platform* platform,
+              StartupDep* startup_dep,
               const Flags& flags,
               const base::FilePath& root,
               const base::FilePath& stateful,
@@ -78,6 +80,7 @@ class MountHelper {
   virtual MountHelperType GetMountHelperType() const = 0;
 
  protected:
+  raw_ptr<libstorage::Platform> platform_;
   raw_ptr<StartupDep> startup_dep_;
   const startup::Flags flags_;
   const base::FilePath root_;

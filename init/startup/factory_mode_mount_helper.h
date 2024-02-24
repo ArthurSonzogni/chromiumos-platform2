@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -22,7 +23,8 @@ namespace startup {
 // have different behavior when the device is in factory mode.
 class FactoryModeMountHelper : public MountHelper {
  public:
-  explicit FactoryModeMountHelper(StartupDep* startup_dep,
+  explicit FactoryModeMountHelper(libstorage::Platform* platform,
+                                  StartupDep* startup_dep,
                                   const Flags& flags,
                                   const base::FilePath& root,
                                   const base::FilePath& stateful,

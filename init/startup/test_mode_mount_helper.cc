@@ -17,6 +17,7 @@
 #include <base/values.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -37,12 +38,14 @@ namespace startup {
 
 // Constructor for TestModeMountHelper when the device is
 // not in dev mode.
-TestModeMountHelper::TestModeMountHelper(StartupDep* startup_dep,
+TestModeMountHelper::TestModeMountHelper(libstorage::Platform* platform,
+                                         StartupDep* startup_dep,
                                          const startup::Flags& flags,
                                          const base::FilePath& root,
                                          const base::FilePath& stateful,
                                          const bool dev_mode)
-    : startup::MountHelper(startup_dep, flags, root, stateful, dev_mode) {}
+    : startup::MountHelper(
+          platform, startup_dep, flags, root, stateful, dev_mode) {}
 
 bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and

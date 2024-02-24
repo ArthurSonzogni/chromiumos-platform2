@@ -20,17 +20,15 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/blkdev_utils/mock_lvm.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <gtest/gtest.h>
-#include <libcrossystem/crossystem.h>
-#include <libcrossystem/crossystem_fake.h>
+#include <libstorage/platform/fake_platform.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/mock_startup_dep_impl.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
+#include "init/startup/startup_dep_impl.h"
 
 using testing::_;
 using testing::ByMove;
@@ -101,15 +99,17 @@ class Ext4FeaturesTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
+    platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   }
 
   startup::Flags flags_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
+  std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
 };
@@ -127,8 +127,8 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
   startup_dep_->SetStatResultForPath(encrypt_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -147,8 +147,8 @@ TEST_F(Ext4FeaturesTest, Verity) {
   startup_dep_->SetStatResultForPath(verity_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -161,8 +161,8 @@ TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -182,8 +182,8 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
   startup_dep_->SetStatResultForPath(quota_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -203,8 +203,8 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
   startup_dep_->SetStatResultForPath(quota_file, st);
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -217,8 +217,8 @@ TEST_F(Ext4FeaturesTest, DisableQuota) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -230,8 +230,8 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
   startup::Flags flags;
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, startup_dep_.get(),
-      std::unique_ptr<brillo::MockLogicalVolumeManager>(), mount_helper_.get());
+      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
@@ -246,6 +246,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
+    platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     stateful_update_file = stateful.Append(".update_available");
     clobber_log_ = base_dir.Append("clobber_log");
@@ -255,10 +256,9 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, startup_dep_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
         mount_helper_.get());
   }
 
@@ -268,6 +268,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+  std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::FilePath clobber_log_;
   base::FilePath stateful_update_file;
@@ -376,12 +377,12 @@ class DevGatherLogsTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
+    platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir, stateful, startup_dep_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+        flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
         mount_helper_.get());
     lab_preserve_logs_ = stateful.Append(".gatherme");
     prior_log_dir_ = stateful.Append("unencrypted/prior_logs");
@@ -399,6 +400,7 @@ class DevGatherLogsTest : public ::testing::Test {
   base::FilePath prior_log_dir_;
   base::FilePath var_dir_;
   base::FilePath home_chronos_;
+  std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;

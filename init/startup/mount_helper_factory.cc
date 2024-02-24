@@ -9,23 +9,26 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/mount_helper_factory.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/test_mode_mount_helper.h"
 
 namespace startup {
 
-MountHelperFactory::MountHelperFactory(StartupDep* startup_dep,
+MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
+                                       StartupDep* startup_dep,
                                        const Flags& flags,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,
                                        const base::FilePath& lsb_file)
-    : startup_dep_(startup_dep),
+    : platform_(platform),
+      startup_dep_(startup_dep),
       flags_(flags),
       root_(root),
       stateful_(stateful),
@@ -47,16 +50,16 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {
     return std::make_unique<FactoryModeMountHelper>(
-        std::move(startup_dep_), flags_, root_, stateful_, dev_mode);
+        platform_, startup_dep_, flags_, root_, stateful_, dev_mode);
   }
 
   if (dev_mode && is_test_image) {
-    return std::make_unique<TestModeMountHelper>(startup_dep_, flags_, root_,
-                                                 stateful_, dev_mode);
+    return std::make_unique<TestModeMountHelper>(
+        platform_, startup_dep_, flags_, root_, stateful_, dev_mode);
   }
 
-  return std::make_unique<StandardMountHelper>(startup_dep_, flags_, root_,
-                                               stateful_, dev_mode);
+  return std::make_unique<StandardMountHelper>(platform_, startup_dep_, flags_,
+                                               root_, stateful_, dev_mode);
 }
 
 }  // namespace startup

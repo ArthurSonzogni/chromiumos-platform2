@@ -10,11 +10,13 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <libstorage/platform/platform.h>
 #include <vpd/vpd.h>
 
 #include "init/startup/chromeos_startup.h"
@@ -71,22 +73,25 @@ int main(int argc, char* argv[]) {
   // A decreasing number is more verbose and numbers below zero are OK.
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 
-  crossystem::Crossystem crossystem;
-  startup::StartupDep startup_dep;
+  std::unique_ptr<libstorage::Platform> platform =
+      std::make_unique<libstorage::Platform>();
+
+  std::unique_ptr<startup::StartupDep> startup_dep =
+      std::make_unique<startup::StartupDep>();
 
   startup::MountHelperFactory mount_helper_factory(
-      &startup_dep, flags, base::FilePath("/"),
+      platform.get(), startup_dep.get(), flags, base::FilePath("/"),
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate(&crossystem);
+      mount_helper_factory.Generate(platform->GetCrosssystem());
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
-          &crossystem, std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
+          std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-          base::FilePath(kProcPath), &startup_dep, std::move(mount_helper),
-          std::move(tlcl));
+          base::FilePath(kProcPath), platform.get(), startup_dep.get(),
+          std::move(mount_helper), std::move(tlcl));
 
   return startup->Run();
 }

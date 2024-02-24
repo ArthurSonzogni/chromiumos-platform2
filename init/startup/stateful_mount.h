@@ -12,7 +12,6 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <metrics/bootstat.h>
 
 #include "init/startup/flags.h"
@@ -32,8 +31,8 @@ class StatefulMount {
   StatefulMount(const Flags& flags,
                 const base::FilePath& root,
                 const base::FilePath& stateful,
+                libstorage::Platform* platform,
                 StartupDep* startup_dep,
-                std::unique_ptr<brillo::LogicalVolumeManager> lvm,
                 MountHelper* mount_helper);
 
   virtual ~StatefulMount() = default;
@@ -68,9 +67,10 @@ class StatefulMount {
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
-  StartupDep* startup_dep_;
-  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
-  MountHelper* mount_helper_;
+
+  raw_ptr<libstorage::Platform> platform_;
+  raw_ptr<StartupDep> startup_dep_;
+  raw_ptr<MountHelper> mount_helper_;
   bootstat::BootStat bootstat_;
 
   base::FilePath root_dev_type_;

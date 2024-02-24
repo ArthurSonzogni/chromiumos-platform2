@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
@@ -32,12 +33,13 @@ namespace startup {
 
 // Constructor for FactoryModeMountHelper when the device is
 // in factory mode.
-FactoryModeMountHelper::FactoryModeMountHelper(StartupDep* startup_dep,
+FactoryModeMountHelper::FactoryModeMountHelper(libstorage::Platform* platform,
+                                               StartupDep* startup_dep,
                                                const Flags& flags,
                                                const base::FilePath& root,
                                                const base::FilePath& stateful,
                                                const bool dev_mode)
-    : MountHelper(startup_dep, flags, root, stateful, dev_mode) {}
+    : MountHelper(platform, startup_dep, flags, root, stateful, dev_mode) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = stateful_.Append(kOptionsFile);

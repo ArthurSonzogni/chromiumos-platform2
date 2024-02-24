@@ -335,7 +335,10 @@ if (use.test) {
       ":libcrosstartup",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "libcrossystem-test" ]
+    pkg_deps = [
+      "libcrossystem-test",
+      "libstorage_fake_platform",
+    ]
   }
 
   executable("clobber_state_test") {
