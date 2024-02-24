@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
@@ -65,6 +66,12 @@ class FakeManager : public Manager {
   // Tests sometimes need to ensure that all tasks that have been posted have
   // been run. See warnings at base::test::TaskEnvironment::RunUntilIdle().
   void RunTasksUntilIdle() { task_env_.RunUntilIdle(); }
+
+  // Make the simulated clock advance by |delta|. See
+  // base::test::TaskEnvironment::FastForwardBy() for more information.
+  void FastForwardBy(const base::TimeDelta& delta) {
+    task_env_.FastForwardBy(delta);
+  }
 
   // Let a test simulate what happens when a user logs in (for example
   // SessionManager will notify the observers).

@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -33,6 +34,7 @@ namespace fbpreprocessor {
 
 PseudonymizationManager::PseudonymizationManager(Manager* manager)
     : base_dir_(kDaemonStorageRoot), manager_(manager) {
+  CHECK(manager_->session_state_manager());
   manager_->session_state_manager()->AddObserver(this);
 }
 
@@ -127,7 +129,9 @@ void PseudonymizationManager::OnPseudonymizationComplete(
             << "successfully.";
   VLOG(kLocalOnlyDebugVerbosity) << "Completed pseudonymization of " << input;
   if (success) {
-    manager_->output_manager()->AddFirmwareDump(output);
+    if (manager_->output_manager()) {
+      manager_->output_manager()->AddFirmwareDump(output);
+    }
   } else {
     if (!output.Delete()) {
       LOG(ERROR) << "Failed to delete output firmware dump after "
