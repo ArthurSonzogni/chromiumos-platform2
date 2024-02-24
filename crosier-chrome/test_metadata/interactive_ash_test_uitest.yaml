@@ -5,7 +5,7 @@
 # Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
 ---
 author: "ChromiumOS Authors"
-name: "AshIntegrationTestTest"
+name: "InteractiveAshTestUITest"
 harness: "crosier"
 category: "integration"
 owners:
@@ -16,5 +16,5 @@ criteria: |
   Basic integration test for Ash browser.
 cases:
   - id: "Basics"
-    tags: ["crosier:crosierdemosuite"]
+    tags: []
 ...

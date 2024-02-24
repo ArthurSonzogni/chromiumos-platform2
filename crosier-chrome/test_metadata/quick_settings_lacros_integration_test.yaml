@@ -18,5 +18,5 @@ criteria: |
   Tests that the device management page opens in Lacros.
 cases:
   - id: "ManagedDeviceInfo"
-    tags: ["crosier:crosierdemosuite"]
+    tags: []
 ...

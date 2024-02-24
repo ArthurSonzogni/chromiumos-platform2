@@ -20,5 +20,5 @@ criteria: |
   to query Lacros for web page state.
 cases:
   - id: "SmartDim"
-    tags: ["crosier:crosierdemosuite"]
+    tags: []
 ...
