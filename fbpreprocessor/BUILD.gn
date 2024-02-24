@@ -95,7 +95,10 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("fbpreprocessord_test_runner") {
-    sources = [ "firmware_dump_test.cc" ]
+    sources = [
+      "fake_manager.cc",
+      "firmware_dump_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":libchrome_test_config",

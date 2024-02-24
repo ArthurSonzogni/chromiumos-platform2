@@ -49,7 +49,7 @@ class ManagerImpl : public Manager {
     return platform_features_.get();
   }
 
-  scoped_refptr<base::SequencedTaskRunner> task_runner() const override {
+  scoped_refptr<base::SequencedTaskRunner> task_runner() override {
     return task_runner_;
   }
 

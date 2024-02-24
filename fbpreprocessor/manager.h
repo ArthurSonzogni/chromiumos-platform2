@@ -39,7 +39,7 @@ class Manager {
 
   virtual PlatformFeaturesClient* platform_features() const = 0;
 
-  virtual scoped_refptr<base::SequencedTaskRunner> task_runner() const = 0;
+  virtual scoped_refptr<base::SequencedTaskRunner> task_runner() = 0;
 
   virtual int default_file_expiration_in_secs() const = 0;
 };
