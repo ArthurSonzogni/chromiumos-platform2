@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_endpoint.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <set>
@@ -23,6 +24,7 @@
 #include "shill/metrics.h"
 #include "shill/mock_log.h"
 #include "shill/refptr_types.h"
+#include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
@@ -121,9 +123,24 @@ class WiFiEndpointTest : public PropertyStoreTest {
     wps->insert(wps->end(), value.begin(), value.end());
   }
 
+  void AddANQPCapability(uint16_t cap, std::vector<uint8_t>* ies) {
+    ies->push_back(cap);       // cap LSByte
+    ies->push_back(cap >> 8);  // cap MSByte
+  }
+
   KeyValueStore MakeBSSPropertiesWithIEs(const std::vector<uint8_t>& ies) {
     KeyValueStore properties;
     properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ies);
+    return properties;
+  }
+
+  KeyValueStore MakeBSSPropertiesWithANQPCapabilities(
+      const std::vector<uint8_t>& ies) {
+    KeyValueStore anqp;
+    anqp.Set<std::vector<uint8_t>>(
+        WPASupplicant::kANQPChangePropertyCapabilityList, ies);
+    KeyValueStore properties;
+    properties.Set<KeyValueStore>(WPASupplicant::kBSSPropertyANQP, anqp);
     return properties;
   }
 
@@ -980,6 +997,57 @@ TEST_F(WiFiEndpointTest, ParseAdvertisementProtocolList) {
   }
 }
 
+TEST_F(WiFiEndpointTest, ParseANQPFields) {
+  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  {
+    std::vector<uint8_t> ies;
+    AddANQPCapability(IEEE_80211::kANQPCapabilityList, &ies);
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_TRUE(
+        ep->ParseANQPFields(MakeBSSPropertiesWithANQPCapabilities(ies)));
+    EXPECT_TRUE(ep->supported_features_.anqp_capabilities.capability_list);
+  }
+  {
+    std::vector<uint8_t> ies;
+    AddANQPCapability(IEEE_80211::kANQPCapabilityList, &ies);
+    AddANQPCapability(IEEE_80211::kANQPVenueName, &ies);
+    AddANQPCapability(IEEE_80211::kANQPNetworkAuthenticationType, &ies);
+    AddANQPCapability(IEEE_80211::kANQPAddressTypeAvailability, &ies);
+    AddANQPCapability(IEEE_80211::kANQPVenueURL, &ies);
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_TRUE(
+        ep->ParseANQPFields(MakeBSSPropertiesWithANQPCapabilities(ies)));
+    EXPECT_TRUE(ep->supported_features_.anqp_capabilities.capability_list);
+    EXPECT_TRUE(ep->supported_features_.anqp_capabilities.venue_name);
+    EXPECT_TRUE(ep->supported_features_.anqp_capabilities.network_auth_type);
+    EXPECT_TRUE(
+        ep->supported_features_.anqp_capabilities.address_type_availability);
+    EXPECT_TRUE(ep->supported_features_.anqp_capabilities.venue_url);
+  }
+  {
+    const KeyValueStore properties;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseANQPFields(properties));
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.capability_list);
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.venue_name);
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.network_auth_type);
+    EXPECT_FALSE(
+        ep->supported_features_.anqp_capabilities.address_type_availability);
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.venue_url);
+  }
+  {
+    std::vector<uint8_t> ies;
+    AddANQPCapability(IEEE_80211::kANQPVenueName, &ies);
+    AddANQPCapability(IEEE_80211::kANQPVenueURL, &ies);
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(
+        ep->ParseANQPFields(MakeBSSPropertiesWithANQPCapabilities(ies)));
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.capability_list);
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.venue_name);
+    EXPECT_FALSE(ep->supported_features_.anqp_capabilities.network_auth_type);
+  }
+}
+
 TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
@@ -1108,6 +1176,25 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   endpoint->PropertiesChanged(MakePrivacyArgs(false));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
+}
+
+TEST_F(WiFiEndpointTest, PropertiesChangedANQP) {
+  KeyValueStore changed_properties;
+  std::vector<uint8_t> ies;
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+                   WiFiEndpoint::SecurityFlags());
+
+  // Empty capabilities should not trigger the call.
+  EXPECT_CALL(*wifi(), NotifyANQPInformationChanged(_)).Times(0);
+  endpoint->PropertiesChanged(MakeBSSPropertiesWithANQPCapabilities(ies));
+  EXPECT_FALSE(endpoint->anqp_capabilities().capability_list);
+
+  // Valid capabilities should trigger the call.
+  EXPECT_CALL(*wifi(), NotifyANQPInformationChanged(_)).Times(1);
+  AddANQPCapability(IEEE_80211::kANQPCapabilityList, &ies);
+  endpoint->PropertiesChanged(MakeBSSPropertiesWithANQPCapabilities(ies));
+  EXPECT_TRUE(endpoint->anqp_capabilities().capability_list);
 }
 
 TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {

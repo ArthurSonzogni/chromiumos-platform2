@@ -210,11 +210,19 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     should_notify = true;
   }
 
+  bool anqp_info_changed = false;
+  if (properties.Contains<KeyValueStore>(WPASupplicant::kBSSPropertyANQP)) {
+    anqp_info_changed = ParseANQPFields(properties);
+  }
+
   if (should_notify) {
     device_->NotifyEndpointChanged(this);
   }
   if (hs20_support_changed) {
     device_->NotifyHS20InformationChanged(this);
+  }
+  if (anqp_info_changed) {
+    device_->NotifyANQPInformationChanged(this);
   }
 }
 
@@ -372,6 +380,10 @@ const WiFiEndpoint::QosSupport& WiFiEndpoint::qos_support() const {
 
 bool WiFiEndpoint::anqp_support() const {
   return supported_features_.anqp_support;
+}
+
+const WiFiEndpoint::ANQPCapabilities& WiFiEndpoint::anqp_capabilities() const {
+  return supported_features_.anqp_capabilities;
 }
 
 // static
@@ -1072,6 +1084,115 @@ void WiFiEndpoint::ParseAdvertisementProtocolList(
         ie++;
     }
   }
+}
+
+bool WiFiEndpoint::ParseANQPFields(const KeyValueStore& properties) {
+  if (!properties.Contains<KeyValueStore>(WPASupplicant::kBSSPropertyANQP)) {
+    SLOG(2) << __func__ << ": No ANQP properties in BSS.";
+    return false;
+  }
+  auto anqp = properties.Get<KeyValueStore>(WPASupplicant::kBSSPropertyANQP);
+  bool has_changed = false;
+
+  if (anqp.Contains<std::vector<uint8_t>>(
+          WPASupplicant::kANQPChangePropertyCapabilityList)) {
+    std::vector<uint8_t> ies = anqp.Get<std::vector<uint8_t>>(
+        WPASupplicant::kANQPChangePropertyCapabilityList);
+    has_changed = ParseANQPCapabilityList(
+        ies.begin(), ies.end(), &supported_features_.anqp_capabilities);
+  }
+
+  return has_changed;
+}
+
+bool WiFiEndpoint::ParseANQPCapabilityList(
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
+    ANQPCapabilities* anqp_capabilities) {
+  // Format of the capability list as described in IEEE 802.11-2020 9.4.5.3.
+  //    2            2 or 0            variable
+  // +----------- +------------+-----+---------------+-----+
+  // | ANQP       | ANQP Cap   | ... | ANQP Vendor   | ... |
+  // | Capability | (optional) |     | Specific list |     |
+  // +------------+------------+-----+---------------+-----+
+  //
+  // The capability list always contains the ANQP Capability list
+  // elements, and may contain more.
+  if (std::distance(ie, end) < 2) {
+    LOG(WARNING) << __func__ << ": No room for ANQP capabilities.";
+    return false;
+  }
+
+  bool found_venue_name = false;
+  bool found_network_auth_type = false;
+  bool found_address_type_availability = false;
+  bool found_venue_url = false;
+
+  // The Capability List element must always be included.
+  uint16_t cap = *ie | (*(ie + 1) << 8);
+  ie += 2;
+  if (cap != IEEE_80211::kANQPCapabilityList) {
+    LOG(WARNING) << __func__ << ": No ANQP Capability List element.";
+    return false;
+  }
+  // Other capabilities are optional.
+  while (std::distance(ie, end) >= 2) {
+    cap = *ie | (*(ie + 1) << 8);
+    ie += 2;
+    switch (cap) {
+      case IEEE_80211::kANQPVenueName:
+        found_venue_name = true;
+        break;
+      case IEEE_80211::kANQPNetworkAuthenticationType:
+        found_network_auth_type = true;
+        break;
+      case IEEE_80211::kANQPAddressTypeAvailability:
+        found_address_type_availability = true;
+        break;
+      case IEEE_80211::kANQPVenueURL:
+        found_venue_url = true;
+        break;
+      case IEEE_80211::kANQPVendorSpecificList: {
+        // Format of a vendor specific element as described in IEEE802.11-2020
+        // 9.4.5.8.
+        //    2         2
+        // +---------+--------+-----+-----------------+
+        // | Info ID | Length | OUI | Vendor specific |
+        // +---------+--------+-----+-----------------+
+        //
+        // Info ID was already parsed in |cap|, parse the length to skip the
+        // element.
+        if (std::distance(ie, end) < 2) {
+          LOG(WARNING) << __func__
+                       << ": No room for vendor specific element length.";
+          return false;
+        }
+        int vendor_ie_len = *ie | (*(ie + 1) << 8);
+        if (std::distance(ie, end) < vendor_ie_len) {
+          LOG(WARNING) << __func__ << ": No room for vendor specific element.";
+          return false;
+        }
+        // Skip the vendor vpecific element.
+        ie += vendor_ie_len;
+        break;
+      }
+      default:
+        // All others capabilities are ignored for now.
+        break;
+    }
+  }
+
+  // Parsing was done successfully, update the endpoint ANQP capabilities. Note
+  // that the parsing cannot be successful if the capability list identifier is
+  // not present.
+  anqp_capabilities->capability_list = true;
+  anqp_capabilities->venue_name = found_venue_name;
+  anqp_capabilities->address_type_availability =
+      found_address_type_availability;
+  anqp_capabilities->network_auth_type = found_network_auth_type;
+  anqp_capabilities->venue_url = found_venue_url;
+
+  return true;
 }
 
 void WiFiEndpoint::CheckForTetheringSignature() {

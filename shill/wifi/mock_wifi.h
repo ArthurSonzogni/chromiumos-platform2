@@ -56,6 +56,10 @@ class MockWiFi : public WiFi {
               NotifyHS20InformationChanged,
               (const WiFiEndpointConstRefPtr&),
               (override));
+  MOCK_METHOD(void,
+              NotifyANQPInformationChanged,
+              (const WiFiEndpointConstRefPtr&),
+              (override));
   MOCK_METHOD(bool, IsCurrentService, (const WiFiService* service), (const));
   MOCK_METHOD(int16_t, GetSignalLevelForActiveService, (), (override));
   MOCK_METHOD(void,

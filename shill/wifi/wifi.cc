@@ -941,6 +941,12 @@ void WiFi::NotifyHS20InformationChanged(
       need_interworking_select_ || endpoint->hs20_information().supported;
 }
 
+void WiFi::NotifyANQPInformationChanged(
+    const WiFiEndpointConstRefPtr& endpoint) {
+  SLOG(2) << __func__;
+  // TODO(b/322972968): add metrics on available fields.
+}
+
 std::string WiFi::AppendBgscan(WiFiService* service,
                                KeyValueStore* service_params) const {
   std::string method = bgscan_method_;
@@ -2621,11 +2627,15 @@ void WiFi::StateChanged(const std::string& new_state) {
             Metrics::kPasspointTermsAndConditionsAssociated);
       }
       WiFiEndpointConstRefPtr current = GetCurrentEndpoint();
-      if (!current->hs20_information().supported && current->anqp_support()) {
+      // The Capability List ID is always included in the Capability list
+      // response from the AP. When anqp_capabilities.capability_list is true it
+      // means the ANQP request was already done in the past (by
+      // interworking_select for instance) which means we don't need to do it
+      // again.
+      if (current->anqp_support() &&
+          !current->anqp_capabilities().capability_list) {
         // The endpoint supports ANQP requests, query the capability list to
         // know the fields supported by the access point.
-        // HS2.0 endpoints are excluded since we expect the ANQP request to be
-        // done during interworking selection.
         ANQPGet(GetCurrentEndpoint()->bssid_string(),
                 {IEEE_80211::kANQPCapabilityList});
       }

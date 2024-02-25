@@ -29,6 +29,7 @@ class WPASupplicant {
   static constexpr char kBSSPropertyRates[] = "Rates";
   static constexpr char kBSSPropertySSID[] = "SSID";
   static constexpr char kBSSPropertySignal[] = "Signal";
+  static constexpr char kBSSPropertyANQP[] = "ANQP";
   // Location of the system root CA certificates.
   static constexpr char kCaPath[] = "/etc/ssl/certs";
   static constexpr char kCurrentBSSNull[] = "/";
@@ -269,6 +270,8 @@ class WPASupplicant {
 
   static constexpr char kANQPPropertyAddr[] = "addr";
   static constexpr char kANQPPropertyIds[] = "ids";
+
+  static constexpr char kANQPChangePropertyCapabilityList[] = "CapabilityList";
 
   static constexpr char kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";
 

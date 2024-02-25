@@ -284,7 +284,7 @@ enum WiFiStatusCode : uint16_t {
   kStatusCodeInvalid = UINT16_MAX
 };
 
-// ANQP information ID as defined from IEEE802.11-2020, table 7-43bk.
+// ANQP information ID as defined from IEEE802.11-2020, table 9-331.
 enum ANQPInformationID : uint16_t {
   // 0-255 are reserved.
   kANQPQueryList = 256,
@@ -301,8 +301,21 @@ enum ANQPInformationID : uint16_t {
   kANQPAPLocationPublicIdentifierURI = 267,
   kANQPDomainNameList = 268,
   kANQPEmergencyAlertIdentifierURI = 269,
+  kANQPTDLSCapability = 270,
   kANQPEmergencyNAI = 271,
-  // 272-76796 are reserved.
+  kANQPNeighborReport = 272,
+  kANQPQueryAPList = 273,
+  kANQPAPListResponse = 274,
+  // 275 is reserved.
+  kANQPCAG = 276,
+  kANQPVenueURL = 277,
+  kANQPAdviceOfCharge = 278,
+  kANQPLocalContent = 279,
+  kANQPNetworkAuthTypeWithTimestamp = 280,
+  kANQPServiceInformationRequest = 281,
+  kANQPServiceInformationResponse = 282,
+  kANQPLocalMACAddressPolicy = 282,
+  // 284-76796 are reserved.
   kANQPVendorSpecificList = 56797,
   // 56798-65535 are reserved.
 };

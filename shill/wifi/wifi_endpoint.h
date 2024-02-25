@@ -64,12 +64,21 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     bool mscs_supported = false;
     bool alternate_edca_supported = false;
   };
+  // Subset of ANQP capabilities we're interested in.
+  struct ANQPCapabilities {
+    bool capability_list = false;
+    bool venue_name = false;
+    bool network_auth_type = false;
+    bool address_type_availability = false;
+    bool venue_url = false;
+  };
   struct SupportedFeatures {
     Ap80211krvSupport krv_support;
     HS20Information hs20_information;
     bool mbo_support = false;
     QosSupport qos_support;
     bool anqp_support = false;
+    ANQPCapabilities anqp_capabilities;
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
@@ -128,6 +137,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool mbo_support() const;
   const QosSupport& qos_support() const;
   bool anqp_support() const;
+  const ANQPCapabilities& anqp_capabilities() const;
   // Transitional mode OWE AP consists of two BSSes pointing to each other via
   // IEs in the beacon. The SSID and BSSID is included in these IEs for
   // identification and these two functions return them. For endpoints not
@@ -149,6 +159,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
   FRIEND_TEST(WiFiEndpointTest, ParseCountryCode);
   FRIEND_TEST(WiFiEndpointTest, ParseAdvertisementProtocolList);
+  FRIEND_TEST(WiFiEndpointTest, ParseANQPFields);
   // These test cases need access to the KeyManagement enum.
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsOWE);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
@@ -245,6 +256,12 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   void ParseAdvertisementProtocolList(std::vector<uint8_t>::const_iterator ie,
                                       std::vector<uint8_t>::const_iterator end,
                                       bool* anqp_support);
+  // Parse ANQP fields, return when ANQP fields where effectively parsed.
+  bool ParseANQPFields(const KeyValueStore& properties);
+  // Parse ANQP Capability List field.
+  bool ParseANQPCapabilityList(std::vector<uint8_t>::const_iterator ie,
+                               std::vector<uint8_t>::const_iterator end,
+                               ANQPCapabilities* anqp_capabilities);
 
   // Assigns a value to |has_tethering_signature_|.
   void CheckForTetheringSignature();

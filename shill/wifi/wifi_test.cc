@@ -469,6 +469,11 @@ void AddIEWithData(uint8_t type,
   ies->insert(ies->end(), data.begin(), data.end());
 }
 
+void AddANQPCapability(uint16_t cap, std::vector<uint8_t>* ies) {
+  ies->push_back(cap);       // cap LSByte
+  ies->push_back(cap >> 8);  // cap MSByte
+}
+
 }  // namespace
 
 class WiFiPropertyTest : public PropertyStoreTest {
@@ -6265,6 +6270,35 @@ TEST_F(WiFiMainTest, ANQPGet) {
   ReportCurrentBSSChanged(path);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), ANQPGet(_));
+  TriggerNetworkStart();
+  Mock::VerifyAndClearExpectations(service.get());
+}
+
+TEST_F(WiFiMainTest, EndpointWithANQPCapsNoANQPGet) {
+  StartWiFi();
+
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+
+  // Create properties with ANQP support and capability list.
+  KeyValueStore properties, anqp_properties;
+  std::vector<uint8_t> ies, caps;
+  const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtANQP};
+  AddIEWithData(IEEE_80211::kElemIdAdvertisementProtocols, kAdvProt, &ies);
+  properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ies);
+  AddANQPCapability(IEEE_80211::kANQPCapabilityList, &caps);
+  anqp_properties.Set<std::vector<uint8_t>>(
+      WPASupplicant::kANQPChangePropertyCapabilityList, caps);
+  properties.Set<KeyValueStore>(WPASupplicant::kBSSPropertyANQP,
+                                anqp_properties);
+
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().at(bss_path);
+  endpoint->PropertiesChanged(properties);
+
+  InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), ANQPGet(_)).Times(0);
   TriggerNetworkStart();
   Mock::VerifyAndClearExpectations(service.get());
 }
