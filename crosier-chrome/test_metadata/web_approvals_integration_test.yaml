@@ -16,5 +16,5 @@ criteria: |
   Checks that matures sites are blocked for Unicorn users
 cases:
   - id: "TestMatureSiteBlocked"
-    tags: ["crosier:crosierdemosuite"]
+    tags: []
 ...
