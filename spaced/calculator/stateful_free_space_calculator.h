@@ -52,6 +52,7 @@ class BRILLO_EXPORT StatefulFreeSpaceCalculator : public Calculator {
   // Schedules the next update depending on the amount of free space.
   void ScheduleUpdate(base::TimeDelta delay);
 
+  int64_t last_updated_free_space_;
   std::optional<brillo::Thinpool> thinpool_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal_;

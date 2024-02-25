@@ -21,13 +21,16 @@ namespace spaced {
 namespace {
 
 constexpr char kStatefulMountPath[] = "/mnt/stateful_partition";
+constexpr int64_t kLowDiskSpaceBytes = 2LL * 1024 * 1024 * 1024;
+constexpr int64_t kCriticalDiskSpaceBytes = 1LL * 1024 * 1024 * 1024;
+constexpr int64_t kDiskSpaceSignalThresholdBytes = 100LL * 1024 * 1024;
 
 spaced::StatefulDiskSpaceState GetDiskSpaceState(int64_t free_space) {
   if (free_space == -1) {
     return spaced::StatefulDiskSpaceState::NONE;
-  } else if (free_space > 2LL * 1024 * 1024 * 1024) {
+  } else if (free_space > kLowDiskSpaceBytes) {
     return spaced::StatefulDiskSpaceState::NORMAL;
-  } else if (free_space > 1LL * 1024 * 1024 * 1024) {
+  } else if (free_space > kCriticalDiskSpaceBytes) {
     return spaced::StatefulDiskSpaceState::LOW;
   } else {
     return spaced::StatefulDiskSpaceState::CRITICAL;
@@ -55,6 +58,7 @@ StatefulFreeSpaceCalculator::StatefulFreeSpaceCalculator(
   thinpool_ = thinpool;
   task_runner_ = task_runner;
   signal_ = signal;
+  last_updated_free_space_ = 0;
 }
 
 void StatefulFreeSpaceCalculator::Start() {
@@ -107,12 +111,22 @@ void StatefulFreeSpaceCalculator::UpdateSize() {
 
 void StatefulFreeSpaceCalculator::SignalDiskSpaceUpdate() {
   int64_t stateful_free_space = GetSize();
+
+  // If the device is not running low on disk space and the current
+  // disk space update will not result in a meaningful change, do not
+  // signal the update.
+  if (last_updated_free_space_ > kCriticalDiskSpaceBytes &&
+      std::abs(stateful_free_space - last_updated_free_space_) <
+          kDiskSpaceSignalThresholdBytes)
+    return;
+
   spaced::StatefulDiskSpaceState state = GetDiskSpaceState(stateful_free_space);
   spaced::StatefulDiskSpaceUpdate payload;
 
   payload.set_state(state);
   payload.set_free_space_bytes(stateful_free_space);
   signal_.Run(payload);
+  last_updated_free_space_ = stateful_free_space;
 }
 
 int StatefulFreeSpaceCalculator::StatVFS(const base::FilePath& path,
