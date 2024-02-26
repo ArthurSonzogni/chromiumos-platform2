@@ -31,7 +31,6 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_install_attributes_reader.h"
 #include "login_manager/mock_metrics.h"
-#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
@@ -151,10 +150,9 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   void InitService(NssUtil* nss, bool use_mock_store) {
     metrics_ = std::make_unique<MockMetrics>();
-    mitigator_ = std::make_unique<StrictMock<MockMitigator>>();
     service_.reset(new DevicePolicyService(
-        tmpdir_.GetPath(), &key_, metrics_.get(), mitigator_.get(), nss,
-        &utils_, &crossystem_, &vpd_process_, &install_attributes_reader_));
+        tmpdir_.GetPath(), &key_, metrics_.get(), nss, &utils_, &crossystem_,
+        &vpd_process_, &install_attributes_reader_));
     if (use_mock_store) {
       auto store_ptr = std::make_unique<StrictMock<MockPolicyStore>>();
       store_ = store_ptr.get();
@@ -235,11 +233,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
     new_policy_proto_.CopyFrom(policy);
   }
 
-  void ExpectMitigating(bool mitigating) {
-    EXPECT_CALL(*mitigator_.get(), Mitigating())
-        .WillRepeatedly(Return(mitigating));
-  }
-
   void ExpectGetPolicy(Sequence sequence,
                        const em::PolicyFetchResponse& policy) {
     EXPECT_CALL(*store_, Get())
@@ -315,7 +308,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_ = nullptr;
   std::unique_ptr<MockMetrics> metrics_;
-  std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
   testing::NiceMock<MockSystemUtils> utils_;
   crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
@@ -323,82 +315,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   std::unique_ptr<DevicePolicyService> service_;
 };
-
-TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_SuccessEmptyPolicy) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-  em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
-  ExpectKeyPopulated(true);
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_TRUE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MissingKey) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  ExpectKeyPopulated(true);
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_TRUE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MissingPublicKeyOwner) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  ExpectKeyPopulated(true);
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_TRUE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MitigationFailure) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _))
-      .InSequence(s)
-      .WillOnce(Return(false));
-  ExpectKeyPopulated(true);
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_FALSE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
-  EXPECT_TRUE(error.get());
-  EXPECT_TRUE(is_owner);
-  EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());
-}
 
 TEST_F(DevicePolicyServiceTest, PolicyAllowsNewUsersWhitelist) {
   em::ChromeDeviceSettingsProto allowed;
@@ -494,112 +410,6 @@ TEST_F(DevicePolicyServiceTest, GivenUserIsOwner) {
 
     EXPECT_FALSE(DevicePolicyService::GivenUserIsOwner(response, kTestUser));
   }
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-
-  ExpectMitigating(false);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
-  ExpectInstallNewOwnerPolicy(s, &nss);
-
-  SetDefaultSettings();
-  ExpectPersistKeyAndPolicy(true);
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-
-  ExpectMitigating(true);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(_)).Times(0);
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  SetDefaultSettings();
-
-  ExpectPersistKeyAndPolicy(true);
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-
-  ExpectMitigating(true);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  ExpectFailedInstallNewOwnerPolicy(s, &nss);
-
-  ExpectNoPersistKeyAndPolicy();
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest,
-       ValidateAndStoreOwnerKey_SuccessAddOwnerWhitelist) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-  em::ChromeDeviceSettingsProto settings;
-  settings.mutable_user_whitelist()->add_user_whitelist("a@b");
-  settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
-
-  ExpectMitigating(false);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  SetDefaultSettings();
-
-  ExpectPersistKeyAndPolicy(true);
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest,
-       ValidateAndStoreOwnerKey_SuccessAddOwnerAllowlist) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-  em::ChromeDeviceSettingsProto settings;
-  settings.mutable_user_allowlist()->add_user_allowlist("a@b");
-  settings.mutable_user_allowlist()->add_user_allowlist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
-
-  ExpectMitigating(false);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  SetDefaultSettings();
-
-  ExpectPersistKeyAndPolicy(true);
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 // Ensure block devmode is set properly in NVRAM.
@@ -825,72 +635,6 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-
-  ExpectMitigating(false);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(false));
-
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
-  KeyCheckUtil nss;
-  InitService(&nss, true);
-
-  ExpectMitigating(true);
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
-      .InSequence(s)
-      .WillOnce(Return(false));
-
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-}
-
-TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  ExpectKeyPopulated(true);
-
-  EXPECT_FALSE(service_->KeyMissing());
-}
-
-TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(false));
-  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
-
-  EXPECT_FALSE(service_->KeyMissing());
-}
-
-TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  ExpectKeyPopulated(false);
-
-  EXPECT_TRUE(service_->KeyMissing());
 }
 
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {

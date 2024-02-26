@@ -810,21 +810,6 @@ class SessionManagerImplTest : public ::testing::Test,
 
   void ExpectGuestSession() { ExpectSessionBoilerplate(*GetGuestUsername()); }
 
-  void ExpectStartSessionUnowned(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         false);  // mitigating
-  }
-
-  void ExpectStartSessionOwningInProcess(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         false);  // mitigating
-  }
-
-  void ExpectStartSessionOwnerLost(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         true);  // mitigating
-  }
-
   void ExpectLockScreen() { expected_locks_ = 1; }
 
   // Since expected_restarts_ is 0 by default, ExpectDeviceRestart(0) initially
@@ -1041,32 +1026,6 @@ class SessionManagerImplTest : public ::testing::Test,
         .Times(1);
   }
 
-  // TODO(b/259362896): Merge into ExpectSessionBoilerplate(), login_manager
-  // never mitigates a lost key anymore.
-  void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
-                                            bool mitigating) {
-    EXPECT_CALL(manager_,
-                SetBrowserSessionForUser(
-                    StrEq(account_id_string),
-                    StrEq(*SanitizeUserName(Username(account_id_string)))))
-        .Times(1);
-
-    EXPECT_CALL(*device_policy_service_, Mitigating())
-        .WillRepeatedly(Return(mitigating));
-
-    EXPECT_CALL(key_gen_, Start(_, _)).Times(0);
-
-    EXPECT_CALL(*init_controller_,
-                TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
-                               ElementsAre(StartsWith("CHROMEOS_USER=")),
-                               InitDaemonController::TriggerMode::ASYNC))
-        .WillOnce(Return(ByMove(nullptr)));
-    EXPECT_CALL(*exported_object(),
-                SendSignal(SignalEq(login_manager::kSessionStateChangedSignal,
-                                    SessionManagerImpl::kStarted)))
-        .Times(1);
-  }
-
   string fake_salt_ = "fake salt";
 
   base::SingleThreadTaskExecutor task_executor;
@@ -1239,12 +1198,6 @@ TEST_F(SessionManagerImplTest, StartSession) {
   EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
 }
 
-TEST_F(SessionManagerImplTest, StartSession_New) {
-  ExpectStartSessionUnowned(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-}
-
 TEST_F(SessionManagerImplTest, StartSession_InvalidUser) {
   constexpr char kBadEmail[] = "user";
   brillo::ErrorPtr error;
@@ -1289,39 +1242,6 @@ TEST_F(SessionManagerImplTest, StartSession_TwoUsers_MultiUserSession) {
   EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
   EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
-}
-
-TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
-  ExpectStartSessionUnowned(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-  VerifyAndClearExpectations();
-
-  constexpr char kEmail2[] = "user2@somewhere";
-  ExpectStartSession(kEmail2);
-  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
-  ExpectStartSessionUnowned(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-  VerifyAndClearExpectations();
-
-  constexpr char kEmail2[] = "user2@somewhere";
-  ExpectStartSessionOwningInProcess(kEmail2);
-  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
-  ExpectStartSessionOwnerLost(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, EmitStartedUserSession) {

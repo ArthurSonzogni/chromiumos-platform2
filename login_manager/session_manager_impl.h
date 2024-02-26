@@ -39,7 +39,6 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
-#include "login_manager/regen_mitigator.h"
 
 class InstallAttributesReader;
 
@@ -517,8 +516,6 @@ class SessionManagerImpl
   std::unique_ptr<DevModeUnblockBroker> dev_mode_unblock_broker_;
 
   std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
-
-  RegenMitigator mitigator_;
 
   // Callbacks passed to RequestServerBackedStateKeys() while
   // |system_clock_synchronized_| was false. They will be run by

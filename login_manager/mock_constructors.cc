@@ -13,7 +13,6 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
-#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
@@ -47,7 +46,6 @@ MockDevicePolicyService::MockDevicePolicyService(PolicyKey* policy_key)
                           nullptr,
                           nullptr,
                           nullptr,
-                          nullptr,
                           nullptr) {}
 MockDevicePolicyService::~MockDevicePolicyService() = default;
 
@@ -65,9 +63,6 @@ MockLivenessChecker::~MockLivenessChecker() = default;
 
 MockMetrics::MockMetrics() : LoginMetrics(base::FilePath()) {}
 MockMetrics::~MockMetrics() = default;
-
-MockMitigator::MockMitigator() = default;
-MockMitigator::~MockMitigator() = default;
 
 MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), nullptr) {}
 MockPolicyKey::~MockPolicyKey() = default;

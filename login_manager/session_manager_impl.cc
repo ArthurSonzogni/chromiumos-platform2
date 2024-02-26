@@ -74,7 +74,6 @@
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
-#include "login_manager/regen_mitigator.h"
 #include "login_manager/secret_util.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -496,7 +495,6 @@ SessionManagerImpl::SessionManagerImpl(
       debugd_proxy_(debugd_proxy),
       fwmp_proxy_(fwmp_proxy),
       arc_sideload_status_(arc_sideload_status),
-      mitigator_(key_gen),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
@@ -633,8 +631,8 @@ bool SessionManagerImpl::Initialize() {
   // already been set and initialized.
   if (!device_policy_) {
     device_policy_ = DevicePolicyService::Create(
-        owner_key_, login_metrics_, &mitigator_, nss_, system_, crossystem_,
-        vpd_process_, install_attributes_reader_);
+        owner_key_, login_metrics_, nss_, system_, crossystem_, vpd_process_,
+        install_attributes_reader_);
     // Thinking about combining set_delegate() with the 'else' block below and
     // moving it down? Note that device_policy_->Initialize() might call
     // OnKeyPersisted() on the delegate, so be sure it's safe.

@@ -36,7 +36,6 @@ class PolicyFetchResponse;
 namespace login_manager {
 class KeyGenerator;
 class LoginMetrics;
-class OwnerKeyLossMitigator;
 class SystemUtils;
 
 // A policy service specifically for device policy, adding in a few helpers for
@@ -56,7 +55,6 @@ class DevicePolicyService : public PolicyService {
   static std::unique_ptr<DevicePolicyService> Create(
       PolicyKey* owner_key,
       LoginMetrics* metrics,
-      OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
       SystemUtils* system,
       crossystem::Crossystem* crossystem,
@@ -83,14 +81,6 @@ class DevicePolicyService : public PolicyService {
   virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
                                         const std::vector<uint8_t>& pub_key,
                                         PK11SlotDescriptor* module);
-
-  // TODO(b/259362896): The method is unused and should be removed.
-  // Checks whether the key is missing.
-  virtual bool KeyMissing();
-
-  // TODO(b/259362896): Login manager never mitigates a lost key anymore, the
-  // method should be removed. Checks whether key loss is being mitigated.
-  virtual bool Mitigating();
 
   // Loads policy key and policy blob from disk. Returns true if at least the
   // key can be loaded (policy may not be present yet, which is OK).
@@ -158,7 +148,6 @@ class DevicePolicyService : public PolicyService {
   DevicePolicyService(const base::FilePath& policy_dir,
                       PolicyKey* owner_key,
                       LoginMetrics* metrics,
-                      OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss,
                       SystemUtils* system,
                       crossystem::Crossystem* crossystem,
@@ -218,7 +207,6 @@ class DevicePolicyService : public PolicyService {
   // Returns whether the store is resilient. To be used for testing only.
   bool IsChromeStoreResilientForTesting();
 
-  OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
   SystemUtils* system_;                                 // Owned by the caller.
   crossystem::Crossystem* crossystem_;                  // Owned by the caller.

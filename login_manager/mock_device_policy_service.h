@@ -48,8 +48,6 @@ class MockDevicePolicyService : public DevicePolicyService {
                const std::vector<uint8_t>&,
                PK11SlotDescriptor*),
               (override));
-  MOCK_METHOD(bool, KeyMissing, (), (override));
-  MOCK_METHOD(bool, Mitigating, (), (override));
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void, ClearBlockDevmode, (Completion), (override));
   MOCK_METHOD(

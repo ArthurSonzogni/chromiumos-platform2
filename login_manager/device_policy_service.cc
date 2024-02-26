@@ -38,7 +38,6 @@
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service_util.h"
 #include "login_manager/policy_store.h"
@@ -116,15 +115,14 @@ DevicePolicyService::~DevicePolicyService() = default;
 std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     PolicyKey* owner_key,
     LoginMetrics* metrics,
-    OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     SystemUtils* system,
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader) {
   return base::WrapUnique(new DevicePolicyService(
-      base::FilePath(kPolicyDir), owner_key, metrics, mitigator, nss, system,
-      crossystem, vpd_process, install_attributes_reader));
+      base::FilePath(kPolicyDir), owner_key, metrics, nss, system, crossystem,
+      vpd_process, install_attributes_reader));
 }
 
 bool DevicePolicyService::HandleOwnerLogin(const std::string& current_user,
@@ -135,16 +133,6 @@ bool DevicePolicyService::HandleOwnerLogin(const std::string& current_user,
   brillo::ErrorPtr key_error;
   std::unique_ptr<RSAPrivateKey> signing_key =
       GetOwnerKeyForGivenUser(key()->public_key_der(), desc, &key_error);
-
-  // Now, the flip side... if the owner DOESN'T have the private half of the
-  // public key, we must mitigate.
-  if (!signing_key.get()) {
-    if (!mitigator_->Mitigate(current_user, desc->ns_mnt_path)) {
-      *error = std::move(key_error);
-      DCHECK(*error);
-      return false;
-    }
-  }
   return true;
 }
 
@@ -161,20 +149,13 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   if (!signing_key.get())
     return false;
 
-  if (mitigator_->Mitigating()) {
-    // Mitigating: Depending on whether the public key is still present, either
-    // clobber or populate regularly.
-    if (!(key()->IsPopulated() ? key()->ClobberCompromisedKey(pub_key)
-                               : key()->PopulateFromBuffer(pub_key))) {
-      return false;
-    }
-  } else {
-    // Not mitigating, so regular key population should work.
-    if (!key()->PopulateFromBuffer(pub_key))
-      return false;
-    // Clear policy in case we're re-establishing ownership.
-    GetChromeStore()->Set(em::PolicyFetchResponse());
-  }
+  if (!key()->PopulateFromBuffer(pub_key))
+    return false;
+  // Clear policy in case we're re-establishing ownership.
+  // TODO(miersh): login_manager never re-establishes ownership anymore, Chrome
+  // might do that. The comment above might not be relevant anymore together
+  // with clearing the policy.
+  GetChromeStore()->Set(em::PolicyFetchResponse());
 
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
@@ -191,27 +172,17 @@ DevicePolicyService::DevicePolicyService(
     const base::FilePath& policy_dir,
     PolicyKey* policy_key,
     LoginMetrics* metrics,
-    OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     SystemUtils* system,
     crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
     : PolicyService(policy_dir, policy_key, metrics, true),
-      mitigator_(mitigator),
       nss_(nss),
       system_(system),
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       install_attributes_reader_(install_attributes_reader) {}
-
-bool DevicePolicyService::KeyMissing() {
-  return key()->HaveCheckedDisk() && !key()->IsPopulated();
-}
-
-bool DevicePolicyService::Mitigating() {
-  return mitigator_->Mitigating();
-}
 
 bool DevicePolicyService::Initialize() {
   bool key_success = key()->PopulateFromDiskIfPossible();

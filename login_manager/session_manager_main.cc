@@ -45,7 +45,6 @@
 #include "login_manager/chrome_setup.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
-#include "login_manager/regen_mitigator.h"
 #include "login_manager/scheduler_util.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_service.h"
