@@ -39,15 +39,6 @@ class MockNssUtil : public NssUtil {
 
   std::unique_ptr<crypto::RSAPrivateKey> CreateShortKey();
 
-  ScopedPK11SlotDescriptor OpenUserDB(
-      const base::FilePath& user_homedir,
-      const OptionalFilePath& ns_mnt_path) override;
-  ScopedPK11SlotDescriptor GetInternalSlot() override;
-  MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
-              GenerateKeyPairForUser,
-              (PK11SlotDescriptor*),
-              (override));
-  MOCK_METHOD(base::FilePath, GetNssdbSubpath, (), (override));
   MOCK_METHOD(bool,
               CheckPublicKeyBlob,
               (const std::vector<uint8_t>&),
@@ -69,9 +60,6 @@ class MockNssUtil : public NssUtil {
 
   PK11SlotDescriptor* GetDescriptor();
   PK11SlotInfo* GetSlot();
-
-  // After this is called, OpenUserDB() will return empty ScopedPK11Slots.
-  void MakeBadDB() { return_bad_db_ = true; }
 
   // Ensures that temp_dir_ is created and accessible.
   bool EnsureTempDir();

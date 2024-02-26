@@ -72,18 +72,7 @@ class NssUtilImpl : public NssUtil {
 
   ~NssUtilImpl() override;
 
-  ScopedPK11SlotDescriptor OpenUserDB(
-      const base::FilePath& user_homedir,
-      const OptionalFilePath& ns_mnt_path) override;
-
-  ScopedPK11SlotDescriptor GetInternalSlot() override;
-
-  std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
-      PK11SlotDescriptor* user_slot) override;
-
   base::FilePath GetOwnerKeyFilePath() override;
-
-  base::FilePath GetNssdbSubpath() override;
 
   bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) override;
 
@@ -122,81 +111,8 @@ NssUtilImpl::NssUtilImpl() {
 
 NssUtilImpl::~NssUtilImpl() = default;
 
-ScopedPK11SlotDescriptor NssUtilImpl::OpenUserDB(
-    const base::FilePath& user_homedir, const OptionalFilePath& ns_mnt_path) {
-  // TODO(cmasone): If we ever try to keep the session_manager alive across
-  // user sessions, we'll need to close these persistent DBs.
-  base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
-  const std::string modspec =
-      base::StringPrintf("configDir='sql:%s' tokenDescription='%s'",
-                         db_path.value().c_str(), user_homedir.value().c_str());
-
-  // If necessary, enter the mount namespace where the user mounts exist.
-  std::unique_ptr<ScopedMountNamespace> ns_mnt;
-  if (ns_mnt_path) {
-    ns_mnt = ScopedMountNamespace::CreateFromPath(ns_mnt_path.value());
-  }
-
-  ScopedPK11SlotDescriptor res = std::make_unique<PK11SlotDescriptor>();
-  res->ns_mnt_path = ns_mnt_path;
-
-  ScopedPK11Slot db_slot(SECMOD_OpenUserDB(modspec.c_str()));
-  if (!db_slot.get()) {
-    LOG(ERROR) << "Error opening persistent database (" << modspec
-               << "): " << PR_GetError();
-    res->slot = ScopedPK11Slot();
-    return res;
-  }
-
-  if (PK11_NeedUserInit(db_slot.get()))
-    PK11_InitPin(db_slot.get(), nullptr, nullptr);
-
-  // If we opened successfully, we will have a non-default private key slot.
-  if (PK11_IsInternalKeySlot(db_slot.get())) {
-    res->slot = ScopedPK11Slot();
-    return res;
-  }
-
-  res->slot = std::move(db_slot);
-  return res;
-}
-
-ScopedPK11SlotDescriptor NssUtilImpl::GetInternalSlot() {
-  auto res = std::make_unique<PK11SlotDescriptor>();
-  res->slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
-  DCHECK_EQ(PK11_IsReadOnly(res->slot.get()), true);
-  return res;
-}
-
-std::unique_ptr<crypto::RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
-    PK11SlotDescriptor* desc) {
-  PK11RSAGenParams param;
-  param.keySizeInBits = kKeySizeInBits;
-  param.pe = 65537L;
-  SECKEYPublicKey* public_key_ptr = nullptr;
-
-  // If necessary, enter the mount namespace where the user mounts exist.
-  std::unique_ptr<ScopedMountNamespace> ns_mnt;
-  if (desc->ns_mnt_path) {
-    ns_mnt = ScopedMountNamespace::CreateFromPath(desc->ns_mnt_path.value());
-  }
-
-  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(
-      desc->slot.get(), CKM_RSA_PKCS_KEY_PAIR_GEN, &param, &public_key_ptr,
-      PR_TRUE /* permanent */, PR_TRUE /* sensitive */, nullptr));
-  ScopedSECKEYPublicKey public_key(public_key_ptr);
-  if (!key)
-    return nullptr;
-
-  return base::WrapUnique(crypto::RSAPrivateKey::CreateFromKey(key.get()));
-}
-
 base::FilePath NssUtilImpl::GetOwnerKeyFilePath() {
   return base::FilePath(kOwnerKeyFile);
-}
-
-base::FilePath NssUtilImpl::GetNssdbSubpath() {
-  return base::FilePath(kNssdbSubpath);
 }
 
 bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {

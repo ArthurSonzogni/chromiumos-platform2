@@ -27,13 +27,6 @@ class NssUtilTest : public ::testing::Test {
 
   ~NssUtilTest() override {}
 
-  void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateDirectory(
-        tmpdir_.GetPath().Append(util_->GetNssdbSubpath())));
-    desc_ = util_->OpenUserDB(tmpdir_.GetPath(), std::nullopt);
-  }
-
  protected:
   static const char kUsername[];
   base::ScopedTempDir tmpdir_;

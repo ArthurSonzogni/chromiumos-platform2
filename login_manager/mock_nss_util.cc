@@ -31,8 +31,6 @@ MockNssUtil::MockNssUtil() {
   desc_ = std::make_unique<PK11SlotDescriptor>();
   desc_->slot = ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
   desc_->ns_mnt_path = std::nullopt;
-
-  ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
 }
 
 MockNssUtil::~MockNssUtil() = default;
@@ -48,25 +46,6 @@ std::unique_ptr<crypto::RSAPrivateKey> MockNssUtil::CreateShortKey() {
   }
   LOG_IF(ERROR, ret == nullptr) << "returning nullptr!!!";
   return ret;
-}
-
-ScopedPK11SlotDescriptor MockNssUtil::OpenUserDB(
-    const base::FilePath& user_homedir, const OptionalFilePath& ns_mnt_path) {
-  ScopedPK11SlotDescriptor res = std::make_unique<PK11SlotDescriptor>();
-  res->ns_mnt_path = std::nullopt;
-  if (return_bad_db_) {
-    res->slot = ScopedPK11Slot();
-    return res;
-  }
-  res->slot = ScopedPK11Slot(PK11_ReferenceSlot(GetSlot()));
-  return res;
-}
-
-ScopedPK11SlotDescriptor MockNssUtil::GetInternalSlot() {
-  auto res = std::make_unique<PK11SlotDescriptor>();
-  res->slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
-  DCHECK_EQ(PK11_IsReadOnly(res->slot.get()), true);
-  return res;
 }
 
 base::FilePath MockNssUtil::GetOwnerKeyFilePath() {

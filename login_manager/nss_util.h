@@ -47,28 +47,7 @@ class NssUtil {
   // returns a new NssUtil.
   static std::unique_ptr<NssUtil> Create();
 
-  // Returns empty ScopedPK11Slot in the event that the database cannot be
-  // opened. Will attempt to enter the mount namespace at |ns_mnt_path|, if
-  // present. The database is used to store the owner private key for consumer
-  // users.
-  virtual ScopedPK11SlotDescriptor OpenUserDB(
-      const base::FilePath& user_homedir,
-      const OptionalFilePath& ns_mnt_path) = 0;
-
-  // Returns a read-only internal slot. Can be used to safely initialize NSS and
-  // still perform operations on the slot even when session_manager doesn't need
-  // to store the private key there.
-  virtual ScopedPK11SlotDescriptor GetInternalSlot() = 0;
-
-  // Will attempt to enter the mount namespace at |user_slot->ns_mnt_path|,
-  // if present.
-  virtual std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
-      PK11SlotDescriptor* user_slot) = 0;
-
   virtual base::FilePath GetOwnerKeyFilePath() = 0;
-
-  // Returns subpath of the NSS DB; e.g. '.pki/nssdb'
-  virtual base::FilePath GetNssdbSubpath() = 0;
 
   // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
   virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) = 0;
