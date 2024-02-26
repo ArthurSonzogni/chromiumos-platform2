@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include "base/files/scoped_file.h"
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -119,8 +120,16 @@ bool StorageBalloon::SetBalloonSize(int64_t size) {
     size = 0;
   }
 
-  return base::WriteFile(
-      sysfs_reserved_clusters_path_,
+  base::ScopedFD fd(open(sysfs_reserved_clusters_path_.value().c_str(),
+                         O_WRONLY | O_NOFOLLOW | O_CLOEXEC));
+
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << sysfs_reserved_clusters_path_.value();
+    return false;
+  }
+
+  return base::WriteFileDescriptor(
+      fd.get(),
       base::NumberToString(kDefaultClusterCount + size / GetClusterSize()));
 }
 
