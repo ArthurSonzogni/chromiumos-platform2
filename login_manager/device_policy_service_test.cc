@@ -245,15 +245,10 @@ class DevicePolicyServiceTest : public ::testing::Test {
         EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
     Expectation compare_keys =
         EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
-    Expectation sign =
-        EXPECT_CALL(*nss, Sign(_, _, _))
-            .After(get_policy)
-            .WillOnce(
-                DoAll(WithArg<2>(AssignVector(new_fake_sig_)), Return(true)));
     Expectation set_policy =
         EXPECT_CALL(*store_, Set(_))
             .InSequence(sequence)
-            .After(sign, compare_keys)
+            .After(compare_keys)
             .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
@@ -262,11 +257,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
         EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
     Expectation compare_keys =
         EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
-    Expectation sign =
-        EXPECT_CALL(*nss, Sign(_, _, _))
-            .After(get_policy)
-            .WillOnce(
-                DoAll(WithArg<2>(AssignVector(new_fake_sig_)), Return(false)));
   }
 
   void ExpectPersistKeyAndPolicy(bool is_populated) {

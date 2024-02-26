@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <crypto/nss_util.h>
@@ -35,6 +36,15 @@ class NssUtilTest : public ::testing::Test {
 };
 
 const char NssUtilTest::kUsername[] = "someone@nowhere.com";
+
+TEST_F(NssUtilTest, AcceptGoodPublicKey) {
+  std::vector<uint8_t> public_key =
+      base::Base64Decode(
+          "MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMMQTKX6mem9D7UomHUs54dWeASj9s3VaJ3K"
+          "tJa+BId9AYIjJn4cY4N/aW7Wkm7MyHvapawgh8QTxP0Hekzb2hkCAwEAAQ==")
+          .value();
+  EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
+}
 
 TEST_F(NssUtilTest, RejectBadPublicKey) {
   std::vector<uint8_t> public_key(10, 'a');

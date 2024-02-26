@@ -82,13 +82,8 @@ class NssUtilImpl : public NssUtil {
       const std::vector<uint8_t>& public_key,
       const crypto::SignatureVerifier::SignatureAlgorithm algorithm) override;
 
-  bool Sign(const std::vector<uint8_t>& data,
-            crypto::RSAPrivateKey* key,
-            std::vector<uint8_t>* out_signature) override;
-
  private:
   static const uint16_t kKeySizeInBits;
-  static const char kNssdbSubpath[];
 };
 
 // Defined here, instead of up above, because we need NssUtilImpl.
@@ -100,8 +95,6 @@ std::unique_ptr<NssUtil> NssUtil::Create() {
 // We're generating and using 2048-bit RSA keys.
 // static
 const uint16_t NssUtilImpl::kKeySizeInBits = 2048;
-// static
-const char NssUtilImpl::kNssdbSubpath[] = ".pki/nssdb";
 
 NssUtilImpl::NssUtilImpl() {
   if (setenv("NSS_SDB_USE_CACHE", "no", 1) == -1)
@@ -146,18 +139,6 @@ bool NssUtilImpl::Verify(
 
   verifier.VerifyUpdate(data.data(), data.size());
   return verifier.VerifyFinal();
-}
-
-// This is pretty much just a blind passthrough, so I won't test it
-// in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Sign(const std::vector<uint8_t>& data,
-                       crypto::RSAPrivateKey* key,
-                       std::vector<uint8_t>* out_signature) {
-  std::unique_ptr<crypto::SignatureCreator> signer(
-      crypto::SignatureCreator::Create(key, crypto::SignatureCreator::SHA1));
-  if (!signer->Update(data.data(), data.size()))
-    return false;
-  return signer->Final(out_signature);
 }
 
 }  // namespace login_manager

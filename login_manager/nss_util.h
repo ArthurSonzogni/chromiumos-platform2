@@ -33,7 +33,6 @@ using OptionalFilePath = std::optional<base::FilePath>;
 
 using ScopedPK11SlotDescriptor = std::unique_ptr<PK11SlotDescriptor>;
 
-// TODO(b/259362896): Most of the methods here should be removed.
 // An interface to wrap the usage of crypto/nss_util.h and allow for mocking.
 class NssUtil {
  public:
@@ -57,10 +56,6 @@ class NssUtil {
       const std::vector<uint8_t>& data,
       const std::vector<uint8_t>& public_key,
       const crypto::SignatureVerifier::SignatureAlgorithm algorithm) = 0;
-
-  virtual bool Sign(const std::vector<uint8_t>& data,
-                    crypto::RSAPrivateKey* key,
-                    std::vector<uint8_t>* out_signature) = 0;
 };
 }  // namespace login_manager
 

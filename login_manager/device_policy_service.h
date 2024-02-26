@@ -149,14 +149,6 @@ class DevicePolicyService : public PolicyService {
       const enterprise_management::PolicyFetchResponse& policy,
       const std::string& current_user);
 
-  // Given the private half of the owner keypair, this call allowlists
-  // |current_user| and sets a property indicating
-  // |current_user| is the owner in the current policy and schedules a
-  // PersistPolicy().
-  // Returns false on failure.
-  bool StoreOwnerProperties(const std::string& current_user,
-                            crypto::RSAPrivateKey* signing_key);
-
   // Helper to return the policy store for the Chrome domain.
   PolicyStore* GetChromeStore();
 

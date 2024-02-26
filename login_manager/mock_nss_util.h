@@ -50,12 +50,6 @@ class MockNssUtil : public NssUtil {
                const std::vector<uint8_t>&,
                const crypto::SignatureVerifier::SignatureAlgorithm),
               (override));
-  MOCK_METHOD(bool,
-              Sign,
-              (const std::vector<uint8_t>&,
-               crypto::RSAPrivateKey*,
-               std::vector<uint8_t>*),
-              (override));
   base::FilePath GetOwnerKeyFilePath() override;
 
   PK11SlotDescriptor* GetDescriptor();
