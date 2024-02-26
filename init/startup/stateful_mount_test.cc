@@ -307,14 +307,14 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
 
   EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
 
-  EXPECT_FALSE(PathExists(developer_new.Append("dev_new_file")));
-  EXPECT_FALSE(PathExists(var_new.Append("var_new_file")));
-  EXPECT_FALSE(PathExists(developer_target.Append("dev_target_file")));
-  EXPECT_FALSE(PathExists(var_target.Append("var_target_file")));
+  EXPECT_FALSE(base::PathExists(developer_new.Append("dev_new_file")));
+  EXPECT_FALSE(base::PathExists(var_new.Append("var_new_file")));
+  EXPECT_FALSE(base::PathExists(developer_target.Append("dev_target_file")));
+  EXPECT_FALSE(base::PathExists(var_target.Append("var_target_file")));
 
-  EXPECT_FALSE(PathExists(stateful_update_file));
-  EXPECT_TRUE(PathExists(var_target.Append("var_new_file")));
-  EXPECT_TRUE(PathExists(developer_target.Append("dev_new_file")));
+  EXPECT_FALSE(base::PathExists(stateful_update_file));
+  EXPECT_TRUE(base::PathExists(var_target.Append("var_new_file")));
+  EXPECT_TRUE(base::PathExists(developer_target.Append("dev_new_file")));
 
   std::string message = "'Updating from " + developer_new.value() + " && " +
                         var_new.value() + ".'";
@@ -354,12 +354,12 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(CreateDirAndWriteFile(preserve_test, "1"));
 
   EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
-  EXPECT_TRUE(PathExists(developer_target.Append("dev_target_file")));
-  EXPECT_TRUE(PathExists(var_target.Append("var_target_file")));
-  EXPECT_TRUE(PathExists(labmachine));
-  EXPECT_FALSE(PathExists(test_dir));
-  EXPECT_TRUE(PathExists(preserve_test));
-  EXPECT_FALSE(PathExists(empty));
+  EXPECT_TRUE(base::PathExists(developer_target.Append("dev_target_file")));
+  EXPECT_TRUE(base::PathExists(var_target.Append("var_target_file")));
+  EXPECT_TRUE(base::PathExists(labmachine));
+  EXPECT_FALSE(base::PathExists(test_dir));
+  EXPECT_TRUE(base::PathExists(preserve_test));
+  EXPECT_FALSE(base::PathExists(empty));
 
   std::string message = "'Stateful update did not find " +
                         developer_new.value() + " & " + var_new.value() +
@@ -449,14 +449,14 @@ TEST_F(DevGatherLogsTest, PreserveLogs) {
   st.st_mode = S_IFREG;
   startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
 
-  EXPECT_TRUE(PathExists(home_chronos));
+  EXPECT_TRUE(base::PathExists(home_chronos));
 
   stateful_mount_->DevGatherLogs(base_dir);
 
-  EXPECT_TRUE(PathExists(prior_test1));
-  EXPECT_TRUE(PathExists(prior_test2));
-  EXPECT_TRUE(PathExists(prior_standalone));
-  EXPECT_TRUE(PathExists(prior_log1));
-  EXPECT_TRUE(PathExists(standalone));
-  EXPECT_FALSE(PathExists(lab_preserve_logs_));
+  EXPECT_TRUE(base::PathExists(prior_test1));
+  EXPECT_TRUE(base::PathExists(prior_test2));
+  EXPECT_TRUE(base::PathExists(prior_standalone));
+  EXPECT_TRUE(base::PathExists(prior_log1));
+  EXPECT_TRUE(base::PathExists(standalone));
+  EXPECT_FALSE(base::PathExists(lab_preserve_logs_));
 }

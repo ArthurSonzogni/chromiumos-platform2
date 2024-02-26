@@ -196,7 +196,7 @@ TEST_F(DevCheckBlockTest, DevSWBoot) {
   ASSERT_TRUE(vpd_->WriteValues(vpd::VpdRw, {{"block_devmode", "1"}}));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_FALSE(PathExists(dev_mode_file));
+  EXPECT_FALSE(base::PathExists(dev_mode_file));
 }
 
 TEST_F(DevCheckBlockTest, VpdCrosSysBlockDev) {
@@ -207,7 +207,7 @@ TEST_F(DevCheckBlockTest, VpdCrosSysBlockDev) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_TRUE(PathExists(dev_mode_file));
+  EXPECT_TRUE(base::PathExists(dev_mode_file));
 }
 
 TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
@@ -218,7 +218,7 @@ TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_TRUE(PathExists(dev_mode_file));
+  EXPECT_TRUE(base::PathExists(dev_mode_file));
 }
 
 class TPMTest : public ::testing::Test {
@@ -1569,10 +1569,10 @@ TEST_F(RestorePreservedPathsTest, PopPaths) {
   ASSERT_TRUE(CreateDirAndWriteFile(wifi_cred_preserve.Append("file2"), "1"));
 
   startup_->RestorePreservedPaths();
-  EXPECT_TRUE(PathExists(libservo_path.Append("file1")));
-  EXPECT_TRUE(PathExists(wifi_cred_path.Append("file2")));
-  EXPECT_FALSE(PathExists(libservo_preserve.Append("file1")));
-  EXPECT_FALSE(PathExists(wifi_cred_preserve.Append("file2")));
+  EXPECT_TRUE(base::PathExists(libservo_path.Append("file1")));
+  EXPECT_TRUE(base::PathExists(wifi_cred_path.Append("file2")));
+  EXPECT_FALSE(base::PathExists(libservo_preserve.Append("file1")));
+  EXPECT_FALSE(base::PathExists(wifi_cred_preserve.Append("file2")));
 }
 
 }  // namespace startup

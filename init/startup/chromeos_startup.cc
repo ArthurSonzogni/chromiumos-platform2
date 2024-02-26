@@ -516,7 +516,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
         // Only fast clobber the non-protected paths in debug build to preserve
         // the testing tools.
         DevUpdateStatefulPartition("clobber");
-        if (!PathExists(dev_mode_allowed_file_)) {
+        if (!base::PathExists(dev_mode_allowed_file_)) {
           if (!base::WriteFile(dev_mode_allowed_file_, "")) {
             PLOG(WARNING) << "Failed to create file: "
                           << dev_mode_allowed_file_.value();
@@ -1006,7 +1006,7 @@ void ChromeosStartup::DevCheckBlockDevMode(
   if (block_devmode) {
     // Put a flag file into place that will trigger a stateful partition wipe
     // after reboot in verified mode.
-    if (!PathExists(dev_mode_file)) {
+    if (!base::PathExists(dev_mode_file)) {
       base::WriteFile(dev_mode_file, "");
     }
 
