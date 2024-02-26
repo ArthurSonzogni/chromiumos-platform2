@@ -75,6 +75,7 @@ class DevicePolicyService : public PolicyService {
   // owner. Returns false if not, or if that cannot be determined.
   virtual bool UserIsOwner(const std::string& current_user);
 
+  // TODO(b/259362896): The method is unused and should be removed.
   // Ensures that the public key in |pub_key| is legitimately paired with a
   // private key held by the current user, signs and stores some
   // ownership-related metadata, and then stores this key off as the new

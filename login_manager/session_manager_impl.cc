@@ -439,19 +439,16 @@ struct SessionManagerImpl::UserSession {
   UserSession(const std::string& username,
               const std::string& userhash,
               bool is_incognito,
-              ScopedPK11SlotDescriptor desc,
               std::unique_ptr<PolicyService> policy_service)
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
-        descriptor(std::move(desc)),
         policy_service(std::move(policy_service)) {}
   ~UserSession() {}
 
   const std::string username;
   const std::string userhash;
   const bool is_incognito;
-  ScopedPK11SlotDescriptor descriptor;
   std::unique_ptr<PolicyService> policy_service;
 };
 
@@ -781,12 +778,8 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   }
 
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
-  const OptionalFilePath ns_mnt_path = is_incognito || IsolateUserSession()
-                                           ? chrome_mount_ns_path_
-                                           : std::nullopt;
-  auto user_session =
-      CreateUserSession(actual_account_id, ns_mnt_path,
-                        /*need_nss=*/false, is_incognito, error);
+
+  auto user_session = CreateUserSession(actual_account_id, is_incognito, error);
   if (!user_session) {
     DCHECK(*error);
     return false;
@@ -1825,31 +1818,9 @@ void SessionManagerImpl::OnKeyPersisted(bool success) {
   adaptor_.SendSetOwnerKeyCompleteSignal(ToSuccessSignal(success));
 }
 
+// TODO(b/259362896): The method should be removed.
 void SessionManagerImpl::OnKeyGenerated(const std::string& username,
-                                        const base::FilePath& temp_key_file) {
-  ImportValidateAndStoreGeneratedKey(username, temp_key_file);
-}
-
-void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
-    const std::string& username, const base::FilePath& temp_key_file) {
-  DLOG(INFO) << "Processing generated key at " << temp_key_file.value();
-  std::string key;
-
-  // The temp key file will only exist in the user's mount namespace.
-  OptionalFilePath ns_mnt_path =
-      user_sessions_[username]->descriptor->ns_mnt_path;
-  std::unique_ptr<brillo::ScopedMountNamespace> ns_mnt;
-  if (ns_mnt_path) {
-    ns_mnt = brillo::ScopedMountNamespace::CreateFromPath(ns_mnt_path.value());
-  }
-  base::ReadFileToString(temp_key_file, &key);
-  PLOG_IF(WARNING, !brillo::DeleteFile(temp_key_file))
-      << "Can't delete " << temp_key_file.value();
-  ns_mnt.reset();
-
-  device_policy_->ValidateAndStoreOwnerKey(
-      username, StringToBlob(key), user_sessions_[username]->descriptor.get());
-}
+                                        const base::FilePath& temp_key_file) {}
 
 void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   // The log string must not be confused with other clobbers-state parameters.
@@ -1899,11 +1870,8 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
   return incognito_count == user_sessions_.size();
 }
 
-// TODO(b/259362896): `need_nss` is now always false and should be removed.
 std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
-                                      const OptionalFilePath& ns_mnt_path,
-                                      bool need_nss,
                                       bool is_incognito,
                                       brillo::ErrorPtr* error) {
   std::unique_ptr<PolicyService> user_policy =
@@ -1914,31 +1882,9 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  ScopedPK11SlotDescriptor nss_desc;
-  // If the user could be the owner of the device, session_manager may need to
-  // use its owner key.
-  if (need_nss) {
-    nss_desc = nss_->OpenUserDB(GetUserPath(Username(username)), ns_mnt_path);
-  } else {
-    // We're sure that the user is not the owner of the device so they don't
-    // have the owner key.
-    // session_manager has code which expects a NSS slot to be associated with
-    // the user session unconditionally and may try to find the owner key on the
-    // slot. This is then expected to return nothing. Avoid opening the user's
-    // real NSS database in this case due to https://crbug.com/1163303 and pass
-    // the read-only NSS internal slot instead.
-    nss_desc = nss_->GetInternalSlot();
-  }
-
-  if (!nss_desc->slot) {
-    LOG(ERROR) << "Could not open the current user's NSS database.";
-    *error = CreateError(dbus_error::kNoUserNssDb, "Can't create session.");
-    return nullptr;
-  }
-
-  return std::make_unique<UserSession>(
-      username, *SanitizeUserName(Username(username)), is_incognito,
-      std::move(nss_desc), std::move(user_policy));
+  return std::make_unique<UserSession>(username,
+                                       *SanitizeUserName(Username(username)),
+                                       is_incognito, std::move(user_policy));
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(

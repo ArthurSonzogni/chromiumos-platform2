@@ -399,12 +399,6 @@ class SessionManagerImpl
   // request is scheduled to be done later.
   void OnGotSystemClockLastSyncInfo(dbus::Response* response);
 
-  // Given a policy key stored at temp_key_file, pulls it off disk,
-  // validates that it is a correctly formed key pair, and ensures it is
-  // stored for the future in the provided user's NSSDB.
-  void ImportValidateAndStoreGeneratedKey(const std::string& username,
-                                          const base::FilePath& temp_key_file);
-
   // Normalizes an account ID in the case of a legacy email address.
   // Returns true on success, false otherwise. In case of an error,
   // brillo::Error instance is set to |error_out|.
@@ -414,12 +408,9 @@ class SessionManagerImpl
 
   bool AllSessionsAreIncognito();
 
-  std::unique_ptr<UserSession> CreateUserSession(
-      const std::string& username,
-      const OptionalFilePath& ns_mnt_path,
-      bool might_be_owner_user,
-      bool is_incognito,
-      brillo::ErrorPtr* error);
+  std::unique_ptr<UserSession> CreateUserSession(const std::string& username,
+                                                 bool is_incognito,
+                                                 brillo::ErrorPtr* error);
 
   // Returns the appropriate PolicyService for the given |descriptor|.
   // Returns nullptr and sets |error| if no PolicyService could be found.
