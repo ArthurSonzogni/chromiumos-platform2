@@ -61,26 +61,9 @@ class DevicePolicyService : public PolicyService {
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
 
-  // TODO(b/259362896): The method is unused and should be removed.
-  // Must be called only if |current_user| is the device owner. If they don't
-  // appear to have the owner key, run key mitigation. Returns true on success.
-  // Fills in |error| upon encountering an error.
-  virtual bool HandleOwnerLogin(const std::string& current_user,
-                                PK11SlotDescriptor* module,
-                                brillo::ErrorPtr* error);
-
   // Returns true if |current_user| is listed in device policy as the device
   // owner. Returns false if not, or if that cannot be determined.
   virtual bool UserIsOwner(const std::string& current_user);
-
-  // TODO(b/259362896): The method is unused and should be removed.
-  // Ensures that the public key in |pub_key| is legitimately paired with a
-  // private key held by the current user, signs and stores some
-  // ownership-related metadata, and then stores this key off as the new
-  // device owner key. Returns true if successful, false otherwise
-  virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
-                                        const std::vector<uint8_t>& pub_key,
-                                        PK11SlotDescriptor* module);
 
   // Loads policy key and policy blob from disk. Returns true if at least the
   // key can be loaded (policy may not be present yet, which is OK).
@@ -175,6 +158,7 @@ class DevicePolicyService : public PolicyService {
   bool StoreOwnerProperties(const std::string& current_user,
                             crypto::RSAPrivateKey* signing_key);
 
+  // TODO(b/259362896): The method is unused and should be removed.
   // Checks the user's NSS database to see if they have the private key.
   // Returns a pointer to it if so.
   // On failure, returns nullptr, with |error| set appropriately.

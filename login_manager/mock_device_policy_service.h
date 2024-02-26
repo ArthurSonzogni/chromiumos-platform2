@@ -37,17 +37,7 @@ class MockDevicePolicyService : public DevicePolicyService {
               Retrieve,
               (const PolicyNamespace&, std::vector<uint8_t>*),
               (override));
-  MOCK_METHOD(bool,
-              HandleOwnerLogin,
-              (const std::string&, PK11SlotDescriptor*, brillo::ErrorPtr*),
-              (override));
   MOCK_METHOD(bool, UserIsOwner, (const std::string&), (override));
-  MOCK_METHOD(bool,
-              ValidateAndStoreOwnerKey,
-              (const std::string&,
-               const std::vector<uint8_t>&,
-               PK11SlotDescriptor*),
-              (override));
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void, ClearBlockDevmode, (Completion), (override));
   MOCK_METHOD(

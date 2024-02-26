@@ -125,47 +125,8 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
       vpd_process, install_attributes_reader));
 }
 
-bool DevicePolicyService::HandleOwnerLogin(const std::string& current_user,
-                                           PK11SlotDescriptor* desc,
-                                           brillo::ErrorPtr* error) {
-  // If the current user is the owner, and isn't allowlisted or set as the owner
-  // in the settings blob, then do so.
-  brillo::ErrorPtr key_error;
-  std::unique_ptr<RSAPrivateKey> signing_key =
-      GetOwnerKeyForGivenUser(key()->public_key_der(), desc, &key_error);
-  return true;
-}
-
 bool DevicePolicyService::UserIsOwner(const std::string& current_user) {
   return GivenUserIsOwner(GetChromeStore()->Get(), current_user);
-}
-
-bool DevicePolicyService::ValidateAndStoreOwnerKey(
-    const std::string& current_user,
-    const std::vector<uint8_t>& pub_key,
-    PK11SlotDescriptor* desc) {
-  std::unique_ptr<RSAPrivateKey> signing_key =
-      GetOwnerKeyForGivenUser(pub_key, desc, nullptr);
-  if (!signing_key.get())
-    return false;
-
-  if (!key()->PopulateFromBuffer(pub_key))
-    return false;
-  // Clear policy in case we're re-establishing ownership.
-  // TODO(miersh): login_manager never re-establishes ownership anymore, Chrome
-  // might do that. The comment above might not be relevant anymore together
-  // with clearing the policy.
-  GetChromeStore()->Set(em::PolicyFetchResponse());
-
-  // TODO(cmasone): Remove this as well once the browser can tolerate it:
-  // http://crbug.com/472132
-  if (StoreOwnerProperties(current_user, signing_key.get())) {
-    PersistKey();
-    PersistPolicy(MakeChromePolicyNamespace(), Completion());
-  } else {
-    LOG(WARNING) << "Could not immediately store owner properties in policy";
-  }
-  return true;
 }
 
 DevicePolicyService::DevicePolicyService(
