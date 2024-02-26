@@ -9,13 +9,10 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
-#include <net-base/process_manager.h>
 
 #include "shill/callbacks.h"
-#include "shill/event_dispatcher.h"
-#include "shill/file_io.h"
+#include "shill/tc_process.h"
 
 namespace shill {
 
@@ -30,93 +27,58 @@ namespace shill {
 // Any inbound traffic above a rate of ${DLRATE} kbits/s is dropped on the
 // floor. For egress (upload) traffic, a qdisc using the Hierarchical Token
 // Bucket algorithm is used.
-// The implementation spawns the 'tc' process in a minijail and writes
-// commands to its stdin.
-
 class Throttler {
  public:
-  explicit Throttler(EventDispatcher* dispatcher);
-  Throttler(const Throttler&) = delete;
-  Throttler& operator=(const Throttler&) = delete;
+  explicit Throttler(std::unique_ptr<TCProcessFactory> tc_process_factory =
+                         std::make_unique<TCProcessFactory>());
 
   virtual ~Throttler();
 
+  // Disables the throttling on |interfaces|.
   virtual bool DisableThrottlingOnAllInterfaces(
       ResultCallback callback, const std::vector<std::string>& interfaces);
+
+  // Throttles the |interfaces| with upload/download bitrates. At least one of
+  // |upload_rate_kbits| or |download_rate_kbits| should be non-zero.
   virtual bool ThrottleInterfaces(ResultCallback callback,
                                   uint32_t upload_rate_kbits,
                                   uint32_t download_rate_kbits,
                                   const std::vector<std::string>& interfaces);
 
-  virtual bool ApplyThrottleToNewInterface(const std::string& interface_name);
+  // Throttles the new interface with the upload/download bitrates from the
+  // previous ThrottleInterfaces().
+  // Returns false and do nothing if ThrottleInterfaces() hasn't been called, or
+  // the bitrate is reset by DisableThrottlingOnAllInterfaces().
+  virtual bool ApplyThrottleToNewInterface(const std::string& interface);
 
  private:
-  static const char kTCPath[];
-  static const char* const kTCCleanUpCmds[];
-  static const char* const kTCThrottleUplinkCmds[];
-  static const char* const kTCThrottleDownlinkCmds[];
+  // Throttles the next pending interface.
+  void ThrottleNextPendingInterface();
 
-  static const char kTCUser[];
-  static const char kTCGroup[];
+  // Starts a TC process with the commands.
+  bool StartTCProcess(const std::vector<std::string>& commands);
+  // Called when the TC process has been exit.
+  void OnTCProcessExited(int exit_status);
 
-  friend class ThrottlerTest;
+  // Resets the internal state and replies the result by |callback_|.
+  void ResetAndReply(Error::Type error_type, std::string_view message);
 
-  FRIEND_TEST(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState);
-  FRIEND_TEST(ThrottlerTest, NewlyAddedInterfaceIsThrottled);
-  FRIEND_TEST(ThrottlerTest, DisablingThrottleClearsState);
-  FRIEND_TEST(ThrottlerTest, DisablingThrottleWhenNoThrottleExists);
-
-  // Required for spawning the 'tc' process
-  // and communicating with it.
-  FileIO* file_io_;
-  int tc_stdin_;
-
-  // Watcher to wait for |tc_stdin_| ready to write. It should be
-  // destructed prior than |tc_stdin_| is closed.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> tc_stdin_watcher_;
-
-  // Statekeeping while spawning 'tc'
-  pid_t tc_pid_;
-  std::vector<std::string> tc_commands_;
+  // The callback to return the result of the methods. The value is not null if
+  // and only if the throttling task or the disabling task is running.
   ResultCallback callback_;
 
-  // Applicable when throttling is called for multiple
-  // interfaces (i.e. ThrottleInterfaces)
-  std::vector<std::string> tc_interfaces_to_throttle_;
-  std::string tc_current_interface_;
+  // The upload/download bitrates.
+  uint32_t upload_rate_kbits_ = 0;
+  uint32_t download_rate_kbits_ = 0;
 
-  // Throttling status-keeping
-  bool desired_throttling_enabled_;
-  uint32_t desired_upload_rate_kbits_;
-  uint32_t desired_download_rate_kbits_;
+  // The pending interfaces to be throttled.
+  std::vector<std::string> pending_throttled_interfaces_;
 
-  virtual bool StartTCForCommands(const std::vector<std::string>& commands);
+  // The TC process and its factory.
+  std::unique_ptr<TCProcessFactory> tc_process_factory_;
+  std::unique_ptr<TCProcess> tc_process_;
 
-  virtual bool Throttle(ResultCallback callback,
-                        const std::string& interface_name,
-                        uint32_t upload_rate_kbits,
-                        uint32_t download_rate_kbits);
-
-  // Used to write to 'tc''s stdin
-  virtual void WriteTCCommands();
-
-  // Called when the tc command is processed.
-  virtual void OnProcessExited(int exit_status);
-
-  // Helpers
-  virtual void Done(ResultCallback callback,
-                    Error::Type error_type,
-                    const std::string& message);
-
-  virtual std::string GetNextInterface();
-
-  virtual void ClearTCState();
-  virtual void ClearThrottleStatus();
-
-  // For spawning 'tc'
-  net_base::ProcessManager* process_manager_;
-
-  base::WeakPtrFactory<Throttler> weak_factory_{this};
+  base::WeakPtrFactory<Throttler> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

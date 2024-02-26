@@ -17,9 +17,6 @@ namespace shill {
 class MockThrottler : public Throttler {
  public:
   MockThrottler();
-  MockThrottler(const MockThrottler&) = delete;
-  MockThrottler& operator=(const MockThrottler&) = delete;
-
   ~MockThrottler() override;
 
   MOCK_METHOD(bool,
@@ -35,23 +32,6 @@ class MockThrottler : public Throttler {
               ApplyThrottleToNewInterface,
               (const std::string&),
               (override));
-  MOCK_METHOD(bool,
-              StartTCForCommands,
-              (const std::vector<std::string>&),
-              (override));
-  MOCK_METHOD(bool,
-              Throttle,
-              (ResultCallback, const std::string&, uint32_t, uint32_t),
-              (override));
-  MOCK_METHOD(void, WriteTCCommands, (), (override));
-  MOCK_METHOD(void, OnProcessExited, (int), (override));
-  MOCK_METHOD(void,
-              Done,
-              (ResultCallback, Error::Type, const std::string&),
-              (override));
-  MOCK_METHOD(std::string, GetNextInterface, (), (override));
-  MOCK_METHOD(void, ClearTCState, (), (override));
-  MOCK_METHOD(void, ClearThrottleStatus, (), (override));
 };
 
 }  // namespace shill

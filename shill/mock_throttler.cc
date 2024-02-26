@@ -6,7 +6,8 @@
 
 namespace shill {
 
-MockThrottler::MockThrottler() : Throttler(nullptr) {}
+MockThrottler::MockThrottler() = default;
 
 MockThrottler::~MockThrottler() = default;
+
 }  // namespace shill
