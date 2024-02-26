@@ -46,7 +46,7 @@ namespace {
 
 const char kManifestName[] = "firmware_manifest.textproto";
 const char kManifestNameLegacy[] = "firmware_manifest.prototxt";
-constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(5);
+constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(2);
 constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
 constexpr char kDisableAutoUpdatePref[] =
