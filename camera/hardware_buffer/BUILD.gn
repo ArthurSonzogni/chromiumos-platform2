@@ -4,6 +4,13 @@
 
 import("//common-mk/pkg_config.gni")
 
+group("all") {
+  deps = [ ":libhardware_buffer" ]
+  if (use.test) {
+    deps += [ "//camera/hardware_buffer/tests:all" ]
+  }
+}
+
 pkg_config("target_defaults") {
   configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
@@ -13,9 +20,21 @@ pkg_config("target_defaults") {
 }
 
 source_set("hardware_buffer") {
-  sources = [ "//camera/hardware_buffer/minigbm_allocator.cc" ]
+  sources = [
+    "//camera/hardware_buffer/allocator.cc",
+    "//camera/hardware_buffer/dmabuf_heap_allocator.cc",
+    "//camera/hardware_buffer/minigbm_allocator.cc",
+  ]
+
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
+}
+
+shared_library("libhardware_buffer") {
+  output_name = "libhardware_buffer"
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+  deps = [ ":hardware_buffer" ]
 }

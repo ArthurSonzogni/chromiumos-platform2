@@ -11,6 +11,10 @@
 #include <cstdint>
 #include <memory>
 
+#ifndef CROS_CAMERA_EXPORT
+#define CROS_CAMERA_EXPORT __attribute__((visibility("default")))
+#endif
+
 namespace cros {
 
 constexpr int kMaxPlanes = 4;
@@ -45,8 +49,19 @@ enum class SyncType {
 };
 
 // The buffer allocator interface.
-class Allocator {
+class CROS_CAMERA_EXPORT Allocator {
  public:
+  // The actual backend handling the buffer allocation and synchronization.
+  enum class Backend {
+    // Minigbm backed by graphics DRM drivers.
+    kMinigbm,
+
+    // DMA-buf heap exposed by the DMA-BUF heaps drivers.
+    kDmaBufHeap,
+  };
+
+  static std::unique_ptr<Allocator> Create(Backend backend);
+
   // BufferObject interface used to manage and access the backing storage
   // allocated for a buffer.
   class BufferObject {

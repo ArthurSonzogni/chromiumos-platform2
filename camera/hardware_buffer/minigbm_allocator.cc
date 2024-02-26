@@ -7,7 +7,6 @@
 #include <gbm.h>
 #include <minigbm/minigbm_helpers.h>
 #include <sys/mman.h>
-#include <xf86drm.h>
 
 #include <memory>
 #include <utility>
