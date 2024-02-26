@@ -17,8 +17,10 @@ namespace login_manager {
 class KeyGenerator;
 class PolicyKey;
 
-// This class mitigates owner key loss by triggering the generation of a new
-// owner key and the re-signing of exisiting owner device policy.
+// TODO(b/259362896): Login manager never mitigates a lost key, this class
+// should be removed. This class mitigates owner key loss by triggering the
+// generation of a new owner key and the re-signing of exisiting owner device
+// policy.
 class RegenMitigator : public OwnerKeyLossMitigator {
  public:
   explicit RegenMitigator(KeyGenerator* generator);

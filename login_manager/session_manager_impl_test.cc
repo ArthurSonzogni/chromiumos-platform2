@@ -813,36 +813,24 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
   void ExpectStartSession(const string& account_id_string) {
-    ExpectSessionBoilerplate(account_id_string, false /* guest */,
-                             false /* for_owner */);
+    ExpectSessionBoilerplate(account_id_string);
   }
 
-  void ExpectGuestSession() {
-    ExpectSessionBoilerplate(*GetGuestUsername(), true /* guest */,
-                             false /* for_owner */);
-  }
-
-  void ExpectStartOwnerSession(const string& account_id_string) {
-    ExpectSessionBoilerplate(account_id_string, false /* guest */,
-                             true /* for_owner */);
-  }
+  void ExpectGuestSession() { ExpectSessionBoilerplate(*GetGuestUsername()); }
 
   void ExpectStartSessionUnowned(const string& account_id_string) {
     ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         false,  // mitigating
-                                         true);  // key_gen
+                                         false);  // mitigating
   }
 
   void ExpectStartSessionOwningInProcess(const string& account_id_string) {
     ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         false,   // mitigating
-                                         false);  // key_gen
+                                         false);  // mitigating
   }
 
   void ExpectStartSessionOwnerLost(const string& account_id_string) {
     ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         true,    // mitigating
-                                         false);  // key_gen
+                                         true);  // mitigating
   }
 
   void ExpectLockScreen() { expected_locks_ = 1; }
@@ -1043,26 +1031,12 @@ class SessionManagerImplTest : public ::testing::Test,
     return base::ok(dbus::Response::CreateEmpty());
   }
 
-  void ExpectSessionBoilerplate(const string& account_id_string,
-                                bool guest,
-                                bool for_owner) {
+  void ExpectSessionBoilerplate(const string& account_id_string) {
     EXPECT_CALL(manager_,
                 SetBrowserSessionForUser(
                     StrEq(account_id_string),
                     StrEq(*SanitizeUserName(Username(account_id_string)))))
         .Times(1);
-    // Expect initialization of the device policy service, return success.
-    EXPECT_CALL(*device_policy_service_, UserIsOwner)
-        .WillOnce(Return(for_owner));
-    if (for_owner) {
-      EXPECT_CALL(*device_policy_service_,
-                  HandleOwnerLogin(StrEq(account_id_string), _, _))
-          .WillOnce(Return(true));
-      // Confirm that the key is present.
-      EXPECT_CALL(*device_policy_service_, KeyMissing())
-          .Times(2)
-          .WillRepeatedly(Return(false));
-    }
 
     EXPECT_CALL(*init_controller_,
                 TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
@@ -1075,31 +1049,20 @@ class SessionManagerImplTest : public ::testing::Test,
         .Times(1);
   }
 
+  // TODO(b/259362896): Merge into ExpectSessionBoilerplate(), login_manager
+  // never mitigates a lost key anymore.
   void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
-                                            bool mitigating,
-                                            bool key_gen) {
-    CHECK(!(mitigating && key_gen));
-
+                                            bool mitigating) {
     EXPECT_CALL(manager_,
                 SetBrowserSessionForUser(
                     StrEq(account_id_string),
                     StrEq(*SanitizeUserName(Username(account_id_string)))))
         .Times(1);
 
-    // Expect initialization of the device policy service, return success.
-    EXPECT_CALL(*device_policy_service_, UserIsOwner).WillOnce(Return(false));
-
-    // Indicate that there is no owner key in order to trigger a new one to be
-    // generated.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .Times(2)
-        .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
-    if (key_gen)
-      EXPECT_CALL(key_gen_, Start(StrEq(account_id_string), _)).Times(1);
-    else
-      EXPECT_CALL(key_gen_, Start(_, _)).Times(0);
+
+    EXPECT_CALL(key_gen_, Start(_, _)).Times(0);
 
     EXPECT_CALL(*init_controller_,
                 TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
@@ -1359,38 +1322,6 @@ TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
   constexpr char kEmail2[] = "user2@somewhere";
   ExpectStartSessionOwningInProcess(kEmail2);
   EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
-  nss_.MakeBadDB();
-  // Force SessionManagerImpl to attempt opening the NSS database.
-  EXPECT_CALL(*device_policy_service_, KeyMissing).WillOnce(Return(true));
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kNoUserNssDb, error->GetCode());
-}
-
-TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
-  EXPECT_CALL(*device_policy_service_, UserIsOwner).WillOnce(Return(true));
-  // Upon the owner login check, return an error.
-  EXPECT_CALL(*device_policy_service_,
-              HandleOwnerLogin(StrEq(kSaneEmail), _, _))
-      .WillOnce(WithArg<2>(Invoke([](brillo::ErrorPtr* error) {
-        *error = CreateError(dbus_error::kPubkeySetIllegal, "test");
-        return false;
-      })));
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  ASSERT_TRUE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, StartSession_Owner) {
-  ExpectStartOwnerSession(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 }
 
@@ -2261,29 +2192,6 @@ TEST_F(SessionManagerImplTest, ClearForcedReEnrollmentVpd) {
   ResponseCapturer capturer;
   EXPECT_CALL(*device_policy_service_, ClearBlockDevmode(_)).Times(1);
   impl_->ClearForcedReEnrollmentVpd(capturer.CreateMethodResponse<>());
-}
-
-TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
-  base::FilePath key_file_path;
-  string key("key_contents");
-  ASSERT_TRUE(
-      base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &key_file_path));
-  ASSERT_EQ(base::WriteFile(key_file_path, key.c_str(), key.size()),
-            key.size());
-
-  // Start a session, to set up NSSDB for the user.
-  ExpectStartOwnerSession(kSaneEmail);
-  brillo::ErrorPtr error;
-  ASSERT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-
-  EXPECT_CALL(*device_policy_service_,
-              ValidateAndStoreOwnerKey(StrEq(kSaneEmail), StringToBlob(key),
-                                       IncludesSlot(nss_.GetSlot())))
-      .WillOnce(Return(true));
-
-  impl_->OnKeyGenerated(kSaneEmail, key_file_path);
-  EXPECT_FALSE(base::PathExists(key_file_path));
 }
 
 TEST_F(SessionManagerImplTest, DisconnectLogFile) {

@@ -22,6 +22,7 @@ namespace login_manager {
 
 class SystemUtils;
 
+// TODO(b/259362896): The class is unused and should be removed.
 class KeyGenerator : public ChildExitHandler {
  public:
   class Delegate {

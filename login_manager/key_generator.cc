@@ -75,13 +75,12 @@ void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 bool KeyGenerator::HandleExit(const siginfo_t& info) {
-  CHECK(delegate_) << "Must set a delegate before exit can be handled.";
   if (!keygen_job_ || keygen_job_->CurrentPid() <= 0 ||
       keygen_job_->CurrentPid() != info.si_pid) {
     return false;
   }
 
-  if (info.si_status == 0) {
+  if (delegate_ && (info.si_status == 0)) {
     base::FilePath key_file(temporary_key_filename_);
     delegate_->OnKeyGenerated(key_owner_username_, key_file);
   } else {

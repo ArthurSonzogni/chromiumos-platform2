@@ -63,6 +63,7 @@ class DevicePolicyService : public PolicyService {
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
 
+  // TODO(b/259362896): The method is unused and should be removed.
   // Must be called only if |current_user| is the device owner. If they don't
   // appear to have the owner key, run key mitigation. Returns true on success.
   // Fills in |error| upon encountering an error.
@@ -82,10 +83,12 @@ class DevicePolicyService : public PolicyService {
                                         const std::vector<uint8_t>& pub_key,
                                         PK11SlotDescriptor* module);
 
+  // TODO(b/259362896): The method is unused and should be removed.
   // Checks whether the key is missing.
   virtual bool KeyMissing();
 
-  // Checks whether key loss is being mitigated.
+  // TODO(b/259362896): Login manager never mitigates a lost key anymore, the
+  // method should be removed. Checks whether key loss is being mitigated.
   virtual bool Mitigating();
 
   // Loads policy key and policy blob from disk. Returns true if at least the

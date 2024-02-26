@@ -483,7 +483,6 @@ SessionManagerImpl::SessionManagerImpl(
       bus_(bus),
       adaptor_(this),
       delegate_(delegate),
-      key_gen_(key_gen),
       device_identifier_generator_(device_identifier_generator),
       manager_(manager),
       login_metrics_(metrics),
@@ -595,8 +594,6 @@ void SessionManagerImpl::EmitStopArcVmInstanceImpulse() {
 }
 
 bool SessionManagerImpl::Initialize() {
-  key_gen_->set_delegate(this);
-
   powerd_proxy_->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
@@ -759,13 +756,16 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
                                       const std::string& in_account_id,
                                       const std::string& in_unique_identifier) {
   return StartSessionEx(error, in_account_id, in_unique_identifier,
-                        /*chrome_owner_key=*/false);
+                        /*chrome_owner_key=*/true);
 }
 
+// TODO(b/259362896): StartSessionEx() and  `chrome_owner_key` were introduced
+// as a part of the ChromeSideOwnerKeyGeneration experiment in Chrome. It is now
+// always enabled and should be removed.
 bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
                                         const std::string& in_account_id,
                                         const std::string& in_unique_identifier,
-                                        bool chrome_owner_key) {
+                                        bool /*chrome_owner_key*/) {
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
     DCHECK(*error);
@@ -780,30 +780,14 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
     return false;
   }
 
-  // Create a UserSession object for this user.
-  const bool user_is_owner = device_policy_->UserIsOwner(actual_account_id);
-  // NSS is used to store the private key which is generated and used only by
-  // consumer owner users. If no key is present, the current user might become
-  // the owner and also needs the database.
-  // TODO(b/244407123): If Chrome is handling the owner key, session manager
-  // doesn't need NSS.
-  const bool need_nss =
-      (device_policy_->KeyMissing() || user_is_owner) && !chrome_owner_key;
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
   const OptionalFilePath ns_mnt_path = is_incognito || IsolateUserSession()
                                            ? chrome_mount_ns_path_
                                            : std::nullopt;
-  auto user_session = CreateUserSession(actual_account_id, ns_mnt_path,
-                                        need_nss, is_incognito, error);
+  auto user_session =
+      CreateUserSession(actual_account_id, ns_mnt_path,
+                        /*need_nss=*/false, is_incognito, error);
   if (!user_session) {
-    DCHECK(*error);
-    return false;
-  }
-
-  // If the current user is the owner, make sure they have an owner key.
-  if (!chrome_owner_key && user_is_owner &&
-      !device_policy_->HandleOwnerLogin(
-          user_session->username, user_session->descriptor.get(), error)) {
     DCHECK(*error);
     return false;
   }
@@ -844,14 +828,6 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   }
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
-
-  // TODO(b/244407123): If `chrome_owner_key` is true, Chrome will generate the
-  // key instead.
-  if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
-      is_first_real_user && !chrome_owner_key) {
-    // This is the first sign-in on this unmanaged device.  Take ownership.
-    key_gen_->Start(actual_account_id, ns_mnt_path);
-  }
 
   DeleteArcBugReportBackup(actual_account_id);
 
@@ -1923,6 +1899,7 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
   return incognito_count == user_sessions_.size();
 }
 
+// TODO(b/259362896): `need_nss` is now always false and should be removed.
 std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
                                       const OptionalFilePath& ns_mnt_path,

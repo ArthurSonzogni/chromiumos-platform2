@@ -504,7 +504,6 @@ class SessionManagerImpl
 
   // Ownership of all of these raw pointers remains elsewhere.
   Delegate* delegate_;
-  KeyGenerator* key_gen_;
   DeviceIdentifierGenerator* device_identifier_generator_;
   ProcessManagerServiceInterface* manager_;
   LoginMetrics* login_metrics_;
