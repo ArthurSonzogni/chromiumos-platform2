@@ -33,7 +33,6 @@ namespace {
 constexpr char kLogFile[] = "/dev/kmsg";
 constexpr char kLsbRelease[] = "/etc/lsb-release";
 constexpr char kPrintkDevkmsg[] = "/proc/sys/kernel/printk_devkmsg";
-constexpr char kProcPath[] = "/proc";
 constexpr char kStatefulPartition[] = "/mnt/stateful_partition";
 
 }  // namespace
@@ -90,8 +89,8 @@ int main(int argc, char* argv[]) {
       std::make_unique<startup::ChromeosStartup>(
           std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-          base::FilePath(kProcPath), platform.get(), startup_dep.get(),
-          std::move(mount_helper), std::move(tlcl));
+          platform.get(), startup_dep.get(), std::move(mount_helper),
+          std::move(tlcl));
 
   return startup->Run();
 }

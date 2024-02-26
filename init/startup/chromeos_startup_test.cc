@@ -115,7 +115,7 @@ class EarlySetupTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::unique_ptr<vpd::Vpd>(), flags_, base_dir_, base_dir_, base_dir_,
-        base_dir_, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
             true),
@@ -167,7 +167,7 @@ class DevCheckBlockTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(std::move(vpd_fake)), flags_, base_dir,
-        base_dir, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+        base_dir, base_dir, platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
@@ -233,7 +233,7 @@ class TPMTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             false),
@@ -408,7 +408,7 @@ class StatefulWipeTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, stateful_, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, stateful_,
             false),
@@ -597,7 +597,7 @@ class TpmCleanupTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, mock_platform_.get(), mock_startup_dep_.get(),
+        mock_platform_.get(), mock_startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             mock_platform_.get(), mock_startup_dep_.get(), flags_, base_dir,
             base_dir, true),
@@ -1050,7 +1050,7 @@ class IsVarFullTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             false),
@@ -1122,7 +1122,7 @@ class DeviceSettingsTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             false),
@@ -1192,7 +1192,7 @@ class DaemonStoreTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
@@ -1252,7 +1252,7 @@ class RemoveVarEmptyTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
@@ -1295,7 +1295,7 @@ class CheckVarLogTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
@@ -1488,7 +1488,7 @@ class RestoreContextsForVarTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, base_dir, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
@@ -1537,7 +1537,7 @@ class RestorePreservedPathsTest : public ::testing::Test {
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir, stateful_, base_dir,
-        base_dir, platform_.get(), startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
             true),
