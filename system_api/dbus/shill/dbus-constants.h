@@ -1105,12 +1105,12 @@ constexpr char kP2PCapabilitiesPreferredChannelsProperty[] =
     "PreferredChannels";
 
 // kP2PCapabilitiesGroupReadinessProperty values
-constexpr char kP2PCapabilitiesGroupReadinessReady[] = "kReady";
-constexpr char kP2PCapabilitiesGroupReadinessNotReady[] = "kNotReady";
+constexpr char kP2PCapabilitiesGroupReadinessReady[] = "ready";
+constexpr char kP2PCapabilitiesGroupReadinessNotReady[] = "not_ready";
 
 // kP2PCapabilitiesClientReadinessProperty values
-constexpr char kP2PCapabilitiesClientReadinessReady[] = "kReady";
-constexpr char kP2PCapabilitiesClientReadinessNotReady[] = "kNotReady";
+constexpr char kP2PCapabilitiesClientReadinessReady[] = "ready";
+constexpr char kP2PCapabilitiesClientReadinessNotReady[] = "not_ready";
 
 // Manager kP2PGroupInfosProperty dictionary key names.
 constexpr char kP2PGroupInfoShillIDProperty[] = "shill_id";
@@ -1125,11 +1125,11 @@ constexpr char kP2PGroupInfoFrequencyProperty[] = "frequency";
 constexpr char kP2PGroupInfoClientsProperty[] = "clients";
 
 // kP2PGroupInfoStateProperty values
-constexpr char kP2PGroupInfoStateIdle[] = "kIdle";
-constexpr char kP2PGroupInfoStateStarting[] = "kStarting";
-constexpr char kP2PGroupInfoStateConfiguring[] = "kConfiguring";
-constexpr char kP2PGroupInfoStateActive[] = "kActive";
-constexpr char kP2PGroupInfoStateStopping[] = "kStopping";
+constexpr char kP2PGroupInfoStateIdle[] = "idle";
+constexpr char kP2PGroupInfoStateStarting[] = "starting";
+constexpr char kP2PGroupInfoStateConfiguring[] = "configuring";
+constexpr char kP2PGroupInfoStateActive[] = "active";
+constexpr char kP2PGroupInfoStateStopping[] = "stopping";
 
 // Manager kP2PGroupInfoClientsProperty dictionary key names
 constexpr char kP2PGroupInfoClientMACAddressProperty[] = "mac_address";
@@ -1151,11 +1151,11 @@ constexpr char kP2PClientInfoFrequencyProperty[] = "frequency";
 constexpr char kP2PClientInfoGroupOwnerProperty[] = "group_owner";
 
 // kP2PClientInfoStateProperty values
-constexpr char kP2PClientInfoStateIdle[] = "kIdle";
-constexpr char kP2PClientInfoStateAssociating[] = "kAssociating";
-constexpr char kP2PClientInfoStateConfiguring[] = "kConfiguring";
-constexpr char kP2PClientInfoStateConnected[] = "kConnected";
-constexpr char kP2PClientInfoStateDisconnecting[] = "kDisconnecting";
+constexpr char kP2PClientInfoStateIdle[] = "idle";
+constexpr char kP2PClientInfoStateAssociating[] = "associating";
+constexpr char kP2PClientInfoStateConfiguring[] = "configuring";
+constexpr char kP2PClientInfoStateConnected[] = "connected";
+constexpr char kP2PClientInfoStateDisconnecting[] = "disconnecting";
 
 // Manager kP2PClientInfoGroupOwnerProperty dictionary key names
 constexpr char kP2PClientInfoGroupOwnerMACAddressProperty[] = "mac_address";

@@ -751,11 +751,11 @@ Properties	object ActiveProfile [readonly]
 
 			string GroupReadiness
 				Indicates whether the platform is currently able to support
-				a new P2P Group Owner interface. Options: "kReady", "kNotReady".
+				a new P2P Group Owner interface. Options: "ready", "not_ready".
 
 			string ClientReadiness
 				Indicates whether the platform is currently able to support
-				a new P2P Client interface. Options: "kReady", "kNotReady".
+				a new P2P Client interface. Options: "ready", "not_ready".
 
 			array{int} SupportedChannels
 				This provides the list of supported channel frequencies in MHZ.
@@ -784,21 +784,21 @@ Properties	object ActiveProfile [readonly]
 			string state
 				Current state of a local P2P Client interface. Possible values:
 
-				"kIdle"
+				"idle"
 					No connectivity with the Group has been established.
 
-				"kAssociating"
+				"associating"
 					In the process of associating and establishing
 					L2 connectivity to the Group.
 
-				"kConfiguring"
+				"configuring"
 					L2 connectivity established, in the process of
 					configuring L3 connectivity.
 
-				"kConnected"
+				"connected"
 					Device has established L3 connectivity.
 
-				"kDisconnecting"
+				"disconnecting"
 					In the process of disconnecting from the Group.
 
 			string ssid
@@ -871,20 +871,20 @@ Properties	object ActiveProfile [readonly]
 				Current state of a local P2P Group Owner interface.
 				Possible values:
 
-				"kIdle"
+				"idle"
 					The interface is not ready to accept clients.
 
-				"kStarting"
+				"starting"
 					The interface is in the process of forming the group.
 
-				"kConfiguring"
+				"configuring"
 					The group is formed at link layer, in the process
 					of setting up network configuration.
 
-				"kActive"
+				"active"
 					The group is fully formed and ready to accept clients.
 
-				"kStopping"
+				"stopping"
 					The group is in the process of being torn down
 					and destroyed.
 
