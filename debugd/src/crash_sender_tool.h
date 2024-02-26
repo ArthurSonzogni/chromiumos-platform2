@@ -48,6 +48,7 @@ class CrashSenderTool : public SubprocessTool {
   bool test_mode_ = false;
 
   void RunCrashSender(bool ignore_hold_off_time,
+                      bool crash_loop_mode,
                       const base::FilePath& crash_directory,
                       bool consent_already_checked_by_crash_reporter);
 };

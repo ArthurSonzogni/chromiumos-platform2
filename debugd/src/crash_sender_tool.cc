@@ -32,7 +32,7 @@ constexpr char CrashSenderTool::kErrorBadFileName[];
 CrashSenderTool::CrashSenderTool() = default;
 
 void CrashSenderTool::UploadCrashes() {
-  RunCrashSender(false /* ignore_hold_off_time */,
+  RunCrashSender(false /* ignore_hold_off_time */, false /* crash_loop_mode */,
                  base::FilePath("") /* crash_directory */,
                  false /* consent_already_checked_by_crash_reporter */);
 }
@@ -117,7 +117,12 @@ bool CrashSenderTool::UploadSingleCrash(
       base::NumberToString(crash_directory_fd.get()));
 
   const bool ignore_hold_off_time = true;  // We already flushed all the files.
-  RunCrashSender(ignore_hold_off_time, munged_crash_directory,
+
+  // UploadSingleCrash is only called by CrashCollector when using
+  // CrashLoopSendingMode.
+  const bool crash_loop_mode = true;
+
+  RunCrashSender(ignore_hold_off_time, crash_loop_mode, munged_crash_directory,
                  consent_already_checked_by_crash_reporter);
 
   return true;
@@ -125,6 +130,7 @@ bool CrashSenderTool::UploadSingleCrash(
 
 void CrashSenderTool::RunCrashSender(
     bool ignore_hold_off_time,
+    bool crash_loop_mode,
     const base::FilePath& crash_directory,
     bool consent_already_checked_by_crash_reporter) {
   // 'crash_sender' requires accessing user mounts to upload user crashes.
@@ -138,6 +144,10 @@ void CrashSenderTool::RunCrashSender(
 
   if (ignore_hold_off_time) {
     p->AddArg("--ignore_hold_off_time");
+  }
+
+  if (crash_loop_mode) {
+    p->AddArg("--crash_loop_mode");
   }
 
   if (!crash_directory.empty()) {

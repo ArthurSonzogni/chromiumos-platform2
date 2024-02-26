@@ -68,6 +68,7 @@ class CrashSenderToolWithMockCreateProcess : public CrashSenderTool {
   void ExpectSingleCrashArgs(std::string* crash_directory_arg) {
     ExpectStandardArgs();
     EXPECT_CALL(mock_process_, AddArg("--ignore_hold_off_time")).Times(1);
+    EXPECT_CALL(mock_process_, AddArg("--crash_loop_mode")).Times(1);
     EXPECT_CALL(mock_process_, AddArg(StartsWith(kCrashDirectoryStart)))
         .WillOnce(SaveArg<0>(crash_directory_arg));
   }
@@ -76,6 +77,7 @@ class CrashSenderToolWithMockCreateProcess : public CrashSenderTool {
       std::string* crash_directory_arg) {
     ExpectStandardArgs();
     EXPECT_CALL(mock_process_, AddArg("--ignore_hold_off_time")).Times(1);
+    EXPECT_CALL(mock_process_, AddArg("--crash_loop_mode")).Times(1);
     EXPECT_CALL(mock_process_,
                 AddArg("--consent_already_checked_by_crash_reporter"))
         .Times(1);

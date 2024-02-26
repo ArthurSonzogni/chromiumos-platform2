@@ -135,6 +135,10 @@ void ParseCommandLine(int argc,
               "Indicates that crash_reporter already made a consent check "
               "before invoking crash_sender. Therefore, skip the consent "
               "check.");
+  DEFINE_bool(crash_loop_mode, false,
+              "Indicates that crash_sender was invoked (indirectly) from "
+              "CrashCollector in kCrashLoopSendingMode. Only affects metrics "
+              "collection.");
   DEFINE_bool(
       dry_run, false,
       "Indicates whether crash_sender is running in the dry run mode. "
@@ -159,6 +163,7 @@ void ParseCommandLine(int argc,
   flags->force_upload_on_test_images = FLAGS_force_upload_on_test_images;
   flags->consent_already_checked_by_crash_reporter =
       FLAGS_consent_already_checked_by_crash_reporter;
+  flags->is_crash_loop = FLAGS_crash_loop_mode;
   flags->dry_run = FLAGS_dry_run;
   // We should only be skipping the consent check if we are sure it has been
   // checked prior to crash_sender being invoked. This only happens when the
@@ -418,6 +423,7 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       force_upload_on_test_images_(options.force_upload_on_test_images),
       consent_already_checked_by_crash_reporter_(
           options.consent_already_checked_by_crash_reporter),
+      is_crash_loop_(options.is_crash_loop),
       dry_run_(options.dry_run) {}
 
 bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {

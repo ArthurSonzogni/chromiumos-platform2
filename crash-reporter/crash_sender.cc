@@ -170,10 +170,11 @@ int RunChildMain(int argc, const char* argv[]) {
   options.force_upload_on_test_images = flags.force_upload_on_test_images;
   options.consent_already_checked_by_crash_reporter =
       flags.consent_already_checked_by_crash_reporter;
+  options.is_crash_loop = flags.is_crash_loop;
   options.dry_run = flags.dry_run;
   util::Sender sender(std::move(metrics_lib), std::move(clock), options);
 
-  // If you add sigificant code past this point, consider updating
+  // If you add significant code past this point, consider updating
   // crash_sender_fuzzer.cc as well.
 
   // Get all reports we might want to send, and then choose the more important

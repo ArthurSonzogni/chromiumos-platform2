@@ -62,6 +62,7 @@ struct CommandLineFlags {
   bool upload_old_reports = false;
   bool force_upload_on_test_images = false;
   bool consent_already_checked_by_crash_reporter = false;
+  bool is_crash_loop = false;
   bool dry_run = false;
 };
 
@@ -178,6 +179,9 @@ class Sender : public SenderBase {
     // already checked for consent, so any additional checks are not needed.
     bool consent_already_checked_by_crash_reporter = false;
 
+    // Value for the IsCrashLoop field in our structured metrics.
+    bool is_crash_loop = false;
+
     // If true, crash_sender will run under the dry run mode -- it will not
     // upload any crashes and writes log content to stdout.
     bool dry_run = false;
@@ -290,6 +294,7 @@ class Sender : public SenderBase {
   const bool upload_old_reports_;
   const bool force_upload_on_test_images_;
   const bool consent_already_checked_by_crash_reporter_;
+  const bool is_crash_loop_;
   const bool dry_run_;
 };
 
