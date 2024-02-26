@@ -70,6 +70,8 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
           Invoke(fake_platform_.get(), &FakePlatform::CreateSymbolicLink));
   ON_CALL(*this, ReadLink(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::ReadLink));
+  ON_CALL(*this, IsLink(_))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::IsLink));
 
   ON_CALL(*this, SetFileTimes(_, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SetFileTimes));

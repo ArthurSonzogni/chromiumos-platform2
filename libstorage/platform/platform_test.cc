@@ -426,6 +426,21 @@ TEST_F(PlatformTest, ReadLink) {
   EXPECT_FALSE(platform_.ReadLink(not_link, &read_target));
 }
 
+TEST_F(PlatformTest, IsLink) {
+  const base::FilePath valid_link(GetTempName());
+  const base::FilePath not_link(GetTempName());
+  const base::FilePath incomplete_link(GetTempName());
+
+  ASSERT_TRUE(platform_.TouchFileDurable(not_link));
+  ASSERT_TRUE(base::CreateSymbolicLink(not_link, valid_link));
+  ASSERT_TRUE(base::CreateSymbolicLink(base::FilePath("/file_not_exist"),
+                                       incomplete_link));
+
+  EXPECT_FALSE(platform_.IsLink(not_link));
+  EXPECT_TRUE(platform_.IsLink(valid_link));
+  EXPECT_TRUE(platform_.IsLink(incomplete_link));
+}
+
 TEST_F(PlatformTest, SetFileTimes) {
   struct timespec atime1 = {123, 45};
   struct timespec mtime1 = {234, 56};

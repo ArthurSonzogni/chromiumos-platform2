@@ -120,6 +120,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               ReadLink,
               (const base::FilePath&, base::FilePath*),
               (override));
+  MOCK_METHOD(bool, IsLink, (const base::FilePath&), (const, override));
   MOCK_METHOD(bool,
               SetFileTimes,
               (const base::FilePath&,

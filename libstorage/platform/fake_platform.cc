@@ -170,10 +170,6 @@ base::FilePath FakePlatform::StripTestFilePath(
   return fake_platform::StripTestFilePath(tmpfs_rootfs_, path);
 }
 
-bool FakePlatform::IsLink(const base::FilePath& path) const {
-  return base::IsLink(TestFilePath(path));
-}
-
 void FakePlatform::RemoveFakeEntries(const base::FilePath& path) {
   base::AutoLock lock(mappings_lock_);
   xattrs_.erase(path);
@@ -302,6 +298,10 @@ bool FakePlatform::ReadLink(const base::FilePath& path,
 
   *target = StripTestFilePath(tmp_path);
   return true;
+}
+
+bool FakePlatform::IsLink(const base::FilePath& path) const {
+  return base::IsLink(TestFilePath(path));
 }
 
 bool FakePlatform::SetFileTimes(const base::FilePath& path,

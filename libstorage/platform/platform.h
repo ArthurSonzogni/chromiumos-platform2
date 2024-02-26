@@ -799,6 +799,13 @@ class BRILLO_EXPORT Platform {
   //   encounted and false is returned, target will be cleared.
   virtual bool ReadLink(const base::FilePath& path, base::FilePath* target);
 
+  // Return true if |path| is a symbolic link, even if the link target does
+  // not exist.
+  //
+  // Parameters
+  //   path - The path of the symbolic link to read
+  virtual bool IsLink(const base::FilePath& path) const;
+
   // Sets the atime and mtime of a file to the provided values, optionally
   // following symlinks.
   //

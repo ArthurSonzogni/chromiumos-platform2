@@ -1216,6 +1216,10 @@ bool Platform::ReadLink(const base::FilePath& path, base::FilePath* target) {
   return true;
 }
 
+bool Platform::IsLink(const base::FilePath& path) const {
+  return base::IsLink(path);
+}
+
 bool Platform::SetFileTimes(const base::FilePath& path,
                             const struct timespec& atime,
                             const struct timespec& mtime,

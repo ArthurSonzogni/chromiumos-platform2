@@ -75,6 +75,7 @@ class BRILLO_EXPORT FakePlatform : public Platform {
   bool CreateSymbolicLink(const base::FilePath& path,
                           const base::FilePath& target) override;
   bool ReadLink(const base::FilePath& path, base::FilePath* target) override;
+  bool IsLink(const base::FilePath& path) const override;
 
   bool SetFileTimes(const base::FilePath& path,
                     const struct timespec& atime,
@@ -236,8 +237,6 @@ class BRILLO_EXPORT FakePlatform : public Platform {
   base::FilePath ResolveMountPath(const base::FilePath& path) const;
   base::FilePath TestFilePath(const base::FilePath& path) const;
   base::FilePath StripTestFilePath(const base::FilePath& path) const;
-  // TODO(dlunev): consider making IsLink a part of platform API.
-  bool IsLink(const base::FilePath& path) const;
 
   Platform real_platform_;
 
