@@ -21,6 +21,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <base/types/expected.h>
 #include <brillo/key_value_store.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
@@ -261,46 +262,56 @@ void DeviceConfig::AddV4L2Sensors() {
   }
 }
 
+enum class EepromReadError {
+  kReadFailure,
+  kNotCamera,
+};
+
 void DeviceConfig::AddCameraEeproms() {
-  auto read_eeprom =
-      [&](base::FilePath from_path) -> std::optional<EepromIdBlock> {
+  auto read_eeprom = [&](base::FilePath from_path)
+      -> base::expected<EepromIdBlock, EepromReadError> {
     std::string content;
     if (!base::ReadFileToString(from_path, &content)) {
-      return std::nullopt;
+      return base::unexpected(EepromReadError::kReadFailure);
     }
     std::optional<EepromIdBlock> id_block = FindCameraEepromIdBlock(content);
     if (!id_block.has_value()) {
       // Not a camera EEPROM. Ignore the device.
-      return std::nullopt;
+      return base::unexpected(EepromReadError::kNotCamera);
     }
     LOG(INFO) << "Read camera eeprom from " << from_path;
-    return id_block;
+    return id_block.value();
   };
 
   // Try finding the EEPROM file corresponding to the given |nvmem_path| by
   // matching the devname.
   auto locate_eeprom_file =
       [](base::FilePath nvmem_path) -> std::optional<base::FilePath> {
-    // sysfs device name is of the form "<major devname>:<minor devname>". We
-    // only want to match the major devname because the minor devname can be
-    // different on the nvmem and i2c buses.
-    auto get_major_name = [](std::string bus_device_name) -> std::string {
-      return base::SplitString(bus_device_name, ":", base::TRIM_WHITESPACE,
-                               base::SPLIT_WANT_NONEMPTY)[0];
-    };
-    std::string devname = get_major_name(nvmem_path.BaseName().value());
+    // Find the eeprom file that locates closest to the nvmem file in the i2c
+    // sysfs tree.
     base::FileEnumerator dev_enum(base::FilePath(kSysfsI2cDevicesRoot), false,
                                   base::FileEnumerator::DIRECTORIES);
+    size_t max_matching_length = 0;
+    base::FilePath matching_eeprom_path;
     for (base::FilePath dev_path = dev_enum.Next(); !dev_path.empty();
          dev_path = dev_enum.Next()) {
-      if (get_major_name(dev_path.BaseName().value()) == devname) {
-        base::FilePath eeprom_path = dev_path.Append("eeprom");
-        if (base::PathExists(eeprom_path)) {
-          return eeprom_path;
-        }
+      const base::FilePath eeprom_path =
+          base::MakeAbsoluteFilePath(dev_path.Append("eeprom"));
+      if (!base::PathExists(eeprom_path)) {
+        continue;
+      }
+      const size_t matching_length = std::distance(
+          eeprom_path.value().begin(),
+          std::mismatch(eeprom_path.value().begin(), eeprom_path.value().end(),
+                        nvmem_path.value().begin())
+              .first);
+      if (matching_length > max_matching_length) {
+        max_matching_length = matching_length;
+        matching_eeprom_path = eeprom_path;
       }
     }
-    return std::nullopt;
+    return max_matching_length > 0 ? std::make_optional(matching_eeprom_path)
+                                   : std::nullopt;
   };
 
   base::FileEnumerator dev_enum(base::FilePath(kSysfsNvmemDevicesRoot), false,
@@ -320,12 +331,15 @@ void DeviceConfig::AddCameraEeproms() {
       LOG(ERROR) << "Failed to resolve absolute nvmem path from " << dev_path;
       continue;
     }
-    std::optional<EepromIdBlock> id_block = read_eeprom(nvmem_path);
-    if (!id_block.has_value()) {
+    base::expected<EepromIdBlock, EepromReadError> id_block =
+        read_eeprom(nvmem_path);
+    if (!id_block.has_value() &&
+        id_block.error() == EepromReadError::kReadFailure) {
       // User 'arc-camera' does not have the permission to read the EEPROM file
       // on the nvmem bus (/sys/bus/nvmem/devices/*/nvmem). Fallback to reading
       // the EEPROM file on the i2c bus (/sys/bus/i2c/devices/*/eeprom).
-      std::optional<base::FilePath> eeprom_path = locate_eeprom_file(dev_path);
+      std::optional<base::FilePath> eeprom_path =
+          locate_eeprom_file(nvmem_path);
       if (eeprom_path.has_value()) {
         id_block = read_eeprom(eeprom_path.value());
       }
@@ -353,13 +367,12 @@ std::vector<PlatformCameraInfo> DeviceConfig::ReadPlatformCameraInfo() {
   for (const EepromInfo& eeprom : eeproms_) {
     std::vector<std::string> path = eeprom.nvmem_path.GetComponents();
     CHECK_GE(path.size(), 4u);
-    auto iter = std::find_if(v4l2_sensors_.begin(), v4l2_sensors_.end(),
-                             [&](const V4L2SensorInfo& sensor) {
-                               std::vector<std::string> p =
-                                   sensor.subdev_path.GetComponents();
-                               return std::equal(path.begin(), path.end() - 3,
-                                                 p.begin());
-                             });
+    auto iter = std::find_if(
+        v4l2_sensors_.begin(), v4l2_sensors_.end(),
+        [&](const V4L2SensorInfo& sensor) {
+          std::vector<std::string> p = sensor.subdev_path.GetComponents();
+          return std::equal(path.begin(), path.end() - 3, p.begin());
+        });
     auto info = PlatformCameraInfo{
         .eeprom = eeprom,
         .sysfs_name = path[path.size() - 4] + '/' + path[path.size() - 3],
