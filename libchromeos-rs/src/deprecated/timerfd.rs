@@ -13,7 +13,7 @@ use std::{
     time::Duration,
 };
 
-use libc::{self, clock_getres, timerfd_create, timerfd_settime, CLOCK_MONOTONIC, TFD_CLOEXEC};
+use libc::{clock_getres, timerfd_create, timerfd_settime, CLOCK_MONOTONIC, TFD_CLOEXEC};
 
 use crate::deprecated::{EventFd, FakeClock};
 use nix::Error;
@@ -229,10 +229,7 @@ impl IntoRawFd for FakeTimerFd {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        thread::sleep,
-        time::{Duration, Instant},
-    };
+    use std::{thread::sleep, time::Instant};
 
     #[test]
     fn one_shot() {

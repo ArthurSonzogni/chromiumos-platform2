@@ -17,5 +17,4 @@ pub use clock::*;
 pub use eventfd::*;
 pub use poll::*;
 pub use poll_token_derive::*;
-pub use scoped_event_macro::*;
 pub use timerfd::*;
