@@ -16,6 +16,7 @@
 
 namespace fbpreprocessor {
 
+class CrashReporterDBusAdaptor;
 class InputManager;
 class OutputManager;
 class PseudonymizationManager;
@@ -65,6 +66,7 @@ class ManagerImpl : public Manager {
   std::unique_ptr<InputManager> input_manager_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<PlatformFeaturesClient> platform_features_;
+  std::unique_ptr<CrashReporterDBusAdaptor> crash_reporter_dbus_adaptor_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 

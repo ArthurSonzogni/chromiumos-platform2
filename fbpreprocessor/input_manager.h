@@ -8,10 +8,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_refptr.h>
-#include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
-#include <dbus/object_proxy.h>
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
@@ -21,7 +17,7 @@ namespace fbpreprocessor {
 
 class InputManager : public SessionStateManager::Observer {
  public:
-  explicit InputManager(Manager* manager, dbus::Bus* bus);
+  explicit InputManager(Manager* manager);
   InputManager(const InputManager&) = delete;
   InputManager& operator=(const InputManager&) = delete;
   ~InputManager();
@@ -29,19 +25,13 @@ class InputManager : public SessionStateManager::Observer {
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
 
+  void OnNewFirmwareDump(const FirmwareDump& fw_dump) const;
+
   void set_base_dir_for_test(const base::FilePath& base_dir) {
     base_dir_ = base_dir;
   }
 
  private:
-  void OnNewFirmwareDump(const FirmwareDump& fw_dump) const;
-
-  void OnFirmwareDumpCreated(dbus::Signal* signal) const;
-
-  void OnSignalConnected(const std::string& interface_name,
-                         const std::string& signal_name,
-                         bool success) const;
-
   void DeleteAllFiles() const;
 
   // Base directory to the root of the daemon-store where the firmware dumps are
@@ -54,11 +44,6 @@ class InputManager : public SessionStateManager::Observer {
   base::FilePath user_root_dir_;
 
   Manager* manager_;
-
-  // Proxy to receive D-Bus signals from crash-reporter.
-  scoped_refptr<dbus::ObjectProxy> crash_reporter_proxy_;
-
-  base::WeakPtrFactory<InputManager> weak_factory_{this};
 };
 
 }  // namespace fbpreprocessor

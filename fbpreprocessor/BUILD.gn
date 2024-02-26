@@ -49,6 +49,7 @@ proto_library("fbpreprocessor-proto") {
 
 static_library("libfbpreprocessord") {
   sources = [
+    "crash_reporter_dbus_adaptor.cc",
     "dbus_adaptor.cc",
     "fbpreprocessor_daemon.cc",
     "firmware_dump.cc",

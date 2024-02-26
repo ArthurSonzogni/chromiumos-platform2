@@ -10,6 +10,7 @@
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
+#include "fbpreprocessor/crash_reporter_dbus_adaptor.h"
 #include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/platform_features_client.h"
@@ -37,7 +38,10 @@ void ManagerImpl::Start(dbus::Bus* bus) {
 
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
-  input_manager_ = std::make_unique<InputManager>(this, bus);
+  input_manager_ = std::make_unique<InputManager>(this);
+
+  crash_reporter_dbus_adaptor_ =
+      std::make_unique<CrashReporterDBusAdaptor>(this, bus);
 
   platform_features_->Start(bus);
   // Now that the daemon is fully initialized, notify everyone if a user was
