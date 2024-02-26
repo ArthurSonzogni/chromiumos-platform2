@@ -26,7 +26,6 @@
 #include "login_manager/android_oci_wrapper.h"
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/device_identifier_generator.h"
-#include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
@@ -293,7 +292,6 @@ class SessionManagerService
 
   std::unique_ptr<NssUtil> nss_;
   PolicyKey owner_key_;
-  KeyGenerator key_gen_;
   DeviceIdentifierGenerator device_identifier_generator_;
   crossystem::Crossystem crossystem_;
   VpdProcessImpl vpd_process_;
@@ -306,7 +304,7 @@ class SessionManagerService
   base::FilePath aborted_browser_pid_path_;
   base::FilePath shutdown_browser_pid_path_;
 
-  // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
+  // Holds pointers to nss_, this. Shares system_, login_metrics_.
   std::unique_ptr<SessionManagerInterface> impl_;
 
   // Aborting flow triggered by AbortBrowserForHang is as follows:

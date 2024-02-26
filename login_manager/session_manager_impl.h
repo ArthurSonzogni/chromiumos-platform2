@@ -35,7 +35,6 @@
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
-#include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
@@ -56,7 +55,6 @@ class Response;
 namespace login_manager {
 class DeviceLocalAccountManager;
 class InitDaemonController;
-class KeyGenerator;
 class LoginMetrics;
 class NssUtil;
 class PolicyDescriptor;
@@ -79,7 +77,6 @@ constexpr bool __attribute__((unused)) IsolateUserSession() {
 // SHA1 with RSA encryption.
 class SessionManagerImpl
     : public SessionManagerInterface,
-      public KeyGenerator::Delegate,
       public PolicyService::Delegate,
       public org::chromium::SessionManagerInterfaceInterface {
  public:
@@ -171,7 +168,6 @@ class SessionManagerImpl
   SessionManagerImpl(Delegate* delegate,
                      std::unique_ptr<InitDaemonController> init_controller,
                      const scoped_refptr<dbus::Bus>& bus,
-                     KeyGenerator* key_gen,
                      DeviceIdentifierGenerator* device_identifier_generator,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,

@@ -48,7 +48,6 @@
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_dispatcher.h"
 #include "login_manager/chrome_features_service_client.h"
-#include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
@@ -166,7 +165,6 @@ SessionManagerService::SessionManagerService(
       system_(utils),
       nss_(NssUtil::Create()),
       owner_key_(nss_->GetOwnerKeyFilePath(), nss_.get()),
-      key_gen_(uid, utils),
       device_identifier_generator_(utils, metrics),
       vpd_process_(utils),
       android_container_(std::make_unique<AndroidOciWrapper>(
@@ -253,7 +251,7 @@ bool SessionManagerService::Initialize() {
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
-      &key_gen_, &device_identifier_generator_,
+      &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), chrome_mount_ns_path_, system_, &crossystem_, &vpd_process_,
       &owner_key_, android_container_.get(), &install_attributes_reader_,
@@ -557,9 +555,8 @@ void SessionManagerService::SetUpHandlers() {
   signal_handler_.Init();
   DCHECK(!child_exit_dispatcher_.get());
   child_exit_dispatcher_ = std::make_unique<ChildExitDispatcher>(
-      &signal_handler_,
-      std::vector<ChildExitHandler*>{this, &key_gen_, &vpd_process_,
-                                     android_container_.get()});
+      &signal_handler_, std::vector<ChildExitHandler*>{
+                            this, &vpd_process_, android_container_.get()});
   for (int i = 0; i < kNumSignals; ++i) {
     signal_handler_.RegisterHandler(
         kSignals[i],
@@ -667,7 +664,6 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
 
   const base::TimeTicks browser_exit_start_time = base::TimeTicks::Now();
   browser_->Kill(SIGTERM, reason);
-  key_gen_.RequestJobExit(reason);
   android_container_->RequestJobExit(
       code == ExitCode::SUCCESS
           ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
@@ -695,9 +691,6 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
                                             browser_exit_start_time);
   }
 
-  key_gen_.EnsureJobExit(std::max(
-      base::TimeDelta(), SessionManagerImpl::kKeyGenTimeout -
-                             (base::TimeTicks::Now() - timeout_start)));
   android_container_->EnsureJobExit(std::max(
       base::TimeDelta(), SessionManagerImpl::kContainerTimeout -
                              (base::TimeTicks::Now() - timeout_start)));

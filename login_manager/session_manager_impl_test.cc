@@ -75,7 +75,6 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_init_daemon_controller.h"
 #include "login_manager/mock_install_attributes_reader.h"
-#include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_policy_key.h"
@@ -384,7 +383,7 @@ class SessionManagerImplTest : public ::testing::Test,
     arc_sideload_status_ = new MockArcSideloadStatus();
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
-        &key_gen_, &device_identifier_generator_, &manager_, &metrics_, &nss_,
+        &device_identifier_generator_, &manager_, &metrics_, &nss_,
         std::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get(), debugd_proxy_.get(), fwmp_proxy_.get(),
@@ -961,7 +960,6 @@ class SessionManagerImplTest : public ::testing::Test,
   em::PolicyFetchResponse device_policy_;
 
   scoped_refptr<FakeBus> bus_;
-  MockKeyGenerator key_gen_;
   MockDeviceIdentifierGenerator device_identifier_generator_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;

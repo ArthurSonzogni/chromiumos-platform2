@@ -66,7 +66,6 @@
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/init_daemon_controller.h"
-#include "login_manager/key_generator.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
@@ -455,7 +454,6 @@ SessionManagerImpl::SessionManagerImpl(
     Delegate* delegate,
     std::unique_ptr<InitDaemonController> init_controller,
     const scoped_refptr<dbus::Bus>& bus,
-    KeyGenerator* key_gen,
     DeviceIdentifierGenerator* device_identifier_generator,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,

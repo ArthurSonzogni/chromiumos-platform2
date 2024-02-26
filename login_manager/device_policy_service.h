@@ -34,7 +34,6 @@ class PolicyFetchResponse;
 }  // namespace enterprise_management
 
 namespace login_manager {
-class KeyGenerator;
 class LoginMetrics;
 class SystemUtils;
 

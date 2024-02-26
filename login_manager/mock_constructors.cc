@@ -10,7 +10,6 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_init_daemon_controller.h"
-#include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_policy_key.h"
@@ -54,9 +53,6 @@ MockFileChecker::~MockFileChecker() = default;
 
 MockInitDaemonController::MockInitDaemonController() = default;
 MockInitDaemonController::~MockInitDaemonController() = default;
-
-MockKeyGenerator::MockKeyGenerator() : KeyGenerator(-1, nullptr) {}
-MockKeyGenerator::~MockKeyGenerator() = default;
 
 MockLivenessChecker::MockLivenessChecker() = default;
 MockLivenessChecker::~MockLivenessChecker() = default;

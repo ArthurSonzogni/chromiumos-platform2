@@ -16,7 +16,6 @@
 #include <base/time/time.h>
 
 #include "login_manager/generator_job.h"
-#include "login_manager/key_generator.h"
 
 namespace login_manager {
 
