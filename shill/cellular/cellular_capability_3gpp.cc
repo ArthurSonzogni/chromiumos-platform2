@@ -1950,10 +1950,9 @@ void CellularCapability3gpp::UpdateSims() {
   std::vector<std::pair<size_t, RpcIdentifier>> sim_requests;
   for (size_t i = 0; i < sim_slots_.size(); ++i) {
     const RpcIdentifier& path = sim_slots_[i];
-    if (!IsValidSimPath(path)) {
-      LOG(WARNING) << "Invalid slot path: " << path.value();
+    if (!IsValidSimPath(path))
       continue;
-    }
+
     sim_requests.push_back(std::make_pair(i, path));
     pending_sim_requests_.insert(path);
   }
