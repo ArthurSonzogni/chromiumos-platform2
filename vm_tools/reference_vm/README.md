@@ -64,7 +64,7 @@ Place `CROSVM_CODE.fd` and `refvm_VARS.fd` in Downloads. Place `refvm.img` into
 `/run/daemon-store/crosvm/<user ID>/cmVmdm0=.img`.
 
 ```
-vmc start refvm --bios /home/chronos/user/Downloads/CROSVM_CODE.fd \
-  --pflash /home/chronos/user/Downloads/refvm_VARS.fd \
+vmc start refvm --bios /home/chronos/user/MyFiles/Downloads/CROSVM_CODE.fd \
+  --pflash /home/chronos/user/MyFiles/Downloads/refvm_VARS.fd \
   --tools-dlc termina-dlc --no-start-lxd
 ```
