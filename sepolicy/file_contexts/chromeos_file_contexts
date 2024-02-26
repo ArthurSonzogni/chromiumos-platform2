@@ -629,7 +629,6 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root(/(?!android-data/data).*)? u:object_r:cros_home_shadow_uid_root:s0
 /home/.shadow/[0-9a-z]{40}/cache/user(/.*)? u:object_r:cros_home_shadow_uid_user:s0
 /home/.shadow/[0-9a-z]{40}/mount/user(/.*)? u:object_r:cros_home_shadow_uid_user:s0
-/home/.shadow/[0-9a-z]{40}/mount/user/Downloads(/.*)? u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
 /home/.shadow/[0-9a-z]{40}/mount/user/MyFiles(/.*)?   u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache u:object_r:cache_file:s0
