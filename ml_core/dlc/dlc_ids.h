@@ -8,6 +8,7 @@
 namespace cros::dlc_client {
 
 // Please keep alphabetical order by variable names.
+constexpr char kBlurDetectorDlcId[] = "cros-camera-blur-detector-dlc";
 constexpr char kMlCoreDlcId[] = "ml-core-internal";
 constexpr char kSuperResDlcId[] = "cros-camera-super-res-dlc";
 

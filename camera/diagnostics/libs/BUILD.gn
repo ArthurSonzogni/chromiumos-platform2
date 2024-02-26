@@ -1,0 +1,15 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [ "libbrillo" ]
+}
+
+source_set("blur_detector") {
+  sources = [ "blur_detector.cc" ]
+  public_configs = [ ":target_defaults" ]
+}

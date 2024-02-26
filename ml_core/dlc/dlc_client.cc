@@ -30,7 +30,10 @@ class DlcClientImpl : public cros::DlcClient {
   explicit DlcClientImpl(const std::string& dlc_id)
       : dlc_id_(dlc_id),
         task_runner_(base::SequencedTaskRunner::GetCurrentDefault()) {}
-  ~DlcClientImpl() override = default;
+
+  ~DlcClientImpl() override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  }
 
   bool Initialize(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,

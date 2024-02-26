@@ -27,6 +27,8 @@ void CameraDiagnostics::Start() {
           chromeos::mojo_service_manager::ConnectToMojoServiceManager()};
 
   service_provider_.Register(service_manager.get());
+
+  dirty_lens_analyzer_.Initialize();
 }
 
 }  // namespace cros

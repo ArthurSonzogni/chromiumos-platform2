@@ -23,6 +23,7 @@ class DlcClient {
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
       base::OnceCallback<void(const std::string&)> error_cb);
 
+  // Not thread-safe; must be destroyed in the same sequence as it was created.
   virtual ~DlcClient() = default;
 
   // Asks DLC Service to start installing the DLC. Retries a limited

@@ -23,12 +23,10 @@ generate_mojom_bindings("cros_camera_diagnostics_mojom") {
 executable("cros_camera_diagnostics_service") {
   sources = [
     "camera_diagnostics.cc",
-    "camera_diagnostics.h",
     "camera_diagnostics_impl.cc",
-    "camera_diagnostics_impl.h",
     "camera_diagnostics_main.cc",
     "diagnostics_service_provider.cc",
-    "diagnostics_service_provider.h",
+    "dirty_lens_analyzer.cc",
   ]
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
@@ -45,7 +43,11 @@ executable("cros_camera_diagnostics_service") {
     "dl",
     "rt",
   ]
-  deps = [ ":cros_camera_diagnostics_mojom" ]
+  deps = [
+    ":cros_camera_diagnostics_mojom",
+    "//camera/diagnostics/libs:blur_detector",
+    "//ml_core/dlc:dlc_client",
+  ]
   install_path = "bin"
 }
 
