@@ -208,6 +208,7 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
         result_->probe_url = http_url;
         result_->http_result = ProbeResult::kPortalSuspected;
       } else {
+        LOG(WARNING) << LoggingTag() << ": Missing Content-Length";
         result_->http_result = ProbeResult::kFailure;
       }
     } else if (IsRedirectResponse(status_code)) {
@@ -249,15 +250,14 @@ std::optional<size_t> PortalDetector::GetContentLength(
   std::string content_length_string =
       response->GetHeader(brillo::http::response_header::kContentLength);
   if (content_length_string.empty()) {
-    LOG(WARNING) << LoggingTag() << "Missing Content-Length";
     // If there is no Content-Length header, use the size of the actual response
     // data.
     return response->ExtractData().size();
   }
   size_t content_length = 0;
   if (!base::StringToSizeT(content_length_string, &content_length)) {
-    LOG(WARNING) << LoggingTag()
-                 << "Invalid Content-Length: " << content_length_string;
+    LOG(WARNING) << LoggingTag() << ": Invalid Content-Length "
+                 << content_length_string;
     return std::nullopt;
   }
   return content_length;
