@@ -258,7 +258,6 @@ if (use.test) {
       "fake_generator_job.cc",
       "fake_secret_util.cc",
       "feature_flags_util_test.cc",
-      "key_generator_test.cc",
       "keygen_worker.cc",
       "landlock_policy_test.cc",
       "liveness_checker_impl_test.cc",

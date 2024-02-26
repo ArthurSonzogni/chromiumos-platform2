@@ -28,8 +28,6 @@ class KeyGenerator : public ChildExitHandler {
   class Delegate {
    public:
     virtual ~Delegate();
-    virtual void OnKeyGenerated(const std::string& username,
-                                const base::FilePath& temp_key_file) = 0;
   };
 
   KeyGenerator(uid_t uid, SystemUtils* utils);

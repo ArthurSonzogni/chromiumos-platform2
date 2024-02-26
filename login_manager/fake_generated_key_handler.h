@@ -13,6 +13,7 @@
 
 namespace login_manager {
 
+// TODO(b/259362896): The class should be removed.
 class FakeGeneratedKeyHandler : public KeyGenerator::Delegate {
  public:
   FakeGeneratedKeyHandler();
@@ -23,10 +24,6 @@ class FakeGeneratedKeyHandler : public KeyGenerator::Delegate {
 
   const std::string& key_username() { return key_username_; }
   const std::string& key_contents() { return key_contents_; }
-
-  // Overridden from KeyGenerator::Delegate
-  void OnKeyGenerated(const std::string& username,
-                      const base::FilePath& temp_key_file) override;
 
  private:
   std::string key_username_;

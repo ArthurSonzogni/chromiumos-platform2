@@ -1822,10 +1822,6 @@ void SessionManagerImpl::OnKeyPersisted(bool success) {
   adaptor_.SendSetOwnerKeyCompleteSignal(ToSuccessSignal(success));
 }
 
-// TODO(b/259362896): The method should be removed.
-void SessionManagerImpl::OnKeyGenerated(const std::string& username,
-                                        const base::FilePath& temp_key_file) {}
-
 void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   // The log string must not be confused with other clobbers-state parameters.
   // Sanitize by replacing all non-alphanumeric characters with underscores and

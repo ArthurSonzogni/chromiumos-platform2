@@ -82,7 +82,6 @@ bool KeyGenerator::HandleExit(const siginfo_t& info) {
 
   if (delegate_ && (info.si_status == 0)) {
     base::FilePath key_file(temporary_key_filename_);
-    delegate_->OnKeyGenerated(key_owner_username_, key_file);
   } else {
     DLOG(WARNING) << "Key generation failed with " << info.si_status;
   }

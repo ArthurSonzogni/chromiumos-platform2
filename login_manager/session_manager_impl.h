@@ -360,10 +360,6 @@ class SessionManagerImpl
   void OnPolicyPersisted(bool success) override;
   void OnKeyPersisted(bool success) override;
 
-  // KeyGenerator::Delegate implementation:
-  void OnKeyGenerated(const std::string& username,
-                      const base::FilePath& temp_key_file) override;
-
   void SetSystemClockLastSyncInfoRetryDelayForTesting(
       const base::TimeDelta& delay) {
     system_clock_last_sync_info_retry_delay_ = delay;
