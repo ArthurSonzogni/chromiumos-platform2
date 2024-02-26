@@ -49,7 +49,6 @@ class FakeStartupDep : public StartupDep {
   // `startup::StartupDep` overrides.
   bool Stat(const base::FilePath& path, struct stat* st) override;
   bool Statvfs(const base::FilePath& path, struct statvfs* st) override;
-  bool Lstat(const base::FilePath& path, struct stat* st) override;
   bool Mount(const base::FilePath& src,
              const base::FilePath& dst,
              const std::string& type,

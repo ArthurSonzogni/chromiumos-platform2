@@ -450,20 +450,20 @@ void ChromeosStartup::CheckForStatefulWipe() {
   // is slow on some platforms, we want to do the additional checks only
   // after verified kDevModeFile existence.
   std::vector<std::string> clobber_args;
-  struct stat stbuf;
   std::string boot_alert_msg;
   std::string clobber_log_msg;
   base::FilePath reset_file = stateful_.Append(kResetFile);
-  if ((startup_dep_->Lstat(reset_file, &stbuf) && S_ISLNK(stbuf.st_mode)) ||
-      base::PathExists(reset_file)) {
+  if (platform_->IsLink(reset_file) || platform_->FileExists(reset_file)) {
     boot_alert_msg = "power_wash";
+    uid_t uid;
+    platform_->GetOwnership(reset_file, &uid, NULL, false /* follow_links */);
     // If it's not a plain file owned by us, force a powerwash.
-    if (stbuf.st_uid != getuid() || !S_ISREG(stbuf.st_mode)) {
+    if (uid != getuid() || platform_->IsLink(reset_file)) {
       clobber_args.push_back("keepimg");
       clobber_args.push_back("preserve_lvs");
     } else {
       std::string str;
-      if (!base::ReadFileToString(reset_file, &str)) {
+      if (!platform_->ReadFileToString(reset_file, &str)) {
         PLOG(WARNING) << "Failed to read reset file";
       } else {
         std::vector<std::string> split_args = base::SplitString(
@@ -480,8 +480,10 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // No physical stateful partition available, usually due to initramfs
     // (recovery image, factory install shim or netboot). Do not wipe.
   } else if (IsDevToVerifiedModeTransition(0)) {
-    bool res = startup_dep_->Stat(dev_mode_allowed_file_, &stbuf);
-    if ((res && stbuf.st_uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
+    uid_t uid;
+    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, NULL,
+                                       false /* follow_links */);
+    if ((res && uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
       if (!DevIsDebugBuild()) {
         // We're transitioning from dev mode to verified boot.
         // When coming back from developer mode, we don't need to
@@ -490,7 +492,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
         clobber_args.push_back("fast");
         clobber_args.push_back("keepimg");
         std::string msg;
-        if (res && stbuf.st_uid == getuid()) {
+        if (res && uid == getuid()) {
           msg = "'Leave developer mode, dev_mode file present'";
         } else {
           msg = "'Leave developer mode, no dev_mode file'";
@@ -503,8 +505,10 @@ void ChromeosStartup::CheckForStatefulWipe() {
       }
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
-    if (!startup_dep_->Stat(dev_mode_allowed_file_, &stbuf) ||
-        stbuf.st_uid != getuid()) {
+    uid_t uid;
+    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, NULL,
+                                       false /* follow_links */);
+    if (!res || uid != getuid()) {
       if (!DevIsDebugBuild()) {
         // We're transitioning from verified boot to dev mode.
         boot_alert_msg = "enter_dev";

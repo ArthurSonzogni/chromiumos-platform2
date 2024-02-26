@@ -77,17 +77,6 @@ bool FakeStartupDep::Statvfs(const base::FilePath& path, struct statvfs* st) {
   return true;
 }
 
-bool FakeStartupDep::Lstat(const base::FilePath& path, struct stat* st) {
-  std::unordered_map<std::string, struct stat>::iterator it;
-  it = result_map_.find(path.value());
-  if (st == nullptr || it == result_map_.end()) {
-    return false;
-  }
-
-  *st = it->second;
-  return true;
-}
-
 bool FakeStartupDep::Mount(const base::FilePath& src,
                            const base::FilePath& dst,
                            const std::string& type,

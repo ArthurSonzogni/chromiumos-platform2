@@ -414,6 +414,7 @@ class StatefulWipeTest : public ::testing::Test {
             false),
         std::move(tlcl));
     clobber_test_log_ = base_dir.Append("clobber_test_log");
+    ASSERT_TRUE(platform_->CreateDirectory(stateful_));
   }
 
   crossystem::Crossystem* crossystem_;
@@ -432,10 +433,8 @@ class StatefulWipeTest : public ::testing::Test {
 TEST_F(StatefulWipeTest, PowerwashForced) {
   base::FilePath reset_file = stateful_.Append("factory_install_reset");
   startup_dep_->SetClobberLogFile(clobber_test_log_);
-  struct stat st;
-  st.st_mode = S_IFLNK;
-  st.st_uid = -1;
-  startup_dep_->SetStatResultForPath(reset_file, st);
+  ASSERT_TRUE(platform_->CreateSymbolicLink(reset_file,
+                                            base::FilePath("/file_not_exist")));
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
@@ -448,12 +447,10 @@ TEST_F(StatefulWipeTest, PowerwashForced) {
 // Tests normal path for user requested powerwash.
 TEST_F(StatefulWipeTest, PowerwashNormal) {
   base::FilePath reset_file = stateful_.Append("factory_install_reset");
-  ASSERT_TRUE(CreateDirAndWriteFile(reset_file, "keepimg slow test powerwash"));
   startup_dep_->SetClobberLogFile(clobber_test_log_);
-  struct stat st;
-  st.st_mode = S_IFREG;
-  st.st_uid = getuid();
-  startup_dep_->SetStatResultForPath(reset_file, st);
+  ASSERT_TRUE(
+      platform_->WriteStringToFile(reset_file, "keepimg slow test powerwash"));
+  ASSERT_TRUE(platform_->SetOwnership(reset_file, getuid(), 8888, false));
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
@@ -483,10 +480,8 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
-  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
-  struct stat st;
-  st.st_uid = getuid();
-  startup_dep_->SetStatResultForPath(dev_mode_allowed, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
+  ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(false);
   startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir.Append("state_dev");
@@ -509,10 +504,8 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
-  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
-  struct stat st;
-  st.st_uid = getuid();
-  startup_dep_->SetStatResultForPath(dev_mode_allowed, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
+  ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(true);
   startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir.Append("state_dev");
@@ -543,10 +536,8 @@ TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
-  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
-  struct stat st;
-  st.st_uid = -1;
-  startup_dep_->SetStatResultForPath(dev_mode_allowed, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
+  ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(false);
   startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir.Append("state_dev");
@@ -569,9 +560,8 @@ TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
   base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
-  struct stat st;
-  st.st_uid = -1;
-  startup_dep_->SetStatResultForPath(dev_mode_allowed, st);
+  ASSERT_TRUE(platform_->TouchFileDurable(dev_mode_allowed));
+  ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(true);
   startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir.Append("state_dev");

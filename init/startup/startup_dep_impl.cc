@@ -49,10 +49,6 @@ bool StartupDep::Statvfs(const base::FilePath& path, struct statvfs* st) {
   return statvfs(path.value().c_str(), st) == 0;
 }
 
-bool StartupDep::Lstat(const base::FilePath& path, struct stat* st) {
-  return lstat(path.value().c_str(), st) == 0;
-}
-
 bool StartupDep::Mount(const base::FilePath& src,
                        const base::FilePath& dst,
                        const std::string& type,
