@@ -25,7 +25,7 @@ class InputManager : public SessionStateManager::Observer {
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
 
-  void OnNewFirmwareDump(const FirmwareDump& fw_dump) const;
+  bool OnNewFirmwareDump(const FirmwareDump& fw_dump) const;
 
   void set_base_dir_for_test(const base::FilePath& base_dir) {
     base_dir_ = base_dir;

@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -23,6 +24,7 @@ namespace fbpreprocessor {
 
 InputManager::InputManager(Manager* manager)
     : base_dir_(kDaemonStorageRoot), manager_(manager) {
+  CHECK(manager_->session_state_manager());
   manager_->session_state_manager()->AddObserver(this);
 }
 
@@ -47,11 +49,12 @@ void InputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
-void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
+bool InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
   if (!base::PathExists(fw_dump.DumpFile())) {
     LOG(ERROR) << "Can't find firmware dump on disk.";
     VLOG(kLocalOnlyDebugVerbosity)
         << "Firmware dump doesn't exist: " << fw_dump.DumpFile().value();
+    return false;
   }
   if (!manager_->FirmwareDumpsAllowed()) {
     // The feature is disabled, but firmware dumps were created anyway.
@@ -60,12 +63,15 @@ void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete firmware dump.";
     }
+    return false;
   }
   if (manager_->pseudonymization_manager()) {
     if (!manager_->pseudonymization_manager()->StartPseudonymization(fw_dump)) {
       LOG(ERROR) << "Failed to start pseudonymization.";
+      return false;
     }
   }
+  return true;
 }
 
 void InputManager::DeleteAllFiles() const {

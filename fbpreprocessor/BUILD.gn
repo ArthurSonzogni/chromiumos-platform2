@@ -100,6 +100,7 @@ if (use.test) {
       "fake_manager.cc",
       "fake_session_state_manager.cc",
       "firmware_dump_test.cc",
+      "input_manager_test.cc",
       "output_manager_test.cc",
       "pseudonymization_manager_test.cc",
     ]
