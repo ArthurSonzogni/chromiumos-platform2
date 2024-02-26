@@ -8,20 +8,13 @@
 # Args:
 #   sources: A list of files to be installed and checked.
 #   install_path: An install destination path.
+#   install_compiled_bpf (optional): A boolean to install the compiled bpf
+#     instead of the original sources.
 
 template("install_seccomp_policy") {
-  _check_seccomp_target = "_${target_name}-check_seccomp"
-  install_config(target_name) {
-    forward_variables_from(invoker,
-                           [
-                             "install_path",
-                             "outputs",
-                             "sources",
-                           ])
-    deps = [ ":${_check_seccomp_target}" ]
-  }
+  _compile_seccomp_target = "_${target_name}-compile_seccomp"
 
-  action_foreach(_check_seccomp_target) {
+  action_foreach(_compile_seccomp_target) {
     forward_variables_from(invoker, [ "sources" ])
     script = "/usr/bin/compile_seccomp_policy"
 
@@ -34,12 +27,30 @@ template("install_seccomp_policy") {
     # mapping of syscall names to numbers.
     # Ref: https://github.com/google/minijail/blob/HEAD/tools/README.md#compile_seccomp_policypy
 
-    outputs = [ "${target_gen_dir}/seccomp/{{source_name_part}}.bpf" ]
+    outputs = [ "${target_gen_dir}/seccomp/{{source_name_part}}.bpf.policy" ]
     args = [
       "--arch-json",
       inputs[0],
       "{{source}}",
       outputs[0],
     ]
+  }
+
+  install_config(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "install_compiled_bpf",
+                             "install_path",
+                             "outputs",
+                             "sources",
+                           ])
+    if (!defined(install_compiled_bpf)) {
+      install_compiled_bpf = false
+    }
+    if (install_compiled_bpf) {
+      sources = []
+      sources = get_target_outputs(":${_compile_seccomp_target}")
+    }
+    deps = [ ":${_compile_seccomp_target}" ]
   }
 }
