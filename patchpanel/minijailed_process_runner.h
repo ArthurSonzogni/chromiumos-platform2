@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_MINIJAILED_PROCESS_RUNNER_H_
 #define PATCHPANEL_MINIJAILED_PROCESS_RUNNER_H_
 
+#include <linux/filter.h>
 #include <sys/types.h>
 
 #include <map>
@@ -44,9 +45,6 @@ class MinijailedProcessRunner {
   };
 
   static MinijailedProcessRunner* GetInstance();
-
-  static std::unique_ptr<MinijailedProcessRunner> CreateForTesting(
-      brillo::Minijail* mj, std::unique_ptr<System> system);
 
   MinijailedProcessRunner(const MinijailedProcessRunner&) = delete;
   MinijailedProcessRunner& operator=(const MinijailedProcessRunner&) = delete;
@@ -135,7 +133,10 @@ class MinijailedProcessRunner {
                                 bool log_failures = true);
 
  protected:
+  // Constructor for the singleton.
   MinijailedProcessRunner();
+  // Constructor used in the unit tests.
+  MinijailedProcessRunner(brillo::Minijail* mj, std::unique_ptr<System> system);
 
   // Used by ip() and ip6().
   // Runs a process (argv[0]) with optional arguments (argv[1]...)
@@ -177,12 +178,20 @@ class MinijailedProcessRunner {
   bool RunPendingIptablesInBatchImpl(std::string_view iptables_restore_path,
                                      const TableToRules& table_to_rules);
 
+  // Configures |jail| to apply the seccomp filter on iptables.
+  virtual void UseIptablesSeccompFilter(minijail* jail);
+
   brillo::Minijail* mj_;
   std::unique_ptr<System> system_;
 
   bool iptables_batch_mode_ = false;
   TableToRules pending_iptables_rules_;
   TableToRules pending_ip6tables_rules_;
+
+  // Only set and used in UseIptablesSeccompFilter(). See the implementation
+  // there for details.
+  std::vector<struct sock_filter> iptables_seccomp_filter_data_;
+  struct sock_fprog iptables_seccomp_filter_;
 };
 
 }  // namespace patchpanel

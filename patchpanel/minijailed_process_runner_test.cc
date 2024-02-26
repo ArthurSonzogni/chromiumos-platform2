@@ -40,11 +40,20 @@ class MockSystem : public System {
   MOCK_METHOD3(WaitPid, pid_t(pid_t pid, int* wstatus, int options));
 };
 
+class ProcessRunnerForTesting : public MinijailedProcessRunner {
+ public:
+  ProcessRunnerForTesting(brillo::Minijail* mj, std::unique_ptr<System> system)
+      : MinijailedProcessRunner(mj, std::move(system)) {}
+
+ private:
+  void UseIptablesSeccompFilter(minijail* jail) override{};
+};
+
 class MinijailProcessRunnerTest : public ::testing::Test {
  protected:
   MinijailProcessRunnerTest() {
     system_ = new MockSystem();
-    runner_ = MinijailedProcessRunner::CreateForTesting(
+    runner_ = std::make_unique<ProcessRunnerForTesting>(
         &mj_, base::WrapUnique(system_));
 
     jail_ = brillo::Minijail::GetInstance()->New();

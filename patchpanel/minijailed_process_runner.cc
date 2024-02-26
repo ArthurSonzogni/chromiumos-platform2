@@ -5,6 +5,7 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <linux/capability.h>
+#include <linux/filter.h>
 #include <poll.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -62,7 +63,7 @@ constexpr char kModprobePath[] = "/sbin/modprobe";
 constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
 constexpr char kIptablesSeccompFilterPath[] =
-    "/usr/share/policy/iptables-seccomp.policy";
+    "/usr/share/policy/iptables-seccomp.bpf.policy";
 
 base::LazyInstance<MinijailedProcessRunner>::DestructorAtExit
     g_process_runner_ = LAZY_INSTANCE_INITIALIZER;
@@ -77,6 +78,45 @@ bool IsValidTokenForIptables(std::string_view token) {
 
   return std::find_if(token.begin(), token.end(), is_invalid_char) ==
          token.end();
+}
+
+// The implementation logic is copied from
+// src/platform/minijail/minijail0_cli.c:read_seccomp_filter().
+bool LoadSeccompFilter(const base::FilePath& policy_bpf_file,
+                       std::vector<struct sock_filter>* output_data,
+                       struct sock_fprog* output_sock_fprog) {
+  base::ScopedFILE f(fopen(policy_bpf_file.value().c_str(), "re"));
+  if (!f) {
+    PLOG(ERROR) << "Failed to open " << policy_bpf_file;
+    return false;
+  }
+  off_t file_size = -1;
+  if (fseeko(f.get(), 0, SEEK_END) == -1 ||
+      (file_size = ftello(f.get())) == -1) {
+    PLOG(ERROR) << "Failed to get size of " << policy_bpf_file;
+    return false;
+  }
+
+  if (file_size % int{sizeof(struct sock_filter)} != 0) {
+    LOG(ERROR) << "The policy file " << policy_bpf_file
+               << " has an invalid size " << file_size;
+    return false;
+  }
+  rewind(f.get());
+
+  auto filter_size =
+      static_cast<size_t>(file_size) / sizeof(struct sock_filter);
+  output_data->resize(filter_size);
+  if (fread(output_data->data(), sizeof(struct sock_filter), filter_size,
+            f.get()) != filter_size) {
+    PLOG(ERROR) << "Failed to read " << policy_bpf_file;
+    return false;
+  }
+
+  output_sock_fprog->len = static_cast<uint16_t>(output_data->size());
+  output_sock_fprog->filter = output_data->data();
+
+  return true;
 }
 
 }  // namespace
@@ -198,17 +238,12 @@ MinijailedProcessRunner* MinijailedProcessRunner::GetInstance() {
   return g_process_runner_.Pointer();
 }
 
-std::unique_ptr<MinijailedProcessRunner>
-MinijailedProcessRunner::CreateForTesting(brillo::Minijail* mj,
-                                          std::unique_ptr<System> system) {
-  auto ret = base::WrapUnique(new MinijailedProcessRunner);
-  ret->mj_ = mj;
-  ret->system_ = std::move(system);
-  return ret;
-}
-
 MinijailedProcessRunner::MinijailedProcessRunner()
     : mj_(brillo::Minijail::GetInstance()), system_(new System()) {}
+
+MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj,
+                                                 std::unique_ptr<System> system)
+    : mj_(mj), system_(std::move(system)) {}
 
 int MinijailedProcessRunner::RunIp(const std::vector<std::string>& argv,
                                    bool as_patchpanel_user,
@@ -303,8 +338,7 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   // not all.
   mj_->UseCapabilities(jail, kNetRawAdminCapMask | kBPFCapMask);
 
-  // Set up seccomp filter.
-  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+  UseIptablesSeccompFilter(jail);
 
   return RunSyncDestroy(args, mj_, jail, log_failures, output);
 }
@@ -369,7 +403,7 @@ int MinijailedProcessRunner::iptables_restore(std::string_view script_file,
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
-  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+  UseIptablesSeccompFilter(jail);
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
@@ -380,7 +414,7 @@ int MinijailedProcessRunner::ip6tables_restore(std::string_view script_file,
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
-  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+  UseIptablesSeccompFilter(jail);
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
@@ -517,7 +551,7 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask | kBPFCapMask);
-  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+  UseIptablesSeccompFilter(jail);
 
   int ret = RunSyncDestroy(
       {std::string(iptables_restore_path), "-n", script_path, "-w"}, mj_, jail,
@@ -531,6 +565,24 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
   }
 
   return ret == 0;
+}
+
+void MinijailedProcessRunner::UseIptablesSeccompFilter(minijail* jail) {
+  // Read the binary seccomp filters for iptables. Crash the process on failure
+  // since 1) this is not expected, 2) may indicate a security issue, 3) follow
+  // the API design of libminijail (the following calls to libminijail will also
+  // incur a crash on failure).
+  if (iptables_seccomp_filter_data_.empty()) {
+    if (!LoadSeccompFilter(base::FilePath(kIptablesSeccompFilterPath),
+                           &iptables_seccomp_filter_data_,
+                           &iptables_seccomp_filter_)) {
+      LOG(FATAL) << "Failed to load seccomp filter for iptables";
+    }
+  }
+
+  minijail_no_new_privs(jail);
+  minijail_use_seccomp_filter(jail);
+  minijail_set_seccomp_filters(jail, &iptables_seccomp_filter_);
 }
 
 }  // namespace patchpanel

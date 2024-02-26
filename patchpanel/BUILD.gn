@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/install_seccomp_policy.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -50,10 +51,10 @@ install_config("install_init_config") {
 }
 
 # Install the seccomp config.
-install_config("install_seccomp_policy") {
-  sources = [ "seccomp/iptables-seccomp-" + getenv("ARCH") + ".policy" ]
+install_seccomp_policy("install_seccomp_policy") {
+  sources = [ "seccomp/" + getenv("ARCH") + "/iptables-seccomp.policy" ]
   install_path = "seccomp_policy"
-  outputs = [ "iptables-seccomp.policy" ]
+  install_compiled_bpf = true
 }
 
 # Install the setuid restriction config.

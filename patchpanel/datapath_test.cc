@@ -104,6 +104,8 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
     return 0;
   }
 
+  void UseIptablesSeccompFilter(minijail* jail) override {}
+
   static void RecordIptablesCall(Iptables::Table table,
                                  Iptables::Command command,
                                  std::string_view chain,
