@@ -14,6 +14,7 @@
 #include <wayland-util.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
+#include <cstdint>
 
 namespace vm_tools {
 namespace sommelier {
@@ -665,6 +666,20 @@ MATCHER_P(ValueListMatches, expected, "") {
   return values == expected;
 }
 
+// Matcher for the data argument of an X11 ChangeProperty request,
+// which is a const void* pointing to an uint32_t array whose size is implied by
+// the flags argument. Hence, this does not test if argument exceeds the size of
+// expected since we have to explicitly state the size in the function call.
+MATCHER_P(ChangePropertyDataMatches, expected, "") {
+  const uint32_t* received = static_cast<const uint32_t*>(arg);
+  for (uint32_t i = 0; i < expected.size(); i++) {
+    if (received[i] != expected[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 TEST_F(X11Test, XdgToplevelConfigureTriggersX11Configure) {
   // Arrange
   AdvertiseOutputs(xwayland.get(), {OutputConfig()});
@@ -1040,6 +1055,97 @@ TEST_F(X11Test, X11ConfigureRequestWithoutPositionIsNotForwardedToAuraHost) {
       .height = 400,
       .value_mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT};
   sl_handle_configure_request(&ctx, &configure);
+  Pump();
+}
+
+TEST_F(X11Test, X11OnlyClientCanExitFullScreenIfFlagSet) {
+  // Arrange
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  // pretend window is mapped and fullscreen
+  window->managed = 1;
+  window->fullscreen = true;
+  window->compositor_fullscreen = true;
+  window->allow_resize = false;
+
+  // No states from Wayland - which means non-fullscreen
+  struct wl_array states;
+  wl_array_init(&states);
+
+  // Test with the flag set. X11 next_config.state is set to fullscreen to
+  // retain fullscreen.
+  ctx.only_client_can_exit_fullscreen = true;
+  window->next_config.states_length = 0;
+
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 800, 600, &states);
+
+  // window->fullscreen is not updated by sl_internal_toplevel_configure.
+  // It is done by X11 notifying property change, hence we only test
+  // compositor_fullscreen here.
+  ASSERT_EQ(window->next_config.states_length, 1);
+  ASSERT_EQ(window->next_config.states[0],
+            window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value);
+
+  ASSERT_FALSE(window->compositor_fullscreen);
+  ASSERT_FALSE(window->allow_resize);
+}
+
+TEST_F(X11Test, X11ExitFullScreenIfFlagNotSet) {
+  // Arrange
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  // pretend window is mapped and fullscreen
+  window->managed = 1;
+  window->fullscreen = true;
+  window->compositor_fullscreen = true;
+  window->allow_resize = false;
+
+  // No states from Wayland - which means non-fullscreen
+  struct wl_array states;
+  wl_array_init(&states);
+
+  // Test with without flag set. X11 next_config.state no longer includes
+  // fullscreen.
+  ctx.only_client_can_exit_fullscreen = false;
+  window->next_config.states_length = 0;
+
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, 800, 600, &states);
+
+  // Compositor will treat the window as non-fullscreen and allow resize.
+  // Since no next_config is defined, follow up xcb()->change_property()
+  // will be called without any states - indicating the window is no
+  // longer fullscreen.
+  ASSERT_EQ(window->next_config.states_length, 0);
+
+  ASSERT_FALSE(window->compositor_fullscreen);
+  ASSERT_TRUE(window->allow_resize);
+}
+
+TEST_F(X11Test, X11NextConfigFullscreenStateConsumedCorrectly) {
+  // Arrange
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  // pretend window is mapped and fullscreen
+  window->managed = 1;
+  window->fullscreen = true;
+  window->compositor_fullscreen = true;
+  window->allow_resize = false;
+
+  // set fullscreen
+  window->next_config.states_length = 1;
+  window->next_config.states[0] =
+      window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
+
+  EXPECT_CALL(xcb, change_property(
+                       testing::_, XCB_PROP_MODE_REPLACE, window->id,
+                       ctx.atoms[ATOM_NET_WM_STATE].value, XCB_ATOM_ATOM, 32, 1,
+                       ChangePropertyDataMatches(std::vector(
+                           {ctx.atoms[ATOM_NET_WM_STATE_FULLSCREEN].value}))))
+      .Times(1);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 0);
   Pump();
 }
 
