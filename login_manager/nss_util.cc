@@ -78,10 +78,6 @@ class NssUtilImpl : public NssUtil {
 
   ScopedPK11SlotDescriptor GetInternalSlot() override;
 
-  std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
-      const std::vector<uint8_t>& public_key_der,
-      PK11SlotDescriptor* user_slot) override;
-
   std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
       PK11SlotDescriptor* user_slot) override;
 
@@ -170,60 +166,6 @@ ScopedPK11SlotDescriptor NssUtilImpl::GetInternalSlot() {
   res->slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
   DCHECK_EQ(PK11_IsReadOnly(res->slot.get()), true);
   return res;
-}
-
-std::unique_ptr<crypto::RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
-    const std::vector<uint8_t>& public_key_der, PK11SlotDescriptor* desc) {
-  if (public_key_der.size() == 0) {
-    LOG(ERROR) << "Not checking key because size is 0";
-    return nullptr;
-  }
-
-  // First, decode and save the public key.
-  SECItem key_der;
-  key_der.type = siBuffer;
-  key_der.data = const_cast<unsigned char*>(&public_key_der[0]);
-  key_der.len = public_key_der.size();
-
-  ScopedCERTSubjectPublicKeyInfo spki(
-      SECKEY_DecodeDERSubjectPublicKeyInfo(&key_der));
-  if (!spki) {
-    NOTREACHED();
-    return nullptr;
-  }
-
-  ScopedSECKEYPublicKey public_key(SECKEY_ExtractPublicKey(spki.get()));
-  if (!public_key) {
-    NOTREACHED();
-    return nullptr;
-  }
-
-  // Make sure the key is an RSA key.  If not, that's an error
-  if (SECKEY_GetPublicKeyType(public_key.get()) != rsaKey) {
-    NOTREACHED();
-    return nullptr;
-  }
-
-  ScopedSECItem ck_id(PK11_MakeIDFromPubKey(&(public_key->u.rsa.modulus)));
-  if (!ck_id) {
-    NOTREACHED();
-    return nullptr;
-  }
-
-  // Search in just the user slot for the key with the given ID.
-  // If necessary, enter the mount namespace where the user mounts exist.
-  std::unique_ptr<ScopedMountNamespace> ns_mnt;
-  if (desc->ns_mnt_path) {
-    ns_mnt = ScopedMountNamespace::CreateFromPath(desc->ns_mnt_path.value());
-  }
-  ScopedSECKEYPrivateKey key(
-      PK11_FindKeyByKeyID(desc->slot.get(), ck_id.get(), nullptr));
-  if (!key) {
-    // We didn't find the key.
-    return nullptr;
-  }
-
-  return base::WrapUnique(crypto::RSAPrivateKey::CreateFromKey(key.get()));
 }
 
 std::unique_ptr<crypto::RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(

@@ -43,22 +43,6 @@ class NssUtilTest : public ::testing::Test {
 
 const char NssUtilTest::kUsername[] = "someone@nowhere.com";
 
-TEST_F(NssUtilTest, FindFromPublicKey) {
-  // Create a keypair, which will put the keys in the user's NSSDB.
-  std::unique_ptr<crypto::RSAPrivateKey> pair(
-      util_->GenerateKeyPairForUser(desc_.get()));
-  ASSERT_NE(pair, nullptr);
-
-  std::vector<uint8_t> public_key;
-  ASSERT_TRUE(pair->ExportPublicKey(&public_key));
-
-  EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
-
-  std::unique_ptr<crypto::RSAPrivateKey> private_key(
-      util_->GetPrivateKeyForUser(public_key, desc_.get()));
-  EXPECT_NE(private_key, nullptr);
-}
-
 TEST_F(NssUtilTest, RejectBadPublicKey) {
   std::vector<uint8_t> public_key(10, 'a');
   EXPECT_FALSE(util_->CheckPublicKeyBlob(public_key));

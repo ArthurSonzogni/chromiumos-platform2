@@ -44,10 +44,6 @@ class MockNssUtil : public NssUtil {
       const OptionalFilePath& ns_mnt_path) override;
   ScopedPK11SlotDescriptor GetInternalSlot() override;
   MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
-              GetPrivateKeyForUser,
-              (const std::vector<uint8_t>&, PK11SlotDescriptor*),
-              (override));
-  MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
               GenerateKeyPairForUser,
               (PK11SlotDescriptor*),
               (override));
@@ -94,24 +90,6 @@ class CheckPublicKeyUtil : public MockNssUtil {
   CheckPublicKeyUtil& operator=(const CheckPublicKeyUtil&) = delete;
 
   ~CheckPublicKeyUtil() override;
-};
-
-class KeyCheckUtil : public MockNssUtil {
- public:
-  KeyCheckUtil();
-  KeyCheckUtil(const KeyCheckUtil&) = delete;
-  KeyCheckUtil& operator=(const KeyCheckUtil&) = delete;
-
-  ~KeyCheckUtil() override;
-};
-
-class KeyFailUtil : public MockNssUtil {
- public:
-  KeyFailUtil();
-  KeyFailUtil(const KeyFailUtil&) = delete;
-  KeyFailUtil& operator=(const KeyFailUtil&) = delete;
-
-  ~KeyFailUtil() override;
 };
 
 }  // namespace login_manager

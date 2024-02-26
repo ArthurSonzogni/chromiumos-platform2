@@ -374,22 +374,6 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   return true;
 }
 
-std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
-    const std::vector<uint8_t>& key,
-    PK11SlotDescriptor* desc,
-    brillo::ErrorPtr* error) {
-  std::unique_ptr<RSAPrivateKey> result(nss_->GetPrivateKeyForUser(key, desc));
-  if (!result) {
-    constexpr char kMessage[] =
-        "Could not verify that owner key belongs to this user.";
-    LOG(WARNING) << kMessage;
-    if (error)
-      *error = CreateError(dbus_error::kPubkeySetIllegal, kMessage);
-    return nullptr;
-  }
-  return result;
-}
-
 void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
                                         Completion completion) {
   // Run base method for everything other than Chrome device policy.

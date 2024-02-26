@@ -97,19 +97,4 @@ CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
 
 CheckPublicKeyUtil::~CheckPublicKeyUtil() = default;
 
-KeyCheckUtil::KeyCheckUtil() {
-  ON_CALL(*this, GetPrivateKeyForUser(_, _))
-      .WillByDefault(InvokeWithoutArgs(this, &KeyCheckUtil::CreateShortKey));
-  EXPECT_CALL(*this, GetPrivateKeyForUser(_, _)).Times(1);
-}
-
-KeyCheckUtil::~KeyCheckUtil() = default;
-
-KeyFailUtil::KeyFailUtil() {
-  EXPECT_CALL(*this, GetPrivateKeyForUser(_, _))
-      .WillOnce(Return(ByMove(std::unique_ptr<crypto::RSAPrivateKey>())));
-}
-
-KeyFailUtil::~KeyFailUtil() = default;
-
 }  // namespace login_manager

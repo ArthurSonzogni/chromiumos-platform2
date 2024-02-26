@@ -157,16 +157,6 @@ class DevicePolicyService : public PolicyService {
   bool StoreOwnerProperties(const std::string& current_user,
                             crypto::RSAPrivateKey* signing_key);
 
-  // TODO(b/259362896): The method is unused and should be removed.
-  // Checks the user's NSS database to see if they have the private key.
-  // Returns a pointer to it if so.
-  // On failure, returns nullptr, with |error| set appropriately.
-  // |error| can be nullptr, if caller doesn't need it.
-  std::unique_ptr<crypto::RSAPrivateKey> GetOwnerKeyForGivenUser(
-      const std::vector<uint8_t>& key,
-      PK11SlotDescriptor* module,
-      brillo::ErrorPtr* error);
-
   // Helper to return the policy store for the Chrome domain.
   PolicyStore* GetChromeStore();
 

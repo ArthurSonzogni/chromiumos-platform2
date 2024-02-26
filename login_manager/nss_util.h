@@ -33,6 +33,7 @@ using OptionalFilePath = std::optional<base::FilePath>;
 
 using ScopedPK11SlotDescriptor = std::unique_ptr<PK11SlotDescriptor>;
 
+// TODO(b/259362896): Most of the methods here should be removed.
 // An interface to wrap the usage of crypto/nss_util.h and allow for mocking.
 class NssUtil {
  public:
@@ -58,12 +59,6 @@ class NssUtil {
   // still perform operations on the slot even when session_manager doesn't need
   // to store the private key there.
   virtual ScopedPK11SlotDescriptor GetInternalSlot() = 0;
-
-  // Will attempt to enter the mount namespace at |user_slot->ns_mnt_path|,
-  // if present.
-  virtual std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
-      const std::vector<uint8_t>& public_key_der,
-      PK11SlotDescriptor* user_slot) = 0;
 
   // Will attempt to enter the mount namespace at |user_slot->ns_mnt_path|,
   // if present.
