@@ -6,8 +6,6 @@
 
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 
-use libc;
-use std;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
@@ -96,7 +94,7 @@ fn duration_to_millis(duration: &Duration) -> i64 {
 // Writes |string| to file |path|.  If |append| is true, seeks to end first.
 // If |append| is false, truncates the file first.
 fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
-    let mut f = OpenOptions::new().write(true).append(append).open(&path)?;
+    let mut f = OpenOptions::new().write(true).append(append).open(path)?;
     if !append {
         f.set_len(0)?;
     }
@@ -312,28 +310,6 @@ impl Timer for MockTimer {
             }
         }
     }
-
-    // Mock sleep produces all events that would happen during that sleep, then
-    // updates the time.
-    fn sleep(&mut self, sleep_time: &Duration) {
-        let start_time = self.current_time;
-        let end_time = start_time + duration_to_millis(sleep_time);
-        while self.event_index < self.test_events.len()
-            && self.test_events[self.event_index].time <= end_time
-        {
-            self.test_events[self.event_index].deliver(
-                &self.paths,
-                &mut self.dbus_fifo_out,
-                &mut self.low_mem_device,
-                self.current_time,
-            );
-            self.event_index += 1;
-        }
-        if self.event_index == self.test_events.len() {
-            self.quit_request = true;
-        }
-        self.current_time = end_time;
-    }
 }
 
 struct MockDbus {
@@ -378,12 +354,12 @@ impl MockDbus {
         let fifo_in = OpenOptions::new()
             .custom_flags(libc::O_NONBLOCK)
             .read(true)
-            .open(&fifo_path)?;
+            .open(fifo_path)?;
         let fds = vec![fifo_in.as_raw_fd()];
         let fifo_out = OpenOptions::new()
             .custom_flags(libc::O_NONBLOCK)
             .write(true)
-            .open(&fifo_path)?;
+            .open(fifo_path)?;
         Ok(MockDbus {
             fds,
             fifo_in,

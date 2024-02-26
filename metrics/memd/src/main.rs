@@ -45,8 +45,6 @@ use std::mem::MaybeUninit;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
-#[cfg(not(test))]
-use std::thread;
 use std::{io, str};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
@@ -170,7 +168,7 @@ fn open_with_flags_maybe(path: &Path, options: &OpenOptions) -> Result<Option<Fi
     if !path.exists() {
         Ok(None)
     } else {
-        Ok(Some(options.open(&path)?))
+        Ok(Some(options.open(path)?))
     }
 }
 
@@ -192,7 +190,6 @@ fn read_int(path: &Path) -> Result<u32> {
     file.read_to_string(&mut content)?;
     Ok(content
         .split_whitespace()
-        .into_iter()
         .next()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "empty file"))?
         .parse::<u32>()?)
@@ -207,7 +204,6 @@ trait Timer {
         fds: &mut libc::fd_set,
         timeout: &Duration,
     ) -> libc::c_int;
-    fn sleep(&mut self, sleep_time: &Duration);
     fn now(&self) -> i64;
     fn quit_request(&self) -> bool;
 }
@@ -219,25 +215,14 @@ struct GenuineTimer {}
 impl Timer for GenuineTimer {
     // Returns current uptime (active time since boot, in milliseconds)
     fn now(&self) -> i64 {
-        let mut ts = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        // clock_gettime is safe when passed a valid address and a valid enum.
-        let result =
-            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec) };
-        assert_eq!(result, 0, "clock_gettime() failed!");
-        // Safe because the value was initialized by clock_gettime.
-        ts.tv_sec as i64 * 1000 + ts.tv_nsec as i64 / 1_000_000
+        let ts = nix::time::clock_gettime(nix::time::ClockId::CLOCK_MONOTONIC)
+            .expect("clock_gettime() failed!");
+        (ts.tv_sec() * 1000 + ts.tv_nsec() / 1_000_000).into()
     }
 
     // Always returns false, unless testing (see MockTimer).
     fn quit_request(&self) -> bool {
         false
-    }
-
-    fn sleep(&mut self, sleep_time: &Duration) {
-        thread::sleep(*sleep_time);
     }
 
     fn select(
@@ -448,7 +433,7 @@ impl SampleQueue {
     // it discards the LRU slot.
     fn next_slot(&mut self) -> &mut Sample {
         let slot = self.head;
-        self.head = modulo(self.ihead() + 1, SAMPLE_QUEUE_LENGTH) as usize;
+        self.head = modulo(self.ihead() + 1, SAMPLE_QUEUE_LENGTH);
         if self.count < SAMPLE_QUEUE_LENGTH {
             self.count += 1;
         }
@@ -724,7 +709,7 @@ impl<'a> Sampler<'a> {
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
         let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
-            .map_err(|e| Error::LowMemFileError(e))?;
+            .map_err(Error::LowMemFileError)?;
         if low_mem_file_option.is_none() {
             warn!("low-mem device: cannot open and will not use");
         }
@@ -735,18 +720,18 @@ impl<'a> Sampler<'a> {
         if let Some(low_mem_file) = low_mem_file_option.as_ref() {
             watcher
                 .set(low_mem_file)
-                .map_err(|e| Error::LowMemFDWatchError(e))?;
+                .map_err(Error::LowMemFDWatchError)?;
             low_mem_watcher
                 .set(low_mem_file)
-                .map_err(|e| Error::LowMemWatcherError(e))?;
+                .map_err(Error::LowMemWatcherError)?;
         }
         for fd in dbus.get_fds().iter().by_ref() {
-            watcher.set_fd(*fd).map_err(|e| Error::DbusWatchError(e))?;
+            watcher.set_fd(*fd).map_err(Error::DbusWatchError)?;
         }
 
         let files = Files {
             available_file_option: open_maybe(&paths.available)
-                .map_err(|e| Error::AvailableFileError(e))?,
+                .map_err(Error::AvailableFileError)?,
             low_mem_file_option,
         };
 
@@ -771,10 +756,10 @@ impl<'a> Sampler<'a> {
         };
         sampler
             .find_starting_clip_counter()
-            .map_err(|e| Error::StartingClipCounterMissingError(e))?;
+            .map_err(Error::StartingClipCounterMissingError)?;
         sampler
             .log_static_parameters()
-            .map_err(|e| Error::LogStaticParametersError(e))?;
+            .map_err(Error::LogStaticParametersError)?;
         Ok(sampler)
     }
 
@@ -1150,7 +1135,7 @@ fn fprint_datetime(out: &mut File) -> Result<()> {
     Ok(())
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 enum SampleType {
     EnterLowMem,    // Entering low-memory state, from the kernel low-mem notifier.
     LeaveLowMem,    // Leaving low-memory state, from the kernel low-mem notifier.
@@ -1159,13 +1144,8 @@ enum SampleType {
     Sleeper,        // Memd was not running for a long time.
     TabDiscard,     // Chrome browser letting us know about a tab discard.
     Timer,          // Event was produced after FAST_POLL_PERIOD_DURATION with no other events.
-    Uninitialized,  // Internal use.
-}
-
-impl Default for SampleType {
-    fn default() -> SampleType {
-        SampleType::Uninitialized
-    }
+    #[default]
+    Uninitialized, // Internal use.
 }
 
 impl fmt::Display for SampleType {
@@ -1179,12 +1159,10 @@ impl SampleType {
     // internally.  This knowledge is used in outputting samples to clip files,
     // because the timestamps of samples generated externally may be skewed.
     fn has_internal_timestamp(&self) -> bool {
-        match self {
-            &SampleType::TabDiscard | &SampleType::OomKillBrowser | &SampleType::OomKillKernel => {
-                false
-            }
-            _ => true,
-        }
+        !matches!(
+            self,
+            &SampleType::TabDiscard | &SampleType::OomKillBrowser | &SampleType::OomKillKernel
+        )
     }
 }
 
@@ -1303,19 +1281,6 @@ fn make_testing_dir() -> Option<TempDir> {
     }
 }
 
-#[test]
-fn memory_daemon_test() {
-    env_logger::init();
-    run_memory_daemon(false).expect("run_memory_daemon error");
-}
-
-/// Regression test for https://crbug.com/1058463. Ensures that output_from_time doesn't read
-/// samples outside of the valid range.
-#[test]
-fn queue_loop_test() {
-    test::queue_loop();
-}
-
 fn get_paths(root: Option<TempDir>) -> Paths {
     // make_paths! returns a Paths object initializer with these fields.
     let testing_root = match root {
@@ -1406,5 +1371,18 @@ mod tests {
             LoadAverage::from_reader("3.15 2.15 1.15 5/990 1270".as_bytes()).unwrap();
         let runnables = parse_runnables(load_average);
         assert_eq!(runnables, 5);
+    }
+
+    /// Regression test for https://crbug.com/1058463. Ensures that output_from_time doesn't read
+    /// samples outside of the valid range.
+    #[test]
+    fn queue_loop_test() {
+        test::queue_loop();
+    }
+
+    #[test]
+    fn memory_daemon_test() {
+        env_logger::init();
+        run_memory_daemon(false).expect("run_memory_daemon error");
     }
 }
