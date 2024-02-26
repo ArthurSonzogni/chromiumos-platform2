@@ -13,6 +13,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_group_event_delegate_interface.h"
@@ -29,6 +30,7 @@ class SupplicantP2PDeviceProxyInterface;
 class SupplicantGroupProxyInterface;
 
 class P2PDevice : public LocalDevice,
+                  public Network::EventHandler,
                   public SupplicantEventDelegateInterface,
                   public SupplicantGroupEventDelegateInterface,
                   public SupplicantP2PDeviceEventDelegateInterface {
@@ -186,12 +188,15 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOActive);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientAssociating);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest,
               DISABLED_StartingTimerExpired_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting);
   FRIEND_TEST(P2PDeviceTest, GO_StartGroupNetworkImmediateFail);
   FRIEND_TEST(P2PDeviceTest, GO_StartGroupNetworkFail);
+  FRIEND_TEST(P2PDeviceTest, Client_AcquireClientIPFail);
+  FRIEND_TEST(P2PDeviceTest, Client_NetworkStopped);
 
   // This helper method converts GO peer properties to D-Bus properties.
   Stringmaps GroupInfoClients() const;
@@ -261,19 +266,18 @@ class P2PDevice : public LocalDevice,
   void TeardownGroup(const KeyValueStore& properties);
   void TeardownGroup();
 
-  // TODO(b/299915001): The OnClientIPAcquired handler should be called
-  // internally in response to events from Shill::Network.
-  void EmulateClientIPAcquired();
-
   // These helper methods provide operation required for network setup/teardown.
   // Depending on device role, they may be called in response to events either
   // from patchpanel or Shill::Network, in case of GO and Client, respectively.
   void AcquireClientIP();
-  void OnClientIPAcquired();
   bool StartGroupNetwork();
   void OnGroupNetworkStarted(base::ScopedFD network_fd);
   void NetworkFinished();
   void NetworkFailure(const std::string& reason);
+
+  // Overrides for Network::EventHandler.
+  void OnConnectionUpdated(int interface_index) override;
+  void OnNetworkStopped(int interface_index, bool is_failure) override;
 
   // These methods handle p2p group start/stop timers.
   // TODO(b/323064949): Move all timeout handling logic into P2PManager.
@@ -342,7 +346,13 @@ class P2PDevice : public LocalDevice,
 
   // File descriptor representing the group network setup managed by
   // patchpanel. Closing this file descriptor tears down the group network.
+  // This member is only valid when |this| is in the GO role.
   base::ScopedFD group_network_fd_;
+
+  // Pointer to the Network class which maintains the layer 3 configuration.
+  // This member is only valid when |this| is in the client role.
+  std::unique_ptr<Network> client_network_;
+  std::unique_ptr<Network> client_network_for_test_;
 };
 
 }  // namespace shill

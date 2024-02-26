@@ -11,13 +11,19 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <net-base/byte_utils.h>
+#include <net-base/mac_address.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/network/dhcp_controller.h"
+#include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -105,6 +111,10 @@ P2PDevice::P2PDevice(Manager* manager,
 
 P2PDevice::~P2PDevice() {
   LOG(INFO) << log_name() << ": P2PDevice destroyed";
+  if (client_network_) {
+    client_network_->Stop();
+    client_network_->UnregisterEventHandler(this);
+  }
 }
 
 // static
@@ -299,8 +309,13 @@ bool P2PDevice::Disconnect() {
                  << P2PDeviceStateName(state_);
     return false;
   }
-  FinishSupplicantGroup();
   SetState(P2PDeviceState::kClientDisconnecting);
+  if (client_network_) {
+    client_network_->Stop();
+    client_network_->UnregisterEventHandler(this);
+    client_network_.reset();
+  }
+  FinishSupplicantGroup();
   // TODO(b/308081318): delete service on GroupFinished
   DeleteService();
   return true;
@@ -773,17 +788,34 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
   }
 }
 
-// TODO(b/299915001): The OnClientIPAcquired handler should be called
-// internally in response to events from Shill::Network.
-void P2PDevice::EmulateClientIPAcquired() {
-  Dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&P2PDevice::OnClientIPAcquired, base::Unretained(this)));
-}
-
-// TODO(b/299915001): Actually trigger IP acquisition via Shill::Network.
 void P2PDevice::AcquireClientIP() {
-  EmulateClientIPAcquired();
+  if (client_network_for_test_) {
+    client_network_ = std::move(client_network_for_test_);
+    client_network_->RegisterEventHandler(this);
+  } else {
+    // TODO(b/310584119): use new enum instead of Technology inside
+    // shill::Network
+    client_network_ = std::make_unique<Network>(
+        net_base::RTNLHandler::GetInstance()->GetInterfaceIndex(
+            link_name().value()),
+        link_name().value(), Technology::kWiFi, false,
+        manager()->control_interface(), manager()->dispatcher(),
+        manager()->metrics(), manager()->patchpanel_client());
+    client_network_->RegisterEventHandler(this);
+  }
+
+  auto dhcp_opts = manager()->CreateDefaultDHCPOption();
+  Network::StartOptions opts = {
+      .dhcp = dhcp_opts,
+      .accept_ra = true,
+      .ignore_link_monitoring = true,
+      // TODO(b/314693271) omit probing_configuration when validation mode is
+      // kDisabled.
+      .probing_configuration =
+          manager()->GetPortalDetectorProbingConfiguration(),
+      .validation_mode = NetworkMonitor::ValidationMode::kDisabled,
+  };
+  client_network_->Start(opts);
 }
 
 bool P2PDevice::StartGroupNetwork() {
@@ -799,30 +831,31 @@ bool P2PDevice::StartGroupNetwork() {
   return true;
 }
 
-void P2PDevice::OnClientIPAcquired() {
-  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
-            << P2PDeviceStateName(state_);
-  switch (state_) {
-    // Expected P2P client state for OnClientIPAcquired signal
-    case P2PDeviceState::kClientConfiguring:
-      SetState(P2PDeviceState::kClientConnected);
-      PostDeviceEvent(DeviceEvent::kNetworkUp);
-      break;
-    // Common states for all roles.
-    case P2PDeviceState::kUninitialized:
-    case P2PDeviceState::kReady:
-    // P2P client states.
-    case P2PDeviceState::kClientAssociating:
-    case P2PDeviceState::kClientConnected:
-    case P2PDeviceState::kClientDisconnecting:
-    // P2P GO states.
-    case P2PDeviceState::kGOStarting:
-    case P2PDeviceState::kGOConfiguring:
-    case P2PDeviceState::kGOActive:
-    case P2PDeviceState::kGOStopping:
-      LOG(WARNING) << log_name() << ": Ignored " << __func__
-                   << " while in state " << P2PDeviceStateName(state_);
-      break;
+void P2PDevice::OnConnectionUpdated(int net_interface_index) {
+  if (state_ != P2PDeviceState::kClientConfiguring) {
+    LOG(WARNING) << log_name() << ": Ignored " << __func__ << " while in state "
+                 << P2PDeviceStateName(state_);
+    return;
+  }
+
+  LOG(INFO) << log_name() << ": Successfully get IP address on "
+            << link_name().value();
+  SetState(P2PDeviceState::kClientConnected);
+  PostDeviceEvent(DeviceEvent::kNetworkUp);
+}
+
+void P2PDevice::OnNetworkStopped(int interface_index, bool is_failure) {
+  if (state_ == P2PDeviceState::kClientConfiguring) {
+    // Failed to fetch an IP address for client mode.
+    PostDeviceEvent(DeviceEvent::kNetworkFailure);
+    TeardownGroup();
+  } else if (state_ == P2PDeviceState::kClientConnected) {
+    PostDeviceEvent(DeviceEvent::kNetworkDown);
+    TeardownGroup();
+  } else {
+    LOG(WARNING) << log_name() << ": Ignored " << __func__
+                 << " (failure = " << is_failure << ") while in state "
+                 << P2PDeviceStateName(state_);
   }
 }
 

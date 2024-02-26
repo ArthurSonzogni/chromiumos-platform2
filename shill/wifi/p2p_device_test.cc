@@ -19,11 +19,13 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/network/mock_network.h"
 #include "shill/supplicant/mock_supplicant_group_proxy.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
 #include "shill/supplicant/mock_supplicant_peer_proxy.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_p2p_manager.h"
@@ -45,6 +47,7 @@ namespace shill {
 namespace {
 const char kPrimaryInterfaceName[] = "wlan0";
 const char kInterfaceName[] = "p2p-wlan0-0";
+const int kInterfaceIdx = 1;
 const RpcIdentifier kInterfacePath = RpcIdentifier("/interface/p2p-wlan0-0");
 const RpcIdentifier kGroupPath =
     RpcIdentifier("/interface/p2p-wlan0-0/Groups/xx");
@@ -150,6 +153,11 @@ class P2PDeviceTest : public testing::Test {
         supplicant_interface_proxy_);
     ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
         .WillByDefault(Return(ByMove(std::move(interface_proxy))));
+    auto network = std::make_unique<NiceMock<MockNetwork>>(
+        kInterfaceIdx, kInterfaceName, Technology::kWiFi);
+    network_ = network.get();
+    client_device_->client_network_for_test_ = std::move(network);
+    ON_CALL(*network_, Start(_)).WillByDefault(Return());
   }
 
   KeyValueStore DefaultGroupStartedProperties() {
@@ -197,6 +205,7 @@ class P2PDeviceTest : public testing::Test {
   MockP2PManager* p2p_manager_;
   scoped_refptr<P2PDevice> go_device_;
   scoped_refptr<P2PDevice> client_device_;
+  MockNetwork* network_;  // owned by |client_device_|
   std::unique_ptr<MockSupplicantP2PDeviceProxy>
       supplicant_primary_p2pdevice_proxy_;
   MockSupplicantP2PDeviceProxy* supplicant_p2pdevice_proxy_;
@@ -456,7 +465,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   client_device_->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
 
   client_info = client_device_->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
@@ -745,7 +755,8 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
 
   // Attempting to connect again should be a no-op and and return false.
   auto service1 = std::make_unique<MockP2PService>(
@@ -1361,7 +1372,8 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConnected) {
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConnected);
 
@@ -1579,8 +1591,7 @@ TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientAssociating) {
   CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
-// TODO(b/295056306): Re-enable once patchpanel interaction is implemented.
-TEST_F(P2PDeviceTest, DISABLED_StartingTimerExpired_WhileClientConfiguring) {
+TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientConfiguring) {
   // Start device
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
   EXPECT_TRUE(client_device_->Start());
@@ -1643,7 +1654,12 @@ TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientConnected) {
   EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
+  EXPECT_EQ(client_device_->state_,
+            P2PDevice::P2PDeviceState::kClientConnected);
+  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
+  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
 
   FastForwardBy(kStartTimeout);
   EXPECT_EQ(client_device_->state_,
@@ -1687,7 +1703,10 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting) {
   EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
+  EXPECT_EQ(client_device_->state_,
+            P2PDevice::P2PDeviceState::kClientConnected);
 
   // Disconnect.
   EXPECT_TRUE(client_device_->Disconnect());
@@ -1746,6 +1765,54 @@ TEST_F(P2PDeviceTest, GO_StartGroupNetworkFail) {
   // Stop device
   go_device_->Stop();
   CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, Client_AcquireClientIPFail) {
+  // Start device
+  EXPECT_TRUE(client_device_->Start());
+  auto service = std::make_unique<MockP2PService>(
+      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(client_device_->Connect(std::move(service)));
+  client_device_->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_EQ(client_device_->state_,
+            P2PDevice::P2PDeviceState::kClientConfiguring);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Emulate OnNetworkStopped event.
+  client_device_->OnNetworkStopped(kInterfaceIdx, true);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Stop device
+  EXPECT_TRUE(client_device_->Stop());
+  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, Client_NetworkStopped) {
+  // Start device
+  EXPECT_TRUE(client_device_->Start());
+  auto service = std::make_unique<MockP2PService>(
+      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(client_device_->Connect(std::move(service)));
+  client_device_->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
+  DispatchPendingEvents();
+  // Emulate IP address received event.
+  client_device_->OnConnectionUpdated(kInterfaceIdx);
+  EXPECT_EQ(client_device_->state_,
+            P2PDevice::P2PDeviceState::kClientConnected);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Emulate OnNetworkStopped event.
+  client_device_->OnNetworkStopped(kInterfaceIdx, false);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkDown, _)).Times(1);
+  DispatchPendingEvents();
+
+  // Stop device
+  EXPECT_TRUE(client_device_->Stop());
+  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
 }  // namespace shill
