@@ -834,8 +834,6 @@ constexpr FeatureMappingEntry kFeaturesMap[] = {
      "keyboard-based-display-arrangement-in-settings", 2},
     {"KeyboardBasedDisplayArrangementInSettings", "1",
      "keyboard-based-display-arrangement-in-settings", 1},
-    {"LacrosSupport", "0", "lacros-support", 2},
-    {"LacrosSupport", "1", "lacros-support", 1},
     {"LanguageSettingsUpdate", "0", "enable-cros-language-settings-update", 2},
     {"LanguageSettingsUpdate", "1", "enable-cros-language-settings-update", 1},
     {"LayoutNGTable", "0", "enable-layout-ng", 2},

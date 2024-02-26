@@ -327,11 +327,6 @@ void AddBorealisFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
-void AddLacrosFlags(ChromiumCommandBuilder* builder) {
-  if (builder->UseFlagIsSet("lacros"))
-    builder->AddFeatureEnableOverride("LacrosSupport");
-}
-
 // Ensures that necessary directory exist with the correct permissions and sets
 // related arguments and environment variables.
 void CreateDirectories(ChromiumCommandBuilder* builder) {
@@ -1097,7 +1092,6 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddCrostiniFlags(&builder);
   AddPluginVmFlags(&builder);
   AddBorealisFlags(&builder);
-  AddLacrosFlags(&builder);
   AddEnterpriseFlags(&builder);
   AddCrashHandlerFlag(&builder);
   AddMlFlags(&builder, cros_config);
