@@ -6,7 +6,6 @@
 
 #include <base/time/time.h>
 
-#include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_init_daemon_controller.h"

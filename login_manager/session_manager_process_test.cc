@@ -27,7 +27,6 @@
 #include "login_manager/browser_job.h"
 #include "login_manager/fake_browser_job.h"
 #include "login_manager/fake_child_process.h"
-#include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_liveness_checker.h"

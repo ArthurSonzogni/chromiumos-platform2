@@ -7,6 +7,8 @@
 
 #include "login_manager/policy_store.h"
 
+#include <gmock/gmock.h>
+
 namespace login_manager {
 class MockPolicyStore : public PolicyStore {
  public:

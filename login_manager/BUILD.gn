@@ -13,7 +13,6 @@ group("all") {
     ":install_dev_conf",
     ":install_init_scripts",
     ":install_powerd_prefs",
-    ":keygen",
     ":libsession_manager",
     ":session_manager",
     ":session_manager-adaptors",
@@ -100,7 +99,6 @@ static_library("libsession_manager") {
     "device_policy_service.cc",
     "feature_flags_util.cc",
     "file_checker.cc",
-    "generator_job.cc",
     "landlock_policy.cc",
     "liveness_checker_impl.cc",
     "login_metrics.cc",
@@ -142,24 +140,6 @@ static_library("libsession_manager") {
     "//common-mk/external_dependencies:install_attributes-proto",
     "//common-mk/external_dependencies:policy-protos",
   ]
-}
-
-executable("keygen") {
-  sources = [
-    "child_job.cc",
-    "keygen.cc",
-    "keygen_worker.cc",
-    "nss_util.cc",
-    "policy_key.cc",
-    "system_utils_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
-
-  # gnlint suggests "sbin" ("/usr/sbin") that's different from the current
-  # install path. For moving the install logic from ebuild to GN, no
-  # changes to installed files should be introduced.
-  # gnlint: disable=GnLintInstallPathAlias
-  install_path = "/sbin"
 }
 
 executable("session_manager") {
@@ -253,10 +233,8 @@ if (use.test) {
       "fake_browser_job.cc",
       "fake_child_process.cc",
       "fake_container_manager.cc",
-      "fake_generator_job.cc",
       "fake_secret_util.cc",
       "feature_flags_util_test.cc",
-      "keygen_worker.cc",
       "landlock_policy_test.cc",
       "liveness_checker_impl_test.cc",
       "login_metrics_test.cc",
