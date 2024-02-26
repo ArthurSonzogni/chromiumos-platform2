@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(b/): Migrate to re2.
-# gnlint: disable=GnLintLibraries
-
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -37,8 +34,8 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmetrics",
-    "libpcrecpp",
     "openssl",
+    "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right

@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #include <iostream>
-#include <regex>  // NOLINT(build/c++11)
 #include <string>
 
 #include <base/files/file_path.h>
@@ -17,6 +16,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <re2/re2.h>
 
 #include "hammerd/hammer_updater.h"
 #include "hammerd/process_lock.h"
@@ -40,8 +40,8 @@ enum class ExitStatus {
 }  // namespace
 
 static bool check_usb_path(const std::string& path) {
-  std::regex pattern("[1-9][0-9]*-(?:[1-9][0-9]*\\.)*[1-9][0-9]*");
-  return std::regex_match(path, pattern);
+  RE2 pattern("[1-9][0-9]*-(?:[1-9][0-9]*\\.)*[1-9][0-9]*");
+  return RE2::FullMatch(path, pattern);
 }
 
 int main(int argc, const char* argv[]) {

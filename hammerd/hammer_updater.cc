@@ -8,8 +8,6 @@
 
 #include <unistd.h>
 
-#include <pcrecpp.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -23,6 +21,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <re2/re2.h>
 
 #include "hammerd/uma_metric_names.h"
 
@@ -731,8 +730,8 @@ bool HammerUpdater::ParseTouchpadInfoFromFilename(
 
   LOG(INFO) << "Canonical path for touchpad firmware : " << real_path.value();
   // Filename should be in format of <product_id>_<fw_ver>.bin
-  pcrecpp::RE re("(.+)_([\\.\\d]+?)\\.bin");
-  ret &= re.FullMatch(basename, touchpad_product_id, touchpad_fw_ver);
+  RE2 re("(.+)_([\\.\\d]+?)\\.bin");
+  ret &= RE2::FullMatch(basename, re, touchpad_product_id, touchpad_fw_ver);
   LOG(INFO) << "Parsed product_id : " << *touchpad_product_id;
   LOG(INFO) << "Parsed fw_ver : " << *touchpad_fw_ver;
 
