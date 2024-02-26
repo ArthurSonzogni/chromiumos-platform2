@@ -127,6 +127,32 @@ TEST_F(TouchscreenEventsImplTest,
   check_result(event_observer2.WaitForEvent());
 }
 
+// Test that the second observer can receive the connected events even if the
+// second observer is added after the event is emitted to the first observer.
+TEST_F(TouchscreenEventsImplTest,
+       TouchscreenConnectedEventCanBeReceivedByNewlyAddedObserver) {
+  mojom::TouchscreenConnectedEvent fake_connected_event;
+  fake_connected_event.max_x = 1;
+  fake_connected_event.max_y = 2;
+
+  EventObserverTestFuture event_observer, event_observer2;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  EmitTouchscreenConnectedEvent(fake_connected_event.Clone());
+
+  auto check_result = [&fake_connected_event](mojom::EventInfoPtr event) {
+    ASSERT_TRUE(event->is_touchscreen_event_info());
+    const auto& touchscreen_event_info = event->get_touchscreen_event_info();
+    ASSERT_TRUE(touchscreen_event_info->is_connected_event());
+    EXPECT_EQ(fake_connected_event,
+              *touchscreen_event_info->get_connected_event());
+  };
+
+  check_result(event_observer.WaitForEvent());
+  AddEventObserver(event_observer2.BindNewPendingRemote());
+  check_result(event_observer2.WaitForEvent());
+}
+
 // Test that process control is reset when delegate observer disconnects.
 TEST_F(TouchscreenEventsImplTest,
        ProcessControlResetWhenDelegateObserverDisconnects) {

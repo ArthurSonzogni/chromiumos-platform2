@@ -121,6 +121,32 @@ TEST_F(StylusEventsImplTest, StylusConnectedEventWithMultipleObservers) {
   check_result(event_observer2.WaitForEvent());
 }
 
+// Test that the second observer can receive the stylus connected events even if
+// the second observer is added after the event is emitted to the first
+// observer.
+TEST_F(StylusEventsImplTest,
+       StylusConnectedEventCanBeReceivedByNewlyAddedObserver) {
+  mojom::StylusConnectedEvent fake_connected_event;
+  fake_connected_event.max_x = 1;
+  fake_connected_event.max_y = 2;
+
+  EventObserverTestFuture event_observer, event_observer2;
+  AddEventObserver(event_observer.BindNewPendingRemote());
+
+  EmitStylusConnectedEvent(fake_connected_event.Clone());
+
+  auto check_result = [&fake_connected_event](mojom::EventInfoPtr info) {
+    ASSERT_TRUE(info->is_stylus_event_info());
+    const auto& stylus_event_info = info->get_stylus_event_info();
+    ASSERT_TRUE(stylus_event_info->is_connected_event());
+    EXPECT_EQ(fake_connected_event, *stylus_event_info->get_connected_event());
+  };
+
+  check_result(event_observer.WaitForEvent());
+  AddEventObserver(event_observer2.BindNewPendingRemote());
+  check_result(event_observer2.WaitForEvent());
+}
+
 // Test that process control is reset when delegate observer disconnects.
 TEST_F(StylusEventsImplTest,
        ProcessControlResetWhenDelegateObserverDisconnects) {
