@@ -27,6 +27,7 @@ class AttestationFrontendImpl : public AttestationFrontend,
   using FrontendImpl::FrontendImpl;
   ~AttestationFrontendImpl() override = default;
 
+  StatusOr<attestation::TpmVersion> GetVersion() const override;
   Status WaitUntilReady() const override;
   StatusOr<brillo::SecureBlob> Unseal(
       const brillo::Blob& sealed_data) const override;

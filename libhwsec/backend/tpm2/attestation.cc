@@ -98,6 +98,10 @@ Status RemoveOwnerDependencyForAttestation(
 
 }  // namespace
 
+StatusOr<attestation::TpmVersion> AttestationTpm2::GetTpmVersion() {
+  return attestation::TpmVersion::TPM_2_0;
+}
+
 StatusOr<attestation::Quote> AttestationTpm2::Quote(
     DeviceConfigs device_configs, Key key) {
   if (device_configs.none()) {

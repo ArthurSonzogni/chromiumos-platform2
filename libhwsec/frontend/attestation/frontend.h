@@ -28,6 +28,9 @@ class AttestationFrontend : public Frontend {
   using CreateIdentityResult = Attestation::CreateIdentityResult;
   ~AttestationFrontend() override = default;
 
+  // Gets TPM version.
+  virtual StatusOr<attestation::TpmVersion> GetVersion() const = 0;
+
   // Waits until the security module ready to use.
   virtual Status WaitUntilReady() const = 0;
 

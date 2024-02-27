@@ -60,6 +60,7 @@ using FuzzCommandList =
                 &Backend::Attestation::CreateIdentity,
                 &Backend::Attestation::ActivateIdentity,
                 &Backend::Attestation::FinalizeEnrollmentPreparation,
+                &Backend::Attestation::GetTpmVersion,
                 &Backend::Config::ToOperationPolicy,
                 &Backend::Config::SetCurrentUser,
                 &Backend::Config::IsCurrentUserSet,

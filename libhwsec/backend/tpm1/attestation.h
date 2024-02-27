@@ -34,6 +34,7 @@ class AttestationTpm1 : public Attestation {
         key_management_(key_management),
         tpm_manager_(tpm_manager) {}
 
+  StatusOr<attestation::TpmVersion> GetTpmVersion() override;
   StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,
                                      Key key) override;
   StatusOr<bool> IsQuoted(DeviceConfigs device_configs,

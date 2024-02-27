@@ -27,6 +27,9 @@ class Attestation {
     attestation::IdentityKey identity_key;
     attestation::IdentityBinding identity_binding;
   };
+  // Gets attestation::TpmVersion
+  virtual StatusOr<attestation::TpmVersion> GetTpmVersion() = 0;
+
   // Quotes the |device_configs| with |key|. The |key| must be a restricted
   // signing key.
   virtual StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,

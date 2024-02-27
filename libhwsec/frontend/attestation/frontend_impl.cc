@@ -53,6 +53,10 @@ attestation::KeyType key_types[] = {attestation::KeyType::KEY_TYPE_RSA,
 
 }  // namespace
 
+StatusOr<attestation::TpmVersion> AttestationFrontendImpl::GetVersion() const {
+  return middleware_.CallSync<&Backend::Attestation::GetTpmVersion>();
+}
+
 Status AttestationFrontendImpl::WaitUntilReady() const {
   return middleware_.CallSync<&Backend::State::WaitUntilReady>();
 }

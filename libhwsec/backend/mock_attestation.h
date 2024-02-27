@@ -41,6 +41,7 @@ class MockAttestation : public Attestation {
             Invoke(default_, &Attestation::FinalizeEnrollmentPreparation));
   }
 
+  MOCK_METHOD(StatusOr<attestation::TpmVersion>, GetTpmVersion, (), (override));
   MOCK_METHOD(StatusOr<attestation::Quote>,
               Quote,
               (DeviceConfigs device_configs, Key key),
