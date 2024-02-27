@@ -83,8 +83,9 @@ TEST_F(Ext4ContainerTest, SetupNoCreateCheck) {
       metrics_,
       SendBoolToUMA("Platform.FileSystem.EncStateful_FsckNeeded", false))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 2, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 2, 10))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_, SendToUMA("Platform.FileSystem.EncStateful_ErrorCount",
                                   0, 0, 100000, 20))
@@ -145,20 +146,25 @@ TEST_F(Ext4ContainerTest, SetupFailedFsck) {
               SendBoolToUMA("Platform.FileSystem.EncStateful_FsckNeeded", true))
       .WillOnce(Return(true));
   // Mock only available for the int version.
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 1, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 1, 10))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 4, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 4, 10))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 5, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 5, 10))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 6, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 6, 10))
       .WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 9, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 9, 10))
       .WillOnce(Return(true));
   backing_container_->Setup(key_);
   GenerateContainer();
@@ -179,8 +185,9 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsDontCare) {
               SendBoolToUMA("Platform.FileSystem.EncStateful_FsckNeeded", true))
       .WillOnce(Return(true));
   // Mock only available for the int version.
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 5, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 5, 10))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(false));
   EXPECT_CALL(metrics_, SendToUMA("Platform.FileSystem.EncStateful_ErrorCount",
@@ -209,8 +216,9 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFailed) {
               SendBoolToUMA("Platform.FileSystem.EncStateful_FsckNeeded", true))
       .WillOnce(Return(true));
   // Mock only available for the int version.
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 5, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 5, 10))
       .WillOnce(Return(true));
   backing_container_->Setup(key_);
   GenerateContainer();
@@ -249,8 +257,9 @@ TEST_F(Ext4ContainerTest, SetupFailedTune2fsFsckFixed) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Fsck(_, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(FSCK_ERROR_CORRECTED), Return(true)));
-  EXPECT_CALL(metrics_,
-              SendEnumToUMA("Platform.FileSystem.EncStateful.fsckError", 3, 10))
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA("Platform.FileSystem.EncStateful.fsckResult", 3, 10))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
   EXPECT_CALL(metrics_, SendToUMA("Platform.FileSystem.EncStateful_ErrorCount",

@@ -215,7 +215,7 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
 
     // Finally, print the overall results of the last fsck.
     for (auto fsck_error : MapFsckResultToEnum(fsck_err))
-      SendEnum(".fsckError", fsck_error);
+      SendEnum(".fsckResult", fsck_error);
   }
 
   if (created) {
