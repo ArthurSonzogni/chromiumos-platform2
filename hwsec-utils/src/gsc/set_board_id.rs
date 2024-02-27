@@ -192,22 +192,26 @@ pub fn check_gsc_support_partial_board_id(
 // ERR_DEVICE_STATE exit status when the reboot and setting the board id should
 // be skipped
 pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict> {
-    let flash_output = ctx
-        .cmd_runner()
-        .run("flashrom", vec!["-p", "internal", "--wp-status"])
-        .map_err(|_| {
-            eprintln!("Failed to run flashrom.");
+    let gsctool_output =
+        run_gsctool_cmd(ctx, vec!["--any", "--ccd_info", "--machine"]).map_err(|_| {
+            eprintln!("Failed to run gsctool.");
             Cr50SetBoardIDVerdict::GeneralError
         })?;
-
-    if !flash_output.status.success() {
-        eprintln!(
-            "{}{}",
-            String::from_utf8_lossy(&flash_output.stdout),
-            String::from_utf8_lossy(&flash_output.stderr)
-        );
+    if !gsctool_output.status.success() {
+        eprintln!("Failed to get the ccd info");
         return Err(Cr50SetBoardIDVerdict::DeviceStateError);
     }
+
+    let output = std::str::from_utf8(&gsctool_output.stdout).map_err(|_| {
+        eprintln!("Internal error occurred.");
+        Cr50SetBoardIDVerdict::GeneralError
+    })?;
+
+    let ccd_factory_mode =
+        get_value_from_gsctool_output(output, "CCD_FLAG_FACTORY_MODE").map_err(|_| {
+            eprintln!("Failed to extract CCD_FLAG_FACTORY_MODE from gsctool response");
+            Cr50SetBoardIDVerdict::GeneralError
+        })?;
 
     let crossystem_output = ctx
         .cmd_runner()
@@ -224,17 +228,12 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
         return Err(Cr50SetBoardIDVerdict::GeneralError);
     }
 
-    let flash_output_string = format!(
-        "{}{}",
-        String::from_utf8_lossy(&flash_output.stdout),
-        String::from_utf8_lossy(&flash_output.stderr)
-    );
-    if flash_output_string.contains("Protection mode: disabled") {
-        eprintln!("write protection is disabled");
-        Err(Cr50SetBoardIDVerdict::DeviceStateError)
-    } else {
-        Err(Cr50SetBoardIDVerdict::Successful)
+    if ccd_factory_mode == "Y" {
+        eprintln!("GSC factory mode enabled");
+        return Err(Cr50SetBoardIDVerdict::DeviceStateError);
     }
+
+    Err(Cr50SetBoardIDVerdict::Successful)
 }
 
 #[cfg(test)]
@@ -414,9 +413,11 @@ mod tests {
     #[test]
     fn test_check_device_ok() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "Protection mode: enabled", ""),
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--ccd_info", "--machine"],
+            0,
+            "CCD_FLAG_FACTORY_MODE=N",
+            "",
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
@@ -430,22 +431,39 @@ mod tests {
     }
 
     #[test]
-    fn test_check_device_flashrom_error() {
+    fn test_check_device_gsctool_error() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(1, "", ""),
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--ccd_info", "--machine"],
+            1,
+            "",
+            "",
         );
         let result = check_device(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::DeviceStateError));
     }
 
     #[test]
+    fn test_check_device_gsctool_no_flags() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--ccd_info", "--machine"],
+            0,
+            "",
+            "STATE=Locked",
+        );
+        let result = check_device(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
+
+    #[test]
     fn test_check_device_not_running_normal_image() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "Protection mode: disabled", ""),
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--ccd_info", "--machine"],
+            0,
+            "CCD_FLAG_FACTORY_MODE=N",
+            "",
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
@@ -459,11 +477,13 @@ mod tests {
     }
 
     #[test]
-    fn test_check_device_write_protect_is_disabled() {
+    fn test_check_device_factory_mode_enabled() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "Protection mode: disabled", ""),
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--ccd_info", "--machine"],
+            0,
+            "CCD_FLAG_FACTORY_MODE=Y",
+            "",
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
