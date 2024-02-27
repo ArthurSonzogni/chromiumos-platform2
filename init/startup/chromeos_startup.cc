@@ -229,23 +229,25 @@ bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
   base::FilePath cryptohome_key = stateful_.Append(kCryptohomeKeyFile);
   base::FilePath need_finalization =
       stateful_.Append(kEncStatefulNeedFinalizationFile);
-  struct stat statbuf;
 
   if (IsTPMOwned()) {
     return false;
   }
 
-  if (startup_dep_->Stat(need_finalization, &statbuf)) {
+  if (platform_->FileExists(need_finalization)) {
     return true;
   }
 
   // This should only be supported on the non-TPM2 device.
-  if (!USE_TPM2 && startup_dep_->Stat(preservation_request, &statbuf) &&
-      statbuf.st_uid == getuid()) {
-    return false;
+  if (!USE_TPM2) {
+    uid_t uid;
+    if (platform_->GetOwnership(preservation_request, &uid, nullptr,
+                                false /* follow_links */) &&
+        (uid == getuid()))
+      return false;
   }
 
-  if (startup_dep_->Stat(cryptohome_key, &statbuf)) {
+  if (platform_->FileExists(cryptohome_key)) {
     return true;
   }
 
@@ -329,8 +331,7 @@ void ChromeosStartup::EarlySetup() {
     char data[25];
     snprintf(data, sizeof(data), "mode=0750,uid=0,gid=%d", debugfs_grp);
     const base::FilePath debug = sysfs.Append(kKernelDebug);
-    if (!startup_dep_->Mount(empty, debug, "debugfs", kCommonMountFlags,
-                             data)) {
+    if (!platform_->Mount(empty, debug, "debugfs", kCommonMountFlags, data)) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << debug.value();
     }
@@ -343,17 +344,16 @@ void ChromeosStartup::EarlySetup() {
   // dependence on debugfs.
   const base::FilePath tracefs = sysfs.Append(kKernelTracing);
   // All users may need to access the tracing directory.
-  if (!startup_dep_->Mount(empty, tracefs, "tracefs", kCommonMountFlags,
-                           "mode=0755")) {
+  if (!platform_->Mount(empty, tracefs, "tracefs", kCommonMountFlags,
+                        "mode=0755")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << tracefs.value();
   }
 
   // Mount configfs, if present.
   const base::FilePath configfs = sysfs.Append(kKernelConfig);
-  if (base::DirectoryExists(configfs)) {
-    if (!startup_dep_->Mount(empty, configfs, "configfs", kCommonMountFlags,
-                             "")) {
+  if (platform_->DirectoryExists(configfs)) {
+    if (!platform_->Mount(empty, configfs, "configfs", kCommonMountFlags, "")) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << configfs.value();
     }
@@ -367,8 +367,8 @@ void ChromeosStartup::EarlySetup() {
     const std::string data =
         base::StrCat({"mode=0770,gid=", std::to_string(bpffs_grp)});
     const base::FilePath bpffs = sysfs.Append(kBpf);
-    if (!startup_dep_->Mount(empty, bpffs, "bpf", kCommonMountFlags,
-                             data.c_str())) {
+    if (!platform_->Mount(empty, bpffs, "bpf", kCommonMountFlags,
+                          data.c_str())) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << bpffs.value();
     }
@@ -376,13 +376,13 @@ void ChromeosStartup::EarlySetup() {
 
   // Mount securityfs as it is used to configure inode security policies below.
   const base::FilePath securityfs = sysfs.Append(kKernelSecurity);
-  if (!startup_dep_->Mount(empty, securityfs, "securityfs", kCommonMountFlags,
-                           "")) {
+  if (!platform_->Mount(empty, securityfs, "securityfs", kCommonMountFlags,
+                        "")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << securityfs.value();
   }
 
-  if (!SetupLoadPinVerityDigests(root_, startup_dep_.get())) {
+  if (!SetupLoadPinVerityDigests(platform_, root_, startup_dep_.get())) {
     LOG(WARNING) << "Failed to setup LoadPin verity digests.";
   }
 
@@ -392,16 +392,17 @@ void ChromeosStartup::EarlySetup() {
 
   // Protect a bind mount to the Chrome mount namespace.
   const base::FilePath namespaces = root_.Append(kRunNamespaces);
-  if (!startup_dep_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
-      !startup_dep_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
+  if (!platform_->Mount(namespaces, namespaces, "", MS_BIND, "") ||
+      !platform_->Mount(base::FilePath(), namespaces, "", MS_PRIVATE, "")) {
     PLOG(WARNING) << "Unable to mount " << namespaces.value();
   }
 
   const base::FilePath disable_sec_hard =
       root_.Append(kDisableStatefulSecurityHard);
-  enable_stateful_security_hardening_ = !base::PathExists(disable_sec_hard);
+  enable_stateful_security_hardening_ =
+      !platform_->FileExists(disable_sec_hard);
   if (enable_stateful_security_hardening_) {
-    if (!ConfigureProcessMgmtSecurity(root_)) {
+    if (!ConfigureProcessMgmtSecurity(platform_, root_)) {
       PLOG(ERROR) << "Failed to configure process management security.";
     }
   } else {
@@ -522,8 +523,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
         // the testing tools.
         clobber_log_msg = "Enter developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
-        if (!base::PathExists(dev_mode_allowed_file_)) {
-          if (!base::WriteFile(dev_mode_allowed_file_, "")) {
+        if (!platform_->FileExists(dev_mode_allowed_file_)) {
+          if (!platform_->WriteStringToFile(dev_mode_allowed_file_, "")) {
             PLOG(WARNING) << "Failed to create file: "
                           << dev_mode_allowed_file_.value();
           }
@@ -544,9 +545,8 @@ void ChromeosStartup::MountHome() {
   mount_helper_->BindMountOrFail(home, home_root);
   // Remount /home with nosymfollow: bind mounts do not accept the option
   // within the same command.
-  if (!startup_dep_->Mount(base::FilePath(), home_root, "",
-                           MS_REMOUNT | kCommonMountFlags | MS_NOSYMFOLLOW,
-                           "")) {
+  if (!platform_->Mount(base::FilePath(), home_root, "",
+                        MS_REMOUNT | kCommonMountFlags | MS_NOSYMFOLLOW, "")) {
     PLOG(WARNING) << "Unable to remount " << home_root.value();
   }
 }
@@ -556,7 +556,7 @@ void ChromeosStartup::MountHome() {
 // with upstart.
 void ChromeosStartup::StartTpm2Simulator() {
   base::FilePath tpm_simulator = root_.Append(kTpmSimulator);
-  if (base::PathExists(tpm_simulator)) {
+  if (platform_->FileExists(tpm_simulator)) {
     brillo::ProcessImpl ictl;
     ictl.AddArg("/sbin/initctl");
     ictl.AddArg("start");
@@ -571,9 +571,9 @@ void ChromeosStartup::StartTpm2Simulator() {
 void ChromeosStartup::CleanupTpm() {
   base::FilePath tpm_update_req =
       stateful_.Append(kTpmFirmwareUpdateRequestFlagFile);
-  if (base::PathExists(tpm_update_req)) {
+  if (platform_->FileExists(tpm_update_req)) {
     base::FilePath tpm_cleanup = root_.Append(kTpmFirmwareUpdateCleanup);
-    if (base::PathExists(tpm_cleanup)) {
+    if (platform_->FileExists(tpm_cleanup)) {
       startup_dep_->RunProcess(tpm_cleanup);
     }
   }
@@ -591,14 +591,14 @@ bool ChromeosStartup::ExtendPCRForVersionAttestation() {
   }
 
   base::FilePath cmdline_path = root_.Append(kProcCmdline);
-  std::optional<brillo::Blob> cmdline = base::ReadFileToBytes(cmdline_path);
-  if (!cmdline.has_value()) {
+  brillo::Blob cmdline;
+  if (!platform_->ReadFile(cmdline_path, &cmdline)) {
     PLOG(WARNING) << "Failure to read /proc/cmdline for PCR Extension.";
     return false;
   }
 
   brillo::Blob digest(SHA256_DIGEST_LENGTH);
-  SHA256(cmdline->data(), cmdline->size(), digest.data());
+  SHA256(cmdline.data(), cmdline.size(), digest.data());
 
   if (tlcl_->Init() != 0) {
     PLOG(WARNING) << "Failure to init TlclWrapper.";
@@ -633,16 +633,16 @@ void ChromeosStartup::MoveToLibDeviceSettings() {
   base::FilePath whitelist = root_.Append(kVar).Append(kLibWhitelist);
   base::FilePath devicesettings = root_.Append(kVar).Append(kLibDevicesettings);
   // If the old whitelist dir still exists, try to migrate it.
-  if (base::DirectoryExists(whitelist)) {
-    if (base::IsDirectoryEmpty(whitelist)) {
+  if (platform_->DirectoryExists(whitelist)) {
+    if (platform_->IsDirectoryEmpty(whitelist)) {
       // If it is empty, delete it.
-      if (!brillo::DeleteFile(whitelist)) {
+      if (!platform_->DeleteFile(whitelist)) {
         PLOG(WARNING) << "Failed to delete path " << whitelist.value();
       }
-    } else if (brillo::DeleteFile(devicesettings)) {
+    } else if (platform_->DeleteFile(devicesettings)) {
       // If devicesettings didn't exist, or was empty, DeleteFile passed.
       // Rename the old path.
-      if (!base::Move(whitelist, devicesettings)) {
+      if (!platform_->Rename(whitelist, devicesettings, false /* cros_fs */)) {
         PLOG(WARNING) << "Failed to move " << whitelist.value() << " to "
                       << devicesettings.value();
       }
@@ -669,41 +669,29 @@ void ChromeosStartup::CreateDaemonStore() {
 
 void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
                                         base::FilePath etc_ds) {
-  base::FileEnumerator iter(etc_ds, false,
-                            base::FileEnumerator::FileType::DIRECTORIES);
-  for (base::FilePath store = iter.Next(); !store.empty();
-       store = iter.Next()) {
+  std::unique_ptr<libstorage::FileEnumerator> iter(platform_->GetFileEnumerator(
+      etc_ds, false, base::FileEnumerator::FileType::DIRECTORIES));
+  for (base::FilePath store = iter->Next(); !store.empty();
+       store = iter->Next()) {
     base::FilePath rds = run_ds.Append(store.BaseName());
-    if (!base::CreateDirectory(rds)) {
+    if (!platform_->CreateDirectory(rds)) {
       PLOG(WARNING) << "mkdir failed for " << rds.value();
       continue;
     }
-    if (!base::SetPosixFilePermissions(rds, 0755)) {
+    if (!platform_->SetPermissions(rds, 0755)) {
       PLOG(WARNING) << "chmod failed for " << rds.value();
       continue;
     }
-    startup_dep_->Mount(rds, rds, "", MS_BIND, "");
-    startup_dep_->Mount(base::FilePath(), rds, "", MS_SHARED, "");
+    platform_->Mount(rds, rds, "", MS_BIND, "");
+    platform_->Mount(base::FilePath(), rds, "", MS_SHARED, "");
   }
 }
 
 // Remove /var/empty if it exists. Use /mnt/empty instead.
 void ChromeosStartup::RemoveVarEmpty() {
   base::FilePath var_empty = root_.Append(kVar).Append(kEmpty);
-  base::ScopedFD dfd(open(var_empty.value().c_str(), O_DIRECTORY | O_CLOEXEC));
-  if (!dfd.is_valid()) {
-    if (errno != ENOENT) {
-      PLOG(WARNING) << "Unable to open directory " << var_empty.value();
-    }
-    return;
-  }
-  file_attrs_cleaner::AttributeCheckStatus status =
-      file_attrs_cleaner::CheckFileAttributes(var_empty, dfd.get());
-  if (status != file_attrs_cleaner::AttributeCheckStatus::CLEARED) {
-    PLOG(WARNING) << "Unexpected CheckFileAttributes status for "
-                  << var_empty.value();
-  }
-  if (!base::DeletePathRecursively(var_empty)) {
+  platform_->SetExtFileAttributes(var_empty, 0, FS_IMMUTABLE_FL);
+  if (!platform_->DeletePathRecursively(var_empty)) {
     PLOG(WARNING) << "Failed to delete path " << var_empty.value();
   }
 }
@@ -711,18 +699,19 @@ void ChromeosStartup::RemoveVarEmpty() {
 // Make sure that what gets written to /var/log stays in /var/log.
 void ChromeosStartup::CheckVarLog() {
   base::FilePath varLog = root_.Append(kVarLog);
-  base::FileEnumerator var_iter(
-      root_.Append(kVarLog), true,
-      base::FileEnumerator::FileType::FILES |
-          base::FileEnumerator::FileType::DIRECTORIES |
-          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
-  for (base::FilePath path = var_iter.Next(); !path.empty();
-       path = var_iter.Next()) {
-    if (base::IsLink(path)) {
+  std::unique_ptr<libstorage::FileEnumerator> var_iter(
+      platform_->GetFileEnumerator(
+          root_.Append(kVarLog), true,
+          base::FileEnumerator::FileType::FILES |
+              base::FileEnumerator::FileType::DIRECTORIES |
+              base::FileEnumerator::FileType::SHOW_SYM_LINKS));
+  for (base::FilePath path = var_iter->Next(); !path.empty();
+       path = var_iter->Next()) {
+    if (platform_->IsLink(path)) {
       base::FilePath realpath;
-      if (!base::NormalizeFilePath(path, &realpath) ||
+      if (!platform_->ReadLink(path, &realpath, true /* Normalize */) ||
           !varLog.IsParent(realpath)) {
-        if (!brillo::DeleteFile(path)) {
+        if (!platform_->DeleteFile(path)) {
           // Bail out and wipe on failure to remove a symlink.
           mount_helper_->CleanupMounts(
               "Failed to remove symlinks under /var/log");
@@ -734,28 +723,29 @@ void ChromeosStartup::CheckVarLog() {
 
 // Restore file contexts for /var.
 void ChromeosStartup::RestoreContextsForVar(
-    void (*restorecon_func)(const base::FilePath& path,
+    void (*restorecon_func)(libstorage::Platform* platform_,
+                            const base::FilePath& path,
                             const std::vector<base::FilePath>& exclude,
                             bool is_recursive,
                             bool set_digests)) {
   // Restore file contexts for /var.
   base::FilePath sysfs = root_.Append(kSysfs);
   base::FilePath selinux = sysfs.Append(kSELinuxEnforce);
-  if (!base::PathExists(selinux)) {
+  if (!platform_->FileExists(selinux)) {
     LOG(INFO) << selinux.value()
               << " does not exist, can not restore file contexts";
     return;
   }
   base::FilePath var = root_.Append(kVar);
   std::vector<base::FilePath> exc_empty;
-  restorecon_func(var, exc_empty, true, true);
+  restorecon_func(platform_, var, exc_empty, true, true);
 
   // Restoring file contexts for sysfs. debugfs and tracefs are excluded from
   // this invocation because the kernel handles them via genfscon policy rules,
   // and handling them here in user space would slow down boot significantly.
   std::vector<base::FilePath> exclude = {sysfs.Append(kKernelDebug),
                                          sysfs.Append(kKernelTracing)};
-  restorecon_func(sysfs, exclude, true, false);
+  restorecon_func(platform_, sysfs, exclude, true, false);
 
   // We cannot do recursive for .shadow since userdata is encrypted (including
   // file names) before user logs-in. Restoring context for it may mislabel
@@ -763,26 +753,29 @@ void ChromeosStartup::RestoreContextsForVar(
   base::FilePath home = root_.Append(kHome);
   base::FilePath shadow = home.Append(".shadow");
   std::vector<base::FilePath> shadow_paths = {home, shadow};
-  base::FileEnumerator shadow_files(shadow, false,
-                                    base::FileEnumerator::FileType::FILES, "*");
-  for (base::FilePath path = shadow_files.Next(); !path.empty();
-       path = shadow_files.Next()) {
+  std::unique_ptr<libstorage::FileEnumerator> shadow_files(
+      platform_->GetFileEnumerator(shadow, false,
+                                   base::FileEnumerator::FileType::FILES, "*"));
+  for (base::FilePath path = shadow_files->Next(); !path.empty();
+       path = shadow_files->Next()) {
     shadow_paths.push_back(path);
   }
-  base::FileEnumerator shadow_dot(shadow, false,
-                                  base::FileEnumerator::FileType::FILES, ".*");
-  for (base::FilePath path = shadow_dot.Next(); !path.empty();
-       path = shadow_dot.Next()) {
+  std::unique_ptr<libstorage::FileEnumerator> shadow_dot(
+      platform_->GetFileEnumerator(
+          shadow, false, base::FileEnumerator::FileType::FILES, ".*"));
+  for (base::FilePath path = shadow_dot->Next(); !path.empty();
+       path = shadow_dot->Next()) {
     shadow_paths.push_back(path);
   }
-  base::FileEnumerator shadow_subdir(
-      shadow, false, base::FileEnumerator::FileType::FILES, "*/*");
-  for (base::FilePath path = shadow_subdir.Next(); !path.empty();
-       path = shadow_subdir.Next()) {
+  std::unique_ptr<libstorage::FileEnumerator> shadow_subdir(
+      platform_->GetFileEnumerator(
+          shadow, false, base::FileEnumerator::FileType::FILES, "*/*"));
+  for (base::FilePath path = shadow_subdir->Next(); !path.empty();
+       path = shadow_subdir->Next()) {
     shadow_paths.push_back(path);
   }
   for (auto path : shadow_paths) {
-    restorecon_func(path, exc_empty, false, false);
+    restorecon_func(platform_, path, exc_empty, false, false);
   }
 
   // It's safe to recursively restorecon /home/{user,root,chronos} since
@@ -790,7 +783,7 @@ void ChromeosStartup::RestoreContextsForVar(
   std::array<base::FilePath, 3> h_paths = {
       home.Append(kUser), home.Append(kRoot), home.Append(kChronos)};
   for (auto h_path : h_paths) {
-    restorecon_func(h_path, exc_empty, true, true);
+    restorecon_func(platform_, h_path, exc_empty, true, true);
   }
 }
 
@@ -817,7 +810,7 @@ int ChromeosStartup::Run() {
   if (enable_stateful_security_hardening_) {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
     // set up exceptions for developer mode later on.
-    BlockSymlinkAndFifo(root_, stateful_.value());
+    BlockSymlinkAndFifo(platform_, root_, stateful_.value());
   }
 
   // Checks if developer mode is blocked.
@@ -840,11 +833,13 @@ int ChromeosStartup::Run() {
   CleanupTpm();
 
   base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
-  struct stat stbuf;
   if (!mount_helper_->DoMountVarAndHomeChronos()) {
-    if (!startup_dep_->Stat(encrypted_failed, &stbuf) ||
-        stbuf.st_uid != getuid()) {
-      base::WriteFile(encrypted_failed, "");
+    uid_t uid;
+    if (!platform_->FileExists(encrypted_failed) ||
+        !platform_->GetOwnership(encrypted_failed, &uid, nullptr,
+                                 false /* follow_links */) ||
+        !(uid != getuid())) {
+      platform_->WriteStringToFile(encrypted_failed, "");
     } else {
       crossystem->VbSetSystemPropertyInt("recovery_request", 1);
     }
@@ -853,8 +848,8 @@ int ChromeosStartup::Run() {
     return 0;
   }
 
-  if (base::PathExists(encrypted_failed))
-    brillo::DeleteFile(encrypted_failed);
+  if (platform_->FileExists(encrypted_failed))
+    platform_->DeleteFile(encrypted_failed);
 
   base::FilePath pcr_extend_failed =
       stateful_.Append(kVersionPCRExtendFailedFile);
@@ -862,9 +857,9 @@ int ChromeosStartup::Run() {
     // At the moment we'll only log it but not force reboot or recovery.
     // TODO(b/278071784): Monitor if the failure occurs frequently and later
     // change this to reboot/send to recovery when it failed.
-    base::WriteFile(pcr_extend_failed, "");
-  } else if (base::PathExists(pcr_extend_failed)) {
-    brillo::DeleteFile(pcr_extend_failed);
+    platform_->WriteStringToFile(pcr_extend_failed, "");
+  } else if (platform_->FileExists(pcr_extend_failed)) {
+    platform_->DeleteFile(pcr_extend_failed);
   }
 
   base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
@@ -904,7 +899,7 @@ int ChromeosStartup::Run() {
   }
 
   if (enable_stateful_security_hardening_) {
-    ConfigureFilesystemExceptions(root_);
+    ConfigureFilesystemExceptions(platform_, root_);
   }
 
   std::vector<std::string> tmpfile_args = {root_.Append(kHome).value(),
@@ -913,7 +908,7 @@ int ChromeosStartup::Run() {
 
   MoveToLibDeviceSettings();
 
-  MaybeRunUefiStartup(*UefiDelegate::Create(*startup_dep_, root_));
+  MaybeRunUefiStartup(*UefiDelegate::Create(platform_, root_));
 
   // /run is tmpfs used for runtime data. Make sure /var/run and /var/lock
   // are bind-mounted to /run and /run/lock respectively for backwards
@@ -934,10 +929,9 @@ int ChromeosStartup::Run() {
   CheckVarLog();
 
   // MS_SHARED to give other namespaces access to mount points under /media.
-  startup_dep_->Mount(base::FilePath(kMedia), root_.Append(kMedia), "tmpfs",
-                      MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
-  startup_dep_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED,
-                      "");
+  platform_->Mount(base::FilePath(kMedia), root_.Append(kMedia), "tmpfs",
+                   MS_NOSUID | MS_NODEV | MS_NOEXEC, "");
+  platform_->Mount(base::FilePath(), root_.Append(kMedia), "", MS_SHARED, "");
 
   std::vector<std::string> t_args = {root_.Append(kMedia).value()};
   TmpfilesConfiguration(t_args);
@@ -953,8 +947,8 @@ int ChromeosStartup::Run() {
   // still possible.
   const base::FilePath kernel_sec =
       root_.Append(kSysfs).Append(kKernelSecurity);
-  if (!startup_dep_->Mount(base::FilePath(), kernel_sec, "securityfs",
-                           MS_REMOUNT | MS_RDONLY | kCommonMountFlags, "")) {
+  if (!platform_->Mount(base::FilePath(), kernel_sec, "securityfs",
+                        MS_REMOUNT | MS_RDONLY | kCommonMountFlags, "")) {
     PLOG(WARNING) << "Failed to remount " << kernel_sec << " as readonly.";
   }
 
@@ -1010,8 +1004,8 @@ void ChromeosStartup::DevCheckBlockDevMode(
   if (block_devmode) {
     // Put a flag file into place that will trigger a stateful partition wipe
     // after reboot in verified mode.
-    if (!base::PathExists(dev_mode_file)) {
-      base::WriteFile(dev_mode_file, "");
+    if (!platform_->FileExists(dev_mode_file)) {
+      platform_->WriteStringToFile(dev_mode_file, "");
     }
 
     startup_dep_->BootAlert("block_devmode");
@@ -1073,12 +1067,13 @@ void ChromeosStartup::RestorePreservedPaths() {
   base::FilePath preserve_dir =
       stateful_.Append(kUnencrypted).Append(kPreserve);
   for (const auto& path : kPreserveDirs) {
-    base::FilePath fpath(path);
-    base::FilePath src = preserve_dir.Append(fpath);
-    if (base::DirectoryExists(src)) {
-      const base::FilePath dst = root_.Append(fpath);
-      base::CreateDirectory(dst);
-      if (!base::Move(src, dst)) {
+    base::FilePath src = preserve_dir.Append(path);
+    if (platform_->DirectoryExists(src)) {
+      const base::FilePath dst = root_.Append(path);
+      platform_->CreateDirectory(dst);
+      // |preserve_dir| is the unencrypted volume, |dst| is in the encrypted
+      // volume, we need to cross filesystem boundaries.
+      if (!platform_->Rename(src, dst, true)) {
         PLOG(WARNING) << "Failed to move " << src.value();
       }
     }

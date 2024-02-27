@@ -59,7 +59,7 @@ void MountHelper::CleanupMountsStack(std::vector<base::FilePath>* mnts) {
     if (mnt == encrypted) {
       DoUmountVarAndHomeChronos();
     } else {
-      startup_dep_->Umount(mnt);
+      platform_->Unmount(mnt, false, nullptr);
     }
     mount_stack_.pop();
   }
@@ -107,8 +107,9 @@ void MountHelper::CleanupMounts(const std::string& msg) {
 // On failure, clobbers the stateful partition.
 void MountHelper::BindMountOrFail(const base::FilePath& source,
                                   const base::FilePath& target) {
-  if (base::DirectoryExists(source) && base::DirectoryExists(target)) {
-    if (startup_dep_->Mount(source, target, "", MS_BIND, "")) {
+  if (platform_->DirectoryExists(source) &&
+      platform_->DirectoryExists(target)) {
+    if (platform_->Mount(source, target, "", MS_BIND, "")) {
       // Push it on the undo stack if we fail later.
       RememberMount(target);
       return;
@@ -134,11 +135,10 @@ bool MountHelper::MountVarAndHomeChronosEncrypted() {
   std::string output;
   int status =
       startup_dep_->MountEncrypted(std::vector<std::string>(), &output);
-  if (base::PathExists(mount_enc_log)) {
-    base::AppendToFile(mount_enc_log, output);
-  } else {
-    base::WriteFile(mount_enc_log, output);
-  }
+  std::string existing_log;
+  platform_->ReadFileToString(mount_enc_log, &existing_log);
+  existing_log.append(output);
+  platform_->WriteStringToFile(mount_enc_log, existing_log);
   return status == 0;
 }
 
@@ -179,21 +179,21 @@ bool MountHelper::UmountVarAndHomeChronosEncrypted() {
 // Bind mount /var and /home/chronos. All function arguments are ignored.
 bool MountHelper::MountVarAndHomeChronosUnencrypted() {
   base::FilePath var = stateful_.Append(kVar);
-  if (!base::CreateDirectory(var)) {
+  if (!platform_->CreateDirectory(var)) {
     return false;
   }
 
-  if (!base::SetPosixFilePermissions(var, 0755)) {
+  if (!platform_->SetPermissions(var, 0755)) {
     PLOG(WARNING) << "chmod failed for " << var.value();
     return false;
   }
 
-  if (!startup_dep_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
+  if (!platform_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
     return false;
   }
-  if (!startup_dep_->Mount(stateful_.Append(kHomeChronos),
-                           root_.Append(kHomeChronos), "", MS_BIND, "")) {
-    startup_dep_->Umount(root_.Append(kVar));
+  if (!platform_->Mount(stateful_.Append(kHomeChronos),
+                        root_.Append(kHomeChronos), "", MS_BIND, "")) {
+    platform_->Unmount(root_.Append(kVar), false, nullptr);
     return false;
   }
   return true;
@@ -202,10 +202,10 @@ bool MountHelper::MountVarAndHomeChronosUnencrypted() {
 // Unmount bind mounts for /var and /home/chronos.
 bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
   bool ret = false;
-  if (startup_dep_->Umount(root_.Append(kVar))) {
+  if (platform_->Unmount(root_.Append(kVar), false, nullptr)) {
     ret = true;
   }
-  if (startup_dep_->Umount(root_.Append(kHomeChronos))) {
+  if (platform_->Unmount(root_.Append(kHomeChronos), false, nullptr)) {
     ret = true;
   }
   return ret;

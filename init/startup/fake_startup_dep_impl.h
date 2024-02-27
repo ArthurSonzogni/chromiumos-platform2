@@ -25,7 +25,7 @@ namespace startup {
 
 class FakeStartupDep : public StartupDep {
  public:
-  FakeStartupDep();
+  explicit FakeStartupDep(libstorage::Platform* platform);
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st);
 
@@ -34,9 +34,6 @@ class FakeStartupDep : public StartupDep {
 
   void SetMountEncOutputForArg(const std::string& arg,
                                const std::string& output);
-
-  void SetMountResultForPath(const base::FilePath& path,
-                             const std::string& output);
 
   int GetBootAlertForArg(const std::string& arg);
 
@@ -52,7 +49,6 @@ class FakeStartupDep : public StartupDep {
              const std::string& type,
              unsigned long flags,  // NOLINT(runtime/int)
              const std::string& data) override;
-  bool Umount(const base::FilePath& path) override;
   base::ScopedFD Open(const base::FilePath& pathname, int flags) override;
   // NOLINTNEXTLINE(runtime/int)
   int Ioctl(int fd, unsigned long request, int* arg1) override;
@@ -71,10 +67,9 @@ class FakeStartupDep : public StartupDep {
   void RemoveInBackground(const std::vector<base::FilePath>& paths) override;
 
  private:
+  libstorage::Platform* platform_;
   std::unordered_map<std::string, struct stat> result_map_;
   std::unordered_map<std::string, struct statvfs> result_statvfs_map_;
-  std::unordered_map<std::string, std::string> mount_result_map_;
-  std::vector<std::string> umount_vector_;
   int open_ret_ = -1;
   int ioctl_ret_ = 0;
   std::unordered_map<std::string, std::string> mount_enc_result_map_;

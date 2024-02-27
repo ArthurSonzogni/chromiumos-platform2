@@ -13,6 +13,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/startup_dep_impl.h"
 
@@ -28,7 +29,7 @@ class UefiDelegate {
   };
 
   // Create a concrete instance of the default implementation.
-  static std::unique_ptr<UefiDelegate> Create(StartupDep& startup_dep,
+  static std::unique_ptr<UefiDelegate> Create(libstorage::Platform* platform,
                                               const base::FilePath& root_dir);
 
   virtual ~UefiDelegate();

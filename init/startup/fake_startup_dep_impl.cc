@@ -11,13 +11,14 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <brillo/files/file_util.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/fake_startup_dep_impl.h"
 
 namespace startup {
 
-FakeStartupDep::FakeStartupDep() : StartupDep() {}
+FakeStartupDep::FakeStartupDep(libstorage::Platform* platform)
+    : StartupDep(), platform_(platform) {}
 
 void FakeStartupDep::SetStatResultForPath(const base::FilePath& path,
                                           const struct stat& st) {
@@ -27,11 +28,6 @@ void FakeStartupDep::SetStatResultForPath(const base::FilePath& path,
 void FakeStartupDep::SetStatvfsResultForPath(const base::FilePath& path,
                                              const struct statvfs& st) {
   result_statvfs_map_[path.value()] = st;
-}
-
-void FakeStartupDep::SetMountResultForPath(const base::FilePath& path,
-                                           const std::string& output) {
-  mount_result_map_[path.value()] = output;
 }
 
 void FakeStartupDep::SetMountEncOutputForArg(const std::string& arg,
@@ -78,18 +74,6 @@ bool FakeStartupDep::Mount(const base::FilePath& src,
                            const std::string& type,
                            unsigned long flags,  // NOLINT(runtime/int)
                            const std::string& data) {
-  std::unordered_map<std::string, std::string>::iterator it;
-  it = mount_result_map_.find(dst.value());
-
-  if (it == mount_result_map_.end()) {
-    return false;
-  }
-
-  return src.value().compare(it->second) == 0;
-}
-
-bool FakeStartupDep::Umount(const base::FilePath& path) {
-  umount_vector_.push_back(path.value());
   return true;
 }
 
@@ -123,12 +107,12 @@ void FakeStartupDep::BootAlert(const std::string& arg) {
 void FakeStartupDep::RemoveInBackground(
     const std::vector<base::FilePath>& paths) {
   for (auto path : paths) {
-    brillo::DeletePathRecursively(path);
+    platform_->DeletePathRecursively(path);
   }
 }
 
 void FakeStartupDep::ClobberLog(const std::string& msg) {
-  WriteFile(clobber_log_, msg);
+  platform_->WriteStringToFile(clobber_log_, msg);
 }
 
 void FakeStartupDep::Clobber(const std::string& boot_alert_msg,

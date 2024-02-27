@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <libstorage/platform/platform.h>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -29,7 +30,8 @@ bool UnlockEncryptedRebootVault();
 // Run shutdown.
 void Reboot();
 
-void Restorecon(const base::FilePath& path,
+void Restorecon(libstorage::Platform* platform_,
+                const base::FilePath& path,
                 const std::vector<base::FilePath>& exclude,
                 bool is_recursive,
                 bool set_digests);

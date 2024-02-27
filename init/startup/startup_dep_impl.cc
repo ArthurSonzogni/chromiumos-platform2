@@ -20,7 +20,6 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
@@ -34,8 +33,6 @@ namespace {
 
 constexpr char kProcCmdLine[] = "proc/cmdline";
 constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
-
-const size_t kMaxReadSize = 4 * 1024;
 
 }  // namespace
 
@@ -57,10 +54,6 @@ bool StartupDep::Mount(const base::FilePath& src,
   std::string src_path = !src.value().empty() ? src.value() : type;
   return mount(src_path.c_str(), dst.value().c_str(), type.c_str(), flags,
                data.c_str()) == 0;
-}
-
-bool StartupDep::Umount(const base::FilePath& path) {
-  return !umount(path.value().c_str());
 }
 
 base::ScopedFD StartupDep::Open(const base::FilePath& pathname, int flags) {
@@ -262,9 +255,15 @@ bool InDevMode(crossystem::Crossystem* crossystem) {
 }
 
 // Determine if the device is using a test image.
-bool IsTestImage(const base::FilePath& lsb_file) {
+bool IsTestImage(libstorage::Platform* platform,
+                 const base::FilePath& lsb_file) {
   brillo::KeyValueStore store;
-  if (!store.Load(lsb_file)) {
+  std::string lsb_content;
+  if (!platform->ReadFileToString(lsb_file, &lsb_content)) {
+    PLOG(ERROR) << "Problem reading " << lsb_file.value();
+    return false;
+  }
+  if (!store.LoadFromString(lsb_content)) {
     PLOG(ERROR) << "Problem parsing " << lsb_file.value();
     return false;
   }
@@ -277,32 +276,31 @@ bool IsTestImage(const base::FilePath& lsb_file) {
 }
 
 // Return if the device is in factory test mode.
-bool IsFactoryTestMode(crossystem::Crossystem* crossystem,
+bool IsFactoryTestMode(libstorage::Platform* platform,
+                       crossystem::Crossystem* crossystem,
                        const base::FilePath& base_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
   base::FilePath factory_dir = base_dir.Append(kFactoryDir);
   base::FilePath factory_tag = factory_dir.Append("enabled");
-  struct stat statbuf;
   std::optional<int> res =
       crossystem->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
-  if (res == 1 && stat(factory_tag.value().c_str(), &statbuf) == 0 &&
-      S_ISREG(statbuf.st_mode)) {
+  if (res == 1 && platform->FileExists(factory_tag))
     return true;
-  }
+
   return false;
 }
 
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(crossystem::Crossystem* crossystem,
+bool IsFactoryMode(libstorage::Platform* platform,
+                   crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir) {
-  if (IsFactoryTestMode(crossystem, base_dir))
+  if (IsFactoryTestMode(platform, crossystem, base_dir))
     return true;
 
   std::string cmdline;
-  if (!base::ReadFileToStringWithMaxSize(base_dir.Append(kProcCmdLine),
-                                         &cmdline, kMaxReadSize)) {
+  if (!platform->ReadFileToString(base_dir.Append(kProcCmdLine), &cmdline)) {
     PLOG(ERROR) << "Failed to read proc command line";
     return false;
   }
@@ -311,13 +309,8 @@ bool IsFactoryMode(crossystem::Crossystem* crossystem,
     return true;
   }
 
-  struct stat statbuf;
   base::FilePath installer = base_dir.Append("root/.factory_installer");
-  if (stat(installer.value().c_str(), &statbuf) == 0 &&
-      S_ISREG(statbuf.st_mode)) {
-    return true;
-  }
-  return false;
+  return platform->FileExists(installer);
 }
 
 }  // namespace startup

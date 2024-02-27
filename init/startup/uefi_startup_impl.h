@@ -41,7 +41,8 @@ constexpr char kEfiImageSecurityDatabaseGuid[] =
 
 class UefiDelegateImpl : public UefiDelegate {
  public:
-  UefiDelegateImpl(StartupDep& startup_dep, const base::FilePath& root_dir);
+  UefiDelegateImpl(libstorage::Platform* platform_,
+                   const base::FilePath& root_dir);
 
   bool IsUefiEnabled() const override;
   std::optional<UserAndGroup> GetFwupdUserAndGroup() const override;
@@ -51,7 +52,7 @@ class UefiDelegateImpl : public UefiDelegate {
   void MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) override;
 
  private:
-  StartupDep& startup_dep_;
+  libstorage::Platform* platform_;
   const base::FilePath root_dir_;
 };
 

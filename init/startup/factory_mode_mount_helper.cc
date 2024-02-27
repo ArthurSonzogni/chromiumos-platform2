@@ -44,8 +44,8 @@ FactoryModeMountHelper::FactoryModeMountHelper(libstorage::Platform* platform,
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = stateful_.Append(kOptionsFile);
   std::string option = "";
-  if (base::PathExists(option_file)) {
-    base::ReadFileToString(option_file, &option);
+  if (platform_->FileExists(option_file)) {
+    platform_->ReadFileToString(option_file, &option);
   }
   if (option == "tmpfs") {
     // Mount tmpfs to /var/. When booting from USB disk, writing to /var/
@@ -54,14 +54,13 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
     // tmpfs on /var to improve performance. (especially when running
     // tests like touchpad, touchscreen).
     base::FilePath var = root_.Append(kVar);
-    if (!startup_dep_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0,
-                             "")) {
+    if (!platform_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0, "")) {
       return false;
     }
     base::FilePath stateful_home_chronos = stateful_.Append(kHomeChronos);
     base::FilePath home_chronos = root_.Append(kHomeChronos);
-    if (!startup_dep_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
-                             "")) {
+    if (!platform_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
+                          "")) {
       return false;
     }
     return true;

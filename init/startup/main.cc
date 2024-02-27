@@ -10,7 +10,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
@@ -47,23 +46,25 @@ int main(int argc, char* argv[]) {
   settings.delete_old = logging::APPEND_TO_OLD_LOG_FILE;
   logging::InitLogging(settings);
 
+  std::unique_ptr<libstorage::Platform> platform =
+      std::make_unique<libstorage::Platform>();
+
   // dmesg already handles the timestamp.
   logging::SetLogItems(false, false, false, false);
 
   std::string printk_devkmsg_value("ratelimit\n");
   // Temporarily disable printk ratelimiting until this exits.
-  if (!base::ReadFileToString(base::FilePath(kPrintkDevkmsg),
-                              &printk_devkmsg_value)) {
+  if (!platform->ReadFileToString(base::FilePath(kPrintkDevkmsg),
+                                  &printk_devkmsg_value)) {
     PLOG(ERROR) << "Failed to read " << kPrintkDevkmsg;
   }
-  absl::Cleanup restore_rate_limit = [printk_devkmsg_value =
-                                          std::move(printk_devkmsg_value)]() {
-    if (!base::WriteFile(base::FilePath(kPrintkDevkmsg),
-                         printk_devkmsg_value)) {
+  absl::Cleanup restore_rate_limit = [&]() {
+    if (!platform->WriteStringToFile(base::FilePath(kPrintkDevkmsg),
+                                     printk_devkmsg_value)) {
       PLOG(ERROR) << "Failed to restore " << kPrintkDevkmsg;
     }
   };
-  if (!base::WriteFile(base::FilePath(kPrintkDevkmsg), "on\n")) {
+  if (!platform->WriteStringToFile(base::FilePath(kPrintkDevkmsg), "on\n")) {
     PLOG(ERROR) << "Failed to write " << kPrintkDevkmsg;
   }
 
@@ -71,9 +72,6 @@ int main(int argc, char* argv[]) {
   startup::ChromeosStartup::ParseFlags(&flags, argc, argv);
   // A decreasing number is more verbose and numbers below zero are OK.
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
-
-  std::unique_ptr<libstorage::Platform> platform =
-      std::make_unique<libstorage::Platform>();
 
   std::unique_ptr<startup::StartupDep> startup_dep =
       std::make_unique<startup::StartupDep>();

@@ -109,7 +109,8 @@ void Reboot() {
   LOG(ERROR) << "Requesting reboot failed with failure code " << ret;
 }
 
-void Restorecon(const base::FilePath& path,
+void Restorecon(libstorage::Platform* platform_,
+                const base::FilePath& path,
                 const std::vector<base::FilePath>& exclude,
                 bool is_recursive,
                 bool set_digests) {

@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/startup_dep_impl.h"
 
@@ -18,35 +19,49 @@ namespace startup {
 
 // Accumulate process management policies from the files in the policy dir
 // and append them to to output_file.
-bool AccumulatePolicyFiles(const base::FilePath& root,
+bool AccumulatePolicyFiles(libstorage::Platform* platform,
+                           const base::FilePath& root,
                            const base::FilePath& output_file,
                            const base::FilePath& policy_dir);
 // Determine where securityfs files are placed and accumulate policy files.
-bool ConfigureProcessMgmtSecurity(const base::FilePath& root);
+bool ConfigureProcessMgmtSecurity(libstorage::Platform* platform,
+                                  const base::FilePath& root);
 
 // Sets up the LoadPin verity root digests to be trusted by the kernel.
-bool SetupLoadPinVerityDigests(const base::FilePath& root,
+bool SetupLoadPinVerityDigests(libstorage::Platform* platform,
+                               const base::FilePath& root,
                                StartupDep* startup_dep);
 
 // Block symlink and FIFO access on the given path.
-bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path);
+bool BlockSymlinkAndFifo(libstorage::Platform* platform,
+                         const base::FilePath& root,
+                         const std::string& path);
 
-void CreateSystemKey(const base::FilePath& root,
+void CreateSystemKey(libstorage::Platform* platform,
+                     const base::FilePath& root,
                      const base::FilePath& stateful,
                      StartupDep* startup_dep);
 
-bool AllowSymlink(const base::FilePath& root, const std::string& path);
-bool AllowFifo(const base::FilePath& root, const std::string& path);
+bool AllowSymlink(libstorage::Platform* platform,
+                  const base::FilePath& root,
+                  const std::string& path);
+bool AllowFifo(libstorage::Platform* platform,
+               const base::FilePath& root,
+               const std::string& path);
 
-void SymlinkExceptions(const base::FilePath& root);
-void ExceptionsProjectSpecific(const base::FilePath& root,
+void SymlinkExceptions(libstorage::Platform* platform,
+                       const base::FilePath& root);
+void ExceptionsProjectSpecific(libstorage::Platform* platform,
+                               const base::FilePath& root,
                                const base::FilePath& config_dir,
-                               bool (*callback)(const base::FilePath& root,
+                               bool (*callback)(libstorage::Platform* platform,
+                                                const base::FilePath& root,
                                                 const std::string& path));
 
 // Set up symlink traversal, FIFO blocking policy, and project specific
 // symlink and FIFO exceptions.
-void ConfigureFilesystemExceptions(const base::FilePath& root);
+void ConfigureFilesystemExceptions(libstorage::Platform* platform,
+                                   const base::FilePath& root);
 
 }  // namespace startup
 

@@ -31,6 +31,7 @@
 #include <brillo/process/process.h>
 #include <brillo/key_value_store.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 #include <metrics/bootstat.h>
 #include <rootdev/rootdev.h>
 
@@ -80,11 +81,12 @@ bool RemovableRootdev(const base::FilePath& path, int* ret) {
   return utils::ReadFileToInt(removable, ret);
 }
 
-uint64_t GetDirtyExpireCentisecs(const base::FilePath& root) {
+uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
+                                 const base::FilePath& root) {
   std::string dirty_expire;
   uint64_t dirty_expire_centisecs = 0;
   base::FilePath centisecs_path = root.Append(kDirtyExpireCentisecs);
-  if (!base::ReadFileToString(centisecs_path, &dirty_expire)) {
+  if (!platform->ReadFileToString(centisecs_path, &dirty_expire)) {
     PLOG(WARNING) << "Failed to read " << centisecs_path.value();
     return 0;
   }
@@ -182,7 +184,7 @@ bool StatefulMount::GetImageVars(base::FilePath json_file,
                                  std::string key,
                                  base::Value* vars) {
   std::string json_string;
-  if (!base::ReadFileToString(json_file, &json_string)) {
+  if (!platform_->ReadFileToString(json_file, &json_string)) {
     PLOG(ERROR) << "Unable to read json file: " << json_file;
     return false;
   }
@@ -208,7 +210,7 @@ bool StatefulMount::GetImageVars(base::FilePath json_file,
 
 bool StatefulMount::IsQuotaEnabled() {
   base::FilePath quota = root_.Append(kQuota);
-  return base::DirectoryExists(quota);
+  return platform_->DirectoryExists(quota);
 }
 
 void StatefulMount::AppendQuotaFeaturesAndOptions(
@@ -298,14 +300,14 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
   std::optional<bool> direncrypt = flags_.direncryption;
   bool direncryption = direncrypt.value_or(false);
   base::FilePath encryption = root_.Append(kExt4Features).Append("encryption");
-  if (direncryption && base::PathExists(encryption)) {
+  if (direncryption && platform_->FileExists(encryption)) {
     AppendOption(fs_features, &sb_options, "encrypt");
   }
 
   std::optional<bool> fsverity = flags_.fsverity;
   bool verity = fsverity.value_or(false);
   base::FilePath verity_file = root_.Append(kExt4Features).Append("verity");
-  if (verity && base::PathExists(verity_file)) {
+  if (verity && platform_->FileExists(verity_file)) {
     AppendOption(fs_features, &sb_options, "verity");
   }
 
@@ -395,7 +397,7 @@ void StatefulMount::MountStateful() {
         image_vars_dict.FindString("FS_FORMAT_STATE");
     state_dev_ = brillo::AppendPartition(root_dev_type_, part_num_state);
     if (fs_form_state->compare("ext4") == 0) {
-      int dirty_expire_centisecs = GetDirtyExpireCentisecs(root_);
+      int dirty_expire_centisecs = GetDirtyExpireCentisecs(platform_, root_);
       int commit_interval = dirty_expire_centisecs / 100;
       if (commit_interval != 0) {
         stateful_mount_opts = "commit=" + std::to_string(commit_interval);
@@ -478,10 +480,9 @@ void StatefulMount::MountStateful() {
     EnableExt4Features();
 
     // Mount stateful partition from state_dev.
-    if (!startup_dep_->Mount(state_dev_,
-                             base::FilePath("/mnt/stateful_partition"),
-                             fs_form_state->c_str(), stateful_mount_flags,
-                             stateful_mount_opts)) {
+    if (!platform_->Mount(state_dev_, base::FilePath("/mnt/stateful_partition"),
+                          *fs_form_state, stateful_mount_flags,
+                          stateful_mount_opts)) {
       // Try to rebuild the stateful partition by clobber-state. (Not using fast
       // mode out of security consideration: the device might have gotten into
       // this state through power loss during dev mode transition).
@@ -489,7 +490,8 @@ void StatefulMount::MountStateful() {
       std::string output;
       status = Dumpe2fs(state_dev_, dump_args, &output);
       base::FilePath log = root_.Append(kDumpe2fsStatefulLog);
-      if (!status || !base::WriteFile(base::FilePath(log), output)) {
+      if (!status ||
+          !platform_->WriteStringToFile(base::FilePath(log), output)) {
         PLOG(ERROR) << "Failed to write dumpe2fs output to "
                     << kDumpe2fsStatefulLog;
       }
@@ -508,8 +510,8 @@ void StatefulMount::MountStateful() {
         image_vars_dict.FindString("FS_FORMAT_OEM");
     const base::FilePath oem_dev =
         brillo::AppendPartition(root_dev_type_, part_num_oem);
-    status = startup_dep_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
-                                 *fs_form_oem, oem_flags, "");
+    status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
+                              *fs_form_oem, oem_flags, "");
     if (!status) {
       PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
     }
@@ -535,7 +537,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   base::FilePath stateful_update_file = stateful_.Append(kUpdateAvailable);
   std::string stateful_update_args = args;
   if (stateful_update_args.empty()) {
-    if (!base::ReadFileToString(stateful_update_file, &stateful_update_args)) {
+    if (!platform_->ReadFileToString(stateful_update_file,
+                                     &stateful_update_args)) {
       PLOG(WARNING) << "Failed to read from " << stateful_update_file.value();
       return true;
     }
@@ -556,7 +559,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
 
   // Only replace the developer and var_overlay directories if new replacements
   // are available.
-  if (base::DirectoryExists(developer_new) && base::DirectoryExists(var_new)) {
+  if (platform_->DirectoryExists(developer_new) &&
+      platform_->DirectoryExists(var_new)) {
     std::string update = "Updating from " + developer_new.value() + " && " +
                          var_new.value() + ".";
     startup_dep_->ClobberLog(update);
@@ -569,26 +573,28 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       } else {
         path_target = stateful_.Append(path);
       }
-      if (!brillo::DeletePathRecursively(path_target)) {
+      if (!platform_->DeletePathRecursively(path_target)) {
         PLOG(WARNING) << "Failed to delete " << path_target.value();
       }
 
-      if (!base::CreateDirectory(path_target)) {
+      if (!platform_->CreateDirectory(path_target)) {
         PLOG(WARNING) << "Failed to create " << path_target.value();
       }
 
-      if (!base::SetPosixFilePermissions(path_target, 0755)) {
+      if (!platform_->SetPermissions(path_target, 0755)) {
         PLOG(WARNING) << "chmod failed for " << path_target.value();
       }
 
-      base::FileEnumerator enumerator(path_new, false /* recursive */,
-                                      base::FileEnumerator::FILES |
-                                          base::FileEnumerator::DIRECTORIES |
-                                          base::FileEnumerator::SHOW_SYM_LINKS);
+      std::unique_ptr<libstorage::FileEnumerator> enumerator(
+          platform_->GetFileEnumerator(
+              path_new, false /* recursive */,
+              base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+                  base::FileEnumerator::SHOW_SYM_LINKS));
 
-      for (base::FilePath fd = enumerator.Next(); !fd.empty();
-           fd = enumerator.Next()) {
-        if (!base::Move(fd, path_target.Append(fd.BaseName()))) {
+      for (base::FilePath fd = enumerator->Next(); !fd.empty();
+           fd = enumerator->Next()) {
+        // Filesystem crossing if new var comes in a logical volume.
+        if (!platform_->Rename(fd, path_target.Append(fd.BaseName()), true)) {
           PLOG(WARNING) << "Failed to copy " << fd.value() << " to "
                         << path_target.value();
         }
@@ -631,12 +637,13 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     std::vector<base::FilePath> preserved_paths = {
         stateful_.Append(kLabMachine), developer_target, var_target,
         preserve_dir};
-    base::FileEnumerator enumerator(stateful_, true,
-                                    base::FileEnumerator::FILES |
-                                        base::FileEnumerator::DIRECTORIES |
-                                        base::FileEnumerator::SHOW_SYM_LINKS);
-    for (auto path = enumerator.Next(); !path.empty();
-         path = enumerator.Next()) {
+    std::unique_ptr<libstorage::FileEnumerator> enumerator(
+        platform_->GetFileEnumerator(stateful_, true,
+                                     base::FileEnumerator::FILES |
+                                         base::FileEnumerator::DIRECTORIES |
+                                         base::FileEnumerator::SHOW_SYM_LINKS));
+    for (auto path = enumerator->Next(); !path.empty();
+         path = enumerator->Next()) {
       bool preserve = false;
       for (auto& preserved_path : preserved_paths) {
         if (path == preserved_path || preserved_path.IsParent(path) ||
@@ -647,10 +654,10 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       }
 
       if (!preserve) {
-        if (base::DirectoryExists(path)) {
-          brillo::DeletePathRecursively(path);
+        if (platform_->DirectoryExists(path)) {
+          platform_->DeletePathRecursively(path);
         } else {
-          brillo::DeleteFile(path);
+          platform_->DeleteFile(path);
         }
       }
     }
@@ -672,12 +679,12 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   base::FilePath prior_log_dir = stateful_.Append("unencrypted/prior_logs");
   std::string log_path;
 
-  if (!base::PathExists(lab_preserve_logs)) {
+  if (!platform_->FileExists(lab_preserve_logs)) {
     return;
   }
 
   std::string files;
-  base::ReadFileToString(lab_preserve_logs, &files);
+  platform_->ReadFileToString(lab_preserve_logs, &files);
   std::vector<std::string> split_files = base::SplitString(
       files, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (std::string log_path : split_files) {
@@ -685,18 +692,18 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
       continue;
     }
     base::FilePath log(log_path);
-    if (base::DirectoryExists(log)) {
-      if (!base::CopyDirectory(log, prior_log_dir, true)) {
+    if (platform_->DirectoryExists(log)) {
+      if (!platform_->Copy(log, prior_log_dir)) {
         PLOG(WARNING) << "Failed to copy directory " << log_path;
       }
     } else {
-      if (!base::CopyFile(log, prior_log_dir.Append(log.BaseName()))) {
+      if (!platform_->Copy(log, prior_log_dir.Append(log.BaseName()))) {
         PLOG(WARNING) << "Failed to copy file " << log_path;
       }
     }
   }
 
-  if (!brillo::DeleteFile(lab_preserve_logs)) {
+  if (!platform_->DeleteFile(lab_preserve_logs)) {
     PLOG(WARNING) << "Failed to delete file: " << lab_preserve_logs;
   }
 }
@@ -706,12 +713,10 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   // any privileged account to be able to write here so unittests need not worry
   // about setting things up ahead of time. See crbug.com/453579 for details.
   base::FilePath asan_dir = root_.Append(kVarLogAsan);
-  base::File::Error error;
-  if (!base::CreateDirectoryAndGetError(asan_dir, &error)) {
-    PLOG(WARNING) << "Unable to create /var/log/asan directory, error code: "
-                  << error;
+  if (!platform_->CreateDirectory(asan_dir)) {
+    PLOG(WARNING) << "Unable to create /var/log/asan directory, error code.";
   }
-  if (chmod(asan_dir.value().c_str(), 01777) != 0) {
+  if (!platform_->SetPermissions(asan_dir, 01777)) {
     PLOG(WARNING) << "Set permissions failed for /var/log/asan";
   }
 
@@ -719,23 +724,23 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   // before we start applying devmode-specific changes.
   std::string mount_contents;
   base::FilePath proc_mounts = root_.Append(kProcMounts);
-  if (!base::ReadFileToString(proc_mounts, &mount_contents)) {
+  if (!platform_->ReadFileToString(proc_mounts, &mount_contents)) {
     PLOG(ERROR) << "Reading from " << proc_mounts.value() << " failed.";
   }
 
   base::FilePath mount_options = root_.Append(kMountOptionsLog);
-  if (!base::WriteFile(mount_options, mount_contents)) {
+  if (!platform_->WriteStringToFile(mount_options, mount_contents)) {
     PLOG(ERROR) << "Writing " << proc_mounts.value()
                 << "to mount_options.log failed.";
   }
 
   // Create dev_image directory in base images in developer mode.
   base::FilePath stateful_dev = root_.Append(kStatefulDevImage);
-  if (!base::DirectoryExists(stateful_dev)) {
-    if (!base::CreateDirectory(stateful_dev)) {
+  if (!platform_->DirectoryExists(stateful_dev)) {
+    if (!platform_->CreateDirectory(stateful_dev)) {
       PLOG(ERROR) << "Failed to create " << stateful_dev.value();
     }
-    if (!base::SetPosixFilePermissions(stateful_dev, 0755)) {
+    if (!platform_->SetPermissions(stateful_dev, 0755)) {
       PLOG(ERROR) << "Failed to set permissions for " << stateful_dev.value();
     }
   }
@@ -747,9 +752,9 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
       brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
       auto lg = lvm->GetLogicalVolume(volume_group_.value(), "unencrypted");
       lg->Activate();
-      startup_dep_->Mount(device, stateful_dev, "",
-                          MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-                          "discard");
+      platform_->Mount(device, stateful_dev, "",
+                       MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
+                       "discard");
     }
   }
 
@@ -759,40 +764,40 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);
   mount_helper_->BindMountOrFail(stateful_dev, usrlocal);
-  if (!startup_dep_->Mount(base::FilePath(""), usrlocal, "", MS_REMOUNT, "")) {
+  if (!platform_->Mount(base::FilePath(), usrlocal, "", MS_REMOUNT, "")) {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
 
   base::FilePath disable_state_sec_hard =
       root_.Append(kDisableStatefulSecurityHardening);
-  if (!base::PathExists(disable_state_sec_hard)) {
+  if (!platform_->FileExists(disable_state_sec_hard)) {
     // Add exceptions to allow symlink traversal and opening of FIFOs in the
     // dev_image subtree.
     for (const auto dir : kDisableSecHardDirs) {
       base::FilePath path = root_.Append(dir);
-      if (!base::DirectoryExists(path)) {
-        if (!base::CreateDirectory(path)) {
+      if (!platform_->DirectoryExists(path)) {
+        if (!platform_->CreateDirectory(path)) {
           PLOG(ERROR) << "Failed to create " << path.value();
         }
-        if (!base::SetPosixFilePermissions(path, 0755)) {
+        if (!platform_->SetPermissions(path, 0755)) {
           PLOG(ERROR) << "Failed to set permissions for " << path.value();
         }
       }
-      AllowSymlink(root_, path.value());
-      AllowFifo(root_, path.value());
+      AllowSymlink(platform_, root_, path.value());
+      AllowFifo(platform_, root_, path.value());
     }
   }
 
   // Set up /var elements needed for deploying packages.
   base::FilePath base = stateful_.Append("var_overlay");
-  if (base::DirectoryExists(base)) {
+  if (platform_->DirectoryExists(base)) {
     for (const auto dir : kMountDirs) {
       base::FilePath full = base.Append(dir);
-      if (!base::DirectoryExists(full)) {
+      if (!platform_->DirectoryExists(full)) {
         continue;
       }
       base::FilePath dest = root_.Append(kVar).Append(dir);
-      if (!base::PathExists(dest)) {
+      if (!platform_->DirectoryExists(dest)) {
         LOG(WARNING) << "Path does not exists, can not mount: " << dest.value();
         continue;
       }

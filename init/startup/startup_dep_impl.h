@@ -15,14 +15,17 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/platform.h>
 
 namespace startup {
 
 // Determine if the device is using a test image.
-bool IsTestImage(const base::FilePath& lsb_file);
+bool IsTestImage(libstorage::Platform* platform,
+                 const base::FilePath& lsb_file);
 
 // Determines if the device is in factory test mode.
-bool IsFactoryTestMode(crossystem::Crossystem* crossystem,
+bool IsFactoryTestMode(libstorage::Platform* platform,
+                       crossystem::Crossystem* crossystem,
                        const base::FilePath& base_dir);
 
 // Determine if the device is in dev mode.
@@ -31,7 +34,8 @@ bool IsDebugBuild(crossystem::Crossystem* crossystem);
 
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(crossystem::Crossystem* crossystem,
+bool IsFactoryMode(libstorage::Platform* platform,
+                   crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir);
 
 // StartupDep defines functions that interface with the filesystem and
@@ -54,9 +58,6 @@ class StartupDep {
                      const std::string& type,
                      unsigned long flags,  // NOLINT(runtime/int)
                      const std::string& data);
-
-  // Wrapper around umount(2).
-  virtual bool Umount(const base::FilePath& path);
 
   // Wrapper around open(2).
   virtual base::ScopedFD Open(const base::FilePath& pathname, int flags);

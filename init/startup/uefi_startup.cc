@@ -21,18 +21,18 @@
 namespace startup {
 
 std::unique_ptr<UefiDelegate> UefiDelegate::Create(
-    StartupDep& startup_dep, const base::FilePath& root_dir) {
-  return std::make_unique<UefiDelegateImpl>(startup_dep, root_dir);
+    libstorage::Platform* platform, const base::FilePath& root_dir) {
+  return std::make_unique<UefiDelegateImpl>(platform, root_dir);
 }
 
 UefiDelegate::~UefiDelegate() = default;
 
-UefiDelegateImpl::UefiDelegateImpl(StartupDep& startup_dep,
+UefiDelegateImpl::UefiDelegateImpl(libstorage::Platform* platform,
                                    const base::FilePath& root_dir)
-    : startup_dep_(startup_dep), root_dir_(root_dir) {}
+    : platform_(platform), root_dir_(root_dir) {}
 
 bool UefiDelegateImpl::IsUefiEnabled() const {
-  return base::PathExists(root_dir_.Append(kSysEfiDir));
+  return platform_->DirectoryExists(root_dir_.Append(kSysEfiDir));
 }
 
 std::optional<UefiDelegate::UserAndGroup>
@@ -54,11 +54,11 @@ bool UefiDelegateImpl::MountEfivarfs(const UserAndGroup& fwupd) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
   const std::string data =
       "uid=" + std::to_string(fwupd.uid) + ",gid=" + std::to_string(fwupd.gid);
-  if (!startup_dep_.Mount(/*src=*/base::FilePath(),
-                          /*dst=*/efivars_dir,
-                          /*type=*/kFsTypeEfivarfs,
-                          /*flags=*/kCommonMountFlags,
-                          /*data=*/data)) {
+  if (!platform_->Mount(/*from=*/base::FilePath(),
+                        /*to=*/efivars_dir,
+                        /*type=*/kFsTypeEfivarfs,
+                        /*mount_flags=*/kCommonMountFlags,
+                        /*mount_options=*/data)) {
     PLOG(WARNING) << "Unable to mount " << efivars_dir;
     return false;
   }
@@ -70,42 +70,24 @@ bool UefiDelegateImpl::MakeUefiVarMutable(const std::string& vendor,
                                           const std::string& name) {
   const base::FilePath var_path =
       root_dir_.Append(kEfivarsDir).Append(name + '-' + vendor);
-  base::ScopedFD var_fd = startup_dep_.Open(var_path, O_RDONLY | O_CLOEXEC);
-  if (!var_fd.is_valid()) {
-    PLOG(WARNING) << "Failed to open " << var_path;
-    return false;
-  }
-
-  int attr = 0;
-  if (startup_dep_.Ioctl(var_fd.get(), FS_IOC_GETFLAGS, &attr) < 0) {
-    PLOG(WARNING) << "Failed to get attributes for " << var_path;
-    return false;
-  }
-  attr &= ~FS_IMMUTABLE_FL;
-  if (startup_dep_.Ioctl(var_fd.get(), FS_IOC_SETFLAGS, &attr) < 0) {
-    PLOG(WARNING) << "Failed to set attributes for " << var_path;
-    return false;
-  }
-  return true;
+  return platform_->SetExtFileAttributes(var_path, 0, FS_IMMUTABLE_FL);
 }
 
 void UefiDelegateImpl::MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) {
   const base::FilePath esrt_dir = root_dir_.Append(kSysEfiDir).Append("esrt");
-  base::FileEnumerator file_enumerator(
-      esrt_dir, /*recursive=*/true,
-      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES);
+  std::unique_ptr<libstorage::FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(
+          esrt_dir, /*recursive=*/true,
+          base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
 
-  file_enumerator.ForEach([this, fwupd](const base::FilePath& path) {
-    base::ScopedFD fd = startup_dep_.Open(path, O_RDONLY | O_CLOEXEC);
-    if (fd.is_valid()) {
-      if (!startup_dep_.Fchown(fd.get(), fwupd.uid, fwupd.gid)) {
-        PLOG(WARNING) << "Failed to change ownership of " << path << " to "
-                      << fwupd.uid << ":" << fwupd.gid;
-      }
-    } else {
-      PLOG(WARNING) << "Failed to open " << path;
+  for (base::FilePath path = file_enumerator->Next(); !path.empty();
+       path = file_enumerator->Next()) {
+    if (!platform_->SetOwnership(path, fwupd.uid, fwupd.gid,
+                                 false /* follow_links */)) {
+      PLOG(WARNING) << "Failed to change ownership of " << path << " to "
+                    << fwupd.uid << ":" << fwupd.gid;
     }
-  });
+  }
 }
 
 void MaybeRunUefiStartup(UefiDelegate& uefi_delegate) {

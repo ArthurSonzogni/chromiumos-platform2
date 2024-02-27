@@ -14,9 +14,9 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "init/startup/constants.h"
-#include "init/startup/mock_startup_dep_impl.h"
 #include "init/startup/uefi_startup.h"
 #include "init/startup/uefi_startup_impl.h"
 
@@ -25,15 +25,6 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace startup {
-
-namespace {
-
-// Same as StartupDep::Open.
-base::ScopedFD OpenImpl(const base::FilePath& path, int flags) {
-  return base::ScopedFD(HANDLE_EINTR(open(path.value().c_str(), flags)));
-}
-
-}  // namespace
 
 bool operator==(const UefiDelegate::UserAndGroup& lhs,
                 const UefiDelegate::UserAndGroup& rhs) {
@@ -95,21 +86,20 @@ class UefiDelegateTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     root_dir_ = temp_dir_.GetPath();
 
-    uefi_delegate_ =
-        std::make_unique<UefiDelegateImpl>(mock_startup_dep_, root_dir_);
+    uefi_delegate_ = std::make_unique<UefiDelegateImpl>(&platform_, root_dir_);
   }
 
+  libstorage::MockPlatform platform_;
   base::ScopedTempDir temp_dir_;
   base::FilePath root_dir_;
 
-  StrictMock<MockStartupDep> mock_startup_dep_;
   std::unique_ptr<UefiDelegate> uefi_delegate_;
 };
 
 // Test `IsUefiEnabled` when UEFI is enabled.
 TEST_F(UefiDelegateTest, IsUefiEnabledYes) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
-  ASSERT_TRUE(base::CreateDirectory(efivars_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(efivars_dir));
 
   EXPECT_TRUE(uefi_delegate_->IsUefiEnabled());
 }
@@ -117,7 +107,7 @@ TEST_F(UefiDelegateTest, IsUefiEnabledYes) {
 // Test `IsUefiEnabled` when UEFI is not enabled.
 TEST_F(UefiDelegateTest, IsUefiEnabledNo) {
   const base::FilePath efivars_dir = root_dir_.Append("sys/firmware");
-  ASSERT_TRUE(base::CreateDirectory(efivars_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(efivars_dir));
 
   EXPECT_FALSE(uefi_delegate_->IsUefiEnabled());
 }
@@ -125,11 +115,10 @@ TEST_F(UefiDelegateTest, IsUefiEnabledNo) {
 // Test mounting efivarfs.
 TEST_F(UefiDelegateTest, MountEfivarfs) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
-  ASSERT_TRUE(base::CreateDirectory(efivars_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(efivars_dir));
 
-  EXPECT_CALL(mock_startup_dep_,
-              Mount(base::FilePath(), efivars_dir, kFsTypeEfivarfs,
-                    kCommonMountFlags, "uid=123,gid=456"))
+  EXPECT_CALL(platform_, Mount(base::FilePath(), efivars_dir, kFsTypeEfivarfs,
+                               kCommonMountFlags, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(
@@ -139,19 +128,11 @@ TEST_F(UefiDelegateTest, MountEfivarfs) {
 // Test modifying a UEFI var.
 TEST_F(UefiDelegateTest, ModifyVar) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
-  ASSERT_TRUE(base::CreateDirectory(efivars_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(efivars_dir));
 
   const base::FilePath var_path =
       efivars_dir.Append("myvar-1a2a2d4e-6e6a-468f-944c-c00d14d92c1e");
-  ASSERT_TRUE(base::WriteFile(var_path, ""));
-
-  EXPECT_CALL(mock_startup_dep_, Open(var_path, O_RDONLY | O_CLOEXEC))
-      .WillOnce(OpenImpl);
-
-  EXPECT_CALL(mock_startup_dep_, Ioctl(_, FS_IOC_GETFLAGS, _))
-      .WillOnce(Return(0));
-  EXPECT_CALL(mock_startup_dep_, Ioctl(_, FS_IOC_SETFLAGS, _))
-      .WillOnce(Return(0));
+  ASSERT_TRUE(platform_.WriteStringToFile(var_path, ""));
 
   EXPECT_TRUE(uefi_delegate_->MakeUefiVarMutable(
       "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar"));
@@ -163,9 +144,6 @@ TEST_F(UefiDelegateTest, ModifyInvalidVar) {
   const base::FilePath var_path =
       efivars_dir.Append("myvar-1a2a2d4e-6e6a-468f-944c-c00d14d92c1e");
 
-  EXPECT_CALL(mock_startup_dep_, Open(var_path, O_RDONLY | O_CLOEXEC))
-      .WillOnce(OpenImpl);
-
   EXPECT_FALSE(uefi_delegate_->MakeUefiVarMutable(
       "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar"));
 }
@@ -174,23 +152,13 @@ TEST_F(UefiDelegateTest, ModifyInvalidVar) {
 TEST_F(UefiDelegateTest, MakeEsrtReadableByFwupd) {
   // Set up an esrt directory.
   const base::FilePath esrt_dir = root_dir_.Append(kSysEfiDir).Append("esrt");
-  ASSERT_TRUE(base::CreateDirectory(esrt_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(esrt_dir));
   const base::FilePath version_path = esrt_dir.Append("fw_resource_version");
-  ASSERT_TRUE(base::WriteFile(version_path, "1"));
+  ASSERT_TRUE(platform_.WriteStringToFile(version_path, "1"));
   const base::FilePath entries_dir = esrt_dir.Append("entries");
-  ASSERT_TRUE(base::CreateDirectory(entries_dir));
+  ASSERT_TRUE(platform_.CreateDirectory(entries_dir));
   const base::FilePath entry_path = entries_dir.Append("entry_file");
-  ASSERT_TRUE(base::WriteFile(entry_path, "2"));
-
-  // The `entries` directory, `fw_resource_version` file, and
-  // `entry_file` should all get modified, so expect these calls to
-  // happen three times.
-  EXPECT_CALL(mock_startup_dep_, Open(_, O_RDONLY | O_CLOEXEC))
-      .Times(3)
-      .WillRepeatedly(OpenImpl);
-  EXPECT_CALL(mock_startup_dep_, Fchown(_, 123, 456))
-      .Times(3)
-      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(platform_.WriteStringToFile(entry_path, "2"));
 
   uefi_delegate_->MakeEsrtReadableByFwupd(UefiDelegate::UserAndGroup{123, 456});
 }

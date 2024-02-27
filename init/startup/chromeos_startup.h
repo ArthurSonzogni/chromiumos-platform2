@@ -80,7 +80,8 @@ class ChromeosStartup {
   void RemoveVarEmpty();
   void CheckVarLog();
   void RestoreContextsForVar(
-      void (*restorecon_func)(const base::FilePath& path,
+      void (*restorecon_func)(libstorage::Platform* platform_,
+                              const base::FilePath& path,
                               const std::vector<base::FilePath>& exclude,
                               bool is_recursive,
                               bool set_digests));

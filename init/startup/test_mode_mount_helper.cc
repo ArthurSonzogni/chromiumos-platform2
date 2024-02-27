@@ -57,14 +57,15 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   bool sys_key = system_key.value_or(false);
   if (sys_key) {
     LOG(INFO) << "Creating System Key";
-    CreateSystemKey(root_, stateful_, startup_dep_);
+    CreateSystemKey(platform_, root_, stateful_, startup_dep_);
   }
 
   base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
-  struct stat statbuf;
   bool ret;
-  if (!startup_dep_->Stat(encrypted_failed, &statbuf) ||
-      statbuf.st_uid != getuid()) {
+  uid_t uid;
+  if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
+                               false /* follow_links */) ||
+      (uid != getuid())) {
     // Try to use the original handler in chromeos_startup.
     // It should not wipe whole stateful partition in this case.
     return MountVarAndHomeChronos();
@@ -83,18 +84,19 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
     startup_dep_->AddClobberCrashReport(crash_args);
     base::FilePath backup = stateful_.Append("corrupted_encryption");
     brillo::DeletePathRecursively(backup);
-    base::CreateDirectory(backup);
-    if (!base::SetPosixFilePermissions(backup, 0755)) {
+    platform_->CreateDirectory(backup);
+    if (!platform_->SetPermissions(backup, 0755)) {
       PLOG(WARNING) << "chmod failed for " << backup.value();
     }
 
-    base::FileEnumerator enumerator(stateful_, false /* recursive */,
-                                    base::FileEnumerator::FILES);
-    for (base::FilePath path = enumerator.Next(); !path.empty();
-         path = enumerator.Next()) {
+    std::unique_ptr<libstorage::FileEnumerator> enumerator(
+        platform_->GetFileEnumerator(stateful_, false /* recursive */,
+                                     base::FileEnumerator::FILES));
+    for (base::FilePath path = enumerator->Next(); !path.empty();
+         path = enumerator->Next()) {
       if (path.BaseName().value().rfind("encrypted.", 0) == 0) {
         base::FilePath to_path = backup.Append(path.BaseName());
-        base::Move(path, to_path);
+        platform_->Rename(path, to_path, true /* cros_fs */);
       }
     }
 

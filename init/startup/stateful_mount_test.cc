@@ -51,24 +51,40 @@ constexpr char kDumpe2fsStr[] =
 constexpr char kReservedBlocksGID[] = "Reserved blocks gid:      20119";
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 
-// Helper function to create directory and write to file.
-bool CreateDirAndWriteFile(const base::FilePath& path,
-                           const std::string& contents) {
-  return base::CreateDirectory(path.DirName()) &&
-         base::WriteFile(path, contents.c_str(), contents.length()) ==
-             contents.length();
-}
-
 }  // namespace
 
-TEST(GetImageVars, BaseVars) {
+class GetImageVarsTest : public ::testing::Test {
+ protected:
+  GetImageVarsTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    platform_ = std::make_unique<libstorage::FakePlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+    json_file_ = temp_dir_.GetPath().Append("vars.json");
+    ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+        mount_helper_.get());
+  }
+
+  base::FilePath json_file_;
+  startup::Flags flags_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::ScopedTempDir temp_dir_;
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  base::FilePath json_file = temp_dir_.GetPath().Append("vars.json");
-  ASSERT_TRUE(WriteFile(json_file, kImageVarsContent));
+  base::FilePath base_dir;
+  std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+};
+
+TEST_F(GetImageVarsTest, BaseVars) {
   base::Value vars;
   ASSERT_TRUE(
-      startup::StatefulMount::GetImageVars(json_file, "load_base_vars", &vars));
+      stateful_mount_->GetImageVars(json_file_, "load_base_vars", &vars));
   LOG(INFO) << "vars is: " << vars;
   EXPECT_TRUE(vars.is_dict());
   const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
@@ -76,14 +92,10 @@ TEST(GetImageVars, BaseVars) {
   EXPECT_EQ(*format, "base");
 }
 
-TEST(GetImageVars, PartitionVars) {
-  base::ScopedTempDir temp_dir_;
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  base::FilePath json_file = temp_dir_.GetPath().Append("vars.json");
-  ASSERT_TRUE(WriteFile(json_file, kImageVarsContent));
+TEST_F(GetImageVarsTest, PartitionVars) {
   base::Value vars;
-  ASSERT_TRUE(startup::StatefulMount::GetImageVars(
-      json_file, "load_partition_vars", &vars));
+  ASSERT_TRUE(
+      stateful_mount_->GetImageVars(json_file_, "load_partition_vars", &vars));
   LOG(INFO) << "vars is: " << vars;
   EXPECT_TRUE(vars.is_dict());
   const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
@@ -100,7 +112,7 @@ class Ext4FeaturesTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
-    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   }
@@ -121,10 +133,7 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
   flags.direncryption = true;
   base::FilePath encrypt_file =
       base_dir.Append("sys/fs/ext4/features/encryption");
-  ASSERT_TRUE(CreateDirAndWriteFile(encrypt_file, "1"));
-
-  struct stat st;
-  startup_dep_->SetStatResultForPath(encrypt_file, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(encrypt_file, "1"));
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -141,10 +150,7 @@ TEST_F(Ext4FeaturesTest, Verity) {
   startup::Flags flags;
   flags.fsverity = true;
   base::FilePath verity_file = base_dir.Append("sys/fs/ext4/features/verity");
-  ASSERT_TRUE(CreateDirAndWriteFile(verity_file, "1"));
-
-  struct stat st;
-  startup_dep_->SetStatResultForPath(verity_file, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(verity_file, "1"));
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -175,11 +181,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
   startup::Flags flags;
   flags.prjquota = true;
   base::FilePath quota_file = base_dir.Append("proc/sys/fs/quota");
-  ASSERT_TRUE(base::CreateDirectory(quota_file));
-
-  struct stat st;
-  st.st_mode = S_IFDIR;
-  startup_dep_->SetStatResultForPath(quota_file, st);
+  ASSERT_TRUE(platform_->CreateDirectory(quota_file));
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -196,11 +198,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
   startup::Flags flags;
   flags.prjquota = false;
   base::FilePath quota_file = base_dir.Append("proc/sys/fs/quota");
-  ASSERT_TRUE(base::CreateDirectory(quota_file));
-
-  struct stat st;
-  st.st_mode = S_IFDIR;
-  startup_dep_->SetStatResultForPath(quota_file, st);
+  ASSERT_TRUE(platform_->CreateDirectory(quota_file));
 
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -247,7 +245,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
-    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     stateful_update_file = stateful.Append(".update_available");
     clobber_log_ = base_dir.Append("clobber_log");
     var_new = stateful.Append("var_new");
@@ -284,88 +282,77 @@ TEST_F(DevUpdateStatefulTest, NoUpdateAvailable) {
 }
 
 TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
-  ASSERT_TRUE(CreateDirectory(developer_new));
-  ASSERT_TRUE(CreateDirectory(var_new));
-  struct stat st;
-  st.st_mode = S_IFDIR;
-  startup_dep_->SetStatResultForPath(developer_new, st);
-  startup_dep_->SetStatResultForPath(var_new, st);
+  ASSERT_TRUE(platform_->CreateDirectory(developer_new));
+  ASSERT_TRUE(platform_->CreateDirectory(var_new));
   startup_dep_->SetClobberLogFile(clobber_log_);
 
-  ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "1"));
-  st.st_mode = S_IFREG;
-  startup_dep_->SetStatResultForPath(stateful_update_file, st);
+  ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "1"));
 
   LOG(INFO) << "var new test: " << var_new.value();
   LOG(INFO) << "developer_new test: " << developer_new.value();
 
-  ASSERT_TRUE(CreateDirAndWriteFile(developer_new.Append("dev_new_file"), "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(var_new.Append("var_new_file"), "1"));
   ASSERT_TRUE(
-      CreateDirAndWriteFile(developer_target.Append("dev_target_file"), "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(var_target.Append("var_target_file"), "1"));
+      platform_->WriteStringToFile(developer_new.Append("dev_new_file"), "1"));
+  ASSERT_TRUE(
+      platform_->WriteStringToFile(var_new.Append("var_new_file"), "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(
+      developer_target.Append("dev_target_file"), "1"));
+  ASSERT_TRUE(
+      platform_->WriteStringToFile(var_target.Append("var_target_file"), "1"));
 
   EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
 
-  EXPECT_FALSE(base::PathExists(developer_new.Append("dev_new_file")));
-  EXPECT_FALSE(base::PathExists(var_new.Append("var_new_file")));
-  EXPECT_FALSE(base::PathExists(developer_target.Append("dev_target_file")));
-  EXPECT_FALSE(base::PathExists(var_target.Append("var_target_file")));
+  EXPECT_FALSE(platform_->FileExists(developer_new.Append("dev_new_file")));
+  EXPECT_FALSE(platform_->FileExists(var_new.Append("var_new_file")));
+  EXPECT_FALSE(
+      platform_->FileExists(developer_target.Append("dev_target_file")));
+  EXPECT_FALSE(platform_->FileExists(var_target.Append("var_target_file")));
 
-  EXPECT_FALSE(base::PathExists(stateful_update_file));
-  EXPECT_TRUE(base::PathExists(var_target.Append("var_new_file")));
-  EXPECT_TRUE(base::PathExists(developer_target.Append("dev_new_file")));
+  EXPECT_FALSE(platform_->FileExists(stateful_update_file));
+  EXPECT_TRUE(platform_->FileExists(var_target.Append("var_new_file")));
+  EXPECT_TRUE(platform_->FileExists(developer_target.Append("dev_new_file")));
 
   std::string message =
       "Updating from " + developer_new.value() + " && " + var_new.value() + ".";
   std::string res;
-  ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
+  ASSERT_TRUE(platform_->ReadFileToString(clobber_log_, &res));
   EXPECT_EQ(res, message);
 }
 
 TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   startup_dep_->SetClobberLogFile(clobber_log_);
 
-  ASSERT_TRUE(CreateDirAndWriteFile(stateful_update_file, "clobber"));
+  ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "clobber"));
   base::FilePath labmachine = stateful.Append(".labmachine");
   base::FilePath test_dir = stateful.Append("test");
   base::FilePath test = test_dir.Append("test");
   base::FilePath preserve_test = preserve_dir.Append("test");
   base::FilePath empty = stateful.Append("empty");
 
-  struct stat st;
-  st.st_mode = S_IFREG;
-  startup_dep_->SetStatResultForPath(stateful_update_file, st);
-  startup_dep_->SetStatResultForPath(labmachine, st);
-  startup_dep_->SetStatResultForPath(test, st);
-
-  st.st_mode = S_IFDIR;
-  startup_dep_->SetStatResultForPath(test_dir, st);
-  startup_dep_->SetStatResultForPath(empty, st);
-  startup_dep_->SetStatResultForPath(preserve_dir, st);
-
-  ASSERT_TRUE(base::CreateDirectory(empty));
-  ASSERT_TRUE(base::CreateDirectory(test_dir));
+  ASSERT_TRUE(platform_->CreateDirectory(empty));
+  ASSERT_TRUE(platform_->CreateDirectory(test_dir));
+  ASSERT_TRUE(platform_->WriteStringToFile(
+      developer_target.Append("dev_target_file"), "1"));
   ASSERT_TRUE(
-      CreateDirAndWriteFile(developer_target.Append("dev_target_file"), "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(var_target.Append("var_target_file"), "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(labmachine, "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(test, "1"));
-  ASSERT_TRUE(CreateDirAndWriteFile(preserve_test, "1"));
+      platform_->WriteStringToFile(var_target.Append("var_target_file"), "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(labmachine, "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(test, "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(preserve_test, "1"));
 
   EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
-  EXPECT_TRUE(base::PathExists(developer_target.Append("dev_target_file")));
-  EXPECT_TRUE(base::PathExists(var_target.Append("var_target_file")));
-  EXPECT_TRUE(base::PathExists(labmachine));
-  EXPECT_FALSE(base::PathExists(test_dir));
-  EXPECT_TRUE(base::PathExists(preserve_test));
-  EXPECT_FALSE(base::PathExists(empty));
+  EXPECT_TRUE(
+      platform_->FileExists(developer_target.Append("dev_target_file")));
+  EXPECT_TRUE(platform_->FileExists(var_target.Append("var_target_file")));
+  EXPECT_TRUE(platform_->FileExists(labmachine));
+  EXPECT_FALSE(platform_->DirectoryExists(test_dir));
+  EXPECT_TRUE(platform_->FileExists(preserve_test));
+  EXPECT_FALSE(platform_->FileExists(empty));
 
   std::string message = "Stateful update did not find " +
                         developer_new.value() + " & " + var_new.value() +
                         ".'\n'Keeping old development tools.";
   std::string res;
-  ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
+  ASSERT_TRUE(platform_->ReadFileToString(clobber_log_, &res));
   EXPECT_EQ(res, message);
 }
 
@@ -378,7 +365,7 @@ class DevGatherLogsTest : public ::testing::Test {
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
-    startup_dep_ = std::make_unique<startup::FakeStartupDep>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
@@ -388,9 +375,9 @@ class DevGatherLogsTest : public ::testing::Test {
     prior_log_dir_ = stateful.Append("unencrypted/prior_logs");
     var_dir_ = base_dir.Append("var");
     home_chronos_ = base_dir.Append("home/chronos");
-    ASSERT_TRUE(base::CreateDirectory(prior_log_dir_));
-    ASSERT_TRUE(base::CreateDirectory(var_dir_));
-    ASSERT_TRUE(base::CreateDirectory(home_chronos_));
+    ASSERT_TRUE(platform_->CreateDirectory(prior_log_dir_));
+    ASSERT_TRUE(platform_->CreateDirectory(var_dir_));
+    ASSERT_TRUE(platform_->CreateDirectory(home_chronos_));
   }
 
   base::ScopedTempDir temp_dir_;
@@ -408,11 +395,7 @@ class DevGatherLogsTest : public ::testing::Test {
 };
 
 TEST_F(DevGatherLogsTest, NoPreserveLogs) {
-  ASSERT_TRUE(CreateDirAndWriteFile(lab_preserve_logs_, "#"));
-  struct stat st;
-  st.st_mode = S_IFDIR;
-  startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
-
+  ASSERT_TRUE(platform_->WriteStringToFile(lab_preserve_logs_, "#"));
   stateful_mount_->DevGatherLogs(base_dir);
 }
 
@@ -438,25 +421,21 @@ TEST_F(DevGatherLogsTest, PreserveLogs) {
   preserve_str.append("\n#ignore\n\n");
   preserve_str.append(var_logs.value());
 
-  ASSERT_TRUE(CreateDirAndWriteFile(lab_preserve_logs_, preserve_str));
-  ASSERT_TRUE(CreateDirAndWriteFile(test1, "#"));
-  ASSERT_TRUE(CreateDirAndWriteFile(test2, "#"));
-  ASSERT_TRUE(CreateDirAndWriteFile(standalone, "#"));
-  ASSERT_TRUE(CreateDirAndWriteFile(log1, "#"));
-  ASSERT_TRUE(CreateDirAndWriteFile(home_chronos, "#"));
+  ASSERT_TRUE(platform_->WriteStringToFile(lab_preserve_logs_, preserve_str));
+  ASSERT_TRUE(platform_->WriteStringToFile(test1, "#"));
+  ASSERT_TRUE(platform_->WriteStringToFile(test2, "#"));
+  ASSERT_TRUE(platform_->WriteStringToFile(standalone, "#"));
+  ASSERT_TRUE(platform_->WriteStringToFile(log1, "#"));
+  ASSERT_TRUE(platform_->WriteStringToFile(home_chronos, "#"));
 
-  struct stat st;
-  st.st_mode = S_IFREG;
-  startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
-
-  EXPECT_TRUE(base::PathExists(home_chronos));
+  EXPECT_TRUE(platform_->FileExists(home_chronos));
 
   stateful_mount_->DevGatherLogs(base_dir);
 
-  EXPECT_TRUE(base::PathExists(prior_test1));
-  EXPECT_TRUE(base::PathExists(prior_test2));
-  EXPECT_TRUE(base::PathExists(prior_standalone));
-  EXPECT_TRUE(base::PathExists(prior_log1));
-  EXPECT_TRUE(base::PathExists(standalone));
-  EXPECT_FALSE(base::PathExists(lab_preserve_logs_));
+  EXPECT_TRUE(platform_->FileExists(prior_test1));
+  EXPECT_TRUE(platform_->FileExists(prior_test2));
+  EXPECT_TRUE(platform_->FileExists(prior_standalone));
+  EXPECT_TRUE(platform_->FileExists(prior_log1));
+  EXPECT_TRUE(platform_->FileExists(standalone));
+  EXPECT_FALSE(platform_->FileExists(lab_preserve_logs_));
 }

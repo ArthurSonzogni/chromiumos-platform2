@@ -32,7 +32,6 @@ class MockStartupDep : public StartupDep {
                unsigned long flags,  // NOLINT(runtime/int)
                const std::string& data),
               (override));
-  MOCK_METHOD(bool, Umount, (const base::FilePath& path), (override));
   MOCK_METHOD(base::ScopedFD,
               Open,
               (const base::FilePath& pathname, int flags),

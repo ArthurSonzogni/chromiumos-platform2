@@ -37,9 +37,9 @@ class StatefulMount {
 
   virtual ~StatefulMount() = default;
 
-  static bool GetImageVars(base::FilePath json_file,
-                           std::string key,
-                           base::Value* vars);
+  bool GetImageVars(base::FilePath json_file,
+                    std::string key,
+                    base::Value* vars);
 
   void SetStateDevForTest(const base::FilePath& dev);
   base::FilePath GetStateDev();

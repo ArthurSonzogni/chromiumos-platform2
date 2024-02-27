@@ -19,6 +19,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <crypto/random.h>
+#include <libstorage/platform/platform.h>
 #include <linux/loadpin.h>
 #include <openssl/sha.h>
 
@@ -80,28 +81,30 @@ namespace startup {
 // AccumulatePolicyFiles takes in all the files contained in the policy_dir
 // reads their contents, copies and appends them to a file determined by
 // output_file.
-bool AccumulatePolicyFiles(const base::FilePath& root,
+bool AccumulatePolicyFiles(libstorage::Platform* platform,
+                           const base::FilePath& root,
                            const base::FilePath& output_file,
                            const base::FilePath& policy_dir) {
-  if (!base::PathExists(output_file)) {
+  if (!platform->FileExists(output_file)) {
     // securityfs files are located elsewhere, return.
     return true;
   }
 
-  if (!base::DirectoryExists(policy_dir)) {
+  if (!platform->DirectoryExists(policy_dir)) {
     LOG(WARNING) << "Can't configure process management security. "
                  << policy_dir << " not found.";
     return false;
   }
 
-  base::FileEnumerator enumerator(policy_dir, false,
-                                  base::FileEnumerator::FileType::FILES);
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform->GetFileEnumerator(policy_dir, false,
+                                  base::FileEnumerator::FileType::FILES));
   std::vector<std::string> combined_policy;
-  for (base::FilePath file = enumerator.Next(); !file.empty();
-       file = enumerator.Next()) {
+  for (base::FilePath file = enumerator->Next(); !file.empty();
+       file = enumerator->Next()) {
     std::string file_str;
     DLOG(INFO) << "Loading: " << file.value();
-    if (!base::ReadFileToString(file, &file_str)) {
+    if (!platform->ReadFileToString(file, &file_str)) {
       PLOG(WARNING) << "Can't read policy file " << file;
       continue;
     }
@@ -119,7 +122,7 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
   combined_policy_str.append("\n");
 
   DLOG(INFO) << "Applying policy to: " << output_file.value();
-  if (!base::WriteFile(output_file, combined_policy_str)) {
+  if (!platform->WriteStringToFile(output_file, combined_policy_str)) {
     PLOG(ERROR) << output_file << ": Failed to write to file";
     return false;
   }
@@ -129,7 +132,8 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
 // Determine where securityfs files are placed.
 // No inputs, checks for which securityfs file paths exist
 // and accumulates files for securityfs.
-bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
+bool ConfigureProcessMgmtSecurity(libstorage::Platform* platform,
+                                  const base::FilePath& root) {
   DLOG(INFO) << "ConfigureProcessMgmtSecurity";
   // For UID relevant files.
 
@@ -149,12 +153,13 @@ bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
       policies_dir.Append("gid_allowlist_policy");
   const base::FilePath pmp_gid = root.Append(kProcessMgmtPoliciesDirGID);
 
-  return AccumulatePolicyFiles(root, uid_mgmt_policies, pmpd) &&
-         AccumulatePolicyFiles(root, mgmt_policies, pmpd) &&
-         AccumulatePolicyFiles(root, gid_mgmt_policies, pmp_gid);
+  return AccumulatePolicyFiles(platform, root, uid_mgmt_policies, pmpd) &&
+         AccumulatePolicyFiles(platform, root, mgmt_policies, pmpd) &&
+         AccumulatePolicyFiles(platform, root, gid_mgmt_policies, pmp_gid);
 }
 
-bool SetupLoadPinVerityDigests(const base::FilePath& root,
+bool SetupLoadPinVerityDigests(libstorage::Platform* platform,
+                               const base::FilePath& root,
                                StartupDep* startup_dep) {
   const auto loadpin_verity =
       root.Append(kSysKernelSecurity).Append(kLoadPinVerity);
@@ -166,9 +171,8 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root,
   //   2b. Otherwise, we must feed LoadPin with an invalid digests file.
 
   // Open (write) the LoadPin dm-verity attribute file.
-  constexpr auto kWriteFlags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
-  auto fd = startup_dep->Open(loadpin_verity, kWriteFlags);
-  if (!fd.is_valid()) {
+  FILE* fd = platform->OpenFile(loadpin_verity, "w");
+  if (!fd) {
     // This means LoadPin dm-verity attribute is not supported.
     // No further action is required.
     if (errno == ENOENT) {
@@ -181,31 +185,28 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root,
   }
 
   // Open (read) the trusted digest file in rootfs.
-  constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
-  auto digests_fd = startup_dep->Open(trusted_dlc_digests, kReadFlags);
-  if (!digests_fd.is_valid()) {
-    switch (errno) {
-      case ENOENT:
-        PLOG(WARNING) << "Missing trusted DLC verity digests file.";
-        // NOTE: Do not return here, so invalid digests get fed into LoadPin.
-        break;
-      default:
-        PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
-        // NOTE: Do not return here, so invalid digests get fed into LoadPin.
+  FILE* digests_fd = platform->OpenFile(trusted_dlc_digests, "r");
+  if (!digests_fd) {
+    if (errno == ENOENT) {
+      PLOG(WARNING) << "Missing trusted DLC verity digests file.";
+      // NOTE: Do not return here, so invalid digests get fed into LoadPin.
+    } else {
+      PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
+      // NOTE: Do not return here, so invalid digests get fed into LoadPin.
     }
     // Any failure in loading/parsing will block subsequent feeds into LoadPin.
-    digests_fd = startup_dep->Open(dev_null, kReadFlags);
-    if (!digests_fd.is_valid()) {
+    digests_fd = platform->OpenFile(dev_null, "r");
+    if (!digests_fd) {
       PLOG(ERROR) << "Failed to open " << dev_null.value() << ".";
+      platform->CloseFile(fd);
       return false;
     }
     LOG(WARNING) << "Forcing LoadPin to ingest /dev/null.";
   }
 
   // Write trusted digests or /dev/null into LoadPin.
-  int arg1 = digests_fd.get();
-  int ret = startup_dep->Ioctl(fd.get(), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS,
-                               &arg1);
+  int arg1 = fileno(digests_fd);
+  int ret = ioctl(fileno(fd), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, &arg1);
   if (ret != 0) {
     PLOG(WARNING) << "Unable to setup trusted DLC verity digests";
   }
@@ -213,19 +214,23 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root,
   // Subsequent `ioctl` on loadpin/dm-verity should fail as the trusted
   // dm-verity root digest list is not empty or invalid digest file descriptor
   // is fed into LoadPin.
+  platform->CloseFile(fd);
+  platform->CloseFile(digests_fd);
   return ret == 0;
 }
 
-bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path) {
+bool BlockSymlinkAndFifo(libstorage::Platform* platform,
+                         const base::FilePath& root,
+                         const std::string& path) {
   base::FilePath base = root.Append(kLsmInodePolicies);
   base::FilePath sym = base.Append("block_symlink");
   base::FilePath fifo = base.Append("block_fifo");
   bool ret = true;
-  if (!base::WriteFile(sym, path)) {
+  if (!platform->WriteStringToFile(sym, path)) {
     PLOG(WARNING) << "Failed to write to block_symlink for " << path;
     ret = false;
   }
-  if (!base::WriteFile(fifo, path)) {
+  if (!platform->WriteStringToFile(fifo, path)) {
     PLOG(WARNING) << "Failed to write to block_fifo for " << path;
     ret = false;
   }
@@ -235,78 +240,84 @@ bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path) {
 // Generates a system key in test images, before the normal mount-encrypted.
 // This allows us to soft-clear the TPM in integration tests w/o accidentally
 // wiping encstateful after a reboot.
-void CreateSystemKey(const base::FilePath& root,
+void CreateSystemKey(libstorage::Platform* platform,
+                     const base::FilePath& root,
                      const base::FilePath& stateful,
                      StartupDep* startup_dep) {
   base::FilePath log_file = root.Append(kSysKeyLogFile);
   base::FilePath no_early = stateful.Append(kNoEarlyKeyFile);
   base::FilePath backup = stateful.Append(kSysKeyBackupFile);
   base::FilePath empty;
+  std::string log_content = "";
 
-  base::WriteFile(log_file, "");
-
-  if (base::PathExists(no_early)) {
-    base::AppendToFile(log_file, "Opt not to create a system key in advance.");
+  if (platform->FileExists(no_early)) {
+    log_content.append("Opt not to create a system key in advance.");
+    platform->WriteStringToFile(log_file, log_content);
     return;
   }
 
-  base::AppendToFile(log_file,
-                     "Checking if a system key already exists in NVRAM...\n");
+  log_content.append("Checking if a system key already exists in NVRAM...\n");
   std::string output;
   std::vector<std::string> mnt_enc_info = {"info"};
-  int status = startup_dep->MountEncrypted(mnt_enc_info, &output);
-  if (status == 0) {
-    base::AppendToFile(log_file, output.append("\n"));
+  if (!startup_dep->MountEncrypted(mnt_enc_info, &output)) {
+    log_content.append(output);
+    log_content.append("\n");
     if (output.find("NVRAM: available.") != std::string::npos) {
-      base::AppendToFile(log_file, "There is already a system key in NVRAM.\n");
+      log_content.append("There is already a system key in NVRAM.\n");
+      platform->WriteStringToFile(log_file, log_content);
       return;
     }
   }
 
-  base::AppendToFile(log_file,
-                     "No system key found in NVRAM. Start creating one.\n");
+  log_content.append("No system key found in NVRAM. Start creating one.\n");
 
   // Generates 32-byte random key material and backs it up.
   unsigned char buf[kKeySize];
   crypto::RandBytes(buf, kKeySize);
   const char* buf_ptr = reinterpret_cast<const char*>(&buf);
-  if (base::WriteFile(backup, buf_ptr, kKeySize) < kKeySize) {
-    base::AppendToFile(log_file,
-                       "Failed to generate or back up system key material.\n");
+  if (!platform->WriteArrayToFile(backup, buf_ptr, kKeySize)) {
+    log_content.append("Failed to generate or back up system key material.\n");
+    platform->WriteStringToFile(log_file, log_content);
     return;
   }
 
   // Persists system key.
   std::vector<std::string> mnt_enc_set = {"set", backup.value()};
-  status = startup_dep->MountEncrypted(mnt_enc_set, &output);
-  if (status == 0) {
-    base::AppendToFile(log_file, output);
-    base::AppendToFile(log_file, "Successfully created a system key.");
+  if (!startup_dep->MountEncrypted(mnt_enc_set, &output)) {
+    log_content.append(output);
+    log_content.append("Successfully created a system key.");
   }
+
+  platform->WriteStringToFile(log_file, log_content);
 }
 
-bool AllowSymlink(const base::FilePath& root, const std::string& path) {
+bool AllowSymlink(libstorage::Platform* platform,
+                  const base::FilePath& root,
+                  const std::string& path) {
   base::FilePath sym = root.Append(kLsmInodePolicies).Append("allow_symlink");
-  return base::WriteFile(sym, path);
+  return platform->WriteStringToFile(sym, path);
 }
 
-bool AllowFifo(const base::FilePath& root, const std::string& path) {
+bool AllowFifo(libstorage::Platform* platform,
+               const base::FilePath& root,
+               const std::string& path) {
   base::FilePath fifo = root.Append(kLsmInodePolicies).Append("allow_fifo");
-  return base::WriteFile(fifo, path);
+  return platform->WriteStringToFile(fifo, path);
 }
 
-void SymlinkExceptions(const base::FilePath& root) {
+void SymlinkExceptions(libstorage::Platform* platform,
+                       const base::FilePath& root) {
   // Generic symlink exceptions.
   for (auto d_it = kSymlinkExceptions.begin(); d_it != kSymlinkExceptions.end();
        d_it++) {
     base::FilePath d = root.Append(*d_it);
-    if (!base::CreateDirectory(d)) {
+    if (!platform->CreateDirectory(d)) {
       PLOG(WARNING) << "mkdir failed for " << d.value();
     }
-    if (!base::SetPosixFilePermissions(d, 0755)) {
+    if (!platform->SetPermissions(d, 0755)) {
       PLOG(WARNING) << "Failed to set permissions for " << d.value();
     }
-    AllowSymlink(root, d.value());
+    AllowSymlink(platform, root, d.value());
   }
 }
 
@@ -315,20 +326,23 @@ void SymlinkExceptions(const base::FilePath& root) {
 // of paths (one per line) for which an exception should be made.
 // File name should use the following format:
 // <project-name>-{symlink|fifo}-exceptions.txt
-void ExceptionsProjectSpecific(const base::FilePath& root,
+void ExceptionsProjectSpecific(libstorage::Platform* platform,
+                               const base::FilePath& root,
                                const base::FilePath& config_dir,
-                               bool (*callback)(const base::FilePath& root,
+                               bool (*callback)(libstorage::Platform* platform,
+                                                const base::FilePath& root,
                                                 const std::string& path)) {
-  if (base::DirectoryExists(config_dir)) {
-    base::FileEnumerator iter(config_dir, false,
-                              base::FileEnumerator::FileType::FILES);
-    for (base::FilePath path_file = iter.Next(); !path_file.empty();
-         path_file = iter.Next()) {
-      if (!base::PathExists(path_file)) {
+  if (platform->DirectoryExists(config_dir)) {
+    std::unique_ptr<libstorage::FileEnumerator> iter(
+        platform->GetFileEnumerator(config_dir, false,
+                                    base::FileEnumerator::FileType::FILES));
+    for (base::FilePath path_file = iter->Next(); !path_file.empty();
+         path_file = iter->Next()) {
+      if (!platform->FileExists(path_file)) {
         continue;
       }
       std::string contents;
-      if (!base::ReadFileToString(path_file, &contents)) {
+      if (!platform->ReadFileToString(path_file, &contents)) {
         PLOG(WARNING) << "Can't open exceptions file " << path_file.value();
         continue;
       }
@@ -339,13 +353,13 @@ void ExceptionsProjectSpecific(const base::FilePath& root,
           continue;
         } else {
           base::FilePath p(path);
-          if (!base::CreateDirectory(p)) {
+          if (!platform->CreateDirectory(p)) {
             PLOG(WARNING) << "mkdir failed for " << path;
           }
-          if (!base::SetPosixFilePermissions(p, 0755)) {
+          if (!platform->SetPermissions(p, 0755)) {
             PLOG(WARNING) << "Failed to set permissions for " << path;
           }
-          callback(root, path);
+          callback(platform, root, path);
         }
       }
     }
@@ -354,20 +368,21 @@ void ExceptionsProjectSpecific(const base::FilePath& root,
 
 // Set up symlink traversal and FIFO blocking policy, and project
 // specific symlink and FIFO exceptions.
-void ConfigureFilesystemExceptions(const base::FilePath& root) {
+void ConfigureFilesystemExceptions(libstorage::Platform* platform,
+                                   const base::FilePath& root) {
   // Set up symlink traversal and FIFO blocking policy for /var, which may
   // reside on a separate file system than /mnt/stateful_partition. Block
   // symlink traversal and opening of FIFOs by default, but allow exceptions
   // in the few instances where they are used intentionally.
-  BlockSymlinkAndFifo(root, root.Append(kVar).value());
-  SymlinkExceptions(root);
+  BlockSymlinkAndFifo(platform, root, root.Append(kVar).value());
+  SymlinkExceptions(platform, root);
   // Project-specific symlink exceptions. Projects may add exceptions by
   // adding a file under /usr/share/cros/startup/symlink_exceptions/ whose
   // contents contains a list of paths (one per line) for which an exception
   // should be made. File name should use the following format:
   // <project-name>-symlink-exceptions.txt
   base::FilePath sym_excepts = root.Append(kSymlinkExceptionsDir);
-  ExceptionsProjectSpecific(root, sym_excepts, &AllowSymlink);
+  ExceptionsProjectSpecific(platform, root, sym_excepts, &AllowSymlink);
 
   // Project-specific FIFO exceptions. Projects may add exceptions by adding
   // a file under /usr/share/cros/startup/fifo_exceptions/ whose contents
@@ -375,7 +390,7 @@ void ConfigureFilesystemExceptions(const base::FilePath& root) {
   // made. File name should use the following format:
   // <project-name>-fifo-exceptions.txt
   base::FilePath fifo_excepts = root.Append(kFifoExceptionsDir);
-  ExceptionsProjectSpecific(root, fifo_excepts, &AllowFifo);
+  ExceptionsProjectSpecific(platform, root, fifo_excepts, &AllowFifo);
 }
 
 }  // namespace startup
