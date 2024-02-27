@@ -47,7 +47,6 @@ enum VmcError {
     ExpectedVmDeviceUpdates,
     ExpectedVmPort,
     UnexpectedSizeWithPluginVm,
-    InvalidPath(std::ffi::OsString),
     InvalidVmDevice(String),
     InvalidVmDeviceAction(String),
     ExpectedPrivilegedFlagValue,
@@ -151,7 +150,6 @@ impl fmt::Display for VmcError {
             UnexpectedSizeWithPluginVm => {
                 write!(f, "unexpected --size parameter; -p doesn't support --size")
             }
-            InvalidPath(path) => write!(f, "invalid path: {:?}", path),
             InvalidVmDevice(v) => write!(f, "invalid vm device {}", v),
             InvalidVmDeviceAction(a) => write!(f, "invalid vm device action {}", a),
             ExpectedPrivilegedFlagValue => {
@@ -637,32 +635,27 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     fn create_extra_disk(&mut self) -> VmcResult {
         let mut opts = Options::new();
         opts.reqopt("", "size", "size of extra disk", "SIZE");
-        opts.optflag(
-            "",
-            "removable-media",
-            "store the extra disk on a removable media",
-        );
 
         let matches = opts.parse(self.args)?;
 
         let s = matches.opt_str("size").ok_or_else(|| ExpectedSize)?;
         let size = parse_disk_size(&s)?;
 
-        if matches.free.len() != 1 {
-            return Err(ExpectedPath.into());
-        }
+        let (file_name, removable_media) = match matches.free.len() {
+            1 => (&matches.free[0], None),
+            2 => (&matches.free[0], Some(matches.free[1].as_str())),
+            _ => return Err(ExpectedPath.into()),
+        };
 
-        let mut path = matches.free[0].clone();
-        if matches.opt_present("removable-media") {
-            path = Path::new("/media/removable")
-                .join(path)
-                .into_os_string()
-                .into_string()
-                .map_err(InvalidPath)?;
-        }
+        let user_id_hash = get_user_hash(self.environ)?;
 
-        try_command!(self.methods.extra_disk_create(&path, size));
-        println!("A raw disk is created at {}.", path);
+        let path = try_command!(self.methods.extra_disk_create(
+            &user_id_hash,
+            file_name,
+            removable_media,
+            size
+        ));
+        println!("A raw disk is created at {}.", path.display());
         Ok(())
     }
 
@@ -986,7 +979,7 @@ const USAGE: &str = "
      launch <name> |
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] \
             [-- additional parameters] |
-     create-extra-disk --size SIZE [--removable-media] <host disk path> |
+     create-extra-disk --size SIZE <file name> [<removable storage name>] |
      adjust <name> <operation> [additional parameters] |
      destroy [-y] <name> |
      disk-op-status <command UUID> |
@@ -1291,8 +1284,8 @@ mod tests {
                 "vmc",
                 "create-extra-disk",
                 "--size=1G",
-                "--removable-media",
-                "'USB Drive/foo.img'",
+                "foo.img",
+                "USB Drive",
             ],
             &[
                 "vmc",
@@ -1417,7 +1410,7 @@ mod tests {
             &["vmc", "create-extra-disk", "foo.img"],
             &["vmc", "create-extra-disk", "--size", "1G"],
             &["vmc", "create-extra-disk", "--size", "foo.img"],
-            &["vmc", "create-extra-disk", "--size=1G", "--removable-media"],
+            &["vmc", "create-extra-disk", "--size=1G"],
             &[
                 "vmc",
                 "update-container-devices",

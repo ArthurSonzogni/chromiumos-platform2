@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
-use std::fs::{remove_file, OpenOptions};
+use std::fs::OpenOptions;
 use std::iter::FromIterator;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, IntoRawFd};
@@ -59,6 +59,7 @@ enum ChromeOSError {
     BadVmPluginDispatcherStatus,
     BiosAlreadySpecified(String),
     BiosDlcNotAllowed(String),
+    CreateOutputFile(PathBuf, std::io::Error),
     CrostiniVmDisabled,
     CrostiniVmDisabledReason(String),
     DiskImageOutOfSpace,
@@ -67,7 +68,7 @@ enum ChromeOSError {
     FailedAdjustVm(String),
     FailedAttachUsb(String),
     FailedAllocateExtraDisk {
-        path: String,
+        path: PathBuf,
         reason: String,
     },
     FailedCreateContainer(EnumOrUnknown<create_lxd_container_response::Status>, String),
@@ -101,6 +102,7 @@ enum ChromeOSError {
         reason: String,
     },
     FailedUpdateContainerDevices(String),
+    InvalidDiskSize(u64),
     InvalidEmail,
     InvalidExportPath,
     InvalidImportPath,
@@ -140,19 +142,23 @@ impl fmt::Display for ChromeOSError {
                 dlc
             ),
             BiosDlcNotAllowed(dlc) => write!(f, "bios dlc `{}` is not allowed", dlc),
+            CreateOutputFile(p, e) => {
+                write!(f, "failed to create output file `{}`: {}", p.display(), e)
+            }
             CrostiniVmDisabled => write!(f, "Crostini VMs are not available"),
             CrostiniVmDisabledReason(reason) => {
                 write!(f, "Crostini VMs are not available: {}", reason)
             }
             DiskImageOutOfSpace => write!(f, "not enough disk space"),
-            ExportPathExists => write!(f, "disk export path already exists"),
+            ExportPathExists => write!(f, "disk path already exists"),
             ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
             FailedAllocateExtraDisk { path, reason } => write!(
                 f,
                 "failed to allocate an extra disk at {}: {}",
-                path, reason
+                path.display(),
+                reason
             ),
             FailedDetachUsb(reason) => write!(f, "failed to detach usb device from vm: {}", reason),
             FailedDlcInstall(name, reason) => write!(
@@ -214,8 +220,9 @@ impl fmt::Display for ChromeOSError {
             FailedUpdateContainerDevices(reason) => {
                 write!(f, "Failed to update container devices: {}", reason)
             }
+            InvalidDiskSize(n) => write!(f, "invalid disk size {}", n),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
-            InvalidExportPath => write!(f, "disk export path is invalid"),
+            InvalidExportPath => write!(f, "disk path is invalid"),
             InvalidImportPath => write!(f, "disk import path is invalid"),
             InvalidSourcePath => write!(f, "source media path is invalid"),
             MissingActiveSession => write!(
@@ -466,7 +473,8 @@ impl OutputFile {
             .read(true)
             .create_new(true)
             .mode(0o600)
-            .open(&path)?;
+            .open(&path)
+            .map_err(|e| CreateOutputFile(path.clone(), e))?;
 
         // Safe because OwnedFd is given a valid owned fd.
         let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
@@ -485,13 +493,18 @@ impl OutputFile {
     pub fn as_owned_fd(&self) -> &OwnedFd {
         &self.fd
     }
+
+    pub fn remove(&mut self) {
+        if !self.committed {
+            let _ = std::fs::remove_file(&self.path);
+            self.committed = true; // don't try to remove the file again in drop
+        }
+    }
 }
 
 impl Drop for OutputFile {
     fn drop(&mut self) {
-        if !self.committed {
-            let _ = std::fs::remove_file(&self.path);
-        }
+        self.remove();
     }
 }
 
@@ -2452,38 +2465,33 @@ impl Methods {
         self.wait_disk_operation(uuid, op_type)
     }
 
-    pub fn extra_disk_create(&mut self, path: &str, disk_size: u64) -> Result<(), Box<dyn Error>> {
-        // When testing, don't create a file.
-        if cfg!(test) {
-            return Ok(());
-        }
-
+    pub fn extra_disk_create(
+        &mut self,
+        user_id_hash: &str,
+        file_name: &str,
+        removable_media: Option<&str>,
+        disk_size: u64,
+    ) -> Result<PathBuf, Box<dyn Error>> {
         // Validate `disk_size`.
         let disk_size =
-            libc::off64_t::try_from(disk_size).map_err(|e| FailedAllocateExtraDisk {
-                path: path.to_owned(),
-                reason: format!("failed to get disk size: {}", e),
-            })?;
+            libc::off64_t::try_from(disk_size).map_err(|_| InvalidDiskSize(disk_size))?;
 
-        let file = OpenOptions::new()
-            .create_new(true)
-            .read(true)
-            .write(true)
-            .open(path)?;
+        let mut output_file = self.create_output_file(user_id_hash, file_name, removable_media)?;
 
         // Truncate a disk file.
         // Safe since we pass in a valid fd and disk_size.
-        let ret = unsafe { libc::posix_fallocate64(file.as_raw_fd(), 0, disk_size) };
+        let ret = unsafe { libc::posix_fallocate64(output_file.fd.as_raw_fd(), 0, disk_size) };
         if ret != 0 {
             let reason = format!("{}", std::io::Error::from_raw_os_error(ret));
-            let _ = remove_file(path);
+            output_file.remove();
             return Err(FailedAllocateExtraDisk {
-                path: path.to_owned(),
+                path: output_file.path.clone(),
                 reason,
             }
             .into());
         }
-        Ok(())
+        output_file.commit();
+        Ok(output_file.path.clone())
     }
 
     pub fn container_create(
