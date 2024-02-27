@@ -767,8 +767,9 @@ void AttestationService::ActivateAttestationKey(
 void AttestationService::ActivateAttestationKeyTask(
     const ActivateAttestationKeyRequest& request,
     const std::shared_ptr<ActivateAttestationKeyReply>& result) {
-  if (request.encrypted_certificate().tpm_version() !=
-      tpm_utility_->GetVersion()) {
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().ReturnVoid());
+  if (request.encrypted_certificate().tpm_version() != tpm_version) {
     result->set_status(STATUS_INVALID_PARAMETER);
     LOG(ERROR) << __func__ << ": TPM version mismatch.";
     return;
@@ -1027,8 +1028,10 @@ bool AttestationService::CreateEnrollRequestInternal(
                << " does not exist.";
     return false;
   }
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
   AttestationEnrollmentRequest request_pb;
-  request_pb.set_tpm_version(tpm_utility_->GetVersion());
+  request_pb.set_tpm_version(tpm_version);
   *request_pb.mutable_encrypted_endorsement_credential() =
       database_pb.credentials().encrypted_endorsement_credentials().at(
           aca_type);
@@ -1104,8 +1107,10 @@ bool AttestationService::FinishEnrollInternal(
     LogErrorFromCA(__func__, response_pb.detail(), response_pb.extra_details());
     return false;
   }
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
   if (response_pb.encrypted_identity_credential().tpm_version() !=
-      tpm_utility_->GetVersion()) {
+      tpm_version) {
     LOG(ERROR) << __func__ << ": TPM version mismatch.";
     return false;
   }
@@ -1158,8 +1163,10 @@ bool AttestationService::CreateCertificateRequestInternal(
     LOG(ERROR) << __func__ << ": GetRandom(message_id) failed.";
     return false;
   }
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
   AttestationCertificateRequest request_pb;
-  request_pb.set_tpm_version(tpm_utility_->GetVersion());
+  request_pb.set_tpm_version(tpm_version);
   request_pb.set_message_id(*message_id);
   request_pb.set_identity_credential(
       identity_certificate.identity_credential());
@@ -2007,7 +2014,9 @@ void AttestationService::Verify(const VerifyRequest& request,
 }
 
 bool AttestationService::VerifyIdentityBinding(const IdentityBinding& binding) {
-  if (tpm_utility_->GetVersion() == TPM_1_2) {
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
+  if (tpm_version == TPM_1_2) {
     // Reconstruct and hash a serialized TPM_IDENTITY_CONTENTS structure.
     const std::string header("\x01\x01\x00\x00\x00\x00\x00\x79", 8);
     std::string digest = base::SHA1HashString(binding.identity_label() +
@@ -2028,7 +2037,7 @@ bool AttestationService::VerifyIdentityBinding(const IdentityBinding& binding) {
                  << ": Failed to verify identity binding signature.";
       return false;
     }
-  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+  } else if (tpm_version == TPM_2_0) {
     VLOG(1) << __func__ << ": Nothing to do for TPM 2.0.";
   } else {
     LOG(ERROR) << __func__ << ": Unsupported TPM version.";
@@ -2097,9 +2106,11 @@ bool AttestationService::GetCertifiedKeyDigest(
     const std::string& public_key_info,
     const std::string& public_key_tpm_format,
     std::string* key_digest) {
-  if (tpm_utility_->GetVersion() == TPM_1_2) {
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
+  if (tpm_version == TPM_1_2) {
     return crypto_utility_->GetKeyDigest(public_key_info, key_digest);
-  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+  } else if (tpm_version == TPM_2_0) {
     // TPM_ALG_SHA256 = 0x000B, here in big-endian order.
     std::string prefix("\x00\x0B", 2);
     key_digest->assign(prefix +
@@ -2189,11 +2200,12 @@ bool AttestationService::VerifyActivateIdentity(
           .LogError()
           .As(false));
   std::string test_credential = "test credential";
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
   EncryptedIdentityCredential encrypted_credential;
   if (!crypto_utility_->EncryptIdentityCredential(
-          tpm_utility_->GetVersion(), test_credential,
-          BlobToString(rsa_ek_public_key), aik_public_key_tpm_format,
-          &encrypted_credential)) {
+          tpm_version, test_credential, BlobToString(rsa_ek_public_key),
+          aik_public_key_tpm_format, &encrypted_credential)) {
     LOG(ERROR) << __func__ << ": Failed to encrypt identity credential";
     return false;
   }
@@ -2252,7 +2264,9 @@ void AttestationService::VerifyTask(
   // TODO(crbug/942487): Only use GetCertificateSubjectPublicKeyInfo after the
   // bug is resolved.
   std::string cert_public_key_info;
-  switch (tpm_utility_->GetVersion()) {
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().ReturnVoid());
+  switch (tpm_version) {
     case TPM_1_2:
       if (!crypto_utility_->GetCertificatePublicKey(ek_cert.value(),
                                                     &cert_public_key_info)) {

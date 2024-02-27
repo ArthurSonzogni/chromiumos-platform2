@@ -594,7 +594,9 @@ std::string CryptoUtilityImpl::HmacSha512(const std::string& key,
 }
 
 int CryptoUtilityImpl::DefaultDigestAlgoForSignature() {
-  switch (tpm_utility_->GetVersion()) {
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(NID_sha256));
+  switch (tpm_version) {
     case attestation::TPM_2_0:
       return NID_sha256;
     case attestation::TPM_1_2:
@@ -837,10 +839,11 @@ bool CryptoUtilityImpl::CreateSPKACInternal(
   }
 
   // Fill in a random challenge.
+  ASSIGN_OR_RETURN(TpmVersion tpm_version, hwsec_->GetVersion(),
+                   _.LogError().As(false));
   std::string challenge;
-  size_t challenge_size = (tpm_utility_->GetVersion() == TPM_1_2)
-                              ? base::kSHA1Length
-                              : crypto::kSHA256Length;
+  size_t challenge_size =
+      (tpm_version == TPM_1_2) ? base::kSHA1Length : crypto::kSHA256Length;
   if (!GetRandom(challenge_size, &challenge)) {
     LOG(ERROR) << __func__ << ": Failed to GetRandom(challenge).";
     return false;
