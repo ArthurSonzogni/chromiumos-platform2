@@ -2177,7 +2177,7 @@ TEST_F(DeviceTrackerTest, CloseScannerCancelsJob) {
               EqualsProto(cancel_request.job_handle()));
 }
 
-TEST_F(DeviceTrackerTest, CancelScanCompletedJob) {
+TEST_F(DeviceTrackerTest, CancelScanOnCompletedJobSucceeds) {
   SaneDeviceFake* scanner = CreateFakeScanner("Test");
   scanner->SetScanParameters(MakeScanParameters(10, 10));
 
@@ -2206,17 +2206,9 @@ TEST_F(DeviceTrackerTest, CancelScanCompletedJob) {
   EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
   EXPECT_THAT(cancel_response.job_handle(),
               EqualsProto(cancel_request.job_handle()));
-
-  // Cancelling a second time should fail.
-  cancel_response = tracker_->CancelScan(cancel_request);
-  EXPECT_FALSE(cancel_response.success());
-  EXPECT_NE(cancel_response.failure_reason(), "");
-  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
-  EXPECT_THAT(cancel_response.job_handle(),
-              EqualsProto(cancel_request.job_handle()));
 }
 
-TEST_F(DeviceTrackerTest, CancelScanNotCurrentJob) {
+TEST_F(DeviceTrackerTest, CancelScanNotCurrentJobFails) {
   SaneDeviceFake* scanner = CreateFakeScanner("Test");
   scanner->SetScanParameters(MakeScanParameters(10, 10));
 
@@ -2243,13 +2235,13 @@ TEST_F(DeviceTrackerTest, CancelScanNotCurrentJob) {
       tracker_->StartPreparedScan(sps_request2);
   ASSERT_EQ(sps_response2.result(), OPERATION_RESULT_SUCCESS);
 
-  // Cancelling original job should fail.
+  // Original job handle is not valid because a new job has started.
   CancelScanRequest cancel_request;
   *cancel_request.mutable_job_handle() = sps_response1.job_handle();
   CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
   EXPECT_FALSE(cancel_response.success());
   EXPECT_NE(cancel_response.failure_reason(), "");
-  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_CANCELLED);
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
   EXPECT_THAT(cancel_response.job_handle(),
               EqualsProto(cancel_request.job_handle()));
 
@@ -2317,11 +2309,17 @@ TEST_F(DeviceTrackerTest, CancelScanNoErrors) {
   EXPECT_THAT(cancel_response.job_handle(),
               EqualsProto(cancel_request.job_handle()));
 
-  // Job handle is no longer valid.
+  // Reading from the job handle reports cancellation.
+  ReadScanDataRequest read_request;
+  *read_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse read_response = tracker_->ReadScanData(read_request);
+  EXPECT_EQ(read_response.result(), OPERATION_RESULT_CANCELLED);
+
+  // Trying to cancel again succeeds.
   cancel_response = tracker_->CancelScan(cancel_request);
-  EXPECT_FALSE(cancel_response.success());
-  EXPECT_NE(cancel_response.failure_reason(), "");
-  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_TRUE(cancel_response.success());
+  EXPECT_EQ(cancel_response.failure_reason(), "");
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
   EXPECT_THAT(cancel_response.job_handle(),
               EqualsProto(cancel_request.job_handle()));
 }
@@ -2463,6 +2461,56 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_EQ(rsd_response.data().length(), 12);  // IEND.
   EXPECT_EQ(rsd_response.estimated_completion(), 100);
+}
+
+TEST_F(DeviceTrackerTest, ReadScanDataAfterCancel) {
+  SaneDeviceFake* scanner = CreateFakeScanner("Test");
+  scanner->SetScanParameters(MakeScanParameters(100, 100));
+  std::vector<uint8_t> page1(3 * 100 * 100, 0);
+  scanner->SetScanData({page1});
+  scanner->SetMaxReadSize(3 * 100 * 60 + 5);  // 60 lines plus leftover.
+  scanner->SetInitialEmptyReads(2);
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/png");
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // First request will read nothing, but header data is available.
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_EQ(rsd_response.data().length(), 54);  // Magic + header chunks.
+  EXPECT_EQ(rsd_response.estimated_completion(), 0);
+
+  // CancelScan internally discards the remaining data.
+  CancelScanRequest cancel_request;
+  *cancel_request.mutable_job_handle() = sps_response.job_handle();
+  CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
+  EXPECT_TRUE(cancel_response.success());
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Next read sees the cancelled status.
+  rsd_response = tracker_->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_CANCELLED);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_FALSE(rsd_response.has_data());
+  EXPECT_EQ(rsd_response.estimated_completion(), 0);
+
+  // Cancelling again doesn't do anything.
+  cancel_response = tracker_->CancelScan(cancel_request);
+  EXPECT_TRUE(cancel_response.success());
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
 }
 
 }  // namespace

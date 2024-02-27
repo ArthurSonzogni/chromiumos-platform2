@@ -25,6 +25,7 @@
 
 #include "lorgnette/constants.h"
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/guess_source.h"
 #include "lorgnette/manager.h"
 #include "lorgnette/sane_client.h"
 #include "lorgnette/scanner_match.h"
@@ -38,6 +39,8 @@ namespace {
 
 constexpr char kDefaultCacheDirectory[] = "/run/lorgnette/cache";
 constexpr char kKnownDevicesFileName[] = "known_devices";
+constexpr base::TimeDelta kMaxCancelWaitTime = base::Seconds(3);
+constexpr base::TimeDelta kReadPollInterval = base::Milliseconds(100);
 
 lorgnette::OperationResult ToOperationResult(SANE_Status status) {
   switch (status) {
@@ -770,20 +773,15 @@ OpenScannerResponse DeviceTracker::OpenScanner(
 
 void DeviceTracker::ClearJobsForScanner(const std::string& scanner_handle) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (!base::Contains(open_scanners_, scanner_handle)) {
-    return;
+  for (auto it = active_jobs_.begin(); it != active_jobs_.end();) {
+    if (it->second.device_handle == scanner_handle) {
+      LOG(INFO) << __func__ << ": Clearing existing job " << it->first
+                << " for scanner " << scanner_handle;
+      it = active_jobs_.erase(it);
+    } else {
+      ++it;
+    }
   }
-
-  OpenScannerState& state = open_scanners_[scanner_handle];
-  std::optional<std::string> job_id = state.device->GetCurrentJob();
-  if (!job_id.has_value()) {
-    return;
-  }
-
-  LOG(INFO) << __func__ << ": Canceling existing job " << job_id.value()
-            << " for scanner " << scanner_handle;
-  active_jobs_.erase(job_id.value());
 }
 
 CloseScannerResponse DeviceTracker::CloseScanner(
@@ -960,18 +958,30 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     return response;
   }
 
+  // Cancel the active job if one is running, then ensure that no other active
+  // jobs still point to this scanner.
   std::optional<std::string> job_id = state.device->GetCurrentJob();
   if (job_id.has_value()) {
-    LOG(WARNING) << __func__ << ": Canceling existing job " << job_id.value();
-    brillo::ErrorPtr error;
-    if (!state.device->CancelScan(&error)) {
-      LOG(WARNING) << __func__ << ": Failed to cancel scan " << job_id.value()
-                   << ": " << error->GetMessage();
-      // Continue because starting a new scan may reset the backend's state.
-      // If it doesn't, we'll return an error from StartScan() later.
+    ActiveJobState& job_state = active_jobs_[job_id.value()];
+    // Completed job states don't need any cleanup.  For other statuses, try to
+    // cancel before starting a new job.
+    if (job_state.last_result != OPERATION_RESULT_EOF &&
+        job_state.last_result != OPERATION_RESULT_CANCELLED) {
+      LOG(WARNING) << __func__ << ": Canceling existing job " << job_id.value();
+      CancelScanRequest request;
+      request.mutable_job_handle()->set_token(job_id.value());
+      CancelScanResponse response = CancelScan(std::move(request));
+      if (response.result() != OPERATION_RESULT_SUCCESS &&
+          response.result() != OPERATION_RESULT_CANCELLED) {
+        LOG(WARNING) << __func__ << ": Failed to cancel scan " << job_id.value()
+                     << ": " << OperationResult_Name(response.result());
+        // Continue because starting a new scan may reset the backend's state.
+        // If it doesn't, we'll return an error from StartScan() later.
+      }
     }
     active_jobs_.erase(job_id.value());
   }
+  ClearJobsForScanner(handle);
 
   state.completed_lines = 0;
   state.expected_lines = 0;
@@ -1035,7 +1045,12 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
 
   JobHandle job;
   job.set_token(job_id.value());
-  active_jobs_[job_id.value()] = handle;
+  active_jobs_[job_id.value()] = {
+      .device_handle = handle,
+      .last_result = OPERATION_RESULT_UNKNOWN,
+      .cancel_requested = false,
+      .cancel_needed = false,
+  };
   state.buffer = std::move(buffer);
   state.expected_lines = expected_lines;
 
@@ -1077,17 +1092,19 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
     response.set_result(OperationResult::OPERATION_RESULT_INVALID);
     return response;
   }
-  const std::string& device_handle = active_jobs_[job_handle];
+  ActiveJobState& job_state = active_jobs_[job_handle];
+  job_state.cancel_requested = true;
+  job_state.cancel_needed = true;
 
-  if (!base::Contains(open_scanners_, device_handle)) {
-    LOG(ERROR) << __func__ << ": No open scanner handle: " << device_handle;
+  if (!base::Contains(open_scanners_, job_state.device_handle)) {
+    LOG(ERROR) << __func__
+               << ": No open scanner handle: " << job_state.device_handle;
     response.set_failure_reason("No open scanner found for job handle " +
                                 job_handle);
     response.set_result(OPERATION_RESULT_MISSING);
-    active_jobs_.erase(job_handle);
     return response;
   }
-  OpenScannerState& state = open_scanners_[device_handle];
+  OpenScannerState& state = open_scanners_[job_state.device_handle];
   state.last_activity = base::Time::Now();
 
   // If there's no job handle currently, the previous job was run to completion
@@ -1097,7 +1114,6 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
     LOG(WARNING) << __func__ << ": Job has already completed: " << job_handle;
     response.set_success(true);
     response.set_result(OPERATION_RESULT_SUCCESS);
-    active_jobs_.erase(job_handle);
     return response;
   }
 
@@ -1105,22 +1121,129 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
     LOG(ERROR) << __func__ << ": Job is not currently active: " << job_handle;
     response.set_failure_reason("Job has already been cancelled");
     response.set_result(OPERATION_RESULT_CANCELLED);
-    active_jobs_.erase(job_handle);
     return response;
   }
 
+  // sane-airscan will propagate a cancelled status to the following ADF page if
+  // cancel is requested while a read is in progress.  Since we're potentially
+  // going to wait for the end of the page after requesting cancellation anyway,
+  // just wait up front.
+  // TODO(b/328244790): Remove this workaround if this is resolved upstream.
+  base::Time cancel_timeout = base::Time::Now() + kMaxCancelWaitTime;
+  SANE_Status status;
+  if (state.connection_string.starts_with("airscan:") ||
+      state.connection_string.starts_with("ippusb:")) {
+    // Check for ADF sources. It is not necessary to wait for EOF on the platen.
+    brillo::ErrorPtr error;
+    std::optional<std::string> source_name =
+        state.device->GetDocumentSource(&error);
+    if (!source_name.has_value()) {
+      LOG(ERROR) << __func__ << ": Unable to get current document source: "
+                 << error->GetMessage();
+      response.set_success(false);
+      response.set_failure_reason(error->GetMessage());
+      response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+      return response;
+    }
+    std::optional<SourceType> source_type =
+        GuessSourceType(source_name.value());
+    if (!source_type.has_value()) {
+      LOG(ERROR) << __func__
+                 << ": Unable to parse source: " << source_name.value();
+      response.set_success(false);
+      response.set_failure_reason(
+          base::StrCat({"Unable to parse source: ", source_name.value()}));
+      response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+      return response;
+    }
+
+    if (source_type == SOURCE_ADF_SIMPLEX || source_type == SOURCE_ADF_DUPLEX) {
+      LOG(INFO) << __func__
+                << ": Waiting for the end of the page. Lines of image data "
+                   "already read: "
+                << state.completed_lines;
+      do {
+        brillo::ErrorPtr error;
+        size_t read;
+        size_t rows;
+        status = state.device->ReadEncodedData(&error, &read, &rows);
+        if (status == SANE_STATUS_GOOD && read == 0) {
+          // Give the hardware a little time to make progress.
+          base::PlatformThread::Sleep(kReadPollInterval);
+        }
+      } while (status == SANE_STATUS_GOOD &&
+               base::Time::Now() < cancel_timeout);
+      if (status == SANE_STATUS_GOOD) {
+        LOG(WARNING) << "Timed out waiting for EOF.  Deferring cancel.";
+        response.set_success(false);
+        response.set_failure_reason("Cancel in progress");
+        response.set_result(OPERATION_RESULT_DEVICE_BUSY);
+        return response;
+      }
+    }
+  }
+
+  LOG(INFO) << __func__ << ": Requesting device to cancel";
   brillo::ErrorPtr error;
   if (!state.device->CancelScan(&error)) {
     LOG(ERROR) << __func__ << ": Failed to cancel job: " << error->GetMessage();
     response.set_failure_reason(error->GetMessage());
     response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
-    active_jobs_.erase(job_handle);
     return response;
   }
+  job_state.cancel_needed = false;
 
-  active_jobs_.erase(job_handle);
-  response.set_success(true);
-  response.set_result(OPERATION_RESULT_SUCCESS);
+  // Most backends will not process the cancellation until sane_read is called.
+  // Call sane_read until it returns SANE_STATUS_CANCELLED, the end of the page
+  // arrives, or an error happens.
+  LOG(INFO) << __func__ << ": Waiting for cancel to complete";
+  do {
+    brillo::ErrorPtr error;
+    size_t read;
+    size_t rows;
+    status = state.device->ReadEncodedData(&error, &read, &rows);
+    if (status == SANE_STATUS_GOOD && read == 0) {
+      // Give the hardware a little time to make progress.
+      base::PlatformThread::Sleep(kReadPollInterval);
+    }
+  } while (status == SANE_STATUS_GOOD && base::Time::Now() < cancel_timeout);
+  job_state.last_result = ToOperationResult(status);
+  switch (status) {
+    case SANE_STATUS_INVAL:
+      // sane-airscan can sometimes return SANE_STATUS_INVAL if sane_cancel
+      // is called at EOF.  This means the scan is done, so treat it the same as
+      // EOF.
+      [[fallthrough]];
+    case SANE_STATUS_EOF:
+      // Intentionally treat EOF the same as CANCELLED because the caller
+      // doesn't get to see any of the data we discarded above.
+      job_state.last_result = OPERATION_RESULT_CANCELLED;
+      LOG(INFO) << __func__ << ": Got status while waiting for cancel: "
+                << sane_strstatus(status);
+      [[fallthrough]];
+    case SANE_STATUS_CANCELLED:
+      // Cancel completed or document was completely read.
+      response.set_success(true);
+      response.set_result(OPERATION_RESULT_SUCCESS);
+      LOG(INFO) << __func__ << ": Cancel completed";
+      break;
+    case SANE_STATUS_GOOD:
+      // Timed out.
+      response.set_success(false);
+      response.set_failure_reason("Cancel in progress");
+      response.set_result(OPERATION_RESULT_DEVICE_BUSY);
+      LOG(INFO) << __func__ << ": Cancel still in progress after timeout";
+      break;
+    default:
+      // Other error.
+      response.set_success(false);
+      response.set_failure_reason(sane_strstatus(status));
+      response.set_result(ToOperationResult(status));
+      LOG(INFO) << __func__
+                << ": Error during cancellation: " << sane_strstatus(status);
+  }
+
+  state.last_activity = base::Time::Now();
   return response;
 }
 
@@ -1147,16 +1270,27 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
     response.set_result(OperationResult::OPERATION_RESULT_INVALID);
     return response;
   }
-  const std::string& device_handle = active_jobs_[job_handle];
+  ActiveJobState& job_state = active_jobs_[job_handle];
 
-  if (!base::Contains(open_scanners_, device_handle)) {
-    LOG(ERROR) << __func__ << ": No open scanner handle: " << device_handle;
+  if (!base::Contains(open_scanners_, job_state.device_handle)) {
+    LOG(ERROR) << __func__
+               << ": No open scanner handle: " << job_state.device_handle;
     response.set_result(OPERATION_RESULT_MISSING);
-    active_jobs_.erase(job_handle);
     return response;
   }
-  OpenScannerState& state = open_scanners_[device_handle];
+  OpenScannerState& state = open_scanners_[job_state.device_handle];
   state.last_activity = base::Time::Now();
+
+  // If cancellation has already been requested, lorgnette has already tried to
+  // wait for the scan to cancel.  If it reached a non-success status, just
+  // return that without querying the device.
+  if (job_state.cancel_requested &&
+      job_state.last_result != OPERATION_RESULT_SUCCESS) {
+    LOG(INFO) << __func__ << ": Job has already been cancelled with result "
+              << OperationResult_Name(job_state.last_result);
+    response.set_result(job_state.last_result);
+    return response;
+  }
 
   brillo::ErrorPtr error;
   size_t read;
@@ -1164,8 +1298,17 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
   SANE_Status status = state.device->ReadEncodedData(&error, &read, &rows);
   response.set_result(ToOperationResult(status));
   state.completed_lines += rows;
+  job_state.last_result = ToOperationResult(status);
   switch (status) {
     case SANE_STATUS_EOF:
+      if (job_state.cancel_needed) {
+        // Cancellation was deferred earlier.  This doesn't matter for the page
+        // that was just finished, but request it now in case the ADF needs to
+        // stop picking up pages.
+        LOG(INFO) << "Sending deferred cancel request.";
+        state.device->CancelScan(nullptr);
+        job_state.cancel_needed = false;
+      }
       // EOF needs the same data handling as GOOD because there may be image
       // footers that haven't been transmitted yet.
       [[fallthrough]];
@@ -1180,7 +1323,7 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
       state.buffer->pos = state.buffer->len;
       if (encoded_len == 0) {
         // Rate-limit polling from the client if no data was available yet.
-        base::PlatformThread::Sleep(base::Milliseconds(100));
+        base::PlatformThread::Sleep(kReadPollInterval);
       }
       break;
     }
@@ -1188,6 +1331,15 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
       LOG(ERROR) << __func__
                  << ": Failed to read encoded data: " << error->GetMessage();
       return response;
+  }
+
+  // If cancellation has already been requested, don't return any more data.  Do
+  // allow the success status to propagate so that the client will continue
+  // trying until the cancellation finally finishes.
+  if (job_state.cancel_requested &&
+      (status == SANE_STATUS_GOOD || status == SANE_STATUS_EOF)) {
+    response.clear_data();
+    response.clear_estimated_completion();
   }
 
   LOG(INFO) << __func__ << ": Returning " << response.data().size()

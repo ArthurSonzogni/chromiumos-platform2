@@ -167,6 +167,21 @@ class DeviceTracker {
     size_t expected_lines;
   };
 
+  struct ActiveJobState {
+    // Handle to the device used to start this job.
+    std::string device_handle;
+
+    // Last result of doing a device operation, whether requested by the caller
+    // or internally during cancellation.
+    lorgnette::OperationResult last_result;
+
+    // Cancel has been requested by the caller.
+    bool cancel_requested;
+
+    // Cancel request still needs to be sent to the device.
+    bool cancel_needed;
+  };
+
   std::optional<DiscoverySessionState*> GetSession(
       const std::string& session_id);
 
@@ -261,8 +276,8 @@ class DeviceTracker {
   base::flat_map<std::string, OpenScannerState> open_scanners_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
-  // Mapping from scan job handles to the associated scanner handle.
-  base::flat_map<std::string, std::string> active_jobs_
+  // Mapping from scan job handles to the associated job state.
+  base::flat_map<std::string, ActiveJobState> active_jobs_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.

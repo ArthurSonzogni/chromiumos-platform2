@@ -393,12 +393,6 @@ SANE_Status SaneDeviceImpl::ReadScanData(brillo::ErrorPtr* error,
     return SANE_STATUS_INVAL;
   }
 
-  if (!scan_running_) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "No scan in progress");
-    return SANE_STATUS_INVAL;
-  }
-
   if (!buf || !read_out) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "'buf' and 'read' pointers cannot be null");
@@ -410,10 +404,10 @@ SANE_Status SaneDeviceImpl::ReadScanData(brillo::ErrorPtr* error,
   *read_out = read;
   if (status != SANE_STATUS_GOOD) {
     scan_running_ = false;
-    if (status == SANE_STATUS_EOF) {
-      // Stop tracking after EOF so the next page can be started without calling
-      // cancel.  Other statuses keep the job open to ensure that subsequent
-      // scans on the same handle trigger a cleanup.
+    if (status == SANE_STATUS_EOF || status == SANE_STATUS_CANCELLED) {
+      // Stop tracking after a terminal status so the next page can be started
+      // without calling cancel.  Other statuses keep the job open to ensure
+      // that subsequent scans on the same handle trigger a cleanup.
       EndJob();
     }
   }
