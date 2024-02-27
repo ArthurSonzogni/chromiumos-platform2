@@ -332,10 +332,6 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   args.insert(args.end(), argv.begin(), argv.end());
 
   minijail* jail = mj_->New();
-  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
-
-  // To inherit bpf-access group.
-  minijail_inherit_usergroups(jail);
 
   // TODO(b/311100871): Only add CAP_BPF for iptables commands required that but
   // not all.

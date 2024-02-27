@@ -155,7 +155,6 @@ TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
 
 TEST_F(MinijailProcessRunnerTest, iptables) {
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, _));
   EXPECT_CALL(mj_, RunPipesAndDestroy(
                        _,
@@ -172,7 +171,6 @@ TEST_F(MinijailProcessRunnerTest, iptables) {
 
 TEST_F(MinijailProcessRunnerTest, ip6tables) {
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, _));
   EXPECT_CALL(mj_, RunPipesAndDestroy(
                        _,
