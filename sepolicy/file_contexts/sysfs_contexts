@@ -9,10 +9,10 @@
 # Include both /sys/kernel/tracing and /sys/kernel/debug/tracing paths, since
 # some processes may reach it by either path.
 /sys/kernel/debug/tracing(/.*)?            u:object_r:debugfs_tracing:s0
-/sys/kernel/debug/tracing/instances/(/.*)? u:object_r:debugfs_tracing_instances:s0
+/sys/kernel/debug/tracing/instances(/.*)?  u:object_r:debugfs_tracing_instances:s0
 /sys/kernel/debug/tracing/trace_marker     u:object_r:debugfs_trace_marker:s0
 /sys/kernel/tracing(/.*)?                  u:object_r:debugfs_tracing:s0
-/sys/kernel/tracing/instances/(/.*)?       u:object_r:debugfs_tracing_instances:s0
+/sys/kernel/tracing/instances(/.*)?        u:object_r:debugfs_tracing_instances:s0
 /sys/kernel/tracing/trace_marker           u:object_r:debugfs_trace_marker:s0
 
 /sys/firmware/efi/efivars(/.*)?            u:object_r:efivarfs:s0
