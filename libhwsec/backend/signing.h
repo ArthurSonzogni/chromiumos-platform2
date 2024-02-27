@@ -20,6 +20,10 @@ struct SigningOptions {
     kPkcs1v15,
     kRsassaPss,
   };
+  enum class EcdsaEncoding {
+    kNone,  // concation of r and s (r|s)
+    kDer,   // Distinguished Encoding Rules (DER) format
+  };
 
   struct PssParams {
     NoDefault<DigestAlgorithm> mgf1_algorithm;
@@ -34,6 +38,9 @@ struct SigningOptions {
 
   // The extra parameter that would only useful for kRsassaPss.
   std::optional<PssParams> pss_params;
+
+  // Only for ECDSA, this determines the encoding of output signature.
+  EcdsaEncoding ecdsa_encoding = EcdsaEncoding::kNone;
 };
 
 // Signing provide the functions to sign and verify.

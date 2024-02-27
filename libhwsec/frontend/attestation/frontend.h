@@ -79,6 +79,10 @@ class AttestationFrontend : public Frontend {
   // Gets the vector of available attestation::KeyType.
   virtual StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
       const = 0;
+
+  // Signs the |data| with |key_blob|.
+  virtual StatusOr<brillo::Blob> Sign(const brillo::Blob& key_blob,
+                                      const brillo::Blob& data) const = 0;
 };
 
 }  // namespace hwsec

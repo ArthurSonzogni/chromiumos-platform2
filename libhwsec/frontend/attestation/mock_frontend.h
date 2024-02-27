@@ -70,6 +70,10 @@ class MockAttestationFrontend : public MockFrontend,
               GetSupportedKeyTypes,
               (),
               (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              Sign,
+              (const brillo::Blob& key_blob, const brillo::Blob& data),
+              (const override));
 };
 
 }  // namespace hwsec

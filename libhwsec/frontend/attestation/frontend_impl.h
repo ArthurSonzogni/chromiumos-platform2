@@ -53,6 +53,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
       attestation::KeyType key_type) const override;
   StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
       const override;
+  StatusOr<brillo::Blob> Sign(const brillo::Blob& key_blob,
+                              const brillo::Blob& data) const override;
 };
 
 }  // namespace hwsec

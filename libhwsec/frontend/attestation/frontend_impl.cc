@@ -152,4 +152,16 @@ AttestationFrontendImpl::GetSupportedKeyTypes() const {
   return result;
 }
 
+StatusOr<brillo::Blob> AttestationFrontendImpl::Sign(
+    const brillo::Blob& key_blob, const brillo::Blob& data) const {
+  ASSIGN_OR_RETURN(
+      const ScopedKey& key,
+      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+          OperationPolicy{}, key_blob,
+          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
+  return middleware_.CallSync<&Backend::Signing::Sign>(
+      key.GetKey(), data,
+      SigningOptions{.ecdsa_encoding = SigningOptions::EcdsaEncoding::kDer});
+}
+
 }  // namespace hwsec

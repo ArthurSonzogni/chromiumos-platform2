@@ -14,6 +14,7 @@
 #include <trunks/tpm_utility.h>
 
 #include "libhwsec/backend/digest_algorithms.h"
+#include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "trunks/tpm_generated.h"
@@ -26,6 +27,7 @@ namespace hwsec {
 
 using PssParams = SigningOptions::PssParams;
 using RsaPaddingScheme = SigningOptions::RsaPaddingScheme;
+using EcdsaEncoding = SigningOptions::EcdsaEncoding;
 
 namespace {
 
@@ -208,14 +210,22 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
                                   TPMRetryAction::kNoRetry);
     }
 
-    const auto& r = tpm_signature.signature.ecdsa.signature_r;
-    const auto& s = tpm_signature.signature.ecdsa.signature_s;
+    brillo::Blob ecdsa_signature;
+    if (options.ecdsa_encoding == EcdsaEncoding::kDer) {
+      ASSIGN_OR_RETURN(const std::string& sig,
+                       SerializeFromTpmSignature(tpm_signature));
+      ecdsa_signature = BlobFromString(sig);
+    } else {
+      const auto& r = tpm_signature.signature.ecdsa.signature_r;
+      const auto& s = tpm_signature.signature.ecdsa.signature_s;
 
-    // PKCS#11 ECDSA format is the concation of r and s (r|s).
-    return brillo::CombineBlobs({
-        brillo::Blob(r.buffer, r.buffer + r.size),
-        brillo::Blob(s.buffer, s.buffer + s.size),
-    });
+      // PKCS#11 ECDSA format is the concation of r and s (r|s).
+      ecdsa_signature = brillo::CombineBlobs({
+          brillo::Blob(r.buffer, r.buffer + r.size),
+          brillo::Blob(s.buffer, s.buffer + s.size),
+      });
+    }
+    return ecdsa_signature;
   }
 
   return brillo::BlobFromString(signature);
