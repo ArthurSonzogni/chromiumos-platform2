@@ -729,14 +729,15 @@ install_stateful() {
     local metadata_cmd="dlc_metadata_util --metadata_dir=${ROOT}/opt/google/dlc"
     local dlc_list
     if dlc_list=$(${metadata_cmd} --list --preload_allowed); then
-      for dlc_id in $(echo "${dlc_list}" | jq -r '.[]'); do
+      for dlc_id in $(jq -nr --argjson list "${dlc_list}" '$list[]'); do
         local metadata
         if metadata=$(${metadata_cmd} --get --id="${dlc_id}"); then
-          local dlc_pkg=$(echo "${metadata}" | jq -r '."manifest"."package"')
+          local dlc_pkg=$(jq -nr --argjson metadata "${metadata}" \
+            '$metadata."manifest"."package"')
           if [ -z "${dlc_pkg}" ] || [ "${dlc_pkg}" = "null" ]; then
             dlc_pkg="package"
           fi
-          echo "Preloading DLC=${dlc_id}"
+          printf 'Preloading DLC=%s\n' "${dlc_id}"
           dirlist="
           ${dirlist}
           var_overlay/cache/dlc-images/${dlc_id}/${dlc_pkg}
