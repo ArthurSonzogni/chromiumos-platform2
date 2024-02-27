@@ -173,27 +173,16 @@ bool State::GetLsbReleaseValue(const std::string& field, StringType& out_str) {
 
 bool State::FetchOsVersion(mojom::OsVersionPtr& os_version) {
   os_version = mojom::OsVersion::New();
-  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
-                          os_version->release_milestone)) {
-    return false;
-  }
-  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
-                          os_version->build_number)) {
-    return false;
-  }
-  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_BRANCH_NUMBER",
-                          os_version->branch_number)) {
-    return false;
-  }
-  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
-                          os_version->patch_number)) {
-    return false;
-  }
-  if (!GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                          os_version->release_channel)) {
-    return false;
-  }
-  return true;
+  return GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
+                            os_version->release_milestone) &&
+         GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_NUMBER",
+                            os_version->build_number) &&
+         GetLsbReleaseValue("CHROMEOS_RELEASE_BRANCH_NUMBER",
+                            os_version->branch_number) &&
+         GetLsbReleaseValue("CHROMEOS_RELEASE_PATCH_NUMBER",
+                            os_version->patch_number) &&
+         GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
+                            os_version->release_channel);
 }
 
 void State::FetchBootMode(const base::FilePath& root_dir,
