@@ -14,6 +14,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/json/json_writer.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -90,6 +91,12 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
 
   void RaiseException(const std::string& reason) {
     BaseRoutineControl::RaiseException(reason);
+  }
+
+  mojom::RoutineStatePtr GetStateSync() {
+    base::test::TestFuture<mojom::RoutineStatePtr> future;
+    GetState(future.GetCallback());
+    return future.Take();
   }
 
   mojo::Receiver<mojom::RoutineControl>* receiver() { return &receiver_; }
@@ -182,20 +189,12 @@ class RoutineAdapterTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-void ExpectOutput(int8_t expect_percentage,
-                  mojom::RoutineStateUnionPtr expect_state,
-                  mojom::RoutineStatePtr got_state) {
-  EXPECT_EQ(got_state->percentage, expect_percentage);
-  EXPECT_EQ(got_state->state_union, expect_state);
-  return;
-}
-
 // Test that we can successfully call getState.
 TEST_F(BaseRoutineControlTest, GetState) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
-  rc.GetState(base::BindOnce(&ExpectOutput, 0,
-                             mojom::RoutineStateUnion::NewInitialized(
-                                 mojom::RoutineStateInitialized::New())));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 0);
+  EXPECT_TRUE(state->state_union->is_initialized());
 }
 
 // Test that state can successfully set percentage.
@@ -203,9 +202,9 @@ TEST_F(BaseRoutineControlTest, SetPercentage) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
   rc.SetPercentageImpl(50);
-  rc.GetState(base::BindOnce(
-      &ExpectOutput, 50,
-      mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New())));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 50);
+  EXPECT_TRUE(state->state_union->is_running());
 }
 
 // Test that state will return exception for setting percentage over 100.
@@ -233,9 +232,9 @@ TEST_F(BaseRoutineControlTest, SetPercentageWithoutStart) {
 TEST_F(BaseRoutineControlTest, EnterRunningState) {
   auto rc = RoutineControlImplPeer(ExpectNoException());
   rc.Start();
-  rc.GetState(base::BindOnce(
-      &ExpectOutput, 0,
-      mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New())));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 0);
+  EXPECT_TRUE(state->state_union->is_running());
 }
 
 // Test that state can enter running from waiting.
@@ -245,9 +244,9 @@ TEST_F(BaseRoutineControlTest, EnterRunningStateFromWaiting) {
   rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                     "");
   rc.SetRunningImpl();
-  rc.GetState(base::BindOnce(
-      &ExpectOutput, 0,
-      mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New())));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 0);
+  EXPECT_TRUE(state->state_union->is_running());
 }
 
 // Test that state cannot enter running from initialized.
@@ -270,9 +269,9 @@ TEST_F(BaseRoutineControlTest, EnterRunningStateFromRunning) {
   rc.Start();
   rc.SetRunningImpl();
   rc.SetRunningImpl();
-  rc.GetState(base::BindOnce(
-      &ExpectOutput, 0,
-      mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New())));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 0);
+  EXPECT_TRUE(state->state_union->is_running());
 }
 
 // Test that state can successfully enter waiting from running.
@@ -281,11 +280,13 @@ TEST_F(BaseRoutineControlTest, EnterWaitingStateFromRunning) {
   rc.Start();
 
   rc.SetWaitingImpl(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
-                    "");
-  rc.GetState(base::BindOnce(
-      &ExpectOutput, 0,
-      mojom::RoutineStateUnion::NewWaiting(mojom::RoutineStateWaiting::New(
-          mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled, ""))));
+                    "Waiting Reason");
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 0);
+  ASSERT_TRUE(state->state_union->is_waiting());
+  EXPECT_EQ(state->state_union->get_waiting()->reason,
+            mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled);
+  EXPECT_EQ(state->state_union->get_waiting()->message, "Waiting Reason");
 }
 
 // Test that state cannot enter waiting from initialized.
@@ -327,10 +328,11 @@ TEST_F(BaseRoutineControlTest, EnterFinishedStateFromRunning) {
   rc.Start();
   rc.SetRunningImpl();
   rc.SetFinishedImpl(true, nullptr);
-  rc.GetState(
-      base::BindOnce(&ExpectOutput, 100,
-                     mojom::RoutineStateUnion::NewFinished(
-                         mojom::RoutineStateFinished::New(true, nullptr))));
+  auto state = rc.GetStateSync();
+  EXPECT_EQ(state->percentage, 100);
+  ASSERT_TRUE(state->state_union->is_finished());
+  EXPECT_EQ(state->state_union->get_finished()->has_passed, true);
+  EXPECT_TRUE(state->state_union->get_finished()->detail.is_null());
 }
 
 // Test that state cannot enter finished from initialized.
