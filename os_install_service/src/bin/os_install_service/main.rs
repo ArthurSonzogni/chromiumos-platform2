@@ -14,7 +14,7 @@ use anyhow::{Context, Error};
 use crossbeam_channel as cbchannel;
 use dbus::blocking::{LocalConnection, SyncConnection};
 use dbus::channel::{BusType, Channel, Sender};
-use dbus::tree::{Factory, Signal};
+use dbus_tree::{Factory, Signal};
 use log::{error, info};
 
 type Result<T> = std::result::Result<T, Error>;
