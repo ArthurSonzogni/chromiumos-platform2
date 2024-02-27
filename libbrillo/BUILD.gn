@@ -115,16 +115,6 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-cryptohome"
-    all_dependent_pkg_deps = [ "openssl" ]
-    deps = [ ":libbrillo-core" ]
-    sources = [ "brillo/cryptohome.cc" ]
-
-    # OpenSSL 3.0 has deprecated declarations.
-    cflags_cc = [ "-Wno-deprecated-declarations" ]
-  },
-
-  {
     library_name = "brillo-namespaces"
     deps = [ ":libbrillo-core" ]
     sources = [
@@ -211,6 +201,16 @@ if (use.dbus) {
 
 if (!use.cros_host) {
   libbrillo_sublibs += [
+    {
+      library_name = "brillo-cryptohome"
+      all_dependent_pkg_deps = [ "openssl" ]
+      deps = [ ":libbrillo-core" ]
+      sources = [ "brillo/cryptohome.cc" ]
+
+      # OpenSSL 3.0 has deprecated declarations.
+      cflags_cc = [ "-Wno-deprecated-declarations" ]
+    },
+
     {
       library_name = "brillo-http"
       deps = [
@@ -398,7 +398,6 @@ generate_pkg_config("libbrillo-test_pc") {
 
 shared_library("libbrillo-test") {
   sources = [
-    "brillo/fake_cryptohome.cc",
     "brillo/message_loops/fake_message_loop.cc",
     "brillo/streams/fake_stream.cc",
     "brillo/unittest_utils.cc",
@@ -406,6 +405,7 @@ shared_library("libbrillo-test") {
   if (!use.cros_host) {
     sources += [
       "brillo/blkdev_utils/loop_device_fake.cc",
+      "brillo/fake_cryptohome.cc",
       "brillo/http/http_connection_fake.cc",
       "brillo/http/http_transport_fake.cc",
     ]
@@ -421,14 +421,12 @@ shared_library("libbrillo-test") {
     ":target_defaults",
   ]
   pkg_deps = [ "libchrome-test" ]
-  deps = [
-    ":libbrillo-cryptohome",
-    ":libbrillo-test_pc",
-  ]
+  deps = [ ":libbrillo-test_pc" ]
   if (use.cros_host) {
     install_path = "lib"
   } else {
     deps += [
+      ":libbrillo-cryptohome",
       ":libbrillo-http",
       ":libbrillo-storage",
     ]
@@ -517,7 +515,6 @@ if (use.test) {
       "brillo/backoff_entry_test.cc",
       "brillo/compression/compressor_test.cc",
       "brillo/cpuinfo_test.cc",
-      "brillo/cryptohome_test.cc",
       "brillo/data_encoding_test.cc",
       "brillo/enum_flags_test.cc",
       "brillo/errors/error_codes_test.cc",
@@ -581,6 +578,7 @@ if (use.test) {
         "brillo/blkdev_utils/disk_iostat_test.cc",
         "brillo/blkdev_utils/loop_device_test.cc",
         "brillo/blkdev_utils/storage_utils_test.cc",
+        "brillo/cryptohome_test.cc",
         "brillo/http/http_connection_curl_test.cc",
         "brillo/http/http_form_data_test.cc",
         "brillo/http/http_request_test.cc",
