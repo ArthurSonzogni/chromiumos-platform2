@@ -2288,37 +2288,43 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
       << "Failed to create StorageTest, error=" << storage_result.error();
   storage_ = std::move(storage_result.value());
 
-  test::TestCallbackAutoWaiter waiter;
-  EXPECT_CALL(set_mock_uploader_expectations_,
-              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-      // We'll fast forward time such that we trigger two key requests from
-      // storage
-      .Times(2)
-      .WillRepeatedly(Invoke([&waiter, this](UploaderInterface::UploadReason) {
-        auto result = TestUploader::SetKeyDelivery(this).Complete();
-        waiter.Signal();
-        return result;
-      }))
-      .RetiresOnSaturation();
-
-  // Storage doesn't have a key yet, so key request should succeed, and thus
-  // we expect UMA to log success for key delivery
-  EXPECT_CALL(
-      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
-
-  // Forward time to trigger key request.
-  task_environment_.FastForwardBy(options_.key_check_period());
+  {
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
+        .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason) {
+          auto result = TestUploader::SetKeyDelivery(this).Complete();
+          waiter.Signal();
+          return result;
+        }))
+        .RetiresOnSaturation();
+    // Trigger key request upon Flush.
+    FlushOrDie(Priority::MANUAL_BATCH);
+  }
 
   // Set test infrastructure to expect another key request
   expect_to_need_key_ = true;
 
-  EXPECT_CALL(
-      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
-
-  // Forward time to trigger key request.
-  task_environment_.FastForwardBy(options_.key_check_period());
+  // Forward time to trigger key request upon Flush again.
+  {
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
+        .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason) {
+          auto result = TestUploader::SetKeyDelivery(this).Complete();
+          waiter.Signal();
+          return result;
+        }))
+        .RetiresOnSaturation();
+    // Key update, request should succeed, and thus we expect UMA to log
+    // success for key delivery.
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE))
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
+    task_environment_.FastForwardBy(options_.key_check_period());
+  }
 }
 
 TEST_P(StorageTest, KeyDeliveryFailureOnStorage) {
@@ -2337,14 +2343,6 @@ TEST_P(StorageTest, KeyDeliveryFailureOnStorage) {
   storage_ = std::move(storage_result.value());
 
   key_delivery_failure_.store(true);
-
-  // Expect storage to request the encryption key after initialization
-  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-              SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
-                            error::MAX_VALUE));
-
-  // Forward time to trigger key request
-  task_environment_.FastForwardBy(options_.key_check_period());
 
   // Try writing multiple times and expect failure since we don't have the key
   for (size_t failure = 1; failure < kFailuresCount; ++failure) {

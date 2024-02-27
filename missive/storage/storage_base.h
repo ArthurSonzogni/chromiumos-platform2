@@ -242,6 +242,9 @@ class KeyDelivery {
 
   void OnCompletion(Status status);
 
+  // Starts periodic updates of the key (every time `period` has passed).
+  // Does nothing if the periodic update is already scheduled.
+  // Should be called after the initial key is set up.
   void StartPeriodicKeyUpdate(const base::TimeDelta period);
 
  private:

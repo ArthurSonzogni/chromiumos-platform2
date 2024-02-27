@@ -253,16 +253,14 @@ void Storage::Create(
       if (status.ok()) {
         // Encryption key has been found and set up. Must be available now.
         CHECK(storage_->encryption_module_->has_encryption_key());
+        // Enable periodic updates of the key.
+        storage_->key_delivery_->StartPeriodicKeyUpdate(
+            storage_->options_.key_check_period());
       } else {
         LOG(WARNING)
             << "Encryption is enabled, but the key is not available yet, "
                "status="
             << status;
-
-        // Start a task in the background which periodically requests the
-        // encryption key if we need it.
-        storage_->key_delivery_->StartPeriodicKeyUpdate(
-            storage_->options_.key_check_period());
       }
 
       InitAllQueues();
@@ -488,6 +486,8 @@ void Storage::WriteToQueue(Record record,
         queue, std::move(record), std::move(recorder),
         std::move(completion_cb));
     key_delivery_->Request(/*is_mandatory=*/true, std::move(action));
+    // Enable periodic updates of the key.
+    key_delivery_->StartPeriodicKeyUpdate(options_.key_check_period());
     return;
   }
   // Otherwise we can write into the queue right away.
@@ -654,6 +654,16 @@ void Storage::Flush(Priority priority,
           std::move(completion_cb).Run(status);
         },
         std::move(recorder), std::move(completion_cb));
+  }
+
+  // If key is not available, there is nothing to flush, but we need to request
+  // the key instead.
+  if (encryption_module_->is_enabled() &&
+      !encryption_module_->has_encryption_key()) {
+    key_delivery_->Request(/*is_mandatory=*/true, std::move(completion_cb));
+    // Enable periodic updates of the key.
+    key_delivery_->StartPeriodicKeyUpdate(options_.key_check_period());
+    return;
   }
 
   Start<FlushContext>(base::WrapRefCounted(this), priority,
