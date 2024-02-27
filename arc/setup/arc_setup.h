@@ -357,10 +357,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   void DeleteAndroidMediaProviderDataOnUpgrade(
       AndroidSdkVersion data_sdk_version);
 
-  // Deletes Android data if data has invalid SELinux contexts
-  // (caused by b/228881316).
-  void DeleteAndroidDataIfDataHasIncorrectSELinuxContexts();
-
   // Converts |version_str| to the enum.
   AndroidSdkVersion SdkVersionFromString(const std::string& version_str);
 

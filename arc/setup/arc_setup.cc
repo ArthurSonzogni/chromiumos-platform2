@@ -570,18 +570,6 @@ std::string GetUseDevCaches(bool use_dev_caches) {
   return use_dev_caches ? "androidboot.use_dev_caches=true " : std::string();
 }
 
-std::string GetSELinuxContext(const base::FilePath& path) {
-  char* con = nullptr;
-  if (lgetfilecon(path.value().c_str(), &con) < 0) {
-    if (errno != ENOENT)
-      PLOG(ERROR) << "lgetfilecon failed for " << path.value();
-    return std::string();
-  }
-  std::string result = con;
-  freecon(con);
-  return result;
-}
-
 std::optional<base::FilePath> GetConfigPath(brillo::CrosConfigInterface& config,
                                             const std::string& path) {
   std::string value;
@@ -2466,30 +2454,6 @@ void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
                                  arc_paths_->android_data_old_directory));
 }
 
-// TODO(b/230408800): Remove this and GetSELinuxContext after M110.
-void ArcSetup::DeleteAndroidDataIfDataHasIncorrectSELinuxContexts() {
-  if (GetSdkVersion() != AndroidSdkVersion::ANDROID_R)
-    return;
-
-  const auto downloads_provider_dir_path =
-      arc_paths_->android_data_directory.Append(
-          "data/data/com.android.providers.downloads");
-  const auto downloads_provider_db_path =
-      downloads_provider_dir_path.Append("databases/downloads.db");
-
-  // This inconsistency is highly likely a result of b/228881316.
-  // (Files are incorrectly labeled as system_data_file while dirs are fine.)
-  if (GetSELinuxContext(downloads_provider_dir_path) ==
-          "u:object_r:privapp_data_file:s0:c512,c768" &&
-      GetSELinuxContext(downloads_provider_db_path) ==
-          "u:object_r:system_data_file:s0:c512,c768") {
-    LOG(WARNING) << "Data has invalid SELinux contexts "
-                 << "(likely caused by b/228881316). Deleting /data";
-    EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,
-                                   arc_paths_->android_data_old_directory));
-  }
-}
-
 void ArcSetup::OnSetup() {
   const bool is_dev_mode = config_.GetBoolOrDie("CHROMEOS_DEV_MODE");
 
@@ -2933,7 +2897,6 @@ void ArcSetup::OnHandleUpgrade() {
   SendUpgradeMetrics(data_sdk_version);
   DeleteAndroidMediaProviderDataOnUpgrade(data_sdk_version);
   DeleteAndroidDataOnUpgrade(data_sdk_version);
-  DeleteAndroidDataIfDataHasIncorrectSELinuxContexts();
 }
 
 std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
