@@ -1,3 +1,1 @@
-betuls@google.com
-fqj@google.com
-jorgelo@chromium.org
+include chromiumos/owners:v1:/security/OWNERS.hardening
