@@ -47,6 +47,7 @@ const net_base::HttpUrl kUserPortalUrl =
 const int kNumAttempts = 3;
 
 using ::testing::_;
+using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Return;
 using ::testing::WithArg;
@@ -552,18 +553,20 @@ TEST_F(NetworkMonitorTest, SendBothResult) {
 TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
   EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
-              Create(&metrics_, kInterface, kCapportAPI, _, _))
+              Create(&metrics_, kInterface, kCapportAPI,
+                     ElementsAreArray(kDnsList), _, _))
       .Times(1);
-  network_monitor_->SetCapportAPI(kCapportAPI,
+  network_monitor_->SetCapportURL(kCapportAPI, kDnsList,
                                   NetworkMonitor::CapportSource::kDHCP);
 }
 
 TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
   EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
-              Create(&metrics_, kInterface, kCapportAPI, _, _))
+              Create(&metrics_, kInterface, kCapportAPI,
+                     ElementsAreArray(kDnsList), _, _))
       .Times(1);
-  network_monitor_->SetCapportAPI(kCapportAPI,
+  network_monitor_->SetCapportURL(kCapportAPI, kDnsList,
                                   NetworkMonitor::CapportSource::kRA);
 }
 

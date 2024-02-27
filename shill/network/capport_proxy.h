@@ -10,12 +10,14 @@
 #include <string>
 #include <string_view>
 
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
 #include <net-base/http_url.h>
+#include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
@@ -46,13 +48,15 @@ class CapportProxy {
   static constexpr base::TimeDelta kDefaultTimeout = base::Seconds(5);
 
   // Creates a CapportProxy instance. The HTTP requests to the CAPPORT server
-  // will go through |interface|. |api_url| is the URL of the CAPPORT server
-  // discovered with RFC8910. The HTTP request will be send through
-  // |http_transport| instance. Note that |api_url| must be HTTPS URL.
+  // will go through |interface| with the DNS list |dns_list|. |api_url| is the
+  // URL of the CAPPORT server discovered with RFC8910. The HTTP request will be
+  // send through |http_transport| instance. Note that |api_url| must be HTTPS
+  // URL.
   static std::unique_ptr<CapportProxy> Create(
       Metrics* metrics,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
+      base::span<const net_base::IPAddress> dns_list,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = kDefaultTimeout);
@@ -99,9 +103,6 @@ class CapportProxy {
   // The tag that will be printed at every logging.
   std::string logging_tag_;
 
-  // The request to the CAPPORT server, only has value when there is pending
-  // request.
-  std::optional<brillo::http::Request> http_request_;
   // The callback of the request, only has value when there is pending
   // request.
   StatusCallback callback_;
@@ -130,6 +131,7 @@ class CapportProxyFactory {
       Metrics* metrics,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
+      base::span<const net_base::IPAddress> dns_list,
       std::shared_ptr<brillo::http::Transport> http_transport =
           brillo::http::Transport::CreateDefault(),
       base::TimeDelta transport_timeout = CapportProxy::kDefaultTimeout);

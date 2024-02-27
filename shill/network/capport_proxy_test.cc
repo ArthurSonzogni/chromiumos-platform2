@@ -27,6 +27,7 @@ namespace {
 
 using testing::_;
 using testing::AtMost;
+using testing::ElementsAre;
 using testing::Eq;
 
 const net_base::HttpUrl kApiUrl = *net_base::HttpUrl::CreateFromString(
@@ -34,6 +35,10 @@ const net_base::HttpUrl kApiUrl = *net_base::HttpUrl::CreateFromString(
 constexpr char kInterfaceName[] = "wlan0";
 constexpr char kUserPortalUrl[] = "https://example.org/portal.html";
 constexpr char kVenueInfoUrl[] = "https://flight.example.com/entertainment";
+const net_base::IPAddress kDnsServers[] = {
+    *net_base::IPAddress::CreateFromString("8.8.8.8"),
+    *net_base::IPAddress::CreateFromString("8.8.4.4"),
+};
 
 // Used to verify the callback of CapportProxy.
 class MockCapportClient {
@@ -169,7 +174,8 @@ class CapportProxyTest : public testing::Test {
   CapportProxyTest()
       : fake_transport_(std::make_shared<brillo::http::fake::Transport>()),
         proxy_(CapportProxy::Create(
-            &metrics_, kInterfaceName, kApiUrl, fake_transport_)) {}
+            &metrics_, kInterfaceName, kApiUrl, kDnsServers, fake_transport_)) {
+  }
 
   void AddJSONReplyHandler(std::string_view json_str) {
     fake_transport_->AddSimpleReplyHandler(
@@ -195,13 +201,18 @@ TEST_F(CapportProxyTest, SendRequest) {
       {"Accept", "application/captive+json"}};
   auto mock_transport = std::make_shared<brillo::http::MockTransport>();
   EXPECT_CALL(*mock_transport, SetInterface(kInterfaceName));
+  EXPECT_CALL(*mock_transport,
+              SetDnsServers(ElementsAre(kDnsServers[0].ToString(),
+                                        kDnsServers[1].ToString())));
+  EXPECT_CALL(*mock_transport,
+              UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
   EXPECT_CALL(
       *mock_transport,
       CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
                        kHeaders, _, _, _));
 
-  proxy_ =
-      CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, mock_transport);
+  proxy_ = CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, kDnsServers,
+                                mock_transport);
   EXPECT_NE(proxy_, nullptr);
 
   proxy_->SendRequest(base::DoNothing());

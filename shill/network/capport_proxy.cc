@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/values.h>
@@ -15,6 +17,7 @@
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
 #include <net-base/http_url.h>
+#include <net-base/ip_address.h>
 
 namespace shill {
 namespace {
@@ -106,6 +109,7 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
     Metrics* metrics,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
+    base::span<const net_base::IPAddress> dns_list,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
   if (api_url.protocol() != net_base::HttpUrl::Protocol::kHttps) {
@@ -113,8 +117,16 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
     return nullptr;
   }
 
+  std::vector<std::string> dns_servers;
+  for (const auto& dns : dns_list) {
+    dns_servers.push_back(dns.ToString());
+  }
+
   http_transport->SetInterface(std::string(interface));
   http_transport->SetDefaultTimeout(transport_timeout);
+  http_transport->SetDnsServers(dns_servers);
+  http_transport->UseCustomCertificate(
+      brillo::http::Transport::Certificate::kNss);
   return std::make_unique<CapportProxy>(metrics, api_url,
                                         std::move(http_transport),
                                         std::string(interface) + ": ");
@@ -151,15 +163,13 @@ void CapportProxy::SendRequest(StatusCallback callback) {
   callback_ = std::move(callback);
 
   // TODO(b/305129516): Add metrics to record latency and success/failure count.
-  LOG_IF(WARNING, http_request_)
-      << logging_tag_ << "The pending request is not clear";
-  auto http_request_ = std::make_optional<brillo::http::Request>(
+  brillo::http::Request http_request(
       api_url_.ToString(), brillo::http::request_type::kGet, http_transport_);
-  http_request_->SetAccept(kAcceptHeader);
-  http_request_->GetResponse(base::BindOnce(&CapportProxy::OnRequestSuccess,
-                                            weak_ptr_factory_.GetWeakPtr()),
-                             base::BindOnce(&CapportProxy::OnRequestError,
-                                            weak_ptr_factory_.GetWeakPtr()));
+  http_request.SetAccept(kAcceptHeader);
+  http_request.GetResponse(base::BindOnce(&CapportProxy::OnRequestSuccess,
+                                          weak_ptr_factory_.GetWeakPtr()),
+                           base::BindOnce(&CapportProxy::OnRequestError,
+                                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void CapportProxy::Stop() {
@@ -172,7 +182,6 @@ void CapportProxy::OnRequestSuccess(
     std::unique_ptr<brillo::http::Response> response) {
   LOG_IF(DFATAL, !callback_)
       << logging_tag_ << __func__ << ": callback is missing";
-  http_request_.reset();
 
   if (!response->IsSuccessful()) {
     LOG(ERROR) << logging_tag_
@@ -218,7 +227,6 @@ void CapportProxy::OnRequestError(brillo::http::RequestID request_id,
                                   const brillo::Error* error) {
   LOG_IF(DFATAL, !callback_)
       << logging_tag_ << __func__ << ": callback is missing";
-  http_request_.reset();
 
   LOG(ERROR) << logging_tag_ << "Failed to get request from CAPPORT API: "
              << error->GetMessage();
@@ -237,9 +245,10 @@ std::unique_ptr<CapportProxy> CapportProxyFactory::Create(
     Metrics* metrics,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
+    base::span<const net_base::IPAddress> dns_list,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
-  return CapportProxy::Create(metrics, interface, api_url,
+  return CapportProxy::Create(metrics, interface, api_url, dns_list,
                               std::move(http_transport), transport_timeout);
 }
 

@@ -445,7 +445,8 @@ void Network::OnIPConfigUpdatedFromDHCP(
   }
 
   if (network_config.captive_portal_uri.has_value()) {
-    network_monitor_->SetCapportAPI(*network_config.captive_portal_uri,
+    network_monitor_->SetCapportURL(*network_config.captive_portal_uri,
+                                    network_config.dns_servers,
                                     NetworkMonitor::CapportSource::kDHCP);
   }
 }
@@ -525,7 +526,8 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
 
   if (slaac_network_config.captive_portal_uri.has_value()) {
-    network_monitor_->SetCapportAPI(*slaac_network_config.captive_portal_uri,
+    network_monitor_->SetCapportURL(*slaac_network_config.captive_portal_uri,
+                                    slaac_network_config.dns_servers,
                                     NetworkMonitor::CapportSource::kRA);
   }
 

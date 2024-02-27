@@ -9,7 +9,9 @@
 
 #include <memory>
 
+#include <base/containers/span.h>
 #include <gmock/gmock.h>
+#include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
 
@@ -35,6 +37,7 @@ class MockCapportProxyFactory : public CapportProxyFactory {
               (Metrics*,
                std::string_view,
                const net_base::HttpUrl&,
+               base::span<const net_base::IPAddress>,
                std::shared_ptr<brillo::http::Transport>,
                base::TimeDelta transport_timeout),
               (override));

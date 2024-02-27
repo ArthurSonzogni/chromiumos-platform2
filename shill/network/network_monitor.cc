@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
@@ -187,8 +188,10 @@ bool NetworkMonitor::IsRunning() const {
          (capport_proxy_ && capport_proxy_->IsRunning());
 }
 
-void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
-                                   CapportSource source) {
+void NetworkMonitor::SetCapportURL(
+    const net_base::HttpUrl& capport_url,
+    base::span<const net_base::IPAddress> dns_list,
+    CapportSource source) {
   if (validation_log_) {
     switch (source) {
       case CapportSource::kDHCP:
@@ -201,8 +204,8 @@ void NetworkMonitor::SetCapportAPI(const net_base::HttpUrl& capport_api,
   }
 
   if (!capport_proxy_) {
-    capport_proxy_ =
-        capport_proxy_factory_->Create(metrics_, interface_, capport_api);
+    capport_proxy_ = capport_proxy_factory_->Create(metrics_, interface_,
+                                                    capport_url, dns_list);
   }
 }
 

@@ -10,11 +10,13 @@
 #include <string>
 #include <string_view>
 
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <base/memory/weak_ptr.h>
 #include <net-base/http_url.h>
 #include <net-base/network_config.h>
+#include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
@@ -185,8 +187,11 @@ class NetworkMonitor {
   // Returns true if network validation is currently running.
   mockable bool IsRunning() const;
 
-  // Sets the CAPPORT API and records the source of the API.
-  mockable void SetCapportAPI(const net_base::HttpUrl& capport_api,
+  // Sets the CAPPORT server URL |capport_url| and records the source of the
+  // URL. The URL should be resolved with |dns_list| specified from the same
+  // source as the URL.
+  mockable void SetCapportURL(const net_base::HttpUrl& capport_url,
+                              base::span<const net_base::IPAddress> dns_list,
                               CapportSource source);
 
   // Sets and gets the current network validation mode.
