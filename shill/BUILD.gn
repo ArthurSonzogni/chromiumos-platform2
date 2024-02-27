@@ -40,6 +40,7 @@ group("all") {
       ":shill_service_fuzzer",
       ":shill_technology_fuzzer",
       ":verizon_subscription_state_fuzzer",
+      ":wifi_anqp_fuzzer",
       ":wifi_ies_fuzzer",
       ":wifi_service_fuzzer",
     ]
@@ -619,6 +620,28 @@ if (use.fuzzer) {
     sources = [ "vpn/ipsec_connection_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("wifi_anqp_fuzzer") {
+    sources = [
+      "bluetooth/mock_bluetooth_manager_proxy.cc",
+      "ethernet/mock_ethernet_provider.cc",
+      "mock_adaptors.cc",
+      "mock_control.cc",
+      "mock_device_info.cc",
+      "mock_event_dispatcher.cc",
+      "mock_manager.cc",
+      "mock_metrics.cc",
+      "supplicant/mock_supplicant_process_proxy.cc",
+      "wifi/mock_wifi.cc",
+      "wifi/wifi_anqp_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
       ":target_defaults",
       ":shill_config",
     ]
