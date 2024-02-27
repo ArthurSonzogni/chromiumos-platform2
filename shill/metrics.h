@@ -1719,6 +1719,30 @@ class Metrics {
   static constexpr char kMetricAp80211uANQPSupport[] =
       "Network.Shill.WiFi.Ap80211uANQPSupport";
 
+  // Result of ANQP queries.
+  enum ANQPQueryResult {
+    kANQPQueryResultUnknown = 0,
+    kANQPQueryResultSuccess = 1,
+    kANQPQueryResultFailure = 2,
+    kANQPQueryResultInvalidFrame = 3,
+
+    kANQPQueryResultMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricWiFiANQPQueryResult = {
+      .n = FixedName{"Network.Shill.WiFi.ANQP.QueryResult"},
+      .max = kANQPQueryResultMax,
+  };
+
+  // ANQP capabilities support.
+  static constexpr char kMetricANQPVenueNameSupport[] =
+      "Network.Shill.WiFi.ANQP.VenueNameSupport";
+  static constexpr char kMetricANQPVenueURLSupport[] =
+      "Network.Shill.WiFi.ANQP.VenueURLSupport";
+  static constexpr char kMetricANQPNetworkAuthTypeSupport[] =
+      "Network.Shill.WiFi.ANQP.NetworkAuthTypeSupport";
+  static constexpr char kMetricANQPAddressTypeAvailabilitySupport[] =
+      "Network.Shill.WiFi.ANQP.AddressTypeAvailabilitySupport";
+
   // 802.11 Status Codes for auth/assoc failures
   static constexpr char kMetricWiFiAssocFailureType[] =
       "Network.Shill.WiFi.AssocFailureType";

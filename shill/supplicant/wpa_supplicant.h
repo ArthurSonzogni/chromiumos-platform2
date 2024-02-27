@@ -273,6 +273,10 @@ class WPASupplicant {
   static constexpr char kANQPPropertyAddr[] = "addr";
   static constexpr char kANQPPropertyIds[] = "ids";
 
+  static constexpr char kANQPResultSuccess[] = "SUCCESS";
+  static constexpr char kANQPResultFailure[] = "FAILURE";
+  static constexpr char kANQPResultInvalidFrame[] = "INVALID_FRAME";
+
   static constexpr char kANQPChangePropertyCapabilityList[] = "CapabilityList";
 
   static constexpr char kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";

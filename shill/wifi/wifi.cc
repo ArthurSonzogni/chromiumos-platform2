@@ -654,8 +654,15 @@ void WiFi::ANQPQueryDone(const std::string& addr, const std::string& result) {
   // ANQPQueryDone is called when the results of an ANQP query are available.
   // The query can be triggered either by an explicit ANQPGet call or when an
   // interworking selection is done.
-  // TODO(b/322972968): add metrics to report the result of the ANQP request and
-  // the supported fields.
+  Metrics::ANQPQueryResult value = Metrics::kANQPQueryResultUnknown;
+  if (result == WPASupplicant::kANQPResultSuccess) {
+    value = Metrics::kANQPQueryResultSuccess;
+  } else if (result == WPASupplicant::kANQPResultFailure) {
+    value = Metrics::kANQPQueryResultFailure;
+  } else if (result == WPASupplicant::kANQPResultInvalidFrame) {
+    value = Metrics::kANQPQueryResultInvalidFrame;
+  }
+  metrics()->SendEnumToUMA(Metrics::kMetricWiFiANQPQueryResult, value);
 }
 
 void WiFi::TermsAndConditions(const std::string& url) {
@@ -944,7 +951,17 @@ void WiFi::NotifyHS20InformationChanged(
 void WiFi::NotifyANQPInformationChanged(
     const WiFiEndpointConstRefPtr& endpoint) {
   SLOG(2) << __func__;
-  // TODO(b/322972968): add metrics on available fields.
+  if (endpoint->anqp_capabilities().capability_list) {
+    metrics()->SendBoolToUMA(Metrics::kMetricANQPVenueNameSupport,
+                             endpoint->anqp_capabilities().venue_name);
+    metrics()->SendBoolToUMA(Metrics::kMetricANQPVenueURLSupport,
+                             endpoint->anqp_capabilities().venue_url);
+    metrics()->SendBoolToUMA(Metrics::kMetricANQPNetworkAuthTypeSupport,
+                             endpoint->anqp_capabilities().network_auth_type);
+    metrics()->SendBoolToUMA(
+        Metrics::kMetricANQPAddressTypeAvailabilitySupport,
+        endpoint->anqp_capabilities().address_type_availability);
+  }
 }
 
 std::string WiFi::AppendBgscan(WiFiService* service,

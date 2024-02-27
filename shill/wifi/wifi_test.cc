@@ -756,6 +756,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->TermsAndConditions(url);
   }
 
+  void ANQPQueryDone(const std::string& addr, const std::string& result) {
+    wifi_->ANQPQueryDone(addr, result);
+  }
+
+  void NotifyANQPInformationChanged(const WiFiEndpointConstRefPtr& endpoint) {
+    wifi_->NotifyANQPInformationChanged(endpoint);
+  }
+
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
   using MockPasspointCredentialsRefPtr =
@@ -6301,6 +6309,63 @@ TEST_F(WiFiMainTest, EndpointWithANQPCapsNoANQPGet) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), ANQPGet(_)).Times(0);
   TriggerNetworkStart();
   Mock::VerifyAndClearExpectations(service.get());
+}
+
+TEST_F(WiFiMainTest, ANQPQueryDone) {
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiANQPQueryResult,
+                                        Metrics::kANQPQueryResultUnknown))
+      .Times(1);
+  ANQPQueryDone("", "foo");
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiANQPQueryResult,
+                                        Metrics::kANQPQueryResultSuccess))
+      .Times(1);
+  ANQPQueryDone("", WPASupplicant::kANQPResultSuccess);
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiANQPQueryResult,
+                                        Metrics::kANQPQueryResultFailure))
+      .Times(1);
+  ANQPQueryDone("", WPASupplicant::kANQPResultFailure);
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiANQPQueryResult,
+                                        Metrics::kANQPQueryResultInvalidFrame))
+      .Times(1);
+  ANQPQueryDone("", WPASupplicant::kANQPResultInvalidFrame);
+}
+
+TEST_F(WiFiMainTest, NotifyANQPInformationChanged) {
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().at(bss_path);
+
+  // For an endpoint without capabilities, no metrics should be sent.
+  EXPECT_CALL(*metrics(), SendBoolToUMA(_, _)).Times(0);
+  NotifyANQPInformationChanged(endpoint);
+
+  // Update the endpoing with ANQP capabilities
+  KeyValueStore properties, anqp_properties;
+  std::vector<uint8_t> caps;
+  AddANQPCapability(IEEE_80211::kANQPCapabilityList, &caps);
+  AddANQPCapability(IEEE_80211::kANQPVenueName, &caps);
+  AddANQPCapability(IEEE_80211::kANQPNetworkAuthenticationType, &caps);
+  AddANQPCapability(IEEE_80211::kANQPAddressTypeAvailability, &caps);
+  AddANQPCapability(IEEE_80211::kANQPVenueURL, &caps);
+  anqp_properties.Set<std::vector<uint8_t>>(
+      WPASupplicant::kANQPChangePropertyCapabilityList, caps);
+  properties.Set<KeyValueStore>(WPASupplicant::kBSSPropertyANQP,
+                                anqp_properties);
+
+  EXPECT_CALL(*metrics(),
+              SendBoolToUMA(Metrics::kMetricANQPVenueNameSupport, true))
+      .Times(1);
+  EXPECT_CALL(*metrics(),
+              SendBoolToUMA(Metrics::kMetricANQPNetworkAuthTypeSupport, true))
+      .Times(1);
+  EXPECT_CALL(
+      *metrics(),
+      SendBoolToUMA(Metrics::kMetricANQPAddressTypeAvailabilitySupport, true))
+      .Times(1);
+  EXPECT_CALL(*metrics(),
+              SendBoolToUMA(Metrics::kMetricANQPVenueURLSupport, true))
+      .Times(1);
+  endpoint->PropertiesChanged(properties);
 }
 
 }  // namespace shill
