@@ -101,28 +101,6 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-http"
-    deps = [
-      ":libbrillo-core",
-      ":libbrillo-streams",
-    ]
-    all_dependent_pkg_deps = [ "libcurl" ]
-    sources = [
-      "brillo/http/curl_api.cc",
-      "brillo/http/http_connection_curl.cc",
-      "brillo/http/http_form_data.cc",
-      "brillo/http/http_request.cc",
-      "brillo/http/http_transport.cc",
-      "brillo/http/http_transport_curl.cc",
-      "brillo/http/http_utils.cc",
-    ]
-    if (use.dbus) {
-      sources += [ "brillo/http/http_proxy.cc" ]
-      deps += [ ":libbrillo-dbus" ]
-    }
-  },
-
-  {
     library_name = "brillo-streams"
     deps = [ ":libbrillo-core" ]
     sources = [
@@ -234,6 +212,28 @@ if (use.dbus) {
 
 if (!use.cros_host) {
   libbrillo_sublibs += [
+    {
+      library_name = "brillo-http"
+      deps = [
+        ":libbrillo-core",
+        ":libbrillo-streams",
+      ]
+      all_dependent_pkg_deps = [ "libcurl" ]
+      sources = [
+        "brillo/http/curl_api.cc",
+        "brillo/http/http_connection_curl.cc",
+        "brillo/http/http_form_data.cc",
+        "brillo/http/http_request.cc",
+        "brillo/http/http_transport.cc",
+        "brillo/http/http_transport_curl.cc",
+        "brillo/http/http_utils.cc",
+      ]
+      if (use.dbus) {
+        sources += [ "brillo/http/http_proxy.cc" ]
+        deps += [ ":libbrillo-dbus" ]
+      }
+    },
+
     {
       library_name = "brillo-storage"
       deps = [ ":libbrillo-core" ]
@@ -400,14 +400,16 @@ generate_pkg_config("libbrillo-test_pc") {
 shared_library("libbrillo-test") {
   sources = [
     "brillo/fake_cryptohome.cc",
-    "brillo/http/http_connection_fake.cc",
-    "brillo/http/http_transport_fake.cc",
     "brillo/message_loops/fake_message_loop.cc",
     "brillo/streams/fake_stream.cc",
     "brillo/unittest_utils.cc",
   ]
   if (!use.cros_host) {
-    sources += [ "brillo/blkdev_utils/loop_device_fake.cc" ]
+    sources += [
+      "brillo/blkdev_utils/loop_device_fake.cc",
+      "brillo/http/http_connection_fake.cc",
+      "brillo/http/http_transport_fake.cc",
+    ]
   }
   if (use.device_mapper) {
     sources += [ "brillo/blkdev_utils/device_mapper_fake.cc" ]
@@ -422,13 +424,15 @@ shared_library("libbrillo-test") {
   pkg_deps = [ "libchrome-test" ]
   deps = [
     ":libbrillo-cryptohome",
-    ":libbrillo-http",
     ":libbrillo-test_pc",
   ]
   if (use.cros_host) {
     install_path = "lib"
   } else {
-    deps += [ ":libbrillo-storage" ]
+    deps += [
+      ":libbrillo-http",
+      ":libbrillo-storage",
+    ]
 
     # We want to install this shared lib on the test image.
     # gnlint: disable=GnLintInstallPathAlias
@@ -524,11 +528,6 @@ if (use.test) {
       "brillo/files/safe_fd_test.cc",
       "brillo/flag_helper_test.cc",
       "brillo/hash/murmurhash_test.cc",
-      "brillo/http/http_connection_curl_test.cc",
-      "brillo/http/http_form_data_test.cc",
-      "brillo/http/http_request_test.cc",
-      "brillo/http/http_transport_curl_test.cc",
-      "brillo/http/http_utils_test.cc",
       "brillo/kernel_config_utils_test.cc",
       "brillo/key_value_store_test.cc",
       "brillo/map_utils_test.cc",
@@ -583,6 +582,11 @@ if (use.test) {
         "brillo/blkdev_utils/disk_iostat_test.cc",
         "brillo/blkdev_utils/loop_device_test.cc",
         "brillo/blkdev_utils/storage_utils_test.cc",
+        "brillo/http/http_connection_curl_test.cc",
+        "brillo/http/http_form_data_test.cc",
+        "brillo/http/http_request_test.cc",
+        "brillo/http/http_transport_curl_test.cc",
+        "brillo/http/http_utils_test.cc",
         "brillo/storage_balloon_test.cc",
       ]
     }
