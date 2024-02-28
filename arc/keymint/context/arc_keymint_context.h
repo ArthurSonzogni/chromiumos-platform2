@@ -17,6 +17,7 @@
 #include <keymaster/UniquePtr.h>
 #include <mojo/cert_store.mojom.h>
 
+#include "arc/keymint/context/arc_remote_provisioning_context.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/cros_key.h"
 #include "arc/keymint/key_data.pb.h"

@@ -214,7 +214,12 @@ std::optional<std::string> ExtractBase64Spki(
 
 ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
     : PureSoftKeymasterContext(version, KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT),
-      rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {}
+      rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {
+  CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
+  // This is a protected data member in |pure_soft_keymaster_context.cpp|
+  pure_soft_remote_provisioning_context_ =
+      std::make_unique<ArcRemoteProvisioningContext>(security_level_);
+}
 
 ArcKeyMintContext::~ArcKeyMintContext() = default;
 
