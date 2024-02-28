@@ -260,6 +260,14 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
+  suspend_checker_ = SuspendChecker::Create();
+  if (!suspend_checker_) {
+    auto err = Error::Create(FROM_HERE, kErrorResultInitFailure,
+                             "Suspend checker could not be created");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    return EX_UNAVAILABLE;
+  }
+
   return SetupFirmwareDirectory();
 }
 
@@ -395,8 +403,8 @@ void Daemon::OnModemCarrierIdReady(
   if (!modem)
     return;
 
-  std::string equipment_id = modem->GetEquipmentId();
   std::string device_id = modem->GetDeviceId();
+  std::string equipment_id = modem->GetEquipmentId();
 
   // Store the modem object to track its health state during its lifetime
   modems_[device_id] = std::move(modem);
@@ -409,6 +417,14 @@ void Daemon::OnModemCarrierIdReady(
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     return;
   }
+
+  suspend_checker_->RunWhenNotSuspending(
+      base::BindOnce(&Daemon::DoFlash, weak_ptr_factory_.GetWeakPtr(),
+                     device_id, equipment_id));
+}
+
+void Daemon::DoFlash(const std::string& device_id,
+                     const std::string& equipment_id) {
   brillo::ErrorPtr err;
   StopHeartbeatTimer();
   base::OnceClosure cb =
@@ -416,6 +432,10 @@ void Daemon::OnModemCarrierIdReady(
   StartHeartbeatTimer();
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
+
+  if (err) {
+    LOG(ERROR) << "Flashing returned error: " << err->GetMessage();
+  }
 }
 
 void Daemon::RegisterDBusObjectsAsync(

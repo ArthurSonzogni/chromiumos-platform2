@@ -27,6 +27,7 @@
 #include "modemfwd/modem_sandbox.h"
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
+#include "modemfwd/suspend_checker.h"
 
 namespace modemfwd {
 
@@ -99,6 +100,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   // Possibly called multiple times.
   void OnModemDeviceSeen(std::string device_id, std::string equipment_id);
 
+  // Try to flash a modem.
+  void DoFlash(const std::string& device_id, const std::string& equipment_id);
+
   // Check if modem is in Flash mode and force-flash them if necessary.
   void ForceFlashIfInFlashMode(const std::string& device_id,
                                ModemHelper* modem_helper);
@@ -132,6 +136,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
   std::unique_ptr<NotificationManager> notification_mgr_;
+  std::unique_ptr<SuspendChecker> suspend_checker_;
 
   std::map<std::string, base::OnceClosure> modem_reappear_callbacks_;
   std::set<std::string> device_ids_seen_;
