@@ -594,6 +594,8 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
     return true;
   }
 
+  using enum DownloadsMigrationStatus;
+
   // If ~/Downloads doesn't exist and ~/MyFiles/Downloads does exist, this might
   // be a freshly setup cryptohome or the previous xattr setting failed. Update
   // the xattr accordingly and if this fails cryptohome is still in a usable
@@ -604,8 +606,7 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
     if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATING) {
       LOG(INFO) << "Downloads bind mount previously completed, but xattr not "
                    "set correctly";
-      ReportDownloadsBindMountMigrationStatus(
-          DownloadsBindMountMigrationStatus::kSettingMigratedPreviouslyFailed);
+      ReportDownloadsMigrationStatus(kFixXattr);
     } else {
       LOG(INFO) << "Potentially a new cryptohome, setting migrated xattr";
     }
@@ -613,8 +614,7 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
         platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
     if (!success) {
       LOG(ERROR) << "Failed to update Downloads bind mount xattr to migrated";
-      ReportDownloadsBindMountMigrationStatus(
-          DownloadsBindMountMigrationStatus::kUpdatingXattrFailed);
+      ReportDownloadsMigrationStatus(kCannotSetXattrToMigrated);
     }
     return true;
   }
@@ -633,8 +633,7 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
     // If we fail to remove ~/Downloads-backup this will not enable a clean
     // backup of ~/MyFiles/Downloads to ~/Downloads-backup so exit.
     if (!platform_->DeletePathRecursively(downloads_backup)) {
-      ReportDownloadsBindMountMigrationStatus(
-          DownloadsBindMountMigrationStatus::kCleanupFailed);
+      ReportDownloadsMigrationStatus(kCannotCleanUp);
       LOG(ERROR) << "Can't proceed with Downloads bind mount migration as "
                     "backup folder still exists";
       return false;
@@ -647,14 +646,14 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
   if (!SetDownloadsBindMountMigrationXattr(
           platform_, downloads, BindMountMigrationStage::MIGRATING)) {
     LOG(ERROR) << "Failed setting the Downloads folder with migration xattr";
+    ReportDownloadsMigrationStatus(kCannotSetXattrToMigrating);
     return false;
   }
 
   // The directory structure should now only have ~/Downloads and
   // ~/MyFiles/Downloads so the migration can start from here.
   if (!platform_->Rename(downloads_in_my_files, downloads_backup)) {
-    ReportDownloadsBindMountMigrationStatus(
-        DownloadsBindMountMigrationStatus::kBackupFailed);
+    ReportDownloadsMigrationStatus(kCannotBackUp);
     LOG(ERROR) << "Can't proceed with Downloads bind mount migration as "
                   "Downloads backup failed";
     return false;
@@ -673,16 +672,14 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
       // This will effectively leave ~/Downloads-backup and ~/Downloads
       // both having failed to rename. This indicates some sort of file system
       // corruption and may require the user to remove their profile to restore.
-      ReportDownloadsBindMountMigrationStatus(
-          DownloadsBindMountMigrationStatus::kRestoreFailed);
+      ReportDownloadsMigrationStatus(kCannotRestore);
       LOG(ERROR) << "Failed restoring Downloads from previous backup";
     } else {
       // Successfully restored ~/Downloads-backup to ~/MyFiles/Downloads
       // however the migration was unsuccessful. This will leave both
       // ~/Downloads and ~/MyFiles/Downloads so on next login the migration can
       // try again.
-      ReportDownloadsBindMountMigrationStatus(
-          DownloadsBindMountMigrationStatus::kFailedMovingToMyFiles);
+      ReportDownloadsMigrationStatus(kCannotMoveToMyFiles);
       LOG(ERROR) << "Failed moving Downloads into MyFiles but successfully "
                     "restored the backup directory";
     }
@@ -696,8 +693,7 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
   bool set_migration_stage_success = SetDownloadsBindMountMigrationXattr(
       platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
   if (!set_migration_stage_success) {
-    ReportDownloadsBindMountMigrationStatus(
-        DownloadsBindMountMigrationStatus::kFailedSettingMigratedXattr);
+    ReportDownloadsMigrationStatus(kCannotSetXattrToMigrated);
     LOG(ERROR)
         << "Failed to set the Downloads bind mount migration xattr to migrated";
     return true;
@@ -705,8 +701,7 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
 
   // This is considered the point of no return. The migration has, for all
   // intents and purposes, successfully completed.
-  ReportDownloadsBindMountMigrationStatus(
-      DownloadsBindMountMigrationStatus::kSuccess);
+  ReportDownloadsMigrationStatus(kSuccess);
   LOG(INFO) << "Downloads bind mount migration successful";
   return true;
 }

@@ -88,7 +88,7 @@ constexpr char kAuthFactorBackingStoreConfig[] =
     "Cryptohome.AuthFactorBackingStoreConfig";
 constexpr char kVkToUssMigrationStatus[] = "Cryptohome.VkToUssMigrationStatus";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
-constexpr char kDownloadsBindMountMigrationStatusHistogram[] =
+constexpr char kDownloadsMigrationStatus[] =
     "Cryptohome.DownloadsBindMountMigrationStatus";
 constexpr char kBackupKeysetCleanupResult[] =
     "Cryptohome.BackupKeysetCleanupResult";
@@ -684,14 +684,10 @@ void ReportMaskedDownloadsItems(int num_items) {
                        kNumBuckets);
 }
 
-void ReportDownloadsBindMountMigrationStatus(
-    DownloadsBindMountMigrationStatus status) {
-  if (!g_metrics) {
-    return;
+void ReportDownloadsMigrationStatus(DownloadsMigrationStatus status) {
+  if (g_metrics) {
+    g_metrics->SendEnumToUMA(kDownloadsMigrationStatus, status);
   }
-  g_metrics->SendEnumToUMA(
-      kDownloadsBindMountMigrationStatusHistogram, static_cast<int>(status),
-      static_cast<int>(DownloadsBindMountMigrationStatus::kMaxValue));
 }
 
 void ReportCryptohomeErrorHashedStack(std::string error_bucket_name,

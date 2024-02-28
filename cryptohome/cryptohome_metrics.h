@@ -223,16 +223,33 @@ enum class OOPMountCleanupResult {
 // List of possible results from migrating the files at ~/MyFiles to
 // ~/MyFiles/Downloads. These values are persisted to logs. Entries should not
 // be renumbered and numeric values should never be reused.
-enum class DownloadsBindMountMigrationStatus {
+enum class DownloadsMigrationStatus {
+  // The migration just finished successfully.
   kSuccess = 0,
-  kSettingMigratedPreviouslyFailed = 1,
-  kUpdatingXattrFailed = 2,
-  kCleanupFailed = 3,
-  kBackupFailed = 4,
-  kRestoreFailed = 5,
-  kFailedMovingToMyFiles = 6,
-  kFailedSettingMigratedXattr = 7,
-  kMaxValue = kFailedMovingToMyFiles
+
+  // The migration was previously done, but the xattr was left as "migrating".
+  kFixXattr = 1,
+
+  // Cannot set the xattr to "migrating".
+  kCannotSetXattrToMigrating = 2,
+
+  // Cannot clean up the old backup folder.
+  kCannotCleanUp = 3,
+
+  // Cannot back up the existing ~/MyFiles/Downloads folder.
+  kCannotBackUp = 4,
+
+  // Cannot restore the backup folder to ~/MyFiles/Downloads.
+  kCannotRestore = 5,
+
+  // Cannot move ~/Downloads to ~/MyFiles/Downloads.
+  kCannotMoveToMyFiles = 6,
+
+  // Cannot set the xattr to "migrated".
+  kCannotSetXattrToMigrated = 7,
+
+  // Maximum enum value. Must be updated if more values are added.
+  kMaxValue = kCannotSetXattrToMigrated
 };
 
 // Various counts for ReportVaultKeysetMetrics.
@@ -527,8 +544,7 @@ void ReportMaskedDownloadsItems(int num_items);
 
 // Reports the overall status after attempting to migrate a user's ~/Downloads
 // to ~/MyFiles/Downloads.
-void ReportDownloadsBindMountMigrationStatus(
-    DownloadsBindMountMigrationStatus status);
+void ReportDownloadsMigrationStatus(DownloadsMigrationStatus status);
 
 // Cryptohome Error Reporting related UMAs
 
