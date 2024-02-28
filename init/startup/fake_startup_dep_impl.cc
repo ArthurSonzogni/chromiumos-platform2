@@ -34,10 +34,6 @@ void FakeStartupDep::SetMountResultForPath(const base::FilePath& path,
   mount_result_map_[path.value()] = output;
 }
 
-void FakeStartupDep::SetIoctlReturnValue(int ret) {
-  ioctl_ret_ = ret;
-}
-
 void FakeStartupDep::SetMountEncOutputForArg(const std::string& arg,
                                              const std::string& output) {
   mount_enc_result_map_[arg] = output;

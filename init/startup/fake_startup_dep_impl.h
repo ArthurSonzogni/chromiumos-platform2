@@ -42,8 +42,6 @@ class FakeStartupDep : public StartupDep {
 
   void SetClobberLogFile(const base::FilePath& path);
 
-  void SetIoctlReturnValue(int ret);
-
   std::set<std::string> GetClobberArgs();
 
   // `startup::StartupDep` overrides.
