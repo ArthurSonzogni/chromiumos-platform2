@@ -86,6 +86,12 @@ enum SuspendAbortReason {
     Count = 6,
 }
 
+#[derive(PartialEq)]
+enum ResumeTimeMetric {
+    RestoreSystem,
+    Total,
+}
+
 /// The SuspendConductor weaves a delicate baton to guide us through the
 /// symphony of hibernation.
 pub struct SuspendConductor<'a> {
@@ -132,7 +138,8 @@ impl SuspendConductor<'_> {
         match res {
             Ok(()) => {
                 log_metric_event(HibernateEvent::ResumeSuccess);
-                self.record_total_resume_time(&hibermeta_mount);
+                self.record_resume_time_metric(ResumeTimeMetric::RestoreSystem, &hibermeta_mount);
+                self.record_resume_time_metric(ResumeTimeMetric::Total, &hibermeta_mount);
             },
             Err(_) => {
                 log_metric_event(HibernateEvent::SuspendFailure);
@@ -434,45 +441,51 @@ impl SuspendConductor<'_> {
         Ok(())
     }
 
-    /// Record the total resume time.
-    fn record_total_resume_time(&self, hibermeta_mount: &ActiveMount) {
+    /// Record a resume time metric
+    fn record_resume_time_metric(&self, metric: ResumeTimeMetric, hibermeta_mount: &ActiveMount) {
         if self.timestamp_resumed.is_none() {
             return;
         }
 
-        let tsf = TimestampFile::new(hibermeta_mount);
-        let res = tsf.read_timestamp("resume_start.ts");
+        let (ts_file_name, metric_name, max_value) = match metric {
+            ResumeTimeMetric::RestoreSystem => ("restore_start.ts", "RestoreSystem", 10000),
+            ResumeTimeMetric::Total => ("resume_start.ts", "Total", 30000),
+        };
+
+        let res = TimestampFile::new(hibermeta_mount).read_timestamp(ts_file_name);
         if let Err(e) = res {
-            warn!("Failed to read resume start timestap: {e}");
+            warn!("Failed to read {ts_file_name}: {e}");
             return;
         }
 
-        let resume_start = res.unwrap();
+        let start = res.unwrap();
         let resume_done = self.timestamp_resumed.unwrap();
-        let resume_time = resume_done
-            .checked_sub(resume_start)
+        let duration = resume_done
+            .checked_sub(start)
             .unwrap_or_else(|| -> Duration {
                 warn!(
-                    "Resume timestamps are bogus: resume start: {:?}, resume done: {:?}",
-                    resume_start, resume_done
+                    "Resume timestamps are bogus: start: {:?}, resume done: {:?}",
+                    start, resume_done
                 );
                 Duration::ZERO
             });
 
-        debug!(
-            "Resume from hibernate took {}.{}.s",
-            resume_time.as_secs(),
-            resume_time.subsec_millis()
-        );
-
         let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
         metrics_logger.log_duration_sample(
-            "Platform.Hibernate.ResumeTime.Total",
-            resume_time,
+            &format!("Platform.Hibernate.ResumeTime.{}", metric_name),
+            duration,
             DurationMetricUnit::Milliseconds,
-            30000,
+            max_value,
         );
+
+        if metric == ResumeTimeMetric::Total {
+            debug!(
+                "Resume from hibernate took {}.{}.s",
+                duration.as_secs(),
+                duration.subsec_millis()
+            );
+        }
     }
 
     /// Utility function to power the system down immediately.

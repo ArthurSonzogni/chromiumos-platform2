@@ -344,8 +344,8 @@ impl ResumeConductor {
 
         TimestampFile::new(&hibermeta_mount).record_timestamp("resume_start.ts", &self.timestamp_start)?;
 
-        let resume_prep_done = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
-        let prep_time = resume_prep_done
+        let now = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
+        let prep_time = now
             .checked_sub(self.timestamp_start)
             .unwrap_or(Duration::ZERO);
         debug!(
@@ -360,6 +360,12 @@ impl ResumeConductor {
             // Flush the metrics file before unmounting 'hibermeta'.
             metrics_logger.flush(&hibermeta_mount)?;
         }
+
+        // Record the start of system restore in a file to be able to calculate
+        // the time it took to restore the hibernated system after resume. A
+        // short time passed since we acquired the timestamp, but the delta
+        // should be negligible in relation to the actual restore time.
+        TimestampFile::new(&hibermeta_mount).record_timestamp("restore_start.ts", &now)?;
 
         // Keep logs in memory for now.
         mem::drop(log_file);
