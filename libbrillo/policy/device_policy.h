@@ -99,9 +99,8 @@ class DevicePolicy {
   // Returns the value of the DevicePolicyRefreshRate policy on success.
   virtual std::optional<int> GetPolicyRefreshRate() const = 0;
 
-  // Writes the value of MetricEnabled policy in |metrics_enabled|. Returns true
-  // on success.
-  virtual bool GetMetricsEnabled(bool* metrics_enabled) const = 0;
+  // Returns the value of MetricsEnabled policy or std::nullopt on failed read.
+  virtual std::optional<bool> GetMetricsEnabled() const = 0;
 
   // Returns value of HWDataUsageEnabled policy, or std::nullopt on failed read.
   virtual std::optional<bool> GetUnenrolledHwDataUsageEnabled() const = 0;

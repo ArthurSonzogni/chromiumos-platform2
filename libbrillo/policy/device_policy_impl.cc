@@ -273,11 +273,15 @@ std::optional<int> DevicePolicyImpl::GetPolicyRefreshRate() const {
                               .device_policy_refresh_rate());
 }
 
-bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
-  if (!device_policy_->has_metrics_enabled())
-    return false;
-  *metrics_enabled = device_policy_->metrics_enabled().metrics_enabled();
-  return true;
+std::optional<bool> DevicePolicyImpl::GetMetricsEnabled() const {
+  if (!device_policy_->has_metrics_enabled()) {
+    // Default for enterprise managed devices is true, cf. https://crbug/456186.
+    if (IsEnterpriseManaged()) {
+      return true;
+    }
+    return std::nullopt;
+  }
+  return device_policy_->metrics_enabled().metrics_enabled();
 }
 
 std::optional<bool> DevicePolicyImpl::GetUnenrolledHwDataUsageEnabled() const {

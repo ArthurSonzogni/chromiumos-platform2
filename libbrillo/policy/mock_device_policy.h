@@ -58,7 +58,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, IsEnterpriseEnrolled, (), (const, override));
 
   MOCK_METHOD(std::optional<int>, GetPolicyRefreshRate, (), (const, override));
-  MOCK_METHOD(bool, GetMetricsEnabled, (bool*), (const, override));
+  MOCK_METHOD(std::optional<bool>, GetMetricsEnabled, (), (const, override));
   MOCK_METHOD(std::optional<bool>,
               GetUnenrolledHwDataUsageEnabled,
               (),

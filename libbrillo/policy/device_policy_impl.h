@@ -62,7 +62,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool LoadPolicy(bool delete_invalid_files) override;
   bool IsEnterpriseEnrolled() const override;
   std::optional<int> GetPolicyRefreshRate() const override;
-  bool GetMetricsEnabled(bool* metrics_enabled) const override;
+  std::optional<bool> GetMetricsEnabled() const override;
   std::optional<bool> GetUnenrolledHwDataUsageEnabled() const override;
   std::optional<bool> GetEnrolledHwDataUsageEnabled() const override;
   bool GetEphemeralSettings(
