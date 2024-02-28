@@ -1,1 +1,1 @@
-include chromiumos/owners:v1:/security/OWNERS.hardening
+include chromiumos/owners:v1:/security/OWNERS.selinux
