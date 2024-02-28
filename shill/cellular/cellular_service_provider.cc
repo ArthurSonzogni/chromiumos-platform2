@@ -342,6 +342,8 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
   SLOG(1) << __func__ << " with ICCID: " << service->iccid();
   manager_->PersistService(service);
   manager_->DeregisterService(service);
+  service->SetDevice(nullptr);
+
   auto iter = std::find(services_.begin(), services_.end(), service);
   if (iter == services_.end()) {
     LOG(ERROR) << "RemoveService: Not found: ";
