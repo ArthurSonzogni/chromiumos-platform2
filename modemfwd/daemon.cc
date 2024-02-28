@@ -549,6 +549,10 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
 
 void Daemon::StartHeartbeatTimer() {
   EVLOG(1) << __func__;
+
+  if (heartbeat_timer_.IsRunning())
+    return;
+
   // Start periodic monitoring task
   for (auto const& modem_info : modems_)
     modem_info.second->ResetHeartbeatFailures();
@@ -558,6 +562,10 @@ void Daemon::StartHeartbeatTimer() {
 
 void Daemon::StopHeartbeatTimer() {
   EVLOG(1) << __func__;
+
+  if (!heartbeat_timer_.IsRunning())
+    return;
+
   // Stop periodic monitoring task
   for (auto const& modem_info : modems_)
     modem_info.second->ResetHeartbeatFailures();
