@@ -16,6 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/types/expected.h>
 #include <brillo/files/file_util.h>
 
@@ -109,8 +110,8 @@ Status AppendLine(const base::FilePath& file_path,
   if (write_count < 0 || static_cast<size_t>(write_count) < line.size()) {
     return Status(error::DATA_LOSS,
                   base::StrCat({"Failed to write health data file ",
-                                file_path.MaybeAsASCII(),
-                                " write count=", std::to_string(write_count)}));
+                                file_path.MaybeAsASCII(), " write count=",
+                                base::NumberToString(write_count)}));
   }
   return Status::StatusOK();
 }
@@ -158,7 +159,7 @@ Status MaybeWriteFile(const base::FilePath& file_path,
     return Status(
         error::DATA_LOSS,
         base::StrCat({"Failed to write data file ", file_path.MaybeAsASCII(),
-                      " write count=", std::to_string(write_count)}));
+                      " write count=", base::NumberToString(write_count)}));
   }
 
   return Status::StatusOK();

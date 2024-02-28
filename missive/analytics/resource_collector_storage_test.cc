@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_file_util.h>
 #include <base/time/time.h>
@@ -38,7 +39,8 @@ class ResourceCollectorStorageTest
   void DeployFilesToStorageDirectory() const {
     std::vector<uint64_t> file_sizes{GetParam()};
     for (size_t i = 0; i < file_sizes.size(); ++i) {
-      const base::FilePath path(storage_directory_.Append(std::to_string(i)));
+      const base::FilePath path(
+          storage_directory_.Append(base::NumberToString(i)));
       // Write file_sizes[i] times of 'a' to the file
       ASSERT_TRUE(base::WriteFile(path, std::string(file_sizes[i], 'a')))
           << "Failed to write test file " << path;
