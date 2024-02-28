@@ -1061,7 +1061,8 @@ bool FuzzedPlatform::GetExtFileAttributes(const base::FilePath& path,
 }
 
 bool FuzzedPlatform::SetExtFileAttributes(const base::FilePath& path,
-                                          int flags) {
+                                          int added_flags,
+                                          int removed_flags) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(path);
   switch (fuzzed_data_provider_.ConsumeEnum<FuzzResultStrategy>()) {
@@ -1070,7 +1071,8 @@ bool FuzzedPlatform::SetExtFileAttributes(const base::FilePath& path,
       if (iter == virtual_fs_.end()) {
         return false;
       }
-      iter->second.ext_flags = flags;
+      iter->second.ext_flags |= added_flags;
+      iter->second.ext_flags &= removed_flags;
       return true;
     }
     case FuzzResultStrategy::kPretendSuccess: {

@@ -120,7 +120,7 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 
   // Set ext2 attributes
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
-  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromDirPath, ext2_attrs));
+  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromDirPath, ext2_attrs, 0));
 
   // Set project quota ID.
   constexpr int from_project_id = 12345;
@@ -347,7 +347,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 
   // Set ext2 attributes
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL | EXT4_EOFBLOCKS_FL;
-  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromFilePath, ext2_attrs));
+  ASSERT_TRUE(platform_.SetExtFileAttributes(kFromFilePath, ext2_attrs, 0));
 
   // Set project quota ID.
   constexpr int from_project_id = 12345;

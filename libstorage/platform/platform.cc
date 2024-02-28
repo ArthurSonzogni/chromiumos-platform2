@@ -1028,7 +1028,9 @@ bool Platform::GetExtFileAttributes(const FilePath& path, int* flags) {
   return true;
 }
 
-bool Platform::SetExtFileAttributes(const FilePath& path, int added_flags) {
+bool Platform::SetExtFileAttributes(const FilePath& path,
+                                    int added_flags,
+                                    int removed_flags) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
@@ -1046,6 +1048,7 @@ bool Platform::SetExtFileAttributes(const FilePath& path, int added_flags) {
     return false;
   }
   int flags = current_flags | added_flags;
+  flags &= ~removed_flags;
   if (ioctl(fd, FS_IOC_SETFLAGS, &flags) < 0) {
     PLOG(ERROR) << "ioctl SETFLAGS for flags=" << std::hex << current_flags
                 << "+" << std::hex << added_flags << ": " << path.value();

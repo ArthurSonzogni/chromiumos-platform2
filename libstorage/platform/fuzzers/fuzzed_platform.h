@@ -177,7 +177,9 @@ class BRILLO_EXPORT FuzzedPlatform : public Platform {
   bool RemoveExtendedFileAttribute(const base::FilePath& path,
                                    const std::string& name) override;
   bool GetExtFileAttributes(const base::FilePath& path, int* flags) override;
-  bool SetExtFileAttributes(const base::FilePath& path, int flags) override;
+  bool SetExtFileAttributes(const base::FilePath& path,
+                            int added_flags,
+                            int removed_flags) override;
   bool HasNoDumpFileAttribute(const base::FilePath& path) override;
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   base::Time GetCurrentTime() const override;

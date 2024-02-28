@@ -672,8 +672,12 @@ class BRILLO_EXPORT Platform {
   //
   // Parameters
   //  path - absolute file or directory path to get attributes for
-  //  flags - the value to update the ext attributes to
-  virtual bool SetExtFileAttributes(const base::FilePath& path, int flags);
+  //  added_flags - the bit field to add to the current the ext attributes.
+  //  removed_flags - the bit field to remove from the current the ext
+  //  attributes.
+  virtual bool SetExtFileAttributes(const base::FilePath& path,
+                                    int added_flags,
+                                    int removed_flags = 0);
 
   // Return if ext file attributes associated with the |name| has FS_NODUMP_FL,
   // possibly following symlink.

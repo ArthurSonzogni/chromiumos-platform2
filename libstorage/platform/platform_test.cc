@@ -223,16 +223,27 @@ TEST_F(PlatformTest, SetExtFileAttributes) {
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
 
-  int flags = FS_UNRM_FL | FS_NODUMP_FL;
-  EXPECT_TRUE(platform_.SetExtFileAttributes(filename, flags));
+  // FS_UNRM_FL is not implemented by any filesystem.
+  // FS_NODUMP_FL is used only by dump(8), so we can both freely set and unset
+  // them.
+  int added_flags = FS_UNRM_FL | FS_NODUMP_FL;
+  EXPECT_TRUE(platform_.SetExtFileAttributes(filename, added_flags));
 
   int fd;
-  ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
   int new_flags;
+  ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
   ASSERT_GE(ioctl(fd, FS_IOC_GETFLAGS, &new_flags), 0);
-
-  EXPECT_EQ(flags, new_flags & flags);
   close(fd);
+  EXPECT_EQ(added_flags, new_flags & added_flags);
+
+  int removed_flags = FS_UNRM_FL | FS_NODUMP_FL;
+  EXPECT_TRUE(platform_.SetExtFileAttributes(filename, 0, removed_flags));
+
+  ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
+  ASSERT_GE(ioctl(fd, FS_IOC_GETFLAGS, &new_flags), 0);
+  close(fd);
+  EXPECT_EQ(~removed_flags, new_flags | ~removed_flags);
+
   platform_.DeleteFile(filename);
 }
 

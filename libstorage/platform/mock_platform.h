@@ -225,7 +225,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               (override));
   MOCK_METHOD(bool,
               SetExtFileAttributes,
-              (const base::FilePath&, int),
+              (const base::FilePath&, int, int),
               (override));
   MOCK_METHOD(bool,
               HasNoDumpFileAttribute,

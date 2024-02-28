@@ -151,7 +151,7 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
   ON_CALL(*this, GetExtFileAttributes(_, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetExtFileAttributes));
-  ON_CALL(*this, SetExtFileAttributes(_, _))
+  ON_CALL(*this, SetExtFileAttributes(_, _, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::SetExtFileAttributes));
   ON_CALL(*this, HasNoDumpFileAttribute(_))

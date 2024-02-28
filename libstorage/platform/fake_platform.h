@@ -144,7 +144,9 @@ class BRILLO_EXPORT FakePlatform : public Platform {
   bool RemoveExtendedFileAttribute(const base::FilePath& path,
                                    const std::string& name) override;
   bool GetExtFileAttributes(const base::FilePath& path, int* flags) override;
-  bool SetExtFileAttributes(const base::FilePath& path, int flags) override;
+  bool SetExtFileAttributes(const base::FilePath& path,
+                            int added_flags,
+                            int removed_flags) override;
   bool HasNoDumpFileAttribute(const base::FilePath& path) override;
   bool GetQuotaProjectId(const base::FilePath& path,
                          int* project_id) const override;

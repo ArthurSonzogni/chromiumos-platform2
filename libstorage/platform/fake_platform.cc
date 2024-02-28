@@ -574,13 +574,16 @@ bool FakePlatform::GetExtFileAttributes(const base::FilePath& path,
   return true;
 }
 
-bool FakePlatform::SetExtFileAttributes(const base::FilePath& path, int flags) {
+bool FakePlatform::SetExtFileAttributes(const base::FilePath& path,
+                                        int added_flags,
+                                        int removed_flags) {
   base::AutoLock lock(mappings_lock_);
   const base::FilePath real_path = TestFilePath(path);
   if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  file_flags_[real_path] = flags;
+  file_flags_[real_path] |= added_flags;
+  file_flags_[real_path] &= ~removed_flags;
   return true;
 }
 
