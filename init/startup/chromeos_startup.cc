@@ -541,7 +541,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
 void ChromeosStartup::MountHome() {
   const base::FilePath home = stateful_.Append(kHome);
   const base::FilePath home_root = root_.Append(kHome);
-  mount_helper_->MountOrFail(home, home_root, "", MS_BIND, "");
+  mount_helper_->BindMountOrFail(home, home_root);
   // Remount /home with nosymfollow: bind mounts do not accept the option
   // within the same command.
   if (!startup_dep_->Mount(base::FilePath(), home_root, "",
@@ -921,13 +921,11 @@ int ChromeosStartup::Run() {
   // Bind mount /run to /var/run.
   const base::FilePath var = root_.Append(kVar);
   const base::FilePath root_run = root_.Append(kRun);
-  startup_dep_->Mount(root_run, var.Append(kRun), "", MS_BIND, "");
-  mount_helper_->RememberMount(root_run);
+  mount_helper_->BindMountOrFail(root_run, var.Append(kRun));
 
   // Bind mount /run/lock to /var/lock.
   const base::FilePath root_run_lock = root_run.Append(kLock);
-  startup_dep_->Mount(root_run_lock, var.Append(kLock), "", MS_BIND, "");
-  mount_helper_->RememberMount(root_run_lock);
+  mount_helper_->BindMountOrFail(root_run_lock, var.Append(kLock));
 
   CreateDaemonStore();
 

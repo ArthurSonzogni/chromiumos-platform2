@@ -47,12 +47,9 @@ class MountHelper {
   void CleanupMountsStack(std::vector<base::FilePath>* mnts);
   // Unmounts the incomplete mount setup during the failure path.
   void CleanupMounts(const std::string& msg);
-  // Tries to mount, clobbers the stateful partition on failure.
-  void MountOrFail(const base::FilePath& source,
-                   const base::FilePath& target,
-                   const std::string& type,
-                   const int32_t& flags,
-                   const std::string& data);
+  // Tries to bind mount, clobbers the stateful partition on failure.
+  void BindMountOrFail(const base::FilePath& source,
+                       const base::FilePath& target);
   // Sets up a mount stack for testing.
   void SetMountStackForTest(const std::stack<base::FilePath>& mount_stack);
   // Gets the mount stack for testing.

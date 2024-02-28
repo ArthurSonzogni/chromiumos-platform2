@@ -758,7 +758,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
 
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);
-  mount_helper_->MountOrFail(stateful_dev, usrlocal, "", MS_BIND, "");
+  mount_helper_->BindMountOrFail(stateful_dev, usrlocal);
   if (!startup_dep_->Mount(base::FilePath(""), usrlocal, "", MS_REMOUNT, "")) {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
@@ -796,7 +796,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
         LOG(WARNING) << "Path does not exists, can not mount: " << dest.value();
         continue;
       }
-      mount_helper_->MountOrFail(full, dest, "", MS_BIND, "");
+      mount_helper_->BindMountOrFail(full, dest);
     }
   }
 }

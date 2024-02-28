@@ -105,21 +105,17 @@ void MountHelper::CleanupMounts(const std::string& msg) {
 // Used to mount essential mount points for the system from the stateful
 // or encrypted stateful partition.
 // On failure, clobbers the stateful partition.
-void MountHelper::MountOrFail(const base::FilePath& source,
-                              const base::FilePath& target,
-                              const std::string& type,
-                              const int32_t& flags,
-                              const std::string& data) {
+void MountHelper::BindMountOrFail(const base::FilePath& source,
+                                  const base::FilePath& target) {
   if (base::DirectoryExists(source) && base::DirectoryExists(target)) {
-    if (startup_dep_->Mount(source, target, type.c_str(), flags, data)) {
+    if (startup_dep_->Mount(source, target, "", MS_BIND, "")) {
       // Push it on the undo stack if we fail later.
       RememberMount(target);
       return;
     }
   }
-  std::string msg = "Failed to mount " + source.value() + ", " +
-                    target.value() + ", " + type + ", " +
-                    std::to_string(flags) + ", " + data;
+  std::string msg =
+      "Failed to bind mount " + source.value() + ", " + target.value();
   CleanupMounts(msg);
 }
 
