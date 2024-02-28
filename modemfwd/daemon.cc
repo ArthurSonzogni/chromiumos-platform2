@@ -412,7 +412,7 @@ void Daemon::OnModemCarrierIdReady(
   brillo::ErrorPtr err;
   StopHeartbeatTimer();
   base::OnceClosure cb =
-      modem_flasher_->TryFlash(modems_[device_id].get(), bus_, &err);
+      modem_flasher_->TryFlash(modems_[device_id].get(), &err);
   StartHeartbeatTimer();
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
@@ -434,7 +434,7 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   brillo::ErrorPtr err;
   StopHeartbeatTimer();
-  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), bus_, &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), &err);
   StartHeartbeatTimer();
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
