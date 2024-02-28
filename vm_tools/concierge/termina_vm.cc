@@ -1028,8 +1028,9 @@ VmBaseImpl::Info TerminaVm::GetInfo() const {
       .cid = cid(),
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = IsTremplinStarted() ? VmBaseImpl::Status::RUNNING
-                                    : VmBaseImpl::Status::STARTING,
+      .status = classification_ == apps::TERMINA && !IsTremplinStarted()
+                    ? VmBaseImpl::Status::STARTING
+                    : VmBaseImpl::Status::RUNNING,
       .type = classification_,
       .storage_ballooning = storage_ballooning_,
   };
