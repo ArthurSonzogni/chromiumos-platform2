@@ -28,7 +28,6 @@ use libchromeos::chromeos;
 use libchromeos::signal::{clear_signal_handler, register_signal_handler};
 use log::error;
 use nix::sys::signal::Signal;
-use regex::Regex;
 use system_api::client::OrgChromiumSessionManagerInterface;
 
 // 25 seconds is the default timeout for dbus-send.
@@ -158,12 +157,7 @@ pub fn is_no_new_privs_set() -> bool {
 
 pub fn is_removable() -> Result<bool> {
     let dev = root_dev()?;
-    let groups = Regex::new(r#"/dev/([^/]+?)p?[0-9]+$"#)?
-        .captures(&dev)
-        .ok_or(Error::NoMatchFound)?;
-
-    let dev = groups.get(1).unwrap().as_str();
-
+    let dev = blockdev_basename(&dev).ok_or(Error::NoMatchFound)?;
     match read_to_string(format!("/sys/block/{}/removable", dev)) {
         Ok(contents) => Ok(contents.trim() == "1"),
         Err(err) => Err(err.into()),
@@ -269,6 +263,29 @@ fn root_dev() -> Result<String> {
     Ok(result.trim().to_string())
 }
 
+/// Given a path to a block device with partition number, return its name.
+///
+/// For example: "/dev/nvme0n1p1" -> "nvme0n1"
+fn blockdev_basename(mut dev: &str) -> Option<&str> {
+    dev = dev.strip_prefix("/dev/")?;
+
+    // The device name should be a single path component.
+    if dev.contains('/') {
+        return None;
+    }
+
+    // Remove partition number.
+    if let Some((base, part)) = dev.rsplit_once('p') {
+        // nvme0n1p3 -> nvme0n1
+        if part.chars().all(|c: char| c.is_ascii_digit()) {
+            return Some(base);
+        }
+    }
+
+    // sda1 -> sda
+    Some(dev.trim_end_matches(|c: char| c.is_ascii_digit()))
+}
+
 /// Print 'msg' followed by a [y/N] prompt and test the user input. Return true for 'y' or 'Y'.
 pub fn prompt_for_yes(msg: &str) -> bool {
     print!("{} [y/N] ", msg);
@@ -315,6 +332,8 @@ pub fn epoll_wait(epoll_fd: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
+    use regex::Regex;
+
     use super::*;
 
     #[test]
@@ -328,5 +347,18 @@ mod tests {
         .unwrap();
         let result_output_path = generate_output_file_path("packet_capture", "pcap").unwrap();
         assert!(expected_path_re.is_match(&result_output_path));
+    }
+
+    #[test]
+    fn blockdev_basename_valid() {
+        assert_eq!(blockdev_basename("/dev/mmcblk0p3"), Some("mmcblk0"));
+        assert_eq!(blockdev_basename("/dev/nvme0n1p1"), Some("nvme0n1"));
+        assert_eq!(blockdev_basename("/dev/sda1"), Some("sda"));
+    }
+
+    #[test]
+    fn blockdev_basename_invalid() {
+        assert!(blockdev_basename("abcdef").is_none());
+        assert!(blockdev_basename("/dev/abc/def").is_none());
     }
 }

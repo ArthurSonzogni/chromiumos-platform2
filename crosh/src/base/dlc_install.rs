@@ -4,10 +4,7 @@
 
 // Provides the command "dlc_install" for crosh.
 
-use std::process::{self};
-
-use lazy_static::lazy_static;
-use regex::Regex;
+use std::process;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
@@ -64,17 +61,20 @@ fn validate_args(_args: &Arguments) -> Result<String, dispatcher::Error> {
     }
 }
 
-fn validate_dlc(_dlc_id: &str) -> Result<(), dispatcher::Error> {
-    if _dlc_id.len() > 40 {
-        return Err(dispatcher::Error::CommandInvalidArguments(
-            "DLC ID is too long.".to_string(),
-        ));
+fn valid_dlc_id_format(dlc_id: &str) -> bool {
+    if dlc_id.is_empty() || dlc_id.len() > 40 {
+        return false;
     }
 
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9-]+$").unwrap();
-    }
-    if !RE.is_match(_dlc_id) {
+    // DLC ID must be an alphanumeric character followed by alphanumerics or hyphens.
+    dlc_id
+        .chars()
+        .enumerate()
+        .all(|(i, c)| c.is_ascii_alphanumeric() || (i > 0 && c == '-'))
+}
+
+fn validate_dlc(_dlc_id: &str) -> Result<(), dispatcher::Error> {
+    if !valid_dlc_id_format(_dlc_id) {
         return Err(dispatcher::Error::CommandInvalidArguments(
             "DLC ID is not a valid format.".to_string(),
         ));
@@ -119,4 +119,32 @@ fn execute_dlc_install(_dlc_id: &str) -> Result<(), dispatcher::Error> {
 
 fn flag_and_arg(_flag: &str, _arg: &str) -> String {
     [_flag.to_string(), _arg.to_string()].join("=")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dlc_id_valid() {
+        assert!(valid_dlc_id_format("a"));
+        assert!(valid_dlc_id_format("abcdef"));
+        assert!(valid_dlc_id_format("dlc-with-dashes"));
+        assert!(valid_dlc_id_format(
+            "just-exactly-forty-character-long-dlc-id"
+        ));
+        assert!(valid_dlc_id_format(
+            "1234567890123456789012345678901234567890"
+        ));
+    }
+
+    #[test]
+    fn dlc_id_invalid() {
+        assert!(!valid_dlc_id_format(""));
+        assert!(!valid_dlc_id_format("-starts-with-dash"));
+        assert!(!valid_dlc_id_format("nöt-ascii"));
+        assert!(!valid_dlc_id_format(
+            "12345678901234567890123456789012345678901"
+        ));
+    }
 }

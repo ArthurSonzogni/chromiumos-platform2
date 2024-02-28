@@ -7,7 +7,6 @@
 
 use dbus::blocking::Connection;
 use getopts::{self, Options};
-use regex::Regex;
 use std::borrow::Cow;
 use std::io::Write;
 
@@ -94,9 +93,11 @@ fn parse_arguments(args: &[String]) -> Result<(String, bool), dispatcher::Error>
 
     // Cull characters that won't appear in the password and truncate long
     // passwords. Token-space is |2^192|.
-    let re = Regex::new(r"[^a-zA-Z0-9_-]").unwrap();
-    let mut token = String::from(re.replace_all(raw_token, ""));
-    token.truncate(32);
+    let token = raw_token
+        .chars()
+        .filter(|&c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        .take(32)
+        .collect();
     Ok((token, launch))
 }
 
