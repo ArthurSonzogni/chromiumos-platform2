@@ -26,6 +26,7 @@ type configfs, fs_type;
 type debugfs_sw_sync, fs_type, debugfs_type;
 type debugfs_sync, fs_type, debugfs_type;
 type debugfs_trace_marker, fs_type;
+type debugfs_tracing_debug, fs_type, debugfs_type;
 type debugfs_tracing, fs_type, debugfs_type;
 type debugfs_tracing_instances, fs_type, debugfs_type;
 type functionfs, fs_type;

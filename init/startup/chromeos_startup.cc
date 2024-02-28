@@ -740,8 +740,9 @@ void ChromeosStartup::RestoreContextsForVar(
   std::vector<base::FilePath> exc_empty;
   restorecon_func(var, exc_empty, true, true);
 
-  // Restoring file contexts for sysfs. tracefs is excluded from this
-  // invocation and delayed in a separate job to improve boot time.
+  // Restoring file contexts for sysfs. debugfs and tracefs are excluded from
+  // this invocation because the kernel handles them via genfscon policy rules,
+  // and handling them here in user space would slow down boot significantly.
   std::vector<base::FilePath> exclude = {sysfs.Append(kKernelDebug),
                                          sysfs.Append(kKernelTracing)};
   restorecon_func(sysfs, exclude, true, false);
