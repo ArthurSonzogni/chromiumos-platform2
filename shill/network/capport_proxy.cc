@@ -162,7 +162,6 @@ void CapportProxy::SendRequest(StatusCallback callback) {
       << logging_tag_ << "The previous request is still running";
   callback_ = std::move(callback);
 
-  // TODO(b/305129516): Add metrics to record latency and success/failure count.
   brillo::http::Request http_request(
       api_url_.ToString(), brillo::http::request_type::kGet, http_transport_);
   http_request.SetAccept(kAcceptHeader);
@@ -187,6 +186,8 @@ void CapportProxy::OnRequestSuccess(
     LOG(ERROR) << logging_tag_
                << "Failed to get a success response, status code="
                << response->GetStatusCode();
+    metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                            Metrics::kCapportResponseError);
     std::move(callback_).Run(std::nullopt);
     return;
   }
@@ -197,6 +198,8 @@ void CapportProxy::OnRequestSuccess(
     LOG(ERROR) << logging_tag_ << "The CAPPORT server found by RFC8910 ("
                << api_url_.ToString()
                << ") was not compliant, failed to parse JSON: " << json_str;
+    metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                            Metrics::kCapportInvalidJSON);
     std::move(callback_).Run(std::nullopt);
     return;
   }
@@ -220,6 +223,8 @@ void CapportProxy::OnRequestSuccess(
     }
   }
 
+  metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                          Metrics::kCapportQuerySuccess);
   std::move(callback_).Run(std::move(status));
 }
 
@@ -230,11 +235,24 @@ void CapportProxy::OnRequestError(brillo::http::RequestID request_id,
 
   LOG(ERROR) << logging_tag_ << "Failed to get request from CAPPORT API: "
              << error->GetMessage();
+  metrics_->SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                          Metrics::kCapportRequestError);
   std::move(callback_).Run(std::nullopt);
 }
 
 bool CapportProxy::IsRunning() const {
   return !callback_.is_null();
+}
+
+void CapportProxy::OnRequestSuccessForTesting(
+    brillo::http::RequestID request_id,
+    std::unique_ptr<brillo::http::Response> response) {
+  OnRequestSuccess(request_id, std::move(response));
+}
+
+void CapportProxy::OnRequestErrorForTesting(brillo::http::RequestID request_id,
+                                            const brillo::Error* error) {
+  OnRequestError(request_id, error);
 }
 
 CapportProxyFactory::CapportProxyFactory() = default;

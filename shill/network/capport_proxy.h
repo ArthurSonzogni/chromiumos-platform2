@@ -88,6 +88,13 @@ class CapportProxy {
   // Returns true if the previous request has not been finished.
   mockable bool IsRunning() const;
 
+  // Exposes the private callback methods for testing.
+  void OnRequestSuccessForTesting(
+      brillo::http::RequestID request_id,
+      std::unique_ptr<brillo::http::Response> response);
+  void OnRequestErrorForTesting(brillo::http::RequestID request_id,
+                                const brillo::Error* error);
+
  private:
   void OnRequestSuccess(brillo::http::RequestID request_id,
                         std::unique_ptr<brillo::http::Response> response);

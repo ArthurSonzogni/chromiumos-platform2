@@ -1215,6 +1215,24 @@ class Metrics {
       .max = kCapportSupportedMax,
   };
 
+  // Enum specifying the result when querying the CAPPORT API.
+  enum CapportQueryResult {
+    // Successfully got the response from CAPPORT API.
+    kCapportQuerySuccess = 0,
+    // Failed to get the response from CAPPORT API.
+    kCapportRequestError = 1,
+    // The response from CAPPORT API is not successful.
+    kCapportResponseError = 2,
+    // Failed to parse the JSON string from CAPPORT API.
+    kCapportInvalidJSON = 3,
+
+    kCapportQueryResultMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricCapportQueryResult = {
+      .n = FixedName{"Network.Shill.CAPPORT.QueryResult"},
+      .max = kCapportQueryResultMax,
+  };
+
   // Boolean metric counting whether the CAPPORT server contains the venue info
   // URL. This metric is only recorded once for every CAPPORT session when we
   // can determine the CAPPORT server contains it or not.

@@ -12,7 +12,9 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/location.h>
 #include <base/time/time.h>
+#include <brillo/errors/error.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/http/mock_transport.h>
@@ -20,6 +22,7 @@
 #include <gmock/gmock.h>
 #include <net-base/http_url.h>
 
+#include "shill/metrics.h"
 #include "shill/mock_metrics.h"
 
 namespace shill {
@@ -195,29 +198,6 @@ class CapportProxyTest : public testing::Test {
   std::unique_ptr<CapportProxy> proxy_;
 };
 
-TEST_F(CapportProxyTest, SendRequest) {
-  // Verify if SendRequest() sends the expected HTTP request.
-  const std::vector<std::pair<std::string, std::string>> kHeaders = {
-      {"Accept", "application/captive+json"}};
-  auto mock_transport = std::make_shared<brillo::http::MockTransport>();
-  EXPECT_CALL(*mock_transport, SetInterface(kInterfaceName));
-  EXPECT_CALL(*mock_transport,
-              SetDnsServers(ElementsAre(kDnsServers[0].ToString(),
-                                        kDnsServers[1].ToString())));
-  EXPECT_CALL(*mock_transport,
-              UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
-  EXPECT_CALL(
-      *mock_transport,
-      CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
-                       kHeaders, _, _, _));
-
-  proxy_ = CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, kDnsServers,
-                                mock_transport);
-  EXPECT_NE(proxy_, nullptr);
-
-  proxy_->SendRequest(base::DoNothing());
-}
-
 TEST_F(CapportProxyTest, SendRequestSuccess) {
   const CapportStatus status{
       .is_captive = true,
@@ -237,13 +217,16 @@ TEST_F(CapportProxyTest, SendRequestSuccess) {
   // When the HTTP server replies a valid JSON string, the client should get
   // the valid status via callback.
   EXPECT_CALL(client_, OnStatusReceived(Eq(status))).Times(2);
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                                      Metrics::kCapportQuerySuccess))
+      .Times(2);
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
 }
 
-TEST_F(CapportProxyTest, SendRequestFail) {
+TEST_F(CapportProxyTest, SendRequestWithInvalidJSON) {
   fake_transport_->AddSimpleReplyHandler(
       kApiUrl.ToString(), brillo::http::request_type::kGet,
       brillo::http::status_code::Ok, "Invalid JSON string",
@@ -252,6 +235,9 @@ TEST_F(CapportProxyTest, SendRequestFail) {
   // When the HTTP server replies an invalid JSON string, the client should get
   // std::nullopt via callback.
   EXPECT_CALL(client_, OnStatusReceived(Eq(std::nullopt)));
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                                      Metrics::kCapportInvalidJSON))
+      .Times(1);
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
 }
@@ -447,6 +433,66 @@ TEST_F(CapportProxyTest, DoesNotSendMetricsContainSecondsRemaining) {
 })");
   proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
                                      base::Unretained(&client_)));
+}
+
+class CapportProxyTestWithMockTransport : public testing::Test {
+ protected:
+  CapportProxyTestWithMockTransport()
+      : mock_transport_(std::make_shared<brillo::http::MockTransport>()),
+        proxy_(CapportProxy::Create(
+            &metrics_, kInterfaceName, kApiUrl, kDnsServers, mock_transport_)) {
+  }
+
+  MockMetrics metrics_;
+  std::shared_ptr<brillo::http::MockTransport> mock_transport_;
+  std::unique_ptr<CapportProxy> proxy_;
+};
+
+TEST_F(CapportProxyTestWithMockTransport, SendRequest) {
+  // Verify if SendRequest() sends the expected HTTP request.
+  const std::vector<std::pair<std::string, std::string>> kHeaders = {
+      {"Accept", "application/captive+json"}};
+  EXPECT_CALL(*mock_transport_, SetInterface(kInterfaceName));
+  EXPECT_CALL(*mock_transport_,
+              SetDnsServers(ElementsAre(kDnsServers[0].ToString(),
+                                        kDnsServers[1].ToString())));
+  EXPECT_CALL(*mock_transport_,
+              UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
+  EXPECT_CALL(
+      *mock_transport_,
+      CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
+                       kHeaders, _, _, _));
+
+  proxy_ = CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, kDnsServers,
+                                mock_transport_);
+  EXPECT_NE(proxy_, nullptr);
+  proxy_->SendRequest(base::DoNothing());
+}
+
+TEST_F(CapportProxyTestWithMockTransport, SendRequestWithErrorCallback) {
+  proxy_->SendRequest(base::DoNothing());
+
+  // Send the metric when the error callback of the request is called.
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                                      Metrics::kCapportRequestError))
+      .Times(1);
+
+  brillo::ErrorPtr error = brillo::Error::Create(FROM_HERE, "", "", "");
+  proxy_->OnRequestErrorForTesting(3, error.get());
+}
+
+TEST_F(CapportProxyTestWithMockTransport, SendRequestWithErrorResponse) {
+  proxy_->SendRequest(base::DoNothing());
+
+  // Send the metric when the success callback of the request is called with
+  // a failure response.
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricCapportQueryResult,
+                                      Metrics::kCapportResponseError))
+      .Times(1);
+
+  auto response = std::make_unique<brillo::http::Response>(nullptr);
+  ASSERT_FALSE(response->IsSuccessful());
+  proxy_->OnRequestSuccessForTesting(3, std::move(response));
 }
 
 }  // namespace shill
