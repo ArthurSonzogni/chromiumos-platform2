@@ -60,7 +60,10 @@ void EventAggregator::AddObserver(
   SendEventCategoryToUMA(category);
   switch (category) {
     case mojom::EventCategoryEnum::kUnmappedEnumField:
-      LOG(FATAL) << "Got UnmappedEnumField";
+      LOG(INFO) << "Got unmapped EventCategoryEnum";
+      observer.ResetWithReason(/*reason=*/0,
+                               "Event category is not recognized");
+      break;
     case mojom::EventCategoryEnum::kUsb:
       udev_events_->AddUsbObserver(std::move(observer));
       break;
