@@ -653,6 +653,7 @@ if (use.test) {
   executable("libpolicy_tests") {
     sources = [
       "install_attributes/mock_install_attributes_reader.cc",
+      "policy/tests/crypto_helpers.cc",
       "policy/tests/device_local_account_policy_util_test.cc",
       "policy/tests/device_policy_impl_test.cc",
       "policy/tests/libpolicy_test.cc",
@@ -778,7 +779,10 @@ if (use.fuzzer) {
   }
 
   executable("libbrillo_policy_device_policy_impl_fuzzer") {
-    sources = [ "policy/tests/device_policy_impl_fuzzer.cc" ]
+    sources = [
+      "policy/tests/crypto_helpers.cc",
+      "policy/tests/device_policy_impl_fuzzer.cc",
+    ]
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     pkg_deps = [ "libchrome" ]
     include_dirs = [ "../libbrillo" ]

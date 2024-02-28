@@ -20,25 +20,9 @@
 #include <openssl/rsa.h>
 
 #include "policy/device_policy_impl.h"
+#include "policy/tests/crypto_helpers.h"
 
 namespace {
-
-void GenerateRsaKey(crypto::ScopedEVP_PKEY& pkey, brillo::Blob& key_spki_der) {
-  crypto::ScopedEVP_PKEY_CTX pkey_context(
-      EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
-  CHECK(pkey_context);
-  CHECK(EVP_PKEY_keygen_init(pkey_context.get()));
-  CHECK(EVP_PKEY_CTX_set_rsa_keygen_bits(pkey_context.get(), 2048));
-  EVP_PKEY* pkey_raw = nullptr;
-  CHECK(EVP_PKEY_keygen(pkey_context.get(), &pkey_raw));
-  pkey.reset(pkey_raw);
-  // Obtain the DER-encoded Subject Public Key Info.
-  const int key_spki_der_length = i2d_PUBKEY(pkey.get(), nullptr);
-  CHECK_GT(key_spki_der_length, 0);
-  key_spki_der.resize(key_spki_der_length);
-  uint8_t* key_spki_der_buffer = key_spki_der.data();
-  CHECK(i2d_PUBKEY(pkey.get(), &key_spki_der_buffer) == key_spki_der.size());
-}
 
 // Performs initialization and holds state that's shared across all invocations
 // of the fuzzer.
@@ -48,18 +32,18 @@ class Environment {
     base::CommandLine::Init(0, nullptr);
     // Suppress log spam from the code-under-test.
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
-    GenerateRsaKey(pkey_, key_spki_der_);
+
+    key_pair_ = policy::GenerateRsaKeyPair();
   }
 
   Environment(const Environment&) = delete;
   Environment& operator=(const Environment&) = delete;
 
-  const crypto::ScopedEVP_PKEY& pkey() const { return pkey_; }
-  const brillo::Blob& key_spki_der() const { return key_spki_der_; }
+  const crypto::ScopedEVP_PKEY& pkey() const { return key_pair_.private_key; }
+  const brillo::Blob& key_spki_der() const { return key_pair_.public_key; }
 
  private:
-  crypto::ScopedEVP_PKEY pkey_;
-  brillo::Blob key_spki_der_;
+  policy::KeyPair key_pair_;
 };
 
 std::string GeneratePolicyFileName(FuzzedDataProvider& fuzzed_data_provider) {
@@ -77,25 +61,6 @@ std::string GeneratePolicyFileName(FuzzedDataProvider& fuzzed_data_provider) {
     file_name += c;
   }
   return file_name;
-}
-
-brillo::Blob SignData(const crypto::ScopedEVP_PKEY& pkey,
-                      const brillo::Blob& data) {
-  CHECK(pkey);
-
-  crypto::ScopedEVP_MD_CTX ctx(EVP_MD_CTX_new());
-  CHECK(ctx);
-
-  CHECK(EVP_SignInit(ctx.get(), EVP_sha1()));
-  CHECK(EVP_SignUpdate(ctx.get(), data.data(), data.size()));
-
-  brillo::Blob signature(EVP_PKEY_size(pkey.get()));
-  unsigned int signature_size = 0;
-  CHECK(
-      EVP_SignFinal(ctx.get(), signature.data(), &signature_size, pkey.get()));
-  signature.resize(signature_size);
-
-  return signature;
 }
 
 }  // namespace
@@ -137,7 +102,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
 
     brillo::Blob policy_data = proto_generator.Generate();
-    brillo::Blob signature = SignData(env.pkey(), policy_data);
+    brillo::Blob signature =
+        policy::SignData(brillo::BlobToString(policy_data), *env.pkey());
 
     brillo::Blob result = brillo::FuzzedProtoGenerator(
                               {std::move(policy_data), std::move(signature)},
