@@ -683,4 +683,41 @@ TEST_F(DevicePolicyImplTest, GetDeviceExtendedAutoUpdateEnabled_Unset) {
   EXPECT_FALSE(device_policy_.GetDeviceExtendedAutoUpdateEnabled());
 }
 
+TEST_F(DevicePolicyImplTest, MetricsEnabledReturnsTrueIfTrueIsSet) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_metrics_enabled()->set_metrics_enabled(true);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  EXPECT_THAT(device_policy_.GetMetricsEnabled(), testing::Optional(true));
+}
+
+TEST_F(DevicePolicyImplTest, MetricsEnabledReturnsFalseIfFalseIsSet) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_metrics_enabled()->set_metrics_enabled(false);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  EXPECT_THAT(device_policy_.GetMetricsEnabled(), testing::Optional(false));
+}
+
+TEST_F(DevicePolicyImplTest, MetricsEnabledDefaultsToTrueOnEnterpriseManaged) {
+  em::PolicyData policy_data;
+  policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  EXPECT_THAT(device_policy_.GetMetricsEnabled(), testing::Optional(true));
+}
+
+TEST_F(DevicePolicyImplTest, MetricsEnabledDefaultsIsUnsetIfNotManaged) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.clear_metrics_enabled();
+
+  InitializePolicy(/*device_mode=*/nullptr, device_policy_proto);
+
+  EXPECT_EQ(device_policy_.GetMetricsEnabled(), std::nullopt);
+}
+
 }  // namespace policy

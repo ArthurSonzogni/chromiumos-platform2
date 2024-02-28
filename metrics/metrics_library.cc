@@ -274,21 +274,22 @@ bool MetricsLibrary::AreMetricsEnabled() {
     if (policy_provider_->device_policy_is_loaded())
       device_policy = &policy_provider_->GetDevicePolicy();
 
-    // If policy couldn't be loaded or the metrics policy is not set, default to
-    // enabled for enterprise-enrolled devices, cf. https://crbug/456186, or
+    // If policy couldn't be loaded or the metrics policy is not set,
     // respect the consent file if it is present for migration purposes. In all
     // other cases, default to disabled.
     // TODO(pastarmovj)
     std::string id_unused;
     bool metrics_enabled = false;
-    bool metrics_policy = false;
-    if (device_policy && device_policy->GetMetricsEnabled(&metrics_policy)) {
-      metrics_enabled = metrics_policy;
-      VLOG(2) << "AreMetricsEnabled: " << metrics_enabled << " (device policy)";
-    } else if (device_policy && device_policy->IsEnterpriseManaged()) {
-      metrics_enabled = true;
-      VLOG(2) << "AreMetricsEnabled: 1 (enterprise managed)";
-    } else {
+    std::optional<bool> policy_metrics_enabled = std::nullopt;
+
+    if (device_policy) {
+      policy_metrics_enabled = device_policy->GetMetricsEnabled();
+      if (policy_metrics_enabled.has_value()) {
+        metrics_enabled = policy_metrics_enabled.value();
+      }
+    }
+
+    if (!policy_metrics_enabled.has_value()) {
       metrics_enabled = ConsentId(&id_unused);
       VLOG(2) << "AreMetricsEnabled: " << metrics_enabled
               << "(consent ID file)";
