@@ -41,9 +41,10 @@ class BalloonBlockerTest : public ::testing::Test {
   void SetBlockPriorityTo(ResizePriority priority) {
     // Setting a specific block priority means working up to it 1 priority at a
     // time.
-    for (size_t i = 0; i < 20; i++) {
-      balloon_blocker_->TryResize({priority, 1});
-      balloon_blocker_->TryResize({priority, -1});
+    for (size_t i = LowestResizePriority(); i >= priority; i--) {
+      ResizePriority current_priority = static_cast<ResizePriority>(i);
+      balloon_blocker_->TryResize({current_priority, 1});
+      balloon_blocker_->TryResize({current_priority, -1});
     }
   }
 
@@ -123,7 +124,7 @@ TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
 
   SetBlockPriorityTo(ResizePriority::kCachedApp);
 
-  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+  ASSERT_LE(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
                                                       base::TimeTicks::Now()),
             ResizePriority::kCachedApp);
 
@@ -131,7 +132,7 @@ TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
   // expired.
   task_environment_.FastForwardBy(base::Milliseconds(999));
 
-  ASSERT_LT(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+  ASSERT_LE(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
                                                       base::TimeTicks::Now()),
             ResizePriority::kCachedApp);
 
@@ -161,6 +162,25 @@ TEST_F(BalloonBlockerTest, TestHighPriorityBlockDuration) {
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
                                                       base::TimeTicks::Now()),
             ResizePriority::kPerceptibleApp);
+}
+
+TEST_F(BalloonBlockerTest, TestSuddenHighPriorityDoesNotBlockForLong) {
+  for (size_t i = 0; i < 20; i++) {
+    balloon_blocker_->TryResize({ResizePriority::kBalloonStall, 1});
+    balloon_blocker_->TryResize({ResizePriority::kBalloonStall, -1});
+  }
+
+  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                      base::TimeTicks::Now()),
+            ResizePriority::kInvalid);
+
+  // Since a series of high priority inflations and deflations were made, they
+  // should only have blocked for the high priority block duration.
+  task_environment_.FastForwardBy(base::Milliseconds(200));
+
+  ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
+                                                      base::TimeTicks::Now()),
+            LowestResizePriority());
 }
 
 TEST_F(BalloonBlockerTest, TestPriorityFallback) {

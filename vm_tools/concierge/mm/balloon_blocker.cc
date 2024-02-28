@@ -177,6 +177,13 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
   RequestList& list = request_lists_[request.GetDirection()];
   ResizePriority requested_priority = request.GetPriority();
 
+  base::TimeDelta block_duration = high_priority_block_duration_;
+
+  // Low priorities have a different block duration.
+  if (requested_priority >= kLowPriorityBlockDurationCutoff) {
+    block_duration = low_priority_block_duration_;
+  }
+
   // Resize requests can only beat the opposite blocker by 1 level at a time, so
   // cap the priority to the lowest unblocked priority.
   ResizePriority lowest_unblocked_priority =
@@ -187,13 +194,6 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
   if (requested_priority < lowest_unblocked_priority &&
       requested_priority > ResizePriority::kBalloonStall) {
     requested_priority = lowest_unblocked_priority;
-  }
-
-  base::TimeDelta block_duration = high_priority_block_duration_;
-
-  // Low priorities have a different block duration.
-  if (requested_priority >= kLowPriorityBlockDurationCutoff) {
-    block_duration = low_priority_block_duration_;
   }
 
   // Block at the adjusted requested priority.
