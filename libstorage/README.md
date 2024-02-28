@@ -1,4 +1,4 @@
-# libstroage
+# libstorage
 
 libstorage contains ChromeOS specific storage primitives:
 
