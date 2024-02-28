@@ -8,6 +8,7 @@ source_set("utils") {
     "edid.cc",
     "evdev_utils.cc",
     "libevdev_wrapper_impl.cc",
+    "ndt_client.cc",
     "psr_cmd.cc",
   ]
   public_pkg_deps = [
@@ -16,7 +17,11 @@ source_set("utils") {
     "libevdev",
     "libmojo",
   ]
-  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+  pkg_deps = [ "libndt7" ]
+  public_deps = [
+    "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
   deps = [ "//diagnostics/base" ]
 }
 
@@ -25,17 +30,20 @@ if (use.test) {
     sources = [
       "edid_test.cc",
       "evdev_utils_test.cc",
+      "ndt_client_test.cc",
       "psr_cmd_test.cc",
     ]
     pkg_deps = [
       "libchrome",
       "libchrome-test",
       "libevdev",
+      "libndt7",
     ]
     deps = [
       ":utils",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test_support",
+      "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }

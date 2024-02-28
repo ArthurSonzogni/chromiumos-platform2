@@ -39,6 +39,7 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
@@ -117,6 +118,8 @@ constexpr char kTouchpadFetcher[] = "touchpad_fetcher-seccomp.policy";
 constexpr char kI2CRead[] = "ec_i2cread-seccomp.policy";
 // SECCOMP policy for urandom.
 constexpr char kUrandom[] = "urandom-seccomp.policy";
+// SECCOMP policy for running ndt.
+constexpr char kNdt[] = "ndt-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1122,6 +1125,33 @@ void Executor::RunUrandom(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control_receiver)));
+}
+
+void Executor::RunNetworkBandwidthTest(
+    ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+    mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
+        observer,
+    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+        process_control,
+    RunNetworkBandwidthTestCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kNdt,
+      SandboxedProcess::Options{
+          .readonly_mount_points = {paths::run::kDnsProxy.ToFull()},
+          .enter_network_namespace = false,
+      });
+  delegate->remote()->RunNetworkBandwidthTest(
+      type, std::move(observer),
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
+                                                  std::nullopt));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
+
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control)));
 }
 
 }  // namespace diagnostics

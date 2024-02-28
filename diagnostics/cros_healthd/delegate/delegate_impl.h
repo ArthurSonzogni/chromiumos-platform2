@@ -82,6 +82,11 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) override;
   void RunUrandom(base::TimeDelta exec_duration,
                   RunUrandomCallback callback) override;
+  void RunNetworkBandwidthTest(
+      ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+      mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
+          observer,
+      RunNetworkBandwidthTestCallback callback) override;
 
  private:
   void GetConnectedExternalDisplayConnectorsHelper(

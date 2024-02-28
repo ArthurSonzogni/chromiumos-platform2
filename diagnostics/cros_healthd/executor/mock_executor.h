@@ -215,6 +215,16 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                    process_control_receiver,
                RunUrandomCallback callback),
               (override));
+  MOCK_METHOD(
+      void,
+      RunNetworkBandwidthTest,
+      (ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+       mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
+           observer,
+       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+           process_control,
+       RunNetworkBandwidthTestCallback callback),
+      (override));
 };
 
 }  // namespace diagnostics

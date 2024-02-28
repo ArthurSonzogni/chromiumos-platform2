@@ -221,4 +221,16 @@ interface Delegate {
   RunUrandom(
       ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration)
       => (bool passed);
+
+  // Run a network bandwidth test.
+  //
+  // The request:
+  // * |type| - The test type. Either upload or download.
+  // * |observer| - The observer to notify client of the current speed.
+  //
+  // The response:
+  // * |average_speed| - Returns the speed in Kbps or null if failed.
+  RunNetworkBandwidthTest(NetworkBandwidthTestType type,
+                          pending_remote<NetworkBandwidthObserver> observer)
+      => (double? average_speed);
 };

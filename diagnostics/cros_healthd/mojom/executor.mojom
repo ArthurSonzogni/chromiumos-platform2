@@ -64,6 +64,16 @@ enum StressAppTestType {
   kCpuCache = 1,
 };
 
+// An enumeration of network bandwidth test type.
+//
+// NextMinVersion: 1, NextIndex: 2
+enum NetworkBandwidthTestType {
+  // Download test.
+  kDownload = 0,
+  // Upload test.
+  kUpload = 1,
+};
+
 // Control the lifecycle of a child process of executor.
 interface ProcessControl {
   // Get a file descriptor to the stdout output of the process.
@@ -106,6 +116,11 @@ interface StylusGarageObserver {
 interface StylusObserver {
   OnTouch(StylusTouchEvent touch_event);
   OnConnected(StylusConnectedEvent connected_event);
+};
+
+// Implemented by clients who desire network bandwidth notifications.
+interface NetworkBandwidthObserver {
+  OnProgress(double speed_kbps, double percentage);
 };
 
 // File stat as returned by `Executor::GetFileInfo`. This is not a full list of
@@ -554,4 +569,18 @@ interface Executor {
       ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
       pending_receiver<ProcessControl> process_control)
       => (bool passed);
+
+  // Run a network bandwidth test.
+  //
+  // The request:
+  // * |type| - The test type. Either upload or download.
+  // * |observer| - The observer to notify client of the current speed.
+  // * |process_control| - Used to control and stop the running process.
+  //
+  // The response:
+  // * |average_speed| - Returns the speed in Kbps or null if failed.
+  RunNetworkBandwidthTest(NetworkBandwidthTestType type,
+                          pending_remote<NetworkBandwidthObserver> observer,
+                          pending_receiver<ProcessControl> process_control)
+      => (double? average_speed);
 };

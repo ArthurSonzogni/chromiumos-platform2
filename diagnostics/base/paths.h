@@ -29,6 +29,13 @@ VAR_(PATH_("usr", "bin", "mmc"), kMmc);
 
 }  // namespace usr
 
+namespace run {
+
+// Used to resolve host name.
+VAR_(PATH_("run", "dns-proxy"), kDnsProxy);
+
+}  // namespace run
+
 namespace cros_config {
 
 VAR_(PATH_("run", "chromeos-config", "v1"), kRoot);

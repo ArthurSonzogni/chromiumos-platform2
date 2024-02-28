@@ -22,6 +22,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/udev/udev.h>
 #include <chromeos/ec/ec_commands.h>
@@ -60,6 +61,7 @@
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/ndt_client.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -813,6 +815,19 @@ void DelegateImpl::RunUrandom(base::TimeDelta exec_duration,
   }
 
   std::move(callback).Run(true);
+}
+
+void DelegateImpl::RunNetworkBandwidthTest(
+    mojom::NetworkBandwidthTestType type,
+    mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
+    RunNetworkBandwidthTestCallback callback) {
+  // There is no issue with leaking the thread pointer because the process will
+  // be terminated after the posted task is finished.
+  auto ndt_thread = new base::Thread("healthd_delegate_ndt_thread");
+  CHECK(ndt_thread->Start()) << "Failed to start ndt thread.";
+  ndt_thread->task_runner()->PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(&RunNdtTest, type, std::move(observer)),
+      std::move(callback));
 }
 
 }  // namespace diagnostics
