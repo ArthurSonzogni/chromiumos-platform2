@@ -196,7 +196,7 @@ TEST_F(DevCheckBlockTest, DevSWBoot) {
   ASSERT_TRUE(vpd_->WriteValues(vpd::VpdRw, {{"block_devmode", "1"}}));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_EQ(PathExists(dev_mode_file), false);
+  EXPECT_FALSE(PathExists(dev_mode_file));
 }
 
 TEST_F(DevCheckBlockTest, VpdCrosSysBlockDev) {
@@ -207,7 +207,7 @@ TEST_F(DevCheckBlockTest, VpdCrosSysBlockDev) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_EQ(PathExists(dev_mode_file), true);
+  EXPECT_TRUE(PathExists(dev_mode_file));
 }
 
 TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
@@ -218,7 +218,7 @@ TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
-  EXPECT_EQ(PathExists(dev_mode_file), true);
+  EXPECT_TRUE(PathExists(dev_mode_file));
 }
 
 class TPMTest : public ::testing::Test {
@@ -254,7 +254,7 @@ TEST_F(TPMTest, OwnedTrue) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), true);
+  EXPECT_TRUE(startup_->IsTPMOwned());
 }
 
 TEST_F(TPMTest, OwnedFalse) {
@@ -262,14 +262,14 @@ TEST_F(TPMTest, OwnedFalse) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillOnce(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_FALSE(startup_->IsTPMOwned());
 }
 
 TEST_F(TPMTest, OwnedUnknown) {
   EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
   EXPECT_CALL(*tlcl_, GetOwnership(_)).WillOnce(Return(1));
   EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), true);
+  EXPECT_TRUE(startup_->IsTPMOwned());
 }
 
 TEST_F(TPMTest, NeedsClobberTPMOwned) {
@@ -277,7 +277,7 @@ TEST_F(TPMTest, NeedsClobberTPMOwned) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+  EXPECT_FALSE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 TEST_F(TPMTest, NeedsClobberTPMNotOwnedEmptyDisk) {
@@ -285,7 +285,7 @@ TEST_F(TPMTest, NeedsClobberTPMNotOwnedEmptyDisk) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillOnce(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+  EXPECT_FALSE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 #if !USE_TPM2
@@ -296,7 +296,7 @@ TEST_F(TPMTest, NeedsClobberPreservationFile) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_FALSE(startup_->IsTPMOwned());
   base::FilePath preservation_file = base_dir.Append("preservation_request");
   ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
   struct stat st;
@@ -307,7 +307,7 @@ TEST_F(TPMTest, NeedsClobberPreservationFile) {
   ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
   st.st_uid = getuid();
   startup_dep_->SetStatResultForPath(cryptohome_key_file, st);
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+  EXPECT_FALSE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
@@ -316,7 +316,7 @@ TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_FALSE(startup_->IsTPMOwned());
   base::FilePath preservation_file = base_dir.Append("preservation_request");
   ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
   struct stat st;
@@ -327,7 +327,7 @@ TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
   ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
   st.st_uid = getuid();
   startup_dep_->SetStatResultForPath(cryptohome_key_file, st);
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+  EXPECT_TRUE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 #endif  // !USE_TPM2
@@ -338,14 +338,14 @@ TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_FALSE(startup_->IsTPMOwned());
   struct stat st;
   base::FilePath cryptohome_key_file =
       base_dir.Append("home/.shadow/cryptohome.key");
   ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
   st.st_uid = getuid();
   startup_dep_->SetStatResultForPath(cryptohome_key_file, st);
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+  EXPECT_TRUE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 TEST_F(TPMTest, NeedsClobberNeedFinalization) {
@@ -354,14 +354,14 @@ TEST_F(TPMTest, NeedsClobberNeedFinalization) {
   EXPECT_CALL(*tlcl_, GetOwnership(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
   EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_FALSE(startup_->IsTPMOwned());
   struct stat st;
   base::FilePath need_finalization_file =
       base_dir.Append("encrypted.needs-finalization");
   ASSERT_TRUE(CreateDirAndWriteFile(need_finalization_file, "0"));
   st.st_uid = getuid();
   startup_dep_->SetStatResultForPath(need_finalization_file, st);
-  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+  EXPECT_TRUE(startup_->NeedsClobberWithoutDevModeFile());
 }
 
 TEST_F(TPMTest, PcrExtended) {
@@ -389,7 +389,7 @@ TEST_F(TPMTest, PcrExtended) {
     EXPECT_CALL(*tlcl_, Close()).Times(0);
   }
 
-  EXPECT_EQ(startup_->ExtendPCRForVersionAttestation(), true);
+  EXPECT_TRUE(startup_->ExtendPCRForVersionAttestation());
 }
 
 class StatefulWipeTest : public ::testing::Test {
@@ -796,7 +796,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
           true);
 
   bool res = mount_helper_->MountVarAndHomeChronosEncrypted();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
@@ -815,7 +815,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
           true);
 
   bool res = mount_helper_->MountVarAndHomeChronosEncrypted();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 class DoMountTest : public ::testing::Test {
@@ -844,7 +844,7 @@ TEST_F(DoMountTest, StandardMountHelper) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
@@ -865,7 +865,7 @@ TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
   std::string sys_key_log_out;
   base::ReadFileToString(log_file, &sys_key_log_out);
   EXPECT_EQ(sys_key_log_out, "Opt not to create a system key in advance.");
@@ -886,7 +886,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
@@ -901,7 +901,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
   std::string clobber_log_out;
   base::ReadFileToString(clobber_log_, &clobber_log_out);
   EXPECT_EQ(clobber_log_out, "");
@@ -927,13 +927,13 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
   std::string clobber_log_out;
   base::ReadFileToString(clobber_log_, &clobber_log_out);
   EXPECT_EQ(clobber_log_out,
             "Failed mounting var and home/chronos; re-created.");
-  EXPECT_EQ(base::PathExists(corrupted_enc.Append("encrypted.test1")), true);
-  EXPECT_EQ(base::PathExists(corrupted_enc.Append("encrypted.test2")), true);
+  EXPECT_TRUE(base::PathExists(corrupted_enc.Append("encrypted.test1")));
+  EXPECT_TRUE(base::PathExists(corrupted_enc.Append("encrypted.test2")));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntVar) {
@@ -946,7 +946,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntVar) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
@@ -964,7 +964,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
@@ -985,7 +985,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
@@ -999,7 +999,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
@@ -1016,7 +1016,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
@@ -1035,7 +1035,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
           platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful,
           true);
   bool res = mount_helper_->DoMountVarAndHomeChronos();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 class IsVarFullTest : public ::testing::Test {
@@ -1068,7 +1068,7 @@ class IsVarFullTest : public ::testing::Test {
 
 TEST_F(IsVarFullTest, StatvfsFailure) {
   bool res = startup_->IsVarFull();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(IsVarFullTest, Failure) {
@@ -1081,7 +1081,7 @@ TEST_F(IsVarFullTest, Failure) {
   startup_dep_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
-  EXPECT_EQ(res, false);
+  EXPECT_FALSE(res);
 }
 
 TEST_F(IsVarFullTest, TrueBavail) {
@@ -1094,7 +1094,7 @@ TEST_F(IsVarFullTest, TrueBavail) {
   startup_dep_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 TEST_F(IsVarFullTest, TrueFavail) {
@@ -1107,7 +1107,7 @@ TEST_F(IsVarFullTest, TrueFavail) {
   startup_dep_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
-  EXPECT_EQ(res, true);
+  EXPECT_TRUE(res);
 }
 
 class DeviceSettingsTest : public ::testing::Test {
@@ -1149,8 +1149,8 @@ TEST_F(DeviceSettingsTest, OldPathEmpty) {
   ASSERT_TRUE(CreateDirAndWriteFile(devicesettings_test, "test"));
 
   startup_->MoveToLibDeviceSettings();
-  EXPECT_EQ(base::DirectoryExists(whitelist_), false);
-  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+  EXPECT_FALSE(base::DirectoryExists(whitelist_));
+  EXPECT_TRUE(base::PathExists(devicesettings_test));
 }
 
 TEST_F(DeviceSettingsTest, NewPathEmpty) {
@@ -1161,9 +1161,9 @@ TEST_F(DeviceSettingsTest, NewPathEmpty) {
   base::FilePath devicesettings_test = devicesettings_.Append("test");
 
   startup_->MoveToLibDeviceSettings();
-  EXPECT_EQ(base::DirectoryExists(whitelist_), false);
-  EXPECT_EQ(base::PathExists(whitelist_test), false);
-  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+  EXPECT_FALSE(base::DirectoryExists(whitelist_));
+  EXPECT_FALSE(base::PathExists(whitelist_test));
+  EXPECT_TRUE(base::PathExists(devicesettings_test));
 }
 
 TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
@@ -1175,9 +1175,9 @@ TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
   ASSERT_TRUE(CreateDirAndWriteFile(devicesettings_test, "test_d"));
 
   startup_->MoveToLibDeviceSettings();
-  EXPECT_EQ(base::DirectoryExists(whitelist_), true);
-  EXPECT_EQ(base::PathExists(whitelist_test), true);
-  EXPECT_EQ(base::PathExists(devicesettings_test), true);
+  EXPECT_TRUE(base::DirectoryExists(whitelist_));
+  EXPECT_TRUE(base::PathExists(whitelist_test));
+  EXPECT_TRUE(base::PathExists(devicesettings_test));
 }
 
 class DaemonStoreTest : public ::testing::Test {
@@ -1569,10 +1569,10 @@ TEST_F(RestorePreservedPathsTest, PopPaths) {
   ASSERT_TRUE(CreateDirAndWriteFile(wifi_cred_preserve.Append("file2"), "1"));
 
   startup_->RestorePreservedPaths();
-  EXPECT_EQ(PathExists(libservo_path.Append("file1")), true);
-  EXPECT_EQ(PathExists(wifi_cred_path.Append("file2")), true);
-  EXPECT_EQ(PathExists(libservo_preserve.Append("file1")), false);
-  EXPECT_EQ(PathExists(wifi_cred_preserve.Append("file2")), false);
+  EXPECT_TRUE(PathExists(libservo_path.Append("file1")));
+  EXPECT_TRUE(PathExists(wifi_cred_path.Append("file2")));
+  EXPECT_FALSE(PathExists(libservo_preserve.Append("file1")));
+  EXPECT_FALSE(PathExists(wifi_cred_preserve.Append("file2")));
 }
 
 }  // namespace startup

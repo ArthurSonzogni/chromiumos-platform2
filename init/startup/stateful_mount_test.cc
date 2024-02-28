@@ -280,7 +280,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
 };
 
 TEST_F(DevUpdateStatefulTest, NoUpdateAvailable) {
-  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
 }
 
 TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
@@ -305,16 +305,16 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
       CreateDirAndWriteFile(developer_target.Append("dev_target_file"), "1"));
   ASSERT_TRUE(CreateDirAndWriteFile(var_target.Append("var_target_file"), "1"));
 
-  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
 
-  EXPECT_EQ(PathExists(developer_new.Append("dev_new_file")), false);
-  EXPECT_EQ(PathExists(var_new.Append("var_new_file")), false);
-  EXPECT_EQ(PathExists(developer_target.Append("dev_target_file")), false);
-  EXPECT_EQ(PathExists(var_target.Append("var_target_file")), false);
+  EXPECT_FALSE(PathExists(developer_new.Append("dev_new_file")));
+  EXPECT_FALSE(PathExists(var_new.Append("var_new_file")));
+  EXPECT_FALSE(PathExists(developer_target.Append("dev_target_file")));
+  EXPECT_FALSE(PathExists(var_target.Append("var_target_file")));
 
-  EXPECT_EQ(PathExists(stateful_update_file), false);
-  EXPECT_EQ(PathExists(var_target.Append("var_new_file")), true);
-  EXPECT_EQ(PathExists(developer_target.Append("dev_new_file")), true);
+  EXPECT_FALSE(PathExists(stateful_update_file));
+  EXPECT_TRUE(PathExists(var_target.Append("var_new_file")));
+  EXPECT_TRUE(PathExists(developer_target.Append("dev_new_file")));
 
   std::string message = "'Updating from " + developer_new.value() + " && " +
                         var_new.value() + ".'";
@@ -353,13 +353,13 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(CreateDirAndWriteFile(test, "1"));
   ASSERT_TRUE(CreateDirAndWriteFile(preserve_test, "1"));
 
-  EXPECT_EQ(stateful_mount_->DevUpdateStatefulPartition(""), true);
-  EXPECT_EQ(PathExists(developer_target.Append("dev_target_file")), true);
-  EXPECT_EQ(PathExists(var_target.Append("var_target_file")), true);
-  EXPECT_EQ(PathExists(labmachine), true);
-  EXPECT_EQ(PathExists(test_dir), false);
-  EXPECT_EQ(PathExists(preserve_test), true);
-  EXPECT_EQ(PathExists(empty), false);
+  EXPECT_TRUE(stateful_mount_->DevUpdateStatefulPartition(""));
+  EXPECT_TRUE(PathExists(developer_target.Append("dev_target_file")));
+  EXPECT_TRUE(PathExists(var_target.Append("var_target_file")));
+  EXPECT_TRUE(PathExists(labmachine));
+  EXPECT_FALSE(PathExists(test_dir));
+  EXPECT_TRUE(PathExists(preserve_test));
+  EXPECT_FALSE(PathExists(empty));
 
   std::string message = "'Stateful update did not find " +
                         developer_new.value() + " & " + var_new.value() +
@@ -449,14 +449,14 @@ TEST_F(DevGatherLogsTest, PreserveLogs) {
   st.st_mode = S_IFREG;
   startup_dep_->SetStatResultForPath(lab_preserve_logs_, st);
 
-  EXPECT_EQ(PathExists(home_chronos), true);
+  EXPECT_TRUE(PathExists(home_chronos));
 
   stateful_mount_->DevGatherLogs(base_dir);
 
-  EXPECT_EQ(PathExists(prior_test1), true);
-  EXPECT_EQ(PathExists(prior_test2), true);
-  EXPECT_EQ(PathExists(prior_standalone), true);
-  EXPECT_EQ(PathExists(prior_log1), true);
-  EXPECT_EQ(PathExists(standalone), true);
-  EXPECT_EQ(PathExists(lab_preserve_logs_), false);
+  EXPECT_TRUE(PathExists(prior_test1));
+  EXPECT_TRUE(PathExists(prior_test2));
+  EXPECT_TRUE(PathExists(prior_standalone));
+  EXPECT_TRUE(PathExists(prior_log1));
+  EXPECT_TRUE(PathExists(standalone));
+  EXPECT_FALSE(PathExists(lab_preserve_logs_));
 }

@@ -25,8 +25,8 @@
 
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/mock_startup_dep_impl.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
+#include "init/startup/startup_dep_impl.h"
 
 using testing::_;
 using testing::ByMove;
@@ -167,7 +167,7 @@ TEST_F(SecurityManagerTest, EmptyAfter_v5_9) {
       base_dir_.Append("sys/kernel/security/safesetid/uid_allowlist_policy");
   ASSERT_TRUE(CreateDirAndWriteFile(mgmt_policies, "#AllowList"));
 
-  EXPECT_EQ(startup::ConfigureProcessMgmtSecurity(base_dir_), false);
+  EXPECT_FALSE(startup::ConfigureProcessMgmtSecurity(base_dir_));
 
   std::string allow;
   base::ReadFileToString(mgmt_policies, &allow);
@@ -520,10 +520,10 @@ TEST_F(ExceptionsTest, ExceptionsDirMultiplePaths) {
   EXPECT_NE(allow_contents.find(test_path_2_1.value()), std::string::npos);
   EXPECT_NE(allow_contents.find(test_path_2_2.value()), std::string::npos);
   EXPECT_EQ(allow_contents.find(test_path_1_ignore.value()), std::string::npos);
-  EXPECT_EQ(base::DirectoryExists(test_path_1_1), true);
-  EXPECT_EQ(base::DirectoryExists(test_path_1_2), true);
-  EXPECT_EQ(base::DirectoryExists(test_path_1_ignore), false);
-  EXPECT_EQ(base::DirectoryExists(test_path_2_1), true);
-  EXPECT_EQ(base::DirectoryExists(test_path_2_2), true);
-  EXPECT_EQ(base::DirectoryExists(test_path_2_ignore), false);
+  EXPECT_TRUE(base::DirectoryExists(test_path_1_1));
+  EXPECT_TRUE(base::DirectoryExists(test_path_1_2));
+  EXPECT_FALSE(base::DirectoryExists(test_path_1_ignore));
+  EXPECT_TRUE(base::DirectoryExists(test_path_2_1));
+  EXPECT_TRUE(base::DirectoryExists(test_path_2_2));
+  EXPECT_FALSE(base::DirectoryExists(test_path_2_ignore));
 }
