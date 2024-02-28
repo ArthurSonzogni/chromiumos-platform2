@@ -41,7 +41,8 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     case AuthFactorType::kPin:
       return std::make_unique<PinAuthFactorDriver>(crypto);
     case AuthFactorType::kCryptohomeRecovery:
-      return std::make_unique<CryptohomeRecoveryAuthFactorDriver>(crypto);
+      return std::make_unique<CryptohomeRecoveryAuthFactorDriver>(crypto,
+                                                                  platform);
     case AuthFactorType::kKiosk:
       return std::make_unique<KioskAuthFactorDriver>();
     case AuthFactorType::kSmartCard:

@@ -17,6 +17,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_signalling.h"
@@ -395,7 +396,7 @@ TEST_F(AuthFactorDriverManagerTest, IsDelaySupported) {
 
   EXPECT_THAT(is_delayable(AuthFactorType::kPassword), IsFalse());
   EXPECT_THAT(is_delayable(AuthFactorType::kPin), IsTrue());
-  EXPECT_THAT(is_delayable(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kCryptohomeRecovery), IsTrue());
   EXPECT_THAT(is_delayable(AuthFactorType::kKiosk), IsFalse());
   EXPECT_THAT(is_delayable(AuthFactorType::kSmartCard), IsFalse());
   EXPECT_THAT(is_delayable(AuthFactorType::kLegacyFingerprint), IsFalse());

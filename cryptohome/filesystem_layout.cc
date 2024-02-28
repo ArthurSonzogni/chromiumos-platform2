@@ -45,6 +45,9 @@ constexpr char kLogicalVolumeSnapshotSuffix[] = "-rw";
 
 // Storage for serialized RecoveryId.
 constexpr char kRecoveryIdFile[] = "recovery_id";
+// The path that signals the existence of a CRD connection on sign in screen.
+constexpr char kRecoveryFactorLockPath[] =
+    "/run/cryptohome/crd_detected_on_login_screen";
 
 // Attempt to get an existing salt from the specified path. Returns false if the
 // salt does not exist or is invalid. If the salt does exist but is invalid, it
@@ -286,6 +289,10 @@ base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
   }
   return brillo::cryptohome::home::GetUserPath(obfuscated)
       .Append(kRecoveryIdFile);
+}
+
+base::FilePath GetRecoveryFactorLockPath() {
+  return base::FilePath(kRecoveryFactorLockPath);
 }
 
 bool InitializeFilesystemLayout(libstorage::Platform* platform,

@@ -10,6 +10,8 @@
 #include <set>
 #include <string>
 
+#include <libstorage/platform/platform.h>
+
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
@@ -37,17 +39,21 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
-      public AfDriverNoDelay,
       public AfDriverNoExpiration,
       public AfDriverNoRateLimiter,
       public AfDriverNoKnowledgeFactor {
  public:
-  explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto)
-      : crypto_(crypto) {}
+  explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto,
+                                              libstorage::Platform* platform)
+      : crypto_(crypto), platform_(platform) {}
 
  private:
   bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
+  bool IsDelaySupported() const override;
+  CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
+      const ObfuscatedUsername& username,
+      const AuthFactor& factor) const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
@@ -55,6 +61,7 @@ class CryptohomeRecoveryAuthFactorDriver final
       const CryptohomeRecoveryMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace cryptohome

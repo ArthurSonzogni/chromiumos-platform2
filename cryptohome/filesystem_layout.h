@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
@@ -98,6 +99,10 @@ bool GetPublicMountSalt(libstorage::Platform* platform,
 
 // Gets full path for serialized RecoveryId.
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id);
+
+// Returns the full filename of the path that reports the existence of a CRD on
+// sign in screen.
+base::FilePath GetRecoveryFactorLockPath();
 
 bool InitializeFilesystemLayout(libstorage::Platform* platform,
                                 brillo::SecureBlob* salt);

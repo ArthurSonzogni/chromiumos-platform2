@@ -8,11 +8,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
@@ -22,6 +24,7 @@ namespace {
 constexpr char kPublicKeyStr[] = "1a2b3c4d5e6f";
 
 using ::base::test::TestFuture;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
@@ -29,13 +32,17 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsNull;
 using ::testing::IsTrue;
+using ::testing::NiceMock;
 using ::testing::Optional;
 
-class CryptohomeRecoveryDriverTest : public AuthFactorDriverGenericTest {};
+class CryptohomeRecoveryDriverTest : public AuthFactorDriverGenericTest {
+ protected:
+  NiceMock<libstorage::MockPlatform> platform_;
+};
 
 TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata =
       CreateMetadataWithType<CryptohomeRecoveryMetadata>(
@@ -63,7 +70,7 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
 
 TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNoMetadata) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata =
       CreateMetadataWithType<CryptohomeRecoveryMetadata>();
@@ -90,7 +97,7 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNoMetadata) {
 
 TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNullOpt) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata;
 
@@ -104,7 +111,7 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNullOpt) {
 
 TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithVk) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
@@ -115,7 +122,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithVk) {
 
 TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
@@ -127,7 +134,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
 
 TEST_F(CryptohomeRecoveryDriverTest, SupportedWithVkUssMix) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
@@ -141,7 +148,7 @@ TEST_F(CryptohomeRecoveryDriverTest, SupportedWithVkUssMix) {
 TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
   // Setup
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(false));
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
@@ -151,7 +158,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
 TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
   // Setup
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
@@ -159,7 +166,7 @@ TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, PrepareForAddFails) {
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -171,7 +178,7 @@ TEST_F(CryptohomeRecoveryDriverTest, PrepareForAddFails) {
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, PrepareForAuthFails) {
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -182,22 +189,38 @@ TEST_F(CryptohomeRecoveryDriverTest, PrepareForAuthFails) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
-TEST_F(CryptohomeRecoveryDriverTest, GetDelayFails) {
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+TEST_F(CryptohomeRecoveryDriverTest, GetDelayMaxWhenLocked) {
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
                     CreateMetadataWithType<CryptohomeRecoveryMetadata>(),
                     {.state = CryptohomeRecoveryAuthBlockState()});
 
+  EXPECT_CALL(platform_, FileExists(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(true));
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
-  ASSERT_THAT(delay_in_ms, NotOk());
-  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_max(), IsTrue());
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, GetDelayZeroWhenNotLocked) {
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
+                    CreateMetadataWithType<CryptohomeRecoveryMetadata>(),
+                    {.state = CryptohomeRecoveryAuthBlockState()});
+
+  EXPECT_CALL(platform_, FileExists(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(false));
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, GetExpirationFails) {
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
@@ -211,7 +234,7 @@ TEST_F(CryptohomeRecoveryDriverTest, GetExpirationFails) {
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, CreateCredentialVerifierFails) {
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_, &platform_);
   AuthFactorDriver& driver = recovery_driver;
 
   auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});
