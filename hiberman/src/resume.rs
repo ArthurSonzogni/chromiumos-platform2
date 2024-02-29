@@ -10,14 +10,17 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::mem;
+use std::ops::Sub;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use libchromeos::secure_blob::SecureBlob;
@@ -74,7 +77,7 @@ pub struct ResumeConductor {
     current_user: Option<String>,
     tried_to_resume: bool,
     timestamp_start: Duration,
-    preload_thread: Option<thread::JoinHandle<Result<()>>>,
+    image_preloader: Option<ImageDataPreloader>,
 }
 
 impl ResumeConductor {
@@ -86,7 +89,7 @@ impl ResumeConductor {
             current_user: None,
             tried_to_resume: false,
             timestamp_start: Duration::ZERO,
-            preload_thread: None,
+            image_preloader: None,
         })
     }
 
@@ -179,6 +182,11 @@ impl ResumeConductor {
 
             DBusEvent::AbortRequest { reason } => {
                 info!("hibernate is not available: {reason}");
+
+                if let Some(mut ipl) = self.image_preloader.take() {
+                    ipl.stop()?;
+                }
+
                 return Err(HibernateError::HibernateNotSupportedError(reason).into());
             }
         };
@@ -186,11 +194,8 @@ impl ResumeConductor {
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate
 
-            if let Some(preload_thread) = self.preload_thread.take() {
-                // Wait for the image data preload thread to finish.
-                if let Err(e) = preload_thread.join() {
-                    error!("preloading image data failed: {e:?}");
-                }
+            if let Some(mut ipl) = self.image_preloader.take() {
+                ipl.stop()?;
             }
 
             let volume_manager = VOLUME_MANAGER.read().unwrap();
@@ -308,24 +313,16 @@ impl ResumeConductor {
         let mut powerd_resume =
             PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
 
+        let mut preloader = self.image_preloader.take().unwrap();
+        preloader.stop()?;
+
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
         let start = Instant::now();
         // Load the snapshot image into the kernel
         let image_size = snap_dev.load_image()?;
-        info!("Image loaded with size {}", image_size);
 
-        {
-            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
-            metrics_logger.metrics_send_io_sample("ReadMainImage", image_size, start.elapsed());
-
-            metrics_logger.log_duration_sample(
-                "Platform.Hibernate.ResumeTime.LoadImage",
-                start.elapsed(),
-                DurationMetricUnit::Milliseconds,
-                30000,
-            );
-        }
+        Self::record_image_loading_metrics(image_size, start.elapsed(), &preloader.stats());
 
         powerd_resume.wait_for_hibernate_resume_ready()?;
 
@@ -453,9 +450,48 @@ impl ResumeConductor {
         // Don't fill up more than 33% of the RAM.
         let preload_bytes = cmp::min(image_size, (ram_size * 33) / 100);
 
-        self.preload_thread = Some(thread::spawn(move || preload_image_data(preload_bytes)));
+        self.image_preloader = Some(ImageDataPreloader::new(preload_bytes));
 
         Ok(())
+    }
+
+    fn record_image_loading_metrics(
+        image_size: u64,
+        image_load_duration: Duration,
+        preload_stats: &PreloadStats,
+    ) {
+        let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+        metrics_logger.metrics_send_io_sample("ReadMainImage", image_size, image_load_duration);
+
+        metrics_logger.log_duration_sample(
+            "Platform.Hibernate.ResumeTime.LoadImage",
+            image_load_duration,
+            DurationMetricUnit::Milliseconds,
+            30000,
+        );
+
+        let preload_percent = (preload_stats.bytes_preloaded * 100)
+            .checked_div(image_size)
+            .unwrap_or(0);
+
+        debug!(
+            "preloaded {}% of {}MB image",
+            preload_percent,
+            image_size / (1024 * 1024)
+        );
+
+        metrics_logger.log_percent_metric(
+            "Platform.Hibernate.ImagePreload.Percent",
+            preload_percent as usize,
+        );
+
+        metrics_logger.log_metric(
+            "Platform.Hibernate.ImagePreload.Rate",
+            preload_stats.datarate_mbs as isize,
+            0,
+            10000,
+            30,
+        );
     }
 
     // Record the account id of the user that is hibernating.
@@ -490,53 +526,147 @@ impl ResumeConductor {
     }
 }
 
-/// Preloads encrypted hiberimage data from disk. The goal is to
-/// populate the page cache with this data before the user logs in,
-/// to accelerate reading of the decrypted image after the user
-/// logged in.
-///
-/// This function must run a dedicated thread.
-fn preload_image_data(num_bytes: u64) -> Result<()> {
-    let block_dev = {
-        let volume_manager = VOLUME_MANAGER.read().unwrap();
+#[derive(Clone, Copy)]
+struct PreloadStats {
+    bytes_preloaded: u64,
+    datarate_mbs: u32,
+}
 
-        match volume_manager.get_hiberimage_buffer_device()? {
-            Some(block_dev) => block_dev,
-            None => {
-                return Err(anyhow!(
-                    "Could not determine hiberimage buffer device for preloading"
-                ))
-            }
+/// Preloads encrypted hiberimage data from disk in a dedicated thread. The
+/// goal is to populate the page cache with this data before the user logs in,
+/// to accelerate reading of the decrypted image after the user logged in.
+struct ImageDataPreloader {
+    handle: Option<thread::JoinHandle<Result<()>>>,
+    stop_sender: mpsc::SyncSender<()>,
+    stats: Arc<Mutex<PreloadStats>>,
+}
+
+impl ImageDataPreloader {
+    pub fn new(max_preload_bytes: u64) -> ImageDataPreloader {
+        let (sender, receiver) = mpsc::sync_channel(1);
+
+        let stats = Arc::new(Mutex::new(PreloadStats {
+            bytes_preloaded: 0,
+            datarate_mbs: 0,
+        }));
+
+        let stats_clone = Arc::clone(&stats);
+
+        ImageDataPreloader {
+            handle: Some(thread::spawn(move || {
+                Self::preload_data(max_preload_bytes, receiver, stats_clone)
+            })),
+            stop_sender: sender,
+            stats,
         }
-    };
-
-    let f = File::open(&block_dev).context(format!(
-        "Failed to open hiberimage buffer device {}",
-        block_dev.display()
-    ))?;
-
-    debug!(
-        "preloading {}MB of encrypted image data",
-        num_bytes / (1024 * 1024)
-    );
-
-    let mapping = unsafe {
-        libc::mmap(
-            ptr::null_mut(),
-            num_bytes.try_into().unwrap(),
-            libc::PROT_READ,
-            libc::MAP_PRIVATE | libc::MAP_FILE | libc::MAP_POPULATE,
-            f.as_raw_fd(),
-            0,
-        )
-    };
-
-    if mapping == libc::MAP_FAILED {
-        error!("failed to mmap buffer device");
-        return Err(nix::Error::last().into());
     }
 
-    let _ = unsafe { libc::munmap(mapping, num_bytes.try_into().unwrap()) };
+    /// Stops the preload thread.
+    ///
+    /// Returns an error if the preload thread terminated with an error
+    /// or panic.
+    pub fn stop(&mut self) -> Result<()> {
+        let _ = self.stop_sender.try_send(());
 
-    Ok(())
+        let handle = self.handle.take()
+            .context("preload thread is already stopped")?;
+        match handle.join() {
+            Ok(res) => {
+                if let Err(e) = res {
+                    error!("preloading image data failed: {e:?}");
+                }
+            }
+            Err(e) => error!("preload thread panicked: {e:?}"),
+        }
+
+        Ok(())
+    }
+
+    pub fn stats(&self) -> PreloadStats {
+        *self.stats.lock().unwrap()
+    }
+
+    /// Preloads up to a given amount of hibernate image data.
+    ///
+    /// This function is supposed to run in a dedicated thread and can be
+    /// stopped through a channel.
+    fn preload_data(
+        max_preload_bytes: u64,
+        stop_receiver: mpsc::Receiver<()>,
+        stats: Arc<Mutex<PreloadStats>>,
+    ) -> Result<()> {
+        let start = Instant::now();
+
+        let block_dev = {
+            let volume_manager = VOLUME_MANAGER.read().unwrap();
+            volume_manager
+                .get_hiberimage_buffer_device()?
+                .context("Failed to determine hiberimage buffer device for preloading")
+        }?;
+
+        let f = File::open(&block_dev).with_context(|| format!(
+            "Failed to open hiberimage buffer device {}",
+            block_dev.display()
+        ))?;
+
+        debug!(
+            "preloading up to {}MB of encrypted image data",
+            max_preload_bytes / (1024 * 1024)
+        );
+
+        let mut bytes_preloaded = 0;
+        let max_region_size = 128 * 1024 * 1024;
+
+        loop {
+            if stop_receiver.try_recv() != Err(mpsc::TryRecvError::Empty) {
+                debug!("aborting image preload");
+                break;
+            }
+
+            let region_size = cmp::min(max_region_size, max_preload_bytes - bytes_preloaded);
+            Self::preload_region(&f, region_size, bytes_preloaded)
+                .context("Failed to preload image")?;
+
+            bytes_preloaded += region_size;
+
+            if bytes_preloaded == max_preload_bytes {
+                break;
+            }
+        }
+
+        let duration = Instant::now().sub(start);
+
+        let mut stats = stats.lock().unwrap();
+        stats.bytes_preloaded = bytes_preloaded;
+        stats.datarate_mbs = ((bytes_preloaded / (1024 * 1024)) / duration.as_secs()) as u32;
+
+        Ok(())
+    }
+
+    /// Preloads a region of encrypted hibernate image data into the page cache.
+    fn preload_region(file: &File, num_bytes: u64, offset: u64) -> Result<()> {
+        let mapping = unsafe {
+            libc::mmap64(
+                ptr::null_mut(),
+                num_bytes.try_into().unwrap(),
+                libc::PROT_READ,
+                libc::MAP_PRIVATE | libc::MAP_FILE | libc::MAP_POPULATE,
+                file.as_raw_fd(),
+                offset.try_into().unwrap(),
+            )
+        };
+
+        if mapping == libc::MAP_FAILED {
+            error!("failed to mmap buffer device");
+            return Err(nix::Error::last().into());
+        }
+
+        let rc = unsafe { libc::munmap(mapping, num_bytes.try_into().unwrap()) };
+        if rc != 0 {
+            error!("failed to unmap buffer device");
+            return Err(nix::Error::last().into());
+        }
+
+        Ok(())
+    }
 }
