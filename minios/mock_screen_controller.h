@@ -17,7 +17,7 @@ namespace minios {
 class MockScreenControllerInterface : public ScreenControllerInterface {
  public:
   MockScreenControllerInterface() = default;
-  ~MockScreenControllerInterface() = default;
+  ~MockScreenControllerInterface() override = default;
 
   MockScreenControllerInterface(const MockScreenControllerInterface&) = delete;
   MockScreenControllerInterface& operator=(

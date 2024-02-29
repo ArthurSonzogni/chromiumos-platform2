@@ -14,7 +14,7 @@ namespace minios {
 class MockRecoveryInstaller : public RecoveryInstallerInterface {
  public:
   MockRecoveryInstaller() = default;
-  ~MockRecoveryInstaller() = default;
+  ~MockRecoveryInstaller() override = default;
 
   MockRecoveryInstaller(const MockRecoveryInstaller&) = delete;
   MockRecoveryInstaller& operator=(const MockRecoveryInstaller&) = delete;

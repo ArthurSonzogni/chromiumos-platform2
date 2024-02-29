@@ -37,8 +37,10 @@ class KeyReader {
   explicit KeyReader(bool include_usb);
 
   KeyReader(bool include_usb, std::string keyboard_layout);
-
   ~KeyReader();
+
+  KeyReader(const KeyReader&) = delete;
+  KeyReader& operator=(const KeyReader&) = delete;
 
   class Delegate {
    public:

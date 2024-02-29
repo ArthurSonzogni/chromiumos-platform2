@@ -70,7 +70,7 @@ class ShillProxyInterface {
 class ShillProxy : public ShillProxyInterface {
  public:
   explicit ShillProxy(scoped_refptr<dbus::Bus> bus_for_proxies);
-  virtual ~ShillProxy() = default;
+  ~ShillProxy() override = default;
 
   ShillProxy(const ShillProxy&) = delete;
   ShillProxy& operator=(const ShillProxy&) = delete;

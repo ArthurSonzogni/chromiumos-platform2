@@ -16,6 +16,10 @@ namespace minios {
 class MockLogStoreManager : public LogStoreManagerInterface {
  public:
   MockLogStoreManager() = default;
+  ~MockLogStoreManager() override = default;
+
+  MockLogStoreManager(const MockLogStoreManager&) = delete;
+  MockLogStoreManager& operator=(const MockLogStoreManager&) = delete;
 
   MOCK_METHOD(bool,
               Init,

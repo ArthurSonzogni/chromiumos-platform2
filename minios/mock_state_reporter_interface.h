@@ -16,7 +16,7 @@ namespace minios {
 class MockStateReporterInterface : public StateReporterInterface {
  public:
   MockStateReporterInterface() = default;
-  ~MockStateReporterInterface() = default;
+  ~MockStateReporterInterface() override = default;
 
   MockStateReporterInterface(const MockStateReporterInterface&) = delete;
   MockStateReporterInterface& operator=(const MockStateReporterInterface&) =

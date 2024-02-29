@@ -14,6 +14,10 @@ namespace minios {
 class MockMetricsReporter : public MetricsReporterInterface {
  public:
   MockMetricsReporter() = default;
+  ~MockMetricsReporter() override = default;
+
+  MockMetricsReporter(const MockMetricsReporter&) = delete;
+  MockMetricsReporter& operator=(const MockMetricsReporter&) = delete;
 
   MOCK_METHOD(void, RecordNBRStart, (), (override));
   MOCK_METHOD(void, ReportNBRComplete, (), (override));

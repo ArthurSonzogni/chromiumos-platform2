@@ -16,6 +16,10 @@ namespace minios {
 class MockMiniOs : public MiniOsInterface {
  public:
   MockMiniOs() = default;
+  ~MockMiniOs() override = default;
+
+  MockMiniOs(const MockMiniOs&) = delete;
+  MockMiniOs& operator=(const MockMiniOs&) = delete;
 
   MOCK_METHOD(bool,
               GetState,
@@ -39,10 +43,6 @@ class MockMiniOs : public MiniOsInterface {
               StartRecovery,
               (const std::string& in_ssid, const std::string& in_passphrase),
               (override));
-
- private:
-  MockMiniOs(const MockMiniOs&) = delete;
-  MockMiniOs& operator=(const MockMiniOs&) = delete;
 };
 
 }  // namespace minios

@@ -16,6 +16,7 @@ namespace minios {
 class MockShillProxy : public ShillProxyInterface {
  public:
   MockShillProxy() = default;
+  ~MockShillProxy() override = default;
 
   MockShillProxy(const MockShillProxy&) = delete;
   MockShillProxy& operator=(const MockShillProxy&) = delete;

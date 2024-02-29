@@ -16,6 +16,11 @@ namespace minios {
 class MockDrawUtils : public DrawUtils {
  public:
   MockDrawUtils() : DrawUtils(nullptr) {}
+  ~MockDrawUtils() override = default;
+
+  MockDrawUtils(const MockDrawUtils&) = delete;
+  MockDrawUtils& operator=(const MockDrawUtils&) = delete;
+
   MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(bool,
               ShowBox,

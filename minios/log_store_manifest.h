@@ -46,11 +46,10 @@ class LogStoreManifest : public LogStoreManifestInterface {
   LogStoreManifest(base::FilePath disk_path,
                    uint64_t kernel_size,
                    uint64_t partition_size);
+  ~LogStoreManifest() override = default;
 
   LogStoreManifest(const LogStoreManifest&) = delete;
   LogStoreManifest& operator=(const LogStoreManifest&) = delete;
-
-  ~LogStoreManifest() override = default;
 
   bool Generate(const LogManifest::Entry& entry) override;
   std::optional<LogManifest> Retrieve() override;

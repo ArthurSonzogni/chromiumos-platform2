@@ -20,10 +20,10 @@ class Daemon : public brillo::DBusServiceDaemon {
   Daemon();
   ~Daemon() override = default;
 
-  void Start();
-
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
+
+  void Start();
 
  private:
   // |brillo::Daemon| overrides:

@@ -14,6 +14,7 @@ namespace minios {
 class MockUpdateEngineProxy : public UpdateEngineProxy {
  public:
   MockUpdateEngineProxy() : UpdateEngineProxy(nullptr) {}
+  ~MockUpdateEngineProxy() override = default;
 
   MockUpdateEngineProxy(const MockUpdateEngineProxy&) = delete;
   MockUpdateEngineProxy& operator=(const MockUpdateEngineProxy&) = delete;

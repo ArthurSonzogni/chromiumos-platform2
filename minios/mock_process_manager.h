@@ -15,7 +15,7 @@
 class MockProcessManager : public ProcessManagerInterface {
  public:
   MockProcessManager() = default;
-  ~MockProcessManager() = default;
+  ~MockProcessManager() override = default;
 
   MockProcessManager(const MockProcessManager&) = delete;
   MockProcessManager& operator=(const MockProcessManager&) = delete;

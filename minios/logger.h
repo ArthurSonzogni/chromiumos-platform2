@@ -24,7 +24,7 @@ class Logger {
   Logger(std::unique_ptr<DiskUtil> disk_util,
          std::unique_ptr<brillo::Platform> platform,
          const base::FilePath& root_path = base::FilePath(kLogPath));
-  virtual ~Logger() = default;
+  ~Logger() = default;
 
   Logger(const Logger&) = delete;
   Logger& operator=(const Logger&) = delete;

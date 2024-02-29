@@ -81,7 +81,7 @@ class NetworkManager : public NetworkManagerInterface {
   static constexpr base::TimeDelta kScanRetryMsDelay = base::Milliseconds(500);
 
   explicit NetworkManager(std::unique_ptr<ShillProxyInterface> shill_proxy);
-  virtual ~NetworkManager() = default;
+  ~NetworkManager() override = default;
 
   NetworkManager(const NetworkManager&) = delete;
   NetworkManager& operator=(const NetworkManager&) = delete;

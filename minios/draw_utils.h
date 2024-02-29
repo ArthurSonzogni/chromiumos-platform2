@@ -173,7 +173,7 @@ class DrawUtils : public DrawInterface {
       : process_manager_(process_manager),
         screens_path_(root_.Append(kScreens)) {}
   ~DrawUtils() override = default;
-  // Not copyable or movable.
+
   DrawUtils(const DrawUtils&) = delete;
   DrawUtils& operator=(const DrawUtils&) = delete;
 

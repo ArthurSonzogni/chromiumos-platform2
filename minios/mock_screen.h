@@ -19,7 +19,7 @@ namespace minios {
 class MockScreen : public ScreenInterface {
  public:
   MockScreen() = default;
-  ~MockScreen() = default;
+  ~MockScreen() override = default;
 
   MockScreen(const MockScreen&) = delete;
   MockScreen& operator=(const MockScreen&) = delete;

@@ -17,6 +17,7 @@ namespace minios {
 class MockNetworkManagerObserver : public NetworkManagerInterface::Observer {
  public:
   MockNetworkManagerObserver() = default;
+  ~MockNetworkManagerObserver() override = default;
 
   MockNetworkManagerObserver(const MockNetworkManagerObserver&) = delete;
   MockNetworkManagerObserver& operator=(const MockNetworkManagerObserver&) =
@@ -38,6 +39,7 @@ class MockNetworkManagerObserver : public NetworkManagerInterface::Observer {
 class MockNetworkManager : public NetworkManagerInterface {
  public:
   MockNetworkManager() = default;
+  ~MockNetworkManager() override = default;
 
   MockNetworkManager(const MockNetworkManager&) = delete;
   MockNetworkManager& operator=(const MockNetworkManager&) = delete;

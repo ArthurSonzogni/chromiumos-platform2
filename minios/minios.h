@@ -39,7 +39,10 @@ class MiniOs : public MiniOsInterface {
  public:
   explicit MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                   std::shared_ptr<NetworkManagerInterface> network_manager);
-  virtual ~MiniOs() = default;
+  ~MiniOs() override = default;
+
+  MiniOs(const MiniOs&) = delete;
+  MiniOs& operator=(const MiniOs&) = delete;
 
   // Runs the miniOS flow.
   virtual int Run();
@@ -58,9 +61,6 @@ class MiniOs : public MiniOsInterface {
                      const std::string& in_passphrase) override;
 
  private:
-  MiniOs(const MiniOs&) = delete;
-  MiniOs& operator=(const MiniOs&) = delete;
-
   std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 

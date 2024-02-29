@@ -15,6 +15,12 @@ namespace minios {
 
 class MockCgptUtil : public CgptUtilInterface {
  public:
+  MockCgptUtil() = default;
+  ~MockCgptUtil() override = default;
+
+  MockCgptUtil(const MockCgptUtil&) = delete;
+  MockCgptUtil& operator=(const MockCgptUtil&) = delete;
+
   MOCK_METHOD(std::optional<int>,
               GetPartitionNumber,
               (const std::string& label),

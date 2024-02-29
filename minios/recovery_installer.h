@@ -23,7 +23,7 @@ class RecoveryInstaller : public RecoveryInstallerInterface {
   explicit RecoveryInstaller(
       std::shared_ptr<ProcessManagerInterface> process_manager)
       : repartition_completed_(false), process_manager_(process_manager) {}
-  virtual ~RecoveryInstaller() = default;
+  ~RecoveryInstaller() override = default;
 
   RecoveryInstaller(const RecoveryInstaller&) = delete;
   RecoveryInstaller& operator=(const RecoveryInstaller&) = delete;

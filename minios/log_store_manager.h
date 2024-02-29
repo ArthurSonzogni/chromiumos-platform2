@@ -78,6 +78,8 @@ class LogStoreManager : public LogStoreManagerInterface {
         kernel_size_(kernel_size),
         partition_size_(partition_size) {}
 
+  ~LogStoreManager() override = default;
+
   LogStoreManager(const LogStoreManager&) = delete;
   LogStoreManager& operator=(const LogStoreManager&) = delete;
 

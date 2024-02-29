@@ -13,6 +13,12 @@ namespace minios {
 
 class MockCgptWrapper : public CgptWrapperInterface {
  public:
+  MockCgptWrapper() = default;
+  ~MockCgptWrapper() override = default;
+
+  MockCgptWrapper(const MockCgptWrapper&) = delete;
+  MockCgptWrapper& operator=(const MockCgptWrapper&) = delete;
+
   MOCK_METHOD(void, CgptFind, (CgptFindParams * params), (const, override));
   MOCK_METHOD(int,
               CgptGetPartitionDetails,

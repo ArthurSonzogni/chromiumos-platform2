@@ -14,6 +14,7 @@ namespace minios {
 class MockDiskUtil : public DiskUtil {
  public:
   MockDiskUtil() = default;
+  ~MockDiskUtil() override = default;
 
   MockDiskUtil(const MockDiskUtil&) = delete;
   MockDiskUtil& operator=(const MockDiskUtil&) = delete;

@@ -22,14 +22,17 @@ extern const char kWaitForStateTimeout[];
 
 class Error {
  public:
+  Error() = default;
+  virtual ~Error() = default;
+
+  Error(const Error&) = delete;
+  Error& operator=(const Error&) = delete;
+
   // Add a dbus error to the error chain.
   static void AddTo(brillo::ErrorPtr* error,
                     const base::Location& location,
                     const std::string& code,
                     const std::string& message);
-
-  Error(const Error&) = delete;
-  Error& operator=(const Error&) = delete;
 };
 
 }  // namespace minios

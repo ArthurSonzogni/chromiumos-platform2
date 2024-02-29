@@ -14,11 +14,11 @@
 #include <brillo/process/process.h>
 
 class ProcessManagerInterface {
+ protected:
+  ProcessManagerInterface() = default;
+
  public:
   virtual ~ProcessManagerInterface() = default;
-
-  ProcessManagerInterface(const ProcessManagerInterface&) = delete;
-  ProcessManagerInterface& operator=(const ProcessManagerInterface&) = delete;
 
   struct IORedirection {
     base::FilePath input;
@@ -36,15 +36,15 @@ class ProcessManagerInterface {
                                     int* return_code,
                                     std::string* stdout_out,
                                     std::string* stderr_out) = 0;
-
- protected:
-  ProcessManagerInterface() = default;
 };
 
 class ProcessManager : public ProcessManagerInterface {
  public:
   ProcessManager() = default;
-  ~ProcessManager() = default;
+  ~ProcessManager() override = default;
+
+  ProcessManager(const ProcessManager&) = delete;
+  ProcessManager& operator=(const ProcessManager&) = delete;
 
   // ProcessManagerInterface overrides these functions.
 
@@ -70,9 +70,6 @@ class ProcessManager : public ProcessManagerInterface {
                             std::string* stderr_out) override;
 
  private:
-  ProcessManager(const ProcessManager&) = delete;
-  ProcessManager& operator=(const ProcessManager&) = delete;
-
   std::unique_ptr<brillo::Process> CreateProcess(
       const std::vector<std::string>& cmd,
       const ProcessManagerInterface::IORedirection& io_redirection);

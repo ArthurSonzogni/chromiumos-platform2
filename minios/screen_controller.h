@@ -68,7 +68,7 @@ class ScreenController : public ScreenControllerInterface,
                    std::shared_ptr<LogStoreManagerInterface> log_store_manager,
                    std::shared_ptr<ProcessManagerInterface> process_manager);
 
-  virtual ~ScreenController() = default;
+  ~ScreenController() override = default;
 
   ScreenController(const ScreenController&) = delete;
   ScreenController& operator=(const ScreenController&) = delete;

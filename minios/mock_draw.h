@@ -18,7 +18,7 @@ namespace minios {
 class MockDraw : public DrawInterface {
  public:
   MockDraw() = default;
-  ~MockDraw() = default;
+  ~MockDraw() override = default;
 
   MockDraw(const MockDraw&) = delete;
   MockDraw& operator=(const MockDraw&) = delete;
