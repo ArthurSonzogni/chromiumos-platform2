@@ -23,10 +23,8 @@
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/cros_config_constants.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
-#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
@@ -533,6 +531,23 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFloatingPointAccuracyRoutine) {
   base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunFloatingPointAccuracyRoutine(
       /*length_seconds=*/mojom::NullableUint32::New(120), future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the deprecated NVMe wear level routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunDEPRECATEDNvmeWearLevelRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->DEPRECATED_RunNvmeWearLevelRoutine(
+      /*wear_level_threshold=*/30, future.GetCallback());
 
   auto response = future.Take();
   EXPECT_EQ(response->id, 1);
@@ -1377,6 +1392,24 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUfsLifetimeRoutine) {
 
   base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunUfsLifetimeRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the fan routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunFanRoutine) {
+  SetFakeCrosConfig(paths::cros_config::kFanCount, "1");
+  CreateService();
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunFanRoutine(future.GetCallback());
 
   auto response = future.Take();
   EXPECT_EQ(response->id, 1);
