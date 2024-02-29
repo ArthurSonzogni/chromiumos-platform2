@@ -16,7 +16,7 @@ class MockLogStoreManifest : public LogStoreManifestInterface {
   MockLogStoreManifest() = default;
 
   MOCK_METHOD(bool, Generate, (const LogManifest::Entry& entry), (override));
-  MOCK_METHOD(std::optional<LogManifest>, Retreive, (), (override));
+  MOCK_METHOD(std::optional<LogManifest>, Retrieve, (), (override));
   MOCK_METHOD(bool, Write, (), (override));
   MOCK_METHOD(void, Clear, (), (override));
 };

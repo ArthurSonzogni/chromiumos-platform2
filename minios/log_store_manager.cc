@@ -250,7 +250,7 @@ bool LogStoreManager::FetchDiskLogs(
   }
   // If no manifest is present, then no logs are assumed to be stored on this
   // partition.
-  const auto manifest = log_store_manifest_->Retreive();
+  const auto manifest = log_store_manifest_->Retrieve();
   if (!manifest) {
     LOG(INFO) << "No manifest found, no logs retrieved.";
     return false;
@@ -336,7 +336,7 @@ bool LogStoreManager::ClearLogs() const {
     LOG(ERROR) << "No log store manifest, unable to clear logs.";
     return false;
   }
-  auto manifest = log_store_manifest_->Retreive();
+  auto manifest = log_store_manifest_->Retrieve();
   if (!manifest) {
     LOG(INFO) << "No manifest found on disk, nothing to clear.";
     return true;

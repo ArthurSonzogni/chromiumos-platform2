@@ -106,7 +106,7 @@ TEST_F(LogStoreManifestTest, VerifyWriteAndRetrieve) {
   // Write the generated manifest to file.
   EXPECT_TRUE(manifest_store.Write());
   // Expect the same manfiest to be read back from file.
-  auto retrieved_manifest = manifest_store.Retreive();
+  auto retrieved_manifest = manifest_store.Retrieve();
   ASSERT_TRUE(retrieved_manifest.has_value());
   EXPECT_EQ(retrieved_manifest->SerializeAsString(),
             generated_manifest->SerializeAsString());

@@ -29,7 +29,7 @@ class LogStoreManifestInterface {
   // inspecting the first `sizeof(kLogStoreMagic)` bytes of every block on
   // `disk_path` until a magic value is found. If no manifest is found on disk,
   // a `nullopt` is returned.
-  virtual std::optional<LogManifest> Retreive() = 0;
+  virtual std::optional<LogManifest> Retrieve() = 0;
 
   // Write a manifest in the `manifest_store_offset_block` of the current disk.
   // Note that the first `sizeof(kLogStoreMagic)` bytes will be a magic value,
@@ -53,7 +53,7 @@ class LogStoreManifest : public LogStoreManifestInterface {
   ~LogStoreManifest() override = default;
 
   bool Generate(const LogManifest::Entry& entry) override;
-  std::optional<LogManifest> Retreive() override;
+  std::optional<LogManifest> Retrieve() override;
   bool Write() override;
   // Clear any manifest stores found on disk.
   void Clear() override;

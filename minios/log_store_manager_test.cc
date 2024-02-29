@@ -275,7 +275,7 @@ TEST_F(LogStoreManagerTest, ClearLogsTest) {
   manifest.mutable_entry()->set_count(1025);
   const auto clear_size = partition_size_ - 48000;
 
-  EXPECT_CALL(*log_store_manifest_ptr_, Retreive()).WillOnce(Return(manifest));
+  EXPECT_CALL(*log_store_manifest_ptr_, Retrieve()).WillOnce(Return(manifest));
   EXPECT_CALL(*log_store_manifest_ptr_, Clear());
 
   EXPECT_TRUE(log_store_manager_->ClearLogs());
@@ -307,7 +307,7 @@ TEST_F(LogStoreManagerTest, FetchDiskLogsTest) {
   LogManifest manifest;
   manifest.mutable_entry()->set_offset(offset);
   manifest.mutable_entry()->set_count(encrypted_data->ByteSizeLong());
-  EXPECT_CALL(*log_store_manifest_ptr_, Retreive()).WillOnce(Return(manifest));
+  EXPECT_CALL(*log_store_manifest_ptr_, Retrieve()).WillOnce(Return(manifest));
   // Expect a call to retrieve key from VPD.
   EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(
@@ -328,7 +328,7 @@ TEST_F(LogStoreManagerTest, FetchDiskLogsInsideKernel) {
   const auto dest_path = tmp_dir_.GetPath().Append("unencrypted");
 
   // Expect fetch to fail since log is within kernel.
-  EXPECT_CALL(*log_store_manifest_ptr_, Retreive()).WillOnce(Return(manifest));
+  EXPECT_CALL(*log_store_manifest_ptr_, Retrieve()).WillOnce(Return(manifest));
   EXPECT_FALSE(log_store_manager_->FetchLogs(LogDirection::Disk, dest_path,
                                              std::nullopt));
 }

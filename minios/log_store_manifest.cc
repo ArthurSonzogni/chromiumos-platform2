@@ -75,7 +75,7 @@ bool LogStoreManifest::Generate(const LogManifest::Entry& entry) {
   return true;
 }
 
-std::optional<LogManifest> LogStoreManifest::Retreive() {
+std::optional<LogManifest> LogStoreManifest::Retrieve() {
   if (!IsValid()) {
     LOG(ERROR) << "Ignoring manifest retrieve due to bad params.";
     return std::nullopt;
