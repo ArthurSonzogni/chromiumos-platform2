@@ -60,7 +60,7 @@ fn main() {
     let mut mod_out = fs::File::create(out_dir.join("proto_include.rs")).unwrap();
     writeln!(
         mod_out,
-        "#[path = \"{}\"] pub mod plugin_proto;\npub use plugin_proto::*;",
+        "#[path = \"{}\"] pub mod plugin_proto;",
         out_dir.join("metrics_event.rs").display()
     )
     .unwrap();

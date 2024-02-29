@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 build = "build.rs"
 include = ["Cargo.toml", "*.rs", "src/**/*"]
+edition = "2021"
 
 [dependencies]
 chrono = "0.4.2"

@@ -27,6 +27,7 @@ extern crate tempfile;
 
 extern crate protobuf; // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
+use crate::plugin_proto::event;
 
 use chrono::prelude::*;
 use libc::c_void;
@@ -645,7 +646,7 @@ impl Dbus for GenuineDbus {
                     // Read first item in signal message as byte blob and
                     // parse blob into protobuf.
                     let raw_buffer: Vec<u8> = message.read1()?;
-                    let mut protobuf = Event::new();
+                    let mut protobuf = plugin_proto::Event::new();
                     protobuf.merge_from_bytes(&raw_buffer)?;
 
                     let event_type = protobuf.type_.enum_value_or_default();

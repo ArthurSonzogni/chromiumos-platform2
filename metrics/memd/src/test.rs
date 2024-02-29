@@ -5,6 +5,7 @@
 // Test code for memd.
 
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
+use crate::plugin_proto::event;
 
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -15,16 +16,16 @@ use std::str;
 use std::time::Duration;
 
 // Imported from main program
-use Dbus;
-use FileWatcher;
-use Paths;
-use Result;
-use Sample;
-use SampleQueue;
-use SampleType;
-use Sampler;
-use Timer;
-use SAMPLE_QUEUE_LENGTH;
+use crate::Dbus;
+use crate::FileWatcher;
+use crate::Paths;
+use crate::Result;
+use crate::Sample;
+use crate::SampleQueue;
+use crate::SampleType;
+use crate::Sampler;
+use crate::Timer;
+use crate::SAMPLE_QUEUE_LENGTH;
 
 // Different levels of emulated available RAM in MB.
 const LOW_MEM_LOW_AVAILABLE: usize = 150;
