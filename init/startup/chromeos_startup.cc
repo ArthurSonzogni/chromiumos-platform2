@@ -688,7 +688,7 @@ void ChromeosStartup::RemoveVarEmpty() {
     return;
   }
   file_attrs_cleaner::AttributeCheckStatus status =
-      file_attrs_cleaner::CheckFileAttributes(var_empty, true, dfd.get());
+      file_attrs_cleaner::CheckFileAttributes(var_empty, dfd.get());
   if (status != file_attrs_cleaner::AttributeCheckStatus::CLEARED) {
     PLOG(WARNING) << "Unexpected CheckFileAttributes status for "
                   << var_empty.value();

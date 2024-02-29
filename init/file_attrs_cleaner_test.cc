@@ -79,11 +79,8 @@ class CheckFileAttributesTest : public ::testing::Test {
 
 TEST_F(CheckFileAttributesTest, BadFd) {
   const base::FilePath path = test_dir_.Append("asdf");
-  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, false, -1));
-  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, true, -1));
-  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, true, 1000));
-  EXPECT_EQ(AttributeCheckStatus::ERROR,
-            CheckFileAttributes(path, false, 1000));
+  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, -1));
+  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, 1000));
 }
 
 // Accept paths w/out the immutable bit set.
@@ -93,15 +90,13 @@ TEST_F(CheckFileAttributesTest, NormalPaths) {
 
   base::ScopedFD fd(open(path.value().c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(fd.is_valid());
-  EXPECT_EQ(AttributeCheckStatus::NO_ATTR,
-            CheckFileAttributes(path, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR, CheckFileAttributes(path, fd.get()));
 
   const base::FilePath dir = test_dir_.Append("dir");
   ASSERT_EQ(0, mkdir(dir.value().c_str(), 0700));
   fd.reset(open(dir.value().c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(fd.is_valid());
-  EXPECT_EQ(AttributeCheckStatus::NO_ATTR,
-            CheckFileAttributes(dir, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR, CheckFileAttributes(dir, fd.get()));
 }
 
 // Clear files w/the immutable bit set.
@@ -122,8 +117,7 @@ TEST_F(CheckFileAttributesTest, ResetFile) {
   flags |= FS_IMMUTABLE_FL;
   EXPECT_EQ(0, ioctl(fd.get(), FS_IOC_SETFLAGS, &flags));
 
-  EXPECT_EQ(AttributeCheckStatus::CLEARED,
-            CheckFileAttributes(path, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::CLEARED, CheckFileAttributes(path, fd.get()));
 }
 
 // Clear dirs w/the immutable bit set.
@@ -144,8 +138,7 @@ TEST_F(CheckFileAttributesTest, ResetDir) {
   flags |= FS_IMMUTABLE_FL;
   EXPECT_EQ(0, ioctl(fd.get(), FS_IOC_SETFLAGS, &flags));
 
-  EXPECT_EQ(AttributeCheckStatus::CLEARED,
-            CheckFileAttributes(dir, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::CLEARED, CheckFileAttributes(dir, fd.get()));
 }
 
 namespace {

@@ -41,9 +41,7 @@ bool CheckSucceeded(AttributeCheckStatus status) {
 
 }  // namespace
 
-AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
-                                         bool isdir,
-                                         int fd) {
+AttributeCheckStatus CheckFileAttributes(const base::FilePath& path, int fd) {
   long flags;  // NOLINT(runtime/int)
   if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != 0) {
     PLOG(WARNING) << "Getting flags failed";
@@ -94,7 +92,7 @@ bool ScanDir(const base::FilePath& dir,
   }
 
   int dfd = dirfd(dirp.get());
-  if (!CheckSucceeded(CheckFileAttributes(dir, true /*isdir*/, dfd))) {
+  if (!CheckSucceeded(CheckFileAttributes(dir, dfd))) {
     // This should never really fail...
     return false;
   }
@@ -178,8 +176,7 @@ bool ScanDir(const base::FilePath& dir,
           continue;
         }
 
-        ret &= CheckSucceeded(
-            CheckFileAttributes(path, false /*is_dir*/, fd.get()));
+        ret &= CheckSucceeded(CheckFileAttributes(path, fd.get()));
 
         break;
       }

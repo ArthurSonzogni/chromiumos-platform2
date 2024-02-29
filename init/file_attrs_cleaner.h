@@ -25,11 +25,8 @@ bool ImmutableAllowed(const base::FilePath& path, bool isdir);
 
 // Check the file attributes of the specified path.  `path` is used for logging
 // and policy checking, so `fd` needs to be an open handle to it.  This helps
-// with TOCTTOU issues.  If `path` is supposed to be a directory, set `isdir`
-// to true.
-AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
-                                         bool isdir,
-                                         int fd);
+// with TOCTTOU issues.
+AttributeCheckStatus CheckFileAttributes(const base::FilePath& path, int fd);
 
 // Recursively scan the file attributes of paths under `dir`.
 // Don't recurse into any subdirectories that exactly match any string in
