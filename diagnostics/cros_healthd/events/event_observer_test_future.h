@@ -7,7 +7,8 @@
 
 #include <utility>
 
-#include <base/test/repeating_test_future.h>
+#include <base/check.h>
+#include <base/test/test_future.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -30,13 +31,16 @@ namespace diagnostics {
 //   }
 class EventObserverTestFuture : public ash::cros_healthd::mojom::EventObserver {
  public:
-  EventObserverTestFuture() {}
+  EventObserverTestFuture() = default;
   EventObserverTestFuture(const EventObserverTestFuture&) = delete;
   EventObserverTestFuture& operator=(const EventObserverTestFuture&) = delete;
+  ~EventObserverTestFuture() = default;
 
   // ash::cros_healthd::mojom::EventObserver overrides:
-  void OnEvent(ash::cros_healthd::mojom::EventInfoPtr event) {
-    received_events_.AddValue(std::move(event));
+  void OnEvent(ash::cros_healthd::mojom::EventInfoPtr event) override {
+    CHECK(!event_.IsReady())
+        << "EventObserverTestFuture cannot store multiple events";
+    event_.SetValue(std::move(event));
   }
 
   mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
@@ -45,7 +49,7 @@ class EventObserverTestFuture : public ash::cros_healthd::mojom::EventObserver {
   }
 
   ash::cros_healthd::mojom::EventInfoPtr WaitForEvent() {
-    return received_events_.Take();
+    return event_.Take();
   }
 
   // Reset the underlying receiver.
@@ -53,8 +57,7 @@ class EventObserverTestFuture : public ash::cros_healthd::mojom::EventObserver {
 
  private:
   mojo::Receiver<ash::cros_healthd::mojom::EventObserver> receiver_{this};
-  base::test::RepeatingTestFuture<ash::cros_healthd::mojom::EventInfoPtr>
-      received_events_;
+  base::test::TestFuture<ash::cros_healthd::mojom::EventInfoPtr> event_;
 };
 
 }  // namespace diagnostics
