@@ -160,8 +160,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
             &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
             &system_apis_.keyset_management, &auth_block_utility_,
             &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
-            &system_apis_.uss_storage, &system_apis_.uss_manager,
-            &features_.async});
+            &fp_migration_utility_, &system_apis_.uss_storage,
+            &system_apis_.uss_manager, &features_.async});
     // Initializing UserData class.
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
@@ -559,6 +559,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+  FpMigrationUtility fp_migration_utility_{
+      &system_apis_.crypto, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthSession::BackingApis backing_apis_{&system_apis_.crypto,
                                          &system_apis_.platform,
                                          &user_session_map_,
@@ -566,6 +568,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &system_apis_.auth_factor_manager,
+                                         &fp_migration_utility_,
                                          &system_apis_.uss_storage,
                                          &system_apis_.uss_manager,
                                          &features_.async};
@@ -796,6 +799,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &auth_block_utility_,
       &auth_factor_driver_manager_,
       &system_apis_.auth_factor_manager,
+      &fp_migration_utility_,
       &system_apis_.uss_storage,
       &system_apis_.uss_manager,
       &features_.async};
@@ -1253,8 +1257,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
           &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
           &system_apis_.keyset_management, &mock_auth_block_utility_,
           &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
-          &system_apis_.uss_storage, &system_apis_.uss_manager,
-          &features_.async});
+          &fp_migration_utility_, &system_apis_.uss_storage,
+          &system_apis_.uss_manager, &features_.async});
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
       Username(kUsername),

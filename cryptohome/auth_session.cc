@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -34,6 +35,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libstorage/platform/platform.h>
 
@@ -70,7 +72,10 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
+#include "cryptohome/fp_migration/legacy_record.h"
+#include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/proto_bindings/auth_factor.pb.h"
 #include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
@@ -420,6 +425,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_block_utility_(backing_apis.auth_block_utility),
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
+      fp_migration_utility_(backing_apis.fp_migration_utility),
       features_(backing_apis.features),
       signalling_(std::move(backing_apis.signalling)),
       key_store_cert_provider_(std::move(backing_apis.key_store_cert_provider)),
@@ -2626,6 +2632,123 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
             << original_auth_factor.label() << " with new auth factor "
             << auth_factor_label;
   std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::AuthForDecrypt::MigrateLegacyFingerprints(
+    StatusCallback on_done) {
+  session_->fp_migration_utility_->ListLegacyRecords(
+      base::BindOnce(&AuthSession::AuthForDecrypt::MigrateLegacyRecords,
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
+}
+
+void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
+    StatusCallback on_done,
+    CryptohomeStatusOr<std::vector<LegacyRecord>> legacy_records) {
+  if (!legacy_records.ok()) {
+    std::move(on_done).Run(std::move(legacy_records).status());
+    return;
+  }
+  if (legacy_records->empty()) {
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
+  AuthFactorDriver& fp_factor_driver =
+      session_->auth_factor_driver_manager_->GetDriver(
+          AuthFactorType::kFingerprint);
+
+  // Fp auth factor requires decrypted USS and a dedicated rate limiter.
+  if (!session_->decrypt_token_) {
+    // Require a decrypted USS for fp migration.
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoUSSInMigrateLegacyFps),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  DecryptedUss& decrypted_uss =
+      session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+  CryptohomeStatus status = fp_factor_driver.TryCreateRateLimiter(
+      session_->obfuscated_username_, decrypted_uss);
+  if (!status.ok()) {
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // Binds |legacy_records| to a do-nothing callback called after |on_done|
+  // to ensure the lifetime of |legacy_records| lasts until |on_done| completes.
+  MigrateFromTheBack(*legacy_records,
+                     std::move(on_done).Then(base::BindOnce(
+                         [](auto) {}, std::move(legacy_records))));
+}
+
+void AuthSession::AuthForDecrypt::MigrateFromTheBack(
+    base::span<LegacyRecord> legacy_records, StatusCallback on_done) {
+  if (legacy_records.empty()) {
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
+  // Migration starts from the back of the list, so that the index of the
+  // record is the same as the size of the span. The index later derives
+  // the auth factor label, which must be unique for each factor.
+  const auto& legacy_record = legacy_records.back();
+
+  auto auth_input =
+      CreateAuthInputForPrepareForAdd(AuthFactorType::kFingerprint);
+  if (!auth_input.ok()) {
+    std::move(on_done).Run(std::move(auth_input).err_status());
+    return;
+  }
+  FingerprintAuthInput fp_auth_input;
+  fp_auth_input.legacy_record_id = legacy_record.legacy_record_id;
+  auth_input->fingerprint_auth_input = fp_auth_input;
+
+  session_->fp_migration_utility_->PrepareLegacyTemplate(
+      *auth_input,
+      base::BindOnce(
+          &AuthSession::AuthForDecrypt::ContinueAddMigratedFpAuthFactor,
+          weak_factory_.GetWeakPtr(), legacy_records, std::move(on_done)));
+}
+
+void AuthSession::AuthForDecrypt::ContinueAddMigratedFpAuthFactor(
+    base::span<LegacyRecord> legacy_records,
+    StatusCallback on_done,
+    CryptohomeStatus status) {
+  if (!status.ok() || legacy_records.empty()) {
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  const auto& legacy_record = legacy_records.back();
+  auto migrate_more = base::BindOnce(
+      &AuthSession::AuthForDecrypt::MigrateRemainingLegacyFingerprints,
+      weak_factory_.GetWeakPtr(),
+      legacy_records.first(legacy_records.size() - 1), std::move(on_done));
+  user_data_auth::AddAuthFactorRequest req;
+  auto* auth_factor = req.mutable_auth_factor();
+  auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  auth_factor->mutable_fingerprint_metadata();
+  auth_factor->mutable_common_metadata()->set_user_specified_name(
+      legacy_record.user_specified_name);
+
+  auth_factor->set_label(
+      FpMigrationUtility::MigratedLegacyFpLabel(legacy_records.size()));
+  req.mutable_auth_input()->mutable_fingerprint_input();
+  AddAuthFactor(std::move(req), std::move(migrate_more));
+}
+
+void AuthSession::AuthForDecrypt::MigrateRemainingLegacyFingerprints(
+    base::span<LegacyRecord> remaining_records,
+    StatusCallback on_done,
+    CryptohomeStatus status) {
+  if (!status.ok() || remaining_records.empty()) {
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  MigrateFromTheBack(remaining_records, std::move(on_done));
 }
 
 void AuthSession::PrepareAuthFactor(

@@ -123,6 +123,8 @@ class AuthSessionManagerTest : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
+  FpMigrationUtility fp_migration_utility_{
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   FakeFeaturesForTesting features_;
   NiceMock<MockSignalling> signalling_;
   AuthSession::BackingApis backing_apis_{
@@ -133,6 +135,7 @@ class AuthSessionManagerTest : public ::testing::Test {
       &auth_block_utility_,
       &auth_factor_driver_manager_,
       &auth_factor_manager_,
+      &fp_migration_utility_,
       &uss_storage_,
       &uss_manager_,
       &features_.async,

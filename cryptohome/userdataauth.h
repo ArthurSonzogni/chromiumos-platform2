@@ -47,6 +47,7 @@
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/firmware_management_parameters_interface.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
+#include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/install_attributes_interface.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
@@ -1101,6 +1102,12 @@ class UserDataAuth {
   // Usually set to |default_auth_factor_manager_|, but can be overridden for
   // tests.
   AuthFactorDriverManager* auth_factor_driver_manager_ = nullptr;
+
+  // Utility object for functions specific to legacy fingerprint migration flow.
+  std::unique_ptr<FpMigrationUtility> default_fp_migration_utility_;
+  // Usually set to |default_fp_migration_utility_|, but can be overridden for
+  // tests.
+  FpMigrationUtility* fp_migration_utility_ = nullptr;
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.

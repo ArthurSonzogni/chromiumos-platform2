@@ -71,6 +71,8 @@ struct ChallengeCredentialAuthInput {
 struct FingerprintAuthInput {
   // The secret from the biometrics auth stack bound to this AuthFactor.
   std::optional<brillo::SecureBlob> auth_secret;
+  // Data required for legacy fingerprint migration flow.
+  std::optional<std::string> legacy_record_id;
 };
 
 struct AuthInput {

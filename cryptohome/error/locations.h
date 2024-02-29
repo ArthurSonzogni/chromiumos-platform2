@@ -267,7 +267,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmBoundToPcrAuthBlockPreloadFailedInDecrypt = 221,
   /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
   kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt = 222,
-  /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
+  /* =Obsolete= */
   kLocDoubleWrappedAuthBlockUnsupportedInCreate = 223,
   /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
   kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive = 224,
@@ -2171,6 +2171,18 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsProcessorListLegacyRecordsNoResp = 3549,
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceEnrollLegacyTemplateFailure = 3550,
+  /* ./fp_migration/utility.cc */
+  kLocFpMigrationGetNonceFailed = 3551,
+  /* ./fp_migration/utility.cc */
+  kLocFpMigrationStartBioAuthFailed = 3552,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoUSSInMigrateLegacyFps = 3553,
+  /* ./fp_migration/utility.cc */
+  kLocFpMigrationPrepareTemplateBadAuthInput = 3554,
+  /* ./fp_migration/utility.cc */
+  kLocFpMigrationPrepareLegacyTemplateNoService = 3555,
+  /* ./fp_migration/utility.cc */
+  kLocFpMigrationListLegacyRecordsNoService = 3556,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

@@ -45,6 +45,8 @@
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
+#include "cryptohome/fp_migration/legacy_record.h"
+#include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
@@ -130,6 +132,7 @@ class AuthSession final {
     AuthBlockUtility* auth_block_utility = nullptr;
     AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
+    FpMigrationUtility* fp_migration_utility = nullptr;
     UssStorage* user_secret_stash_storage = nullptr;
     UssManager* user_secret_stash_manager = nullptr;
     AsyncInitFeatures* features = nullptr;
@@ -339,6 +342,10 @@ class AuthSession final {
     void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
                                  StatusCallback on_done);
 
+    // Migrates all existing legacy fingerprint templates into
+    // sign-in fingerprint auth factors.
+    void MigrateLegacyFingerprints(StatusCallback on_done);
+
    private:
     // Special case for relabel of an ephemeral user's factor.
     void RelabelAuthFactorEphemeral(
@@ -371,6 +378,34 @@ class AuthSession final {
     // from solely the |auth_factor_type|.
     CryptohomeStatusOr<AuthInput> CreateAuthInputForPrepareForAdd(
         AuthFactorType auth_factor_type);
+
+    // Migrates legacy fp records into fingerprint auth factors. It is used as a
+    // callback to FpMigrationUtility::ListLegacyRecords.
+    void MigrateLegacyRecords(
+        StatusCallback on_done,
+        CryptohomeStatusOr<std::vector<LegacyRecord>> legacy_records);
+
+    // Prepares the enrollment of the last record in |legacy_records|,
+    // where the template is loaded as a newly enrolled fingerprint.
+    void MigrateFromTheBack(base::span<LegacyRecord> legacy_records,
+                            StatusCallback on_done);
+
+    // Constructs an AddAuthFactor request and adds a fingerprint factor
+    // as a legacy fingerprint template has been loaded as a newly enrolled
+    // fingerprint. It is used as a callback to
+    // FpMigrationUtility::PrepareLegacyTemplate.
+    void ContinueAddMigratedFpAuthFactor(
+        base::span<LegacyRecord> legacy_records,
+        StatusCallback on_done,
+        CryptohomeStatus status);
+
+    // Returns the status if it is either an error, or migration has completed.
+    // Otherwise, continue the migration with |remaining_records|. It is used
+    // as a callaback to AddAuthFactor.
+    void MigrateRemainingLegacyFingerprints(
+        base::span<LegacyRecord> remaining_records,
+        StatusCallback on_done,
+        CryptohomeStatus status);
 
     // The last member, to invalidate weak references first on destruction.
     base::WeakPtrFactory<AuthForDecrypt> weak_factory_{this};
@@ -907,6 +942,7 @@ class AuthSession final {
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
+  FpMigrationUtility* const fp_migration_utility_;
   AsyncInitFeatures* const features_;
   AsyncInitPtr<SignallingInterface> signalling_;
   AsyncInitPtr<RecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;

@@ -597,6 +597,7 @@ static_library("libcryptohome") {
     "../features.cc",
     "../filesystem_layout.cc",
     "../fingerprint_manager.cc",
+    "../fp_migration/utility.cc",
     "../key_challenge_service_factory_impl.cc",
     "../key_challenge_service_impl.cc",
     "../keyset_management.cc",

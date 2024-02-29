@@ -91,6 +91,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
@@ -842,13 +843,19 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 
+  if (!fp_migration_utility_) {
+    default_fp_migration_utility_ =
+        std::make_unique<FpMigrationUtility>(crypto_, async_biometrics_service);
+    fp_migration_utility_ = default_fp_migration_utility_.get();
+  }
+
   if (!auth_session_manager_) {
     default_auth_session_manager_ =
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, uss_storage_, uss_manager_,
-            &async_init_features_, async_signalling,
+            auth_factor_manager_, fp_migration_utility_, uss_storage_,
+            uss_manager_, &async_init_features_, async_signalling,
             async_key_store_cert_provider});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
