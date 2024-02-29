@@ -155,6 +155,10 @@ CapportProxy::~CapportProxy() {
     metrics_->SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining,
                         *max_seconds_remaining_);
   }
+  if (has_bytes_remaining_.has_value()) {
+    metrics_->SendBoolToUMA(Metrics::kMetricCapportContainsBytesRemaining,
+                            *has_bytes_remaining_);
+  }
 }
 
 void CapportProxy::SendRequest(StatusCallback callback) {
@@ -210,12 +214,17 @@ void CapportProxy::OnRequestSuccess(
     has_venue_info_url_ = false;
   }
 
-  // seconds_remaining is only meaningful at is_captive==false.
+  // seconds_remaining/bytes_remaining are only meaningful at is_captive==false.
   if (!status->is_captive) {
-    // Once has_seconds_remaining_ is set to true, it will be stick to true.
+    // Once has_seconds_remaining_/has_bytes_remaining_ are set to true, the
+    // value will be stick to true.
     if (!has_seconds_remaining_.value_or(false)) {
       has_seconds_remaining_ = status->seconds_remaining.has_value();
     }
+    if (!has_bytes_remaining_.value_or(false)) {
+      has_bytes_remaining_ = status->bytes_remaining.has_value();
+    }
+
     if (status->seconds_remaining.has_value()) {
       max_seconds_remaining_ =
           std::max(static_cast<int>(status->seconds_remaining->InSeconds()),

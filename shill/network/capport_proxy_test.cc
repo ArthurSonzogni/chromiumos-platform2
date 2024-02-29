@@ -265,6 +265,7 @@ TEST_F(CapportProxyTest, SendMetricsContainVenueInfoUrl) {
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsBytesRemaining);
 
   AddJSONReplyHandler(R"({
    "captive": false,
@@ -285,6 +286,7 @@ TEST_F(CapportProxyTest, SendMetricsNotContainVenueInfoUrl) {
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, false))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsBytesRemaining);
 
   AddJSONReplyHandler(R"({
    "captive": false,
@@ -305,6 +307,7 @@ TEST_F(CapportProxyTest, VenueInfoUrlInSecondRound) {
               SendBoolToUMA(Metrics::kMetricCapportContainsVenueInfoUrl, true))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsBytesRemaining);
 
   AddJSONReplyHandler(R"({
    "captive": false,
@@ -349,6 +352,7 @@ TEST_F(CapportProxyTest, SendMetricsContainSecondsRemaining) {
               SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining, 326))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsBytesRemaining);
 
   AddJSONReplyHandler(R"({
    "captive": false,
@@ -361,12 +365,36 @@ TEST_F(CapportProxyTest, SendMetricsContainSecondsRemaining) {
                                      base::Unretained(&client_)));
 }
 
-TEST_F(CapportProxyTest, SendMetricsNotContainSecondsRemaining) {
-  // If there is no seconds_remaining when the portal is open, then the CAPPORT
-  // server doesn't contain the seconds_remaining field.
+TEST_F(CapportProxyTest, SendMetricsContainBytesRemaining) {
+  // Send the metric only once even we receive the status twice.
+  EXPECT_CALL(
+      metrics_,
+      SendBoolToUMA(Metrics::kMetricCapportContainsBytesRemaining, true))
+      .Times(1);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsSecondsRemaining);
+
+  AddJSONReplyHandler(R"({
+   "captive": false,
+   "bytes-remaining": 1024576
+})");
+
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+  proxy_->SendRequest(base::BindOnce(&MockCapportClient::OnStatusReceived,
+                                     base::Unretained(&client_)));
+}
+
+TEST_F(CapportProxyTest, SendMetricsNotContainRemainingFields) {
+  // If there is no seconds_remaining and bytes_remaining when the portal is
+  // open, then the CAPPORT server doesn't contain these fields.
   EXPECT_CALL(
       metrics_,
       SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, false))
+      .Times(1);
+  EXPECT_CALL(
+      metrics_,
+      SendBoolToUMA(Metrics::kMetricCapportContainsBytesRemaining, false))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
 
@@ -391,6 +419,7 @@ TEST_F(CapportProxyTest, SecondsRemainingInSecondRound) {
               SendToUMA(Metrics::kMetricCapportMaxSecondsRemaining, 326))
       .Times(1);
   IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsVenueInfoUrl);
+  IgnoreUninterstedBoolMetric(Metrics::kMetricCapportContainsBytesRemaining);
 
   AddJSONReplyHandler(R"({
    "captive": false
@@ -419,12 +448,15 @@ TEST_F(CapportProxyTest, SecondsRemainingInSecondRound) {
                                      base::Unretained(&client_)));
 }
 
-TEST_F(CapportProxyTest, DoesNotSendMetricsContainSecondsRemaining) {
-  // The seconds_remaining field only exists when the portal is open. So we
-  // cannot determine if the CAPPORT server contains the field when the portal
-  // is still closed.
+TEST_F(CapportProxyTest, DoesNotSendMetricsContainRemainingFields) {
+  // The seconds_remaining and bytes_remaining field only exist when the portal
+  // is open. So we cannot determine if the CAPPORT server contains these fields
+  // when the portal is still closed.
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricCapportContainsSecondsRemaining, _))
+      .Times(0);
+  EXPECT_CALL(metrics_,
+              SendBoolToUMA(Metrics::kMetricCapportContainsBytesRemaining, _))
       .Times(0);
 
   AddJSONReplyHandler(R"({

@@ -119,6 +119,9 @@ class CapportProxy {
   // Indicates whether the CAPPORT server replies with a seconds-remaining
   // field after is_captive has become false.
   std::optional<bool> has_seconds_remaining_ = std::nullopt;
+  // Indicates whether the CAPPORT server replies with a bytes-remaining
+  // field after is_captive has become false.
+  std::optional<bool> has_bytes_remaining_ = std::nullopt;
   // Records the maximum number of the seconds_remaining field. The number
   // should be near to the time limit.
   std::optional<int> max_seconds_remaining_ = std::nullopt;

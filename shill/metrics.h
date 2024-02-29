@@ -1256,11 +1256,22 @@ class Metrics {
   // CAPPORT session when we can determine the CAPPORT server contains it or
   // not.
   //
-  // The second-remaining field only exists when is_captive=false. When
+  // The seconds-remaining field only exists when is_captive=false. When
   // is_captive is always true, we cannot determine whether the CAPPORT status
   // contains the field or not. In this case, this metric will not be sent.
   static constexpr char kMetricCapportContainsSecondsRemaining[] =
       "Network.Shill.CAPPORT.ContainsSecondsRemaining";
+
+  // Boolean metric counting whether the CAPPORT status contains the
+  // bytes-remaining field. This metric is only recorded once for every
+  // CAPPORT session when we can determine the CAPPORT server contains it or
+  // not.
+  //
+  // The bytes-remaining field only exists when is_captive=false. When
+  // is_captive is always true, we cannot determine whether the CAPPORT status
+  // contains the field or not. In this case, this metric will not be sent.
+  static constexpr char kMetricCapportContainsBytesRemaining[] =
+      "Network.Shill.CAPPORT.ContainsBytesRemaining";
 
   // Metric recording as an histogram the maximum of seconds-remaining from
   // CAPPORT status.
