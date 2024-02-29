@@ -41,6 +41,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
+#include <base/types/expected.h>
 #include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>
 
@@ -240,6 +241,20 @@ class SafeFD {
   BRILLO_EXPORT static const char* RootPath;
 
   base::ScopedFD fd_;
+
+  // Performs fstatat on the specified path given the name.
+  //
+  // This isn't exported because in most cases the user should use fstat on an
+  // already opened file descriptor.
+  //
+  // Parameters
+  //  name - the name of the child path to stat
+  //  flags - the flags to pass to fstatat.
+  [[nodiscard]] base::expected<struct stat, SafeFD::Error> Stat(
+      const std::string& name,
+      int flags = AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW);
+  [[nodiscard]] base::expected<struct stat, SafeFD::Error> Stat(
+      const char* name, int flags = AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW);
 };
 
 }  // namespace brillo

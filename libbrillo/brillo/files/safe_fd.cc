@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/types/expected_macros.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
 #include <brillo/syslog_logging.h>
@@ -652,19 +653,20 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
     errno = 0;
     const dirent* entry = HANDLE_EINTR_IF_EQ(readdir(dir.get()), nullptr);
     while (entry != nullptr) {
-      SafeFD::Error err = [&]() {
+      SafeFD::Error err = [&]() -> SafeFD::Error {
         if (strcmp(entry->d_name, ".") == 0 ||
             strcmp(entry->d_name, "..") == 0) {
           return SafeFD::Error::kNoError;
         }
 
-        struct stat child_info;
-        if (fstatat(dir_fd.get(), entry->d_name, &child_info,
-                    AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW) != 0) {
-          PLOG(ERROR) << "fstatat failed for file \"" << entry->d_name
-                      << "\" in \"" << name << "\"";
-          return SafeFD::Error::kIOError;
-        }
+        ASSIGN_OR_RETURN(
+            struct stat child_info,
+            dir_fd.Stat(entry->d_name, AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW),
+            [&](SafeFD::Error err) {
+              PLOG(ERROR) << "fstatat failed for file \"" << entry->d_name
+                          << "\" in \"" << name << "\"";
+              return err;
+            });
 
         if (child_info.st_dev != dir_info.st_dev) {
           return SafeFD::Error::kBoundaryDetected;
@@ -713,6 +715,20 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
   }
 
   return last_err;
+}
+
+base::expected<struct stat, SafeFD::Error> SafeFD::Stat(const std::string& name,
+                                                        int flags) {
+  return Stat(name.c_str(), flags);
+}
+
+base::expected<struct stat, SafeFD::Error> SafeFD::Stat(const char* name,
+                                                        int flags) {
+  struct stat child_info;
+  if (fstatat(this->get(), name, &child_info, flags) != 0) {
+    return base::unexpected(SafeFD::Error::kIOError);
+  }
+  return child_info;
 }
 
 }  // namespace brillo
