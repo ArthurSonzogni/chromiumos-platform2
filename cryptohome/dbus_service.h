@@ -52,10 +52,6 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
         std::make_unique<Pkcs11Adaptor>(bus_, dbus_object_.get(), &service_);
     pkcs11_adaptor_->RegisterAsync();
 
-    install_attributes_adaptor_ = std::make_unique<InstallAttributesAdaptor>(
-        bus_, dbus_object_.get(), &service_);
-    install_attributes_adaptor_->RegisterAsync();
-
     misc_adaptor_ = std::make_unique<CryptohomeMiscAdaptor>(
         bus_, dbus_object_.get(), &service_);
     misc_adaptor_->RegisterAsync();
@@ -67,7 +63,6 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<UserDataAuthAdaptor> userdataauth_adaptor_;
   std::unique_ptr<Pkcs11Adaptor> pkcs11_adaptor_;
-  std::unique_ptr<InstallAttributesAdaptor> install_attributes_adaptor_;
   std::unique_ptr<CryptohomeMiscAdaptor> misc_adaptor_;
 
   SystemApis system_apis_;

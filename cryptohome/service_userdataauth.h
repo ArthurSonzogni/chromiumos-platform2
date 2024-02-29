@@ -6,7 +6,6 @@
 #define CRYPTOHOME_SERVICE_USERDATAAUTH_H_
 
 #include <memory>
-#include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -556,103 +555,6 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
   // Factory used to construct weak pointers when posting tasks to the mount
   // thread. The pointers must not be used for tasks on other threads.
   base::WeakPtrFactory<Pkcs11Adaptor> weak_factory_{this};
-};
-
-class InstallAttributesAdaptor
-    : public org::chromium::InstallAttributesInterfaceInterface,
-      public org::chromium::InstallAttributesInterfaceAdaptor {
- public:
-  explicit InstallAttributesAdaptor(scoped_refptr<dbus::Bus> bus,
-                                    brillo::dbus_utils::DBusObject* dbus_object,
-                                    UserDataAuth* service)
-      : org::chromium::InstallAttributesInterfaceAdaptor(this),
-        dbus_object_(dbus_object),
-        service_(service) {
-    // This is to silence the compiler's warning about unused fields. It will be
-    // removed once we start to use it.
-    (void)service_;
-  }
-  InstallAttributesAdaptor(const InstallAttributesAdaptor&) = delete;
-  InstallAttributesAdaptor& operator=(const InstallAttributesAdaptor&) = delete;
-
-  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
-
-  // Interface overrides and related implementations
-  void InstallAttributesGet(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesGetReply>> response,
-      const user_data_auth::InstallAttributesGetRequest& in_request) override;
-  void DoInstallAttributesGet(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesGetReply>> response,
-      const user_data_auth::InstallAttributesGetRequest& in_request);
-  void InstallAttributesSet(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesSetReply>> response,
-      const user_data_auth::InstallAttributesSetRequest& in_request) override;
-  void DoInstallAttributesSet(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesSetReply>> response,
-      const user_data_auth::InstallAttributesSetRequest& in_request);
-  void InstallAttributesFinalize(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesFinalizeReply>> response,
-      const user_data_auth::InstallAttributesFinalizeRequest& in_request)
-      override;
-  void DoInstallAttributesFinalize(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesFinalizeReply>> response,
-      const user_data_auth::InstallAttributesFinalizeRequest& in_request);
-  void InstallAttributesGetStatus(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesGetStatusReply>> response,
-      const user_data_auth::InstallAttributesGetStatusRequest& in_request)
-      override;
-  void DoInstallAttributesGetStatus(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::InstallAttributesGetStatusReply>> response,
-      const user_data_auth::InstallAttributesGetStatusRequest& in_request);
-  void GetFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetFirmwareManagementParametersReply>> response,
-      const user_data_auth::GetFirmwareManagementParametersRequest& in_request)
-      override;
-  void DoGetFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetFirmwareManagementParametersReply>> response,
-      const user_data_auth::GetFirmwareManagementParametersRequest& in_request);
-  void RemoveFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::RemoveFirmwareManagementParametersReply>> response,
-      const user_data_auth::RemoveFirmwareManagementParametersRequest&
-          in_request) override;
-  void DoRemoveFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::RemoveFirmwareManagementParametersReply>> response,
-      const user_data_auth::RemoveFirmwareManagementParametersRequest&
-          in_request);
-  void SetFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::SetFirmwareManagementParametersReply>> response,
-      const user_data_auth::SetFirmwareManagementParametersRequest& in_request)
-      override;
-  void DoSetFirmwareManagementParameters(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::SetFirmwareManagementParametersReply>> response,
-      const user_data_auth::SetFirmwareManagementParametersRequest& in_request);
-
- private:
-  brillo::dbus_utils::DBusObject* dbus_object_;
-
-  // This is the object that holds most of the states that this adaptor uses,
-  // it also contains most of the actual logics.
-  // This object is owned by the parent dbus service daemon, and whose lifetime
-  // will cover the entire lifetime of this class.
-  UserDataAuth* service_;
-
-  // Factory used to construct weak pointers when posting tasks to the mount
-  // thread. The pointers must not be used for tasks on other threads.
-  base::WeakPtrFactory<InstallAttributesAdaptor> weak_factory_{this};
 };
 
 class CryptohomeMiscAdaptor
