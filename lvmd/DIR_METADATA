@@ -7,5 +7,5 @@
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
 buganizer {
-  component_id: 974567  # ChromeOS > Platform > Technologies > Storage
+  component_id: 974567  # ChromeOS > Platform > baseOS > Storage
 }
