@@ -5,13 +5,14 @@
 // Provides the command "shell" for crosh which gives developers access to bash if it is available,
 // or dash otherwise.
 
+use std::os::fd::OwnedFd;
+use std::os::unix::io::FromRawFd;
 use std::os::unix::io::IntoRawFd;
 use std::path::Path;
 use std::process;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 use crate::util::{add_epoll_for_fd, epoll_wait, is_no_new_privs_set, DEFAULT_DBUS_TIMEOUT};
-use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use libc::dup;
 use libchromeos::pipe;
@@ -55,14 +56,12 @@ fn execute_shell(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Err
         let (_, caller_write_pipe) = pipe(true).unwrap();
         conn_path
             .crosh_shell_start(
-                // Safe because the lifeline_write_pipe isn't copied elsewhere.
-                unsafe { OwnedFd::new(lifeline_write_pipe.into_raw_fd()) },
-                // Safe because the caller_write_pipe isn't copied elsewhere.
-                unsafe { OwnedFd::new(caller_write_pipe.into_raw_fd()) },
+                lifeline_write_pipe.into(),
+                caller_write_pipe.into(),
                 // Safe because this will always be the STDIN file descriptor.
-                unsafe { OwnedFd::new(dup(libc::STDIN_FILENO)) },
+                unsafe { OwnedFd::from_raw_fd(dup(libc::STDIN_FILENO)) },
                 // Safe because this will always be the STDOUT file descriptor.
-                unsafe { OwnedFd::new(dup(libc::STDOUT_FILENO)) },
+                unsafe { OwnedFd::from_raw_fd(dup(libc::STDOUT_FILENO)) },
             )
             .map_err(|err| {
                 eprintln!("ERROR: Got unexpected result: {}", err);

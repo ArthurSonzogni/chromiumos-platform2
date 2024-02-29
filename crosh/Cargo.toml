@@ -17,7 +17,7 @@ name = "crosh"
 [dependencies]
 bitflags = "1.3.2"
 chrono = "0.4"
-dbus = "0.9"
+dbus = { version = "0.9.7", features = ["stdfd"] }
 getopts = "0.2"
 libc = "0.2.44"
 libchromeos = { path = "../libchromeos-rs", features = ['chromeos-module'] } # provided by ebuild

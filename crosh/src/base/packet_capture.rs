@@ -8,12 +8,11 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::fs::{metadata, remove_file, File};
 use std::io::{copy, stdout, Write};
-use std::os::unix::io::IntoRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
-use dbus::arg::{self, OwnedFd, Variant};
+use dbus::arg::{self, Variant};
 use dbus::blocking::Connection;
 use getopts::{self, Options};
 use libc::c_int;
@@ -210,12 +209,7 @@ fn execute_packet_capture_helper(
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
     let handle = conn_path
-        .packet_capture_start(
-            // Safe because write_pipe isn't copied elsewhere.
-            unsafe { OwnedFd::new(write_pipe.into_raw_fd()) },
-            unsafe { OwnedFd::new(capture_file.into_raw_fd()) },
-            dbus_options,
-        )
+        .packet_capture_start(write_pipe.into(), capture_file.into(), dbus_options)
         .map_err(|err| {
             eprintln!("ERROR: Got unexpected result: {}", err);
             if let Err(err) = copy(&mut read_pipe, &mut stdout()) {

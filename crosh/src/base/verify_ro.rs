@@ -6,13 +6,11 @@
 
 use std::fs::metadata;
 use std::io::{copy, stdout};
-use std::os::unix::io::IntoRawFd;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
-use dbus::arg::OwnedFd;
 use dbus::blocking::Connection;
 use libc::c_int;
 use libchromeos::pipe;
@@ -107,12 +105,7 @@ fn execute_verify_ro(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
     let handle = conn_path
-        .update_and_verify_fwon_usb_start(
-            // Safe because write_pipe isn't copied elsewhere.
-            unsafe { OwnedFd::new(write_pipe.into_raw_fd()) },
-            CR50_IMAGE,
-            RO_DB,
-        )
+        .update_and_verify_fwon_usb_start(write_pipe.into(), CR50_IMAGE, RO_DB)
         .map_err(|err| {
             println!("ERROR: Got unexpected result: {}", err);
             dispatcher::Error::CommandReturnedError
