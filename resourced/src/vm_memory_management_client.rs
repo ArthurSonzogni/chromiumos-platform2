@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixStream as StdUnixStream;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -12,7 +13,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use async_trait::async_trait;
-use dbus::arg::OwnedFd;
 use dbus::nonblock::SyncConnection;
 use log::error;
 use log::info;
