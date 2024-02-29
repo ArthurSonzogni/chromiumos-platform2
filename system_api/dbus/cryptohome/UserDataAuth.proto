@@ -547,8 +547,12 @@ enum AuthSessionFlags {
 message StartAuthSessionRequest {
   // The account of the user whose home directory is requested for mounting.
   cryptohome.AccountIdentifier account_id = 1;
-  // AuthSessionFlags to define AuthSession behaviour.
+  // Deprecated. Can be used to set the user to ephemeral by setting this to
+  // AUTH_SESSION_FLAGS_EPHEMERAL_USER. New code should prefer using the
+  // is_ephemeral_user flag instead.
   uint32 flags = 2;
+  // Specifies if this user is ephemeral or not.
+  bool is_ephemeral_user = 4;
   // The target intent of the authentication. This parameter declares which kind
   // of operations the caller wants to perform after the successful
   // authentication. During authentication, cryptohome will only offer factors
