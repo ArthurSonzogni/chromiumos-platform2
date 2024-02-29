@@ -1,0 +1,16 @@
+{
+  "cellular_ifname_prefixes": [
+    "wwan+",
+    "mbimmux+",
+    "qmapmux+"
+  ],
+  "physical_ifname_prefixes": [
+    "wwan+",
+    "mbimmux+",
+    "qmapmux+",
+    "eth+",
+    "wlan+",
+    "mlan+",
+    "usb+"
+  ]
+}
