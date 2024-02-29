@@ -109,7 +109,7 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
     .context("Unable to uncompress the image")?;
     // A compressed ChromeOS image only contains the image path.
     let image_path = entries
-        .get(0)
+        .first()
         .context("Got malformed ChromeOS Flex image")?;
 
     // Finally install the image on disk.
