@@ -5,7 +5,7 @@ authors = ["The ChromiumOS Authors"]
 edition = "2018"
 
 [dependencies]
-dbus = "0.9"
+dbus = { version = "0.9.7", features = ["stdfd"] }
 dbus-tree = "0.9"
 getopts = "0.2"
 libc = "0.2"

@@ -8,15 +8,15 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener};
+use std::os::fd::OwnedFd;
 use std::os::raw::c_int;
-use std::os::unix::io::{AsRawFd, IntoRawFd};
+use std::os::unix::io::AsRawFd;
 use std::result;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use chunnel::forwarder::ForwarderSession;
-use dbus::arg::OwnedFd;
 use dbus::blocking::LocalConnection as DBusConnection;
 use dbus::{self, Error as DBusError};
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
@@ -223,8 +223,7 @@ impl ForwarderSessions {
                     .method_call(
                         PERMISSION_BROKER_INTERFACE,
                         REQUEST_LOOPBACK_TCP_PORT_LOCKDOWN_METHOD,
-                        // Safe because ownership of dbus_fd is transferred.
-                        (port, unsafe { OwnedFd::new(dbus_fd.into_raw_fd()) }),
+                        (port, OwnedFd::from(dbus_fd)),
                     )
                     .map_err(Error::DBusMessageSend)?;
                 if !allowed {
