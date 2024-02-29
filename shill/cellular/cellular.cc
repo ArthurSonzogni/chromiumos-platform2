@@ -276,20 +276,13 @@ void Cellular::ValidateApnTryList(std::deque<Stringmap>& apn_try_list) {
 }
 
 // static
-std::deque<Stringmap> Cellular::BuildFallbackEmptyApn(
-    ApnList::ApnType apn_type) {
-  std::deque<Stringmap> apn_list;
-  std::vector<std::string> ip_types = {kApnIpTypeV4V6, kApnIpTypeV4,
-                                       kApnIpTypeV6};
-  for (const auto& ip_type : ip_types) {
-    Stringmap apn;
-    apn[kApnProperty] = "";
-    apn[kApnTypesProperty] = ApnList::GetApnTypeString(apn_type);
-    apn[kApnIpTypeProperty] = ip_type;
-    apn[kApnSourceProperty] = cellular::kApnSourceFallback;
-    apn_list.push_back(apn);
-  }
-  return apn_list;
+Stringmap Cellular::BuildFallbackEmptyApn(ApnList::ApnType apn_type) {
+  Stringmap apn;
+  apn[kApnProperty] = "";
+  apn[kApnTypesProperty] = ApnList::GetApnTypeString(apn_type);
+  apn[kApnIpTypeProperty] = kApnIpTypeV4V6;
+  apn[kApnSourceProperty] = cellular::kApnSourceFallback;
+  return apn;
 }
 
 Cellular::Cellular(Manager* manager,
@@ -3618,14 +3611,10 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // Add fallback empty APN as a last try for Default and Attach
   if (apn_type == ApnList::ApnType::kDefault ||
       apn_type == ApnList::ApnType::kAttach) {
-    bool is_same_as_last_good_apn = false;
-    std::deque<Stringmap> empty_apn_list = BuildFallbackEmptyApn(apn_type);
-    for (const auto& apn : empty_apn_list) {
-      apn_try_list.push_back(apn);
-      if (last_good_apn_info) {
-        is_same_as_last_good_apn |= CompareApns(*last_good_apn_info, apn);
-      }
-    }
+    Stringmap empty_apn = BuildFallbackEmptyApn(apn_type);
+    apn_try_list.push_back(empty_apn);
+    bool is_same_as_last_good_apn =
+        last_good_apn_info && CompareApns(*last_good_apn_info, empty_apn);
     if (is_same_as_last_good_apn)
       add_last_good_apn = false;
   }
