@@ -112,7 +112,8 @@ void PseudonymizationManager::OnUserLoggedOut() {
 void PseudonymizationManager::DoNoOpPseudonymization(
     const FirmwareDump& input, const FirmwareDump& output) const {
   bool success = true;
-  LOG(INFO) << "Pseudonymizing " << input;
+  LOG(INFO) << "Pseudonymizing in progress.";
+  VLOG(kLocalOnlyDebugVerbosity) << "Pseudonymizing " << input;
   if (!base::Move(input.DumpFile(), output.DumpFile())) {
     LOG(ERROR) << "Failed to move file to destination.";
     success = false;
