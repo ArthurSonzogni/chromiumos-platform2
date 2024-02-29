@@ -28,6 +28,11 @@ bool IsWaitingState(const mojom::RoutineStatePtr& state) {
   return state->state_union->is_waiting();
 }
 
+bool IsRunningStateWithInfo(const mojom::RoutineStatePtr& state) {
+  return state->state_union->is_running() &&
+         state->state_union->get_running()->info;
+}
+
 }  // namespace
 
 RoutineObserverForTesting::RoutineObserverForTesting() = default;
@@ -45,6 +50,18 @@ void RoutineObserverForTesting::OnRoutineStateChange(
       state_action_.reset();
     }
   }
+}
+
+void RoutineObserverForTesting::WaitRoutineRunningInfoUpdate() {
+  if (!state_.is_null()) {
+    return;
+  }
+  CHECK(!state_action_) << "Can set only one state action";
+  base::test::TestFuture<void> signal;
+  state_action_ = {
+      .is_condition_satisfied = base::BindRepeating(&IsRunningStateWithInfo),
+      .on_condition_satisfied = signal.GetCallback()};
+  EXPECT_TRUE(signal.Wait());
 }
 
 void RoutineObserverForTesting::WaitUntilRoutineFinished() {

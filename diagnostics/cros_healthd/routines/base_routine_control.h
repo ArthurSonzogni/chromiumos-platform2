@@ -94,6 +94,11 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   // waiting or running.
   void SetRunningState();
 
+  // Update the information of running state, this can only be called if the
+  // state is currently running.
+  void SetRunningStateInfo(
+      ash::cros_healthd::mojom::RoutineRunningInfoPtr info);
+
   // Set the state to waiting, this can only be called if the state is currently
   // running.
   //

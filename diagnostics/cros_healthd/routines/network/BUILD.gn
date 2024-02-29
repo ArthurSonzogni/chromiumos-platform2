@@ -18,6 +18,7 @@ source_set("network") {
     "https_firewall.cc",
     "https_latency.cc",
     "lan_connectivity.cc",
+    "network_bandwidth.cc",
     "signal_strength.cc",
     "video_conferencing.cc",
   ]
@@ -44,6 +45,7 @@ if (use.test) {
       "https_firewall_test.cc",
       "https_latency_test.cc",
       "lan_connectivity_test.cc",
+      "network_bandwidth_test.cc",
       "signal_strength_test.cc",
       "video_conferencing_test.cc",
     ]

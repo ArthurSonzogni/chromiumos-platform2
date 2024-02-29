@@ -67,6 +67,8 @@ std::string EnumToString(
     ash::cros_healthd::mojom::HardwarePresenceStatus status);
 std::string EnumToString(
     ash::cros_healthd::mojom::ThermalSensorInfo::ThermalSensorSource source);
+std::string EnumToString(
+    ash::cros_healthd::mojom::NetworkBandwidthRoutineRunningInfo_Type type);
 
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
@@ -130,9 +132,9 @@ void SetJsonDictValue(std::string_view key,
   }
 }
 
-void OutputJson(const base::Value::Dict& output);
+std::string GetSingleLineJson(const base::Value::Dict& output);
 
-void OutputSingleLineJson(const base::Value::Dict& output);
+void OutputJson(const base::Value::Dict& output);
 
 void OutputSupportStatus(
     const ash::cros_healthd::mojom::SupportStatusPtr status);

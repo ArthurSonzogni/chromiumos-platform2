@@ -374,6 +374,14 @@ int CameraAvailabilityMain(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(CameraAvailability);
 }
 
+int NetworkBandwidthMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS("Network bandwidth routine");
+
+  auto argument = mojom::NetworkBandwidthRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(NetworkBandwidth);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -842,6 +850,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_pairing_v2", BluetoothPairingV2Main},
     {"camera_availability", CameraAvailabilityMain},
     {"urandom_v2", UrandomV2Main},
+    {"network_bandwidth", NetworkBandwidthMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

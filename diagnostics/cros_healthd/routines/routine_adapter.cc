@@ -111,6 +111,7 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     }
     // Not exposed in the v1 interface.
     case mojom::RoutineDetail::Tag::kCameraAvailability:
+    case mojom::RoutineDetail::Tag::kNetworkBandwidth:
       NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertToValueInV1Format(detail->get_memory());

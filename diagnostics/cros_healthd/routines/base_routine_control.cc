@@ -102,6 +102,15 @@ void BaseRoutineControl::SetRunningState() {
   NotifyObserver();
 }
 
+void BaseRoutineControl::SetRunningStateInfo(
+    mojom::RoutineRunningInfoPtr info) {
+  CHECK(state_->state_union->is_running())
+      << "Can only set running state info from running state";
+  state_->state_union = mojom::RoutineStateUnion::NewRunning(
+      mojom::RoutineStateRunning::New(std::move(info)));
+  NotifyObserver();
+}
+
 void BaseRoutineControl::SetWaitingState(
     mojom::RoutineStateWaiting::Reason reason, const std::string& message) {
   CHECK_NE(reason, mojom::RoutineStateWaiting::Reason::kWaitingInteraction);

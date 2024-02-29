@@ -27,6 +27,9 @@ class RoutineObserverForTesting
   void OnRoutineStateChange(
       ash::cros_healthd::mojom::RoutineStatePtr state) override;
 
+  // Wait for the routine state info to be updated in the running state.
+  void WaitRoutineRunningInfoUpdate();
+
   // Wait for the routine to be in the finished state.
   void WaitUntilRoutineFinished();
 

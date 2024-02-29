@@ -194,5 +194,16 @@ TEST(RoutineOutputUtilsTest, ConvertCameraAvailabilityDetail) {
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ConvertNetworkBandwidthDetail) {
+  auto detail = mojom::NetworkBandwidthRoutineDetail::New();
+  detail->download_speed_kbps = 300.0;
+  detail->upload_speed_kbps = 100.0;
+
+  base::Value::Dict expected_result;
+  expected_result.Set("download_speed_kbps", 300.0);
+  expected_result.Set("upload_speed_kbps", 100.0);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
+}
+
 }  // namespace
 }  // namespace diagnostics

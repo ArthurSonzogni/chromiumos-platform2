@@ -257,4 +257,14 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
+base::Value::Dict ConvertToValue(
+    const mojom::NetworkBandwidthRoutineDetailPtr& detail) {
+  base::Value::Dict output;
+
+  output.Set("download_speed_kbps", detail->download_speed_kbps);
+  output.Set("upload_speed_kbps", detail->upload_speed_kbps);
+
+  return output;
+}
+
 }  // namespace diagnostics

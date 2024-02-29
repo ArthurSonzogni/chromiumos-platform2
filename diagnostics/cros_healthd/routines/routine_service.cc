@@ -28,6 +28,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
+#include "diagnostics/cros_healthd/routines/network/network_bandwidth.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -257,6 +258,12 @@ void RoutineService::CheckAndCreateRoutine(
     case mojom::RoutineArgument::Tag::kUrandom: {
       auto routine = std::make_unique<UrandomRoutineV2>(
           context_, routine_arg->get_urandom());
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kNetworkBandwidth: {
+      auto routine = std::make_unique<NetworkBandwidthRoutine>(
+          context_, routine_arg->get_network_bandwidth());
       std::move(callback).Run(base::ok(std::move(routine)));
       return;
     }

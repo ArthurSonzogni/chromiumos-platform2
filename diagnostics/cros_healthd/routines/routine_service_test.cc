@@ -551,5 +551,14 @@ TEST_F(RoutineServiceTest, CameraAvailabilityNoCamera) {
                          mojom::CameraAvailabilityRoutineArgument::New()));
 }
 
+TEST_F(RoutineServiceTest, NetworkBandwidth) {
+  CheckIsRoutineArgumentSupported(
+      MakeSupported(), mojom::RoutineArgument::NewNetworkBandwidth(
+                           mojom::NetworkBandwidthRoutineArgument::New()));
+  CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewNetworkBandwidth(
+                         mojom::NetworkBandwidthRoutineArgument::New()));
+}
+
 }  // namespace
 }  // namespace diagnostics

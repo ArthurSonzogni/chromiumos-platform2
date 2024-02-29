@@ -49,7 +49,9 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
 
   // Handle state transition.
   void OnInitializedState();
-  void OnRunningState(uint8_t percentage);
+  void OnRunningState(
+      uint8_t percentage,
+      const ash::cros_healthd::mojom::RoutineStateRunningPtr& running);
   void OnWaitingState(
       const ash::cros_healthd::mojom::RoutineStateWaitingPtr& waiting);
   void OnFinishedState(

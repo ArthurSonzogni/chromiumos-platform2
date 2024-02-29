@@ -43,6 +43,14 @@ base::Value::Dict ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
   return output;
 }
 
+base::Value::Dict ConvertToValue(
+    const mojom::NetworkBandwidthRoutineRunningInfoPtr& running) {
+  base::Value::Dict output;
+  output.Set("type", EnumToString(running->type));
+  output.Set("speed_kbps", std::move(running->speed_kbps));
+  return output;
+}
+
 }  // namespace
 
 RoutineV2Client::RoutineV2Client(
@@ -59,7 +67,7 @@ void RoutineV2Client::OnRoutineStateChange(mojom::RoutineStatePtr state) {
       OnInitializedState();
       return;
     case mojom::RoutineStateUnion::Tag::kRunning:
-      OnRunningState(state->percentage);
+      OnRunningState(state->percentage, state->state_union->get_running());
       return;
     case mojom::RoutineStateUnion::Tag::kWaiting:
       OnWaitingState(state->state_union->get_waiting());
@@ -100,8 +108,7 @@ void RoutineV2Client::OnRoutineDisconnection(uint32_t error,
 
 void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
   if (single_line_json_) {
-    std::cout << "Output: ";
-    OutputSingleLineJson(output);
+    std::cout << "Output: " << GetSingleLineJson(output) << std::endl;
     return;
   }
   std::cout << "Output: " << std::endl;
@@ -120,8 +127,24 @@ void RoutineV2Client::OnInitializedState() {
   std::cout << "Initialized" << std::endl;
 }
 
-void RoutineV2Client::OnRunningState(uint8_t percentage) {
-  std::cout << '\r' << "Running Progress: " << int(percentage) << std::flush;
+void RoutineV2Client::OnRunningState(
+    uint8_t percentage, const mojom::RoutineStateRunningPtr& running) {
+  if (!running->info) {
+    std::cout << '\r' << "Running Progress: " << int(percentage) << std::flush;
+    return;
+  }
+
+  base::Value::Dict running_value;
+  switch (running->info->which()) {
+    case mojom::RoutineRunningInfo::Tag::kUnrecognizedArgument: {
+      NOTREACHED_NORETURN() << "Got unrecognized RoutineRunningInfo";
+    }
+    case mojom::RoutineRunningInfo::Tag::kNetworkBandwidth:
+      running_value = ConvertToValue(running->info->get_network_bandwidth());
+      break;
+  }
+  std::cout << '\r' << "Running Progress: " << int(percentage)
+            << ", Info: " << GetSingleLineJson(running_value) << std::flush;
 }
 
 void RoutineV2Client::OnWaitingState(
@@ -196,6 +219,9 @@ void RoutineV2Client::OnFinishedState(
         break;
       case mojom::RoutineDetail::Tag::kCameraAvailability:
         PrintOutput(ConvertToValue(detail->get_camera_availability()));
+        break;
+      case mojom::RoutineDetail::Tag::kNetworkBandwidth:
+        PrintOutput(ConvertToValue(detail->get_network_bandwidth()));
         break;
     }
   }

@@ -1141,6 +1141,41 @@ Errors:
 - `Failed to establish a TLS connection to media hostnames.`
 - `Video conferencing routine did not run.`
 
+### Network Bandwidth
+
+Checks the network bandwidth and report the speed info.
+
+The network bandwidth routine has no parameters.
+
+To run the network bandwidth routine:
+
+From crosh:
+```bash
+crosh> diag network_bandwidth
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag network_bandwidth
+```
+
+Sample output:
+```bash
+Initialized
+Running Progress: 100 Info: {"speed_kbps":92440.75496988156,"type":"Upload"}"
+Status: Passed
+Output:
+{
+   "download_speed_kbps": 90140.82724585834,
+   "upload_speed_kbps": 92590.39991468465
+}
+```
+
+Errors:
+- `Error running NDT.`
+- `Routine timeout.`
+- `Unexpected flow in routine.`
+
 ## Android Network Routines
 
 The following routines are available for Android running on ChromeOS (also known as ARC).

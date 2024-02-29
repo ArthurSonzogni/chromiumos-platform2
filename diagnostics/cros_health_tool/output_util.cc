@@ -539,17 +539,28 @@ std::string EnumToString(mojom::ThermalSensorInfo::ThermalSensorSource source) {
   }
 }
 
+std::string EnumToString(mojom::NetworkBandwidthRoutineRunningInfo::Type type) {
+  switch (type) {
+    case mojom::NetworkBandwidthRoutineRunningInfo::Type::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+    case mojom::NetworkBandwidthRoutineRunningInfo::Type::kDownload:
+      return "Download";
+    case mojom::NetworkBandwidthRoutineRunningInfo::Type::kUpload:
+      return "Upload";
+  }
+}
+
+std::string GetSingleLineJson(const base::Value::Dict& output) {
+  std::string json;
+  base::JSONWriter::Write(output, &json);
+  return json;
+}
+
 void OutputJson(const base::Value::Dict& output) {
   std::string json;
   base::JSONWriter::WriteWithOptions(
       output, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
 
-  std::cout << json << std::endl;
-}
-
-void OutputSingleLineJson(const base::Value::Dict& output) {
-  std::string json;
-  base::JSONWriter::Write(output, &json);
   std::cout << json << std::endl;
 }
 
