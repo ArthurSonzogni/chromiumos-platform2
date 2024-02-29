@@ -1030,15 +1030,14 @@ properties:
                     The usb-path is '1-1.1'."
                   type: string
                 i2c-path:
-                  description: "Searches and finds the idVendor and idProduct
-                    under sysfs /sys/bus/i2c/devices/* which matches the
-                    vendor-id and product-id due to hid-over-i2c is used.
+                  description: "Path to the I2C device under sysfs
+                    /sys/bus/i2c/devices/*, in format <bus>-<address>.
                     This is required for i2c interface detachable base.
                     Note - i2c bus numbering can shift across reboots, please have
                     corresponding setup based on your platform to ensure consistency.
                     By taking this as an example:
-                    '/sys/bus/i2c/devices/i2c-0'
-                    The i2c-path is 'i2c-0'."
+                    '/sys/bus/i2c/devices/1-0023'
+                    The i2c-path is '1-0023'."
                   type: string
                 files:
                   type: array

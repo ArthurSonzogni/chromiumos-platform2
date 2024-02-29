@@ -1643,7 +1643,7 @@
               "symlink": "/lib/firmware/Fake_Detachable.fw"
             }
           ],
-          "i2c-path": "i2c-0",
+          "i2c-path": "1-0023",
           "product-id": 1000,
           "vendor-id": 6353
         },
