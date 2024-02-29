@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_TC_PROCESS_H_
-#define SHILL_MOCK_TC_PROCESS_H_
+#ifndef SHILL_NETWORK_MOCK_TC_PROCESS_H_
+#define SHILL_NETWORK_MOCK_TC_PROCESS_H_
 
 #include <memory>
 #include <string>
@@ -11,7 +11,7 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/tc_process.h"
+#include "shill/network/tc_process.h"
 
 namespace shill {
 
@@ -35,4 +35,4 @@ class MockTCProcessFactory : public TCProcessFactory {
 };
 
 }  // namespace shill
-#endif  // SHILL_MOCK_TC_PROCESS_H_
+#endif  // SHILL_NETWORK_MOCK_TC_PROCESS_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_THROTTLER_H_
-#define SHILL_THROTTLER_H_
+#ifndef SHILL_NETWORK_THROTTLER_H_
+#define SHILL_NETWORK_THROTTLER_H_
 
 #include <memory>
 #include <string>
@@ -12,7 +12,7 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/callbacks.h"
-#include "shill/tc_process.h"
+#include "shill/network/tc_process.h"
 
 namespace shill {
 
@@ -83,4 +83,4 @@ class Throttler {
 
 }  // namespace shill
 
-#endif  // SHILL_THROTTLER_H_
+#endif  // SHILL_NETWORK_THROTTLER_H_

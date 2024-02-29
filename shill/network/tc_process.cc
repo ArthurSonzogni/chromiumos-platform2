@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/tc_process.h"
+#include "shill/network/tc_process.h"
 
 #include <memory>
 #include <utility>
