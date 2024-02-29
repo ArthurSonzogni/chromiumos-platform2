@@ -4,6 +4,7 @@
 
 // Command-line utility to access to the Chrome OS model configuration.
 
+#include <unistd.h>
 #include <iostream>
 #include <string>
 
@@ -54,5 +55,9 @@ int main(int argc, char* argv[]) {
   }
 
   std::cout << value;
+  if (!value.ends_with("\n") && isatty(STDOUT_FILENO)) {
+    std::cout << std::endl;
+  }
+
   return 0;
 }
