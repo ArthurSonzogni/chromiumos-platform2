@@ -23,16 +23,20 @@ class MachineQuirksStub : public MachineQuirksInterface {
   void ApplyQuirksToPrefs() override;
   bool IsSuspendToIdle() override;
   bool IsSuspendBlocked() override;
+  bool IsExternalDisplayOnly() override;
 
   void ResetQuirks();
   // Set the bool value to be returned for the idle check.
   void SetSuspendToIdleQuirkDetected(bool value);
   // Set the bool value to be returned for the blocked check.
   void SetSuspendBlockedQuirkDetected(bool value);
+  // Set the bool value to be returned for the external display only check.
+  void SetExternalDisplayOnlyQuirkDetected(bool value);
 
  private:
   bool force_idle_ = false;
   bool block_suspend_ = false;
+  bool external_display_only_ = false;
   PrefsInterface* prefs_;
 };
 

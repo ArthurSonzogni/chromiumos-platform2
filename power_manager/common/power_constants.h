@@ -271,6 +271,9 @@ extern const char kSuspendToIdleListPref[];
 // List of devices with the DisableIdleSuspend machine quirk.
 extern const char kSuspendPreventionListPref[];
 
+// List of devices with the ExternalDisplayOnly machine quirk.
+extern const char kExternalDisplayOnlyListPref[];
+
 // If true, return Far when at least one of the sensors report far.
 extern const char kSetTransmitPowerPreferFarForProximityPref[];
 

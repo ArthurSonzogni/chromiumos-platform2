@@ -29,6 +29,9 @@ class MachineQuirksInterface {
   // the suspend should be allowed but only to
   // Idle (freeze).
   virtual bool IsSuspendToIdle() = 0;
+  // Checks if the machine quirk indicates that
+  // the device doesn't have an internal monitor.
+  virtual bool IsExternalDisplayOnly() = 0;
 };
 
 // Check for machine specific quirks from the running machine.
@@ -59,6 +62,12 @@ class MachineQuirks : public MachineQuirksInterface {
   // This quirk is for machines which do not return from a suspend-to-ram
   // case. They do work if the system is suspend-to-idle. (freeze)
   bool IsSuspendToIdle() override;
+
+  // Determine if the machine does not have an internal monitor.
+  // TODO(b/325660762): The current implementation uses regex to match the model
+  // name now. Re-implement this function to determine at run time if the
+  // machine has an internal monitor or not.
+  bool IsExternalDisplayOnly() override;
 
   // Return true if field_name is found in list_file
   bool IsQuirkMatch(std::string field_name, std::string list_file);

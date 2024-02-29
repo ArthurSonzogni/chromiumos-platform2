@@ -38,6 +38,10 @@ bool MachineQuirksStub::IsSuspendBlocked() {
   return block_suspend_;
 }
 
+bool MachineQuirksStub::IsExternalDisplayOnly() {
+  return external_display_only_;
+}
+
 void MachineQuirksStub::ResetQuirks() {
   force_idle_ = false;
   block_suspend_ = false;
@@ -49,6 +53,10 @@ void MachineQuirksStub::SetSuspendToIdleQuirkDetected(bool value) {
 
 void MachineQuirksStub::SetSuspendBlockedQuirkDetected(bool value) {
   block_suspend_ = value;
+}
+
+void MachineQuirksStub::SetExternalDisplayOnlyQuirkDetected(bool value) {
+  external_display_only_ = value;
 }
 
 }  // namespace power_manager::system

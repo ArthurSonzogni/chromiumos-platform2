@@ -55,6 +55,11 @@ void MachineQuirks::ApplyQuirksToPrefs() {
     prefs_->SetInt64(kSuspendToIdlePref, 1);
     LOG(INFO) << "Suspend to Idle Pref set to enabled";
   }
+
+  if (IsExternalDisplayOnly()) {
+    prefs_->SetInt64(kExternalDisplayOnlyPref, 1);
+    LOG(INFO) << "ExternalDisplayOnly Pref set to enabled";
+  }
 }
 
 bool MachineQuirks::IsSuspendBlocked() {
@@ -100,6 +105,32 @@ bool MachineQuirks::IsSuspendToIdle() {
   if (IsQuirkMatch(product_name, suspend_to_idle_list)) {
     LOG(INFO) << "Product name " << product_name
               << " is in power_manager's suspend-to-idle list.";
+    return true;
+  }
+
+  // Normal case, no quirk is required.
+  return false;
+}
+
+bool MachineQuirks::IsExternalDisplayOnly() {
+  CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
+
+  std::string external_display_only_list;
+  // Read external_display_only list from pref.
+  if (!prefs_->GetString(kExternalDisplayOnlyListPref,
+                         &external_display_only_list))
+    return false;
+
+  std::string product_name;
+  // If the product name is unreadable, assume no.
+  base::FilePath product_name_file =
+      base::FilePath(dmi_id_dir_.Append(kDefaultProductNameFile));
+  if (!util::ReadStringFile(product_name_file, &product_name))
+    return false;
+
+  if (IsQuirkMatch(product_name, external_display_only_list)) {
+    LOG(INFO) << "Product name " << product_name
+              << " is in power_manager's external-display-only list.";
     return true;
   }
 

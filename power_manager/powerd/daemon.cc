@@ -442,6 +442,9 @@ void Daemon::Init() {
 
   ec_command_factory_ = delegate_->CreateEcCommandFactory();
 
+  machine_quirks_ = delegate_->CreateMachineQuirks(prefs_.get());
+  machine_quirks_->ApplyQuirksToPrefs();
+
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
 #if USE_IIOSERVICE
@@ -504,8 +507,6 @@ void Daemon::Init() {
     }
   }
 
-  machine_quirks_ = delegate_->CreateMachineQuirks(prefs_.get());
-  machine_quirks_->ApplyQuirksToPrefs();
   prefs_->GetBool(kManualEventlogAddPref, &log_suspend_manually_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 

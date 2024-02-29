@@ -34,6 +34,9 @@ const char sti_models[] =
     "ThinkCentre M93\n"
     "ProDesk 600 G1\n"
     "Surface Pro 3\n";
+const char external_display_models[] =
+    "HP Engage Go 13.5 inch Mobile System\n"
+    "UTC-115G\n";
 }  // namespace
 
 class MachineQuirksTest : public TestEnvironment {
@@ -50,10 +53,12 @@ class MachineQuirksTest : public TestEnvironment {
     // Set up mock pref device lists
     prefs_.SetString(kSuspendPreventionListPref, sp_models);
     prefs_.SetString(kSuspendToIdleListPref, sti_models);
+    prefs_.SetString(kExternalDisplayOnlyListPref, external_display_models);
 
     // Set up mock prefs default values
     prefs_.SetInt64(kDisableIdleSuspendPref, 0);
     prefs_.SetInt64(kSuspendToIdlePref, 0);
+    prefs_.SetInt64(kExternalDisplayOnlyPref, 0);
     prefs_.SetInt64(kHasMachineQuirksPref, 1);
 
     // Init machine_quirks_ with prefs
@@ -126,6 +131,22 @@ TEST_F(MachineQuirksTest, IsSuspendBlockedFalse) {
   EXPECT_EQ(false, machine_quirks_.IsSuspendBlocked());
 }
 
+// Test that IsExternalDisplayOnly is true when the dmi value is a match
+TEST_F(MachineQuirksTest, IsExternalDisplayOnlyTrue) {
+  CreateDmiFile("product_name", "UTC-115G");
+  EXPECT_EQ(true, machine_quirks_.IsExternalDisplayOnly());
+  // Also test for the case when there is whitespace added
+  CreateDmiFile("product_name", " UTC-115G ");
+  EXPECT_EQ(true, machine_quirks_.IsExternalDisplayOnly());
+}
+
+// Test that IsSuspendBlocked is false when there is no matching dmi value
+TEST_F(MachineQuirksTest, IsExternalDisplayOnlyFalse) {
+  EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
+  CreateDmiFile("product_name", "foo");
+  EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
+}
+
 // Testing that when kHasMachineQuirksPref = 0, then no quirks are applied
 TEST_F(MachineQuirksTest, MachineQuirksDisabled) {
   CreateDmiFile("product_name", "HP Compaq dc7900");
@@ -144,10 +165,13 @@ TEST_F(MachineQuirksTest, ApplyQuirksToPrefsNone) {
   machine_quirks_.ApplyQuirksToPrefs();
   int64_t disable_idle_suspend_pref = 2;
   int64_t suspend_to_idle_pref = 2;
+  int64_t external_display_only_pref = 2;
   CHECK(prefs_.GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend_pref));
   CHECK(prefs_.GetInt64(kSuspendToIdlePref, &suspend_to_idle_pref));
+  CHECK(prefs_.GetInt64(kExternalDisplayOnlyPref, &external_display_only_pref));
   EXPECT_EQ(0, disable_idle_suspend_pref);
   EXPECT_EQ(0, suspend_to_idle_pref);
+  EXPECT_EQ(0, external_display_only_pref);
 }
 
 // Testing that the correct pref is set when there's a suspend blocked match
@@ -174,6 +198,23 @@ TEST_F(MachineQuirksTest, ApplyQuirksToPrefsWhenIsSuspendToIdle) {
   CHECK(prefs_.GetInt64(kSuspendToIdlePref, &suspend_to_idle_pref));
   EXPECT_EQ(0, disable_idle_suspend_pref);
   EXPECT_EQ(1, suspend_to_idle_pref);
+}
+
+// Testing that the correct pref is set when there's a external display only
+// match
+TEST_F(MachineQuirksTest, ApplyQuirksToPrefsWhenIsExternalDisplayOnly) {
+  CreateDmiFile("product_name", "HP Engage Go 13.5 inch Mobile System");
+  machine_quirks_.ApplyQuirksToPrefs();
+  int64_t disable_idle_suspend_pref = 2;
+  int64_t suspend_to_idle_pref = 2;
+  int64_t external_display_only_pref = 2;
+
+  CHECK(prefs_.GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend_pref));
+  CHECK(prefs_.GetInt64(kSuspendToIdlePref, &suspend_to_idle_pref));
+  CHECK(prefs_.GetInt64(kExternalDisplayOnlyPref, &external_display_only_pref));
+  EXPECT_EQ(0, disable_idle_suspend_pref);
+  EXPECT_EQ(0, suspend_to_idle_pref);
+  EXPECT_EQ(1, external_display_only_pref);
 }
 
 }  // namespace power_manager::system

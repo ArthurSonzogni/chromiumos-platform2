@@ -1444,6 +1444,10 @@
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },
+                  "external-display-only-models": {
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
                   "factory-mode": {
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
