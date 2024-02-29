@@ -212,24 +212,12 @@ constexpr const char* kActions[] = {"unmount",
                                     "dump_keyset",
                                     "dump_last_activity",
                                     "set_current_user_old",
-                                    "install_attributes_set",
-                                    "install_attributes_get",
-                                    "install_attributes_finalize",
-                                    "install_attributes_count",
-                                    "install_attributes_get_status",
-                                    "install_attributes_is_ready",
-                                    "install_attributes_is_secure",
-                                    "install_attributes_is_invalid",
-                                    "install_attributes_is_first_install",
                                     "pkcs11_get_user_token_info",
                                     "pkcs11_get_system_token_info",
                                     "pkcs11_is_user_token_ok",
                                     "pkcs11_terminate",
                                     "pkcs11_restore_tpm_tokens",
                                     "get_login_status",
-                                    "get_firmware_management_parameters",
-                                    "set_firmware_management_parameters",
-                                    "remove_firmware_management_parameters",
                                     "migrate_to_dircrypto",
                                     "needs_dircrypto_migration",
                                     "get_supported_key_policies",
@@ -279,24 +267,12 @@ enum ActionEnum {
   ACTION_DUMP_KEYSET,
   ACTION_DUMP_LAST_ACTIVITY,
   ACTION_SET_CURRENT_USER_OLD,
-  ACTION_INSTALL_ATTRIBUTES_SET,
-  ACTION_INSTALL_ATTRIBUTES_GET,
-  ACTION_INSTALL_ATTRIBUTES_FINALIZE,
-  ACTION_INSTALL_ATTRIBUTES_COUNT,
-  ACTION_INSTALL_ATTRIBUTES_GET_STATUS,
-  ACTION_INSTALL_ATTRIBUTES_IS_READY,
-  ACTION_INSTALL_ATTRIBUTES_IS_SECURE,
-  ACTION_INSTALL_ATTRIBUTES_IS_INVALID,
-  ACTION_INSTALL_ATTRIBUTES_IS_FIRST_INSTALL,
   ACTION_PKCS11_GET_USER_TOKEN_INFO,
   ACTION_PKCS11_GET_SYSTEM_TOKEN_INFO,
   ACTION_PKCS11_IS_USER_TOKEN_OK,
   ACTION_PKCS11_TERMINATE,
   ACTION_PKCS11_RESTORE_TPM_TOKENS,
   ACTION_GET_LOGIN_STATUS,
-  ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS,
-  ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
-  ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
   ACTION_MIGRATE_TO_DIRCRYPTO,
   ACTION_NEEDS_DIRCRYPTO_MIGRATION,
   ACTION_GET_SUPPORTED_KEY_POLICIES,
@@ -341,14 +317,10 @@ constexpr char kKeyLabelSwitch[] = "key_label";
 constexpr char kKeyLabelsSwitch[] = "key_labels";
 constexpr char kNewKeyLabelSwitch[] = "new_key_label";
 constexpr char kForceSwitch[] = "force";
-constexpr char kAttrNameSwitch[] = "name";
-constexpr char kAttrValueSwitch[] = "value";
 constexpr char kFileSwitch[] = "file";
 constexpr char kInputFileSwitch[] = "input";
 constexpr char kOutputFileSwitch[] = "output";
 constexpr char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
-constexpr char kFlagsSwitch[] = "flags";
-constexpr char kDevKeyHashSwitch[] = "developer_key_hash";
 constexpr char kEcryptfsSwitch[] = "ecryptfs";
 constexpr char kMinimalMigration[] = "minimal_migration";
 constexpr char kPublicMount[] = "public_mount";
@@ -394,32 +366,6 @@ brillo::SecureBlob GetSystemSalt(
   }
   brillo::SecureBlob system_salt(reply.salt());
   return system_salt;
-}
-
-bool GetAttrName(Printer& printer,
-                 const base::CommandLine* cl,
-                 std::string* name_out) {
-  *name_out = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-
-  if (name_out->empty()) {
-    printer.PrintHumanOutput(
-        "No install attribute name specified (--name=<name>)\n");
-    return false;
-  }
-  return true;
-}
-
-bool GetAttrValue(Printer& printer,
-                  const base::CommandLine* cl,
-                  std::string* value_out) {
-  *value_out = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
-
-  if (value_out->empty()) {
-    printer.PrintHumanOutput(
-        "No install attribute value specified (--value=<value>)\n");
-    return false;
-  }
-  return true;
 }
 
 bool GetAccountId(Printer& printer,
@@ -1459,7 +1405,6 @@ int main(int argc, char** argv) {
 
   org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(bus);
   org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(bus);
-  org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(bus);
   org::chromium::CryptohomeMiscInterfaceProxy misc_proxy(bus);
 
   libstorage::Platform platform;
@@ -1740,291 +1685,6 @@ int main(int argc, char** argv) {
           "Timestamp successfully updated. You may verify it with "
           "--action=dump_keyset --user=...\n");
     }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_GET],
-                 action.c_str())) {
-    std::string name;
-    if (!GetAttrName(printer, cl, &name)) {
-      printer.PrintHumanOutput("No attribute name specified.\n");
-      return 1;
-    }
-
-    // Make sure install attributes are ready.
-    user_data_auth::InstallAttributesGetStatusRequest status_req;
-    user_data_auth::InstallAttributesGetStatusReply status_reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            status_req, &status_reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (status_reply.state() ==
-            user_data_auth::InstallAttributesState::UNKNOWN ||
-        status_reply.state() ==
-            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
-      return 1;
-    }
-
-    user_data_auth::InstallAttributesGetRequest req;
-    user_data_auth::InstallAttributesGetReply reply;
-    req.set_name(name);
-    error.reset();
-    if (!install_attributes_proxy.InstallAttributesGet(req, &reply, &error,
-                                                       timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGet call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      return static_cast<int>(reply.error());
-    }
-    printer.PrintFormattedHumanOutput("%s\n", reply.value().c_str());
-
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_SET],
-                 action.c_str())) {
-    std::string name;
-    if (!GetAttrName(printer, cl, &name)) {
-      printer.PrintHumanOutput("No attribute name specified.\n");
-      return 1;
-    }
-    std::string value;
-    if (!GetAttrValue(printer, cl, &value)) {
-      printer.PrintHumanOutput("No attribute value specified.\n");
-      return 1;
-    }
-
-    // Make sure install attributes are ready.
-    user_data_auth::InstallAttributesGetStatusRequest status_req;
-    user_data_auth::InstallAttributesGetStatusReply status_reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            status_req, &status_reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (status_reply.state() ==
-            user_data_auth::InstallAttributesState::UNKNOWN ||
-        status_reply.state() ==
-            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
-      return 1;
-    }
-
-    user_data_auth::InstallAttributesSetRequest req;
-    user_data_auth::InstallAttributesSetReply reply;
-    req.set_name(name);
-    // It is expected that a null terminator is part of the value.
-    value.push_back('\0');
-    req.set_value(value);
-    error.reset();
-    if (!install_attributes_proxy.InstallAttributesSet(req, &reply, &error,
-                                                       timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesSet call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Call to InstallAttributesSet() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
-                     action.c_str())) {
-    // Make sure install attributes are ready.
-    user_data_auth::InstallAttributesGetStatusRequest status_req;
-    user_data_auth::InstallAttributesGetStatusReply status_reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            status_req, &status_reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (status_reply.state() ==
-            user_data_auth::InstallAttributesState::UNKNOWN ||
-        status_reply.state() ==
-            user_data_auth::InstallAttributesState::TPM_NOT_OWNED) {
-      printer.PrintHumanOutput("InstallAttributes() is not ready.\n");
-      return 1;
-    }
-
-    user_data_auth::InstallAttributesFinalizeRequest req;
-    user_data_auth::InstallAttributesFinalizeReply reply;
-    error.reset();
-    if (!install_attributes_proxy.InstallAttributesFinalize(req, &reply, &error,
-                                                            timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesFinalize() failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    bool result = reply.error() ==
-                  user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
-    printer.PrintFormattedHumanOutput("InstallAttributesFinalize(): %d\n",
-                                      static_cast<int>(result));
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_COUNT],
-                 action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-    printer.PrintFormattedHumanOutput("InstallAttributesCount(): %d\n",
-                                      reply.count());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_GET_STATUS],
-                     action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-    printer.PrintFormattedHumanOutput(
-        "%s\n", InstallAttributesState_Name(reply.state()).c_str());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_IS_READY],
-                     action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    bool result =
-        (reply.state() != user_data_auth::InstallAttributesState::UNKNOWN &&
-         reply.state() !=
-             user_data_auth::InstallAttributesState::TPM_NOT_OWNED);
-    printer.PrintFormattedHumanOutput("InstallAttributesIsReady(): %d\n",
-                                      static_cast<int>(result));
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_IS_SECURE],
-                     action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
-    }
-
-    bool result = reply.is_secure();
-    printer.PrintFormattedHumanOutput("InstallAttributesIsSecure(): %d\n",
-                                      static_cast<int>(result));
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_IS_INVALID],
-                     action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    bool result =
-        (reply.state() == user_data_auth::InstallAttributesState::INVALID);
-    printer.PrintFormattedHumanOutput("InstallAttributesIsInvalid(): %d\n",
-                                      static_cast<int>(result));
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_INSTALL_ATTRIBUTES_IS_FIRST_INSTALL],
-                     action.c_str())) {
-    user_data_auth::InstallAttributesGetStatusRequest req;
-    user_data_auth::InstallAttributesGetStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "InstallAttributesGetStatus() call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput(
-          "Call to InstallAttributesGetStatus() failed.\n");
-      return static_cast<int>(reply.error());
-    }
-    bool result = (reply.state() ==
-                   user_data_auth::InstallAttributesState::FIRST_INSTALL);
-
-    printer.PrintFormattedHumanOutput("InstallAttributesIsFirstInstall(): %d\n",
-                                      static_cast<int>(result));
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_PKCS11_GET_USER_TOKEN_INFO],
                      action.c_str())) {
@@ -2147,120 +1807,6 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintHumanOutput("GetLoginStatus success.\n");
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS],
-                     action.c_str())) {
-    user_data_auth::GetFirmwareManagementParametersRequest req;
-    user_data_auth::GetFirmwareManagementParametersReply reply;
-
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.GetFirmwareManagementParameters(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "Failed to call GetFirmwareManagementParameters: %s\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else {
-      printer.PrintReplyProtobuf(reply);
-      if (reply.error() !=
-          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printer.PrintFormattedHumanOutput(
-            "Failed to call GetFirmwareManagementParameters: status %d\n",
-            static_cast<int>(reply.error()));
-        return static_cast<int>(reply.error());
-      }
-    }
-
-    printer.PrintFormattedHumanOutput("flags=0x%08x\n", reply.fwmp().flags());
-    brillo::Blob hash =
-        brillo::BlobFromString(reply.fwmp().developer_key_hash());
-    printer.PrintFormattedHumanOutput("hash=%s\n", BlobToHex(hash).c_str());
-    printer.PrintHumanOutput("GetFirmwareManagementParameters success.\n");
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS],
-                     action.c_str())) {
-    user_data_auth::SetFirmwareManagementParametersRequest req;
-    user_data_auth::SetFirmwareManagementParametersReply reply;
-
-    if (cl->HasSwitch(switches::kFlagsSwitch)) {
-      std::string flags_str = cl->GetSwitchValueASCII(switches::kFlagsSwitch);
-      char* end = nullptr;
-      int32_t flags = strtol(flags_str.c_str(), &end, 0);
-      if (end && *end != '\0') {
-        printer.PrintHumanOutput("Bad flags value.\n");
-        return 1;
-      }
-      req.mutable_fwmp()->set_flags(flags);
-    } else {
-      printer.PrintHumanOutput(
-          "Use --flags (and optionally --developer_key_hash).\n");
-      return 1;
-    }
-
-    if (cl->HasSwitch(switches::kDevKeyHashSwitch)) {
-      std::string hash_str =
-          cl->GetSwitchValueASCII(switches::kDevKeyHashSwitch);
-      brillo::Blob hash;
-      if (!base::HexStringToBytes(hash_str, &hash)) {
-        printer.PrintHumanOutput("Bad hash value.\n");
-        return 1;
-      }
-      if (hash.size() != SHA256_DIGEST_LENGTH) {
-        printer.PrintHumanOutput("Bad hash size.\n");
-        return 1;
-      }
-
-      req.mutable_fwmp()->set_developer_key_hash(brillo::BlobToString(hash));
-    }
-
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.SetFirmwareManagementParameters(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "Failed to call SetFirmwareManagementParameters: %s\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else {
-      printer.PrintReplyProtobuf(reply);
-      if (reply.error() !=
-          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printer.PrintFormattedHumanOutput(
-            "Failed to call SetFirmwareManagementParameters: status %d\n",
-            static_cast<int>(reply.error()));
-        return static_cast<int>(reply.error());
-      }
-    }
-
-    printer.PrintHumanOutput("SetFirmwareManagementParameters success.\n");
-  } else if (!strcmp(
-                 switches::kActions
-                     [switches::ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS],
-                 action.c_str())) {
-    user_data_auth::RemoveFirmwareManagementParametersRequest req;
-    user_data_auth::RemoveFirmwareManagementParametersReply reply;
-
-    brillo::ErrorPtr error;
-    if (!install_attributes_proxy.RemoveFirmwareManagementParameters(
-            req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "Failed to call RemoveFirmwareManagementParameters: %s\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else {
-      printer.PrintReplyProtobuf(reply);
-      if (reply.error() !=
-          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-        printer.PrintFormattedHumanOutput(
-            "Failed to call RemoveFirmwareManagementParameters: status %d\n",
-            static_cast<int>(reply.error()));
-        return static_cast<int>(reply.error());
-      }
-    }
-
-    printer.PrintHumanOutput("RemoveFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
