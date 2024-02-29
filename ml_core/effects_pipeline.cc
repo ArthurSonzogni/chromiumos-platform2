@@ -9,7 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/scoped_native_library.h>
+#include <base/native_library.h>
 #include <ml_core/effects_pipeline_bindings.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -21,7 +21,7 @@ using org::chromium::SessionManagerInterfaceProxy;
 
 constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
 
-std::optional<base::ScopedNativeLibrary> g_library;
+base::NativeLibrary g_library = nullptr;
 cros_ml_effects_CreateEffectsPipelineFn g_create_fn = nullptr;
 cros_ml_effects_DeleteEffectsPipelineFn g_delete_fn = nullptr;
 cros_ml_effects_ProcessFrameFn g_process_fn = nullptr;
@@ -32,7 +32,7 @@ cros_ml_effects_SetEffectFn g_set_effect_fn = nullptr;
 cros_ml_effects_SetLogObserverFn g_set_log_observer_fn = nullptr;
 
 bool EnsurePipelineLibraryLoaded(const base::FilePath& dlc_root_path) {
-  if (g_library && g_library->is_valid()) {
+  if (g_library) {
     return true;
   }
 
@@ -47,10 +47,10 @@ bool EnsurePipelineLibraryLoaded(const base::FilePath& dlc_root_path) {
   base::NativeLibraryOptions native_library_options;
   base::NativeLibraryLoadError load_error;
   native_library_options.prefer_own_symbols = true;
-  g_library.emplace(base::LoadNativeLibraryWithOptions(
-      lib_path, native_library_options, &load_error));
+  g_library = base::LoadNativeLibraryWithOptions(
+      lib_path, native_library_options, &load_error);
 
-  if (!g_library->is_valid()) {
+  if (!g_library) {
     LOG(ERROR) << "Pipeline library load error: " << load_error.ToString();
     return false;
   }
@@ -58,21 +58,27 @@ bool EnsurePipelineLibraryLoaded(const base::FilePath& dlc_root_path) {
   LOG(INFO) << "Loading pipeline library from: " << lib_path;
 
   g_create_fn = reinterpret_cast<cros_ml_effects_CreateEffectsPipelineFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_CreateEffectsPipeline"));
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_ml_effects_CreateEffectsPipeline"));
   g_delete_fn = reinterpret_cast<cros_ml_effects_DeleteEffectsPipelineFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_DeleteEffectsPipeline"));
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_ml_effects_DeleteEffectsPipeline"));
   g_process_fn = reinterpret_cast<cros_ml_effects_ProcessFrameFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_ProcessFrame"));
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_ml_effects_ProcessFrame"));
   g_wait_fn = reinterpret_cast<cros_ml_effects_WaitFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_Wait"));
+      base::GetFunctionPointerFromNativeLibrary(g_library,
+                                                "cros_ml_effects_Wait"));
   g_set_rendered_image_observer_fn =
       reinterpret_cast<cros_ml_effects_SetRenderedImageObserverFn>(
-          g_library->GetFunctionPointer(
-              "cros_ml_effects_SetRenderedImageObserver"));
+          base::GetFunctionPointerFromNativeLibrary(
+              g_library, "cros_ml_effects_SetRenderedImageObserver"));
   g_set_effect_fn = reinterpret_cast<cros_ml_effects_SetEffectFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_SetEffect"));
+      base::GetFunctionPointerFromNativeLibrary(g_library,
+                                                "cros_ml_effects_SetEffect"));
   g_set_log_observer_fn = reinterpret_cast<cros_ml_effects_SetLogObserverFn>(
-      g_library->GetFunctionPointer("cros_ml_effects_SetLogObserver"));
+      base::GetFunctionPointerFromNativeLibrary(
+          g_library, "cros_ml_effects_SetLogObserver"));
 
   bool load_ok = (g_create_fn != nullptr) && (g_delete_fn != nullptr) &&
                  (g_process_fn != nullptr) && (g_wait_fn != nullptr) &&
@@ -90,7 +96,7 @@ bool EnsurePipelineLibraryLoaded(const base::FilePath& dlc_root_path) {
     DLOG(ERROR) << "g_set_log_observer_fn: " << g_set_log_observer_fn;
 
     LOG(ERROR) << "Pipeline cannot load the expected functions";
-    g_library.reset();
+    g_library = nullptr;
     return false;
   }
 
