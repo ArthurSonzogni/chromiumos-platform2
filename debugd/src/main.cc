@@ -7,10 +7,14 @@
 #include <unistd.h>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/libminijail.h>
 #include <chromeos/scoped_minijail.h>
@@ -60,6 +64,16 @@ void enter_vfs_namespace() {
   PCHECK(mj_call(minijail_mount(j.get(), "/run/daemon-store/debugd",
                                 "/run/daemon-store/debugd", "none",
                                 MS_BIND | MS_REC)));
+
+  // Mount /run/daemon-store/fbpreprocessord for debugd to be able to access
+  // and process binary logs to attach with feedback reports. fbpreprocessord
+  // isn't installed on all boards, only attempt to mount the daemon-store if it
+  // actually exists.
+  if (base::PathExists(base::FilePath(fbpreprocessor::kDaemonStorageRoot))) {
+    PCHECK(mj_call(minijail_mount(j.get(), fbpreprocessor::kDaemonStorageRoot,
+                                  fbpreprocessor::kDaemonStorageRoot, "none",
+                                  MS_BIND | MS_REC)));
+  }
 
   // Mount /run/debugd for a shared place for runtime data.
   PCHECK(mj_call(minijail_bind(j.get(), "/run/debugd", "/run/debugd", 1)));
@@ -181,6 +195,10 @@ int main(int argc, char* argv[]) {
       brillo::FlagHelper::Init(argc, argv, "CrOS debug daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
+  // Reads the system salt before we init minijail.
+  if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
+    LOG(ERROR) << "Failed to ensure system salt to be loaded into memory.";
+  }
   enter_vfs_namespace();
   Daemon(FLAGS_perf_logging).Run();
   return 0;

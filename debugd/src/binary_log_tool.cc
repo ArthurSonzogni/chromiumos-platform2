@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
@@ -22,7 +23,11 @@
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-proxies.h>
 
+#include "debugd/src/sandboxed_process.h"
+
 namespace {
+
+constexpr char kWiFiTarballName[] = "wifi_fw_dumps.tar.zst";
 
 bool ValidateDirectoryNames(const std::set<base::FilePath>& files,
                             const base::FilePath& daemon_store_path) {
@@ -41,6 +46,107 @@ bool ValidateDirectoryNames(const std::set<base::FilePath>& files,
       LOG(ERROR) << "Invalid input file path: " << file;
       return false;
     }
+  }
+
+  return true;
+}
+
+bool CompressFiles(const base::FilePath& outfile,
+                   const std::set<base::FilePath>& files,
+                   const base::FilePath& base_dir) {
+  if (files.empty()) {
+    LOG(ERROR) << "No input files";
+    return false;
+  }
+
+  debugd::SandboxedProcess p;
+  p.InheritUsergroups();
+  p.AllowAccessRootMountNamespace();
+
+  std::string args(base_dir.value());
+  args.append(",");
+  args.append(base_dir.value());
+  args.append(",none,MS_BIND|MS_REC");
+
+  std::vector<std::string> minijail_args;
+  minijail_args.push_back("-k");
+  minijail_args.push_back(args);
+  p.Init(minijail_args);
+
+  p.AddArg("/bin/tar");
+  p.AddArg("-I zstd");
+  p.AddArg("-cf");
+  p.AddArg(outfile.value());
+  p.AddArg("-C");
+  p.AddArg(files.cbegin()->DirName().value());
+
+  for (auto file : files) {
+    p.AddArg(file.BaseName().value());
+  }
+
+  int ret = p.Run();
+  if (ret) {
+    PLOG(ERROR) << "Failed to run tar";
+  }
+
+  return ret == EXIT_SUCCESS;
+}
+
+// Compress the files in |files| to tarball with ZSTD compression and copy the
+// contents of the tarball to the |out_fd|. The tarball is deleted once it is
+// copied to the FD.
+bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
+                              const std::set<base::FilePath>& files,
+                              const base::FilePath& daemon_store_path,
+                              const int out_fd) {
+  if (files.empty()) {
+    LOG(ERROR) << "No input files";
+    return false;
+  }
+
+  // The processed dumps are stored in the following directory:
+  // "/run/daemon-store/fbpreprocessord/<user_hash>/processed_dumps/",
+  // whereas, the intermediate compressed dumps should be stored under:
+  // "/run/daemon-store/fbpreprocessord/<user_hash>/scratch/" directory.
+  base::FilePath output_dir =
+      daemon_store_path.Append(fbpreprocessor::kScratchDirectory);
+
+  if (!base::DirectoryExists(output_dir)) {
+    LOG(ERROR) << "Output dir " << output_dir << " doesn't exist";
+    return false;
+  }
+
+  base::FilePath tarball_path = output_dir.Append(tarball_name);
+
+  if (!CompressFiles(tarball_path, files, daemon_store_path)) {
+    LOG(ERROR) << "Failed to compress binary logs";
+    return false;
+  }
+
+  VLOG(1) << "Attaching debug dumps at " << tarball_path;
+
+  base::File tarfile(tarball_path, base::File::FLAG_OPEN |
+                                       base::File::FLAG_READ |
+                                       base::File::FLAG_DELETE_ON_CLOSE);
+  if (!tarfile.IsValid()) {
+    LOG(ERROR) << "Error opening file " << tarball_path << ": "
+               << base::File::ErrorToString(tarfile.error_details());
+    return false;
+  }
+
+  // The out_fd is closed by the caller function. So, use dup() to create a
+  // base::File object so that it can be closed independently after the copy
+  // operation without interfering with the out_fd.
+  int dup_fd = dup(out_fd);
+  if (dup_fd == -1) {
+    PLOG(ERROR) << "Failed to dup output fd";
+    return false;
+  }
+
+  base::File outfile(dup_fd);
+  if (!base::CopyFileContents(tarfile, outfile)) {
+    PLOG(ERROR) << "Failed to send binary logs";
+    return false;
   }
 
   return true;
@@ -102,12 +208,10 @@ void BinaryLogTool::GetBinaryLogs(
   }
 
   int out_fd = outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get();
-
-  // TODO(b/291347317): Placeholder code. Send sample data for testing.
-  // Implement binary log collection.
-  constexpr std::string_view sample_data = "test data";
-  if (!base::WriteFileDescriptor(out_fd, sample_data)) {
-    PLOG(ERROR) << "Failed to send binary log";
+  base::FilePath tarball_name(kWiFiTarballName);
+  if (!CompressAndSendFilesToFD(tarball_name, files, daemon_store_path,
+                                out_fd)) {
+    LOG(ERROR) << "Failed to send binary logs";
     return;
   }
 }
