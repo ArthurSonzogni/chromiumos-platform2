@@ -619,18 +619,20 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   using enum DownloadsMigrationStatus;
 
   // If ~/Downloads doesn't exist and ~/MyFiles/Downloads does exist, this might
-  // be a freshly setup cryptohome or the previous xattr setting failed. Update
-  // the xattr accordingly and if this fails cryptohome is still in a usable
-  // state so return true.
-  if (stage == MigrationStage::kMigrating ||
-      (!platform_->FileExists(downloads) &&
-       platform_->FileExists(downloads_in_my_files))) {
+  // be a freshly set-up cryptohome or the previous xattr setting failed. Update
+  // the xattr accordingly and, even if this fails, cryptohome is still in a
+  // usable state so return true.
+  if (!platform_->FileExists(downloads) &&
+      platform_->FileExists(downloads_in_my_files)) {
+    LOG(INFO) << "The 'Downloads' folder is already in the right place '"
+              << downloads_in_my_files
+              << "', but its xattr is still marked as '" << stage << "'";
+
     if (stage == MigrationStage::kMigrating) {
-      LOG(INFO) << "Downloads bind mount previously completed, but xattr not "
-                   "set correctly";
       ReportDownloadsMigrationStatus(kFixXattr);
     } else {
-      LOG(INFO) << "Potentially a new cryptohome, setting migrated xattr";
+      DCHECK_EQ(stage, MigrationStage::kUnknown);
+      LOG(INFO) << "It looks like a new cryptohome";
     }
 
     if (!SetDownloadsMigrationXattr(platform_, downloads_in_my_files,
