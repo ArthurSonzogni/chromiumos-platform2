@@ -61,7 +61,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
   battery_tool_ = std::make_unique<BatteryTool>();
-  binary_log_tool_ = std::make_unique<BinaryLogTool>();
+  binary_log_tool_ = std::make_unique<BinaryLogTool>(bus);
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   crosh_shell_tool_ = std::make_unique<CroshShellTool>();

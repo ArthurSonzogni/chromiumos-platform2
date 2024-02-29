@@ -21,6 +21,7 @@ group("all") {
     ":dev_features_rootfs_verification",
     ":dev_features_ssh",
     ":dev_features_usb_boot",
+    ":fbpreprocessor-proto",
     ":filter_vpd",
     ":folder_size_dump",
     ":generate_logs",
@@ -74,6 +75,12 @@ proto_library("cryptohome-proto") {
     "${proto_in_dir}/key.proto",
     "${proto_in_dir}/rpc.proto",
   ]
+}
+
+proto_library("fbpreprocessor-proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/fbpreprocessor"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/fbpreprocessor.proto" ]
 }
 
 proto_library("power_manager-proto") {
@@ -170,6 +177,7 @@ static_library("libdebugd") {
   deps = [
     ":cryptohome-proto",
     ":debugd-adaptors",
+    ":fbpreprocessor-proto",
     ":scheduler_configuration_utils",
   ]
   pkg_deps = [ "re2" ]
