@@ -20,7 +20,6 @@
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "minios/network_manager.h"
 #include "minios/shill_proxy.h"
 
 namespace minios {
