@@ -1246,8 +1246,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 // Test that AuthSession's auth factor map lists the factor from right backing
 // store on session start when USS is enabled.
 TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
-  // Setup
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
   auto auth_session_manager_mock =
@@ -1259,7 +1257,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
           &features_.async});
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
-      Username(kUsername), flags, AuthIntent::kDecrypt);
+      Username(kUsername),
+      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
 
   TestFuture<InUseAuthSession> session_future;
   auth_session_manager_mock->RunWhenAvailable(token,

@@ -423,7 +423,8 @@ TEST_F(AuthSessionInterfaceTest,
   // Auth session is initially not authenticated.
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -453,7 +454,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultWithBroadcastId) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -472,7 +474,8 @@ TEST_F(AuthSessionInterfaceTest,
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -491,7 +494,7 @@ TEST_F(AuthSessionInterfaceTest,
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -516,7 +519,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -557,7 +561,8 @@ TEST_F(AuthSessionInterfaceTest,
     // Setup. To avoid hardcoding the length of the string in the test, first
     // serialize an arbitrary token and then replace its contents with zeroes.
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -582,7 +587,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -603,7 +609,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserVaultExists) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -621,7 +628,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithEphemeralAuthSession) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -637,7 +644,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithBroadcastId) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -652,7 +660,8 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
   std::string auth_session_id;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -719,7 +728,8 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -744,7 +754,8 @@ TEST_F(AuthSessionInterfaceTest, ExtendAuthSessionDefaultValue) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -830,7 +841,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -932,7 +943,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVaultAfterFailedEphemeral) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -984,7 +995,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   std::string serialized_public_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1050,7 +1061,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // And so does ephemeral
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+        kUsername2,
+        {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session2 = future.Take();
@@ -1483,7 +1495,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     std::string serialized_token;
     {
       base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-          username, 0, AuthIntent::kDecrypt);
+          username,
+          {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
       TestFuture<InUseAuthSession> future;
       auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
       InUseAuthSession auth_session = future.Take();
@@ -1522,7 +1535,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     std::string serialized_token;
     {
       base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+          kUsername,
+          {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
       TestFuture<InUseAuthSession> future;
       auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
       InUseAuthSession auth_session = future.Take();
@@ -1594,7 +1608,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1684,7 +1699,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kVerifyOnly);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kVerifyOnly});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1768,7 +1784,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   std::string auth_session_id;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1804,7 +1821,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1838,7 +1856,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   std::string serialized_token;
   {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername, 0, AuthIntent::kDecrypt);
+        kUsername,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     TestFuture<InUseAuthSession> future;
     auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
     InUseAuthSession auth_session = future.Take();
@@ -1992,8 +2011,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Act.
   base::UnguessableToken second_token =
       auth_session_manager_->CreateAuthSession(
-          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-          AuthIntent::kVerifyOnly);
+          kUsername,
+          {.is_ephemeral_user = true, .intent = AuthIntent::kVerifyOnly});
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(second_token, kPasswordLabel, kPassword);
 
@@ -2036,8 +2055,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Act.
   base::UnguessableToken second_token =
       auth_session_manager_->CreateAuthSession(
-          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-          AuthIntent::kVerifyOnly);
+          kUsername,
+          {.is_ephemeral_user = true, .intent = AuthIntent::kVerifyOnly});
   user_data_auth::AuthenticateAuthFactorReply reply =
       LegacyAuthenticatePasswordAuthFactor(second_token, kPasswordLabel,
                                            kPassword);
@@ -2071,8 +2090,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Act.
   base::UnguessableToken second_token =
       auth_session_manager_->CreateAuthSession(
-          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-          AuthIntent::kVerifyOnly);
+          kUsername,
+          {.is_ephemeral_user = true, .intent = AuthIntent::kVerifyOnly});
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(second_token, kPasswordLabel, kPassword2);
 
@@ -2100,7 +2119,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 
   // Act.
   base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-      kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kVerifyOnly);
+      kUsername,
+      {.is_ephemeral_user = true, .intent = AuthIntent::kVerifyOnly});
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(token, kPasswordLabel, kPassword);
 

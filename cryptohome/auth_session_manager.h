@@ -49,9 +49,8 @@ class AuthSessionManager {
 
   // Creates new auth session for account_id with the specified flags and
   // intent. Returns the token for the newly created session.
-  base::UnguessableToken CreateAuthSession(const Username& account_id,
-                                           uint32_t flags,
-                                           AuthIntent auth_intent);
+  base::UnguessableToken CreateAuthSession(Username account_id,
+                                           AuthSession::CreateOptions options);
   // Allow for the explicit control over the AuthSession parameters. This should
   // generally only be used in testing.
   base::UnguessableToken CreateAuthSession(

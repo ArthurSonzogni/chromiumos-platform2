@@ -140,9 +140,12 @@ class AuthSession final {
 
   // Creates new auth session for account_id. This method returns a unique_ptr
   // to the created AuthSession for the auth_session_manager to hold.
+  struct CreateOptions {
+    hwsec::ExplicitInit<bool> is_ephemeral_user;
+    hwsec::ExplicitInit<AuthIntent> intent;
+  };
   static std::unique_ptr<AuthSession> Create(Username username,
-                                             unsigned int flags,
-                                             AuthIntent intent,
+                                             AuthSession::CreateOptions options,
                                              BackingApis backing_apis);
 
   // Construct an AuthSession initialized with all of the given state. This

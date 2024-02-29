@@ -558,10 +558,6 @@ TEST_F(AuthSessionTest, TokenFromAllZeroesString) {
 // Test if AuthSession reports the correct attributes on an already-existing
 // ephemeral user.
 TEST_F(AuthSessionTest, ExistingEphemeralUser) {
-  // Setup.
-  int flags =
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
-
   // Setting the expectation that there is no persistent user but there is an
   // active ephemeral one.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
@@ -571,7 +567,9 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 
   // Test.
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      kFakeUsername, flags, AuthIntent::kDecrypt, backing_apis_);
+      kFakeUsername,
+      {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt},
+      backing_apis_);
 
   // Verify.
   EXPECT_TRUE(auth_session->user_exists());

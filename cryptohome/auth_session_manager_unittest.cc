@@ -142,7 +142,7 @@ class AuthSessionManagerTest : public ::testing::Test {
 
 TEST_F(AuthSessionManagerTest, CreateRemove) {
   base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
@@ -151,8 +151,8 @@ TEST_F(AuthSessionManagerTest, CreateRemove) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
-  token = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                  AuthIntent::kDecrypt);
+  token = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   std::string serialized_token =
       *AuthSession::GetSerializedStringFromToken(token);
 
@@ -167,10 +167,10 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
 
   // Create a pair of auth sessions. Before they're authenticated they should
   // have infinite time remaining.
-  tokens[0] = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                      AuthIntent::kDecrypt);
-  tokens[1] = auth_session_manager_.CreateAuthSession(kUsername2, 0,
-                                                      AuthIntent::kDecrypt);
+  tokens[0] = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+  tokens[1] = auth_session_manager_.CreateAuthSession(
+      kUsername2, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   for (const auto& token : tokens) {
     InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
@@ -210,10 +210,10 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Create and set up a pair of auth sessions, setting them to authenticated so
   // that they can eventually get expired.
-  tokens[0] = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                      AuthIntent::kDecrypt);
-  tokens[1] = auth_session_manager_.CreateAuthSession(kUsername2, 0,
-                                                      AuthIntent::kDecrypt);
+  tokens[0] = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+  tokens[1] = auth_session_manager_.CreateAuthSession(
+      kUsername2, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   for (auto& token : tokens) {
     InUseAuthSession auth_session = TakeAuthSession(token);
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
@@ -333,7 +333,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
   // Create and authenticate a session.
   base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   {
     InUseAuthSession auth_session = TakeAuthSession(token);
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
@@ -406,8 +406,8 @@ TEST_F(AuthSessionManagerTest, AddRemoveExpringSoon) {
   base::UnguessableToken token;
 
   // Create an auth session.
-  token = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                  AuthIntent::kDecrypt);
+  token = auth_session_manager_.CreateAuthSession(
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
 
   // Authenticate the session. It should now have finite timeout.
   {
@@ -762,13 +762,14 @@ TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
 TEST_F(AuthSessionManagerTest, FlagPassing) {
   // Arrange.
   base::UnguessableToken session_token =
-      auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                              AuthIntent::kDecrypt);
+      auth_session_manager_.CreateAuthSession(
+          kUsername,
+          {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   InUseAuthSession auth_session = TakeAuthSession(session_token);
   base::UnguessableToken ephemeral_session_token =
       auth_session_manager_.CreateAuthSession(
-          kUsername2, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-          AuthIntent::kDecrypt);
+          kUsername2,
+          {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
   InUseAuthSession ephemeral_auth_session =
       TakeAuthSession(ephemeral_session_token);
 
@@ -780,13 +781,15 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
 TEST_F(AuthSessionManagerTest, IntentPassing) {
   // Arrange.
   base::UnguessableToken decryption_session_token =
-      auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                              AuthIntent::kDecrypt);
+      auth_session_manager_.CreateAuthSession(
+          kUsername,
+          {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   InUseAuthSession decryption_auth_session =
       TakeAuthSession(decryption_session_token);
   base::UnguessableToken verification_session_token =
-      auth_session_manager_.CreateAuthSession(kUsername2, 0,
-                                              AuthIntent::kVerifyOnly);
+      auth_session_manager_.CreateAuthSession(
+          kUsername2,
+          {.is_ephemeral_user = false, .intent = AuthIntent::kVerifyOnly});
   InUseAuthSession verification_auth_session =
       TakeAuthSession(verification_session_token);
 
@@ -838,7 +841,7 @@ static_assert(
 TEST_F(AuthSessionManagerTest, BoundSessionExpiresIfBlocking) {
   // Create a session and bind it.
   base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   BoundAuthSession bound_session(TakeAuthSession(token));
 
   // Schedule several tasks against the session, they should be blocked.
@@ -866,7 +869,7 @@ TEST_F(AuthSessionManagerTest, BoundSessionExpiresIfBlocking) {
 TEST_F(AuthSessionManagerTest, BoundSessionDoesNotExpireIfNotBlocking) {
   // Create a session and bind it.
   base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   BoundAuthSession bound_session(TakeAuthSession(token));
 
   // Advance the clock by many times the timeout interval. The session should
@@ -878,7 +881,7 @@ TEST_F(AuthSessionManagerTest, BoundSessionDoesNotExpireIfNotBlocking) {
 TEST_F(AuthSessionManagerTest, BoundSessionExpiresOnceWorkIsScheduled) {
   // Create a session and bind it.
   base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
+      kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   BoundAuthSession bound_session(TakeAuthSession(token));
 
   // Advance the clock by many times the timeout interval. The session should

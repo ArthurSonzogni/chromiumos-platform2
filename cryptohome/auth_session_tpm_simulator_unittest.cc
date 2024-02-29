@@ -450,9 +450,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
 
   auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
+    return AuthSession::Create(
+        kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt},
+        backing_apis_);
   };
 
   // Arrange. Create a user with password and PIN VKs.
@@ -504,9 +504,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   static_assert(std::string_view(kWrongPin) != std::string_view(kPin),
                 "Bad kWrongPin");
   auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
+    return AuthSession::Create(
+        kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt},
+        backing_apis_);
   };
 
   // Arrange. Create a user with password and PIN VKs.
@@ -554,9 +554,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
 // authenticate via the new password but not via the old one.
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePassword) {
   auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
+    return AuthSession::Create(
+        kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt},
+        backing_apis_);
   };
 
   // Arrange. Configure the creation of a VK.
@@ -595,9 +595,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePassword) {
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
        UpdatePasswordPartialMigration) {
   auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
+    return AuthSession::Create(
+        kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt},
+        backing_apis_);
   };
 
   // Arrange. Configure a password and a PIN VK.
@@ -640,9 +640,9 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
 // PIN.
 TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePinPartialMigration) {
   auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
+    return AuthSession::Create(
+        kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt},
+        backing_apis_);
   };
 
   // Arrange. Configure a password and a PIN VK.

@@ -1848,7 +1848,8 @@ void UserDataAuth::Remove(user_data_auth::RemoveRequest request,
   // session to do the cleanup.
   if (request.auth_session_id().empty()) {
     base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        GetAccountId(request.identifier()), /*flags=*/0, AuthIntent::kDecrypt);
+        GetAccountId(request.identifier()),
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     // Rewrite the request to use the new session ID and not the account ID.
     std::optional<std::string> serialized_token =
         AuthSession::GetSerializedStringFromToken(token);
@@ -2551,6 +2552,10 @@ void UserDataAuth::StartAuthSession(
   AssertOnMountThread();
   user_data_auth::StartAuthSessionReply reply;
 
+  // Determine if the request is for an ephemeral user.
+  bool is_ephemeral_user =
+      request.flags() & user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+
   if (request.intent() == user_data_auth::AUTH_INTENT_UNSPECIFIED) {
     // TODO(b/240596931): Stop allowing the UNSPECIFIED value after Chrome's
     // change to populate this field lives for some time.
@@ -2569,7 +2574,8 @@ void UserDataAuth::StartAuthSession(
   }
 
   base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-      GetAccountId(request.account_id()), request.flags(), *auth_intent);
+      GetAccountId(request.account_id()),
+      {.is_ephemeral_user = is_ephemeral_user, .intent = *auth_intent});
 
   // Now that the session exists, queue up the work to run on it.
   RunWithAuthSessionWhenAvailable(

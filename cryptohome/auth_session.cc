@@ -370,8 +370,7 @@ SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
 }
 
 std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
-                                                 unsigned int flags,
-                                                 AuthIntent intent,
+                                                 CreateOptions options,
                                                  BackingApis backing_apis) {
   ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
 
@@ -394,13 +393,12 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   backing_apis.auth_factor_manager->DiscardAuthFactorMap(obfuscated_username);
 
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  AuthSession::Params params = {
-      .username = std::move(account_id),
-      .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-      .intent = intent,
-      .auth_factor_status_update_timer =
-          std::make_unique<base::WallClockTimer>(),
-      .user_exists = user_exists};
+  AuthSession::Params params = {.username = std::move(account_id),
+                                .is_ephemeral_user = options.is_ephemeral_user,
+                                .intent = options.intent,
+                                .auth_factor_status_update_timer =
+                                    std::make_unique<base::WallClockTimer>(),
+                                .user_exists = user_exists};
   return std::make_unique<AuthSession>(std::move(params), backing_apis);
 }
 

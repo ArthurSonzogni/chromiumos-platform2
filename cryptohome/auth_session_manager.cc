@@ -54,9 +54,9 @@ AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
 }
 
 base::UnguessableToken AuthSessionManager::CreateAuthSession(
-    const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
-  std::unique_ptr<AuthSession> auth_session =
-      AuthSession::Create(account_id, flags, auth_intent, backing_apis_);
+    Username account_id, AuthSession::CreateOptions options) {
+  std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
+      std::move(account_id), std::move(options), backing_apis_);
   return AddAuthSession(std::move(auth_session));
 }
 
