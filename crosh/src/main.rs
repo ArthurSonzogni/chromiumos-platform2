@@ -152,7 +152,7 @@ fn handle_cmd(dispatcher: &Dispatcher, args: Vec<String>) -> Result<(), ()> {
 
 // Execute the specific command. This should be called in a child process.
 fn dispatch_cmd(dispatcher: &Dispatcher, args: Vec<String>) {
-    std::process::exit(match args.get(0).map(|s| &**s) {
+    std::process::exit(match args.first().map(|s| &**s) {
         Some("help") => {
             let mut ret: i32 = 0;
             if args.len() == 2 {
