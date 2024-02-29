@@ -54,6 +54,7 @@
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_session_manager.h"
+#include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
@@ -92,7 +93,6 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
-#include "rpc.pb.h"
 
 namespace cryptohome {
 namespace {
@@ -2000,8 +2000,6 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // StartAuthSession for new user.
   user_data_auth::StartAuthSessionRequest start_session_req;
   start_session_req.mutable_account_id()->set_account_id(kUser);
-  start_session_req.set_flags(
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
   start_session_req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
 
   TestFuture<user_data_auth::StartAuthSessionReply> reply_future;
@@ -2137,8 +2135,6 @@ TEST_F(UserDataAuthTest,
   // StartAuthSession for new user
   user_data_auth::StartAuthSessionRequest start_session_req;
   start_session_req.mutable_account_id()->set_account_id(kUser);
-  start_session_req.set_flags(
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
   start_session_req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
 
   TestFuture<user_data_auth::StartAuthSessionReply> reply_future;
@@ -3105,6 +3101,56 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
+  PrepareArguments();
+  SetupMount("foo@example.com");
+  // Setup
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  start_auth_session_req_->set_intent(user_data_auth::AUTH_INTENT_VERIFY_ONLY);
+  start_auth_session_req_->set_is_ephemeral_user(true);
+
+  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, "password-verifier-label",
+      AuthFactorMetadata{.metadata = PasswordMetadata()}));
+
+  TestFuture<user_data_auth::StartAuthSessionReply>
+      start_auth_session_reply_future;
+  userdataauth_->StartAuthSession(
+      *start_auth_session_req_,
+      start_auth_session_reply_future
+          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
+      start_auth_session_reply_future.Get();
+
+  EXPECT_EQ(start_auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_THAT(start_auth_session_reply.auth_factors().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
+              "password-verifier-label");
+  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+
+  EXPECT_THAT(
+      start_auth_session_reply.configured_auth_factors_with_status().size(), 1);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .label(),
+              "password-verifier-label");
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .auth_factor()
+                  .type(),
+              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
+                  .at(0)
+                  .available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
+}
+
+TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactorsLegacyFlags) {
   PrepareArguments();
   SetupMount("foo@example.com");
   // Setup
@@ -4873,14 +4919,11 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // Obtain a test auth session for kUsername1. Result is nullopt if it's
   // unsuccessful.
   std::optional<std::string> GetTestUnauthedAuthSession(
-      user_data_auth::AuthIntent intent =
-          user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
-      uint32_t flags =
-          user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE) {
+      AuthSession::CreateOptions options) {
     user_data_auth::StartAuthSessionRequest req;
     req.mutable_account_id()->set_account_id(*kUsername1);
-    req.set_intent(intent);
-    req.set_flags(flags);
+    req.set_intent(AuthIntentToProto(*options.intent));
+    req.set_is_ephemeral_user(*options.is_ephemeral_user);
     std::optional<user_data_auth::StartAuthSessionReply> reply =
         StartAuthSessionSync(req);
     if (!reply.has_value()) {
@@ -4901,7 +4944,8 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // Create a test user named kUsername1 with kPassword1. Return true if
   // successful. This doesn't create the vault.
   bool CreateTestUser() {
-    std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+    std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     if (!session_id.has_value()) {
       LOG(ERROR) << "No session ID in CreateTestUser().";
       return false;
@@ -4999,10 +5043,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return true;
   }
 
-  std::optional<std::string> GetTestAuthedAuthSession(
-      user_data_auth::AuthIntent intent =
-          user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT) {
-    std::optional<std::string> session_id = GetTestUnauthedAuthSession(intent);
+  std::optional<std::string> GetTestAuthedAuthSession(AuthIntent intent) {
+    std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+        {.is_ephemeral_user = false, .intent = intent});
     if (!session_id.has_value()) {
       LOG(ERROR) << "No session ID in GetTestAuthedAuthSession().";
       return std::nullopt;
@@ -5219,7 +5262,8 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   // If a home directory is mounted it'll return false for Remove().
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(false));
 
-  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   user_data_auth::RemoveRequest req;
@@ -5274,7 +5318,8 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorNoSession) {
 
 TEST_F(UserDataAuthApiTest, ChalCredBadSRKROCA) {
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   ON_CALL(sim_factory_.GetMockBackend().GetMock().vendor, IsSrkRocaVulnerable)
@@ -5311,7 +5356,8 @@ TEST_F(UserDataAuthApiTest, ChalCredBadSRKROCA) {
 TEST_F(UserDataAuthApiTest, MountFailed) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // Ensure that the mount fails.
@@ -5376,7 +5422,8 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoMountedSession) {
 TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoHomedirs) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   //   // Session is mounted but vault doesn't exist.
@@ -5399,7 +5446,8 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoHomedirs) {
 TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedDuringSessionKeyEviction) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // Session is mounted and vault exists.
@@ -5436,7 +5484,8 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedDuringSessionKeyEviction) {
 TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // Session is mounted and vault exists.
@@ -5474,8 +5523,8 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
 TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession(
-      user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY);
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kRestoreKey);
   ASSERT_TRUE(session_id.has_value());
   scoped_refptr<MockMount> mount = new MockMount();
   new_mounts_.push_back(mount.get());
@@ -5494,8 +5543,7 @@ TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
 TEST_F(UserDataAuthApiTest, EphemeralUserNotAuthorizedForRestoreDevice) {
   // Prepare an auth session for ephemeral mount.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      user_data_auth::AuthIntent::AUTH_INTENT_RESTORE_KEY,
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+      {.is_ephemeral_user = true, .intent = AuthIntent::kRestoreKey});
   ASSERT_TRUE(session_id.has_value());
 
   // Check that ephemeral user is not authorized for RestoreDevice intent.
@@ -5532,8 +5580,7 @@ TEST_F(UserDataAuthApiTest, GuestMountFailed) {
 TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
   // Prepare an auth session for ephemeral mount.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+      {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Ensure that the mount fails.
@@ -5572,7 +5619,6 @@ TEST_F(UserDataAuthApiTest, VaultWithoutAuth) {
   user_data_auth::StartAuthSessionRequest req;
   req.mutable_account_id()->set_account_id(*kUsername1);
   req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
-  req.set_flags(user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
   std::optional<user_data_auth::StartAuthSessionReply> reply =
       StartAuthSessionSync(req);
   ASSERT_TRUE(reply.has_value());
@@ -5589,7 +5635,8 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
   ASSERT_TRUE(CreateTestUser());
 
   // Call AuthenticateAuthFactor with an empty label.
-  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -5614,7 +5661,8 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
 // Chromium side for CreatePersistentUserAlreadyExist().
 TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
   // Setup auth session.
-  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Call CreatePersistentUser() while the user already exists.
@@ -5651,7 +5699,8 @@ TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
   userdataauth_->set_biometrics_service(bio_service_.get());
   userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // CreateModifyAuthFactorIntentRequest
@@ -5689,7 +5738,8 @@ TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
 TEST_F(UserDataAuthApiTest, PreparePersistentVaultWithoutUser) {
   // Prepare an account.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // Vault doesn't exist.
@@ -5717,8 +5767,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
   // Prepare an auth session for ephemeral mount, note that we intentionally
   // does not specify it as ephemeral.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
+      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Make the call to check that it fails due to the session not being
@@ -5743,7 +5792,8 @@ TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
 TEST_F(UserDataAuthApiTest, MountGuestWithOtherMounts) {
   // Create test user and mount the vault.
   ASSERT_TRUE(CreateTestUser());
-  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
   ASSERT_TRUE(session_id.has_value());
 
   // Setup the mount.

@@ -264,8 +264,6 @@ bool StatefulRecovery::Mount(const Username& username,
   user_data_auth::StartAuthSessionRequest auth_session_req;
   auth_session_req.mutable_account_id()->set_account_id(*username);
   auth_session_req.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
-  auth_session_req.set_flags(
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
   user_data_auth::StartAuthSessionReply auth_session_reply;
   if (!userdataauth_proxy_->StartAuthSession(
           auth_session_req, &auth_session_reply, &error, timeout_ms_) ||

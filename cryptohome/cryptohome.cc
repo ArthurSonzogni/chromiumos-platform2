@@ -541,11 +541,9 @@ bool BuildStartAuthSessionRequest(
   if (!BuildAccountId(printer, &cl, req.mutable_account_id())) {
     return false;
   }
-  unsigned int flags = 0;
-  flags |= cl.HasSwitch(switches::kEnsureEphemeralSwitch)
-               ? user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER
-               : 0;
-  req.set_flags(flags);
+  if (cl.HasSwitch(switches::kEnsureEphemeralSwitch)) {
+    req.set_is_ephemeral_user(true);
+  }
   if (cl.HasSwitch(switches::kAuthIntentSwitch)) {
     std::string intent_string =
         cl.GetSwitchValueASCII(switches::kAuthIntentSwitch);

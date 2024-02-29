@@ -97,7 +97,6 @@ using hwsec_foundation::status::OkStatus;
 using user_data_auth::AUTH_INTENT_DECRYPT;
 using user_data_auth::AUTH_INTENT_VERIFY_ONLY;
 using user_data_auth::AUTH_INTENT_WEBAUTHN;
-using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 using AuthenticateAuthFactorCallback = base::OnceCallback<void(
     const user_data_auth::AuthenticateAuthFactorReply&)>;
@@ -275,8 +274,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
                                             user_data_auth::AuthIntent intent) {
     user_data_auth::StartAuthSessionRequest start_session_req;
     start_session_req.mutable_account_id()->set_account_id(username);
-    start_session_req.set_flags(
-        user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
     start_session_req.set_intent(intent);
     user_data_auth::StartAuthSessionReply reply =
         StartAuthSession(start_session_req);

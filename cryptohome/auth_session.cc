@@ -102,7 +102,6 @@ using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
-using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 // Size of the values used serialization of UnguessableToken.
 constexpr int kSizeOfSerializedValueInToken = sizeof(uint64_t);
