@@ -146,8 +146,8 @@ impl Dispatcher {
         let mut metrics = metrics_mutex
             .lock()
             .expect("Lock MetricsLibrary object failed");
-        let metrics_name: &str = &("Crosh_Run_{}".to_owned() + command.get_name());
-        let _ = metrics.send_user_action_to_uma(metrics_name);
+        let metrics_name = format!("Crosh_Run_{}", command.get_name());
+        let _ = metrics.send_user_action_to_uma(&metrics_name);
 
         for cb in flag_callbacks {
             (cb)(command, entry)?;
