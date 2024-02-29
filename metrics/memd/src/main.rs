@@ -32,7 +32,7 @@ use chrono::prelude::*;
 use libc::c_void;
 
 #[cfg(not(test))]
-use dbus::{BusType, Connection, WatchEvent};
+use dbus::ffidisp::{BusType, Connection, ConnectionItem, WatchEvent};
 #[cfg(not(test))]
 use protobuf::Message;
 
@@ -595,7 +595,7 @@ trait Dbus {
 
 #[cfg(not(test))]
 struct GenuineDbus {
-    connection: dbus::Connection,
+    connection: Connection,
     fds: Vec<RawFd>,
 }
 
@@ -630,7 +630,7 @@ impl Dbus for GenuineDbus {
                 .watch_handle(fd, WatchEvent::Readable as libc::c_uint);
             for connection_item in handle {
                 // Only consider signals.
-                if let dbus::ConnectionItem::Signal(ref message) = connection_item {
+                if let ConnectionItem::Signal(ref message) = connection_item {
                     // Only consider signals with "ChromeEvent" or
                     // "AnomalyEvent" members.
                     if let Some(member) = message.member() {
