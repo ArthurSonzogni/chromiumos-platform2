@@ -63,7 +63,7 @@ class NetworkFunctionTest : public BaseFunctionTest {
                            const std::string& network_type,
                            const std::string& removable) {
     const std::string bus_dev =
-        "/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb2/2-3/";
+        "/sys/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb2/2-3" + dev_name;
     const std::string bus_dev_relative_to_sys = "../../../../../../";
     const std::string interface_name = "2-3:1.0";
     SetSymbolicLink({bus_dev, interface_name},
@@ -160,14 +160,14 @@ TEST_F(NetworkFunctionTest, CreateNetworkFunctionFailed) {
   EXPECT_FALSE(probe_function);
 }
 
-TEST_F(NetworkFunctionTest, ProbeEthernetFilterExternal) {
+TEST_F(NetworkFunctionTest, ProbeAllFilterExternalEthernet) {
+  SetUsbNetworkDevice("wwan0", shill::kTypeCellular, "unknown");
+  SetUsbNetworkDevice("wlan0", shill::kTypeWifi, "unknown");
   SetUsbNetworkDevice("eth0", shill::kTypeEthernet, "unknown");
-  base::Value::Dict arg;
-  arg.Set("device_type", "ethernet");
-  auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
+  auto probe_function = CreateProbeFunction<NetworkFunction>();
 
   auto result = EvalProbeFunction(probe_function.get());
-  EXPECT_EQ(result.size(), 0);
+  EXPECT_EQ(result.size(), 2);
 }
 
 }  // namespace

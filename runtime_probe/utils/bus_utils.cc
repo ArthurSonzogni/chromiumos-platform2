@@ -125,15 +125,15 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsDeviceNode(
   return res;
 }
 
-bool IsRemovableDevice(const base::Value::Dict& result) {
+}  // namespace
+
+bool IsRemovableBusDevice(const base::Value::Dict& result) {
   // Currently the "removable" attribute is only available for USB devices.  We
   // might need to revise the filter once we have removable PCI devices in
   // ChromeOS.
   const auto* removable = result.FindString("usb_removable");
   return (removable != nullptr && *removable != "fixed");
 }
-
-}  // namespace
 
 std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
     const base::FilePath& node_path) {
@@ -144,7 +144,7 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
 std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
     const base::FilePath& node_path, bool is_fixed) {
   auto res = GetDeviceBusDataFromSysfsNode(node_path);
-  if (is_fixed && res.has_value() && IsRemovableDevice(res->GetDict())) {
+  if (is_fixed && res.has_value() && IsRemovableBusDevice(res->GetDict())) {
     return std::nullopt;
   }
   return res;

@@ -82,9 +82,7 @@ NetworkFunction::DataType NetworkFunction::EvalImpl() const {
   base::FilePath net_dev_pattern =
       Context::Get()->root_dir().Append("sys/class/net/*");
   for (const auto& net_dev_path : Glob(net_dev_pattern)) {
-    auto node_res = GetDeviceBusDataFromSysfsNode(net_dev_path,
-                                                  /*is_fixed=*/true);
-
+    auto node_res = GetDeviceBusDataFromSysfsNode(net_dev_path);
     if (node_res) {
       results.Append(std::move(*node_res));
     }
@@ -112,6 +110,12 @@ void NetworkFunction::PostHelperEvalImpl(DataType* results) const {
     if (target_type && target_type.value() != it->second) {
       VLOG(3) << "Interface " << interface << " doesn't match the target type "
               << target_type.value();
+      continue;
+    }
+    // (b/327536271) Only filter removable for ethernet because other network
+    // types might be removable as intended.
+    if (it->second == shill::kTypeEthernet &&
+        IsRemovableBusDevice(helper_result.GetDict())) {
       continue;
     }
     CHECK(!dict.FindString("type"));
