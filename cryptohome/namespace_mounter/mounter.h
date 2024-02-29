@@ -177,10 +177,9 @@ class Mounter {
   void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
   // Facilitates migration of files from one directory to another, removing the
-  // duplicates. Returns the number of items migrated that are direct children
-  // of |dst| to |src|.
-  int MigrateDirectory(const base::FilePath& dst,
-                       const base::FilePath& src) const;
+  // duplicates.
+  void MigrateDirectory(const base::FilePath& dst,
+                        const base::FilePath& src) const;
 
   // Calls InternalMountDaemonStoreDirectories to bind-mount
   //   /home/.shadow/$hash/mount/root/$daemon (*)

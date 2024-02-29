@@ -585,15 +585,15 @@ bool Mounter::HandleMyFilesDownloads(const FilePath& user_home) {
   }
 
   const FilePath downloads = user_home.Append(kDownloadsDir);
-  const FilePath downloads_in_myfiles =
+  const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
+
   // User could have saved files in MyFiles/Downloads in case cryptohome
   // crashed and bind mounts were removed by error. See crbug.com/1080730.
-  // Move the files back to Download unless a file already exists.
-  int migrated_items = MigrateDirectory(downloads, downloads_in_myfiles);
-  ReportMaskedDownloadsItems(migrated_items);
+  // Move the files back to Downloads unless a file already exists.
+  MigrateDirectory(downloads, downloads_in_my_files);
 
-  if (!BindAndPush(downloads, downloads_in_myfiles)) {
+  if (!BindAndPush(downloads, downloads_in_my_files)) {
     return false;
   }
 
@@ -644,8 +644,7 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // In the case migration needs to occur, move all files from
   // ~/MyFiles/Downloads to ~/Downloads to ensure there's none left in the
   // directory before migration.
-  int migrated_items = MigrateDirectory(downloads, downloads_in_my_files);
-  ReportMaskedDownloadsItems(migrated_items);
+  MigrateDirectory(downloads, downloads_in_my_files);
 
   // In the event ~/Downloads, ~/Downloads-backup and ~/MyFiles/Downloads exists
   // we want to remove the ~/Downloads-backup to ensure the migration can
@@ -842,27 +841,32 @@ bool Mounter::InternalMountDaemonStoreDirectories(
   return true;
 }
 
-int Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
-  VLOG(1) << "Migrating directory " << src << " -> " << dst;
-  int num_items = 0;
-  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+void Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
+  VLOG(1) << "Migrating items from '" << src << "' to '" << dst << "'";
+
+  const std::unique_ptr<libstorage::FileEnumerator> enumerator(
       platform_->GetFileEnumerator(
           src, false /* recursive */,
           base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
+
+  DCHECK(enumerator);
+  int num_items = 0;
   for (FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
-    FilePath dst_obj = dst.Append(src_obj.BaseName());
+    const FilePath dst_obj = dst.Append(src_obj.BaseName());
     num_items++;
 
-    // If the destination file exists, or rename failed for whatever reason,
-    // then log a warning and delete the source file.
-    if (platform_->FileExists(dst_obj) ||
-        !platform_->Rename(src_obj, dst_obj)) {
-      LOG(WARNING) << "Failed to migrate " << src_obj << " : deleting";
-      platform_->DeletePathRecursively(src_obj);
+    // If the source item cannot be moved for whatever reason, then log an error
+    // and delete this source item.
+    if (!platform_->Rename(src_obj, dst_obj)) {
+      PLOG(ERROR) << "Cannot move '" << src_obj << "' to '" << dst_obj << "'";
+      if (!platform_->DeletePathRecursively(src_obj)) {
+        PLOG(ERROR) << "Cannot delete '" << src_obj << "'";
+      }
     }
   }
-  return num_items;
+
+  ReportMaskedDownloadsItems(num_items);
 }
 
 bool Mounter::MountHomesAndDaemonStores(
