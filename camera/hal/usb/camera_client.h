@@ -15,11 +15,11 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
+#include <base/types/expected.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "base/types/expected.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/face_detector_client_cros_wrapper.h"

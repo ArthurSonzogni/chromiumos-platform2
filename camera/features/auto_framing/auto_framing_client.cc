@@ -18,9 +18,9 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
-#include "base/time/time.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/common.h"
 

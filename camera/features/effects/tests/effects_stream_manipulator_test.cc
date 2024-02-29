@@ -2,8 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
+#include <functional>
+#include <utility>
+
+#include <base/command_line.h>
+#include <base/files/file_util.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <base/logging.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
+#include <base/values.h>
+#include <gtest/gtest.h>
+#include <hardware/camera3.h>
+
 #include "camera/common/stream_manipulator.h"
 #include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
@@ -14,19 +27,6 @@
 #include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_loader.h"
 #include "ml_core/tests/test_utilities.h"
-
-#include <base/command_line.h>
-#include <base/files/file_util.h>
-#include <base/synchronization/waitable_event.h>
-#include <base/values.h>
-#include <gtest/gtest.h>
-#include <base/test/task_environment.h>
-#include <base/test/test_timeouts.h>
-
-#include <base/logging.h>
-#include <hardware/camera3.h>
-#include <functional>
-#include <utility>
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |

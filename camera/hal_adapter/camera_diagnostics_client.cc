@@ -7,13 +7,13 @@
 #include <cstdint>
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/no_destructor.h>
+#include <base/synchronization/lock.h>
 #include <base/task/sequenced_task_runner.h>
 #include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 
-#include "base/functional/bind.h"
-#include "base/synchronization/lock.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/common.h"

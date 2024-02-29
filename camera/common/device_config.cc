@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <optional>
 
+#include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -25,7 +26,6 @@
 #include <brillo/key_value_store.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
-#include "base/containers/contains.h"
 #include "cros-camera/common.h"
 
 namespace cros {
