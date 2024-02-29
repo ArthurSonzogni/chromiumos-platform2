@@ -574,7 +574,7 @@ fn parse_smaps_line(line: &str) -> Option<u64> {
 
 // Parse shmem swap from full smaps for the given pid.
 fn parse_shmem_swap_from_smaps(procfs_path: &str, pid: u32) -> Option<u64> {
-    let smaps_bytes = std::fs::read(&format!("{}/{}/smaps", procfs_path, pid)).ok()?;
+    let smaps_bytes = std::fs::read(format!("{}/{}/smaps", procfs_path, pid)).ok()?;
     // smaps contains file names, so we may not necessarily be able to convert it
     // to a utf8 string. However, we only care about the ASCII parts of the string
     // returned by the kernel, so a lossy conversion is fine.
@@ -615,7 +615,7 @@ fn get_memory_stats(
 ) -> Option<[u64; MemKind::Count as usize]> {
     // If this fails, the process is probably dead, so just return.
     let smaps_rollup_bytes =
-        std::fs::read(&format!("{}/{}/smaps_rollup", procfs_path, info.pid)).ok()?;
+        std::fs::read(format!("{}/{}/smaps_rollup", procfs_path, info.pid)).ok()?;
     let smaps_rollup = String::from_utf8(smaps_rollup_bytes).ok()?;
 
     let mut res: [u64; MemKind::Count as usize] = Default::default();
