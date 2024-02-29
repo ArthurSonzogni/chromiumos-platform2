@@ -28,9 +28,9 @@ namespace cryptohome {
 
 extern const char kDefaultHomeDir[];
 extern const char kEphemeralCryptohomeRootContext[];
-extern const char kBindMountMigrationXattrName[];
-extern const char kBindMountMigratingStage[];
-extern const char kBindMountMigratedStage[];
+extern const char kMigrationXattrName[];
+extern const char kMigrating[];
+extern const char kMigrated[];
 
 class Mounter {
  public:

@@ -998,16 +998,16 @@ class DownloadsBindMountMigrationTest : public MounterTest {
 
   std::string GetMigrationXattr(const FilePath& path) {
     std::string xattr;
-    if (!platform_.GetExtendedFileAttributeAsString(
-            path, kBindMountMigrationXattrName, &xattr)) {
+    if (!platform_.GetExtendedFileAttributeAsString(path, kMigrationXattrName,
+                                                    &xattr)) {
       return "";
     }
     return xattr;
   }
 
   bool SetMigrationXattr(const FilePath& path, const std::string& xattr) {
-    return platform_.SetExtendedFileAttribute(
-        path, kBindMountMigrationXattrName, xattr.c_str(), xattr.size());
+    return platform_.SetExtendedFileAttribute(path, kMigrationXattrName,
+                                              xattr.c_str(), xattr.size());
   }
 
   void SetUpAndVerifyUserHome(bool bind_mount_downloads) {
@@ -1057,14 +1057,14 @@ TEST_F(DownloadsBindMountMigrationTest,
   // "migrated".
   ASSERT_TRUE(ExpectFileContentsCorrect(
       downloads_in_my_files_.Append(test_file_path.BaseName())));
-  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kMigrated);
 }
 
 TEST_F(DownloadsBindMountMigrationTest, NewMountSetsXattrOnFirstMount) {
   SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
 
   // Ensure the directory has the right xattr set.
-  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kMigrated);
 }
 
 TEST_F(DownloadsBindMountMigrationTest,
@@ -1073,8 +1073,7 @@ TEST_F(DownloadsBindMountMigrationTest,
 
   // Update the xattr on ~/MyFiles/Downloads to be the "migrating" instead of
   // "migrated".
-  EXPECT_TRUE(
-      SetMigrationXattr(downloads_in_my_files_, kBindMountMigratingStage));
+  EXPECT_TRUE(SetMigrationXattr(downloads_in_my_files_, kMigrating));
 
   // Unmount the helper with the file system still in tact, then remount it.
   mount_helper_->UnmountAll();
@@ -1085,7 +1084,7 @@ TEST_F(DownloadsBindMountMigrationTest,
               IsOk());
 
   // Ensure the directory gets the xattr updated.
-  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kMigrated);
 }
 
 TEST_F(DownloadsBindMountMigrationTest,
@@ -1108,7 +1107,7 @@ TEST_F(DownloadsBindMountMigrationTest,
   // and the contents match and that the extended attribute has been set to
   // "migrated".
   ASSERT_TRUE(ExpectFileContentsCorrect(test_file_path));
-  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kBindMountMigratedStage);
+  EXPECT_EQ(GetMigrationXattr(downloads_in_my_files_), kMigrated);
 }
 
 TEST_F(DownloadsBindMountMigrationTest,
@@ -1160,8 +1159,8 @@ TEST_F(DownloadsBindMountMigrationTest,
   // "migrating" call is made, return false to mock failing to set the xattr.
   EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
       .Times(AnyNumber());
-  EXPECT_CALL(platform_, SetExtendedFileAttribute(
-                             downloads_, kBindMountMigrationXattrName, _, _))
+  EXPECT_CALL(platform_,
+              SetExtendedFileAttribute(downloads_, kMigrationXattrName, _, _))
       .WillOnce(Return(false));
   ASSERT_THAT(mount_helper_->PerformMount(
                   MountType::DIR_CRYPTO, kUser,
@@ -1246,9 +1245,8 @@ TEST_F(DownloadsBindMountMigrationTest,
   // "migrated" call is made, return false to mock failing to set the xattr.
   EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
       .Times(AnyNumber());
-  EXPECT_CALL(platform_,
-              SetExtendedFileAttribute(downloads_in_my_files_,
-                                       kBindMountMigrationXattrName, _, _))
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(downloads_in_my_files_,
+                                                  kMigrationXattrName, _, _))
       .WillOnce(Return(false));
   ASSERT_THAT(mount_helper_->PerformMount(
                   MountType::DIR_CRYPTO, kUser,

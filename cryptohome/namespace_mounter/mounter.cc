@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 
 #include <memory>
+#include <ostream>
+#include <string_view>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
@@ -23,6 +25,8 @@
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 
+#include "base/check.h"
+#include "base/notreached.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
@@ -237,46 +241,62 @@ bool SetTrackingXattr(libstorage::Platform* platform,
 
 // Identifies the pre-migration and post-migration stages of the ~/Downloads
 // bind mount migration.
-enum class BindMountMigrationStage {
-  MIGRATED = 0,
-  MIGRATING = 1,
-  UNKNOWN = 2,
-};
+enum class MigrationStage { kUnknown, kMigrating, kMigrated };
 
-BindMountMigrationStage GetDownloadsBindMountMigrationXattr(
-    libstorage::Platform* platform, const FilePath& path) {
-  std::string xattr;
-  if (!platform->GetExtendedFileAttributeAsString(
-          path, kBindMountMigrationXattrName, &xattr)) {
-    PLOG(ERROR) << "Unable to get xattr on " << path;
-    return BindMountMigrationStage::UNKNOWN;
+// Converts MigrationStage to string.
+std::string_view ToString(const MigrationStage stage) {
+  switch (stage) {
+    case MigrationStage::kUnknown:
+      return "unknown";
+    case MigrationStage::kMigrating:
+      return kMigrating;
+    case MigrationStage::kMigrated:
+      return kMigrated;
   }
-  if (xattr == kBindMountMigratingStage) {
-    return BindMountMigrationStage::MIGRATING;
-  }
-  if (xattr == kBindMountMigratedStage) {
-    return BindMountMigrationStage::MIGRATED;
-  }
-  return BindMountMigrationStage::UNKNOWN;
+
+  NOTREACHED_NORETURN() << "Unexpected MigrationStage: "
+                        << static_cast<int>(stage);
 }
 
-bool SetDownloadsBindMountMigrationXattr(libstorage::Platform* platform,
-                                         const FilePath& path,
-                                         BindMountMigrationStage stage) {
-  std::string stage_xattr;
-  switch (stage) {
-    case BindMountMigrationStage::MIGRATED:
-      stage_xattr = kBindMountMigratedStage;
-      break;
-    case BindMountMigrationStage::MIGRATING:
-      stage_xattr = kBindMountMigratingStage;
-      break;
-    default:
-      break;
+// Output operator for logging.
+std::ostream& operator<<(std::ostream& out, const MigrationStage stage) {
+  return out << ToString(stage);
+}
+
+MigrationStage GetDownloadsMigrationXattr(libstorage::Platform* const platform,
+                                          const FilePath& path) {
+  std::string xattr;
+  DCHECK(platform);
+  if (!platform->GetExtendedFileAttributeAsString(path, kMigrationXattrName,
+                                                  &xattr)) {
+    PLOG(ERROR) << "Cannot get xattr " << kMigrationXattrName << " of path '"
+                << path << "'";
+    return MigrationStage::kUnknown;
   }
-  return platform->SetExtendedFileAttribute(path, kBindMountMigrationXattrName,
-                                            stage_xattr.c_str(),
-                                            stage_xattr.size());
+
+  if (xattr == kMigrating) {
+    return MigrationStage::kMigrating;
+  }
+
+  if (xattr == kMigrated) {
+    return MigrationStage::kMigrated;
+  }
+
+  LOG(ERROR) << "Unexpected value '" << xattr << "' for xattr "
+             << kMigrationXattrName << " of path '" << path << "'";
+  return MigrationStage::kUnknown;
+}
+
+bool SetDownloadsMigrationXattr(libstorage::Platform* const platform,
+                                const FilePath& path,
+                                const MigrationStage stage) {
+  DCHECK_NE(stage, MigrationStage::kUnknown);
+  const auto xattr = ToString(stage);
+  const bool ok = platform->SetExtendedFileAttribute(
+      path, kMigrationXattrName, xattr.data(), xattr.size());
+  PLOG_IF(ERROR, !ok) << "Cannot set xattr " << kMigrationXattrName << " on '"
+                      << path << "' to '" << xattr << "'";
+  return ok;
 }
 
 // Convert |mount_type| to a string for logging.
@@ -307,14 +327,14 @@ const char kDefaultHomeDir[] = "/home/chronos/user";
 
 // The extended attribute name used to designate the ~/Downloads folder pre and
 // post migration.
-constexpr char kBindMountMigrationXattrName[] = "user.BindMountMigration";
+constexpr char kMigrationXattrName[] = "user.BindMountMigration";
 
 // Prior to moving ~/Downloads to ~/MyFiles/Downloads set the xattr above to
 // this value.
-constexpr char kBindMountMigratingStage[] = "migrating";
+constexpr char kMigrating[] = "migrating";
 
 // After moving ~/Downloads to ~/MyFiles/Downloads set the xattr to this value.
-constexpr char kBindMountMigratedStage[] = "migrated";
+constexpr char kMigrated[] = "migrated";
 
 Mounter::Mounter(bool legacy_mount,
                  bool bind_mount_downloads,
@@ -587,10 +607,12 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   const FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
 
   // Check if the migration has successfully completed on a prior run.
-  BindMountMigrationStage downloads_in_my_files_stage =
-      GetDownloadsBindMountMigrationXattr(platform_, downloads_in_my_files);
-  if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATED) {
-    LOG(INFO) << "Downloads bind mount already completed";
+  const MigrationStage stage =
+      GetDownloadsMigrationXattr(platform_, downloads_in_my_files);
+
+  if (stage == MigrationStage::kMigrated) {
+    LOG(INFO) << "'Downloads' already moved to '" << downloads_in_my_files
+              << "'";
     return true;
   }
 
@@ -600,22 +622,22 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // be a freshly setup cryptohome or the previous xattr setting failed. Update
   // the xattr accordingly and if this fails cryptohome is still in a usable
   // state so return true.
-  if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATING ||
+  if (stage == MigrationStage::kMigrating ||
       (!platform_->FileExists(downloads) &&
        platform_->FileExists(downloads_in_my_files))) {
-    if (downloads_in_my_files_stage == BindMountMigrationStage::MIGRATING) {
+    if (stage == MigrationStage::kMigrating) {
       LOG(INFO) << "Downloads bind mount previously completed, but xattr not "
                    "set correctly";
       ReportDownloadsMigrationStatus(kFixXattr);
     } else {
       LOG(INFO) << "Potentially a new cryptohome, setting migrated xattr";
     }
-    bool success = SetDownloadsBindMountMigrationXattr(
-        platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
-    if (!success) {
-      LOG(ERROR) << "Failed to update Downloads bind mount xattr to migrated";
+
+    if (!SetDownloadsMigrationXattr(platform_, downloads_in_my_files,
+                                    MigrationStage::kMigrated)) {
       ReportDownloadsMigrationStatus(kCannotSetXattrToMigrated);
     }
+
     return true;
   }
 
@@ -643,9 +665,8 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // Set the xattr for the ~/Downloads directory to be "MIGRATING", if this
   // fails don't continue as the filesystem is in a good state to continue with
   // the bind mount and a migration can be done at a later stage.
-  if (!SetDownloadsBindMountMigrationXattr(
-          platform_, downloads, BindMountMigrationStage::MIGRATING)) {
-    LOG(ERROR) << "Failed setting the Downloads folder with migration xattr";
+  if (!SetDownloadsMigrationXattr(platform_, downloads,
+                                  MigrationStage::kMigrating)) {
     ReportDownloadsMigrationStatus(kCannotSetXattrToMigrating);
     return false;
   }
@@ -690,12 +711,9 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // occur update the xattr to be "migrated". If this fails, the cryptohome is
   // usable and next time this migration logic runs it will try and update the
   // xattr again.
-  bool set_migration_stage_success = SetDownloadsBindMountMigrationXattr(
-      platform_, downloads_in_my_files, BindMountMigrationStage::MIGRATED);
-  if (!set_migration_stage_success) {
+  if (!SetDownloadsMigrationXattr(platform_, downloads_in_my_files,
+                                  MigrationStage::kMigrated)) {
     ReportDownloadsMigrationStatus(kCannotSetXattrToMigrated);
-    LOG(ERROR)
-        << "Failed to set the Downloads bind mount migration xattr to migrated";
     return true;
   }
 
