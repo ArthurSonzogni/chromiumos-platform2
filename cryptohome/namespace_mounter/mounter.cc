@@ -29,14 +29,14 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 
+namespace cryptohome {
+namespace {
+
 using base::FilePath;
 using base::StringPrintf;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
-
-namespace cryptohome {
-namespace {
 
 const char kEphemeralCryptohomeRootContext[] =
     "u:object_r:cros_home_shadow_uid:s0";
@@ -82,7 +82,7 @@ constexpr mode_t kPathComponentDirMode = S_IRWXU;
 constexpr mode_t kGroupWriteAccess = S_IWGRP;
 
 struct DirectoryACL {
-  base::FilePath path;
+  FilePath path;
   mode_t mode;
   uid_t uid;
   gid_t gid;
@@ -556,7 +556,7 @@ bool Mounter::MountLegacyHome(const FilePath& from) {
   return true;
 }
 
-bool Mounter::HandleMyFilesDownloads(const base::FilePath& user_home) {
+bool Mounter::HandleMyFilesDownloads(const FilePath& user_home) {
   // If the flag to not bind mount ~/Downloads to ~/MyFiles/Downloads is
   // enabled, then attempt to (one-time) migrate the folder. In the event this
   // fails, fallback to the bind mount logic and try again on the next mount.
@@ -580,11 +580,11 @@ bool Mounter::HandleMyFilesDownloads(const base::FilePath& user_home) {
   return true;
 }
 
-bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
-  const base::FilePath downloads_in_my_files =
+bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
+  const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
-  const base::FilePath downloads = user_home.Append(kDownloadsDir);
-  const base::FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
+  const FilePath downloads = user_home.Append(kDownloadsDir);
+  const FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
 
   // Check if the migration has successfully completed on a prior run.
   BindMountMigrationStage downloads_in_my_files_stage =
@@ -706,8 +706,8 @@ bool Mounter::MoveDownloadsToMyFiles(const base::FilePath& user_home) {
   return true;
 }
 
-bool Mounter::MountAndPush(const base::FilePath& src,
-                           const base::FilePath& dest,
+bool Mounter::MountAndPush(const FilePath& src,
+                           const FilePath& dest,
                            const std::string& type,
                            const std::string& options) {
   uint32_t mount_flags = libstorage::kDefaultMountFlags | MS_NOSYMFOLLOW;
@@ -824,17 +824,16 @@ bool Mounter::InternalMountDaemonStoreDirectories(
   return true;
 }
 
-int Mounter::MigrateDirectory(const base::FilePath& dst,
-                              const base::FilePath& src) const {
+int Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
   VLOG(1) << "Migrating directory " << src << " -> " << dst;
   int num_items = 0;
   std::unique_ptr<libstorage::FileEnumerator> enumerator(
       platform_->GetFileEnumerator(
           src, false /* recursive */,
           base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
-  for (base::FilePath src_obj = enumerator->Next(); !src_obj.empty();
+  for (FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
-    base::FilePath dst_obj = dst.Append(src_obj.BaseName());
+    FilePath dst_obj = dst.Append(src_obj.BaseName());
     num_items++;
 
     // If the destination file exists, or rename failed for whatever reason,
@@ -900,7 +899,7 @@ bool Mounter::MountHomesAndDaemonStores(
 
 bool Mounter::MountCacheSubdirectories(
     const ObfuscatedUsername& obfuscated_username,
-    const base::FilePath& data_directory) {
+    const FilePath& data_directory) {
   FilePath cache_directory = GetDmcryptUserCacheDirectory(obfuscated_username);
 
   const FilePath tracked_subdir_paths[] = {
@@ -970,7 +969,7 @@ void Mounter::SetUpDircryptoMount(
 }
 
 bool Mounter::SetUpDmcryptMount(const ObfuscatedUsername& obfuscated_username,
-                                const base::FilePath& data_mount_point) {
+                                const FilePath& data_mount_point) {
   const FilePath dmcrypt_data_volume =
       GetDmcryptDataVolume(obfuscated_username);
   const FilePath dmcrypt_cache_volume =
@@ -1245,11 +1244,11 @@ bool Mounter::MountPerformed() const {
   return stack_.size() > 0;
 }
 
-bool Mounter::IsPathMounted(const base::FilePath& path) const {
+bool Mounter::IsPathMounted(const FilePath& path) const {
   return stack_.ContainsDest(path);
 }
 
-std::vector<base::FilePath> Mounter::MountedPaths() const {
+std::vector<FilePath> Mounter::MountedPaths() const {
   return stack_.MountDestinations();
 }
 
