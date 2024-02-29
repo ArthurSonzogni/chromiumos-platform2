@@ -15,7 +15,12 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -29,6 +34,10 @@ using testing::SaveArg;
 namespace login_manager {
 
 namespace {
+
+constexpr char kSerialNumberKey[] = "serial_number";
+constexpr char kDiskSerialNumberKey[] = "root_disk_serial_number";
+constexpr char kStableDeviceSecretKey[] = "stable_device_secret_DO_NOT_SHARE";
 
 // A SystemUtils implementation that mocks time.
 class FakeSystemUtils : public SystemUtilsImpl {
@@ -56,35 +65,37 @@ class FakeSystemUtils : public SystemUtilsImpl {
 
 TEST(DeviceIdentifierGeneratorStaticTest,
      ParseMachineInfoRecordsFirstValueForDuplicatedKey) {
-  const std::string machine_info_file_contents =
-      "\"root_disk_serial_number\"=\"sn_1\"\n"
-      "\"root_disk_serial_number\"=\"sn_2\"\n";
+  const std::string machine_info_file_contents = base::StringPrintf(
+      "\"%s\"=\"sn_1\"\n"
+      "\"%s\"=\"sn_2\"\n",
+      kDiskSerialNumberKey, kDiskSerialNumberKey);
   std::map<std::string, std::string> map;
   const std::map<std::string, std::string> ro_vpd;
   const std::map<std::string, std::string> rw_vpd = {
-      {"root_disk_serial_number", "sn_3"}};
+      {kDiskSerialNumberKey, "sn_3"}};
   DeviceIdentifierGenerator::ParseMachineInfo(machine_info_file_contents,
                                               ro_vpd, rw_vpd, &map);
-  ASSERT_EQ("sn_1", map["root_disk_serial_number"]);
+  EXPECT_EQ("sn_1", map[kDiskSerialNumberKey]);
 }
 
 TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
   std::map<std::string, std::string> params;
   const std::map<std::string, std::string> ro_vpd = {
-      {"serial_number", "fake-machine-serial-number"},
-      {"root_disk_serial_number", "IGNORE THIS ONE - IT'S NOT FROM UDEV"},
-      {"stable_device_secret_DO_NOT_SHARE",
+      {kSerialNumberKey, "fake-machine-serial-number"},
+      {kDiskSerialNumberKey, "IGNORE THIS ONE - IT'S NOT FROM UDEV"},
+      {kStableDeviceSecretKey,
        "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff"},
   };
   const std::map<std::string, std::string> rw_vpd = {
-      {"serial_number", "key collision"},
+      {kSerialNumberKey, "key collision"},
   };
   EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
-      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n", ro_vpd,
-      rw_vpd, &params));
+      base::StringPrintf("\"%s\"=\"fake disk-serial-number\"\n",
+                         kDiskSerialNumberKey),
+      ro_vpd, rw_vpd, &params));
   EXPECT_EQ(3, params.size());
-  EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
-  EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
+  EXPECT_EQ("fake-machine-serial-number", params[kSerialNumberKey]);
+  EXPECT_EQ("fake disk-serial-number", params[kDiskSerialNumberKey]);
 }
 
 TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
@@ -97,9 +108,12 @@ TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
 
 class DeviceIdentifierGeneratorTest : public ::testing::Test {
  public:
+  using StateKeysResult =
+      base::expected<DeviceIdentifierGenerator::StateKeysList,
+                     DeviceIdentifierGenerator::StateKeysComputationError>;
+
   DeviceIdentifierGeneratorTest()
       : generator_(&system_utils_, &metrics_),
-        state_keys_received_(false),
         last_state_key_generation_status_(
             LoginMetrics::DEPRECATED_STATE_KEY_STATUS_MISSING_IDENTIFIERS) {
     EXPECT_CALL(metrics_, SendStateKeyGenerationStatus(_))
@@ -114,25 +128,11 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
   // Installs mock data for the required parameters.
   void InitMachineInfo() {
     std::map<std::string, std::string> params;
-    params["serial_number"] = "fake-machine-serial-number";
-    params["root_disk_serial_number"] = "fake-disk-serial-number";
-    params["stable_device_secret_DO_NOT_SHARE"] =
+    params[kSerialNumberKey] = "fake-machine-serial-number";
+    params[kDiskSerialNumberKey] = "fake-disk-serial-number";
+    params[kStableDeviceSecretKey] =
         "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
     ASSERT_TRUE(generator_.InitMachineInfo(params));
-  }
-
-  void CompletionHandler(const std::vector<std::vector<uint8_t>>& state_keys) {
-    state_keys_received_ = true;
-    state_keys_ = state_keys;
-  }
-
-  void RequestStateKeys(bool expect_immediate_callback) {
-    state_keys_received_ = false;
-    state_keys_.clear();
-    generator_.RequestStateKeys(
-        base::BindOnce(&DeviceIdentifierGeneratorTest::CompletionHandler,
-                       base::Unretained(this)));
-    EXPECT_EQ(expect_immediate_callback, state_keys_received_);
   }
 
   void CompletionPsmDeviceKeyHandler(const std::string& derived_secret) {
@@ -148,13 +148,12 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
     EXPECT_EQ(expect_immediate_callback, psm_device_secret_received_);
   }
 
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   FakeSystemUtils system_utils_;
   MockMetrics metrics_;
 
   DeviceIdentifierGenerator generator_;
-
-  bool state_keys_received_;
-  std::vector<std::vector<uint8_t>> state_keys_;
 
   bool psm_device_secret_received_;
   std::string psm_derived_secret_;
@@ -164,11 +163,17 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
 
 TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeys) {
   InitMachineInfo();
-  RequestStateKeys(true);
+
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
+
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
-            state_keys_.size());
+  ASSERT_TRUE(state_keys.has_value());
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
+            state_keys.value().size());
 }
 
 TEST_F(DeviceIdentifierGeneratorTest,
@@ -193,14 +198,20 @@ TEST_F(DeviceIdentifierGeneratorTest,
 
 TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeysLegacy) {
   std::map<std::string, std::string> params;
-  params["serial_number"] = "fake-machine-serial-number";
-  params["root_disk_serial_number"] = "fake-disk-serial-number";
+  params[kSerialNumberKey] = "fake-machine-serial-number";
+  params[kDiskSerialNumberKey] = "fake-disk-serial-number";
   ASSERT_TRUE(generator_.InitMachineInfo(params));
-  RequestStateKeys(true);
+
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
+
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH,
             last_state_key_generation_status_);
-  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
-            state_keys_.size());
+  ASSERT_TRUE(state_keys.has_value());
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
+            state_keys.value().size());
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, TimedStateKeys) {
@@ -208,95 +219,175 @@ TEST_F(DeviceIdentifierGeneratorTest, TimedStateKeys) {
   system_utils_.forward_time(base::Days(100).InSeconds());
 
   // The correct number of state keys gets returned.
-  RequestStateKeys(true);
+  StateKeysResult initial_state_keys;
+
+  {
+    base::test::TestFuture<const StateKeysResult&> state_keys_future;
+    generator_.RequestStateKeys(state_keys_future.GetCallback());
+    ASSERT_TRUE(state_keys_future.IsReady());
+    initial_state_keys = state_keys_future.Get();
+  }
+
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
-            state_keys_.size());
-  std::vector<std::vector<uint8_t>> initial_state_keys = state_keys_;
+  ASSERT_TRUE(initial_state_keys.has_value());
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
+            initial_state_keys.value().size());
 
   // All state keys are different.
-  std::set<std::vector<uint8_t>> state_key_set(state_keys_.begin(),
-                                               state_keys_.end());
+  std::set<DeviceIdentifierGenerator::StateKeysList::value_type> state_key_set(
+      initial_state_keys.value().begin(), initial_state_keys.value().end());
   EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_key_set.size());
 
   // Moving forward just a little yields the same keys.
   system_utils_.forward_time(base::Days(1).InSeconds());
-  RequestStateKeys(true);
+
+  StateKeysResult second_state_keys;
+
+  {
+    base::test::TestFuture<const StateKeysResult&> state_keys_future;
+    generator_.RequestStateKeys(state_keys_future.GetCallback());
+    ASSERT_TRUE(state_keys_future.IsReady());
+    second_state_keys = state_keys_future.Get();
+  }
+
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  EXPECT_EQ(initial_state_keys, state_keys_);
+  EXPECT_EQ(initial_state_keys, second_state_keys);
 
   // Jumping to a future quantum results in the state keys rolling forward.
   int64_t step =
       1 << DeviceIdentifierGenerator::kDeviceStateKeyTimeQuantumPower;
   system_utils_.forward_time(2 * step);
 
-  RequestStateKeys(true);
+  StateKeysResult future_state_keys;
+
+  {
+    base::test::TestFuture<const StateKeysResult&> state_keys_future;
+    generator_.RequestStateKeys(state_keys_future.GetCallback());
+    ASSERT_TRUE(state_keys_future.IsReady());
+    future_state_keys = state_keys_future.Get();
+  }
+
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
-            state_keys_.size());
-  EXPECT_TRUE(std::equal(initial_state_keys.begin() + 2,
-                         initial_state_keys.end(), state_keys_.begin()));
+  ASSERT_TRUE(future_state_keys.has_value());
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
+            future_state_keys.value().size());
+  EXPECT_TRUE(std::equal(initial_state_keys.value().begin() + 2,
+                         initial_state_keys.value().end(),
+                         future_state_keys.value().begin()));
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfo) {
   // No callback as long as machine info has not been provided.
-  RequestStateKeys(false);
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  base::RunLoop().RunUntilIdle();
+  ASSERT_FALSE(state_keys_future.IsReady());
 
   // Supplying machine info fires callbacks.
   InitMachineInfo();
-  EXPECT_TRUE(state_keys_received_);
-  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
-            state_keys_.size());
 
-  // Sending machine info twice is harmless and doesn't fire callbacks.
-  state_keys_received_ = false;
-  InitMachineInfo();
-  EXPECT_FALSE(state_keys_received_);
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
+  ASSERT_TRUE(state_keys.has_value());
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
+            state_keys.value().size());
+
+  // Pending callbacks are fired and discarded.
+  EXPECT_TRUE(generator_.GetPendingCallbacksForTesting().empty());
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfoFailure) {
   // No callback as long as machine info has not been provided.
-  RequestStateKeys(false);
+  {
+    base::test::TestFuture<const StateKeysResult&> state_keys_future;
+    generator_.RequestStateKeys(state_keys_future.GetCallback());
+    base::RunLoop().RunUntilIdle();
+    ASSERT_FALSE(state_keys_future.IsReady());
 
-  // Supplying machine info fires callbacks even if info is missing.
-  std::map<std::string, std::string> empty;
-  EXPECT_FALSE(generator_.InitMachineInfo(empty));
-  EXPECT_TRUE(state_keys_received_);
-  EXPECT_EQ(0, state_keys_.size());
+    // Supplying machine info fires callbacks even if info is missing.
+    std::map<std::string, std::string> empty;
+    EXPECT_FALSE(generator_.InitMachineInfo(empty));
+
+    ASSERT_TRUE(state_keys_future.IsReady());
+    StateKeysResult state_keys = state_keys_future.Get();
+    EXPECT_EQ(
+        state_keys,
+        base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                             kMissingAllDeviceIdentifiers));
+  }
 
   // Later requests get answered immediately.
-  RequestStateKeys(true);
-  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS,
-            last_state_key_generation_status_);
-  EXPECT_EQ(0, state_keys_.size());
+  {
+    base::test::TestFuture<const StateKeysResult&> state_keys_future;
+    generator_.RequestStateKeys(state_keys_future.GetCallback());
+    ASSERT_TRUE(state_keys_future.IsReady());
+    StateKeysResult state_keys = state_keys_future.Get();
+
+    EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS,
+              last_state_key_generation_status_);
+    EXPECT_EQ(
+        state_keys,
+        base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                             kMissingAllDeviceIdentifiers));
+  }
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, MissingMachineSerialNumber) {
   std::map<std::string, std::string> params;
-  params["root_disk_serial_number"] = "fake-disk-serial-number";
+  params[kDiskSerialNumberKey] = "fake-disk-serial-number";
   ASSERT_FALSE(generator_.InitMachineInfo(params));
 
-  RequestStateKeys(true);
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
 
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER,
             last_state_key_generation_status_);
-  EXPECT_EQ(0, state_keys_.size());
+  EXPECT_EQ(
+      state_keys,
+      base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                           kMissingSerialNumber));
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, MissingDiskSerialNumber) {
   std::map<std::string, std::string> params;
-  params["serial_number"] = "fake-machine-serial-number";
+  params[kSerialNumberKey] = "fake-machine-serial-number";
   ASSERT_FALSE(generator_.InitMachineInfo(params));
 
-  RequestStateKeys(true);
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
 
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER,
             last_state_key_generation_status_);
-  EXPECT_EQ(0, state_keys_.size());
+  EXPECT_EQ(
+      state_keys,
+      base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                           kMissingDiskSerialNumber));
+}
+
+TEST_F(DeviceIdentifierGeneratorTest, MalformedDeviceSecret) {
+  const std::map<std::string, std::string> params{
+      {kStableDeviceSecretKey, "not a hex number"}};
+  ASSERT_TRUE(generator_.InitMachineInfo(params));
+
+  base::test::TestFuture<const StateKeysResult&> state_keys_future;
+  generator_.RequestStateKeys(state_keys_future.GetCallback());
+  ASSERT_TRUE(state_keys_future.IsReady());
+  StateKeysResult state_keys = state_keys_future.Get();
+
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_BAD_DEVICE_SECRET,
+            last_state_key_generation_status_);
+  EXPECT_EQ(
+      state_keys,
+      base::unexpected(DeviceIdentifierGenerator::StateKeysComputationError::
+                           kMalformedDeviceSecret));
 }
 
 }  // namespace login_manager

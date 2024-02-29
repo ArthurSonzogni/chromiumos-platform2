@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/types/expected.h>
 
 namespace login_manager {
 
@@ -27,13 +28,33 @@ class SystemUtils;
 // and can be restored afterwards.
 class DeviceIdentifierGenerator {
  public:
+  // State key container type.
+  using StateKey = std::vector<uint8_t>;
+  using StateKeysList = std::vector<StateKey>;
+
+  // Indicates an error during state keys computation.
+  enum StateKeysComputationError {
+    // Device secret is not a valid hex string.
+    kMalformedDeviceSecret,
+    // Failed to initialize HMAC with the device secret.
+    kHmacInitializationError,
+    // Failed to calculate HMAC for the device secret.
+    kHmacComputationError,
+    // Missing device secret, serial number and disk serial number.
+    kMissingAllDeviceIdentifiers,
+    // Missing device secret and serial number.
+    kMissingSerialNumber,
+    // Missing device secret and disk serial number.
+    kMissingDiskSerialNumber,
+  };
+
   // Callback type for state key generation requests.
-  typedef base::OnceCallback<void(const std::vector<std::vector<uint8_t>>&)>
-      StateKeyCallback;
+  using StateKeyCallback = base::OnceCallback<void(
+      const base::expected<StateKeysList, StateKeysComputationError>&)>;
 
   // Callback type for PSM derived device active secret generation request.
-  typedef base::OnceCallback<void(const std::string&)>
-      PsmDeviceActiveSecretCallback;
+  using PsmDeviceActiveSecretCallback =
+      base::OnceCallback<void(const std::string&)>;
 
   // The power of two determining the size of the time quanta for device state
   // keys, i.e. the quanta will be of size 2^kDeviceStateKeyTimeQuantumPower
@@ -97,10 +118,11 @@ class DeviceIdentifierGenerator {
   virtual void RequestPsmDeviceActiveSecret(
       PsmDeviceActiveSecretCallback callback);
 
+  const std::vector<StateKeyCallback>& GetPendingCallbacksForTesting() const;
+
  private:
-  // Computes the keys and stores them in |state_keys|. In case of error,
-  // |state_keys| will be cleared.
-  void ComputeKeys(std::vector<std::vector<uint8_t>>* state_keys);
+  // Returns computed state keys or an error.
+  base::expected<StateKeysList, StateKeysComputationError> ComputeKeys();
 
   // Derive the device active secret by hmac stable_device_secret_DO_NOT_SHARE.
   void DerivePsmDeviceActiveSecret(std::string* derived_secret);

@@ -10,7 +10,6 @@
 #include <sys/socket.h>
 
 #include <algorithm>
-#include <iterator>
 #include <locale>
 #include <memory>
 #include <optional>
@@ -37,6 +36,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/utils.h>
@@ -375,8 +375,13 @@ class SessionManagerImpl::DBusService {
   void HandleStateKeyCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response,
-      const std::vector<std::vector<uint8_t>>& state_key) {
-    response->Return(std::move(state_key));
+      const base::expected<
+          DeviceIdentifierGenerator::StateKeysList,
+          DeviceIdentifierGenerator::StateKeysComputationError>& state_keys) {
+    // TODO(b/314114447): Send an error response with `ReplyWithError` once
+    // method callers support it.
+    response->Return(
+        state_keys.value_or(DeviceIdentifierGenerator::StateKeysList()));
   }
 
   void HandlePsmDeviceActiveSecretCallback(
