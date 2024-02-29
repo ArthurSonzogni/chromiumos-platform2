@@ -72,8 +72,6 @@
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
-#include "cryptohome/mock_firmware_management_parameters.h"
-#include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -186,6 +184,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   }
 
   void SetupHwsec() {
+    userdataauth_->set_device_management_client(&device_management_client_);
     userdataauth_->set_auth_block_utility(&auth_block_utility_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
@@ -221,6 +220,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     }
 
     userdataauth_->set_homedirs(&homedirs_);
+    userdataauth_->set_device_management_client(&device_management_client_);
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
     userdataauth_->set_key_store_cert_provider(&key_store_cert_provider_);
@@ -289,6 +289,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock AuthBlockUtility object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+
+  // Mock MockDeviceManagementClientProxy, will be passed to UserDataAuth for
+  // its internal use.
+  NiceMock<MockDeviceManagementClientProxy> device_management_client_;
 
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
@@ -642,33 +646,6 @@ static_assert(
     "Enum member CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR differs between "
     "user_data_auth:: and cryptohome::");
 static_assert(
-    static_cast<int>(
-        user_data_auth::
-            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID) ==
-        static_cast<int>(
-            cryptohome::
-                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID),
-    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID "
-    "differs between user_data_auth:: and cryptohome::");
-static_assert(
-    static_cast<int>(
-        user_data_auth::
-            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE) ==
-        static_cast<int>(
-            cryptohome::
-                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE),
-    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE "
-    "differs between user_data_auth:: and cryptohome::");
-static_assert(
-    static_cast<int>(
-        user_data_auth::
-            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE) ==
-        static_cast<int>(
-            cryptohome::
-                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE),
-    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE "
-    "differs between user_data_auth:: and cryptohome::");
-static_assert(
     static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION) ==
         static_cast<int>(cryptohome::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION),
     "Enum member CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION differs between "
@@ -695,27 +672,6 @@ static_assert(
         static_cast<int>(cryptohome::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
     "Enum member CRYPTOHOME_ERROR_INVALID_ARGUMENT differs between "
     "user_data_auth:: and cryptohome::");
-static_assert(
-    static_cast<int>(
-        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED) ==
-        static_cast<int>(
-            cryptohome::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED),
-    "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED differs "
-    "between user_data_auth:: and cryptohome::");
-static_assert(
-    static_cast<int>(
-        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_SET_FAILED) ==
-        static_cast<int>(
-            cryptohome::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_SET_FAILED),
-    "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_SET_FAILED differs "
-    "between user_data_auth:: and cryptohome::");
-static_assert(
-    static_cast<int>(
-        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED) ==
-        static_cast<int>(
-            cryptohome::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED),
-    "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED differs "
-    "between user_data_auth:: and cryptohome::");
 static_assert(
     static_cast<int>(
         user_data_auth::
@@ -1183,155 +1139,6 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
-TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
-  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
-
-  std::string str_true = "true";
-  std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
-  blob_true.push_back(0);
-
-  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
-      .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-
-  InitializeUserDataAuth();
-
-  EXPECT_TRUE(userdataauth_->IsEnterpriseOwned());
-}
-
-TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
-  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
-
-  std::string str_true = "false";
-  std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
-  blob_true.push_back(0);
-
-  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
-      .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-
-  InitializeUserDataAuth();
-
-  EXPECT_FALSE(userdataauth_->IsEnterpriseOwned());
-}
-
-TEST_F(UserDataAuthTestNotInitialized, LowDiskSpaceHandlerInit) {
-  // Both callbacks need to be set before Init.
-  EXPECT_CALL(low_disk_space_handler_,
-              SetUpdateUserActivityTimestampCallback(_));
-
-  InitializeUserDataAuth();
-}
-
-constexpr char kInstallAttributeName[] = "SomeAttribute";
-constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
-                                             0x03, 0xFF, 0xAB};
-
-TEST_F(UserDataAuthTest, InstallAttributesGet) {
-  // Test for successful case.
-  EXPECT_CALL(system_apis_.install_attrs, Get(kInstallAttributeName, _))
-      .WillOnce(
-          Invoke([](const std::string& name, std::vector<uint8_t>* data_out) {
-            *data_out = std::vector<uint8_t>(
-                kInstallAttributeData,
-                kInstallAttributeData + sizeof(kInstallAttributeData));
-            return true;
-          }));
-  std::vector<uint8_t> data;
-  EXPECT_TRUE(
-      userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
-  EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
-
-  // Test for unsuccessful case.
-  EXPECT_CALL(system_apis_.install_attrs, Get(kInstallAttributeName, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(
-      userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
-}
-
-TEST_F(UserDataAuthTest, InstallAttributesSet) {
-  // Test for successful case.
-  EXPECT_CALL(
-      system_apis_.install_attrs,
-      Set(kInstallAttributeName, ElementsAreArray(kInstallAttributeData)))
-      .WillOnce(Return(true));
-
-  std::vector<uint8_t> data(
-      kInstallAttributeData,
-      kInstallAttributeData + sizeof(kInstallAttributeData));
-  EXPECT_TRUE(userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
-
-  // Test for unsuccessful case.
-  EXPECT_CALL(
-      system_apis_.install_attrs,
-      Set(kInstallAttributeName, ElementsAreArray(kInstallAttributeData)))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(
-      userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
-}
-
-TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
-  // Test for successful case.
-  EXPECT_CALL(system_apis_.install_attrs, Finalize()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_->InstallAttributesFinalize());
-
-  // Test for unsuccessful case.
-  EXPECT_CALL(system_apis_.install_attrs, Finalize()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_->InstallAttributesFinalize());
-}
-
-TEST_F(UserDataAuthTest, InstallAttributesCount) {
-  constexpr int kCount = 42;  // The Answer!!
-  EXPECT_CALL(system_apis_.install_attrs, Count()).WillOnce(Return(kCount));
-  EXPECT_EQ(kCount, userdataauth_->InstallAttributesCount());
-}
-
-TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
-  // Test for successful case.
-  EXPECT_CALL(system_apis_.install_attrs, IsSecure()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
-
-  // Test for unsuccessful case.
-  EXPECT_CALL(system_apis_.install_attrs, IsSecure()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_->InstallAttributesIsSecure());
-}
-
-TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
-  std::vector<InstallAttributesInterface::Status> status_list = {
-      InstallAttributesInterface::Status::kUnknown,
-      InstallAttributesInterface::Status::kTpmNotOwned,
-      InstallAttributesInterface::Status::kFirstInstall,
-      InstallAttributesInterface::Status::kValid,
-      InstallAttributesInterface::Status::kInvalid};
-
-  for (auto& s : status_list) {
-    EXPECT_CALL(system_apis_.install_attrs, status()).WillOnce(Return(s));
-    EXPECT_EQ(s, userdataauth_->InstallAttributesGetStatus());
-  }
-}
-
-TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
-  EXPECT_EQ(user_data_auth::InstallAttributesState::UNKNOWN,
-            UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributesInterface::Status::kUnknown));
-  EXPECT_EQ(user_data_auth::InstallAttributesState::TPM_NOT_OWNED,
-            UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributesInterface::Status::kTpmNotOwned));
-  EXPECT_EQ(user_data_auth::InstallAttributesState::FIRST_INSTALL,
-            UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributesInterface::Status::kFirstInstall));
-  EXPECT_EQ(user_data_auth::InstallAttributesState::VALID,
-            UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributesInterface::Status::kValid));
-  EXPECT_EQ(user_data_auth::InstallAttributesState::INVALID,
-            UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributesInterface::Status::kInvalid));
-  static_assert(
-      user_data_auth::InstallAttributesState_MAX == 4,
-      "Incorrect element count in user_data_auth::InstallAttributesState");
-  static_assert(
-      static_cast<int>(InstallAttributesInterface::Status::COUNT) == 5,
-      "Incorrect element count in InstallAttributesInterface::Status");
-}
-
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
   const Username kUsername1("foo@gmail.com");
   AccountIdentifier account_id;
@@ -1392,50 +1199,6 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR);
 }
 
-// ================== Firmware Management Parameters tests ==================
-
-TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
-  user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(system_apis_.fwmp, GetFWMP(&fwmp)).WillOnce(Return(true));
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_->GetFirmwareManagementParameters(&fwmp));
-}
-
-TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
-  user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(system_apis_.fwmp, GetFWMP(&fwmp)).WillOnce(Return(false));
-  EXPECT_EQ(
-      user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_->GetFirmwareManagementParameters(&fwmp));
-}
-
-TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
-  user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(system_apis_.fwmp, SetFWMP(_)).WillOnce(Return(true));
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_->SetFirmwareManagementParameters(fwmp));
-}
-
-TEST_F(UserDataAuthTest, SetFirmwareManagementParametersError) {
-  user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_CALL(system_apis_.fwmp, SetFWMP(_)).WillOnce(Return(false));
-  EXPECT_EQ(user_data_auth::
-                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            userdataauth_->SetFirmwareManagementParameters(fwmp));
-}
-
-TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersSuccess) {
-  EXPECT_CALL(system_apis_.fwmp, Destroy()).WillOnce(Return(true));
-
-  EXPECT_TRUE(userdataauth_->RemoveFirmwareManagementParameters());
-}
-
-TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
-  EXPECT_CALL(system_apis_.fwmp, Destroy()).WillOnce(Return(false));
-
-  EXPECT_FALSE(userdataauth_->RemoveFirmwareManagementParameters());
-}
-
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
   EXPECT_EQ(brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt()),
             userdataauth_->GetSystemSalt());
@@ -1464,8 +1227,6 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackSuccess) {
   // Called by EnsureCryptohomeKeys().
   EXPECT_CALL(system_apis_.cryptohome_keys_manager, HasAnyCryptohomeKey())
       .WillOnce(Return(true));
-  // Called by InitializeInstallAttributes()
-  EXPECT_CALL(system_apis_.install_attrs, Init()).WillOnce(Return(true));
 
   std::move(callback).Run(hwsec::OkStatus());
 }
@@ -1488,7 +1249,6 @@ TEST_F(UserDataAuthTest, HwsecReadyCallbackFail) {
   // This function will not be called.
   EXPECT_CALL(system_apis_.cryptohome_keys_manager, HasAnyCryptohomeKey())
       .Times(0);
-  EXPECT_CALL(system_apis_.install_attrs, Init()).Times(0);
 
   std::move(callback).Run(
       MakeStatus<hwsec::TPMError>("fake", TPMRetryAction::kNoRetry));
@@ -4813,17 +4573,6 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
   // as |userdataauth_->origin_thread_|.
   base::Thread origin_thread_;
 };
-
-TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
-  // If asked, this machine is enterprise owned.
-  static const std::string true_str = "true";
-  brillo::Blob true_value(true_str.begin(), true_str.end());
-  true_value.push_back(0);
-  EXPECT_CALL(system_apis_.install_attrs, Get("enterprise.owned", _))
-      .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
-
-  InitializeUserDataAuth();
-}
 
 TEST_F(UserDataAuthTestThreaded, ShutdownTask) {
   InitializeUserDataAuth();

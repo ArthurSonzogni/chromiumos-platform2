@@ -16,6 +16,8 @@ class MockDeviceManagementClientProxy : public DeviceManagementClientProxy {
   virtual ~MockDeviceManagementClientProxy();
 
   MOCK_METHOD(bool, IsEnterpriseOwned, (), (override));
+  MOCK_METHOD(bool, IsInstallAttributesFirstInstall, (), (override));
+  MOCK_METHOD(bool, InstallAttributesFinalize, (), (override));
 };
 }  // namespace cryptohome
 

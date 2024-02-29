@@ -722,7 +722,6 @@ UserDataAuth::UserDataAuth(BackingApis apis)
       recovery_crypto_(apis.recovery_crypto),
       cryptohome_keys_manager_(apis.cryptohome_keys_manager),
       crypto_(apis.crypto),
-      firmware_management_parameters_(apis.firmware_management_parameters),
       recovery_ab_service_(apis.recovery_ab_service),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
@@ -730,7 +729,6 @@ UserDataAuth::UserDataAuth(BackingApis apis)
       pkcs11_init_(default_pkcs11_init_.get()),
       default_pkcs11_token_factory_(new RealPkcs11TokenFactory()),
       pkcs11_token_factory_(default_pkcs11_token_factory_.get()),
-      install_attrs_(apis.install_attrs),
       user_activity_timestamp_manager_(apis.user_activity_timestamp_manager),
       keyset_management_(apis.keyset_management),
       uss_storage_(apis.uss_storage),
@@ -983,14 +981,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
           &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
     return false;
 
-  // If the TPM is unowned or doesn't exist, it's safe for
-  // this function to be called again. However, it shouldn't
-  // be called across multiple threads in parallel.
-
-  PostTaskToMountThread(
-      FROM_HERE, base::BindOnce(&UserDataAuth::InitializeInstallAttributes,
-                                base::Unretained(this)));
-
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::CreateFingerprintManager,
                                        base::Unretained(this)));
@@ -1068,18 +1058,13 @@ void UserDataAuth::InitializeFeatureLibrary() {
 
 void UserDataAuth::SetDeviceManagementProxy() {
   AssertOnMountThread();
-  if (firmware_management_parameters_) {
-    firmware_management_parameters_->SetDeviceManagementProxy(
-        std::make_unique<org::chromium::DeviceManagementProxy>(
-            mount_thread_bus_));
-  }
-  if (install_attrs_) {
-    install_attrs_->SetDeviceManagementProxy(
-        std::make_unique<org::chromium::DeviceManagementProxy>(
-            mount_thread_bus_));
-  }
   if (homedirs_) {
     homedirs_->CreateAndSetDeviceManagementClientProxy(mount_thread_bus_);
+  }
+  if (!device_management_client_) {
+    default_device_management_client_ =
+        std::make_unique<DeviceManagementClientProxy>(mount_thread_bus_);
+    device_management_client_ = default_device_management_client_.get();
   }
 }
 
@@ -1673,51 +1658,6 @@ void UserDataAuth::HwsecReadyCallback(hwsec::Status status) {
 
   // Make sure cryptohome keys are loaded and ready for every mount.
   EnsureCryptohomeKeys();
-
-  // Initialize the install-time locked attributes since we can't do it prior
-  // to ownership.
-  InitializeInstallAttributes();
-}
-
-void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {
-  AssertOnMountThread();
-
-  enterprise_owned_ = enterprise_owned;
-}
-
-void UserDataAuth::DetectEnterpriseOwnership() {
-  AssertOnMountThread();
-
-  static const std::string true_str = "true";
-  brillo::Blob true_value(true_str.begin(), true_str.end());
-  true_value.push_back(0);
-
-  brillo::Blob value;
-  if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
-    // Update any active mounts with the state, have to be done on mount thread.
-    SetEnterpriseOwned(true);
-  }
-  // Note: Right now there's no way to convert an enterprise owned machine to a
-  // non-enterprise owned machine without clearing the TPM, so we don't try
-  // calling SetEnterpriseOwned() with false.
-}
-
-void UserDataAuth::InitializeInstallAttributes() {
-  AssertOnMountThread();
-
-  // Don't reinitialize when install attributes are valid or first install.
-  if (install_attrs_->status() == InstallAttributesInterface::Status::kValid ||
-      install_attrs_->status() ==
-          InstallAttributesInterface::Status::kFirstInstall) {
-    return;
-  }
-
-  // The TPM owning instance may have changed since initialization.
-  // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
-  std::ignore = install_attrs_->Init();
-
-  // Check if the machine is enterprise owned and report to mount_ then.
-  DetectEnterpriseOwnership();
 }
 
 void UserDataAuth::EnsureBootLockboxFinalized() {
@@ -2160,65 +2100,6 @@ void UserDataAuth::Pkcs11Terminate() {
   }
 }
 
-bool UserDataAuth::InstallAttributesGet(const std::string& name,
-                                        std::vector<uint8_t>* data_out) {
-  AssertOnMountThread();
-  return install_attrs_->Get(name, data_out);
-}
-
-bool UserDataAuth::InstallAttributesSet(const std::string& name,
-                                        const std::vector<uint8_t>& data) {
-  AssertOnMountThread();
-  return install_attrs_->Set(name, data);
-}
-
-bool UserDataAuth::InstallAttributesFinalize() {
-  AssertOnMountThread();
-  bool result = install_attrs_->Finalize();
-  DetectEnterpriseOwnership();
-  return result;
-}
-
-int UserDataAuth::InstallAttributesCount() {
-  AssertOnMountThread();
-  return install_attrs_->Count();
-}
-
-bool UserDataAuth::InstallAttributesIsSecure() {
-  AssertOnMountThread();
-  return install_attrs_->IsSecure();
-}
-
-InstallAttributesInterface::Status UserDataAuth::InstallAttributesGetStatus() {
-  AssertOnMountThread();
-  return install_attrs_->status();
-}
-
-// static
-user_data_auth::InstallAttributesState
-UserDataAuth::InstallAttributesStatusToProtoEnum(
-    InstallAttributesInterface::Status status) {
-  static const std::unordered_map<InstallAttributesInterface::Status,
-                                  user_data_auth::InstallAttributesState>
-      state_map = {{InstallAttributesInterface::Status::kUnknown,
-                    user_data_auth::InstallAttributesState::UNKNOWN},
-                   {InstallAttributesInterface::Status::kTpmNotOwned,
-                    user_data_auth::InstallAttributesState::TPM_NOT_OWNED},
-                   {InstallAttributesInterface::Status::kFirstInstall,
-                    user_data_auth::InstallAttributesState::FIRST_INSTALL},
-                   {InstallAttributesInterface::Status::kValid,
-                    user_data_auth::InstallAttributesState::VALID},
-                   {InstallAttributesInterface::Status::kInvalid,
-                    user_data_auth::InstallAttributesState::INVALID}};
-  if (state_map.count(status) != 0) {
-    return state_map.at(status);
-  }
-
-  NOTREACHED();
-  // Return is added so compiler doesn't complain.
-  return user_data_auth::InstallAttributesState::INVALID;
-}
-
 user_data_auth::GetWebAuthnSecretReply UserDataAuth::GetWebAuthnSecret(
     const user_data_auth::GetWebAuthnSecretRequest& request) {
   AssertOnMountThread();
@@ -2338,33 +2219,6 @@ void UserDataAuth::GetRecoverableKeyStores(
     *reply.add_key_stores() = std::move(key_store);
   }
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-}
-
-user_data_auth::CryptohomeErrorCode
-UserDataAuth::GetFirmwareManagementParameters(
-    user_data_auth::FirmwareManagementParameters* fwmp) {
-  AssertOnMountThread();
-  if (!firmware_management_parameters_->GetFWMP(fwmp)) {
-    return user_data_auth::
-        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
-  }
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
-user_data_auth::CryptohomeErrorCode
-UserDataAuth::SetFirmwareManagementParameters(
-    const user_data_auth::FirmwareManagementParameters& fwmp) {
-  AssertOnMountThread();
-  if (!firmware_management_parameters_->SetFWMP(fwmp)) {
-    return user_data_auth::
-        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE;
-  }
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
-bool UserDataAuth::RemoveFirmwareManagementParameters() {
-  AssertOnMountThread();
-  return firmware_management_parameters_->Destroy();
 }
 
 const brillo::SecureBlob& UserDataAuth::GetSystemSalt() {
@@ -2766,9 +2620,8 @@ void UserDataAuth::PreMountHook(const ObfuscatedUsername& obfuscated_username) {
   // Any non-guest mount attempt triggers InstallAttributes finalization.
   // The return value is ignored as it is possible we're pre-ownership.
   // The next login will assure finalization if possible.
-  if (install_attrs_->status() ==
-      InstallAttributesInterface::Status::kFirstInstall) {
-    std::ignore = install_attrs_->Finalize();
+  if (device_management_client_->IsInstallAttributesFirstInstall()) {
+    std::ignore = device_management_client_->InstallAttributesFinalize();
   }
   // Removes all ephemeral cryptohomes owned by anyone other than the owner
   // user (if set) and non ephemeral users, regardless of free disk space.

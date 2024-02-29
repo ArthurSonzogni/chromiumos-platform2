@@ -9,6 +9,8 @@
 #define CRYPTOHOME_DEVICE_MANAGEMENT_CLIENT_PROXY_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
@@ -19,12 +21,26 @@
 #include <device_management-client/device_management/dbus-proxies.h>
 
 namespace cryptohome {
+enum class InstallAttributesStatus {
+  kUnknown,       // Not initialized yet.
+  kTpmNotOwned,   // TPM not owned yet.
+  kFirstInstall,  // Allows writing.
+  kValid,         // Validated successfully.
+  kInvalid,       // Not valid, e.g. clobbered, absent.
+  COUNT,          // This is unused, just for counting the number of elements.
+                  // Note that COUNT should always be the last element.
+};
 class DeviceManagementClientProxy {
  public:
   virtual ~DeviceManagementClientProxy() = default;
-  DeviceManagementClientProxy() = default;
+  DeviceManagementClientProxy();
   explicit DeviceManagementClientProxy(scoped_refptr<dbus::Bus> bus);
   virtual bool IsEnterpriseOwned();
+  virtual bool IsInstallAttributesReady();
+  virtual bool InstallAttributesFinalize();
+  virtual bool InstallAttributesSet(const std::string& name,
+                                    const std::vector<uint8_t>& data);
+  virtual bool IsInstallAttributesFirstInstall();
 
  private:
   // Proxy object to access device_management service.

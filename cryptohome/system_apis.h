@@ -20,8 +20,7 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
-#include "cryptohome/firmware_management_parameters_proxy.h"
-#include "cryptohome/install_attributes_proxy.h"
+#include "cryptohome/device_management_client_proxy.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -43,10 +42,9 @@ struct SystemApis final {
   CryptohomeKeysManager cryptohome_keys_manager{hwsec.get(), &platform};
   Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
                 recovery_crypto.get()};
-  FirmwareManagementParametersProxy firmware_management_parameters;
   CryptohomeRecoveryAuthBlockService recovery_ab_service{&platform,
                                                          recovery_crypto.get()};
-  InstallAttributesProxy install_attrs;
+  DeviceManagementClientProxy device_management_client;
   UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
   KeysetManagement keyset_management{&platform, &crypto,
                                      std::make_unique<VaultKeysetFactory>()};
@@ -64,9 +62,8 @@ struct SystemApis final {
         .recovery_crypto = this->recovery_crypto.get(),
         .cryptohome_keys_manager = &this->cryptohome_keys_manager,
         .crypto = &this->crypto,
-        .firmware_management_parameters = &this->firmware_management_parameters,
         .recovery_ab_service = &this->recovery_ab_service,
-        .install_attrs = &this->install_attrs,
+        .device_management_client = &this->device_management_client,
         .user_activity_timestamp_manager =
             &this->user_activity_timestamp_manager,
         .keyset_management = &this->keyset_management,

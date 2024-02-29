@@ -40,6 +40,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
+#include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -138,6 +139,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
     userdataauth_.set_homedirs(&homedirs_);
+    userdataauth_.set_device_management_client(&device_management_client_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
     userdataauth_.set_auth_factor_driver_manager_for_testing(
         &auth_factor_driver_manager_);
@@ -361,6 +363,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   MockSystemApis<WithMockKeysetManagement> system_apis_;
   UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};

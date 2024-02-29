@@ -24,8 +24,7 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_firmware_management_parameters.h"
-#include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/user_secret_stash/manager.h"
@@ -44,10 +43,9 @@ struct BaseMockSystemApis {
   ::testing::NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   Crypto crypto{&hwsec, &hwsec_pw_manager, &cryptohome_keys_manager,
                 &recovery_crypto};
-  ::testing::NiceMock<MockFirmwareManagementParameters> fwmp;
   CryptohomeRecoveryAuthBlockService recovery_ab_service{&platform,
                                                          &recovery_crypto};
-  ::testing::NiceMock<MockInstallAttributes> install_attrs;
+  ::testing::NiceMock<MockDeviceManagementClientProxy> device_management_client;
   ::testing::NiceMock<MockUserOldestActivityTimestampManager>
       user_activity_timestamp_manager;
 };
@@ -89,9 +87,8 @@ struct MockSystemApis : public KeysetManagementOption {
         .recovery_crypto = &this->recovery_crypto,
         .cryptohome_keys_manager = &this->cryptohome_keys_manager,
         .crypto = &this->crypto,
-        .firmware_management_parameters = &this->fwmp,
         .recovery_ab_service = &this->recovery_ab_service,
-        .install_attrs = &this->install_attrs,
+        .device_management_client = &this->device_management_client,
         .user_activity_timestamp_manager =
             &this->user_activity_timestamp_manager,
         .keyset_management = &this->keyset_management,

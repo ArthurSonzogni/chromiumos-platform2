@@ -51,9 +51,8 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/device_management_client_proxy.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/firmware_management_parameters_proxy.h"
-#include "cryptohome/install_attributes_proxy.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/service_userdataauth.h"
@@ -336,14 +335,15 @@ void SimulateSleep(const base::TimeTicks& start_time,
 // operation of finalizing InstallAttributes during enterprise enrollment or
 // first consumer user login. Until it's done, some mount-related operations
 // fail and fuzzer can't test code in them.
-void SimulateDeviceLocking(UserDataAuth& userdataauth,
-                           FuzzedDataProvider& provider) {
+void SimulateDeviceLocking(
+    DeviceManagementClientProxy& device_management_client,
+    FuzzedDataProvider& provider) {
   // We set specific attributes instead of completely "random" contents, as
   // empirically it's hard for the Libfuzzer to figure out the right strings.
-  std::ignore = userdataauth.InstallAttributesSet(
+  std::ignore = device_management_client.InstallAttributesSet(
       "enterprise.owned",
       BlobFromString(provider.ConsumeBool() ? "true" : "false"));
-  std::ignore = userdataauth.InstallAttributesFinalize();
+  std::ignore = device_management_client.InstallAttributesFinalize();
 }
 
 }  // namespace
@@ -370,8 +370,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   CryptohomeKeysManager cryptohome_keys_manager{hwsec.get(), &platform};
   Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
                 recovery_crypto.get()};
-  FirmwareManagementParametersProxy firmware_management_parameters;
-  InstallAttributesProxy install_attrs;
+  DeviceManagementClientProxy device_management_client;
   UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
   KeysetManagement keyset_management{&platform, &crypto,
                                      std::make_unique<VaultKeysetFactory>()};
@@ -386,8 +385,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       .recovery_crypto = recovery_crypto.get(),
       .cryptohome_keys_manager = &cryptohome_keys_manager,
       .crypto = &crypto,
-      .firmware_management_parameters = &firmware_management_parameters,
-      .install_attrs = &install_attrs,
+      .device_management_client = &device_management_client,
       .user_activity_timestamp_manager = &user_activity_timestamp_manager,
       .keyset_management = &keyset_management,
       .uss_storage = &uss_storage,
@@ -412,6 +410,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;
   }
+
+  // Prepare DeviceManagementClientProxy instance.
+  auto device_management_client_proxy =
+      std::make_unique<DeviceManagementClientProxy>(mount_thread_bus.refptr);
 
   // Prepare `UserDataAuthAdaptor`. D-Bus handlers of the code-under-test become
   // registered on the given stub D-Bus object.
@@ -447,7 +449,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         break;
       }
       case Command::kLockDevice: {
-        SimulateDeviceLocking(*userdataauth, provider);
+        SimulateDeviceLocking(*device_management_client_proxy, provider);
         break;
       }
     }

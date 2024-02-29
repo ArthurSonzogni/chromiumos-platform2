@@ -43,13 +43,12 @@
 #include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/device_management_client_proxy.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/fingerprint_manager.h"
-#include "cryptohome/firmware_management_parameters_interface.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/fp_migration/utility.h"
-#include "cryptohome/install_attributes_interface.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"
@@ -110,9 +109,8 @@ class UserDataAuth {
     const hwsec::RecoveryCryptoFrontend* recovery_crypto;
     CryptohomeKeysManager* cryptohome_keys_manager;
     Crypto* crypto;
-    FirmwareManagementParametersInterface* firmware_management_parameters;
     CryptohomeRecoveryAuthBlockService* recovery_ab_service;
-    InstallAttributesInterface* install_attrs;
+    DeviceManagementClientProxy* device_management_client;
     UserOldestActivityTimestampManager* user_activity_timestamp_manager;
     KeysetManagement* keyset_management;
     UssStorage* uss_storage;
@@ -263,47 +261,6 @@ class UserDataAuth {
   // Note that this should only be called from mount thread.
   void Pkcs11RestoreTpmTokens();
 
-  // =============== Install Attributes Related Public Methods ===============
-
-  // Retrieve the key value pair in install attributes with the key of |name|,
-  // and return its value in |data_out|. Returns true if and only if the key
-  // value pair is successfully retrieved. If false is returned, then
-  // |data_out|'s content is undefined.
-  bool InstallAttributesGet(const std::string& name,
-                            std::vector<uint8_t>* data_out);
-
-  // Insert the key value pair (name, data) into install attributes. Return true
-  // if and only if the key value pair is successfully inserted.
-  bool InstallAttributesSet(const std::string& name,
-                            const std::vector<uint8_t>& data);
-
-  // Finalize the install attributes. Return true if and only if the install
-  // attributes is finalized.
-  bool InstallAttributesFinalize();
-
-  // Get the number of key value pair stored in install attributes.
-  int InstallAttributesCount();
-
-  // Return true if and only if the attribute storage is securely stored, that
-  // is, if the system TPM/Lockbox is being used.
-  bool InstallAttributesIsSecure();
-
-  // Return the current status of the install attributes.
-  InstallAttributesInterface::Status InstallAttributesGetStatus();
-
-  // Convert the InstallAttributes::Status enum to
-  // user_data_auth::InstallAttributesState protobuf enum.
-  static user_data_auth::InstallAttributesState
-  InstallAttributesStatusToProtoEnum(InstallAttributesInterface::Status status);
-
-  // =============== Install Attributes Related Utilities ===============
-
-  // Return true if this device is enterprise owned.
-  bool IsEnterpriseOwned() {
-    AssertOnMountThread();
-    return enterprise_owned_;
-  }
-
   // ============= WebAuthn / Passkey Related Public Methods ==============
 
   // TODO(b/184393647): This api is not currently used because secret
@@ -323,26 +280,6 @@ class UserDataAuth {
       user_data_auth::GetRecoverableKeyStoresRequest request,
       base::OnceCallback<
           void(const user_data_auth::GetRecoverableKeyStoresReply&)> on_done);
-
-  // ========= Firmware Management Parameters Related Public Methods =========
-
-  // Retrieve the firmware management parameters. Returns
-  // CRYPTOHOME_ERROR_NOT_SET if successful, and in that case, |fwmp| will be
-  // filled with the firmware management parameters. Otherwise, an error code is
-  // returned and |fwmp|'s content is undefined.
-  user_data_auth::CryptohomeErrorCode GetFirmwareManagementParameters(
-      user_data_auth::FirmwareManagementParameters* fwmp);
-
-  // Set the firmware management parameters to the value given in |fwmp|.
-  // Returns CRYPTOHOME_ERROR_NOT_SET if the operation is successful, and other
-  // error code if it failed.
-  user_data_auth::CryptohomeErrorCode SetFirmwareManagementParameters(
-      const user_data_auth::FirmwareManagementParameters& fwmp);
-
-  // Remove the firmware management parameters, that is, undefine its NVRAM
-  // space (if defined). Return true if and only if the firmware management
-  // parameters are gone
-  bool RemoveFirmwareManagementParameters();
 
   // =============== Miscellaneous Public APIs ===============
 
@@ -473,6 +410,12 @@ class UserDataAuth {
   // override |chaps_client_| for testing purpose.
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
     chaps_client_ = chaps_client;
+  }
+
+  // Override |device_management_client_| for testing purpose
+  void set_device_management_client(
+      DeviceManagementClientProxy* device_management_client) {
+    device_management_client_ = device_management_client;
   }
 
   // Override |pkcs11_init_| for testing purpose.
@@ -777,22 +720,9 @@ class UserDataAuth {
   // functionalities after mounting.
   void InitializePkcs11(UserSession* mount);
 
-  // =============== Install Attributes Related Utilities ===============
+  // =============== Device Management Related Utilities ===============
 
-  // Set whether this device is enterprise owned. Calling this method will have
-  // effect on all currently mounted mounts. This can only be called on
-  // mount_thread_.
-  void SetEnterpriseOwned(bool enterprise_owned);
-
-  // Detect whether this device is enterprise owned, and call
-  // SetEnterpriseOwned(). This can only be called on origin thread.
-  void DetectEnterpriseOwnership();
-
-  // Call this method to initialize the install attributes functionality. This
-  // can only be called on origin thread.
-  void InitializeInstallAttributes();
-
-  // Method to set device_management_proxy to install_attributes interface.
+  // Method to set device_management_proxy.
   void SetDeviceManagementProxy();
 
   // =============== Stateful Recovery related Helpers ===============
@@ -977,8 +907,6 @@ class UserDataAuth {
   CryptohomeKeysManager* cryptohome_keys_manager_;
   // The crypto object used by this class.
   Crypto* crypto_;
-  // The Firmware Management Parameters object.
-  FirmwareManagementParametersInterface* firmware_management_parameters_;
   // The Recovery auth block service.
   CryptohomeRecoveryAuthBlockService* recovery_ab_service_;
 
@@ -1043,16 +971,6 @@ class UserDataAuth {
   // used for testing purposes.
   std::unique_ptr<CreateVaultKeysetRpcImpl> create_vault_keyset_impl_;
 
-  // =============== Install Attributes Related Variables ===============
-
-  // The actual install attributes object used by this class. This object should
-  // only be accessed on the origin thread.
-  InstallAttributesInterface* install_attrs_;
-
-  // Whether this device is an enterprise owned device. Write access should only
-  // happen on mount thread.
-  bool enterprise_owned_ = false;
-
   // =============== Mount Related Variables ===============
 
   // This holds a timestamp for each user that is the time that the user was
@@ -1083,6 +1001,11 @@ class UserDataAuth {
   // This is to be accessed from the mount thread only because there's no
   // guarantee on thread safety of the HomeDirs object.
   HomeDirs* homedirs_ = nullptr;
+
+  // To communicate with device_management service.
+  std::unique_ptr<DeviceManagementClientProxy>
+      default_device_management_client_;
+  DeviceManagementClientProxy* device_management_client_ = nullptr;
 
   // Default challenge credential helper utility object. This object is required
   // for doing a challenge response style login, and is only lazily created when
