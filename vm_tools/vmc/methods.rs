@@ -8,8 +8,9 @@ use std::error::Error;
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::iter::FromIterator;
+use std::os::fd::OwnedFd;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::{AsRawFd, IntoRawFd};
+use std::os::unix::io::AsRawFd;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::channel;
@@ -17,7 +18,6 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use dbus::{
-    arg::OwnedFd,
     blocking::{self, BlockingSender, Connection},
     channel::MatchingReceiver,
     message::MatchRule,
@@ -453,12 +453,9 @@ struct OutputFile {
 
 impl OutputFile {
     pub fn new(file: File, path: PathBuf) -> Result<Self, Box<dyn Error>> {
-        // Safe because OwnedFd is given a valid owned fd.
-        let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
-
         Ok(OutputFile {
             path,
-            fd,
+            fd: file.into(),
             committed: false,
         })
     }
@@ -493,11 +490,7 @@ struct InputFile {
 impl InputFile {
     pub fn new(file: File) -> Result<Self, Box<dyn Error>> {
         let size = file.metadata()?.len();
-
-        // Safe because OwnedFd is given a valid owned fd.
-        let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
-
-        Ok(InputFile { fd, size })
+        Ok(InputFile { fd: OwnedFd::from(file), size })
     }
 }
 
