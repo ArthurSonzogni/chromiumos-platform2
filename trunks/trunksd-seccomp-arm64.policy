@@ -71,6 +71,7 @@ tgkill: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: arg2 in ~GRND_RANDOM
+uname: 1
 
 rt_sigprocmask: 1
 rt_sigaction: 1
