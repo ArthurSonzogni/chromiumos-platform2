@@ -22,9 +22,8 @@ pub const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 8_000_000_000 / 512;
 pub const FLEX_DEPLOY_PART_LABEL: &str = "FLEX_DEPLOY";
 pub const FLEX_DEPLOY_PART_NUM: u32 = 13;
 
-/// Module specific constants.
-const STATEFUL_PARTITION_LABEL: &str = "STATE";
-const STATEFUL_PARTITION_NUM: u32 = 1;
+pub const STATEFUL_PARTITION_LABEL: &str = "STATE";
+pub const STATEFUL_PARTITION_NUM: u32 = 1;
 
 /// Holds information about the disk Flexor installs to.
 pub struct DiskInfo {

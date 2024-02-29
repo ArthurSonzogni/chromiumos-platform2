@@ -22,6 +22,8 @@ mod util;
 
 const FLEXOR_TAG: &str = "flexor";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
+const FLEX_CONFIG_SRC_FILENAME: &str = "flex_config.json";
+const FLEX_CONFIG_TARGET_FILEPATH: &str = "unencrypted/flex_config/config.json";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
 
 // This struct contains all of the information commonly passed around
@@ -42,12 +44,12 @@ impl InstallConfig {
     }
 }
 
-/// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
-/// since we are about to repartition the disk and can't loose the image. Since
-/// the image size is about 2.5GB, we assume that much free space in RAM.
-fn copy_image_to_rootfs(config: &InstallConfig) -> Result<()> {
-    // We expect our data on a partition with a vFAT filesystem.
-    let mount = mount::Mount::mount_by_path(&config.target_device, mount::FsType::Vfat)
+/// Copies the ChromeOS Flex image and other install files (e.g. config) to
+/// rootfs (residing in RAM). This is done since we are about to repartition the
+/// disk and can't loose the image. Since the image size is about 2.5GB, we
+/// assume that much free space in RAM.
+fn copy_installation_files_to_rootfs(config: &InstallConfig) -> Result<()> {
+    let mount = mount::Mount::mount_by_path(&config.install_partition, mount::FsType::Vfat)
         .context("Unable to mount the install partition")?;
 
     // Copy the image to rootfs.
@@ -56,6 +58,16 @@ fn copy_image_to_rootfs(config: &InstallConfig) -> Result<()> {
         Path::new("/root").join(FLEX_IMAGE_FILENAME),
     )
     .context("Unable to copy image to rootfs")?;
+
+    // Copy the config to rootfs.
+    if std::fs::copy(
+        mount.mount_path().join(FLEX_CONFIG_SRC_FILENAME),
+        Path::new("root").join(FLEX_CONFIG_SRC_FILENAME),
+    )
+    .is_err()
+    {
+        info!("Unable to copy flex config to rootfs, proceeding since it is optional");
+    }
 
     Ok(())
 }
@@ -108,6 +120,31 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
     .context("Unable to install the image to disk")
 }
 
+/// Copies the flex config to stateful partition.
+fn copy_config_to_stateful(config: &InstallConfig) -> Result<()> {
+    let stateful_mount = mount::Mount::mount_by_path(
+        &libchromeos::disk::get_partition_device(
+            &config.target_device,
+            disk::STATEFUL_PARTITION_NUM,
+        )
+        .context("Unable to find stateful partition")?,
+        mount::FsType::EXT4,
+    )?;
+
+    let config_path = stateful_mount
+        .mount_path()
+        .join(FLEX_CONFIG_TARGET_FILEPATH);
+    // Create all folders along the path and copy the file.
+    std::fs::create_dir_all(config_path.parent().unwrap())?;
+    std::fs::copy(
+        Path::new("root").join(FLEX_CONFIG_SRC_FILENAME),
+        config_path,
+    )
+    .context("Unable to copy config")?;
+
+    Ok(())
+}
+
 /// Performs the actual installation of ChromeOS.
 fn perform_installation(config: &InstallConfig) -> Result<()> {
     info!("Setting up the disk");
@@ -117,13 +154,24 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
     setup_flex_deploy_partition_and_install(config)?;
 
     info!("Trying to remove the flex deployment partition");
-    disk::try_remove_thirteenth_partition(&config.target_device)
+    disk::try_remove_thirteenth_partition(&config.target_device)?;
+
+    match copy_config_to_stateful(config) {
+        Ok(_) => {
+            info!("Successfully copied a flex config.");
+            Ok(())
+        }
+        Err(_) => {
+            info!("Unable to copy the flex config, still proceeding");
+            Ok(())
+        }
+    }
 }
 
 /// Installs ChromeOS Flex and retries the actual installation steps at most three times.
 fn run(config: &InstallConfig) -> Result<()> {
     info!("Start Flex-ing");
-    copy_image_to_rootfs(config)?;
+    copy_installation_files_to_rootfs(config)?;
 
     // Try installing on the device three times at most.
     for _ in 0..3 {
