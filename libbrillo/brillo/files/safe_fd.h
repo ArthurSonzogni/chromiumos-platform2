@@ -237,6 +237,7 @@ class SafeFD {
 
  private:
   FRIEND_TEST(SafeFDTest, CopyContentsTo_PseudoFsLargeFallbackSuccess);
+  friend bool DeletePath(SafeFD* parent, const std::string& name, bool deep);
 
   BRILLO_EXPORT static const char* RootPath;
 

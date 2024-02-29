@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected_macros.h>
 #include <brillo/syslog_logging.h>
 
 namespace brillo {
@@ -240,14 +241,23 @@ SafeFD::SafeFDResult OpenOrRemakeFile(SafeFD* parent,
 }
 
 bool DeletePath(SafeFD* parent, const std::string& name, bool deep) {
-  // Assume it is a directory and if that fails, try as a file.
-  SafeFD::Error err = parent->Rmdir(name, deep /* recursive */);
-  if (!SafeFD::IsError(err) || err == SafeFD::Error::kDoesNotExist ||
-      errno == ENOENT) {
-    return true;
+  ASSIGN_OR_RETURN(struct stat child_info, parent->Stat(name),
+                   [&](const auto& err) {
+                     if (errno == ENOENT) {
+                       return true;
+                     }
+                     PLOG(ERROR) << "fstatat failed for file \"" << name;
+                     return false;
+                   });
+
+  SafeFD::Error err;
+  if (S_ISDIR(child_info.st_mode)) {
+    err = parent->Rmdir(name, deep /* recursive */);
+  } else {
+    err = parent->Unlink(name);
   }
-  err = parent->Unlink(name);
-  return !SafeFD::IsError(err);
+  return !SafeFD::IsError(err) || err == SafeFD::Error::kDoesNotExist ||
+         errno == ENOENT;
 }
 
 bool DeleteFile(const base::FilePath& path) {
