@@ -95,8 +95,6 @@ LEGACYLIST = {
     "runtime_probe",  # TODO(b/262377381)
     "screen-capture-utils",
     "secanomalyd",
-    "secure_erase_file",
-    "secure-wipe",
     "sepolicy",
     "st_flash",
     "syslog-cat",
