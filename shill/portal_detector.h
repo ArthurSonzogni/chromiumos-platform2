@@ -58,8 +58,10 @@ class PortalDetector {
   // Set of fallback URLs used for retrying the HTTP probe when portal detection
   // is not conclusive. AOSP uses the same first two URLS as fallback HTTP URLs
   // (defined in packages/modules/NetworkStack/res/values/config.xml).
-  static constexpr std::array<std::string_view, 5> kDefaultFallbackHttpUrls = {
-      "http://www.google.com/gen_204",
+  static constexpr std::array<std::string_view, 4> kDefaultFallbackHttpUrls = {
+      // TODO(b/326925490): Reenable this probe URL once the sign-in window
+      // sends requests with the SHOULD_BYPASS_HSTS flag.
+      // "http://www.google.com/gen_204",
       "http://www.play.googleapis.com/generate_204",
       "http://www.gstatic.com/generate_204",
       "http://safebrowsing.google.com/generate_204",
