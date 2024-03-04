@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(
       mount_holders, false,
       "Kill processes that keep mounts open in a non-init mount namespace");
+  DEFINE_string(mount_filter, "", "Kill file holders on specific mounts");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Process Killer");
 
   // Add a flag to explicitly log to stderr: this is useful for situations where
@@ -34,7 +35,8 @@ int main(int argc, char* argv[]) {
   }
 
   std::unique_ptr<init::ProcessKiller> process_killer =
-      std::make_unique<init::ProcessKiller>(FLAGS_session, FLAGS_shutdown);
+      std::make_unique<init::ProcessKiller>(FLAGS_session, FLAGS_shutdown,
+                                            FLAGS_mount_filter);
 
   process_killer->KillProcesses(FLAGS_file_holders, FLAGS_mount_holders);
 

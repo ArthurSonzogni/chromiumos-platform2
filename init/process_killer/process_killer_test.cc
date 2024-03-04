@@ -76,7 +76,8 @@ TEST(ProcessKiller, SessionIrrelevantProcessTest) {
   fake_pm->SetProcessListForTesting({GetInitProcess(1, "init")});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/);
+      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
 
@@ -90,7 +91,8 @@ TEST(ProcessKiller, ShutdownIrrelevantProcessTest) {
   fake_pm->SetProcessListForTesting({GetInitProcess(1, "init")});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
 
@@ -104,7 +106,8 @@ TEST(ProcessKiller, DontKillInitTest) {
   fake_pm->SetProcessListForTesting({GetInitProcessWithLog(1, "init")});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
 
@@ -118,7 +121,8 @@ TEST(ProcessKiller, SessionFileOpenTest) {
   fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/);
+      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
 
@@ -132,7 +136,8 @@ TEST(ProcessKiller, SessionMountOpenTest) {
   fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/);
+      std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(false, true);
 
@@ -147,7 +152,8 @@ TEST(ProcessKiller, ShutdownFileOpenTest) {
       {GetEncstatefulProcess(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
 
@@ -162,7 +168,8 @@ TEST(ProcessKiller, ShutdownMountOpenTest) {
       {GetEncstatefulProcessNoFilesOpen(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(false, true);
 
@@ -177,7 +184,8 @@ TEST(ProcessKiller, ShutdownFileAndMountOpenTest) {
       {GetEncstatefulProcess(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
 
@@ -192,9 +200,27 @@ TEST(ProcessKiller, ShutdownFileOnUsrLocalOpenTest) {
       {GetUsrLocalProcess(7, "node_exporter", true)});
 
   std::unique_ptr<ProcessKiller> process_killer =
-      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/,
+                                      "" /*mount_filter*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
+
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
+}
+
+TEST(ProcessKiller, MountFilterTest) {
+  std::unique_ptr<FakeProcessManager> pm =
+      std::make_unique<FakeProcessManager>();
+  FakeProcessManager* fake_pm = pm.get();
+  fake_pm->SetProcessListForTesting(
+      {GetUsrLocalProcess(7, "dlcservice", true)});
+
+  std::unique_ptr<ProcessKiller> process_killer =
+      std::make_unique<ProcessKiller>(
+          false /*session*/, false /*shutdown*/,
+          "[\"/usr/local/foo\", \"/usr/local/bar\"]" /*mount_filter*/);
+  process_killer->SetProcessManagerForTesting(std::move(pm));
+  process_killer->KillProcesses(true, false);
 
   EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }

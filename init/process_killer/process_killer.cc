@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -45,10 +46,14 @@ constexpr char const* kSystemDeviceRegexes[] = {
     "/dev/nvme[0-9]n[0-9]p1",
 };
 
+constexpr char kMatchNothingRegex[] = "$^";
+
 constexpr int kKillerIterations = 10;
 constexpr base::TimeDelta kSleepInterval = base::Milliseconds(100);
 
-re2::RE2 ConstructMountRegex(bool session, bool shutdown) {
+re2::RE2 ConstructMountRegex(bool session,
+                             bool shutdown,
+                             const std::string& mount_filter) {
   std::vector<std::string> mounts;
   if (session) {
     for (auto mount : kSessionMountRegexes) {
@@ -62,6 +67,28 @@ re2::RE2 ConstructMountRegex(bool session, bool shutdown) {
     }
   }
 
+  if (mount_filter.size()) {
+    auto filter = base::JSONReader::ReadAndReturnValueWithError(mount_filter);
+    if (!filter.has_value()) {
+      LOG(ERROR) << "Could not parse the mount filter JSON list. Error: "
+                 << filter.error().message;
+    } else if (!filter->is_list()) {
+      LOG(ERROR) << "Invalid mount filter JSON, expecting path regex list.";
+    } else {
+      for (const auto& mount : filter->GetList()) {
+        if (auto* mount_str = mount.GetIfString();
+            mount_str && mount_str->size()) {
+          mounts.push_back(*mount_str);
+        }
+      }
+    }
+  }
+
+  if (mounts.empty()) {
+    // Avoid empty regex which matches to any string, return
+    // `kMatchNothingRegex` instead.
+    return kMatchNothingRegex;
+  }
   return re2::RE2("^(" + base::JoinString(mounts, "|") + ")");
 }
 
@@ -79,13 +106,18 @@ re2::RE2 ConstructDeviceRegex(bool session, bool shutdown) {
     }
   }
 
+  if (devices.empty()) {
+    return kMatchNothingRegex;
+  }
   return re2::RE2("(" + base::JoinString(devices, "|") + ")");
 }
 
 }  // namespace
 
-ProcessKiller::ProcessKiller(bool session, bool shutdown)
-    : mount_regex_(ConstructMountRegex(session, shutdown)),
+ProcessKiller::ProcessKiller(bool session,
+                             bool shutdown,
+                             const std::string& mount_filter)
+    : mount_regex_(ConstructMountRegex(session, shutdown, mount_filter)),
       device_regex_(ConstructDeviceRegex(session, shutdown)),
       pm_(std::make_unique<ProcessManager>(base::FilePath("/proc"))) {}
 

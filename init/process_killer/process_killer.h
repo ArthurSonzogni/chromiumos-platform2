@@ -19,7 +19,7 @@ namespace init {
 // boundary of a mount and can potentially keep a device open.
 class ProcessKiller {
  public:
-  ProcessKiller(bool session, bool boot);
+  ProcessKiller(bool session, bool shutdown, const std::string& mount_filter);
   ~ProcessKiller() = default;
   void KillProcesses(bool files, bool devices);
   void LogProcesses();
