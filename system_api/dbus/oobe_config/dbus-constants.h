@@ -14,7 +14,7 @@ const char kOobeConfigRestoreServiceName[] = "org.chromium.OobeConfigRestore";
 
 // Methods
 const char kProcessAndGetOobeAutoConfigMethod[] = "ProcessAndGetOobeAutoConfig";
-const char kDeleteFlexConfigMethod[] = "DeleteFlexOobeConfig";
+const char kDeleteFlexOobeConfigMethod[] = "DeleteFlexOobeConfig";
 
 }  // namespace oobe_config
 
