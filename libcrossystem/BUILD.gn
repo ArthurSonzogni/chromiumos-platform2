@@ -60,7 +60,7 @@ shared_library("libcrossystem-test") {
   if (use.cros_host) {
     install_path = "lib"
   } else {
-    install_path = "/build/lib"
+    install_path = "/usr/local/lib"
   }
 }
 
