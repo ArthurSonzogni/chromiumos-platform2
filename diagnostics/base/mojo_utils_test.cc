@@ -4,7 +4,6 @@
 
 #include "diagnostics/base/mojo_utils.h"
 
-#include <memory>
 #include <string_view>
 #include <utility>
 
@@ -14,7 +13,7 @@
 namespace diagnostics {
 namespace {
 
-TEST(RoutineUtilsTest, CreateMojoHandleAndRetrieveContent) {
+TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
   const std::string_view content("{\"key\": \"value\"}");
 
   mojo::ScopedHandle handle =
@@ -30,7 +29,7 @@ TEST(RoutineUtilsTest, CreateMojoHandleAndRetrieveContent) {
   EXPECT_EQ(content, actual);
 }
 
-TEST(RoutineUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
+TEST(MojoUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
   mojo::ScopedHandle handle;
   EXPECT_FALSE(handle.is_valid());
 
@@ -39,7 +38,7 @@ TEST(RoutineUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
   EXPECT_FALSE(shm_mapping.IsValid());
 }
 
-TEST(RoutineUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
+TEST(MojoUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle("");
   // Cannot create valid handle using empty content line.
   EXPECT_FALSE(handle.is_valid());
