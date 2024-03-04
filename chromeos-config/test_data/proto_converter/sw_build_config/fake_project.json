@@ -3504,6 +3504,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -3810,6 +3813,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [
@@ -4127,6 +4133,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -4433,6 +4442,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [
@@ -4746,6 +4758,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -5057,6 +5072,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [
@@ -5375,6 +5393,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -5682,6 +5703,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [
@@ -6000,6 +6024,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -6307,6 +6334,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [
@@ -6621,6 +6651,9 @@
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
         },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
+        },
         "ui": {
           "ash-disabled-features": [
             "PlatformHEVCDecoderSupport"
@@ -6933,6 +6966,9 @@
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
           "input-boost": 15
+        },
+        "spi-flash-transform": {
+          "W25Q32BV/W25Q32CV/W25Q32DV": "W25Q32DV"
         },
         "ui": {
           "ash-disabled-features": [

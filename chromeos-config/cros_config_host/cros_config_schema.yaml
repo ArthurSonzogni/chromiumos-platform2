@@ -1722,6 +1722,9 @@ properties:
                   type: boolean
                   description: Whether use the legacy custom label key in VPD.
               additionalProperties: false
+            spi-flash-transform:
+              type: object
+              description: ChromeOS flash name mappings used by ap_wpsr.
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.

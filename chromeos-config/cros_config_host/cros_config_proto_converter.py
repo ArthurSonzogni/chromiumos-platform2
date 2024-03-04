@@ -1700,6 +1700,21 @@ def _build_rma(config: Config):
     return result
 
 
+def _build_spi_flash_transform(config: Config):
+    """Builds the spi_flash_transform mappings.
+
+    Args:
+        config: Config namedtuple
+
+    Returns:
+        spi_flash_transform mappings.
+    """
+    if not config.hw_design.spi_flash_transform:
+        return None
+
+    return dict(config.hw_design.spi_flash_transform)
+
+
 def _build_nnpalm(config: Config):
     """Builds the nnpalm configuration.
 
@@ -3052,6 +3067,7 @@ def _transform_build_config(config, config_files, custom_label):
         _build_hardware_properties(hw_features), result, "hardware-properties"
     )
     _upsert(_build_modem(config), result, "modem")
+    _upsert(_build_spi_flash_transform(config), result, "spi-flash-transform")
     _upsert(_build_keyboard(hw_features), result, "keyboard")
     _upsert(_build_hps(hw_features), result, "hps")
     _upsert(_build_poe(hw_features), result, "hardware-properties")

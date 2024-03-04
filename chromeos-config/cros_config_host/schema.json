@@ -3671,6 +3671,10 @@
                 },
                 "type": "object"
               },
+              "spi-flash-transform": {
+                "description": "ChromeOS flash name mappings used by ap_wpsr.",
+                "type": "object"
+              },
               "test-label": {
                 "description": "Test alias (model) label that will be applied in Autotest and reported for test results.",
                 "type": "string"
