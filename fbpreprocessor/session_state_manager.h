@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
-#include <bindings/cloud_policy.pb.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/manager.h"

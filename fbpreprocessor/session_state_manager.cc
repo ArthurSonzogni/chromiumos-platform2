@@ -22,6 +22,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
+#include <bindings/cloud_policy.pb.h>
 #include <bindings/device_management_backend.pb.h>
 #include <bindings/policy_common_definitions.pb.h>
 #include <brillo/errors/error.h>
