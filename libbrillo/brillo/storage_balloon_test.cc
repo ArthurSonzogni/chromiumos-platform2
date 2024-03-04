@@ -12,7 +12,6 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 namespace brillo {
@@ -21,14 +20,10 @@ class FakeStorageBalloon : public StorageBalloon {
  public:
   FakeStorageBalloon(uint64_t remaining_size, const base::FilePath& path)
       : StorageBalloon(path, path.AppendASCII("balloon")),
-        remaining_size_(remaining_size),
-        reserved_clusters_path_(path.AppendASCII("balloon")) {}
+        remaining_size_(remaining_size) {}
 
  protected:
   bool SetBalloonSize(int64_t size) override {
-    // Delete the existing storage balloon file to emulate the sysfs node.
-    brillo::DeleteFile(reserved_clusters_path_);
-    base::WriteFile(reserved_clusters_path_, "");
     if (!StorageBalloon::SetBalloonSize(size))
       return false;
 
@@ -47,7 +42,6 @@ class FakeStorageBalloon : public StorageBalloon {
  private:
   int64_t current_balloon_size_ = 0;
   int64_t remaining_size_;
-  const base::FilePath reserved_clusters_path_;
 };
 
 TEST(StorageBalloon, InvalidPath) {
