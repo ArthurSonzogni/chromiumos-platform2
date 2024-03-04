@@ -244,11 +244,6 @@ void FingerprintAuthFactorDriver::PrepareForAuthOnGetNonce(
                                          std::move(input), std::move(callback));
 }
 
-bool FingerprintAuthFactorDriver::IsFullAuthSupported(
-    AuthIntent auth_intent) const {
-  return true;
-}
-
 bool FingerprintAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

@@ -38,6 +38,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
+      public AfDriverFullAuthDecrypt,
       public AfDriverWithMetadata<FingerprintMetadata>,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverWithConfigurableIntents<
@@ -68,7 +69,6 @@ class FingerprintAuthFactorDriver final
   void PrepareForAuthOnGetNonce(PreparedAuthFactorToken::Consumer callback,
                                 const AuthInput& auth_input,
                                 std::optional<brillo::Blob> nonce);
-  bool IsFullAuthSupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   CryptohomeStatus TryCreateRateLimiter(const ObfuscatedUsername& username,

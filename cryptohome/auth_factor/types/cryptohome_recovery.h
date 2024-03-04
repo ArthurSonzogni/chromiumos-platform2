@@ -32,7 +32,7 @@ class CryptohomeRecoveryAuthFactorDriver final
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<CryptohomeRecoveryMetadata>,
       public AfDriverNoPrepare,
-      public AfDriverFullAuthDecrypt,
+      public AfDriverFullAuthForensics,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,

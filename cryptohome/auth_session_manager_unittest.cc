@@ -783,22 +783,40 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
 
 TEST_F(AuthSessionManagerTest, IntentPassing) {
   // Arrange.
-  base::UnguessableToken decryption_session_token =
-      auth_session_manager_.CreateAuthSession(
-          kUsername,
-          {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
-  InUseAuthSession decryption_auth_session =
-      TakeAuthSession(decryption_session_token);
-  base::UnguessableToken verification_session_token =
-      auth_session_manager_.CreateAuthSession(
-          kUsername2,
-          {.is_ephemeral_user = false, .intent = AuthIntent::kVerifyOnly});
-  InUseAuthSession verification_auth_session =
-      TakeAuthSession(verification_session_token);
+  {
+    base::UnguessableToken decryption_session_token =
+        auth_session_manager_.CreateAuthSession(
+            kUsername,
+            {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+    InUseAuthSession decryption_auth_session =
+        TakeAuthSession(decryption_session_token);
 
-  // Assert.
-  EXPECT_EQ(decryption_auth_session->auth_intent(), AuthIntent::kDecrypt);
-  EXPECT_EQ(verification_auth_session->auth_intent(), AuthIntent::kVerifyOnly);
+    // Assert.
+    EXPECT_EQ(decryption_auth_session->auth_intent(), AuthIntent::kDecrypt);
+  }
+  {
+    base::UnguessableToken verification_session_token =
+        auth_session_manager_.CreateAuthSession(
+            kUsername2,
+            {.is_ephemeral_user = false, .intent = AuthIntent::kVerifyOnly});
+    InUseAuthSession verification_auth_session =
+        TakeAuthSession(verification_session_token);
+
+    // Assert.
+    EXPECT_EQ(verification_auth_session->auth_intent(),
+              AuthIntent::kVerifyOnly);
+  }
+  {
+    base::UnguessableToken forensic_session_token =
+        auth_session_manager_.CreateAuthSession(
+            kUsername2,
+            {.is_ephemeral_user = false, .intent = AuthIntent::kForensics});
+    InUseAuthSession forensic_auth_session =
+        TakeAuthSession(forensic_session_token);
+
+    // Assert.
+    EXPECT_EQ(forensic_auth_session->auth_intent(), AuthIntent::kForensics);
+  }
 }
 
 TEST_F(AuthSessionManagerTest, AddFindUnMount) {

@@ -49,6 +49,7 @@
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"
@@ -508,6 +509,18 @@ TEST_F(AuthSessionTest, RestoreKeyIntent) {
                            backing_apis_);
 
   EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kRestoreKey);
+}
+
+TEST_F(AuthSessionTest, ForensicsIntent) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kForensics,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false},
+                           backing_apis_);
+
+  EXPECT_EQ(auth_session.auth_intent(), AuthIntent::kForensics);
 }
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
@@ -1847,6 +1860,71 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
+// Test that an existing user with an existing password auth factor cannot be
+// authenticated with forensic intent.
+TEST_F(AuthSessionWithUssTest,
+       AuthenticatePasswordAuthFactorViaUssViaForensics) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
+  ASSERT_THAT(uss, IsOk());
+  // Creating the auth factor. An arbitrary auth block state is used in this
+  // test.
+  AuthFactor auth_factor(
+      AuthFactorType::kPassword, kFakeLabel,
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
+      AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  {
+    auto transaction = uss->StartTransaction();
+    ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
+                IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  // Creating the auth session.
+  SetAuthFactorMap(kFakeUsername, std::move(auth_factor_map));
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kForensics,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = true},
+                           backing_apis_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Calling AuthenticateAuthFactor.
+  AuthenticateTestFuture authenticate_future;
+  std::vector<std::string> auth_factor_labels{kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
+      *DetermineFactorTypeFromAuthInput(auth_input_proto));
+  auth_session.AuthenticateAuthFactor(
+      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+      auth_factor_type_policy, authenticate_future.GetCallback());
+
+  // Verify.
+  auto& [action, status] = authenticate_future.Get();
+  EXPECT_THAT(status, NotOk());
+}
+
 // Test that an existing user with an existing password auth factor can be
 // authenticated, using asynchronous key derivation.
 TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
@@ -2609,6 +2687,140 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+  // There should be no verifier created for the recovery factor.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
+}
+
+TEST_F(AuthSessionWithUssTest,
+       AuthenticateCryptohomeRecoveryAuthFactorWithForensics) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
+  ASSERT_THAT(uss, IsOk());
+  // Creating the auth factor.
+  AuthFactor auth_factor(
+      AuthFactorType::kCryptohomeRecovery, kFakeLabel,
+      AuthFactorMetadata{.metadata = CryptohomeRecoveryMetadata()},
+      AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  {
+    auto transaction = uss->StartTransaction();
+    ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
+                IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  // Creating the auth session.
+  SetAuthFactorMap(kFakeUsername, std::move(auth_factor_map));
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kForensics,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = true},
+                           backing_apis_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Setting the expectation that the auth block utility will generate
+  // recovery request.
+  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
+      .WillOnce([](const ObfuscatedUsername& obfuscated_username,
+                   const cryptorecovery::RequestMetadata& request_metadata,
+                   const brillo::Blob& epoch_response,
+                   const CryptohomeRecoveryAuthBlockState& state,
+                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+                   brillo::Blob* out_recovery_request,
+                   brillo::Blob* out_ephemeral_pub_key) {
+        *out_ephemeral_pub_key = brillo::BlobFromString("test");
+        return OkStatus<CryptohomeCryptoError>();
+      });
+  EXPECT_FALSE(auth_session.has_user_secret_stash());
+
+  // Calling GetRecoveryRequest.
+  user_data_auth::GetRecoveryRequestRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  TestFuture<user_data_auth::GetRecoveryRequestReply> reply_future;
+  auth_session.GetRecoveryRequest(
+      request,
+      reply_future
+          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
+
+  // Verify.
+  EXPECT_EQ(reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
+  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeFromState(
+                  AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
+      .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _, _))
+      .WillOnce([&kFakePerCredentialSecret](
+                    AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        EXPECT_THAT(
+            auth_input.cryptohome_recovery_auth_input->ephemeral_pub_key,
+            Optional(brillo::BlobFromString("test")));
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = kFakePerCredentialSecret;
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::nullopt);
+      });
+
+  // Calling AuthenticateAuthFactor.
+  std::vector<std::string> auth_factor_labels{kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_cryptohome_recovery_input()
+      ->mutable_recovery_response();
+  AuthenticateTestFuture authenticate_future;
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
+      *DetermineFactorTypeFromAuthInput(auth_input_proto));
+  auth_session.AuthenticateAuthFactor(
+      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+      auth_factor_type_policy, authenticate_future.GetCallback());
+
+  // Verify.
+  auto& [action, status] = authenticate_future.Get();
+  EXPECT_THAT(status, IsOk());
+  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
+  // Note that forensic intent is part of the elements here.
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly,
+                           AuthIntent::kForensics));
   EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
   EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
   EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());

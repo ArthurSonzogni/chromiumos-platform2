@@ -58,6 +58,7 @@
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session_protobuf.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -488,6 +489,7 @@ base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
   check_auth_for(auth_for_verify_only_);
   check_auth_for(auth_for_web_authn_);
   check_auth_for(auth_for_restore_key_);
+  check_auth_for(auth_for_forensics_);
   return intents;
 }
 
@@ -531,8 +533,9 @@ void AuthSession::SetAuthorizedForIntents(
   set_auth_for(auth_for_verify_only_);
   set_auth_for(auth_for_web_authn_);
   set_auth_for(auth_for_restore_key_);
+  set_auth_for(auth_for_forensics_);
 
-  if (auth_for_decrypt_ || auth_for_restore_key_) {
+  if (auth_for_decrypt_ || auth_for_restore_key_ || auth_for_forensics_) {
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
   }
@@ -560,6 +563,14 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
                                      auth_factor_type_user_policy)) {
       authorized_for.push_back(intent);
     }
+  }
+
+  // Separate check for forensics if the intent is actually requested.
+  if (auth_intent_ == AuthIntent::kForensics &&
+      factor_driver.IsFullAuthSupported(AuthIntent::kForensics) &&
+      IsIntentEnabledBasedOnPolicy(factor_driver, AuthIntent::kForensics,
+                                   auth_factor_type_user_policy)) {
+    authorized_for.push_back(AuthIntent::kForensics);
   }
   // Authorize the session for the subset of intents we found.
   SetAuthorizedForIntents(authorized_for);
