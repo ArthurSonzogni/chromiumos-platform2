@@ -99,6 +99,9 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // wpa_supplicant.
   void PropertiesChanged(const KeyValueStore& properties);
 
+  // Called by WiFi when the path to an endpoint changes.
+  void UpdateRPCPath(const RpcIdentifier& rpc_id);
+
   // Called by WiFi when it polls for signal strength from the kernel.
   void UpdateSignalStrength(int16_t strength);
 

@@ -378,6 +378,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
+  FRIEND_TEST(WiFiMainTest, PendingScanEventsModifyPath);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, RekeyInvokesNotifyRekeyStart);
   FRIEND_TEST(WiFiMainTest, ScanRejected);               // wifi_state_
   FRIEND_TEST(WiFiMainTest, ScanResults);                // EndpointMap
@@ -543,6 +544,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // have a disconnect reason from supplicant.
   Service::ConnectFailure ExamineStatusCodes() const;
   void HandleRoam(const RpcIdentifier& new_bss, const RpcIdentifier& old_bss);
+  void BSSModified(const RpcIdentifier& remove_path,
+                   const RpcIdentifier& add_path,
+                   const KeyValueStore& new_properties);
   void BSSAddedTask(const RpcIdentifier& BSS, const KeyValueStore& properties);
   void BSSRemovedTask(const RpcIdentifier& BSS);
   void CertificationTask(const KeyValueStore& properties);
@@ -924,6 +928,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // implies that a driver-based roam has been initiated.  If this roam
   // succeeds, we should renew our lease.
   bool is_roaming_in_progress_;
+  // Indicates that wpa_supplicant is currently triggering a 6GHz scan, so delay
+  // the processing of scan results until the 6ghz scan completes.
+  bool scan_in_progress_6ghz_;
   // In WiFi::EAPEventTask, we infer the specific EAP authentication failure (if
   // there is one), and store it in |pending_eap_failure_| to be used later when
   // we actually disconnect from the network.
