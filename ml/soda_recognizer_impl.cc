@@ -18,6 +18,7 @@
 
 #include "base/debug/leak_annotations.h"
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
+#include "libsoda/soda_async_impl.h"
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
 #include "ml/soda_proto_mojom_conversion.h"
@@ -182,12 +183,10 @@ SodaRecognizerImpl::SodaRecognizerImpl(
   }
 
   cfg_msg.set_mask_offensive_words(spec->mask_offensive_words);
-#pragma GCC diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-  // TODO(amoylan): Replace with set_speaker_diarization_mode after
-  // crrev.com/i/6989672.
-  cfg_msg.set_enable_speaker_change_detection(spec->speaker_change_detection);
-#pragma GCC diagnostic pop
+  if (spec->speaker_change_detection) {
+    cfg_msg.set_speaker_diarization_mode(
+        ExtendedSodaConfigMsg::SPEAKER_CHANGE_DETECTION);
+  }
 
   if (spec->multi_lang_config) {
     auto multi_lang_config_mojo = *(spec->multi_lang_config);
