@@ -71,7 +71,17 @@ ConciergeDaemon::ConciergeDaemon()
 
 void ConciergeDaemon::Start() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  service_ = Service::Create(signal_fd_.get());
+  Service::CreateAndHost(
+      signal_fd_.get(),
+      base::BindOnce(&ConciergeDaemon::OnStarted, weak_factory_.GetWeakPtr()));
+}
+
+void ConciergeDaemon::OnStarted(std::unique_ptr<Service> service) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(service) << "Failed to launch service correctly";
+  CHECK(!exiting_)
+      << "Attempted to complete bringup after we were asked to exit";
+  service_ = std::move(service);
 }
 
 void ConciergeDaemon::Stop() {

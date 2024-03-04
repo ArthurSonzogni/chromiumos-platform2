@@ -70,10 +70,23 @@ std::optional<brillo::VariantDictionary> GetPropertiesHelper(dbus::Bus* bus,
                                                              Proxy* proxy) {
   bus->AssertOnOriginThread();
   brillo::VariantDictionary properties;
-  if (!proxy->GetProperties(&properties, nullptr)) {
-    return std::nullopt;
+  if (bus->HasDBusThread()) {
+    bool success = PostTaskAndWaitForResult(
+        bus->GetDBusTaskRunner(),
+        base::BindOnce(
+            [](Proxy* proxy, brillo::VariantDictionary* properties) {
+              return proxy->GetProperties(properties, nullptr);
+            },
+            proxy, &properties));
+    if (success) {
+      return properties;
+    }
+  } else {
+    if (proxy->GetProperties(&properties, nullptr)) {
+      return properties;
+    }
   }
-  return properties;
+  return std::nullopt;
 }
 
 void ShillClient::OnManagerPropertyChangeRegistration(

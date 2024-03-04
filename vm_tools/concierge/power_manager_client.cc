@@ -13,6 +13,7 @@
 #include <dbus/object_path.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
+#include "vm_tools/concierge/dbus_proxy_util.h"
 #include "vm_tools/concierge/tracing.h"
 
 namespace vm_tools::concierge {
@@ -50,12 +51,10 @@ PowerManagerClient::~PowerManagerClient() {
     return;
   }
 
-  auto dbus_response = power_manager_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(WARNING) << "Failed to un-register suspend delay with powerd: "
-                 << dbus_response.error().name() << ", "
-                 << dbus_response.error().message();
+  auto dbus_response = CallDBusMethod(bus_, power_manager_proxy_, &method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(WARNING) << "Failed to un-register suspend delay with powerd";
   }
 }
 
@@ -65,6 +64,7 @@ void PowerManagerClient::RegisterSuspendDelay(
   // We don't need to check whether powerd is running because it should start
   // automatically at boot while concierge is not started until the user
   // explicitly tries to start a VM.
+
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kRegisterSuspendDelayMethod);
 
@@ -77,17 +77,15 @@ void PowerManagerClient::RegisterSuspendDelay(
     return;
   }
 
-  auto dbus_response = power_manager_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    LOG(WARNING) << "Failed to register suspend delay with powerd: "
-                 << dbus_response.error().name() << ", "
-                 << dbus_response.error().message();
+  auto dbus_response = CallDBusMethod(bus_, power_manager_proxy_, &method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(WARNING) << "Failed to register suspend delay with powerd";
     return;
   }
 
   power_manager::RegisterSuspendDelayReply response;
-  if (!dbus::MessageReader(dbus_response->get())
+  if (!dbus::MessageReader(dbus_response.get())
            .PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to read RegisterSuspendDelayReply message";
     return;
@@ -149,13 +147,11 @@ void PowerManagerClient::HandleSuspendImminent(dbus::Signal* signal) {
     return;
   }
 
-  auto dbus_response = power_manager_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
+  auto dbus_response = CallDBusMethod(bus_, power_manager_proxy_, &method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
     LOG(WARNING) << "Failed to notify powerd of suspend readiness for suspend "
-                 << "id " << current_suspend_id_ << ": "
-                 << dbus_response.error().name() << ", "
-                 << dbus_response.error().message();
+                 << "id " << current_suspend_id_;
   }
 }
 

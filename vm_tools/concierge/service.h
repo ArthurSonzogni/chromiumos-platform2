@@ -59,8 +59,8 @@
 
 namespace vm_tools::concierge {
 
+class DbusAdaptor;
 class DlcHelper;
-class ServiceTest;
 
 namespace internal {
 // Fds to all the images required while starting a VM.
@@ -79,11 +79,22 @@ struct VmStartImageFds {
 class Service final : public org::chromium::VmConciergeInterface,
                       public spaced::SpacedObserverInterface {
  public:
-  // Creates the Service, which is initialized.
-  // `signal_fd` is to monitor for exits of pending VMs.
-  // Returns nullptr on failure.
+  // Creates and hosts a service asynchronously on the current sequence, using
+  // |signal_fd| to monitor for exits of pending VMs. Invokes |on_hosted| when
+  // the service is up (with a service object) or when it fails to start (with
+  // nullptr).
+  //
   // TODO(b/304896852): remove signal_fd.
-  static std::unique_ptr<Service> Create(int signal_fd);
+  static void CreateAndHost(
+      int signal_fd,
+      base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
+
+  // As above, but used in tests to provide a mock bus. Ensure your |bus|
+  // IsConnected() before calling.
+  static void CreateAndHost(
+      scoped_refptr<dbus::Bus> bus,
+      int signal_fd,
+      base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
 
   // Services should not be moved or copied.
   Service(const Service&) = delete;
@@ -99,8 +110,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   void Stop(base::OnceClosure on_stopped);
 
  private:
-  friend class vm_tools::concierge::ServiceTest;
-
   Service(int signal_fd, scoped_refptr<dbus::Bus> bus);
 
   // Describes GPU shader cache paths.
@@ -514,6 +523,12 @@ class Service final : public org::chromium::VmConciergeInterface,
                              const std::string& lookup_name,
                              ListVmDisksResponse* response);
 
+  // Determine the path for a VM image based on |dlc_id| (or the component, if
+  // the id is empty). Returns the empty path and sets failure_reason in the
+  // event of a failure.
+  std::optional<base::FilePath> GetVmImagePath(const std::string& dlc_id,
+                                               std::string& failure_reason);
+
   // Get GPU cache path for the VM.
   base::FilePath GetVmGpuCachePathInternal(const VmId& vm_id);
 
@@ -579,8 +594,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
 
   // Handle to concierge's D-Bus API.
-  org::chromium::VmConciergeAdaptor concierge_adaptor_{this};
-  brillo::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<DbusAdaptor> concierge_adaptor_;
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;

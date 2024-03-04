@@ -14,6 +14,7 @@
 #include <dbus/shadercached/dbus-constants.h>
 
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/dbus_proxy_util.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
@@ -58,17 +59,19 @@ PrepareShaderCache(const VmId& vm_id,
   prepare_request.set_vm_owner_id(vm_id.owner_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(prepare_request);
 
-  auto dbus_response = shadercached_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
+  dbus::Error error;
+  auto dbus_response = CallDBusMethodWithErrorResponse(
+      bus_, shadercached_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+
+  if (!dbus_response) {
     return base::unexpected(
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           dbus_response.error().name().c_str(),
-                           dbus_response.error().message().c_str()));
+                           error.name().c_str(), error.message().c_str()));
   }
 
   shadercached::PrepareShaderCacheResponse response;
-  auto reader = dbus::MessageReader(dbus_response->get());
+  auto reader = dbus::MessageReader(dbus_response.get());
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     return base::unexpected("Failed to parse PrepareShaderCacheResponse");
   }
@@ -87,12 +90,14 @@ std::string PurgeShaderCache(const VmId& vm_id,
   purge_request.set_vm_owner_id(vm_id.owner_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(purge_request);
 
-  auto dbus_response = shadercached_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
+  dbus::Error error;
+  auto dbus_response = CallDBusMethodWithErrorResponse(
+      bus_, shadercached_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+
+  if (!dbus_response) {
     return base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                              dbus_response.error().name().c_str(),
-                              dbus_response.error().message().c_str());
+                              error.name().c_str(), error.message().c_str());
   }
 
   return "";

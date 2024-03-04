@@ -25,6 +25,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback_helpers.h"
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/dbus_proxy_util.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
@@ -59,10 +60,12 @@ ScopedWlSocket::~ScopedWlSocket() {
     return;
   }
 
-  auto dbus_response = vm_wl_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    auto dbus_error = std::move(dbus_response.error());
+  dbus::Error dbus_error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      CallDBusMethodWithErrorResponse(bus_, vm_wl_proxy_, &method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                                      &dbus_error);
+  if (!dbus_response) {
     // Failing to close the server is not critical, so just log an
     // error. This probably can only happen during shutdown anyway.
     if (dbus_error.IsValid()) {
@@ -135,10 +138,12 @@ VmWlInterface::Result VmWlInterface::CreateWaylandServer(
   }
   writer.AppendFileDescriptor(socket_fd.get());
 
-  auto dbus_response = GetVmWlProxy(bus.get())->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response.has_value()) {
-    auto dbus_error = std::move(dbus_response.error());
+  dbus::Error dbus_error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      CallDBusMethodWithErrorResponse(
+          bus, GetVmWlProxy(bus.get()), &method_call,
+          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
+  if (!dbus_response) {
     if (dbus_error.IsValid()) {
       return base::unexpected(std::string("ListenOnSocket call failed: ") +
                               dbus_error.name() + " (" + dbus_error.message() +

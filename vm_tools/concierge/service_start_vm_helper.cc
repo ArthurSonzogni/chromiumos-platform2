@@ -22,6 +22,24 @@
 
 namespace vm_tools {
 namespace concierge {
+
+std::optional<base::FilePath> Service::GetVmImagePath(
+    const std::string& dlc_id, std::string& failure_reason) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  std::optional<std::string> dlc_root = PostTaskAndWaitForResult(
+      bus_->GetDBusTaskRunner(),
+      base::BindOnce(
+          [](DlcHelper* dlc_helper, const std::string& dlc_id,
+             std::string& out_failure_reason) {
+            return dlc_helper->GetRootPath(dlc_id, &out_failure_reason);
+          },
+          dlcservice_client_.get(), dlc_id, std::ref(failure_reason)));
+  if (!dlc_root.has_value()) {
+    // On an error, failure_reason will be set by GetRootPath().
+    return {};
+  }
+  return base::FilePath(dlc_root.value());
+}
 namespace internal {
 
 // TODO(b/213090722): Determining a VM's type based on its properties like

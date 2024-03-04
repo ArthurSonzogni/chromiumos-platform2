@@ -34,8 +34,11 @@ class ConciergeDaemon {
  private:
   ConciergeDaemon();
 
-  // Starts the service.
   void Start();
+
+  // Callback invoked when we have finished bringing up the service.
+  // If |service| is nullptr then the service failed to be brought up correctly.
+  void OnStarted(std::unique_ptr<Service> service);
 
   // Begin shutting down the service (if it isn't already being shut down).
   void Stop();
