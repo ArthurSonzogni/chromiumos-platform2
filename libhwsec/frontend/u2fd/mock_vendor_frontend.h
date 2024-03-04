@@ -92,7 +92,7 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
   MOCK_METHOD(StatusOr<RwVersion>, GetRwVersion, (), (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetG2fCert, (), (const override));
   MOCK_METHOD(StatusOr<u2f::Config>, GetConfig, (), (const override));
-  MOCK_METHOD(StatusOr<u2f::FipsStatus>, GetFipsStatus, (), (const override));
+  MOCK_METHOD(StatusOr<u2f::FipsInfo>, GetFipsInfo, (), (const override));
   MOCK_METHOD(Status, ActivateFipsIfNotActive, (), (const override));
 };
 

@@ -30,6 +30,7 @@ namespace u2f {
 
 namespace {
 
+using hwsec::u2f::FipsInfo;
 using hwsec::u2f::FipsStatus;
 
 constexpr int kWinkSignalMinIntervalMs = 1000;
@@ -232,15 +233,14 @@ void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
   if (!u2f_vendor_frontend->IsEnabled().value_or(false)) {
     return;
   }
-  hwsec::StatusOr<FipsStatus> fips_status =
-      u2f_vendor_frontend->GetFipsStatus();
-  if (!fips_status.ok()) {
-    LOG(ERROR) << "GetFipsStatus failed: " << fips_status.status();
+  hwsec::StatusOr<FipsInfo> fips_info = u2f_vendor_frontend->GetFipsInfo();
+  if (!fips_info.ok()) {
+    LOG(ERROR) << "GetFipsInfo failed: " << fips_info.status();
     SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, U2fFipsStatus::kError);
     return;
   }
   U2fFipsStatus status;
-  switch (*fips_status) {
+  switch (fips_info->activation_status) {
     case FipsStatus::kNotActive:
       status = U2fFipsStatus::kNotActive;
       LOG(INFO) << "U2F is not running in FIPS mode.";

@@ -128,14 +128,14 @@ StatusOr<u2f::Config> U2fVendorFrontendImpl::GetConfig() const {
   return middleware_.CallSync<&Backend::U2f::GetConfig>();
 }
 
-StatusOr<u2f::FipsStatus> U2fVendorFrontendImpl::GetFipsStatus() const {
-  return middleware_.CallSync<&Backend::U2f::GetFipsStatus>();
+StatusOr<u2f::FipsInfo> U2fVendorFrontendImpl::GetFipsInfo() const {
+  return middleware_.CallSync<&Backend::U2f::GetFipsInfo>();
 }
 Status U2fVendorFrontendImpl::ActivateFipsIfNotActive() const {
-  ASSIGN_OR_RETURN(u2f::FipsStatus fips_status,
-                   middleware_.CallSync<&Backend::U2f::GetFipsStatus>(),
+  ASSIGN_OR_RETURN(u2f::FipsInfo fips_info,
+                   middleware_.CallSync<&Backend::U2f::GetFipsInfo>(),
                    _.WithStatus<TPMError>("Failed to get FIPS status"));
-  switch (fips_status) {
+  switch (fips_info.activation_status) {
     case u2f::FipsStatus::kNotActive:
       return middleware_.CallSync<&Backend::U2f::ActivateFips>();
     case u2f::FipsStatus::kActive:

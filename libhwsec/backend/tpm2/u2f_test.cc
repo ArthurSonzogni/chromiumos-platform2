@@ -457,17 +457,24 @@ TEST_F(BackendU2fTpm2Test, CorpAttestFailed) {
       NotOk());
 }
 
-TEST_F(BackendU2fTpm2Test, GetFipsStatusTi50) {
+TEST_F(BackendU2fTpm2Test, GetFipsInfoTi50) {
   tpm_manager::GetVersionInfoReply version_info;
   version_info.set_gsc_version(tpm_manager::GSC_VERSION_TI50);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
-              IsOkAndHolds(u2f::FipsStatus::kActive));
+  auto info = backend_->GetU2fTpm2().GetFipsInfo();
+  ASSERT_OK(info);
+  EXPECT_EQ(info->activation_status, u2f::FipsStatus::kActive);
+  auto level = info->certification_level;
+  ASSERT_TRUE(level.has_value());
+  EXPECT_EQ(level->physical_certification_status,
+            u2f::FipsCertificationStatus::kNotCertified);
+  EXPECT_EQ(level->logical_certification_status,
+            u2f::FipsCertificationStatus::kNotCertified);
 }
 
-TEST_F(BackendU2fTpm2Test, GetFipsStatusActive) {
+TEST_F(BackendU2fTpm2Test, GetFipsInfoCr50Active) {
   tpm_manager::GetVersionInfoReply version_info;
   version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
@@ -476,11 +483,18 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusActive) {
   EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
-              IsOkAndHolds(u2f::FipsStatus::kActive));
+  auto info = backend_->GetU2fTpm2().GetFipsInfo();
+  ASSERT_OK(info);
+  EXPECT_EQ(info->activation_status, u2f::FipsStatus::kActive);
+  auto level = info->certification_level;
+  ASSERT_TRUE(level.has_value());
+  EXPECT_EQ(level->physical_certification_status,
+            u2f::FipsCertificationStatus::kLevel3);
+  EXPECT_EQ(level->logical_certification_status,
+            u2f::FipsCertificationStatus::kLevel1);
 }
 
-TEST_F(BackendU2fTpm2Test, GetFipsStatusInactive) {
+TEST_F(BackendU2fTpm2Test, GetFipsInfoInactive) {
   tpm_manager::GetVersionInfoReply version_info;
   version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
@@ -489,11 +503,12 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusInactive) {
   EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
       .WillOnce(DoAll(SetArgPointee<0>(false), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
-              IsOkAndHolds(u2f::FipsStatus::kNotActive));
+  auto info = backend_->GetU2fTpm2().GetFipsInfo();
+  ASSERT_OK(info);
+  EXPECT_EQ(info->activation_status, u2f::FipsStatus::kNotActive);
 }
 
-TEST_F(BackendU2fTpm2Test, GetFipsStatusError) {
+TEST_F(BackendU2fTpm2Test, GetFipsInfoError) {
   tpm_manager::GetVersionInfoReply version_info;
   version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
@@ -502,7 +517,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusError) {
   EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsInfo(),
               NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
@@ -525,8 +540,9 @@ TEST_F(BackendU2fTpm2Test, ActivateFipsSuccess) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(), IsOk());
-  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
-              IsOkAndHolds(u2f::FipsStatus::kActive));
+  auto info = backend_->GetU2fTpm2().GetFipsInfo();
+  ASSERT_OK(info);
+  EXPECT_EQ(info->activation_status, u2f::FipsStatus::kActive);
 }
 
 TEST_F(BackendU2fTpm2Test, ActivateFipsError) {

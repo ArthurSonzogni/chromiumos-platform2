@@ -25,6 +25,9 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 using u2f::ConsumeMode;
+using u2f::FipsCertificationLevel;
+using u2f::FipsCertificationStatus;
+using u2f::FipsInfo;
 using u2f::FipsStatus;
 using u2f::GenerateResult;
 using u2f::Signature;
@@ -39,6 +42,18 @@ constexpr u2f::Config kConfigTpm2{
 
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
+
+// Cr50's U2F implementation is L1+L3 physical when FIPS mode is activated.
+constexpr FipsCertificationLevel kCr50FipsCertificationLevel{
+    .physical_certification_status = FipsCertificationStatus::kLevel3,
+    .logical_certification_status = FipsCertificationStatus::kLevel1,
+};
+
+// Ti50's U2F implementation is always in FIPS mode but hasn't been certified.
+constexpr FipsCertificationLevel kTi50FipsCertificationLevel{
+    .physical_certification_status = FipsCertificationStatus::kNotCertified,
+    .logical_certification_status = FipsCertificationStatus::kNotCertified,
+};
 
 // This two functions are needed for backward compatibility. Key handles
 // that were already generated have inserted hash, so we continue to
@@ -379,35 +394,61 @@ StatusOr<u2f::Config> U2fTpm2::GetConfig() {
   return kConfigTpm2;
 }
 
-StatusOr<FipsStatus> U2fTpm2::GetFipsStatus() {
-  // Ti50's U2F implementation is always in FIPS mode.
+StatusOr<FipsInfo> U2fTpm2::GetFipsInfo() {
   ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
                    _.WithStatus<TPMError>("Failed to get GSC type"));
-  if (gsc_type == Vendor::GscType::kTi50) {
-    return FipsStatus::kActive;
+  switch (gsc_type) {
+    case Vendor::GscType::kNotGsc:
+      return MakeStatus<TPMError>("Invalid GSC type", TPMRetryAction::kNoRetry);
+    case Vendor::GscType::kTi50:
+      // Ti50's U2F implementation is always in FIPS mode.
+      return FipsInfo{
+          .activation_status = FipsStatus::kActive,
+          .certification_level = kTi50FipsCertificationLevel,
+      };
+    case Vendor::GscType::kCr50:
+      // Rest of this function assumes Cr50 GSC type.
+      break;
   }
-  if (fips_status_.has_value()) {
-    return *fips_status_;
+
+  if (fips_info_.has_value()) {
+    return *fips_info_;
   }
   bool is_active;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
                       context_.GetTpmUtility().U2fGetFipsStatus(&is_active)))
       .WithStatus<TPMError>("Failed to get FIPS status");
-  fips_status_ = static_cast<FipsStatus>(is_active);
-  return *fips_status_;
+  if (is_active) {
+    fips_info_ = FipsInfo{
+        .activation_status = FipsStatus::kActive,
+        .certification_level = kCr50FipsCertificationLevel,
+    };
+  } else {
+    fips_info_ = FipsInfo{.activation_status = FipsStatus::kNotActive};
+  }
+  return *fips_info_;
 }
 
 Status U2fTpm2::ActivateFips() {
-  // Ti50's U2F implementation is always in FIPS mode.
   ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
                    _.WithStatus<TPMError>("Failed to get GSC type"));
-  if (gsc_type == Vendor::GscType::kTi50) {
-    return OkStatus();
+  switch (gsc_type) {
+    case Vendor::GscType::kNotGsc:
+      return MakeStatus<TPMError>("Invalid GSC type", TPMRetryAction::kNoRetry);
+    case Vendor::GscType::kTi50:
+      // Ti50's U2F implementation is always in FIPS mode.
+      return OkStatus();
+    case Vendor::GscType::kCr50:
+      // Rest of this function assumes Cr50 GSC type.
+      break;
   }
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context_.GetTpmUtility().ActivateFips()))
       .WithStatus<TPMError>("Failed to activate FIPS");
-  fips_status_ = FipsStatus::kActive;
+  fips_info_ = FipsInfo{
+      .activation_status = FipsStatus::kActive,
+      .certification_level = kCr50FipsCertificationLevel,
+  };
   return OkStatus();
 }
 

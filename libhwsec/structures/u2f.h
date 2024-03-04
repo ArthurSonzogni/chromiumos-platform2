@@ -55,6 +55,34 @@ enum class FipsStatus : bool {
   kActive = true,
 };
 
+// FIPS 140-2 defines four levels of security, simply named "Level 1" to "Level
+// 4".
+enum class FipsCertificationStatus : uint8_t {
+  kNotCertified = 0,
+  kLevel1 = 1,
+  kLevel2 = 2,
+  kLevel3 = 3,
+  kLevel4 = 4,
+};
+
+// Note that the description refers to "hardware" and "software" but in our
+// case, both physical and logical certification status are associated with the
+// GSC. For example, cr50's U2F library certification status is L1+L3 physical.
+struct FipsCertificationLevel {
+  // Hardware FIPS level.
+  FipsCertificationStatus physical_certification_status;
+  // Software FIPS level.
+  FipsCertificationStatus logical_certification_status;
+};
+
+// Records whether FIPS mode is enabled on the device, and if enabled, the
+// associated certification levels of it.
+struct FipsInfo {
+  FipsStatus activation_status;
+  // Only present when |activation_status| is kActive.
+  std::optional<FipsCertificationLevel> certification_level;
+};
+
 }  // namespace u2f
 }  // namespace hwsec
 

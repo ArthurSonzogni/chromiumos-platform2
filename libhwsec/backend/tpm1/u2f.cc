@@ -103,7 +103,7 @@ StatusOr<u2f::Config> U2fTpm1::GetConfig() {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
-StatusOr<u2f::FipsStatus> U2fTpm1::GetFipsStatus() {
+StatusOr<u2f::FipsInfo> U2fTpm1::GetFipsInfo() {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 

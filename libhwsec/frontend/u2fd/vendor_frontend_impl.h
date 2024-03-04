@@ -71,7 +71,7 @@ class U2fVendorFrontendImpl : public U2fVendorFrontend, public FrontendImpl {
   StatusOr<brillo::Blob> GetG2fCert() const override;
   StatusOr<RwVersion> GetRwVersion() const override;
   StatusOr<u2f::Config> GetConfig() const override;
-  StatusOr<u2f::FipsStatus> GetFipsStatus() const override;
+  StatusOr<u2f::FipsInfo> GetFipsInfo() const override;
   Status ActivateFipsIfNotActive() const override;
 };
 

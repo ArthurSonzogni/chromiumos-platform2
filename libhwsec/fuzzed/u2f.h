@@ -67,6 +67,31 @@ struct FuzzedObject<u2f::Config> {
     };
   }
 };
+
+template <>
+struct FuzzedObject<u2f::FipsCertificationLevel> {
+  u2f::FipsCertificationLevel operator()(FuzzedDataProvider& provider) const {
+    return u2f::FipsCertificationLevel{
+        .physical_certification_status =
+            FuzzedObject<u2f::FipsCertificationStatus>()(provider),
+        .logical_certification_status =
+            FuzzedObject<u2f::FipsCertificationStatus>()(provider),
+    };
+  }
+};
+
+template <>
+struct FuzzedObject<u2f::FipsInfo> {
+  u2f::FipsInfo operator()(FuzzedDataProvider& provider) const {
+    return u2f::FipsInfo{
+        .activation_status = FuzzedObject<u2f::FipsStatus>()(provider),
+        .certification_level =
+            FuzzedObject<std::optional<u2f::FipsCertificationLevel>>()(
+                provider),
+    };
+  }
+};
+
 }  // namespace hwsec
 
 #endif  // LIBHWSEC_FUZZED_U2F_H_

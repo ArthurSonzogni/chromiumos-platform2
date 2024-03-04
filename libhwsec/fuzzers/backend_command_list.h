@@ -156,7 +156,7 @@ using FuzzCommandList =
                 &Backend::U2f::GetG2fAttestData,
                 &Backend::U2f::CorpAttest,
                 &Backend::U2f::GetConfig,
-                &Backend::U2f::GetFipsStatus,
+                &Backend::U2f::GetFipsInfo,
                 &Backend::U2f::ActivateFips,
                 &Backend::Vendor::GetFamily,
                 &Backend::Vendor::GetSpecLevel,

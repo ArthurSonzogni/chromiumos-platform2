@@ -73,7 +73,7 @@ class U2fTpm2 : public U2f {
                                       const brillo::Blob& public_key,
                                       const brillo::Blob& salt) override;
   StatusOr<u2f::Config> GetConfig() override;
-  StatusOr<u2f::FipsStatus> GetFipsStatus() override;
+  StatusOr<u2f::FipsInfo> GetFipsInfo() override;
   Status ActivateFips() override;
 
  private:
@@ -81,7 +81,7 @@ class U2fTpm2 : public U2f {
   VendorTpm2& vendor_;
 
   std::optional<bool> enabled_;
-  std::optional<u2f::FipsStatus> fips_status_;
+  std::optional<u2f::FipsInfo> fips_info_;
 };
 
 }  // namespace hwsec
