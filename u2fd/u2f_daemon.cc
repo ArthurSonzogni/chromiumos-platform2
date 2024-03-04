@@ -227,17 +227,17 @@ bool U2fDaemon::MaybeForceActivateFips(U2fMode u2f_mode) {
   return true;
 }
 
-void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
+FipsInfo U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
   auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
   // Only need to report FIPS status on devices supporting U2F vendor command.
   if (!u2f_vendor_frontend->IsEnabled().value_or(false)) {
-    return;
+    return FipsInfo{.activation_status = FipsStatus::kNotActive};
   }
   hwsec::StatusOr<FipsInfo> fips_info = u2f_vendor_frontend->GetFipsInfo();
   if (!fips_info.ok()) {
     LOG(ERROR) << "GetFipsInfo failed: " << fips_info.status();
     SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, U2fFipsStatus::kError);
-    return;
+    return FipsInfo{.activation_status = FipsStatus::kNotActive};
   }
   U2fFipsStatus status;
   switch (fips_info->activation_status) {
@@ -251,6 +251,7 @@ void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
       break;
   }
   SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, status);
+  return *fips_info;
 }
 
 int U2fDaemon::StartService() {
@@ -259,17 +260,17 @@ int U2fDaemon::StartService() {
     // If FIPS mode should be forced but we failed to force it, stop u2fd.
     return EX_UNAVAILABLE;
   }
-  ReportFipsStatus(u2f_mode);
+  FipsInfo fips_info = ReportFipsStatus(u2f_mode);
 
   // Start U2fHid service before WebAuthn because WebAuthn initialization can
   // be slow.
-  int status = StartU2fHidService();
+  int status = StartU2fHidService(fips_info);
 
   VLOG(1) << "Initializing WebAuthn handler.";
   // If initialize WebAuthn handler failed, it means that the whole u2fd service
   // is unavailable (it can't happen on devices we enable U2fHid service), and
   // there's no point to keep running it.
-  if (!InitializeWebAuthnHandler(u2f_mode)) {
+  if (!InitializeWebAuthnHandler(u2f_mode, fips_info)) {
     LOG(INFO) << "Initialize WebAuthn handler failed, quiting.";
     return EX_UNAVAILABLE;
   }
@@ -277,7 +278,7 @@ int U2fDaemon::StartService() {
   return status;
 }
 
-int U2fDaemon::StartU2fHidService() {
+int U2fDaemon::StartU2fHidService(hwsec::u2f::FipsInfo fips_info) {
   if (!u2fhid_service_) {
     // No need to start u2f HID service on this device.
     return EX_OK;
@@ -310,7 +311,7 @@ int U2fDaemon::StartU2fHidService() {
 
   return u2fhid_service_->CreateU2fHid(
              u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
-             include_g2f_allowlist_data, enable_corp_protocol_,
+             include_g2f_allowlist_data, enable_corp_protocol_, fips_info,
              request_presence, user_state_.get(), sm_proxy_.get(),
              &metrics_library_)
              ? EX_OK
@@ -393,7 +394,8 @@ void U2fDaemon::RegisterDBusObjectsAsync(
       sequencer->GetHandler("Failed to register DBus Interface.", true));
 }
 
-bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
+bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode,
+                                          hwsec::u2f::FipsInfo fips_info) {
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
     SendWinkSignal();
@@ -406,10 +408,11 @@ bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   // If g2f is enabled by policy, we always include allowlisting data.
   if (u2fhid_service_ &&
       (g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended))) {
-    allowlisting_util =
-        std::make_unique<AllowlistingUtil>([this](int cert_size) {
+    allowlisting_util = std::make_unique<AllowlistingUtil>(
+        [this](int cert_size) {
           return u2fhid_service_->GetCertifiedG2fCert(cert_size);
-        });
+        },
+        fips_info);
   }
 
   if (auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();

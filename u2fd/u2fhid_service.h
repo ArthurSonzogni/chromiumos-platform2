@@ -10,6 +10,7 @@
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <libhwsec/structures/u2f.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -31,6 +32,7 @@ class U2fHidService {
       bool allow_g2f_attestation,
       bool include_g2f_allowlisting_data,
       bool enable_corp_protocol,
+      hwsec::u2f::FipsInfo fips_info,
       std::function<void()> request_user_presence,
       UserState* user_state,
       org::chromium::SessionManagerInterfaceProxy* sm_proxy,

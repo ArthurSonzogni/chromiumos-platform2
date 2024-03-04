@@ -16,6 +16,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <libhwsec/structures/u2f.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -23,13 +24,28 @@
 
 namespace u2f {
 
-AllowlistingUtil::AllowlistingUtil(
-    std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
-        get_certified_g2f_cert)
-    : get_certified_g2f_cert_(get_certified_g2f_cert),
-      policy_provider_(std::make_unique<policy::PolicyProvider>()) {}
-
 namespace {
+
+using ::hwsec::u2f::FipsCertificationStatus;
+
+// Tags for the ASN1 types we are going to append.
+constexpr uint8_t kSequence = 0x30;
+constexpr uint8_t kInteger = 0x02;
+constexpr uint8_t kOctetString = 0x04;
+constexpr uint8_t kPrintableString = 0x13;
+
+// The certificate is hardcoded in the cr50 firmware; we can simplify the logic
+// needed to modify it by making some assumptions.
+constexpr uint8_t kCertExpectedFirstByte =
+    kSequence;  // Root node is a sequence.
+// Sequence length field is 2 bytes long.
+constexpr uint8_t kCertExpectedSecondByte = 0x82;
+// The two bytes above, plus the length bytes.
+constexpr int kCertRootSeqPrefixLength = 4;
+
+// This is the data signed by the TPM as part of the NV_Certify response; it is
+// fixed length, defined by the spec, and not expected to change.
+constexpr int kExpectedTpmMetadataLength = 109;
 
 std::vector<uint8_t> EncodeLength(uint16_t length) {
   if (length < 128) {
@@ -72,55 +88,63 @@ bool AppendString(uint8_t string_type,
   return true;
 }
 
+// We only need to append positive integers less than 128, so we can use the
+// 1-byte integer form here to simplify implementation.
+bool AppendShortInteger(int num, std::vector<uint8_t>* cert) {
+  if (num < 0 || num >= 128) {
+    return false;
+  }
+  // The format will be "02 01 num".
+  cert->push_back(kInteger);
+  cert->push_back(1);
+  cert->push_back(static_cast<uint8_t>(num));
+  return true;
+}
+
 }  // namespace
+
+AllowlistingUtil::AllowlistingUtil(
+    std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
+        get_certified_g2f_cert,
+    hwsec::u2f::FipsInfo fips_info)
+    : get_certified_g2f_cert_(get_certified_g2f_cert),
+      fips_info_(std::move(fips_info)),
+      policy_provider_(std::make_unique<policy::PolicyProvider>()) {}
 
 //
 // The attestation certificate is an X509 certificate, which uses ASN1 encoding.
 // The top-level layout of the certificate is shown below.
 //
-// SEQUENCE (4 elem)
+// SEQUENCE (3 elem)
 //   SEQUENCE (8 elem)
 //     <certificate body>
-//   SEQUENCE (1 elem)
+//   SEQUENCE
 //     <signature format>
-//   BIT STRING (1 elem)
+//   BIT STRING
 //     <signature>
 //
 // To preserve a valid ASN1 structure, we will append fields to the end of the
 // root sequence, so that the final structure is as shown below.
 //
-// SEQUENCE (4 elem)
+// SEQUENCE (7 elem)
 //   SEQUENCE (8 elem)
 //     <certificate body...>
 //   SEQUENCE (1 elem)
 //     <signature format>
-//   BIT STRING (1 elem)
+//   BIT STRING
 //     <signature>
-//   SEQUENCE (3 elem)
+//   OCTET STRING
 //     <certificate prefix>
+//   OCTET STRING
 //     <certificate signature>
+//   PRINTABLE STRING
 //     <device id>
+//   SEQUENCE (2 elem)
+//     INTEGER
+//       <FIPS physical certification status>
+//     INTEGER
+//       <FIPS logical certification status>
 //
-
-namespace {
-
-// The certificate is hardcoded in the cr50 firmware; we can simplify the logic
-// needed to modify it by making some assumptions.
-constexpr uint8_t kCertExpectedFirstByte = 0x30;  // Root node is a sequence.
-// Sequence length field is 2 bytes long.
-constexpr uint8_t kCertExpectedSecondByte = 0x82;
-// The two bytes above, plus the length bytes.
-constexpr int kCertRootSeqPrefixLength = 4;
-
-// This is the data signed by the TPM as part of the NV_Certify response; it is
-// fixed length, defined by the spec, and not expected to change.
-constexpr int kExpectedTpmMetadataLength = 109;
-
-// Tags for the ASN1 types we are going to append.
-constexpr uint8_t kOctetString = 0x04;
-constexpr uint8_t kPrintableString = 0x13;
-
-}  // namespace
 
 bool AllowlistingUtil::AppendDataToCert(std::vector<uint8_t>* cert) {
   if (cert == nullptr) {
@@ -147,6 +171,28 @@ bool AllowlistingUtil::AppendDataToCert(std::vector<uint8_t>* cert) {
     return false;
   }
 
+  // By default, treat FIPS status as not certified. Only fill in values when
+  // we're certain the implementation is certified.
+  hwsec::u2f::FipsCertificationLevel level{
+      .physical_certification_status = FipsCertificationStatus::kNotCertified,
+      .logical_certification_status = FipsCertificationStatus::kNotCertified};
+  if (fips_info_.activation_status == hwsec::u2f::FipsStatus::kActive &&
+      fips_info_.certification_level.has_value()) {
+    level = *fips_info_.certification_level;
+  }
+
+  std::vector<uint8_t> fips_status_seq_body;
+  if (!AppendShortInteger(static_cast<int>(level.physical_certification_status),
+                          &fips_status_seq_body) ||
+      !AppendShortInteger(static_cast<int>(level.logical_certification_status),
+                          &fips_status_seq_body)) {
+    cert->resize(orig_cert_size);
+    return false;
+  }
+  std::vector<uint8_t> fips_status{kSequence};
+  util::AppendToVector(EncodeLength(fips_status_seq_body.size()), &fips_status);
+  util::AppendToVector(fips_status_seq_body, &fips_status);
+
   // Actually append the data.
   if (!AppendString(kOctetString, cert_prefix, cert) ||
       !AppendString(kOctetString, signature, cert) ||
@@ -155,6 +201,7 @@ bool AllowlistingUtil::AppendDataToCert(std::vector<uint8_t>* cert) {
     cert->resize(orig_cert_size);
     return false;
   }
+  util::AppendToVector(fips_status, cert);
 
   // Update length of the root sequence.
   int seq_size = cert->size() - kCertRootSeqPrefixLength;

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <attestation/proto_bindings/interface.pb.h>
+#include <libhwsec/structures/u2f.h>
 
 #include "u2fd/allowlisting_util.h"
 
@@ -26,7 +27,10 @@ FuzzedAllowlistingUtilFactory::CreateAllowlistingUtil() {
              ? std::make_unique<u2f::AllowlistingUtil>(
                    [this](int g2f_cert_size) {
                      return this->GetCertifiedG2fCert(g2f_cert_size);
-                   })
+                   },
+                   hwsec::u2f::FipsInfo{.activation_status =
+                                            static_cast<hwsec::u2f::FipsStatus>(
+                                                data_provider_->ConsumeBool())})
              : std::unique_ptr<u2f::AllowlistingUtil>(nullptr);
 }
 

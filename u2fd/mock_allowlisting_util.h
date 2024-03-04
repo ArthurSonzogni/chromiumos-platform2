@@ -12,6 +12,7 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <libhwsec/structures/u2f.h>
 
 namespace u2f {
 
@@ -20,7 +21,10 @@ class MockAllowlistingUtil : public AllowlistingUtil {
   MockAllowlistingUtil()
       : AllowlistingUtil(
             std::function<std::optional<attestation::GetCertifiedNvIndexReply>(
-                int)>() /* dummy callback, not used */) {}
+                int)>() /* dummy callback, not used */,
+            hwsec::u2f::FipsInfo{
+                .activation_status =
+                    hwsec::u2f::FipsStatus::kNotActive} /*not used*/) {}
 
   MOCK_METHOD(bool, AppendDataToCert, (std::vector<uint8_t>*), (override));
 };

@@ -14,6 +14,7 @@
 #include <attestation-client/attestation/dbus-constants.h>
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/logging.h>
+#include <libhwsec/structures/u2f.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 #include <trunks/cr50_headers/virtual_nvmem.h>
@@ -59,6 +60,7 @@ bool U2fHidServiceImpl::CreateU2fHid(
     bool allow_g2f_attestation,
     bool include_g2f_allowlisting_data,
     bool enable_corp_protocol,
+    hwsec::u2f::FipsInfo fips_info,
     std::function<void()> request_user_presence,
     UserState* user_state,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
@@ -100,7 +102,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
 
   if (include_g2f_allowlisting_data) {
     allowlisting_util = std::make_unique<u2f::AllowlistingUtil>(
-        [this](int cert_size) { return GetCertifiedG2fCert(cert_size); });
+        [this](int cert_size) { return GetCertifiedG2fCert(cert_size); },
+        std::move(fips_info));
   }
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(

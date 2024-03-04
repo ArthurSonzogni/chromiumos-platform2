@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
+#include <libhwsec/structures/u2f.h>
 #include <policy/libpolicy.h>
 
 namespace u2f {
@@ -23,7 +24,8 @@ class AllowlistingUtil {
   // retrieve a certified copy of the G2F certificate.
   AllowlistingUtil(
       std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
-          get_certified_g2f_cert);
+          get_certified_g2f_cert,
+      hwsec::u2f::FipsInfo fips_info);
 
   virtual ~AllowlistingUtil() = default;
 
@@ -48,6 +50,9 @@ class AllowlistingUtil {
 
   std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
       get_certified_g2f_cert_;
+
+  hwsec::u2f::FipsInfo fips_info_ = {.activation_status =
+                                         hwsec::u2f::FipsStatus::kNotActive};
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 };

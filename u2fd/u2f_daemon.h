@@ -61,12 +61,13 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   //   EX_CONFIG if the service is disabled (by flags and/or policy)
   //   EX_PROTOCOL if the cr50 version is incompatible or virtual HID device
   //   cannot be initialized EX_IOERR if DBus cannot be initialized
-  int StartU2fHidService();
+  int StartU2fHidService(hwsec::u2f::FipsInfo fips_info);
 
   // Initializes DBus proxies for PowerManager, SessionManager, and Trunks.
   bool InitializeDBusProxies();
 
-  bool InitializeWebAuthnHandler(U2fMode u2f_mode);
+  bool InitializeWebAuthnHandler(U2fMode u2f_mode,
+                                 hwsec::u2f::FipsInfo fips_info);
 
   // Sends a DBus signal that indicates to Chrome a 'Press Power Button'
   // notification should be displayed.
@@ -84,8 +85,8 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // returns true.
   bool MaybeForceActivateFips(U2fMode u2f_mode);
 
-  // Reports the FIPS status metrics.
-  void ReportFipsStatus(U2fMode u2f_mode);
+  // Reports and returns the FIPS status metrics.
+  hwsec::u2f::FipsInfo ReportFipsStatus(U2fMode u2f_mode);
 
   // U2F Behavior Flags
   const bool force_u2f_;

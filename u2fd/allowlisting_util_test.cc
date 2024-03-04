@@ -8,14 +8,18 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/structures/u2f.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
+
+#include <base/strings/string_number_conversions.h>
 
 #include "u2fd/client/util.h"
 
@@ -42,6 +46,20 @@ constexpr char kTpmSignature[256] = {[0 ... 255] = 0x1e};
 constexpr char kDeviceId[36 + 1 /* null terminator */] =
     "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb";
 
+// ASN.1 encoded FIPS status.
+constexpr uint8_t kFipsStatusNotCertified[8] = {
+    0x30,              // Sequence
+    0x06,              // Sequence length
+    0x02, 0x01, 0x00,  // Integer 0 (Integer + Length + Number)
+    0x02, 0x01, 0x00,  // Integer 0 (Integer + Length + Number)
+};
+constexpr uint8_t kFipsStatusCr50[8] = {
+    0x30,              // Sequence
+    0x06,              // Sequence length
+    0x02, 0x01, 0x03,  // Integer 3 (Integer + Length + Number)
+    0x02, 0x01, 0x01,  // Integer 1 (Integer + Length + Number)
+};
+
 // Certificate, after attestation data is appended. Elements not listed here are
 // unchanged.
 constexpr uint8_t kFinalCertificateMetadataHeader[2] = {
@@ -65,14 +83,20 @@ constexpr uint8_t kFinalCertificateDeviceIdHeader[2] = {
 // Signature:        256 +
 // Device Id Header: 2   +
 // Device Id:        36
-//                       = 709
-constexpr uint8_t kFinalCertificateLength[2] = {0x02, 0xc5};
+// FIPS status seq:  8
+//                       = 717
+constexpr uint8_t kFinalCertificateLength[2] = {0x02, 0xcd};
 
 constexpr int kMaxAsn1FieldSize = std::numeric_limits<uint16_t>::max();
 
 class AllowlistingUtilTest : public ::testing::Test {
  public:
-  AllowlistingUtilTest() : util_(CreateMockAttestationdCallback()) {}
+  AllowlistingUtilTest()
+      : AllowlistingUtilTest(hwsec::u2f::FipsInfo{
+            .activation_status = hwsec::u2f::FipsStatus::kNotActive}) {}
+
+  explicit AllowlistingUtilTest(hwsec::u2f::FipsInfo info)
+      : util_(CreateMockAttestationdCallback(), std::move(info)) {}
 
   void SetUp() override {
     mock_policy_provider_ = new StrictMock<policy::MockPolicyProvider>();
@@ -87,6 +111,22 @@ class AllowlistingUtilTest : public ::testing::Test {
   }
 
  protected:
+  std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
+  CreateMockAttestationdCallback() {
+    return [this](int size) {
+      // Check we were expecting this.
+      EXPECT_TRUE(expect_attestationd_call_);
+
+      // We should only ever have at most one call.
+      EXPECT_FALSE(attestationd_called_);
+      attestationd_called_ = true;
+
+      EXPECT_EQ(expected_attestationd_cert_size_, size);
+
+      return attestationd_reply_;
+    };
+  }
+
   // Build and return a standard G2F certificate.
   std::vector<uint8_t> BuildCert() {
     std::vector<uint8_t> cert;
@@ -125,6 +165,10 @@ class AllowlistingUtilTest : public ::testing::Test {
         .WillOnce(DoAll(SetArgPointee<0>(id), Return(true)));
   }
 
+  virtual void AppendFipsStatus(std::vector<uint8_t>* cert) {
+    util::AppendToVector(kFipsStatusNotCertified, cert);
+  }
+
   // Get a copy of the certificate, as we expect it to be once the allowlisting
   // data has been appended.
   std::vector<uint8_t> GetExpectedCertWithAllowlistData() {
@@ -149,6 +193,9 @@ class AllowlistingUtilTest : public ::testing::Test {
     util::AppendToVector(kFinalCertificateDeviceIdHeader, &cert);
     util::AppendToVector(std::string(kDeviceId), &cert);
 
+    // FIPS status.
+    AppendFipsStatus(&cert);
+
     return cert;
   }
 
@@ -161,22 +208,6 @@ class AllowlistingUtilTest : public ::testing::Test {
   }
 
  private:
-  std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
-  CreateMockAttestationdCallback() {
-    return [this](int size) {
-      // Check we were expecting this.
-      EXPECT_TRUE(expect_attestationd_call_);
-
-      // We should only ever have at most one call.
-      EXPECT_FALSE(attestationd_called_);
-      attestationd_called_ = true;
-
-      EXPECT_EQ(expected_attestationd_cert_size_, size);
-
-      return attestationd_reply_;
-    };
-  }
-
   // Whether we expect a call to attestationd, and if so, the size of the cert
   // parameter passed.
   bool expect_attestationd_call_;
@@ -342,6 +373,38 @@ TEST_F(AllowlistingUtilTest, AppendDataAppendedDataTooLong) {
   ExpectGetDeviceId(kDeviceId);
 
   ExpectAppendDataFails(&cert);
+}
+
+class AllowlistingUtilFipsCertifiedTest : public AllowlistingUtilTest {
+ public:
+  AllowlistingUtilFipsCertifiedTest()
+      : AllowlistingUtilTest(hwsec::u2f::FipsInfo{
+            .activation_status = hwsec::u2f::FipsStatus::kActive,
+            .certification_level = hwsec::u2f::FipsCertificationLevel{
+                hwsec::u2f::FipsCertificationStatus::kLevel3,
+                hwsec::u2f::FipsCertificationStatus::kLevel1,
+            }}) {}
+
+ protected:
+  void AppendFipsStatus(std::vector<uint8_t>* cert) override {
+    util::AppendToVector(kFipsStatusCr50, cert);
+  }
+};
+
+TEST_F(AllowlistingUtilFipsCertifiedTest, AppendDataSuccess) {
+  std::vector<uint8_t> cert = BuildCert();
+
+  ExpectAttestationCall();
+  ReturnAttestationSuccessReply(cert);
+  ExpectGetDeviceId(kDeviceId);
+
+  // Sanity Check.
+  EXPECT_NE(GetExpectedCertWithAllowlistData(), cert);
+
+  EXPECT_TRUE(util_.AppendDataToCert(&cert));
+
+  // Check contents of resulting cert.
+  EXPECT_EQ(GetExpectedCertWithAllowlistData(), cert);
 }
 
 }  // namespace
