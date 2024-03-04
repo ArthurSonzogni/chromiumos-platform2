@@ -15,11 +15,13 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/base64.h>
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -192,6 +194,28 @@ constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
 // A path of the directory that contains all the key-value pairs stored to the
 // persistent login screen storage.
 constexpr char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
+
+constexpr auto kStateKeysComputationErrorMessages = base::MakeFixedFlatMap<
+    DeviceIdentifierGenerator::StateKeysComputationError,
+    std::string_view>({
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kMalformedDeviceSecret,
+     "Malformed device secret"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kHmacInitializationError,
+     "Failed to init HMAC"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kHmacComputationError,
+     "Failed to compute HMAC"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kMissingAllDeviceIdentifiers,
+     "Missing all device identifiers"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::kMissingSerialNumber,
+     "Missing serial number"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kMissingDiskSerialNumber,
+     "Missing disk serial number"},
+});
 
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
@@ -378,10 +402,18 @@ class SessionManagerImpl::DBusService {
       const base::expected<
           DeviceIdentifierGenerator::StateKeysList,
           DeviceIdentifierGenerator::StateKeysComputationError>& state_keys) {
-    // TODO(b/314114447): Send an error response with `ReplyWithError` once
-    // method callers support it.
-    response->Return(
-        state_keys.value_or(DeviceIdentifierGenerator::StateKeysList()));
+    if (!state_keys.has_value()) {
+      const auto error_message_it =
+          kStateKeysComputationErrorMessages.find(state_keys.error());
+      const brillo::ErrorPtr error = CreateError(
+          dbus_error::kStateKeysRequestFail,
+          error_message_it != kStateKeysComputationErrorMessages.end()
+              ? std::string(error_message_it->second)
+              : "Unknown error");
+      return response->ReplyWithError(error.get());
+    }
+
+    return response->Return(state_keys.value());
   }
 
   void HandlePsmDeviceActiveSecretCallback(
