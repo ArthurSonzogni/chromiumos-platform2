@@ -14,6 +14,7 @@ group("all") {
     ":install_headers_structures",
     ":libhwsec",
     ":libhwsec_client",
+    ":pinweaver_manager_client",
   ]
   if (use.test) {
     deps += [
@@ -404,6 +405,14 @@ shared_library("libhwsec") {
 
 executable("libhwsec_client") {
   sources = [ "client/main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+
+  deps = [ ":libhwsec" ]
+}
+
+executable("pinweaver_manager_client") {
+  sources = [ "client/pinweaver_manager.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
 
