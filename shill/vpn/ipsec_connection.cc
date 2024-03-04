@@ -771,7 +771,8 @@ void IPsecConnection::StartCharon() {
   // that mmap large amounts of space up front such as ASAN, Scudo,
   // PartitionAlloc. Allow disabling it through a build configuration.
 #ifndef DISABLE_CHARON_RLIMIT_AS
-  minijail_options.rlimit_as_soft = 750'000'000;  // 750MB
+  constexpr rlim_t kCharonRlimitAS = 1500 * 1024 * 1024;  // 1500MB
+  minijail_options.rlimit_as_soft = kCharonRlimitAS;
 #endif
   charon_pid_ = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kCharonPath), args, env, minijail_options,
