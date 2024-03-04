@@ -4,17 +4,12 @@
 
 import("//common-mk/pkg_config.gni")
 
-pkg_config("common_pkg_deps") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libdebugd-client",
-  ]
-}
-
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [
     "iioservice_ipc",
+    "libbrillo",
+    "libchrome",
+    "libdebugd-client",
     "libmojo",
     "libspaced",
     "mojo_service_manager",
@@ -24,10 +19,7 @@ pkg_config("libdiag_routine_pkg_deps") {
 }
 
 source_set("libdiag_routine") {
-  configs += [
-    ":common_pkg_deps",
-    ":libdiag_routine_pkg_deps",
-  ]
+  configs += [ ":libdiag_routine_pkg_deps" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
