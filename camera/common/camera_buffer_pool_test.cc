@@ -6,9 +6,11 @@
 
 #include "camera/common/camera_buffer_pool.h"
 
+#include <memory>
 #include <optional>
 #include <vector>
 
+#include <base/threading/thread.h>
 #include <gtest/gtest.h>
 
 namespace cros {
@@ -64,6 +66,37 @@ TEST(CameraBufferPoolTest, RequestAndReleaseBuffers) {
     ASSERT_FALSE(pool.RequestBuffer().has_value());
     for (size_t j = 0; j < options.max_num_buffers - i - 1; ++j) {
       buffers.pop_back();
+    }
+  }
+}
+
+TEST(CameraBufferPoolTest, RequestAndReleaseBuffersConcurrently) {
+  CameraBufferPool::Options options = {
+      .width = 320,
+      .height = 240,
+      .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
+      .usage = 0,
+      .max_num_buffers = 100,
+  };
+  CameraBufferPool pool(options);
+
+  // Test requesting and releasing 1-N buffers on multiple threads.
+  for (size_t i = 1; i <= options.max_num_buffers; ++i) {
+    std::vector<std::unique_ptr<base::Thread>> threads;
+    for (size_t j = 0; j < i; ++j) {
+      threads.emplace_back(std::make_unique<base::Thread>(std::to_string(j)));
+      threads.back()->Start();
+    }
+    for (size_t j = 0; j < i; ++j) {
+      threads[j]->task_runner()->PostTask(
+          FROM_HERE, base::BindOnce(
+                         [](CameraBufferPool* pool) {
+                           std::optional<CameraBufferPool::Buffer> buffer =
+                               pool->RequestBuffer();
+                           ASSERT_TRUE(buffer.has_value());
+                           ASSERT_NE(buffer->handle(), nullptr);
+                         },
+                         base::Unretained(&pool)));
     }
   }
 }
