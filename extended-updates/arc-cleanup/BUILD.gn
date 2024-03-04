@@ -1,0 +1,32 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":extended-updates-arc-remove-data",
+    ":install_init",
+    ":install_minijail_conf",
+  ]
+}
+
+executable("extended-updates-arc-remove-data") {
+  sources = [ "arc_remove_data.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  install_path = "sbin"
+}
+
+install_config("install_init") {
+  sources = [ "init/extended-updates-arc-cleanup.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "init/minijail/extended-updates-arc-cleanup.conf" ]
+  install_path = "minijail_conf"
+}

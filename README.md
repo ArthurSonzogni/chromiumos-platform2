@@ -62,6 +62,7 @@ copies.
 | [dlp](./dlp/) | Date Leak Prevention (DLP) daemon |
 | [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
+| [extended-updates](./extended-updates/) | Utilities supporting the Extended Auto Updates process |
 | [faced](./faced/) | Face Authentication Daemon |
 | [fbpreprocessor](./fbpreprocessor/) | Debug file preprocessing for feedback reports |
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
