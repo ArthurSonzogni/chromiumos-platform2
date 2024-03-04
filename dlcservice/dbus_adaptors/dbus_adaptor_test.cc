@@ -22,6 +22,12 @@ using testing::Return;
 
 namespace dlcservice {
 
+namespace {
+MATCHER_P(DlcStateEq, dlc_id, "Check the ID in DlcState.") {
+  return arg.id() == dlc_id;
+}
+}  // namespace
+
 class DBusServiceTest : public BaseTest {
  public:
   DBusServiceTest() {
@@ -41,12 +47,31 @@ class DBusServiceTest : public BaseTest {
 };
 
 TEST_F(DBusServiceTest, GetInstalled) {
-  EXPECT_CALL(*dlc_service_, GetInstalled())
+  EXPECT_CALL(*dlc_service_, GetInstalled(_))
       .WillOnce(Return(DlcIdList({kFirstDlc, kSecondDlc})));
 
   DlcIdList ids;
   EXPECT_TRUE(dbus_service_->GetInstalled(&err_, &ids));
   EXPECT_THAT(ids, ElementsAre(kFirstDlc, kSecondDlc));
+}
+
+TEST_F(DBusServiceTest, GetInstalled2) {
+  DlcBase first_dlc(kFirstDlc);
+  DlcBase second_dlc(kSecondDlc);
+  first_dlc.Initialize();
+  second_dlc.Initialize();
+  EXPECT_CALL(*dlc_service_, GetInstalled(_))
+      .WillOnce(Return(DlcIdList({kFirstDlc, kSecondDlc})));
+  EXPECT_CALL(*dlc_service_, GetDlc(kFirstDlc, _)).WillOnce(Return(&first_dlc));
+  EXPECT_CALL(*dlc_service_, GetDlc(kSecondDlc, _))
+      .WillOnce(Return(&second_dlc));
+
+  DlcStateList dlcs;
+  ListRequest request;
+  request.set_check_mount(true);
+  EXPECT_TRUE(dbus_service_->GetInstalled2(&err_, request, &dlcs));
+  EXPECT_THAT(dlcs.states(),
+              ElementsAre(DlcStateEq(kFirstDlc), DlcStateEq(kSecondDlc)));
 }
 
 TEST_F(DBusServiceTest, GetExistingDlcs) {
@@ -79,10 +104,10 @@ TEST_F(DBusServiceTest, UnloadDlCs) {
       .WillOnce(Return(true));
   EXPECT_TRUE(dbus_service_->Unload(&err_, request));
 
-  auto* select = request.mutable_any_of();
+  auto* select = request.mutable_select();
   select->set_user_tied(true);
   select->set_scaled(false);
-  EXPECT_CALL(*dlc_service_, Unload(A<const UnloadRequest::SelectDlc&>(), _, _))
+  EXPECT_CALL(*dlc_service_, Unload(A<const SelectDlc&>(), _, _))
       .WillOnce(Return(true));
   EXPECT_TRUE(dbus_service_->Unload(&err_, request));
 }

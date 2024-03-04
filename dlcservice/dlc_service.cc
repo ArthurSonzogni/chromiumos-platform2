@@ -5,6 +5,7 @@
 #include "dlcservice/dlc_service.h"
 
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -12,6 +13,7 @@
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -434,9 +436,25 @@ DlcInterface* DlcService::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
   return iter->second.get();
 }
 
-DlcIdList DlcService::GetInstalled() {
-  return ToDlcIdList(supported_,
-                     [](const DlcType& dlc) { return dlc->IsInstalled(); });
+DlcIdList DlcService::GetInstalled(const ListRequest& list_request) {
+  std::optional<SelectDlc> select;
+  if (list_request.has_select()) {
+    select = list_request.select();
+  }
+
+  if (list_request.check_mount()) {
+    return MountedDlcsAction(base::FilePath(imageloader::kImageloaderMountBase),
+                             select, [](DlcInterface* dlc) -> bool {
+                               // Return false for adding DLC to the list.
+                               return false;
+                             });
+  } else {
+    return ToDlcIdList(supported_, [&select](const DlcType& dlc) {
+      return dlc->IsInstalled() &&
+             (!select || (select->user_tied() && dlc->IsUserTied()) ||
+              (select->scaled() && dlc->IsScaled()));
+    });
+  }
 }
 
 DlcIdList DlcService::GetExistingDlcs() {
@@ -712,29 +730,43 @@ bool DlcService::Unload(const std::string& id, brillo::ErrorPtr* err) {
   return dlc && dlc->Unload(err);
 }
 
-bool DlcService::Unload(const dlcservice::UnloadRequest::SelectDlc& select,
-                        const base::FilePath& mount_base,
-                        brillo::ErrorPtr* err) {
-  if (!select.user_tied() && !select.scaled()) {
+DlcIdList DlcService::MountedDlcsAction(
+    const base::FilePath& mount_base,
+    std::optional<SelectDlc> select,
+    const std::function<bool(DlcInterface*)>& action) {
+  if (select && !select->user_tied() && !select->scaled()) {
     LOG(WARNING) << "DLC selection is empty.";
-    return true;
+    return {};
   }
 
-  const auto& mounted = ScanDirectory(base::FilePath(mount_base));
-
   DlcIdList failed_ids;
+  const auto& mounted = ScanDirectory(base::FilePath(mount_base));
   for (const auto& id : mounted) {
-    auto* dlc = GetDlc(id, err);
-    if (!dlc || !((select.user_tied() && dlc->IsUserTied()) ||
-                  (select.scaled() && dlc->IsScaled()))) {
+    ErrorPtr tmp_err;
+    auto* dlc = GetDlc(id, &tmp_err);
+    if (!dlc || (select && !((select->user_tied() && dlc->IsUserTied()) ||
+                             (select->scaled() && dlc->IsScaled())))) {
       continue;
     }
+    // Ensure DLC is actually mounted by checking the mount point path.
+    if (!base::PathExists(JoinPaths(mount_base, id, kPackage)))
+      continue;
 
-    ErrorPtr tmp_err;
-    if (!dlc->Unload(&tmp_err)) {
+    if (!action(dlc)) {
       failed_ids.push_back(id);
     }
   }
+  return failed_ids;
+}
+
+bool DlcService::Unload(const SelectDlc& select,
+                        const base::FilePath& mount_base,
+                        brillo::ErrorPtr* err) {
+  const auto& failed_ids =
+      MountedDlcsAction(mount_base, select, [](DlcInterface* dlc) -> bool {
+        ErrorPtr tmp_err;
+        return dlc->Unload(&tmp_err);
+      });
 
   if (failed_ids.size()) {
     *err = Error::Create(

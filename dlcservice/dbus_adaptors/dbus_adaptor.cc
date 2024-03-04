@@ -20,6 +20,7 @@
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/error.h"
 #include "dlcservice/proto_utils.h"
+#include "dlcservice/types.h"
 #include "dlcservice/utils.h"
 
 using std::string;
@@ -51,7 +52,25 @@ bool DBusService::Deploy(brillo::ErrorPtr* err, const string& id_in) {
 }
 
 bool DBusService::GetInstalled(brillo::ErrorPtr* err, vector<string>* ids_out) {
-  *ids_out = dlc_service_->GetInstalled();
+  ListRequest request;
+  request.set_check_mount(false);
+  *ids_out = dlc_service_->GetInstalled(request);
+  return true;
+}
+
+bool DBusService::GetInstalled2(brillo::ErrorPtr* err,
+                                const dlcservice::ListRequest& in_list_request,
+                                dlcservice::DlcStateList* out_state_list) {
+  const auto& ids = dlc_service_->GetInstalled(in_list_request);
+  for (const auto& id : ids) {
+    DlcState state;
+    brillo::ErrorPtr tmp_err;
+    if (!GetDlcState(&tmp_err, id, &state)) {
+      LOG(WARNING) << "Unable to GetDlcState for DLC=" << id;
+      continue;
+    }
+    out_state_list->add_states()->Swap(&state);
+  }
   return true;
 }
 
@@ -81,9 +100,9 @@ bool DBusService::Unload(brillo::ErrorPtr* err,
   switch (in_unload_request.DlcInfo_case()) {
     case UnloadRequest::kId:
       return dlc_service_->Unload(in_unload_request.id(), err);
-    case UnloadRequest::kAnyOf:
+    case UnloadRequest::kSelect:
       return dlc_service_->Unload(
-          in_unload_request.any_of(),
+          in_unload_request.select(),
           base::FilePath(imageloader::kImageloaderMountBase), err);
     default:
       *err =

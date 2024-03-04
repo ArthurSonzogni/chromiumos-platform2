@@ -29,21 +29,30 @@ message InstallRequest {
   bool force_ota = 2047;
 }
 
+// DLCs that have the selected manifest fields set to true.
+message SelectDlc {
+  bool user_tied = 1;
+  bool scaled = 2;
+}
+
 // This is the message that is passed into unload.
 message UnloadRequest {
-  // DLCs that have the selected manifest fields set to true.
-  message SelectDlc {
-    bool user_tied = 1;
-    bool scaled = 2;
-  }
-
   oneof DlcInfo {
     // Specify a DLC by ID.
     string id = 1;
 
     // Select DLCs that have any of the given manifest fields.
-    SelectDlc any_of = 2;
+    SelectDlc select = 2;
   }
+}
+
+// This is the message that is passed to methods for listing DLCs.
+message ListRequest {
+  // Check mount point instead rely on the state kept by dlcservice.
+  bool check_mount = 1;
+
+  // Select DLCs base on manifest fields.
+  SelectDlc select = 2;
 }
 
 // This message is used to query the DLCs that have data on disk. This allows
@@ -100,4 +109,10 @@ message DlcState {
 
   // The location where the active DLC image is stored (if installed).
   string image_path = 7;
+}
+
+// This is the message that is returned from DLC Service via |GetInstalled|
+// method.
+message DlcStateList {
+  repeated DlcState states = 1;
 }

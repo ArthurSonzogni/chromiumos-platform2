@@ -77,14 +77,14 @@ class DlcServiceInterface {
   virtual DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
 
   // Returns the list of installed DLCs.
-  virtual DlcIdList GetInstalled() = 0;
+  virtual DlcIdList GetInstalled(const ListRequest& list_request) = 0;
 
   // Returns the list of DLCs with installed content.
   virtual DlcIdList GetExistingDlcs() = 0;
 
   // Unmount DLCs and change their states to `NOT_INSTALLED`.
   virtual bool Unload(const std::string& id, brillo::ErrorPtr* err) = 0;
-  virtual bool Unload(const UnloadRequest::SelectDlc& select,
+  virtual bool Unload(const SelectDlc& select,
                       const base::FilePath& mount_base,
                       brillo::ErrorPtr* err) = 0;
 
@@ -115,10 +115,10 @@ class DlcService : public DlcServiceInterface {
                    response) override;
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
   bool Deploy(const DlcId& id, brillo::ErrorPtr* err) override;
-  DlcIdList GetInstalled() override;
+  DlcIdList GetInstalled(const ListRequest& list_request) override;
   DlcIdList GetExistingDlcs() override;
   bool Unload(const std::string& id, brillo::ErrorPtr* err) override;
-  bool Unload(const UnloadRequest::SelectDlc& select,
+  bool Unload(const SelectDlc& select,
               const base::FilePath& mount_base,
               brillo::ErrorPtr* err) override;
   DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
@@ -211,6 +211,12 @@ class DlcService : public DlcServiceInterface {
 
   // Called on when update_engine service becomes available.
   void OnReadyInstaller(bool available);
+
+  // Perform an action on mounted DLCs, optionally only on selected ones.
+  // Returns a list of DLCs that failed to perform the action.
+  DlcIdList MountedDlcsAction(const base::FilePath& mount_base,
+                              std::optional<SelectDlc> select,
+                              const std::function<bool(DlcInterface*)>& action);
 
   // Removes all unsupported/deprecated DLCs.
   void CleanupUnsupported();

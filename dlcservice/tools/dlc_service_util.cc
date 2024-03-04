@@ -131,6 +131,8 @@ class DlcServiceUtil : public brillo::Daemon {
 
     // "--list" related flags.
     DEFINE_bool(list, false, "List installed DLC(s).");
+    DEFINE_bool(check_mount, false,
+                "Check mount points to confirm installed DLC(s).");
     DEFINE_string(dump, "",
                   "Path to dump to, by default will print to stdout.");
 
@@ -150,8 +152,16 @@ class DlcServiceUtil : public brillo::Daemon {
 
     // Called with "--list".
     if (FLAGS_list) {
-      vector<DlcState> installed_dlcs;
-      if (!GetInstalled(&installed_dlcs)) {
+      dlcservice::ListRequest request;
+      request.set_check_mount(FLAGS_check_mount);
+      if (FLAGS_user_tied || FLAGS_scaled) {
+        auto* select = request.mutable_select();
+        select->set_user_tied(FLAGS_user_tied);
+        select->set_scaled(FLAGS_scaled);
+      }
+
+      dlcservice::DlcStateList installed_dlcs;
+      if (!GetInstalled(request, &installed_dlcs)) {
         QuitWithExitCode(EX_SOFTWARE);
         return;
       }
@@ -178,9 +188,9 @@ class DlcServiceUtil : public brillo::Daemon {
       if (FLAGS_id.size()) {
         request.set_id(FLAGS_id);
       } else {
-        auto* dlc_any_of = request.mutable_any_of();
-        dlc_any_of->set_user_tied(FLAGS_user_tied);
-        dlc_any_of->set_scaled(FLAGS_scaled);
+        auto* select = request.mutable_select();
+        select->set_user_tied(FLAGS_user_tied);
+        select->set_scaled(FLAGS_scaled);
       }
       if (!Unload(request)) {
         QuitWithExitCode(EX_SOFTWARE);
@@ -428,19 +438,13 @@ class DlcServiceUtil : public brillo::Daemon {
   // Retrieves a list of all installed DLC modules. Returns true if the list is
   // retrieved successfully, false otherwise. Sets the given error pointer on
   // failure.
-  bool GetInstalled(vector<DlcState>* dlcs) {
+  bool GetInstalled(const dlcservice::ListRequest& request,
+                    dlcservice::DlcStateList* dlcs) {
     brillo::ErrorPtr err;
-    vector<string> ids;
-    if (!dlc_service_proxy_->GetInstalled(&ids, &err)) {
+    if (!dlc_service_proxy_->GetInstalled2(request, dlcs, &err)) {
       LOG(ERROR) << "Failed to get the list of installed DLC modules, "
                  << ErrorPtrStr(err);
       return false;
-    }
-
-    for (const auto& id : ids) {
-      DlcState dlc_state;
-      if (GetDlcState(id, &dlc_state))
-        dlcs->push_back(dlc_state);
     }
     return true;
   }
@@ -501,9 +505,10 @@ class DlcServiceUtil : public brillo::Daemon {
     }
   }
 
-  void PrintInstalled(const string& dump, const vector<DlcState>& dlcs) {
+  void PrintInstalled(const string& dump,
+                      const dlcservice::DlcStateList& dlcs) {
     Dict dict;
-    for (const auto& dlc_state : dlcs) {
+    for (const auto& dlc_state : dlcs.states()) {
       const auto& id = dlc_state.id();
       const auto& packages = GetPackages(id);
       if (packages.empty())

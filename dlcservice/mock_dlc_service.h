@@ -32,7 +32,10 @@ class MockDlcService : public DlcServiceInterface {
               Deploy,
               (const std::string& id, brillo::ErrorPtr* err),
               (override));
-  MOCK_METHOD(DlcIdList, GetInstalled, (), (override));
+  MOCK_METHOD(DlcIdList,
+              GetInstalled,
+              (const ListRequest& list_request),
+              (override));
   MOCK_METHOD(DlcIdList, GetExistingDlcs, (), (override));
   MOCK_METHOD(DlcIdList, GetDlcsToUpdate, (), (override));
   MOCK_METHOD((DlcBase*),
@@ -53,7 +56,7 @@ class MockDlcService : public DlcServiceInterface {
               (override));
   MOCK_METHOD(bool,
               Unload,
-              (const UnloadRequest::SelectDlc& select,
+              (const SelectDlc& select,
                const base::FilePath& mount_base,
                brillo::ErrorPtr* err),
               (override));

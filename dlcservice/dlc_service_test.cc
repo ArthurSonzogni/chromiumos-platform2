@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -445,7 +446,7 @@ TEST_F(DlcServiceTest, GetInstalledTest) {
   supported.emplace("bar-dlc", std::move(mock_dlc_bar));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  const auto& dlcs = dlc_service_->GetInstalled();
+  const auto& dlcs = dlc_service_->GetInstalled(ListRequest());
   EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
 }
 
@@ -851,11 +852,11 @@ TEST_F(DlcServiceTest, UnloadDlcs) {
   supported.emplace(kUserTiedDlc, std::move(mock_dlc_user));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  CreateDir(JoinPaths(mount_path_, kFirstDlc));
-  CreateDir(JoinPaths(mount_path_, kUserTiedDlc));
+  CreateDir(JoinPaths(mount_path_, kFirstDlc, kPackage));
+  CreateDir(JoinPaths(mount_path_, kUserTiedDlc, kPackage));
   CreateDir(JoinPaths(mount_path_, "not-a-dlc"));
 
-  UnloadRequest::SelectDlc select;
+  SelectDlc select;
   select.set_user_tied(true);
   brillo::ErrorPtr tmp_err;
   EXPECT_TRUE(dlc_service_->Unload(select, mount_path_, &tmp_err));
@@ -956,7 +957,7 @@ class DlcServiceTestLegacy : public BaseTest {
 TEST_F(DlcServiceTestLegacy, GetInstalledTest) {
   Install(kFirstDlc);
 
-  const auto& dlcs = dlc_service_->GetInstalled();
+  const auto& dlcs = dlc_service_->GetInstalled(ListRequest());
 
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc));
   EXPECT_FALSE(
@@ -993,7 +994,7 @@ TEST_F(DlcServiceTestLegacy, GetDlcsToUpdateLogicalVolumeTest) {
 TEST_F(DlcServiceTestLegacy,
        GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
   Install(kFirstDlc);
-  const auto& dlcs_before = dlc_service_->GetInstalled();
+  const auto& dlcs_before = dlc_service_->GetInstalled(ListRequest());
   EXPECT_THAT(dlcs_before, ElementsAre(kFirstDlc));
   EXPECT_FALSE(
       dlc_service_->GetDlc(kFirstDlc, &err_)->GetRoot().value().empty());
@@ -1001,7 +1002,7 @@ TEST_F(DlcServiceTestLegacy,
   // Create |kSecondDlc| image, but not verified after device reboot.
   SetUpDlcWithSlots(kSecondDlc);
 
-  const auto& dlcs_after = dlc_service_->GetInstalled();
+  const auto& dlcs_after = dlc_service_->GetInstalled(ListRequest());
   EXPECT_THAT(dlcs_after, ElementsAre(kFirstDlc));
 }
 
@@ -1178,7 +1179,8 @@ TEST_F(DlcServiceTestLegacy, InstallTest) {
       .WillOnce(WithArg<1>(Invoke([](auto&& arg) { std::move(arg).Run(); })));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_THAT(dlc_service_->GetInstalled(), ElementsAre(kFirstDlc));
+  EXPECT_THAT(dlc_service_->GetInstalled(ListRequest()),
+              ElementsAre(kFirstDlc));
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   bool called = false;
@@ -1189,7 +1191,8 @@ TEST_F(DlcServiceTestLegacy, InstallTest) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // Should remain same as it's not stamped verified.
-  EXPECT_THAT(dlc_service_->GetInstalled(), ElementsAre(kFirstDlc));
+  EXPECT_THAT(dlc_service_->GetInstalled(ListRequest()),
+              ElementsAre(kFirstDlc));
 
   // TODO(ahassani): Add more install process liked |InstallCompleted|, etc.
 }
@@ -1502,7 +1505,7 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 
-  const auto& dlcs_after = dlc_service_->GetInstalled();
+  const auto& dlcs_after = dlc_service_->GetInstalled(ListRequest());
 
   EXPECT_THAT(dlcs_after, ElementsAre(kFirstDlc, kSecondDlc));
   EXPECT_FALSE(

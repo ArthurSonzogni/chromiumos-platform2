@@ -39,6 +39,9 @@ class DBusService : public org::chromium::DlcServiceInterfaceInterface {
                    DlcState* dlc_state_out) override;
   bool GetInstalled(brillo::ErrorPtr* err,
                     std::vector<std::string>* ids_out) override;
+  bool GetInstalled2(brillo::ErrorPtr* err,
+                     const dlcservice::ListRequest& in_list_request,
+                     dlcservice::DlcStateList* out_state_list) override;
   bool GetExistingDlcs(brillo::ErrorPtr* err,
                        DlcsWithContent* dlc_list_out) override;
   // Only for update_engine to call.

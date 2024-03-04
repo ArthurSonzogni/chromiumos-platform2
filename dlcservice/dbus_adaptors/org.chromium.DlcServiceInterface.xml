@@ -68,13 +68,35 @@
   </method>
   <method name="GetInstalled">
     <tp:docstring>
-      Returns a list of installed Downloadable Content (DLC) IDs that are
-      installed.
+      Returns a list of installed Downloadable Content (DLC) IDs.
     </tp:docstring>
     <arg name="ids" type="as" direction="out">
       <tp:docstring>
         A list of DLC IDs of installed DLCs.
       </tp:docstring>
+    </arg>
+  </method>
+  <method name="GetInstalled2">
+    <tp:docstring>
+      Returns a list of installed Downloadable Content (DLC).
+    </tp:docstring>
+    <arg name="list_request" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (ListRequest,
+        platform2/system_api/dbus/dlcservice/dlcservice.proto) of
+        arguments that can specify selected DLCs to list.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::ListRequest"/>
+    </arg>
+    <arg name="list_request" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (ListRequest,
+        platform2/system_api/dbus/dlcservice/dlcservice.proto) of
+        a list of `DlcState`.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::DlcStateList"/>
     </arg>
   </method>
   <method name="GetExistingDlcs">
