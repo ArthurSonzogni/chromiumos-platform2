@@ -32,13 +32,13 @@
 #include <mojo/public/cpp/system/handle.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
+#include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -168,13 +168,9 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
   // A utility function to parse a mojo::ScopedHandle into a base::Value::Dict.
   base::Value::Dict GetJsonFromOutput(mojo::ScopedHandle output) {
     EXPECT_TRUE(output->is_valid());
-    auto shm_mapping =
-        diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
-            std::move(output));
-    EXPECT_TRUE(shm_mapping.IsValid());
 
-    auto json = base::JSONReader::Read(std::string(
-        shm_mapping.GetMemoryAs<const char>(), shm_mapping.mapped_size()));
+    auto json = base::JSONReader::Read(
+        GetStringFromValidReadOnlySharedMemoryMapping(std::move(output)));
     EXPECT_TRUE(json.has_value());
     EXPECT_TRUE(json.value().is_dict());
     return std::move(json.value().GetDict());
