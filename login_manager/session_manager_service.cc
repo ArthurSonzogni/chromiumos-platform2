@@ -34,6 +34,7 @@
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <brillo/message_loops/message_loop.h>
+#include <chromeos/dbus/device_management/dbus-constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/vm_concierge/dbus-constants.h>
 #include <chromeos/switches/chrome_switches.h>
@@ -241,8 +242,8 @@ bool SessionManagerService::Initialize() {
 #endif
 
   fwmp_dbus_proxy_ = bus_->GetObjectProxy(
-      user_data_auth::kUserDataAuthServiceName,
-      dbus::ObjectPath(user_data_auth::kUserDataAuthServicePath));
+      device_management::kDeviceManagementServiceName,
+      dbus::ObjectPath(device_management::kDeviceManagementServicePath));
 
   chrome_features_service_client_ =
       std::make_unique<ChromeFeaturesServiceClient>(bus_->GetObjectProxy(

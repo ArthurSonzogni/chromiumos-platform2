@@ -238,7 +238,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyFwmpVpdUpdatOneUnblockFromAll) {
   broker_->UnblockDevModeForEnrollment(base::BindRepeating(&UnblockAtInit));
   InvokeServiceAvailableFromStored();
 
-  user_data_auth::RemoveFirmwareManagementParametersReply reply;
+  device_management::RemoveFirmwareManagementParametersReply reply;
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(reply);
@@ -300,7 +300,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   InvokeServiceAvailableFromStored();
   InvokeServiceAvailableFromStored();
 
-  user_data_auth::RemoveFirmwareManagementParametersReply reply;
+  device_management::RemoveFirmwareManagementParametersReply reply;
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(reply);

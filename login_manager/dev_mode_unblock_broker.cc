@@ -162,10 +162,10 @@ bool DevModeUnblockBroker::IsDevModeBlocked() {
 
 bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
   dbus::MethodCall method_call(
-      user_data_auth::kInstallAttributesInterface,
-      user_data_auth::kGetFirmwareManagementParameters);
-  user_data_auth::GetFirmwareManagementParametersRequest request;
-  user_data_auth::GetFirmwareManagementParametersReply reply;
+      device_management::kDeviceManagementInterface,
+      device_management::kGetFirmwareManagementParameters);
+  device_management::GetFirmwareManagementParametersRequest request;
+  device_management::GetFirmwareManagementParametersReply reply;
   dbus::MessageWriter writer(&method_call);
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR)
@@ -177,7 +177,7 @@ bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
       fwmp_proxy_->CallMethodAndBlock(&method_call,
                                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response.has_value()) {
-    LOG(ERROR) << "Error contacting Cryptohomed to get FWMP.";
+    LOG(ERROR) << "Error contacting device_managementd to get FWMP.";
     return false;
   }
   if (!response.value()) {
@@ -190,9 +190,9 @@ bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
                   " response message from cryptohomed";
     return false;
   }
-  if (reply.error() !=
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Failed to get firmware management parameters:"
+  if (reply.error() != device_management::DeviceManagementErrorCode::
+                           DEVICE_MANAGEMENT_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to get firmware management parameters: "
                << reply.error();
     return false;
   }
@@ -242,10 +242,10 @@ void DevModeUnblockBroker::StartRemoveFirmwareManagementParameters(
   }
 
   dbus::MethodCall method_call(
-      user_data_auth::kInstallAttributesInterface,
-      user_data_auth::kRemoveFirmwareManagementParameters);
+      device_management::kDeviceManagementInterface,
+      device_management::kRemoveFirmwareManagementParameters);
   dbus::MessageWriter writer(&method_call);
-  user_data_auth::RemoveFirmwareManagementParametersRequest request;
+  device_management::RemoveFirmwareManagementParametersRequest request;
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << __func__
                << "Failed to append RemoveFirmwareManagementParameters protobuf"
@@ -265,7 +265,7 @@ void DevModeUnblockBroker::StartRemoveFirmwareManagementParameters(
 
 void DevModeUnblockBroker::OnFirmwareManagementParametersRemoved(
     CompletionCallback completion, dbus::Response* response) {
-  user_data_auth::RemoveFirmwareManagementParametersReply reply;
+  device_management::RemoveFirmwareManagementParametersReply reply;
   if (!response) {
     LOG(ERROR) << "No response from cryptohomed";
     std::move(completion)
@@ -281,8 +281,8 @@ void DevModeUnblockBroker::OnFirmwareManagementParametersRemoved(
                          "Failed to parse response message from cryptohomed."));
     return;
   }
-  if (reply.error() !=
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+  if (reply.error() != device_management::DeviceManagementErrorCode::
+                           DEVICE_MANAGEMENT_ERROR_NOT_SET) {
     LOG(ERROR) << "Failed to remove firmware management parameters.";
     std::move(completion)
         .Run(CreateError(dbus_error::kFwmpRemovalFailed,

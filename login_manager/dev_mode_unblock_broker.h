@@ -13,8 +13,10 @@
 #include <base/functional/callback.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
+#include <chromeos/dbus/device_management/dbus-constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <libcrossystem/crossystem.h>
 
 #include "login_manager/vpd_process.h"
@@ -106,10 +108,10 @@ class DevModeUnblockBroker {
   bool awaiting_unblock_init_state_determination_ = false;
   bool dev_mode_unblocked_ =
       false;  // To maintain if DEV mode is already unblocked
-  SystemUtils* system_ = nullptr;            // Owned by the caller.
+  SystemUtils* system_ = nullptr;                 // Owned by the caller.
   crossystem::Crossystem* crossystem_ = nullptr;  // Owned by the caller.
-  VpdProcess* vpd_process_ = nullptr;        // Owned by the caller.
-  dbus::ObjectProxy* fwmp_proxy_ = nullptr;  // Owned by the caller.
+  VpdProcess* vpd_process_ = nullptr;             // Owned by the caller.
+  dbus::ObjectProxy* fwmp_proxy_ = nullptr;       // Owned by the caller.
   base::WeakPtrFactory<DevModeUnblockBroker> weak_ptr_factory_{this};
 };
 
