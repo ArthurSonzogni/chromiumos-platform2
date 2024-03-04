@@ -6,6 +6,7 @@
 
 #include <linux/capability.h>
 #include <poll.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -14,12 +15,14 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
 
@@ -56,106 +59,11 @@ constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 constexpr char kIptablesSeccompFilterPath[] =
     "/usr/share/policy/iptables-seccomp.policy";
 
-// Used in HandlePollEvent() for poll(). Negative fds will be ignored by poll().
-constexpr int kInvalidFd = -1;
-
-// Consume poll() POLLIN event and append the read() result to |output_str| if
-// it's not nullptr. On POLLHUP or failure, reset the fd in |pollfd_struct|
-// (i.e., set it to a negative value) to exclude it from the next poll(). If
-// |output_str| is nullptr, the read() result will just be discarded.
-bool HandlePollEvent(struct pollfd* pollfd_struct, std::string* output_str) {
-  // Static buffer to avoid it getting allocated on stack every time.
-  static constexpr int kBufSize = 4096;
-  static char buf[kBufSize] = {0};
-
-  // No event means the function is triggered by a timeout.
-  if (pollfd_struct->revents == 0) {
-    return true;
-  }
-
-  // Only POLLHUP means the writer side has closed the pipe and there is no
-  // remaining data to consume.
-  if (pollfd_struct->revents == POLLHUP) {
-    pollfd_struct->fd = kInvalidFd;
-    return true;
-  }
-
-  // Other signal other than POLLIN and POLLHUP indicates an error. Note that
-  // POLLIN and POLLHUP can be set at the same time.
-  if (!(pollfd_struct->revents & POLLIN)) {
-    PLOG(ERROR) << "poll() failed, revent=" << pollfd_struct->revents;
-    // Note that when the fd field is negative, poll() will ignore the events
-    // field and reset the revents field to zero when return, so we don't need
-    // to clear other fields here. See `man 2 poll` for details.
-    pollfd_struct->fd = kInvalidFd;
-    return false;
-  }
-
-  ssize_t cnt = HANDLE_EINTR(read(pollfd_struct->fd, buf, kBufSize));
-  if (cnt == -1) {
-    PLOG(ERROR) << "read() failed";
-    pollfd_struct->fd = kInvalidFd;
-    return false;
-  }
-
-  if (output_str) {
-    output_str->append({buf, static_cast<size_t>(cnt)});
-  }
-
-  return true;
-}
-
-// Reads the pipes of stdout and stderr from a child process, until the write
-// sides of both peers are closed, which is a signal that the child process is
-// exiting. If |deadline| is set, this function will return no matter if the
-// pipes are closed when the deadline is reached. Returns whether the pipes have
-// been closed, i.e., returns false if the timeout happened, and true otherwise.
-bool ReadPipesUntilClose(std::string_view logging_tag,
-                         int fd_stdout,
-                         int fd_stderr,
-                         std::optional<base::TimeTicks> deadline,
-                         std::string* str_stdout,
-                         std::string* str_stderr) {
-  struct pollfd pollfds[] = {
-      {.fd = fd_stdout, .events = POLLIN},
-      {.fd = fd_stderr, .events = POLLIN},
-  };
-
-  static constexpr auto kDefaultPollInterval = base::Milliseconds(500);
-  while (1) {
-    base::TimeDelta poll_interval = kDefaultPollInterval;
-    if (deadline.has_value()) {
-      const auto now = base::TimeTicks::Now();
-      // `=` here to avoid interval is set to 0 by any chance.
-      if (now >= *deadline) {
-        return false;
-      }
-      poll_interval = std::min(poll_interval, *deadline - now);
-    }
-    // This cast is safe since the value is guaranteed to be between 0 and
-    // kDefaultPollInterval.InMilliseconds().
-    int poll_interval_int = static_cast<int>(poll_interval.InMilliseconds());
-    int ret = poll(pollfds, 2, poll_interval_int);
-    if (ret == -1) {
-      PLOG(ERROR) << "Failed to poll() outputs for " << logging_tag;
-      break;
-    }
-    if (!HandlePollEvent(&pollfds[0], str_stdout)) {
-      LOG(ERROR) << "Failed to process stdout for " << logging_tag;
-    }
-    if (!HandlePollEvent(&pollfds[1], str_stderr)) {
-      LOG(ERROR) << "Failed to process stderr for " << logging_tag;
-    }
-    if (pollfds[0].fd == kInvalidFd && pollfds[1].fd == kInvalidFd) {
-      break;
-    }
-  }
-
-  return true;
-}
-
 }  // namespace
 
+// TODO(jiejiang): `timeout` is not used now. We should consider refactor this
+// function to a Process class (e.g., implement brillo::Process interface) to
+// reduce the code complexity of this function.
 int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     const std::vector<std::string>& argv,
     brillo::Minijail* mj,
@@ -163,11 +71,9 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     bool log_failures,
     std::optional<base::TimeDelta> timeout,
     std::string* output) {
+  CHECK(!timeout.has_value());
+
   const base::TimeTicks started_at = base::TimeTicks::Now();
-  std::optional<base::TimeTicks> deadline = std::nullopt;
-  if (timeout.has_value()) {
-    deadline = started_at + *timeout;
-  }
 
   std::vector<char*> args;
   for (const auto& arg : argv) {
@@ -178,33 +84,53 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
   const std::string logging_tag =
       base::StrCat({"'", base::JoinString(argv, " "), "'"});
 
+  // Helper function to redirect a child fd to an anonymous file in memory.
+  // `name` will only be used for logging and debugging purposes, and can be
+  // same for different fds. Note that the created anonymous file will be
+  // removed automatically after there is no reference on it.
+  auto redirect_child_fd =
+      [&jail, &logging_tag](int child_fd, const char* name) -> base::ScopedFD {
+    base::ScopedFD memfd(memfd_create(name, /*flags=*/0));
+    if (!memfd.is_valid()) {
+      PLOG(ERROR) << "Failed to create memfd of " << name << " for "
+                  << logging_tag;
+      return {};
+    }
+    if (minijail_preserve_fd(jail, memfd.get(), child_fd) != 0) {
+      PLOG(ERROR) << "Failed to preserve fd of " << name << " for "
+                  << logging_tag;
+      return {};
+    }
+    return memfd;
+  };
+
+  // Helper function to read from the file created by `redirect_child_fd`.
+  auto read_memfd_to_string = [&logging_tag](int fd, std::string* out) {
+    auto path = base::StringPrintf("/proc/self/fd/%d", fd);
+    if (!base::ReadFileToString(base::FilePath(path), out)) {
+      PLOG(ERROR) << "Failed to read " << path << " for " << logging_tag;
+    }
+  };
+
+  base::ScopedFD stdout_fd, stderr_fd;
+  if (output) {
+    stdout_fd = redirect_child_fd(STDOUT_FILENO, "stdout");
+    if (!stdout_fd.is_valid()) {
+      return -1;
+    }
+  }
+  if (log_failures) {
+    stderr_fd = redirect_child_fd(STDERR_FILENO, "stderr");
+    if (!stderr_fd.is_valid()) {
+      return -1;
+    }
+  }
+
   pid_t pid;
-  int fd_stdout = -1;
-  int fd_stderr = -1;
-  bool ran = mj->RunPipesAndDestroy(jail, args, &pid, /*stdin=*/nullptr,
-                                    &fd_stdout, &fd_stderr);
-  if (!ran) {
+  if (!mj->RunAndDestroy(jail, args, &pid)) {
     LOG(ERROR) << "Could not execute " << logging_tag;
     return -1;
   }
-
-  base::ScopedFD scoped_fd_stdout(fd_stdout);
-  base::ScopedFD scoped_fd_stderr(fd_stderr);
-  std::string stderr_buf;
-  if (!ReadPipesUntilClose(logging_tag, fd_stdout, fd_stderr, deadline, output,
-                           log_failures ? &stderr_buf : nullptr)) {
-    LOG(ERROR) << logging_tag << " has timed out";
-    brillo::ProcessImpl process;
-    process.Reset(pid);
-    // Note that process.Kill() will also called waitpid() inside so we can just
-    // return here.
-    if (!process.Kill(SIGKILL, /*timeout=*/1)) {
-      LOG(ERROR) << "Failed to kill " << logging_tag;
-    }
-    return -1;
-  }
-
-  base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
 
   int status = 0;
   if (system_->WaitPid(pid, &status) == -1) {
@@ -218,6 +144,10 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
                  << "ms to finish.";
   }
 
+  if (stdout_fd.is_valid()) {
+    read_memfd_to_string(stdout_fd.get(), output);
+  }
+
   if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
     if (WIFEXITED(status)) {
       LOG(WARNING) << logging_tag << " exited with code "
@@ -227,6 +157,9 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     } else {
       LOG(WARNING) << logging_tag << " exited with unknown status " << status;
     }
+    std::string stderr_buf;
+    read_memfd_to_string(stderr_fd.get(), &stderr_buf);
+    base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
     if (!stderr_buf.empty()) {
       LOG(WARNING) << "stderr: " << stderr_buf;
     }

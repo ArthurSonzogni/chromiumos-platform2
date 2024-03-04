@@ -47,29 +47,8 @@ class MinijailProcessRunnerTest : public ::testing::Test {
 
     jail_ = brillo::Minijail::GetInstance()->New();
 
-    // The default actions are:
-    // 1) Set pid to kFakePid;
-    // 2) The caller requests pipes for stdout and stderr, create a pipe for
-    //    each of them, passing one end to the caller and close the other side
-    //    directly (to simulate that the child process closes them and exits).
-    // 3) Return true.
-    ON_CALL(mj_, RunPipesAndDestroy)
-        .WillByDefault(WithArgs<2, 4, 5>(
-            [](pid_t* pid, int* stdout_p, int* stderr_p) -> bool {
-              *pid = kFakePid;
-              int pipe_fds[2] = {};
-              if (stdout_p) {
-                CHECK_EQ(pipe(pipe_fds), 0);
-                *stdout_p = pipe_fds[0];
-                close(pipe_fds[1]);
-              }
-              if (stderr_p) {
-                CHECK_EQ(pipe(pipe_fds), 0);
-                *stderr_p = pipe_fds[0];
-                close(pipe_fds[1]);
-              }
-              return true;
-            }));
+    ON_CALL(mj_, RunAndDestroy)
+        .WillByDefault(DoAll(SetArgPointee<2>(kFakePid), Return(true)));
 
     // This is required to prevent a Segmentation Fault when
     // minijail_inherit_usergroups(jail) is invoked within ip() and ip6().
@@ -90,11 +69,11 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
+  EXPECT_CALL(mj_, RunAndDestroy(
                        _,
                        ElementsAre(StrEq("/sbin/modprobe"), StrEq("-a"),
                                    StrEq("module1"), StrEq("module2"), nullptr),
-                       _, nullptr, _, _));
+                       _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -107,11 +86,11 @@ TEST_F(MinijailProcessRunnerTest, ip) {
   EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
+  EXPECT_CALL(mj_, RunAndDestroy(
                        _,
                        ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
                                    StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _, nullptr, _, _));
+                       _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -125,11 +104,11 @@ TEST_F(MinijailProcessRunnerTest, ip6) {
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(
-      mj_, RunPipesAndDestroy(
+      mj_, RunAndDestroy(
                _,
                ElementsAre(StrEq("/bin/ip"), StrEq("-6"), StrEq("obj"),
                            StrEq("cmd"), StrEq("arg1"), StrEq("arg2"), nullptr),
-               _, nullptr, _, _));
+               _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -142,11 +121,11 @@ TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
   EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
+  EXPECT_CALL(mj_, RunAndDestroy(
                        _,
                        ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
                                    StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _, nullptr, _, _));
+                       _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -156,12 +135,12 @@ TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
 TEST_F(MinijailProcessRunnerTest, iptables) {
   EXPECT_CALL(mj_, New());
   EXPECT_CALL(mj_, UseCapabilities(_, _));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
+  EXPECT_CALL(mj_, RunAndDestroy(
                        _,
                        ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"),
                                    StrEq("filter"), StrEq("-A"), StrEq("chain"),
                                    StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _, nullptr, _, _));
+                       _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -172,12 +151,12 @@ TEST_F(MinijailProcessRunnerTest, iptables) {
 TEST_F(MinijailProcessRunnerTest, ip6tables) {
   EXPECT_CALL(mj_, New());
   EXPECT_CALL(mj_, UseCapabilities(_, _));
-  EXPECT_CALL(mj_, RunPipesAndDestroy(
+  EXPECT_CALL(mj_, RunAndDestroy(
                        _,
                        ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
                                    StrEq("mangle"), StrEq("-I"), StrEq("chain"),
                                    StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _, nullptr, _, _));
+                       _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
@@ -191,12 +170,12 @@ TEST_F(MinijailProcessRunnerTest, conntrack) {
   EXPECT_CALL(mj_, DropRoot(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, _));
   EXPECT_CALL(
-      mj_, RunPipesAndDestroy(
+      mj_, RunAndDestroy(
                _,
                ElementsAre(StrEq("/usr/sbin/conntrack"), StrEq("-U"),
                            StrEq("-p"), StrEq("TCP"), StrEq("-s"),
                            StrEq("8.8.8.8"), StrEq("-m"), StrEq("1"), nullptr),
-               _, nullptr, _, _));
+               _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
