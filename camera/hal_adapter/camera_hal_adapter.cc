@@ -11,7 +11,6 @@
 #include <set>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 
 #include <base/check.h>
@@ -27,6 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/files/file_util.h>
 #include <camera/camera_metadata.h>
+#include <ml_core/dlc/dlc_ids.h>
 #include <system/camera_metadata_hidden.h>
 
 #include "common/stream_manipulator.h"
@@ -142,9 +142,34 @@ bool CameraHalAdapter::Start() {
     LOGF(INFO) << "Effects are enabled. Setting DLC root path.";
     effects_enabled_ = true;
     stream_manipulator_runtime_options_.SetDlcRootPath(
-        base::FilePath(kEffectsLibraryPath));
+        dlc_client::kMlCoreDlcId, base::FilePath(kEffectsLibraryPath));
   } else {
     LOGF(INFO) << "Effects are not enabled, skipping DLC.";
+  }
+
+  // TODO(julianachang): Temporarily setting `super_res_enabled_` to false.
+  // Selective enabling will be implemented in a follow-up work.
+  if (super_res_enabled_) {
+    LOGF(INFO) << "Super resolution is enabled. Setting DLC root path.";
+
+    super_res_dlc_client_ = DlcClient::Create(
+        dlc_client::kSuperResDlcId,
+        base::BindOnce(
+            [](StreamManipulator::RuntimeOptions* options,
+               const base::FilePath& dlc_path) {
+              options->SetDlcRootPath(dlc_client::kSuperResDlcId, dlc_path);
+            },
+            base::Unretained(&stream_manipulator_runtime_options_)),
+        base::BindOnce([](const std::string& error_msg) {
+          LOGF(ERROR) << "DLC failed:" << error_msg;
+        }));
+    if (!super_res_dlc_client_) {
+      LOGF(ERROR) << "Failed to create DLC client for super resolution.";
+    } else {
+      super_res_dlc_client_->InstallDlc();
+    }
+  } else {
+    LOGF(INFO) << "Super resolution is disabled, skipping DLC.";
   }
 
   auto future = cros::Future<bool>::Create(nullptr);
@@ -379,8 +404,9 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
 
 mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
     mojom::EffectsConfigPtr config) {
-  bool dlc_available = stream_manipulator_runtime_options_.GetDlcRootPath() !=
-                       base::FilePath("");
+  bool dlc_available = !stream_manipulator_runtime_options_
+                            .GetDlcRootPath(dlc_client::kMlCoreDlcId)
+                            .empty();
 
   LOG(INFO) << "CameraHalAdapter::SetCameraEffect: blur: "
             << config->blur_enabled << " relight: " << config->relight_enabled

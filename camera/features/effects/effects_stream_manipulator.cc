@@ -38,6 +38,7 @@
 #include <base/timer/timer.h>
 #include <base/values.h>
 #include <brillo/files/file_util.h>
+#include <ml_core/dlc/dlc_ids.h>
 
 #include "camera/features/effects/tracing.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
@@ -879,8 +880,10 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     return true;
   }
 
-  if (!pipeline_ && !runtime_options_->GetDlcRootPath().empty()) {
-    CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
+  if (!pipeline_ &&
+      !runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId).empty()) {
+    CreatePipeline(base::FilePath(
+        runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)));
   }
   if (!pipeline_)
     return true;

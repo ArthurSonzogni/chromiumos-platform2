@@ -317,7 +317,9 @@ class CameraHalAdapter {
   std::unique_ptr<GpuResources> root_gpu_resources_;
 
   bool effects_enabled_ = false;
-  std::unique_ptr<DlcClient> dlc_client_;
+  bool super_res_enabled_ = false;
+
+  std::unique_ptr<DlcClient> super_res_dlc_client_;
 
   CameraDiagnosticsConfig* camera_diagnostics_config_;
 };

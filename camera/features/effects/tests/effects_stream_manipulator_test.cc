@@ -71,7 +71,8 @@ camera3_stream_t yuv_720_stream = {
 class EffectsStreamManipulatorTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    runtime_options_.SetDlcRootPath(base::FilePath(dlc_path));
+    runtime_options_.SetDlcRootPath(dlc_client::kMlCoreDlcId,
+                                    base::FilePath(dlc_path));
     runtime_options_.SetSWPrivacySwitchState(
         mojom::CameraPrivacySwitchState::OFF);
 

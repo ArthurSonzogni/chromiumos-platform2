@@ -72,15 +72,20 @@ mojom::EffectsConfigPtr StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   return effects_config_->Clone();
 }
 
-base::FilePath StreamManipulator::RuntimeOptions::GetDlcRootPath() {
+base::FilePath StreamManipulator::RuntimeOptions::GetDlcRootPath(
+    const std::string& dlc_id) {
   base::AutoLock lock(lock_);
-  return dlc_root_path;
+  auto it = dlc_root_paths_.find(dlc_id);
+  if (it != dlc_root_paths_.end()) {
+    return it->second;
+  }
+  return base::FilePath();
 }
 
 void StreamManipulator::RuntimeOptions::SetDlcRootPath(
-    const base::FilePath& path) {
+    const std::string& dlc_id, const base::FilePath& path) {
   base::AutoLock lock(lock_);
-  dlc_root_path = path;
+  dlc_root_paths_[dlc_id] = path;
 }
 
 mojom::CameraAutoFramingState

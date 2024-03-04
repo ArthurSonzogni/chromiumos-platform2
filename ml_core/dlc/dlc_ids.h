@@ -7,8 +7,9 @@
 
 namespace cros::dlc_client {
 
-// Please keep alphabetized.
+// Please keep alphabetical order by variable names.
 constexpr char kMlCoreDlcId[] = "ml-core-internal";
+constexpr char kSuperResDlcId[] = "cros-camera-super-res-dlc";
 
 }  // namespace cros::dlc_client
 

@@ -10,6 +10,7 @@
 #include <hardware/camera3.h>
 
 #include <bitset>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,8 +63,10 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
     void SetEffectsConfig(mojom::EffectsConfigPtr config);
     mojom::EffectsConfigPtr GetEffectsConfig();
-    base::FilePath GetDlcRootPath();
-    void SetDlcRootPath(const base::FilePath& path);
+    void SetDlcRootPath(const std::string& dlc_id, const base::FilePath& path);
+    // Returns the DLC root path for |dlc_id|.
+    // Returns an empty FilePath if DLC is unavailable / not ready.
+    base::FilePath GetDlcRootPath(const std::string& dlc_id);
 
     mojom::CameraAutoFramingState auto_framing_state();
     mojom::CameraPrivacySwitchState sw_privacy_switch_state();
@@ -87,8 +90,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_) =
         mojom::EffectsConfig::New();
 
-    // Path to DLC. Empty if DLC isn't available / ready.
-    base::FilePath dlc_root_path GUARDED_BY(lock_);
+    // Maps DLC ids to DLC root paths. Empty if DLC is unavailable / not ready.
+    std::map<std::string, base::FilePath> dlc_root_paths_ GUARDED_BY(lock_);
   };
 
   struct Callbacks {
