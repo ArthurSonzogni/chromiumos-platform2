@@ -7,68 +7,28 @@
 #include <algorithm>
 
 #include <fcntl.h>
-#include <rootdev/rootdev.h>
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 #include <sys/xattr.h>
 
-#include <cstddef>
-#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 
 namespace brillo {
-
 namespace {
-constexpr char kSysFsPath[] = "/sys/fs/ext4";
-constexpr char kReservedClustersPath[] = "reserved_clusters";
-constexpr uint64_t kDefaultClusterCount = 4096;
-
+constexpr char kProvisioningXattr[] = "trusted.provision";
 }  // namespace
 
-// static
-std::unique_ptr<StorageBalloon> StorageBalloon::GenerateStorageBalloon(
-    const base::FilePath& path) {
-  char fs_device[PATH_MAX];
-
-  // Get the underlying storage device for a given path and use it to get
-  // the sysfs filesystem path.
-  int ret = rootdev_wrapper(fs_device, sizeof(fs_device),
-                            false,                 // Do full resolution.
-                            false,                 // Remove partition number.
-                            nullptr,               // Device.
-                            path.value().c_str(),  // Path within mountpoint.
-                            nullptr,               // Use default search path.
-                            nullptr);              // Use default /dev path.
-
-  if (ret != 0) {
-    LOG(WARNING) << "Failed to find backing device, error code: " << ret;
-    return nullptr;
-  }
-
-  return std::unique_ptr<StorageBalloon>(new StorageBalloon(
-      path, base::FilePath(kSysFsPath)
-                .AppendASCII(base::FilePath(fs_device).BaseName().value())
-                .AppendASCII(kReservedClustersPath)));
-}
-
-StorageBalloon::StorageBalloon(const base::FilePath& path,
-                               const base::FilePath& reserved_clusters_path)
-    : filesystem_path_(path),
-      sysfs_reserved_clusters_path_(reserved_clusters_path) {}
+// Create a tmpfile for the storage balloon. The file will only exist for
+// the scope of this object.
+StorageBalloon::StorageBalloon(const base::FilePath& path)
+    : balloon_fd_(HANDLE_EINTR(
+          open(path.value().c_str(), O_TMPFILE | O_RDWR | O_CLOEXEC, 0600))) {}
 
 bool StorageBalloon::IsValid() {
-  return base::PathExists(filesystem_path_) &&
-         base::PathExists(sysfs_reserved_clusters_path_);
-}
-
-StorageBalloon::~StorageBalloon() {
-  SetBalloonSize(0);
+  return balloon_fd_.is_valid();
 }
 
 bool StorageBalloon::Adjust(int64_t target_space) {
@@ -97,7 +57,20 @@ bool StorageBalloon::Adjust(int64_t target_space) {
     return false;
   }
 
-  return SetBalloonSize(existing_size + inflation_size);
+  if (inflation_size < 0) {
+    return Ftruncate(std::max(existing_size + inflation_size, int64_t(0)));
+  }
+
+  if (!Fallocate(existing_size, inflation_size)) {
+    LOG(ERROR) << "Failed to allocate extra space for balloon";
+    return false;
+  }
+
+  return true;
+}
+
+bool StorageBalloon::DisableProvisioning() {
+  return Setxattr(kProvisioningXattr, "n");
 }
 
 bool StorageBalloon::Deflate() {
@@ -106,81 +79,88 @@ bool StorageBalloon::Deflate() {
     return false;
   }
 
-  return SetBalloonSize(0);
+  return Ftruncate(0);
 }
 
-bool StorageBalloon::SetBalloonSize(int64_t size) {
+bool StorageBalloon::Fallocate(int64_t offset, int64_t length) {
   if (!IsValid()) {
     LOG(ERROR) << "Invalid balloon";
     return false;
   }
 
-  if (size < 0) {
-    size = 0;
-  }
-
-  return base::WriteFile(
-      sysfs_reserved_clusters_path_,
-      base::NumberToString(kDefaultClusterCount + size / GetClusterSize()));
+  return fallocate(balloon_fd_.get(), 0, offset, length) == 0;
 }
 
-int64_t StorageBalloon::GetCurrentBalloonSize() {
-  if (!IsValid()) {
-    LOG(ERROR) << "Invalid balloon";
-    return -1;
-  }
-
-  std::string balloon_size_str;
-  int64_t balloon_size;
-  if (!base::ReadFileToString(sysfs_reserved_clusters_path_, &balloon_size_str))
-    return -1;
-
-  base::TrimWhitespaceASCII(balloon_size_str, base::TRIM_ALL,
-                            &balloon_size_str);
-  if (!base::StringToInt64(balloon_size_str, &balloon_size))
-    return -1;
-
-  return (balloon_size - kDefaultClusterCount) * GetClusterSize();
-}
-
-bool StorageBalloon::StatVfs(struct statvfs* buf) {
+bool StorageBalloon::Ftruncate(int64_t length) {
   if (!IsValid()) {
     LOG(ERROR) << "Invalid balloon";
     return false;
   }
 
-  return statvfs(filesystem_path_.value().c_str(), buf) == 0;
+  return ftruncate(balloon_fd_.get(), length) == 0;
+}
+
+bool StorageBalloon::FstatFs(struct statfs* buf) {
+  if (!IsValid()) {
+    LOG(ERROR) << "Invalid balloon";
+    return false;
+  }
+
+  return fstatfs(balloon_fd_.get(), buf) == 0;
+}
+
+bool StorageBalloon::Fstat(struct stat* buf) {
+  if (!IsValid()) {
+    LOG(ERROR) << "Invalid balloon";
+    return false;
+  }
+
+  return fstat(balloon_fd_.get(), buf) == 0;
 }
 
 bool StorageBalloon::CalculateBalloonInflationSize(int64_t target_space,
                                                    int64_t* inflation_size) {
-  struct statvfs buf;
+  struct statfs buf;
 
   if (target_space < 0) {
     LOG(ERROR) << "Invalid target space";
     return false;
   }
 
-  if (!StatVfs(&buf)) {
+  if (!FstatFs(&buf)) {
     LOG(ERROR) << "Failed to statvfs() balloon fd";
     return false;
   }
 
-  int64_t available_space = static_cast<int64_t>(buf.f_bavail) * buf.f_bsize;
+  int64_t available_space = buf.f_bfree * buf.f_bsize;
   *inflation_size = available_space - target_space;
 
   return true;
 }
 
-int64_t StorageBalloon::GetClusterSize() {
-  struct statvfs buf;
+int64_t StorageBalloon::GetCurrentBalloonSize() {
+  struct stat buf;
 
-  if (!StatVfs(&buf)) {
-    LOG(ERROR) << "Failed to statvfs() balloon fd";
+  if (!Fstat(&buf)) {
+    LOG(ERROR) << "Failed to fstat() balloon fd";
     return -1;
   }
 
-  return buf.f_bsize;
+  return buf.st_blocks * 512;
+}
+
+bool StorageBalloon::Setxattr(const char* name, const std::string& value) {
+  if (!IsValid()) {
+    LOG(ERROR) << "Invalid balloon";
+    return false;
+  }
+
+  if (fsetxattr(balloon_fd_.get(), name, value.data(), value.size(),
+                0 /* flags */) != 0) {
+    PLOG(ERROR) << "Failed to fsetxattr() on balloon fd";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace brillo

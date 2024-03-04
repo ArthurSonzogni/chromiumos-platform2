@@ -1100,7 +1100,7 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
     vm_tools::UpdateStorageBalloonResponse* response) {
   response->set_result(vm_tools::UpdateStorageBalloonResult::SUCCESS);
   if (!balloon_) {
-    balloon_ = brillo::StorageBalloon::GenerateStorageBalloon(
+    balloon_ = std::make_unique<brillo::StorageBalloon>(
         base::FilePath("/mnt/stateful/"));
   }
   if (!balloon_->Adjust(std::max(
