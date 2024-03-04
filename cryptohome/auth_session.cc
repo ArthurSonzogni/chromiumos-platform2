@@ -147,6 +147,8 @@ constexpr std::string_view IntentToDebugString(AuthIntent intent) {
       return "webauthn";
     case AuthIntent::kRestoreKey:
       return "restore-key";
+    case AuthIntent::kForensics:
+      return "forensics";
   }
 }
 
