@@ -14,13 +14,15 @@
 #include <optional>
 #include <utility>
 
+#include <base/synchronization/lock.h>
+
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {
 
 // CameraBufferPool owns a number of lazily allocated buffers, and provides
-// unique access to the buffer handles.  This class and its returned objects are
-// not thread-safe and the caller needs to ensure access to the buffers is
+// unique access to the buffer handles.  Buffers returned by this class are not
+// thread-safe and the caller needs to ensure access to the buffers is
 // synchronized.
 class CameraBufferPool {
  private:
@@ -73,7 +75,8 @@ class CameraBufferPool {
   CameraBufferPool& operator=(CameraBufferPool&&) = delete;
 
   // Returns a Buffer, or nullopt if the number of buffers in use reaches
-  // maximum.  The returned Buffer cannot out-live this class.
+  // maximum.  The returned Buffer cannot out-live this class.  This function is
+  // thread-safe.
   std::optional<Buffer> RequestBuffer();
 
  private:
@@ -99,7 +102,8 @@ class CameraBufferPool {
   Options options_;
 
   // Use std::list for pointer stability.
-  std::list<BufferSlot> buffer_slots_;
+  base::Lock buffer_slots_lock_;
+  std::list<BufferSlot> buffer_slots_ GUARDED_BY(buffer_slots_lock_);
 };
 
 }  // namespace cros

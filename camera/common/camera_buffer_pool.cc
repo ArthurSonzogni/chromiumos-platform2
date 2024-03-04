@@ -64,6 +64,7 @@ void CameraBufferPool::BufferSlot::Unmap() {
 }
 
 CameraBufferPool::~CameraBufferPool() {
+  base::AutoLock lock(buffer_slots_lock_);
   auto it =
       std::find_if(buffer_slots_.begin(), buffer_slots_.end(),
                    [](const BufferSlot& slot) { return slot.is_acquired(); });
@@ -73,6 +74,7 @@ CameraBufferPool::~CameraBufferPool() {
 }
 
 std::optional<CameraBufferPool::Buffer> CameraBufferPool::RequestBuffer() {
+  base::AutoLock lock(buffer_slots_lock_);
   auto it =
       std::find_if(buffer_slots_.begin(), buffer_slots_.end(),
                    [](const BufferSlot& slot) { return !slot.is_acquired(); });
