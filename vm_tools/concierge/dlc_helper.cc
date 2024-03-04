@@ -11,8 +11,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/strings/strcat.h>
-#include <base/strings/string_number_conversions.h>
 #include <brillo/errors/error.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
@@ -31,31 +29,30 @@ DlcHelper::DlcHelper(const scoped_refptr<dbus::Bus>& bus)
 
 DlcHelper::~DlcHelper() = default;
 
-base::expected<base::FilePath, std::string> DlcHelper::GetRootPath(
-    const std::string& dlc_id) {
+std::optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
+                                                  std::string* out_error) {
+  DCHECK(out_error);
   dlcservice::DlcState state;
   brillo::ErrorPtr error;
+
   if (!dlcservice_handle_->GetDlcState(dlc_id, &state, &error)) {
     if (error) {
-      return base::unexpected(
-          base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
-                        "): ", error->GetMessage()}));
+      *out_error = "Error calling dlcservice (code=" + error->GetCode() +
+                   "): " + error->GetMessage();
+    } else {
+      *out_error = "Error calling dlcservice: unknown";
     }
-    return base::unexpected("Error calling dlcservice: unknown");
+    return std::nullopt;
   }
 
   if (state.state() != dlcservice::DlcState_State_INSTALLED) {
-    return base::unexpected(
-        base::StrCat({dlc_id, " was not installed, its state is: ",
-                      base::NumberToString(state.state()),
-                      " with last error: ", state.last_error_code()}));
+    *out_error = dlc_id + " was not installed, its state is: " +
+                 std::to_string(state.state()) +
+                 " with last error: " + state.last_error_code();
+    return std::nullopt;
   }
 
-  if (state.root_path().empty()) {
-    return base::unexpected("Root path was empty");
-  }
-
-  return base::ok(base::FilePath(state.root_path()));
+  return state.root_path();
 }
 
 }  // namespace vm_tools::concierge

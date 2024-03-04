@@ -9,9 +9,7 @@
 #include <optional>
 #include <string>
 
-#include <base/files/file_path.h>
-#include <base/memory/scoped_refptr.h>
-#include <base/types/expected.h>
+#include "base/memory/scoped_refptr.h"
 
 namespace dbus {
 class Bus;
@@ -40,9 +38,10 @@ class DlcHelper {
   ~DlcHelper();
 
   // Determine the path where the |dlc_id| DLC is located. If it is not
-  // installed, or some error occurs, returns an error message.
-  base::expected<base::FilePath, std::string> GetRootPath(
-      const std::string& dlc_id);
+  // installed, or some error occurs, returns nullopt and sets |out_error|.
+  // Assumes that |out_error| is valid (non-null).
+  std::optional<std::string> GetRootPath(const std::string& dlc_id,
+                                         std::string* out_error);
 
  private:
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
