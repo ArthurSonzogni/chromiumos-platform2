@@ -161,11 +161,13 @@ CapportProxy::~CapportProxy() {
   }
 }
 
-void CapportProxy::SendRequest(StatusCallback callback) {
-  LOG_IF(DFATAL, IsRunning())
-      << logging_tag_ << "The previous request is still running";
-  callback_ = std::move(callback);
+bool CapportProxy::SendRequest(StatusCallback callback) {
+  if (IsRunning()) {
+    LOG(WARNING) << "The previous request is still running";
+    return false;
+  }
 
+  callback_ = std::move(callback);
   brillo::http::Request http_request(
       api_url_.ToString(), brillo::http::request_type::kGet, http_transport_);
   http_request.SetAccept(kAcceptHeader);
@@ -173,6 +175,7 @@ void CapportProxy::SendRequest(StatusCallback callback) {
                                           weak_ptr_factory_.GetWeakPtr()),
                            base::BindOnce(&CapportProxy::OnRequestError,
                                           weak_ptr_factory_.GetWeakPtr()));
+  return true;
 }
 
 void CapportProxy::Stop() {

@@ -259,6 +259,16 @@ TEST_F(CapportProxyTest, SendRequestAndStop) {
   fake_transport_->HandleAllAsyncRequests();  // Simulate the transport is done.
 }
 
+TEST_F(CapportProxyTest, SendRequestWhenRunning) {
+  fake_transport_->SetAsyncMode(true);
+
+  EXPECT_TRUE(proxy_->SendRequest(base::DoNothing()));
+  EXPECT_TRUE(proxy_->IsRunning());
+  EXPECT_FALSE(proxy_->SendRequest(base::DoNothing()));
+
+  fake_transport_->HandleAllAsyncRequests();  // Simulate the transport is done.
+}
+
 TEST_F(CapportProxyTest, SendMetricsContainVenueInfoUrl) {
   // Send the metric only once even we receive the status twice.
   EXPECT_CALL(metrics_,

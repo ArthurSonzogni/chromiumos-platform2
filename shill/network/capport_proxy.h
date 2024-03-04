@@ -78,8 +78,8 @@ class CapportProxy {
   // successfully, or with std::nullopt when any error occurs.
   // If the CapportProxy instance is destroyed before the response is received,
   // then |callback| will not be called.
-  // Note that the caller should not call this method when IsRunning() is true.
-  mockable void SendRequest(StatusCallback callback);
+  // Returns false and does nothing when IsRunning() is true.
+  mockable bool SendRequest(StatusCallback callback);
 
   // Stops the current query if exists. The callback of previous request will
   // not be called.

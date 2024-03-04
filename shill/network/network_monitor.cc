@@ -166,6 +166,9 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
             << "): Portal detection started.";
   if (capport_proxy_) {
     result_from_capport_proxy_.reset();
+    if (capport_proxy_->IsRunning()) {
+      capport_proxy_->Stop();
+    }
     capport_proxy_->SendRequest(base::BindOnce(
         &NetworkMonitor::OnCapportStatusReceived, base::Unretained(this)));
     LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
