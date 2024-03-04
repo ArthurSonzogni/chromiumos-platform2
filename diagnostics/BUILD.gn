@@ -4,7 +4,6 @@
 
 group("all") {
   deps = [
-    ":install_dbus_config",
     ":install_init_config",
     ":install_service_manager_policy_config",
     ":install_tmpfiles_config",
@@ -24,11 +23,6 @@ group("all") {
       "//diagnostics/cros_healthd/fetchers:fetch_system_info_fuzzer",
     ]
   }
-}
-
-install_config("install_dbus_config") {
-  sources = [ "dbus/org.chromium.CrosHealthd.conf" ]
-  install_path = "dbus_system_d"
 }
 
 install_config("install_init_config") {
