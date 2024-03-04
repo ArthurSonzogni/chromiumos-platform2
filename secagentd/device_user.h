@@ -34,6 +34,7 @@ static constexpr char kStarted[] = "started";
 static constexpr char kStopping[] = "stopping";
 static constexpr char kStopped[] = "stopped";
 static constexpr char kInit[] = "init";
+static constexpr char kUnaffiliatedPrefix[] = "UnaffiliatedUser-";
 
 namespace testing {
 class DeviceUserTestFixture;

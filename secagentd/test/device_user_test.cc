@@ -325,19 +325,28 @@ TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
 
   // Just verify that the username is a valid uuid because it
   // is random each time.
-  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(GetUser()).is_valid());
+  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
   base::FilePath username_file =
       daemon_store_directory_.Append(kSanitized).Append("username");
   ASSERT_TRUE(base::PathExists(username_file));
   std::string username;
   ASSERT_TRUE(base::ReadFileToString(username_file, &username));
-  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(username).is_valid());
+  EXPECT_TRUE(username.starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  username.substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
 
   // Trigger callback again to verify the file is read from.
   SetDeviceUser("");
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
-  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(GetUser()).is_valid());
+  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
@@ -387,7 +396,10 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_TRUE(base::Uuid::ParseCaseInsensitive(GetUser()).is_valid());
+  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+              base::Uuid::ParseCaseInsensitive(
+                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }

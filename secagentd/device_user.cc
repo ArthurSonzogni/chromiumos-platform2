@@ -352,7 +352,8 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
     if (IsAffiliated(policy_data)) {
       device_user_ = username;
     } else {
-      device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+      device_user_ = kUnaffiliatedPrefix +
+                     base::Uuid::GenerateRandomV4().AsLowercaseString();
     }
     if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
                                                         device_user_)) {

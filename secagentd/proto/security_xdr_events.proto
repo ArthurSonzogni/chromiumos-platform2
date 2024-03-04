@@ -90,6 +90,15 @@ message CommonEventVariantDataFields {
   optional int64 create_timestamp_us = 1;
   // ${COPYBARA_DATAPOL_ST_USERNAME}
   optional string device_user = 2;
+  // Possible values of device_user:
+  // User’s email (affiliated)
+  // "UnaffiliatedUser-" prepended to Random UUID (unaffiliated)
+  // "" (empty string when no user signed in)
+  // "GuestUser" (logged in as guest user)
+  // "ManagedGuest" (logged in as managed guest set by organization)
+  // "KioskApp" (Any kiosk app being used)
+  // "KioskAndroidApp" (Same as above but Android app)
+  // "SAML-PublicSession" (https://support.google.com/a/answer/6262987?hl=en)
 }
 
 // Agent Events.
