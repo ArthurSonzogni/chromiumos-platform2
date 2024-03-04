@@ -1429,7 +1429,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.chromeos_channel=" + channel,
       base::StringPrintf("androidboot.seneschal_server_port=%d",
                          seneschal_server_port),
-      base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE),
       base::StringPrintf("androidboot.arc_custom_tabs=%d",
                          mini_instance_request.arc_custom_tabs_experiment()),
       base::StringPrintf("androidboot.arc_file_picker=%d",

@@ -476,17 +476,6 @@ TEST(ArcVmParamsTest, PanelOrientation) {
       params, "androidboot.arc.primary_display_rotation=ORIENTATION_180"));
 }
 
-TEST(ArcVmParamsTest, IioservicePresentParam) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
-      params,
-      base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE)));
-}
-
 TEST(ArcVmParamsTest, SwappinessNotPresentByDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
