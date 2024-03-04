@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::iter::FromIterator;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, IntoRawFd};
@@ -59,12 +59,9 @@ enum ChromeOSError {
     BadVmPluginDispatcherStatus,
     BiosAlreadySpecified(String),
     BiosDlcNotAllowed(String),
-    CreateOutputFile(PathBuf, std::io::Error),
     CrostiniVmDisabled,
     CrostiniVmDisabledReason(String),
     DiskImageOutOfSpace,
-    ExportPathExists,
-    ImportPathDoesNotExist,
     FailedAdjustVm(String),
     FailedAttachUsb(String),
     FailedAllocateExtraDisk {
@@ -104,15 +101,14 @@ enum ChromeOSError {
     FailedUpdateContainerDevices(String),
     InvalidDiskSize(u64),
     InvalidEmail,
-    InvalidExportPath,
-    InvalidImportPath,
-    InvalidSourcePath,
+    InvalidPath(String),
     MissingActiveSession,
     NoSuchVm,
     NoSuchVmType,
     NoVmTechnologyEnabled,
     NotAvailableForPluginVm,
     NotPluginVm,
+    OpenUserFile(PathBuf, std::io::Error),
     PluginVmDisabled,
     PluginVmDisabledReason(String),
     PluginVmGenericError(i32),
@@ -121,7 +117,6 @@ enum ChromeOSError {
     PluginVmNotEnoughDisk,
     PluginVmNoPortalAccess,
     RetrieveActiveSessions,
-    SourcePathDoesNotExist,
     ToolsDlcNotAllowed(String),
 }
 
@@ -142,16 +137,11 @@ impl fmt::Display for ChromeOSError {
                 dlc
             ),
             BiosDlcNotAllowed(dlc) => write!(f, "bios dlc `{}` is not allowed", dlc),
-            CreateOutputFile(p, e) => {
-                write!(f, "failed to create output file `{}`: {}", p.display(), e)
-            }
             CrostiniVmDisabled => write!(f, "Crostini VMs are not available"),
             CrostiniVmDisabledReason(reason) => {
                 write!(f, "Crostini VMs are not available: {}", reason)
             }
             DiskImageOutOfSpace => write!(f, "not enough disk space"),
-            ExportPathExists => write!(f, "disk path already exists"),
-            ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
             FailedAllocateExtraDisk { path, reason } => write!(
@@ -222,9 +212,7 @@ impl fmt::Display for ChromeOSError {
             }
             InvalidDiskSize(n) => write!(f, "invalid disk size {}", n),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
-            InvalidExportPath => write!(f, "disk path is invalid"),
-            InvalidImportPath => write!(f, "disk import path is invalid"),
-            InvalidSourcePath => write!(f, "source media path is invalid"),
+            InvalidPath(p) => write!(f, "invalid path: `{}`", p),
             MissingActiveSession => write!(
                 f,
                 "missing active session corresponding to $CROS_USER_ID_HASH"
@@ -234,6 +222,7 @@ impl fmt::Display for ChromeOSError {
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
+            OpenUserFile(p, e) => write!(f, "failed to open `{}`: {}", p.display(), e),
             PluginVmDisabled => {
                 write!(
                     f,
@@ -255,7 +244,6 @@ impl fmt::Display for ChromeOSError {
             PluginVmNotEnoughDisk => write!(f, "insufficient disk space to start VM"),
             PluginVmNoPortalAccess => write!(f, "unable to access Parallels licensing portal"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
-            SourcePathDoesNotExist => write!(f, "source media path does not exist"),
             ToolsDlcNotAllowed(dlc) => write!(f, "tools dlc `{}` is not allowed", dlc),
         }
     }
@@ -464,18 +452,7 @@ struct OutputFile {
 }
 
 impl OutputFile {
-    pub fn new(path: PathBuf) -> Result<Self, Box<dyn Error>> {
-        // Output file is always a new file, and is only accessible to the user that creates it.
-        // We are not using `O_NOFOLLOW` in open flags, as `O_NOFOLLOW` only preempts symlinks
-        // for the final part of the path, which is guaranteed to not exist by `create_new(true)`.
-        let file = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(&path)
-            .map_err(|e| CreateOutputFile(path.clone(), e))?;
-
+    pub fn new(file: File, path: PathBuf) -> Result<Self, Box<dyn Error>> {
         // Safe because OwnedFd is given a valid owned fd.
         let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
 
@@ -506,6 +483,83 @@ impl Drop for OutputFile {
     fn drop(&mut self) {
         self.remove();
     }
+}
+
+struct InputFile {
+    fd: OwnedFd,
+    size: u64,
+}
+
+impl InputFile {
+    pub fn new(file: File) -> Result<Self, Box<dyn Error>> {
+        let size = file.metadata()?.len();
+
+        // Safe because OwnedFd is given a valid owned fd.
+        let fd = unsafe { OwnedFd::new(file.into_raw_fd()) };
+
+        Ok(InputFile { fd, size })
+    }
+}
+
+/// Open a file from a user-specified path.
+///
+/// This function will resolve the path (optionally relative to a removable media device), verify
+/// whether it should be allowed as a user-specified input or output filename, and open the file
+/// with the specified options.
+///
+/// Returns the opened file and its path.
+fn open_user_path(
+    user_id_hash: &str,
+    name: &str,
+    removable_media: Option<&str>,
+    open_options: &OpenOptions,
+) -> Result<(File, PathBuf), Box<dyn Error>> {
+    let path = match removable_media {
+        Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
+        None => {
+            let path = PathBuf::from(name);
+            if path.is_absolute() {
+                // The filename was an absolute path, so use it directly.
+                // It will be validated against the allowed set of root directories below.
+                path
+            } else {
+                // The filename is relative to the Downloads directory.
+                Path::new(CRYPTOHOME_USER)
+                    .join(user_id_hash)
+                    .join(MY_FILES_DIR)
+                    .join(DOWNLOADS_DIR)
+                    .join(name)
+            }
+        }
+    };
+
+    // Disallow any ".." path components.
+    if path.components().any(|c| c == Component::ParentDir) {
+        return Err(InvalidPath(name.to_string()).into());
+    }
+
+    // The path must be a descendant of one of these directories.
+    let allowed_roots = [
+        PathBuf::from(REMOVABLE_MEDIA_ROOT),
+        Path::new(CRYPTOHOME_USER)
+            .join(user_id_hash)
+            .join(MY_FILES_DIR),
+        PathBuf::from("/home/chronos/user/Downloads"),
+        PathBuf::from("/home/chronos/user/MyFiles"),
+    ];
+
+    if !allowed_roots
+        .iter()
+        .any(|allowed_root| path.starts_with(allowed_root))
+    {
+        return Err(InvalidPath(name.to_string()).into());
+    }
+
+    let file = open_options
+        .open(&path)
+        .map_err(|e| OpenUserFile(path.clone(), e))?;
+
+    Ok((file, path))
 }
 
 #[derive(Default)]
@@ -898,29 +952,14 @@ impl Methods {
 
         let source_fd = match source_name {
             Some(source) => {
-                let source_path = match removable_media {
-                    Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
-                        .join(media_path)
-                        .join(source),
-                    None => Path::new(CRYPTOHOME_USER)
-                        .join(user_id_hash)
-                        .join(MY_FILES_DIR)
-                        .join(DOWNLOADS_DIR)
-                        .join(source),
-                };
-
-                if source_path.components().any(|c| c == Component::ParentDir) {
-                    return Err(InvalidSourcePath.into());
-                }
-
-                if !source_path.exists() {
-                    return Err(SourcePathDoesNotExist.into());
-                }
-
-                let source_file = OpenOptions::new().read(true).open(source_path)?;
-                request.source_size = source_file.metadata()?.len();
-                // Safe because OwnedFd is given a valid owned fd.
-                Some(unsafe { OwnedFd::new(source_file.into_raw_fd()) })
+                let source_file = self.open_input_file(
+                    user_id_hash,
+                    source,
+                    removable_media,
+                    OpenOptions::new().read(true),
+                )?;
+                request.source_size = source_file.size;
+                Some(source_file.fd)
             }
             None => None,
         };
@@ -988,24 +1027,33 @@ impl Methods {
         name: &str,
         removable_media: Option<&str>,
     ) -> Result<OutputFile, Box<dyn Error>> {
-        let path = match removable_media {
-            Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
-            None => Path::new(CRYPTOHOME_USER)
-                .join(user_id_hash)
-                .join(MY_FILES_DIR)
-                .join(DOWNLOADS_DIR)
-                .join(name),
-        };
+        let (file, path) = open_user_path(
+            user_id_hash,
+            name,
+            removable_media,
+            // Output file is always a new file, and is only accessible to the user that creates it.
+            // We are not using `O_NOFOLLOW` in open flags, as `O_NOFOLLOW` only preempts symlinks
+            // for the final part of the path, which is guaranteed to not exist by
+            // `create_new(true)`.
+            OpenOptions::new()
+                .write(true)
+                .read(true)
+                .create_new(true)
+                .mode(0o600),
+        )?;
 
-        if path.components().any(|c| c == Component::ParentDir) {
-            return Err(InvalidExportPath.into());
-        }
+        OutputFile::new(file, path)
+    }
 
-        if path.exists() {
-            return Err(ExportPathExists.into());
-        }
-
-        OutputFile::new(path)
+    fn open_input_file(
+        &self,
+        user_id_hash: &str,
+        name: &str,
+        removable_media: Option<&str>,
+        open_options: &OpenOptions,
+    ) -> Result<InputFile, Box<dyn Error>> {
+        let (file, _path) = open_user_path(user_id_hash, name, removable_media, open_options)?;
+        InputFile::new(file)
     }
 
     /// Request that concierge export a VM's disk image.
@@ -1079,29 +1127,12 @@ impl Methods {
         import_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
-        let import_path = match removable_media {
-            Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
-                .join(media_path)
-                .join(import_name),
-            None => Path::new(CRYPTOHOME_USER)
-                .join(user_id_hash)
-                .join(MY_FILES_DIR)
-                .join(DOWNLOADS_DIR)
-                .join(import_name),
-        };
-
-        if import_path.components().any(|c| c == Component::ParentDir) {
-            return Err(InvalidImportPath.into());
-        }
-
-        if !import_path.exists() {
-            return Err(ImportPathDoesNotExist.into());
-        }
-
-        let import_file = OpenOptions::new().read(true).open(import_path)?;
-        let file_size = import_file.metadata()?.len();
-        // Safe because OwnedFd is given a valid owned fd.
-        let import_fd = unsafe { OwnedFd::new(import_file.into_raw_fd()) };
+        let import_file = self.open_input_file(
+            user_id_hash,
+            import_name,
+            removable_media,
+            OpenOptions::new().read(true),
+        )?;
 
         let mut request = ImportDiskImageRequest::new();
         request.vm_name = vm_name.to_owned();
@@ -1112,7 +1143,7 @@ impl Methods {
             StorageLocation::STORAGE_CRYPTOHOME_ROOT
         }
         .into();
-        request.source_size = file_size;
+        request.source_size = import_file.size;
 
         // We can't use sync_protobus because we need to append the file descriptor out of band from
         // the protobuf message.
@@ -1123,7 +1154,7 @@ impl Methods {
             IMPORT_DISK_IMAGE_METHOD,
         )?
         .append1(request.write_to_bytes()?)
-        .append1(import_fd);
+        .append1(import_file.fd);
 
         let message = self
             .connection
@@ -1383,85 +1414,88 @@ impl Methods {
             START_VM_METHOD,
         )?;
 
-        let mut disk_files = vec![];
+        let mut owned_fds = Vec::new();
         // User-specified kernel
         if let Some(path) = user_disks.kernel {
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
+                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+            )?;
             request.fds.push(start_vm_request::FdType::KERNEL.into());
-            disk_files.push(
-                OpenOptions::new()
-                    .read(true)
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+            owned_fds.push(file.fd);
         }
 
         // User-specified rootfs
         if let Some(path) = user_disks.rootfs {
-            request.fds.push(start_vm_request::FdType::ROOTFS.into());
-            request.writable_rootfs = user_disks.writable_rootfs;
-            disk_files.push(
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
                 OpenOptions::new()
                     .read(true)
                     .write(user_disks.writable_rootfs)
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+                    .custom_flags(libc::O_NOFOLLOW),
+            )?;
+            request.fds.push(start_vm_request::FdType::ROOTFS.into());
+            request.writable_rootfs = user_disks.writable_rootfs;
+            owned_fds.push(file.fd);
         }
 
         // User-specified extra disk
         if let Some(path) = user_disks.extra_disk {
-            request.fds.push(start_vm_request::FdType::STORAGE.into());
-            disk_files.push(
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
                 OpenOptions::new()
                     .read(true)
                     .write(true) // extra disk is writable
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+                    .custom_flags(libc::O_NOFOLLOW),
+            )?;
+            request.fds.push(start_vm_request::FdType::STORAGE.into());
+            owned_fds.push(file.fd);
         }
 
         // User-specified initrd
         if let Some(path) = user_disks.initrd {
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
+                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+            )?;
             request.fds.push(start_vm_request::FdType::INITRD.into());
-            disk_files.push(
-                OpenOptions::new()
-                    .read(true)
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+            owned_fds.push(file.fd);
         }
 
         // User-specified bios.
         if let Some(path) = user_disks.bios {
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
+                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+            )?;
             request.fds.push(start_vm_request::FdType::BIOS.into());
-            disk_files.push(
-                OpenOptions::new()
-                    .read(true)
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+            owned_fds.push(file.fd);
         }
 
         // User-specified pflash.
         if let Some(path) = user_disks.pflash {
-            request.fds.push(start_vm_request::FdType::PFLASH.into());
-            disk_files.push(
+            let file = self.open_input_file(
+                user_id_hash,
+                &path,
+                None,
                 OpenOptions::new()
                     .read(true)
                     .write(true)
-                    .custom_flags(libc::O_NOFOLLOW)
-                    .open(path)?,
-            );
+                    .custom_flags(libc::O_NOFOLLOW),
+            )?;
+            request.fds.push(start_vm_request::FdType::PFLASH.into());
+            owned_fds.push(file.fd);
         }
-
-        let owned_fds: Vec<OwnedFd> = disk_files
-            .into_iter()
-            .map(|f| {
-                let raw_fd = f.into_raw_fd();
-                // Safe because `raw_fd` is a valid and we are the unique owner of this descriptor.
-                unsafe { OwnedFd::new(raw_fd) }
-            })
-            .collect();
 
         let tremplin_timeout = if features.timeout == 0 {
             DEFAULT_TIMEOUT
