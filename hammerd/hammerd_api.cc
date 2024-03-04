@@ -10,6 +10,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hammerd/dbus_wrapper.h"
+#include "hammerd/i2c_endpoint.h"
 #include "hammerd/usb_utils.h"
 
 // Because it returns std::string, which is not compatible with C, we move
@@ -21,15 +22,20 @@ std::string ToString(const ByteString* s) {
 extern "C" {
 
 using hammerd::FirmwareUpdater;
+using hammerd::I2CEndpoint;
 using hammerd::SectionName;
 using hammerd::UpdateExtraCommand;
 using hammerd::UsbEndpoint;
 
-BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(uint16_t vendor_id,
-                                                   uint16_t product_id,
-                                                   const char* path) {
+BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_NewUsb(uint16_t vendor_id,
+                                                      uint16_t product_id,
+                                                      const char* path) {
   return new FirmwareUpdater(
       std::make_unique<UsbEndpoint>(vendor_id, product_id, std::string(path)));
+}
+
+BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_NewI2C(const char* path) {
+  return new FirmwareUpdater(std::make_unique<I2CEndpoint>(std::string(path)));
 }
 BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(FirmwareUpdater* updater,
                                                const ByteString* ec_image) {

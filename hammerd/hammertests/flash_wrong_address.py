@@ -41,9 +41,7 @@ WRONG_ADDR_LIST = [
 def main(argv):
     if argv:
         sys.exit("Test takes no args!")
-    updater = hammerd_api.FirmwareUpdater(
-        common.BASE_VENDOR_ID, common.BASE_PRODUCT_ID, common.BASE_USB_PATH
-    )
+    updater = common.get_firmware_updater()
     with open(common.IMAGE, "rb") as f:
         ec_image = f.read()
     updater.LoadEcImage(ec_image)

@@ -18,7 +18,7 @@ PUBLIC_KEY_SIZE = 32
 
 def main():
     """Demonstrates FirmwareUpdater usage."""
-    updater = hammerd_api.FirmwareUpdater(0x18D1, 0x503C, "1-1.1")
+    updater = hammerd_api.FirmwareUpdater(0x18D1, 0x503C, usb_path="1-1.1")
     public_key = (ctypes.c_ubyte * PUBLIC_KEY_SIZE)()
     # Load EC image.
     with open("/lib/firmware/hammer.fw", "rb") as f:

@@ -31,9 +31,7 @@ PUBLIC_KEY_SIZE = 32
 def main(argv):
     if argv:
         sys.exit("Test takes no args!")
-    updater = hammerd_api.FirmwareUpdater(
-        common.BASE_VENDOR_ID, common.BASE_PRODUCT_ID, common.BASE_USB_PATH
-    )
+    updater = common.get_firmware_updater()
     public_key_first = (ctypes.c_ubyte * PUBLIC_KEY_SIZE)()
     # Load EC image.
     with open(common.IMAGE, "rb") as f:

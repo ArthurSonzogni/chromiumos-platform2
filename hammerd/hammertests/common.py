@@ -14,9 +14,12 @@ import time
 import hammerd_api  # pylint: disable=import-error
 
 
-def cros_config(path, key):
+def cros_config(path, key, check=True):
     cmd = ["cros_config", path, key]
-    return subprocess.check_output(cmd, encoding="utf-8")
+    proc = subprocess.run(
+        cmd, encoding="utf-8", check=check, capture_output=True
+    )
+    return None if proc.returncode else proc.stdout
 
 
 # The root path of the hammertests.
@@ -38,10 +41,13 @@ BASE_TABLE = {
     "wormdingler": "eel",
     "quackingstick": "duck",
     "starmie": "jewel",
+    "ciri": "kelpie",
 }
 
 BOARD_NAME = cros_config("/", "name")
 BASE_NAME = BASE_TABLE[BOARD_NAME.rstrip()]
+BASE_USB_PATH = None
+BASE_I2C_PATH = None
 
 # Device-dependent information.
 # Deprecated, new devices should use cros_config instead.
@@ -93,11 +99,12 @@ elif BASE_NAME == "don":
     BASE_PRODUCT_ID = 0x5050
     BASE_USB_PATH = "1-1.1"
     BASE_CONN_GPIO = "EN_PP3300_POGO"
-    TP = "/lib/firmware/{BASE_NAME}-touch.fw"
+    TP = f"/lib/firmware/{BASE_NAME}-touch.fw"
 else:
     BASE_VENDOR_ID = int(cros_config("/detachable-base", "vendor-id"))
     BASE_PRODUCT_ID = int(cros_config("/detachable-base", "product-id"))
     BASE_USB_PATH = cros_config("/detachable-base", "usb-path")
+    BASE_I2C_PATH = cros_config("/detachable-base", "i2c-path")
     BASE_CONN_GPIO = None
     TP = os.path.join(
         "/lib/firmware/", cros_config("/detachable-base", "touch-image-name")
@@ -190,3 +197,12 @@ def reset_stay_ro(updater):
     time.sleep(5)
     print(f"Current section after StayInRO cmd: {updater.CurrentSection()}")
     assert updater.CurrentSection() == 0, "Running section should be 0 (RO)"
+
+
+def get_firmware_updater():
+    return hammerd_api.FirmwareUpdater(
+        BASE_VENDOR_ID,
+        BASE_PRODUCT_ID,
+        usb_path=BASE_USB_PATH,
+        i2c_path=BASE_I2C_PATH,
+    )

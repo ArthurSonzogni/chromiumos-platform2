@@ -44,9 +44,10 @@ BRILLO_EXPORT int kSha256DigestLength = SHA256_DIGEST_LENGTH;
 BRILLO_EXPORT int kX25519PublicValueLen = X25519_PUBLIC_VALUE_LEN;
 
 // Expose FirmwareUpdater class.
-BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(uint16_t vendor_id,
-                                                   uint16_t product_id,
-                                                   const char* path);
+BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_NewUsb(uint16_t vendor_id,
+                                                      uint16_t product_id,
+                                                      const char* path);
+BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_NewI2C(const char* path);
 BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(FirmwareUpdater* updater,
                                                const ByteString* ec_image);
 BRILLO_EXPORT bool FirmwareUpdater_LoadTouchpadImage(
@@ -97,5 +98,5 @@ BRILLO_EXPORT int PairManager_PairChallenge(PairManager* self,
                                             FirmwareUpdater* fw_updater,
                                             uint8_t* public_key);
 
-}  // extern "C"
+}       // extern "C"
 #endif  // HAMMERD_HAMMERD_API_H_

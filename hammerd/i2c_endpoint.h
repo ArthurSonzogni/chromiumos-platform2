@@ -13,7 +13,7 @@ namespace hammerd {
 
 class I2CEndpoint : public UsbEndpointInterface {
  public:
-  explicit I2CEndpoint(std::string& i2c_path) : i2c_path_(i2c_path) {}
+  explicit I2CEndpoint(const std::string& i2c_path) : i2c_path_(i2c_path) {}
 
   ~I2CEndpoint() override { Close(); }
 

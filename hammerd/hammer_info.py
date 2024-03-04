@@ -48,9 +48,12 @@ FLASH_PROTECT_ALL = (
 ERROR_GET_FIRST_PDU = 3
 
 
-def DetachableBaseConfig(key):
+def DetachableBaseConfig(key, check=True):
     cmd = ["cros_config", "/detachable-base", key]
-    return subprocess.check_output(cmd, encoding="utf-8")
+    proc = subprocess.run(
+        cmd, encoding="utf-8", check=check, capture_output=True
+    )
+    return None if proc.returncode else proc.stdout
 
 
 def GetHammerdArguments():
@@ -74,7 +77,6 @@ def GetHammerdArguments():
         "TOUCHPAD_IMAGE_PATH",
         "VENDOR_ID",
         "PRODUCT_ID",
-        "USB_PATH",
     ]
     IMAGE_DIR = "/lib/firmware"
 
@@ -96,11 +98,14 @@ def GetHammerdArguments():
         )
         ret["VENDOR_ID"] = DetachableBaseConfig("vendor-id")
         ret["PRODUCT_ID"] = DetachableBaseConfig("product-id")
-        ret["USB_PATH"] = DetachableBaseConfig("usb-path")
+        ret["USB_PATH"] = DetachableBaseConfig("usb-path", check=False)
+        ret["I2C_PATH"] = DetachableBaseConfig("i2c-path", check=False)
 
     missing_args = set(REQUIRED_ARGUMENTS) - set(ret.keys())
     if missing_args:
         raise ValueError("Missing arguments: %s" % (",".join(missing_args)))
+    if "USB_PATH" not in ret and "I2C_PATH" not in ret:
+        raise ValueError("Require at least one of USB_PATH or I2C_PATH")
     return ret
 
 
@@ -113,7 +118,8 @@ def main():
     updater = hammerd_api.FirmwareUpdater(
         int(hammerd_args["VENDOR_ID"]),
         int(hammerd_args["PRODUCT_ID"]),
-        hammerd_args["USB_PATH"],
+        usb_path=hammerd_args["USB_PATH"],
+        i2c_path=hammerd_args["I2C_PATH"],
     )
     with open(hammerd_args["EC_IMAGE_PATH"], "rb") as f:
         ec_image = f.read()

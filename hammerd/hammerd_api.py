@@ -238,13 +238,21 @@ class FirmwareUpdater(metaclass=WrapperMetaclass):
         ("GetSectionVersion", [ctypes.c_voidp, ctypes.c_int], ctypes.c_char_p),
     ]
 
-    def __init__(self, vendor_id, product_id, path=None):
-        func = _DLL.FirmwareUpdater_New
-        func.argtypes = [ctypes.c_uint16, ctypes.c_uint16, ctypes.c_char_p]
-        func.restype = ctypes.c_void_p
-        if path is not None:
-            path = path.encode("utf-8")
-        self.object = func(vendor_id, product_id, path)
+    def __init__(self, vendor_id, product_id, *, usb_path=None, i2c_path=None):
+        if i2c_path and not usb_path:
+            i2c_path = i2c_path.encode("utf-8")
+            func = _DLL.FirmwareUpdater_NewI2C
+            func.argtypes = [ctypes.c_char_p]
+            func.restype = ctypes.c_void_p
+            self.object = func(i2c_path)
+        elif usb_path and not i2c_path:
+            usb_path = usb_path.encode("utf-8")
+            func = _DLL.FirmwareUpdater_NewUsb
+            func.argtypes = [ctypes.c_uint16, ctypes.c_uint16, ctypes.c_char_p]
+            func.restype = ctypes.c_void_p
+            self.object = func(vendor_id, product_id, usb_path)
+        else:
+            raise ValueError("Need exactly one of usb_path or i2c_path")
 
 
 class PairManager(metaclass=WrapperMetaclass):

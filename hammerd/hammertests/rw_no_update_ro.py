@@ -21,9 +21,7 @@ import hammerd_api  # pylint: disable=import-error
 def main(argv):
     if argv:
         sys.exit("Test takes no args!")
-    updater = hammerd_api.FirmwareUpdater(
-        common.BASE_VENDOR_ID, common.BASE_PRODUCT_ID, common.BASE_USB_PATH
-    )
+    updater = common.get_firmware_updater()
     # Load EC image.
     with open(common.IMAGE, "rb") as f:
         ec_image = f.read()
