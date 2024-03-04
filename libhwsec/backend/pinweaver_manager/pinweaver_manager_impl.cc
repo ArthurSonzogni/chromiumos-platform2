@@ -296,8 +296,8 @@ Status PinWeaverManagerImpl::SyncHashTree() {
   }
 
   brillo::Blob disk_root_hash;
-  LOG(WARNING)
-      << "PinWeaver HashCache is stale; reconstruct the hash tree locally.";
+  LOG(WARNING) << "PinWeaver HashCache is potentially corrupted; "
+                  "reconstructing the hash tree locally.";
   hash_tree_->GenerateAndStoreHashCache();
   hash_tree_->GetRootHash(disk_root_hash);
 
@@ -314,6 +314,8 @@ Status PinWeaverManagerImpl::SyncHashTree() {
   }
 
   if (disk_root_hash == root_hash_) {
+    LOG(INFO) << "PinWeaver root hash is synced between OS and GSC after "
+                 "reconstructing HashCashe locally.";
     ReportSyncOutcome(SyncOutcome::kSuccessAfterLocalReconstruct);
     return OkStatus();
   }
@@ -629,7 +631,7 @@ Status PinWeaverManagerImpl::ReplayLogEntries(
   for (; it != log.rend(); ++it) {
     const GetLogResult::LogEntry& log_entry = *it;
     if (log_entry.root == disk_root_hash) {
-      // 1-based count, zero indicates no root hash match.
+      // 0-based count log entry.
       LOG(INFO) << "Starting replay at log entry #" << it - log.rbegin();
       ++it;
       break;
@@ -677,18 +679,24 @@ Status PinWeaverManagerImpl::ReplayLogEntries(
     // Update the replay_type for the following entry. Note that currently GSC
     // only has two entries.
     if (replay_type == ReplayEntryType::kMismatchedHash) {
+      LOG(INFO) << "Succeeded to replay the oldest log entry without matching "
+                   "root hash.";
       replay_type = ReplayEntryType::kSecondEntry;
     }
   }
+  LOG(INFO) << "Succeeded to replay pinweaver log entries.";
 
   // Remove any inserted leaves since they are unusable.
   for (const auto& label : inserted_leaves) {
+    LOG(INFO) << "Attempting to remove re-inserted label " << label;
     if (Status ret = RemoveCredential(label); !ret.ok()) {
       ReportLogReplayResult(replay_type,
                             LogReplayResult::kRemoveInsertedCredentialsError);
       return MakeStatus<TPMError>("Failed to remove re-inserted label: " +
                                   std::to_string(label))
           .Wrap(std::move(ret));
+    } else {
+      LOG(INFO) << "Successfully removed re-inserted label " << label;
     }
   }
 
