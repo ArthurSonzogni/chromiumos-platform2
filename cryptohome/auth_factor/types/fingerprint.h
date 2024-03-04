@@ -5,26 +5,20 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_FINGERPRINT_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_FINGERPRINT_H_
 
-#include <memory>
 #include <optional>
-#include <set>
-#include <string>
 
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/label_arity.h"
-#include "cryptohome/auth_factor/metadata.h"
-#include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/user_secret_stash/manager.h"
@@ -60,15 +54,9 @@ class FingerprintAuthFactorDriver final
       AuthFactorPreparePurpose purpose) const override;
   void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) override;
-  void PrepareForAddOnGetNonce(PreparedAuthFactorToken::Consumer callback,
-                               const AuthInput& auth_input,
-                               std::optional<brillo::Blob> nonce);
   void PrepareForAuthenticate(
       const AuthInput& auth_input,
       PreparedAuthFactorToken::Consumer callback) override;
-  void PrepareForAuthOnGetNonce(PreparedAuthFactorToken::Consumer callback,
-                                const AuthInput& auth_input,
-                                std::optional<brillo::Blob> nonce);
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   CryptohomeStatus TryCreateRateLimiter(const ObfuscatedUsername& username,
@@ -86,6 +74,18 @@ class FingerprintAuthFactorDriver final
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
       const CommonMetadata& common,
       const FingerprintMetadata& typed_metadata) const override;
+
+  // Starts a fp enroll session through biod, with obtained |nonce|.
+  // Intended as a callback for BiometricsAuthBlockService::GetNonce.
+  void PrepareForAddOnGetNonce(PreparedAuthFactorToken::Consumer callback,
+                               const AuthInput& auth_input,
+                               std::optional<brillo::Blob> nonce);
+
+  // Starts a fp auth session through biod, with obtained |nonce|.
+  // Intended as a callback for BiometricsAuthBlockService::GetNonce.
+  void PrepareForAuthOnGetNonce(PreparedAuthFactorToken::Consumer callback,
+                                const AuthInput& auth_input,
+                                std::optional<brillo::Blob> nonce);
 
   Crypto* crypto_;
   UssManager* uss_manager_;

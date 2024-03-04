@@ -20,17 +20,11 @@
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/label_arity.h"
-#include "cryptohome/auth_factor/metadata.h"
-#include "cryptohome/auth_factor/storage_type.h"
-#include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/error/locations.h"
-#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
