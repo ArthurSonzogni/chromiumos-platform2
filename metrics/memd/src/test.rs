@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Duration;
 
+use nix::errno::Errno;
+
 // Imported from main program
 use crate::Dbus;
 use crate::FileWatcher;
@@ -46,48 +48,6 @@ macro_rules! print_to_path {
     }}
 }
 
-fn errno() -> i32 {
-    // _errno_location() is trivially safe to call and dereferencing the
-    // returned pointer is always safe because it's guaranteed to be valid and
-    // point to thread-local data.  (Thanks to Zach for this comment.)
-    unsafe { *libc::__errno_location() }
-}
-
-// Returns the string for posix error number |err|.
-fn strerror(err: i32) -> String {
-    let mut buffer = vec![0u8; 128];
-    // |err| is valid because it is the libc errno at all call sites.  |buffer|
-    // is converted to a valid address, and |buffer.len()| is a valid length.
-    let ret = unsafe {
-        libc::strerror_r(
-            err,
-            &mut buffer[0] as *mut u8 as *mut libc::c_char,
-            buffer.len(),
-        )
-    };
-    if ret != 0 {
-        panic!(
-            "strerror_r failed with '{}'; the original error number was '{}'",
-            ret, err
-        );
-    }
-    buffer.resize(
-        buffer
-            .iter()
-            .position(|&a| a == 0u8)
-            .unwrap_or(buffer.len()),
-        0u8,
-    );
-    match String::from_utf8(buffer) {
-        Ok(s) => s,
-        Err(e) => {
-            // Ouch---an error while trying to process another error.
-            // Very unlikely so we just panic.
-            panic!("error {:?} converting to UTF8", e);
-        }
-    }
-}
-
 fn duration_to_millis(duration: &Duration) -> i64 {
     duration.as_secs() as i64 * 1000 + duration.subsec_nanos() as i64 / 1_000_000
 }
@@ -107,7 +67,7 @@ fn read_nonblocking_pipe(file: &mut File, buf: &mut [u8]) -> Result<usize> {
     let status = file.read(buf);
     let read_bytes = match status {
         Ok(n) => n,
-        Err(_) if errno() == libc::EAGAIN => 0,
+        Err(_) if Errno::last() == Errno::EAGAIN => 0,
         Err(_) => return Err("cannot read pipe".into()),
     };
     Ok(read_bytes)
@@ -131,7 +91,7 @@ fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
         )
     };
     if n < 0 {
-        panic!("select: {}", strerror(errno()));
+        panic!("select: {}", Errno::last());
     }
     n
 }
@@ -142,7 +102,7 @@ fn mkfifo(path: &Path) -> Result<()> {
     // Safe because c_path points to a valid C string.
     let status = unsafe { libc::mkfifo(c_path.as_ptr(), 0o644) };
     if status < 0 {
-        Err(format!("mkfifo: {}: {}", path_name, strerror(errno())).into())
+        Err(format!("mkfifo: {}: {}", path_name, Errno::last()).into())
     } else {
         Ok(())
     }
