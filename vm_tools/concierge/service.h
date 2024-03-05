@@ -151,8 +151,11 @@ class Service final : public org::chromium::VmConciergeInterface,
   // handles crostini, bruschetta and borealis.
   StartVmResponse StartVmInternal(StartVmRequest request,
                                   internal::VmStartImageFds vm_start_image_fds);
-  void StartVm(dbus::MethodCall* method_call,
-               dbus::ExportedObject::ResponseSender sender) override;
+  void StartVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+          response_cb,
+      const StartVmRequest& request,
+      const std::vector<base::ScopedFD>& FileHandles) override;
   void StartVm2(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
           response_cb,
