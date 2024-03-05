@@ -588,10 +588,21 @@ bool Mounter::HandleMyFilesDownloads(const FilePath& user_home) {
   const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
 
-  // User could have saved files in MyFiles/Downloads in case cryptohome
-  // crashed and bind mounts were removed by error. See crbug.com/1080730.
-  // Move the files back to Downloads unless a file already exists.
+  // User could have saved files in MyFiles/Downloads in case cryptohome crashed
+  // and bind mounts were removed by error. See crbug.com/1080730. Move the
+  // files back to Downloads unless a file already exists. In case the
+  // ~/Downloads folder had been moved to ~/MyFiles/Downloads previously, this
+  // acts as a "reverse" migration.
   MigrateDirectory(downloads, downloads_in_my_files);
+
+  // We also need to remove the xattr if it exists. This will allow the next
+  // future migration of ~/Downloads to ~/MyFiles/Downloads to succeed again,
+  // when the time comes.
+  if (platform_->RemoveExtendedFileAttribute(downloads_in_my_files,
+                                             kMigrationXattrName)) {
+    LOG(INFO) << "Removed xattr '" << kMigrationXattrName << "' from '"
+              << downloads_in_my_files << "'";
+  }
 
   if (!BindAndPush(downloads, downloads_in_my_files)) {
     return false;
