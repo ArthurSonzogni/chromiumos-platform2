@@ -15,7 +15,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
@@ -56,26 +55,25 @@ constexpr char kProcessIOFileRegex[] =
 // |mojo_state_out| to the converted value. If the conversion fails,
 // |mojo_state_out| is invalid and an appropriate error is returned.
 std::optional<mojom::ProbeErrorPtr> GetProcessState(
-    std::string_view raw_state, mojom::ProcessState* mojo_state_out) {
-  CHECK(mojo_state_out);
+    std::string_view raw_state, mojom::ProcessState& mojo_state_out) {
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
   // state values.
   if (raw_state == "R") {
-    *mojo_state_out = mojom::ProcessState::kRunning;
+    mojo_state_out = mojom::ProcessState::kRunning;
   } else if (raw_state == "S") {
-    *mojo_state_out = mojom::ProcessState::kSleeping;
+    mojo_state_out = mojom::ProcessState::kSleeping;
   } else if (raw_state == "D") {
-    *mojo_state_out = mojom::ProcessState::kWaiting;
+    mojo_state_out = mojom::ProcessState::kWaiting;
   } else if (raw_state == "Z") {
-    *mojo_state_out = mojom::ProcessState::kZombie;
+    mojo_state_out = mojom::ProcessState::kZombie;
   } else if (raw_state == "T") {
-    *mojo_state_out = mojom::ProcessState::kStopped;
+    mojo_state_out = mojom::ProcessState::kStopped;
   } else if (raw_state == "t") {
-    *mojo_state_out = mojom::ProcessState::kTracingStop;
+    mojo_state_out = mojom::ProcessState::kTracingStop;
   } else if (raw_state == "X") {
-    *mojo_state_out = mojom::ProcessState::kDead;
+    mojo_state_out = mojom::ProcessState::kDead;
   } else if (raw_state == "I") {
-    *mojo_state_out = mojom::ProcessState::kIdle;
+    mojo_state_out = mojom::ProcessState::kIdle;
   } else {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
@@ -89,9 +87,7 @@ std::optional<mojom::ProbeErrorPtr> GetProcessState(
 // returns std::nullopt and sets |int_out| to the converted value. If the
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
 std::optional<mojom::ProbeErrorPtr> GetInt8FromString(std::string_view str,
-                                                      int8_t* int_out) {
-  CHECK(int_out);
-
+                                                      int8_t& int_out) {
   int full_size_int;
   if (!base::StringToInt(str, &full_size_int)) {
     return CreateAndLogProbeError(
@@ -105,7 +101,7 @@ std::optional<mojom::ProbeErrorPtr> GetInt8FromString(std::string_view str,
         "Integer too large for int8_t: " + base::NumberToString(full_size_int));
   }
 
-  *int_out = static_cast<int8_t>(full_size_int);
+  int_out = static_cast<int8_t>(full_size_int);
 
   return std::nullopt;
 }
@@ -246,27 +242,16 @@ void FinishFetchingMultipleProcessInfo(
 }
 
 std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
-    mojom::ProcessState* state,
-    int8_t* priority,
-    int8_t* nice,
-    uint64_t* start_time_ticks,
-    std::optional<std::string>* name,
-    uint32_t* parent_process_id,
-    uint32_t* process_group_id,
-    uint32_t* threads,
-    uint32_t* process_id,
-    const base::FilePath& proc_pid_dir) {
-  // Note that start_time_ticks, name, parent_process_id, process_group_id,
-  // threads, process_id are the only pointers actually dereferenced in this
-  // function. The helper functions which set |state|, |priority| and |nice| are
-  // responsible for checking the validity of those three pointers.
-  CHECK(start_time_ticks);
-  CHECK(name);
-  CHECK(parent_process_id);
-  CHECK(process_group_id);
-  CHECK(threads);
-  CHECK(process_id);
-
+    const base::FilePath& proc_pid_dir,
+    mojom::ProcessState& state,
+    int8_t& priority,
+    int8_t& nice,
+    uint64_t& start_time_ticks,
+    std::optional<std::string>& name,
+    uint32_t& parent_process_id,
+    uint32_t& process_group_id,
+    uint32_t& threads,
+    uint32_t& process_id) {
   std::string stat_contents;
   const base::FilePath kProcPidStatFile = proc_pid_dir.Append(kProcessStatFile);
   if (!ReadAndTrimString(proc_pid_dir, kProcessStatFile, &stat_contents)) {
@@ -298,14 +283,14 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
     return error;
 
   std::string_view start_time_str = stat_tokens[ProcPidStatIndices::kStartTime];
-  if (!base::StringToUint64(start_time_str, start_time_ticks)) {
+  if (!base::StringToUint64(start_time_str, &start_time_ticks)) {
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert starttime to uint64: " +
                                       std::string(start_time_str));
   }
 
   std::string_view process_id_str = stat_tokens[ProcPidStatIndices::kProcessID];
-  if (!base::StringToUint(process_id_str, process_id)) {
+  if (!base::StringToUint(process_id_str, &process_id)) {
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert process id to uint32: " +
                                       std::string(process_id_str));
@@ -314,12 +299,11 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
   // In "/proc/{PID}/stat", the filename of the executable is displayed in
   // parentheses, we need to remove them to get original value.
   std::string name_str = std::string(stat_tokens[ProcPidStatIndices::kName]);
-  name_str = name_str.substr(1, name_str.size() - 2);
-  *name = std::optional<std::string>(name_str);
+  name = name_str.substr(1, name_str.size() - 2);
 
   std::string_view parent_process_id_str =
       stat_tokens[ProcPidStatIndices::kParentProcessID];
-  if (!base::StringToUint(parent_process_id_str, parent_process_id)) {
+  if (!base::StringToUint(parent_process_id_str, &parent_process_id)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
         "Failed to convert parent process id to uint32: " +
@@ -328,7 +312,7 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
 
   std::string_view process_group_id_str =
       stat_tokens[ProcPidStatIndices::kProcessGroupID];
-  if (!base::StringToUint(process_group_id_str, process_group_id)) {
+  if (!base::StringToUint(process_group_id_str, &process_group_id)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
         "Failed to convert process group id to uint32: " +
@@ -336,7 +320,7 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
   }
 
   std::string_view threads_str = stat_tokens[ProcPidStatIndices::kThreads];
-  if (!base::StringToUint(threads_str, threads)) {
+  if (!base::StringToUint(threads_str, &threads)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
         "Failed to convert threads to uint32: " + std::string(threads_str));
@@ -346,14 +330,10 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
 }
 
 std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
-    uint32_t* total_memory_kib,
-    uint32_t* resident_memory_kib,
-    uint32_t* free_memory_kib,
-    const base::FilePath& proc_pid_dir) {
-  CHECK(total_memory_kib);
-  CHECK(resident_memory_kib);
-  CHECK(free_memory_kib);
-
+    const base::FilePath& proc_pid_dir,
+    uint32_t& total_memory_kib,
+    uint32_t& resident_memory_kib,
+    uint32_t& free_memory_kib) {
   std::string statm_contents;
   if (!ReadAndTrimString(proc_pid_dir, kProcessStatmFile, &statm_contents)) {
     return CreateAndLogProbeError(
@@ -402,11 +382,10 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
 
   const auto kPageSizeInKiB = kPageSizeInBytes / 1024;
 
-  *total_memory_kib =
-      static_cast<uint32_t>(total_memory_pages * kPageSizeInKiB);
-  *resident_memory_kib =
+  total_memory_kib = static_cast<uint32_t>(total_memory_pages * kPageSizeInKiB);
+  resident_memory_kib =
       static_cast<uint32_t>(resident_memory_pages * kPageSizeInKiB);
-  *free_memory_kib = static_cast<uint32_t>(
+  free_memory_kib = static_cast<uint32_t>(
       (total_memory_pages - resident_memory_pages) * kPageSizeInKiB);
 
   return std::nullopt;
@@ -415,9 +394,7 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
 std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
     const base::FilePath& root_dir,
     uint64_t start_time_ticks,
-    uint64_t* process_uptime_ticks) {
-  CHECK(process_uptime_ticks);
-
+    uint64_t& process_uptime_ticks) {
   std::string uptime_contents;
   base::FilePath uptime_path = GetProcUptimePath(root_dir);
   if (!ReadAndTrimString(uptime_path, &uptime_contents)) {
@@ -445,7 +422,7 @@ std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
                                   "Failed to run sysconf(_SC_CLK_TCK).");
   }
 
-  *process_uptime_ticks =
+  process_uptime_ticks =
       static_cast<uint64_t>(system_uptime_seconds *
                             static_cast<double>(kClockTicksPerSecond)) -
       start_time_ticks;
@@ -453,9 +430,7 @@ std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
 }
 
 std::optional<mojom::ProbeErrorPtr> GetProcessUid(
-    uid_t* user_id, const base::FilePath& proc_pid_dir) {
-  CHECK(user_id);
-
+    const base::FilePath& proc_pid_dir, uid_t& user_id) {
   std::string status_contents;
   if (!ReadAndTrimString(proc_pid_dir, kProcessStatusFile, &status_contents)) {
     return CreateAndLogProbeError(
@@ -466,7 +441,6 @@ std::optional<mojom::ProbeErrorPtr> GetProcessUid(
   std::vector<std::string> status_lines = base::SplitString(
       status_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  bool uid_key_found = false;
   std::string uid_str;
   for (const auto& line : status_lines) {
     if (!RE2::FullMatch(line, kUidStatusRegex, &uid_str))
@@ -479,18 +453,12 @@ std::optional<mojom::ProbeErrorPtr> GetProcessUid(
           "Failed to convert Uid to uint: " + uid_str);
     }
 
-    *user_id = static_cast<uid_t>(user_id_uint);
-
-    uid_key_found = true;
-    break;
+    user_id = static_cast<uid_t>(user_id_uint);
+    return std::nullopt;
   }
 
-  if (!uid_key_found) {
-    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                  "Failed to find Uid key.");
-  }
-
-  return std::nullopt;
+  return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                "Failed to find Uid key.");
 }
 
 base::expected<mojom::ProcessInfoPtr, mojom::ProbeErrorPtr> GetProcessInfo(
@@ -502,29 +470,29 @@ base::expected<mojom::ProcessInfoPtr, mojom::ProbeErrorPtr> GetProcessInfo(
   // Number of ticks after system boot that the process started.
   uint64_t start_time_ticks;
   auto error = ParseProcPidStat(
-      &process_info->state, &process_info->priority, &process_info->nice,
-      &start_time_ticks, &process_info->name, &process_info->parent_process_id,
-      &process_info->process_group_id, &process_info->threads,
-      &process_info->process_id, proc_pid_dir);
+      proc_pid_dir, process_info->state, process_info->priority,
+      process_info->nice, start_time_ticks, process_info->name,
+      process_info->parent_process_id, process_info->process_group_id,
+      process_info->threads, process_info->process_id);
   if (error.has_value()) {
     return base::unexpected(std::move(error.value()));
   }
 
   error = CalculateProcessUptime(root_dir, start_time_ticks,
-                                 &process_info->uptime_ticks);
+                                 process_info->uptime_ticks);
   if (error.has_value()) {
     return base::unexpected(std::move(error.value()));
   }
 
-  error = ParseProcPidStatm(&process_info->total_memory_kib,
-                            &process_info->resident_memory_kib,
-                            &process_info->free_memory_kib, proc_pid_dir);
+  error = ParseProcPidStatm(proc_pid_dir, process_info->total_memory_kib,
+                            process_info->resident_memory_kib,
+                            process_info->free_memory_kib);
   if (error.has_value()) {
     return base::unexpected(std::move(error.value()));
   }
 
   uid_t user_id;
-  error = GetProcessUid(&user_id, proc_pid_dir);
+  error = GetProcessUid(proc_pid_dir, user_id);
   if (error.has_value()) {
     return base::unexpected(std::move(error.value()));
   }
