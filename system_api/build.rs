@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-use chromeos_dbus_bindings::{self, generate_module, BindingsType};
+use chromeos_dbus_bindings::{generate_module, BindingsType};
 
 // The parent path of system_api.
 const SOURCE_DIR: &str = "..";
