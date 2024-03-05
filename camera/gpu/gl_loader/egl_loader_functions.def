@@ -5,12 +5,18 @@
  */
 
 MACRO(EGLBoolean, eglBindAPI, EGLenum, api)
+MACRO(EGLBoolean, eglChooseConfig, EGLDisplay, display, EGLint const*, attrib_list, EGLConfig*, configs, EGLint, config_size, EGLint*, num_config)
 MACRO(EGLContext, eglCreateContext, EGLDisplay, display, EGLConfig, config, EGLContext, share_context, EGLint const*, attrib_list)
+MACRO(EGLSurface, eglCreatePbufferSurface, EGLDisplay, display, EGLConfig, config, EGLint const*, attrib_list)
 MACRO(EGLBoolean, eglDestroyContext, EGLDisplay, display, EGLContext, context)
+MACRO(EGLBoolean, eglDestroySurface, EGLDisplay, display, EGLSurface, surface)
 MACRO(EGLContext, eglGetCurrentContext, void)
 MACRO(EGLDisplay, eglGetCurrentDisplay, void)
+MACRO(EGLSurface, eglGetCurrentSurface, EGLint, readdraw)
 MACRO(EGLint, eglGetError, void)
 MACRO(EGLDisplay, eglGetPlatformDisplay, EGLenum, platform, void*, native_display, const EGLAttrib*, attrib_list)
 MACRO(EGLBoolean, eglInitialize, EGLDisplay, display, EGLint*, major, EGLint*, minor)
 MACRO(EGLBoolean, eglMakeCurrent, EGLDisplay, display, EGLSurface, draw, EGLSurface, read, EGLContext, context)
+MACRO(char const*, eglQueryString, EGLDisplay, display, EGLint, name)
 MACRO(EGLBoolean, eglReleaseThread, void)
+MACRO(EGLBoolean, eglTerminate, EGLDisplay, display)
