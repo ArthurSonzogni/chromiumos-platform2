@@ -645,6 +645,9 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       factor_with_status.mutable_status_info()->set_time_expiring_in(
           expiration_delay->InMilliseconds());
     } else {
+      // `time_expiring_in` in the output proto is set to maximum when the
+      // expiration is not supported. Yet we keep the local variable
+      // `time_expiring_in` as `0` to make the below delay calculations easier.
       factor_with_status.mutable_status_info()->set_time_expiring_in(
           std::numeric_limits<uint64_t>::max());
     }
@@ -652,7 +655,10 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     signalling_->SendAuthFactorStatusUpdate(status_update);
 
     // If both delays are zero, then don't schedule another update.
-    if (delay->is_zero() && time_expiring_in.is_zero()) {
+    // If expiration is not supported by the factor delay is the determining
+    // parameter in sending another signal.
+    if (delay->is_zero() &&
+        (time_expiring_in.is_zero() || !driver.IsExpirationSupported())) {
       continue;
     }
     // Schedule another update after the smallest of |delay|,

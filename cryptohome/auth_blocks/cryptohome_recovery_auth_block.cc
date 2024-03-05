@@ -31,6 +31,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
 #include "cryptohome/username.h"
@@ -298,6 +299,18 @@ void CryptohomeRecoveryAuthBlock::Create(
 void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                                          const AuthBlockState& state,
                                          DeriveCallback callback) {
+  // Check if the CryptohomeRecovery is locked.
+  if (platform_->FileExists(GetRecoveryFactorLockPath())) {
+    LOG(ERROR) << "CryptohomeRecovery is locked until reboot.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockLockedUntilReboot),
+            ErrorActionSet({PossibleAction::kReboot}),
+            CryptoError::CE_CREDENTIAL_LOCKED),
+        nullptr, std::nullopt);
+    return;
+  }
+
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
