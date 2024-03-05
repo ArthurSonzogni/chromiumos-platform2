@@ -20,7 +20,7 @@ overflow-checks = true
 dbus = { version = "0.9.7", features = ["stdfd"] }
 getopts = "0.2"
 libc = "0.2.44"
-libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
+libchromeos = { path = "../../libchromeos-rs", features = ["chromeos-module"] } # provided by ebuild
 protobuf = "3.2"
 system_api = { path = "../../system_api" } # provided by ebuild
 

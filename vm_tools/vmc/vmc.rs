@@ -9,8 +9,7 @@ pub mod proto;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::error::Error;
-use std::path::Path;
-use std::{fmt, fs};
+use std::fmt;
 
 use std::io::{stdin, stdout, BufRead, Write};
 
@@ -72,29 +71,6 @@ fn trim_routine(s: &str) -> String {
         .next()
         .unwrap()
         .to_string()
-}
-
-fn get_user_hash(cros_user_id_hash: Option<String>) -> Result<String, VmcError> {
-    if let Some(hash) = cros_user_id_hash {
-        return Ok(hash);
-    }
-    // The current user is the one with a non-empty cryptohome
-    let entries = fs::read_dir(Path::new("/home/user")).map_err(|_| ExpectedCrosUserIdHash)?;
-    let mut dirs = entries.filter_map(|f| {
-        let dir = f.ok()?;
-        if dir.path().read_dir().ok()?.count() > 0 {
-            dir.file_name().into_string().ok()
-        } else {
-            None
-        }
-    });
-    let first = dirs.next().ok_or(ExpectedCrosUserIdHash)?;
-    // If there's another user cryptohome, it's ambiguous which to use so require it to be
-    // specified manually.
-    match dirs.next() {
-        Some(_) => Err(ExpectedCrosUserIdHash),
-        None => Ok(first),
-    }
 }
 
 fn parse_disk_size(s: &str) -> Result<u64, VmcError> {
@@ -1046,8 +1022,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
 
     let interactive = std::env::var("VMC_NONINTERACTIVE").is_err();
-    let cros_user_id_hash = std::env::var("CROS_USER_ID_HASH").ok();
-    let user_id_hash = get_user_hash(cros_user_id_hash)?;
+
+    // When running inside crosh, `CROS_USER_ID_HASH` will be set in the environment.
+    // Otherwise ask SessionManager for the primary session ID.
+    let user_id_hash = if let Ok(hash) = std::env::var("CROS_USER_ID_HASH") {
+        hash
+    } else {
+        libchromeos::chromeos::get_user_id_hash().map_err(|_| ExpectedCrosUserIdHash)?
+    };
 
     let vmc = Vmc {
         user_id_hash: &user_id_hash,
