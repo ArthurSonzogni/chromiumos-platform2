@@ -9,15 +9,16 @@
 
 #include <hardware/camera3.h>
 
-#include <map>
 #include <memory>
 #include <set>
+#include <utility>
 
 #include <base/containers/flat_set.h>
 
 #include "common/camera_buffer_pool.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
+#include "cros-camera/camera_buffer_manager.h"
 #include "features/rotate_and_crop/resizable_cpu_buffer.h"
 
 namespace cros {
@@ -84,6 +85,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   bool RotateAndCropOnThread(buffer_handle_t buffer,
                              base::ScopedFD release_fence,
                              uint8_t rc_mode);
+  bool ScaleOnThread(buffer_handle_t src_buffer, buffer_handle_t dst_buffer);
 
   struct CaptureContext {
     bool IsObsolete();
@@ -104,6 +106,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   // Fixed after Initialize().
   base::flat_set<uint8_t> hal_available_rc_modes_;
   uint32_t partial_result_count_ = 0;
+  std::set<std::pair<uint32_t, uint32_t>> available_yuv_sizes_;
   Callbacks callbacks_;
 
   // Per-stream-config context.
@@ -113,6 +116,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   camera3_stream_t* yuv_stream_for_blob_ = nullptr;
   std::unique_ptr<CameraBufferPool> yuv_buffer_pool_;
   ResizableCpuBuffer buffer1_, buffer2_;
+  ScopedBufferHandle scaled_yuv_buffer_for_blob_ = nullptr;
   base::flat_map<uint32_t, CaptureContext> capture_contexts_;
 
   CameraThread thread_;

@@ -79,6 +79,29 @@ bool IsArcTBoard() {
   return DeviceConfig::GetArcApiLevel() == 33;
 }
 
+// Find the best YUV resolution for cropping and rotation into the target BLOB
+// resolution. If the same resolution is available, return it. Otherwise return
+// the largest resolution smaller than the BLOB with the same aspect ratio.
+std::optional<Size> FindYuvSizeForRotateAndCrop(
+    const Size& target_blob_size,
+    const std::set<std::pair<uint32_t, uint32_t>>& available_yuv_sizes) {
+  constexpr float kAspectRatioTolerance = 0.1f;
+  const float target_aspect_ratio = static_cast<float>(target_blob_size.width) /
+                                    static_cast<float>(target_blob_size.height);
+  std::optional<Size> yuv_size;
+  for (const auto& [width, height] : available_yuv_sizes) {
+    if (width > target_blob_size.width) {
+      break;
+    }
+    const float aspect_ratio =
+        static_cast<float>(width) / static_cast<float>(height);
+    if (std::abs(aspect_ratio - target_aspect_ratio) < kAspectRatioTolerance) {
+      yuv_size = Size(width, height);
+    }
+  }
+  return yuv_size;
+}
+
 }  // namespace
 
 RotateAndCropStreamManipulator::RotateAndCropStreamManipulator(
@@ -283,6 +306,22 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
   partial_result_count_ = GetPartialResultCount(static_info);
   VLOGF(1) << "Partial result count: " << partial_result_count_;
 
+  base::span<const int32_t> stream_configs = GetRoMetadataAsSpan<int32_t>(
+      static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
+  available_yuv_sizes_.clear();
+  for (size_t i = 0; i < stream_configs.size(); i += 4) {
+    const uint32_t format = base::checked_cast<uint32_t>(stream_configs[i]);
+    const uint32_t width = base::checked_cast<uint32_t>(stream_configs[i + 1]);
+    const uint32_t height = base::checked_cast<uint32_t>(stream_configs[i + 2]);
+    const uint32_t direction =
+        base::checked_cast<uint32_t>(stream_configs[i + 3]);
+    if (format != HAL_PIXEL_FORMAT_YCBCR_420_888 ||
+        direction != ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT) {
+      continue;
+    }
+    available_yuv_sizes_.emplace(width, height);
+  }
+
   return true;
 }
 
@@ -322,7 +361,7 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
                                 base::Unretained(this))));
     for (auto* stream : stream_config->GetStreams()) {
       if (stream->stream_type == CAMERA3_STREAM_OUTPUT &&
-          (stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+          (stream->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
            stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
           stream->width == blob_stream_->width &&
           stream->height == blob_stream_->height) {
@@ -330,16 +369,32 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
       }
     }
     if (!yuv_stream_for_blob_) {
+      const Size blob_size(blob_stream_->width, blob_stream_->height);
+      std::optional<Size> yuv_size =
+          FindYuvSizeForRotateAndCrop(blob_size, available_yuv_sizes_);
+      if (!yuv_size.has_value()) {
+        LOGF(ERROR) << "No suitable YUV resolution for cropping into "
+                    << blob_size.ToString();
+        return false;
+      }
+      if (yuv_size.value() != blob_size) {
+        LOGF(WARNING) << "Using " << yuv_size->ToString() << " YUV to generate "
+                      << blob_size.ToString() << " BLOB";
+      }
       yuv_stream_for_blob_owned_ = camera3_stream_t{
-          .width = blob_stream_->width,
-          .height = blob_stream_->height,
-          .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
+          .width = yuv_size->width,
+          .height = yuv_size->height,
+          .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
           .usage = GRALLOC_USAGE_SW_READ_OFTEN,
           .physical_camera_id = blob_stream_->physical_camera_id,
           .crop_rotate_scale_degrees = hal_crs_degrees,
       };
       yuv_stream_for_blob_ = &yuv_stream_for_blob_owned_.value();
       stream_config->AppendStream(&yuv_stream_for_blob_owned_.value());
+      scaled_yuv_buffer_for_blob_ = CameraBufferManager::AllocateScopedBuffer(
+          blob_stream_->width, blob_stream_->height,
+          HAL_PIXEL_FORMAT_YCBCR_420_888,
+          GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
     }
   }
 
@@ -534,7 +589,7 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
       continue;
     }
     if (b.stream()->stream_type == CAMERA3_STREAM_OUTPUT &&
-        (b.stream()->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+        (b.stream()->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
          b.stream()->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
       if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
         if (!RotateAndCropOnThread(*b.buffer(),
@@ -545,9 +600,16 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
       }
       if (b.stream() == yuv_stream_for_blob_) {
         if (ctx.has_pending_blob) {
-          if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
+          const bool need_scaling =
+              yuv_stream_for_blob_->width != blob_stream_->width ||
+              yuv_stream_for_blob_->height != blob_stream_->height;
+          if (b.status() == CAMERA3_BUFFER_STATUS_OK &&
+              (!need_scaling ||
+               ScaleOnThread(*b.buffer(), *scaled_yuv_buffer_for_blob_))) {
             still_capture_processor_->QueuePendingYuvImage(
-                result.frame_number(), *b.buffer(), base::ScopedFD());
+                result.frame_number(),
+                need_scaling ? *scaled_yuv_buffer_for_blob_ : *b.buffer(),
+                base::ScopedFD());
           } else {
             LOGF(ERROR) << "Failed to produce YUV image for still capture "
                         << result.frame_number();
@@ -711,6 +773,27 @@ bool RotateAndCropStreamManipulator::RotateAndCropOnThread(
       mapping.plane(1).stride, mapping.width(), mapping.height());
   if (ret != 0) {
     LOGF(ERROR) << "libyuv::I420ToNV12() failed: " << ret;
+    return false;
+  }
+
+  return true;
+}
+
+bool RotateAndCropStreamManipulator::ScaleOnThread(buffer_handle_t src_buffer,
+                                                   buffer_handle_t dst_buffer) {
+  DCHECK(thread_.IsCurrentThread());
+
+  ScopedMapping src_mapping(src_buffer);
+  ScopedMapping dst_mapping(dst_buffer);
+  const int ret = libyuv::NV12Scale(
+      src_mapping.plane(0).addr, src_mapping.plane(0).stride,
+      src_mapping.plane(1).addr, src_mapping.plane(1).stride,
+      src_mapping.width(), src_mapping.height(), dst_mapping.plane(0).addr,
+      dst_mapping.plane(0).stride, dst_mapping.plane(1).addr,
+      dst_mapping.plane(1).stride, dst_mapping.width(), dst_mapping.height(),
+      libyuv::kFilterBilinear);
+  if (ret != 0) {
+    LOGF(ERROR) << "libyuv::NV12Scale() failed: " << ret;
     return false;
   }
 
