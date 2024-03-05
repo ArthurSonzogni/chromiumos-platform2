@@ -57,7 +57,7 @@ constexpr char kProcessIOFileRegex[] =
 // |mojo_state_out| is invalid and an appropriate error is returned.
 std::optional<mojom::ProbeErrorPtr> GetProcessState(
     std::string_view raw_state, mojom::ProcessState* mojo_state_out) {
-  DCHECK(mojo_state_out);
+  CHECK(mojo_state_out);
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
   // state values.
   if (raw_state == "R") {
@@ -90,7 +90,7 @@ std::optional<mojom::ProbeErrorPtr> GetProcessState(
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
 std::optional<mojom::ProbeErrorPtr> GetInt8FromString(std::string_view str,
                                                       int8_t* int_out) {
-  DCHECK(int_out);
+  CHECK(int_out);
 
   int full_size_int;
   if (!base::StringToInt(str, &full_size_int)) {
@@ -260,12 +260,12 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
   // threads, process_id are the only pointers actually dereferenced in this
   // function. The helper functions which set |state|, |priority| and |nice| are
   // responsible for checking the validity of those three pointers.
-  DCHECK(start_time_ticks);
-  DCHECK(name);
-  DCHECK(parent_process_id);
-  DCHECK(process_group_id);
-  DCHECK(threads);
-  DCHECK(process_id);
+  CHECK(start_time_ticks);
+  CHECK(name);
+  CHECK(parent_process_id);
+  CHECK(process_group_id);
+  CHECK(threads);
+  CHECK(process_id);
 
   std::string stat_contents;
   const base::FilePath kProcPidStatFile = proc_pid_dir.Append(kProcessStatFile);
@@ -350,9 +350,9 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
     uint32_t* resident_memory_kib,
     uint32_t* free_memory_kib,
     const base::FilePath& proc_pid_dir) {
-  DCHECK(total_memory_kib);
-  DCHECK(resident_memory_kib);
-  DCHECK(free_memory_kib);
+  CHECK(total_memory_kib);
+  CHECK(resident_memory_kib);
+  CHECK(free_memory_kib);
 
   std::string statm_contents;
   if (!ReadAndTrimString(proc_pid_dir, kProcessStatmFile, &statm_contents)) {
@@ -416,7 +416,7 @@ std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
     const base::FilePath& root_dir,
     uint64_t start_time_ticks,
     uint64_t* process_uptime_ticks) {
-  DCHECK(process_uptime_ticks);
+  CHECK(process_uptime_ticks);
 
   std::string uptime_contents;
   base::FilePath uptime_path = GetProcUptimePath(root_dir);
@@ -454,7 +454,7 @@ std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
 
 std::optional<mojom::ProbeErrorPtr> GetProcessUid(
     uid_t* user_id, const base::FilePath& proc_pid_dir) {
-  DCHECK(user_id);
+  CHECK(user_id);
 
   std::string status_contents;
   if (!ReadAndTrimString(proc_pid_dir, kProcessStatusFile, &status_contents)) {
