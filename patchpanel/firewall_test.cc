@@ -46,7 +46,7 @@ void Verify_iptables(MockProcessRunner& runner,
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
   EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
-                               ElementsAreArray(argv), _, _, nullptr))
+                               ElementsAreArray(argv), _, nullptr))
       .WillOnce(Return(return_value));
 }
 
@@ -65,7 +65,7 @@ void Verify_ip6tables(MockProcessRunner& runner,
   ASSERT_TRUE(command.has_value())
       << "incorrect command name in expected args: " << args;
   EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
-                                ElementsAreArray(argv), _, _, nullptr))
+                                ElementsAreArray(argv), _, nullptr))
       .WillOnce(Return(return_value));
 }
 }  // namespace
@@ -222,9 +222,9 @@ TEST(FirewallTest, AddAcceptRules_IptablesFails) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
 
-  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Punch hole for TCP port 80, should fail.
@@ -251,7 +251,7 @@ TEST(FirewallTest, AddAcceptRules_Ip6tablesFails) {
   Verify_iptables(runner,
                   "filter -D ingress_port_firewall -p udp --dport 53 -i iface "
                   "-j ACCEPT -w");
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Punch hole for TCP port 80, should fail because 'ip6tables' fails.
@@ -266,9 +266,9 @@ TEST(FirewallTest, AddLoopbackLockdownRules_InvalidPort) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
 
-  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Try to lock down TCP port 0, port 0 is not a valid port.
@@ -336,9 +336,9 @@ TEST(FirewallTest, AddLoopbackLockdownRules_IptablesFails) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
 
-  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .Times(0);
 
   // Lock down TCP port 80, should fail.
@@ -369,7 +369,7 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
       runner,
       "filter -D egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Lock down TCP port 80, should fail because 'ip6tables' fails.

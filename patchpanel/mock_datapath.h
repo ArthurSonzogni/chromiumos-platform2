@@ -208,8 +208,7 @@ class MockDatapath : public Datapath {
                Iptables::Command command,
                std::string_view chain,
                const std::vector<std::string>& argv,
-               bool log_failures,
-               std::optional<base::TimeDelta> timeout),
+               bool log_failures),
               (override));
   MOCK_METHOD(bool,
               AddIPv6NeighborProxy,

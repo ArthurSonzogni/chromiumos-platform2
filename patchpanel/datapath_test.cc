@@ -84,7 +84,6 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
                std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures = true,
-               std::optional<base::TimeDelta> timeout = std::nullopt,
                std::string* output = nullptr) override {
     RecordIptablesCall(table, command, chain, argv,
                        &actual_iptables_calls_ipv4_);
@@ -96,7 +95,6 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
                 std::string_view chain,
                 const std::vector<std::string>& argv,
                 bool log_failures = true,
-                std::optional<base::TimeDelta> timeout = std::nullopt,
                 std::string* output = nullptr) override {
     RecordIptablesCall(table, command, chain, argv,
                        &actual_iptables_calls_ipv6_);
@@ -1315,12 +1313,12 @@ TEST_F(DatapathTest, DumpIptables) {
 
   EXPECT_CALL(runner,
               iptables(Iptables::Table::kMangle, Iptables::Command::kL,
-                       StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>("<iptables output>"), Return(0)));
-  EXPECT_CALL(runner, ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
-                                StrEq(""), ElementsAre("-x", "-v", "-n", "-w"),
-                                _, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>("<ip6tables output>"), Return(0)));
+                       StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<5>("<iptables output>"), Return(0)));
+  EXPECT_CALL(runner,
+              ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
+                        StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<5>("<ip6tables output>"), Return(0)));
 
   Datapath datapath(&runner, /*firewall=*/nullptr, /*system=*/nullptr);
   EXPECT_EQ("<iptables output>",

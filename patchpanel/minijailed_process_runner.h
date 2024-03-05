@@ -52,17 +52,13 @@ class MinijailedProcessRunner {
                   bool as_patchpanel_user = false,
                   bool log_failures = true);
 
-  // Runs iptables.
-  // - If |timeout| is not nullopt, the command will be killed if the process
-  //   runs longer than |timeout|.
-  // - If |output| is not nullptr, it will be filled with the result from stdout
-  //   of iptables command.
+  // Runs iptables. If |output| is not nullptr, it will be filled with the
+  // result from stdout of iptables command.
   virtual int iptables(Iptables::Table table,
                        Iptables::Command command,
                        std::string_view chain,
                        const std::vector<std::string>& argv,
                        bool log_failures = true,
-                       std::optional<base::TimeDelta> timeout = std::nullopt,
                        std::string* output = nullptr);
 
   virtual int ip6tables(Iptables::Table table,
@@ -70,7 +66,6 @@ class MinijailedProcessRunner {
                         std::string_view chain,
                         const std::vector<std::string>& argv,
                         bool log_failures = true,
-                        std::optional<base::TimeDelta> timeout = std::nullopt,
                         std::string* output = nullptr);
 
   // Installs all |modules| via modprobe.
@@ -119,7 +114,6 @@ class MinijailedProcessRunner {
                           std::string_view chain,
                           const std::vector<std::string>& argv,
                           bool log_failures,
-                          std::optional<base::TimeDelta> timeout,
                           std::string* output);
 
   virtual int RunIpNetns(const std::vector<std::string>& argv,
@@ -132,17 +126,7 @@ class MinijailedProcessRunner {
                      brillo::Minijail* mj,
                      minijail* jail,
                      bool log_failures,
-                     std::string* output) {
-    return RunSyncDestroyWithTimeout(argv, mj, jail, log_failures,
-                                     /*timeout=*/std::nullopt, output);
-  }
-
-  int RunSyncDestroyWithTimeout(const std::vector<std::string>& argv,
-                                brillo::Minijail* mj,
-                                minijail* jail,
-                                bool log_failures,
-                                std::optional<base::TimeDelta> timeout,
-                                std::string* output);
+                     std::string* output);
 
   brillo::Minijail* mj_;
   std::unique_ptr<System> system_;

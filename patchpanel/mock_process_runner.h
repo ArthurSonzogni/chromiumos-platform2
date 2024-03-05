@@ -42,7 +42,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
                std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
-               std::optional<base::TimeDelta> timeout,
                std::string* output),
               (override));
   MOCK_METHOD(int,
@@ -52,7 +51,6 @@ class MockProcessRunner : public MinijailedProcessRunner {
                std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
-               std::optional<base::TimeDelta> timeout,
                std::string* output),
               (override));
   MOCK_METHOD(int,

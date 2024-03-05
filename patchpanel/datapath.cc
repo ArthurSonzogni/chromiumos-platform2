@@ -1805,16 +1805,15 @@ bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Command command,
                               std::string_view chain,
                               const std::vector<std::string>& argv,
-                              bool log_failures,
-                              std::optional<base::TimeDelta> timeout) {
+                              bool log_failures) {
   bool success = true;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     success &= process_runner_->iptables(table, command, chain, argv,
-                                         log_failures, timeout) == 0;
+                                         log_failures) == 0;
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     success &= process_runner_->ip6tables(table, command, chain, argv,
-                                          log_failures, timeout) == 0;
+                                          log_failures) == 0;
   }
   return success;
 }
@@ -1824,16 +1823,16 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
     case IpFamily::kIPv4:
-      if (process_runner_->iptables(
-              table, Iptables::Command::kL, /*chain=*/"", argv,
-              /*log_failures=*/true, /*timeout=*/std::nullopt, &result) != 0) {
+      if (process_runner_->iptables(table, Iptables::Command::kL, /*chain=*/"",
+                                    argv,
+                                    /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
       }
       break;
     case IpFamily::kIPv6:
-      if (process_runner_->ip6tables(
-              table, Iptables::Command::kL, /*chain=*/"", argv,
-              /*log_failures=*/true, /*timeout=*/std::nullopt, &result) != 0) {
+      if (process_runner_->ip6tables(table, Iptables::Command::kL, /*chain=*/"",
+                                     argv,
+                                     /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
       }
       break;

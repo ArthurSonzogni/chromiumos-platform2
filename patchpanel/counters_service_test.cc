@@ -414,7 +414,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
@@ -437,7 +437,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceRemoved("eth0");
@@ -559,7 +559,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceAdded("tun0");
@@ -582,7 +582,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceRemoved("ppp0");
@@ -614,12 +614,12 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   // No fwmark matching rule should be created.
   EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _, _,
-                                         Contains("mark"), _, _))
+                                         Contains("mark"), _))
       .Times(0);
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");

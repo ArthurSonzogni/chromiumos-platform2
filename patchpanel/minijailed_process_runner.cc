@@ -68,18 +68,12 @@ base::LazyInstance<MinijailedProcessRunner>::DestructorAtExit
 
 }  // namespace
 
-// TODO(jiejiang): `timeout` is not used now. We should consider refactor this
-// function to a Process class (e.g., implement brillo::Process interface) to
-// reduce the code complexity of this function.
-int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
+int MinijailedProcessRunner::RunSyncDestroy(
     const std::vector<std::string>& argv,
     brillo::Minijail* mj,
     minijail* jail,
     bool log_failures,
-    std::optional<base::TimeDelta> timeout,
     std::string* output) {
-  CHECK(!timeout.has_value());
-
   const base::TimeTicks started_at = base::TimeTicks::Now();
 
   std::vector<char*> args;
@@ -242,10 +236,9 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       std::string_view chain,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
-                                      std::optional<base::TimeDelta> timeout,
                                       std::string* output) {
   return RunIptables(kIptablesPath, table, command, chain, argv, log_failures,
-                     timeout, output);
+                     output);
 }
 
 int MinijailedProcessRunner::ip6tables(Iptables::Table table,
@@ -253,10 +246,9 @@ int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        std::string_view chain,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
-                                       std::optional<base::TimeDelta> timeout,
                                        std::string* output) {
   return RunIptables(kIp6tablesPath, table, command, chain, argv, log_failures,
-                     timeout, output);
+                     output);
 }
 
 int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
@@ -265,7 +257,6 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
                                          std::string_view chain,
                                          const std::vector<std::string>& argv,
                                          bool log_failures,
-                                         std::optional<base::TimeDelta> timeout,
                                          std::string* output) {
   std::vector<std::string> args = {std::string(iptables_path), "-t",
                                    Iptables::TableName(table),
@@ -288,8 +279,7 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   // Set up seccomp filter.
   mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
 
-  return RunSyncDestroyWithTimeout(args, mj_, jail, log_failures, timeout,
-                                   output);
+  return RunSyncDestroy(args, mj_, jail, log_failures, output);
 }
 
 int MinijailedProcessRunner::modprobe_all(
