@@ -4,6 +4,7 @@
 
 #include "fbpreprocessor/dbus_adaptor.h"
 
+#include <base/check.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/bus.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
@@ -23,6 +24,7 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, Manager* manager)
 void DBusAdaptor::GetDebugDumps(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
         response) const {
+  CHECK(manager_->output_manager());
   manager_->output_manager()->GetDebugDumps(std::move(response));
 }
 

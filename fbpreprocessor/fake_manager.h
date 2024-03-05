@@ -15,6 +15,7 @@
 
 #include "fbpreprocessor/fake_session_state_manager.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/output_manager.h"
 
 namespace fbpreprocessor {
 
@@ -49,7 +50,9 @@ class FakeManager : public Manager {
     return nullptr;
   }
 
-  OutputManager* output_manager() const override { return nullptr; }
+  OutputManager* output_manager() const override {
+    return output_manager_.get();
+  }
 
   InputManager* input_manager() const override { return nullptr; }
 
@@ -109,6 +112,8 @@ class FakeManager : public Manager {
   base::ScopedTempDir root_dir_;
 
   std::unique_ptr<FakeSessionStateManager> session_state_manager_;
+
+  std::unique_ptr<OutputManager> output_manager_;
 };
 
 }  // namespace fbpreprocessor

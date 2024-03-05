@@ -13,6 +13,7 @@
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
+#include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/storage.h"
 
 namespace {
@@ -25,10 +26,12 @@ FakeManager::FakeManager()
     : fw_dumps_allowed_(true),
       default_file_expiration_in_secs_(kTestDefaultExpirationSeconds) {
   session_state_manager_ = std::make_unique<FakeSessionStateManager>(this);
+  output_manager_ = std::make_unique<OutputManager>(this);
 }
 
 void FakeManager::Start(dbus::Bus* bus) {
   SetupFakeDaemonStore();
+  output_manager_->set_base_dir_for_test(GetRootDir());
 }
 
 SessionStateManagerInterface* FakeManager::session_state_manager() const {

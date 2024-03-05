@@ -129,9 +129,8 @@ void PseudonymizationManager::OnPseudonymizationComplete(
             << "successfully.";
   VLOG(kLocalOnlyDebugVerbosity) << "Completed pseudonymization of " << input;
   if (success) {
-    if (manager_->output_manager()) {
-      manager_->output_manager()->AddFirmwareDump(output);
-    }
+    CHECK(manager_->output_manager());
+    manager_->output_manager()->AddFirmwareDump(output);
   } else {
     if (!output.Delete()) {
       LOG(ERROR) << "Failed to delete output firmware dump after "

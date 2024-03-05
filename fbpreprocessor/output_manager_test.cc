@@ -41,7 +41,7 @@ class OutputManagerTest : public testing::Test {
   void SimulateUserLogout() { manager_->SimulateUserLogout(); }
 
   void SimulateFinchEnabling(bool allowed) {
-    output_manager_->OnFeatureChanged(allowed);
+    manager_->output_manager()->OnFeatureChanged(allowed);
     manager_->RunTasksUntilIdle();
   }
 
@@ -68,16 +68,14 @@ class OutputManagerTest : public testing::Test {
             }
           }
         }));
-    output_manager_->GetDebugDumps(std::move(response));
+    manager_->output_manager()->GetDebugDumps(std::move(response));
     manager_->RunTasksUntilIdle();
   }
 
   void AddFirmwareDumpToOutputManager(const FirmwareDump& dump) {
-    output_manager_->AddFirmwareDump(dump);
+    manager_->output_manager()->AddFirmwareDump(dump);
     manager_->RunTasksUntilIdle();
   }
-
-  OutputManager* output_manager() const { return output_manager_.get(); }
 
   FakeManager* manager() const { return manager_.get(); }
 
@@ -87,15 +85,10 @@ class OutputManagerTest : public testing::Test {
     manager_->Start(/*bus=*/nullptr);
   }
 
-  void Init() {
-    InitManager();
-    output_manager_ = std::make_unique<OutputManager>(manager_.get());
-    output_manager_->set_base_dir_for_test(manager_->GetRootDir());
-  }
+  void Init() { InitManager(); }
 
   // Declare the Manager first so it's destroyed last.
   std::unique_ptr<FakeManager> manager_;
-  std::unique_ptr<OutputManager> output_manager_;
 };
 
 TEST_F(OutputManagerTest, ExistingDumpsDeletedOnLogin) {
@@ -112,7 +105,8 @@ TEST_F(OutputManagerTest, OnUserLoggedInDeletesExistingDumps) {
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   // |OutputManager| is notified that a user has logged in.
-  output_manager()->OnUserLoggedIn(FakeManager::kTestUserHash.data());
+  manager()->output_manager()->OnUserLoggedIn(
+      FakeManager::kTestUserHash.data());
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
 }
 
