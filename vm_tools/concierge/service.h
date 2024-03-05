@@ -160,11 +160,6 @@ class Service final : public org::chromium::VmConciergeInterface,
           response_cb,
       const StartVmRequest& request,
       const std::vector<base::ScopedFD>& FileHandles) override;
-  void StartVm2(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
-          response_cb,
-      const StartVmRequest& request,
-      const std::vector<base::ScopedFD>& FileHandles) override;
 
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVmInternal(StartPluginVmRequest request,

@@ -1458,14 +1458,6 @@ void Service::Stop(base::OnceClosure on_stopped) {
       FROM_HERE, std::move(on_stopped));
 }
 
-void Service::StartVm2(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
-        response_cb,
-    const StartVmRequest& request,
-    const std::vector<base::ScopedFD>& file_handles) {
-  StartVm(std::move(response_cb), request, file_handles);
-}
-
 void Service::StartVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
         response_cb,

@@ -49,7 +49,6 @@ const char kSetVmCpuRestrictionMethod[] = "SetVmCpuRestriction";
 const char kStartArcVmMethod[] = "StartArcVm";
 const char kStartPluginVmMethod[] = "StartPluginVm";
 const char kStartVmMethod[] = "StartVm";
-const char kStartVm2Method[] = "StartVm2";
 const char kStopAllVmsMethod[] = "StopAllVms";
 const char kStopVmMethod[] = "StopVm";
 const char kStopVmWithoutOwnerIdMethod[] = "StopVmWithoutOwnerId";
