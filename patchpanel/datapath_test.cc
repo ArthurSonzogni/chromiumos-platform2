@@ -272,16 +272,13 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 class DatapathTest : public testing::Test {
  protected:
   DatapathTest()
-      : runner_(&runner_obj_),
-        firewall_(new MockFirewall()),
-        datapath_(runner_, firewall_, &system_) {}
+      : firewall_(new MockFirewall()),
+        datapath_(&runner_, firewall_, &system_) {}
 
   ~DatapathTest() = default;
 
   FakeSystem system_;
-  // TODO(jiejiang): Remove `runner_obj_`.
-  MockProcessRunnerForIptablesTest runner_obj_;
-  MockProcessRunnerForIptablesTest* runner_;
+  MockProcessRunnerForIptablesTest runner_;
   MockFirewall* firewall_;
 
   Datapath datapath_;
@@ -310,7 +307,7 @@ TEST_F(DatapathTest, Start) {
        "--ctmask 0x000000e0 -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(*runner_, c.family, c.args, c.call_count);
+    Verify_iptables(runner_, c.family, c.args, c.call_count);
   }
 
   datapath_.Start();
@@ -354,7 +351,7 @@ TEST_F(DatapathTest, AddTunWithoutMACAddress) {
 }
 
 TEST_F(DatapathTest, RemoveTUN) {
-  Verify_ip(*runner_, "tuntap del foo0 mode tun");
+  Verify_ip(runner_, "tuntap del foo0 mode tun");
 
   datapath_.RemoveTunTap("foo0", DeviceMode::kTun);
 }
@@ -400,27 +397,27 @@ TEST_F(DatapathTest, AddTAPNoAddrs) {
 }
 
 TEST_F(DatapathTest, RemoveTAP) {
-  Verify_ip(*runner_, "tuntap del foo0 mode tap");
+  Verify_ip(runner_, "tuntap del foo0 mode tap");
 
   datapath_.RemoveTunTap("foo0", DeviceMode::kTap);
 }
 
 TEST_F(DatapathTest, NetnsAttachName) {
-  Verify_ip_netns_delete(*runner_, "netns_foo");
-  Verify_ip_netns_attach(*runner_, "netns_foo", 1234);
+  Verify_ip_netns_delete(runner_, "netns_foo");
+  Verify_ip_netns_attach(runner_, "netns_foo", 1234);
 
   EXPECT_TRUE(datapath_.NetnsAttachName("netns_foo", 1234));
 }
 
 TEST_F(DatapathTest, NetnsDeleteName) {
-  EXPECT_CALL(*runner_, ip_netns_delete(StrEq("netns_foo"), true));
+  EXPECT_CALL(runner_, ip_netns_delete(StrEq("netns_foo"), true));
 
   EXPECT_TRUE(datapath_.NetnsDeleteName("netns_foo"));
 }
 
 TEST_F(DatapathTest, AddBridge) {
-  Verify_ip(*runner_, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
-  Verify_ip(*runner_, "link set br up");
+  Verify_ip(runner_, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
+  Verify_ip(runner_, "link set br up");
 
   datapath_.AddBridge("br", *IPv4CIDR::CreateFromCIDRString("1.1.1.1/30"));
 
@@ -430,7 +427,7 @@ TEST_F(DatapathTest, AddBridge) {
 }
 
 TEST_F(DatapathTest, RemoveBridge) {
-  Verify_ip(*runner_, "link set br down");
+  Verify_ip(runner_, "link set br down");
 
   datapath_.RemoveBridge("br");
 
@@ -451,13 +448,13 @@ TEST_F(DatapathTest, AddToBridge) {
 }
 
 TEST_F(DatapathTest, ConnectVethPair) {
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
-  Verify_ip(*runner_, "link set veth_foo up");
+  Verify_ip(runner_, "link set veth_foo up");
 
   EXPECT_TRUE(datapath_.ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
@@ -466,14 +463,14 @@ TEST_F(DatapathTest, ConnectVethPair) {
 }
 
 TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
-  Verify_ip(*runner_, "addr add fd11::1234/64 dev peer_foo");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "addr add fd11::1234/64 dev peer_foo");
+  Verify_ip(runner_,
             "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
-  Verify_ip(*runner_, "link set veth_foo up");
+  Verify_ip(runner_, "link set veth_foo up");
 
   EXPECT_TRUE(datapath_.ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
@@ -482,7 +479,7 @@ TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
 }
 
 TEST_F(DatapathTest, AddVirtualInterfacePair) {
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "link add veth_foo type veth peer name peer_foo netns netns_foo");
 
   EXPECT_TRUE(
@@ -490,32 +487,32 @@ TEST_F(DatapathTest, AddVirtualInterfacePair) {
 }
 
 TEST_F(DatapathTest, ToggleInterface) {
-  Verify_ip(*runner_, "link set foo up");
-  Verify_ip(*runner_, "link set bar down");
+  Verify_ip(runner_, "link set foo up");
+  Verify_ip(runner_, "link set bar down");
 
   EXPECT_TRUE(datapath_.ToggleInterface("foo", true));
   EXPECT_TRUE(datapath_.ToggleInterface("bar", false));
 }
 
 TEST_F(DatapathTest, ConfigureInterface) {
-  Verify_ip(*runner_, "addr add 100.115.92.2/30 brd 100.115.92.3 dev test0");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "addr add 100.115.92.2/30 brd 100.115.92.3 dev test0");
+  Verify_ip(runner_,
             "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
   MacAddress mac_addr = {2, 2, 2, 2, 2, 3};
   EXPECT_TRUE(datapath_.ConfigureInterface(
       "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
       /*ipv6_cidr=*/std::nullopt, true, true));
-  Mock::VerifyAndClearExpectations(runner_);
+  Mock::VerifyAndClearExpectations(&runner_);
 
-  Verify_ip(*runner_, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
-  Verify_ip(*runner_, "link set dev test1 up multicast off");
+  Verify_ip(runner_, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
+  Verify_ip(runner_, "link set dev test1 up multicast off");
   EXPECT_TRUE(datapath_.ConfigureInterface(
       "test1", std::nullopt, *IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"),
       /*ipv6_cidr=*/std::nullopt, true, false));
 }
 
 TEST_F(DatapathTest, RemoveInterface) {
-  Verify_ip(*runner_, "link delete foo");
+  Verify_ip(runner_, "link delete foo");
 
   datapath_.RemoveInterface("foo");
 }
@@ -524,40 +521,39 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
   MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
   MacAddress host_mac = {6, 5, 4, 3, 2, 1};
 
-  Verify_ip_netns_delete(*runner_, "netns_foo");
-  Verify_ip_netns_attach(*runner_, "netns_foo", kTestPID);
-  Verify_ip(*runner_,
+  Verify_ip_netns_delete(runner_, "netns_foo");
+  Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
+  Verify_ip(runner_,
             "link add arc_ns0 type veth peer name veth0 netns netns_foo");
-  Verify_ip(*runner_,
-            "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  Verify_ip(runner_,
             "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_ip(*runner_, "link set arc_ns0 up");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "link set arc_ns0 up");
+  Verify_ip(runner_,
             "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
-  Verify_ip(*runner_,
+  Verify_ip(runner_,
             "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000200/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
                   "--restore-mark --mask 0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
                   "100.115.92.129 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
   ConnectedNamespace nsinfo = {};
@@ -581,16 +577,16 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
-  Verify_ip_netns_delete(*runner_, "netns_foo");
-  Verify_ip(*runner_, "link delete arc_ns0");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
+  Verify_ip_netns_delete(runner_, "netns_foo");
+  Verify_ip(runner_, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -611,45 +607,44 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
   MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
   MacAddress host_mac = {6, 5, 4, 3, 2, 1};
 
-  Verify_ip_netns_delete(*runner_, "netns_foo");
-  Verify_ip_netns_attach(*runner_, "netns_foo", kTestPID);
-  Verify_ip(*runner_,
+  Verify_ip_netns_delete(runner_, "netns_foo");
+  Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
+  Verify_ip(runner_,
             "link add arc_ns0 type veth peer name veth0 netns netns_foo");
-  Verify_ip(*runner_,
-            "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
-  Verify_ip(*runner_, "addr add fd11::2/64 dev veth0");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  Verify_ip(runner_, "addr add fd11::2/64 dev veth0");
+  Verify_ip(runner_,
             "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_ip(*runner_, "link set arc_ns0 up");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "link set arc_ns0 up");
+  Verify_ip(runner_,
             "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
-  Verify_ip(*runner_, "addr add fd11::1/64 dev arc_ns0");
-  Verify_ip(*runner_,
+  Verify_ip(runner_, "addr add fd11::1/64 dev arc_ns0");
+  Verify_ip(runner_,
             "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
                   "0x00000200/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j CONNMARK "
                   "--restore-mark --mask 0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
                   "100.115.92.129 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "mangle -A PREROUTING_arc_ns0 -s fd11::2 -d "
                   "fd11::1 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
   ConnectedNamespace nsinfo = {};
@@ -675,16 +670,16 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
-  Verify_ip_netns_delete(*runner_, "netns_foo");
-  Verify_ip(*runner_, "link delete arc_ns0");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
+  Verify_ip_netns_delete(runner_, "netns_foo");
+  Verify_ip(runner_, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -705,42 +700,42 @@ TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
 }
 TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
   EXPECT_CALL(system_, IfNametoindex("wwan0")).WillRepeatedly(Return(4));
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -I OUTPUT -o ap0 -j egress_tethering -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -I INPUT -i ap0 -j ingress_tethering -w");
 
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A forward_tethering -i wwan0 -o ap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A forward_tethering -i ap0 -o wwan0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A forward_tethering -i ap0 -j DROP -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A forward_tethering -o ap0 -j DROP -w");
 
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_ap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i ap0 -j PREROUTING_ap0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_ap0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j MARK --set-mark "
                   "0x00002300/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j MARK --set-mark "
                   "0x03ec0000/0xffff0000 -w");
-  Verify_ip(*runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
-  Verify_ip(*runner_, "link set dev ap0 up multicast on");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_ip(runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
+  Verify_ip(runner_, "link set dev ap0 up multicast on");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j CONNMARK --restore-mark "
                   "--mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -m mark ! --mark "
                   "0x00000000/0x00003f00 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j MARK --set-mark "
                   "0x00002300/0x00003f00 -w");
 
@@ -756,9 +751,9 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
 }
 
 TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
-  EXPECT_CALL(*runner_, iptables).Times(0);
-  EXPECT_CALL(*runner_, ip6tables).Times(0);
-  EXPECT_CALL(*runner_, ip).Times(0);
+  EXPECT_CALL(runner_, iptables).Times(0);
+  EXPECT_CALL(runner_, ip6tables).Times(0);
+  EXPECT_CALL(runner_, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -772,16 +767,16 @@ TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
 }
 
 TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D OUTPUT -o ap0 -j egress_tethering -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D INPUT -i ap0 -j ingress_tethering -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "filter -F forward_tethering -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "filter -F forward_tethering -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
-  EXPECT_CALL(*runner_, ip(_, _, _, _, _)).Times(0);
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
+  EXPECT_CALL(runner_, ip(_, _, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
@@ -795,9 +790,9 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
 }
 
 TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
-  EXPECT_CALL(*runner_, iptables).Times(0);
-  EXPECT_CALL(*runner_, ip6tables).Times(0);
-  EXPECT_CALL(*runner_, ip).Times(0);
+  EXPECT_CALL(runner_, iptables).Times(0);
+  EXPECT_CALL(runner_, ip6tables).Times(0);
+  EXPECT_CALL(runner_, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -816,7 +811,7 @@ TEST_F(DatapathTest, StartRoutingNewNamespace) {
   // The running may fail at checking ScopedNS.IsValid() in
   // Datapath::ConnectVethPair(), so we only check if `ip netns add` is invoked
   // correctly here.
-  Verify_ip_netns_add(*runner_, "netns_foo");
+  Verify_ip_netns_add(runner_, "netns_foo");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = ConnectedNamespace::kNewNetnsPid;
@@ -836,32 +831,30 @@ TEST_F(DatapathTest, StartRoutingNewNamespace) {
 
 TEST_F(DatapathTest, StartRoutingDevice) {
   EXPECT_CALL(system_, IfNametoindex("eth0")).WillRepeatedly(Return(2));
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -i arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "mangle -N PREROUTING_arc_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "mangle -F PREROUTING_arc_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x03ea0000/0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -j CONNMARK --restore-mark "
                   "--mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -m mark ! --mark "
                   "0x00000000/0x00003f00 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arc_eth0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
 
@@ -872,26 +865,26 @@ TEST_F(DatapathTest, StartRoutingDevice) {
 }
 
 TEST_F(DatapathTest, StartRoutingDeviceAsUser) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_vmtap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_vmtap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_vmtap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_vmtap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
                   "0x00002100/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_vmtap0 -j CONNMARK --restore-mark "
                   "--mask 0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_vmtap0 -j skip_apply_vpn_mark -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   datapath_.StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM,
@@ -900,29 +893,27 @@ TEST_F(DatapathTest, StartRoutingDeviceAsUser) {
 }
 
 TEST_F(DatapathTest, StopRoutingDevice) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -i arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "mangle -F PREROUTING_arc_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "mangle -X PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_eth0 -w");
 
   datapath_.StopRoutingDevice("arc_eth0", TrafficSource::kArc);
 }
 
 TEST_F(DatapathTest, StopRoutingDeviceAsUser) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_vmtap0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_vmtap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
   datapath_.StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM);
 }
@@ -933,28 +924,28 @@ TEST_F(DatapathTest, StartStopConnectionPinning) {
 
   // Setup
   EXPECT_CALL(system_, IfNametoindex("eth0")).WillRepeatedly(Return(3));
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N POSTROUTING_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_eth0 -j CONNMARK --set-mark "
                   "0x03eb0000/0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_eth0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
   datapath_.StartConnectionPinning(eth_device);
-  runner_->VerifyAndClearIptablesExpectations();
+  runner_.VerifyAndClearIptablesExpectations();
 
   // Teardown
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X POSTROUTING_eth0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X POSTROUTING_eth0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
   datapath_.StopConnectionPinning(eth_device);
@@ -966,51 +957,51 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
 
   // Setup
   EXPECT_CALL(system_, IfNametoindex("arcbr0")).WillRepeatedly(Return(5));
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N POSTROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
                   "--set-mark 0x03ed0000/0xffff0000 -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_arcbr0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i arcbr0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A POSTROUTING -o arcbr0 -j MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   datapath_.StartVpnRouting(vpn_device);
-  runner_->VerifyAndClearIptablesExpectations();
+  runner_.VerifyAndClearIptablesExpectations();
 
   // Teardown
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F apply_vpn_mark -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X POSTROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F apply_vpn_mark -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i arcbr0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D POSTROUTING -o arcbr0 -j MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "filter -F vpn_accept -w");
+  Verify_iptables(runner_, IpFamily::kDual, "filter -F vpn_accept -w");
   datapath_.StopVpnRouting(vpn_device);
 }
 
@@ -1020,98 +1011,98 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
 
   // Setup
   EXPECT_CALL(system_, IfNametoindex("tun0")).WillRepeatedly(Return(5));
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N POSTROUTING_tun0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A apply_vpn_mark -m mark ! --mark 0x0/0xffff0000 -j ACCEPT -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A apply_vpn_mark -j MARK --set-mark 0x03ed0000/0xffff0000 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING_tun0 -j CONNMARK "
                   "--save-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A POSTROUTING -o tun0 -j MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -j CONNMARK --restore-mark "
                   "--mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -m mark ! --mark "
                   "0x00000000/0x00003f00 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   // Start arcbr0 routing
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -i arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x00002000/0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   datapath_.StartVpnRouting(vpn_device);
-  runner_->VerifyAndClearIptablesExpectations();
+  runner_.VerifyAndClearIptablesExpectations();
 
   // Teardown
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X POSTROUTING_tun0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F apply_vpn_mark -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X POSTROUTING_tun0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F apply_vpn_mark -w");
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i tun0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D POSTROUTING -o tun0 -j MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "filter -F vpn_accept -w");
+  Verify_iptables(runner_, IpFamily::kDual, "filter -F vpn_accept -w");
   // Stop arcbr0 routing
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -D FORWARD -i arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "mangle -X PREROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arcbr0 -w");
   datapath_.StopVpnRouting(vpn_device);
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATArc) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_arc -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_arc -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1123,13 +1114,13 @@ TEST_F(DatapathTest, AddInboundIPv4DNATArc) {
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATArc) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_arc -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_arc -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1141,13 +1132,13 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATArc) {
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATCrostini) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_crostini -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_crostini -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1159,13 +1150,13 @@ TEST_F(DatapathTest, AddInboundIPv4DNATCrostini) {
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATCrostini) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_crostini -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_crostini -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1177,13 +1168,13 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATCrostini) {
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATParallelsVm) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_parallels -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1195,13 +1186,13 @@ TEST_F(DatapathTest, AddInboundIPv4DNATParallelsVm) {
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_parallels -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
@@ -1221,21 +1212,21 @@ TEST_F(DatapathTest, MaskInterfaceFlags) {
 }
 
 TEST_F(DatapathTest, AddIPv6HostRoute) {
-  Verify_ip6(*runner_, "route replace 2001:da8:e00::1234/128 dev eth0");
+  Verify_ip6(runner_, "route replace 2001:da8:e00::1234/128 dev eth0");
 
   datapath_.AddIPv6HostRoute("eth0", *net_base::IPv6CIDR::CreateFromCIDRString(
                                          "2001:da8:e00::1234/128"));
 }
 
 TEST_F(DatapathTest, AddIPv4RouteToTable) {
-  Verify_ip(*runner_, "route add 192.0.2.2/24 dev eth0 table 123");
+  Verify_ip(runner_, "route add 192.0.2.2/24 dev eth0 table 123");
 
   datapath_.AddIPv4RouteToTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
 }
 
 TEST_F(DatapathTest, DeleteIPv4RouteFromTable) {
-  Verify_ip(*runner_, "route del 192.0.2.2/24 dev eth0 table 123");
+  Verify_ip(runner_, "route del 192.0.2.2/24 dev eth0 table 123");
 
   datapath_.DeleteIPv4RouteFromTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
@@ -1271,40 +1262,40 @@ TEST_F(DatapathTest, RedirectDnsRules) {
   ShillClient::Device wlan_device;
   wlan_device.ifname = "wlan0";
 
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o eth0 -j DNAT "
                   "--to-destination 192.168.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p tcp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
                   "--to-destination 8.8.8.8 -w");
 
@@ -1341,10 +1332,10 @@ TEST_F(DatapathTest, DumpIptables) {
 }
 
 TEST_F(DatapathTest, SetVpnLockdown) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A vpn_lockdown -m mark --mark 0x00008000/0x0000c000 "
                   "-j REJECT -w");
-  Verify_iptables(*runner_, IpFamily::kDual, "filter -F vpn_lockdown -w");
+  Verify_iptables(runner_, IpFamily::kDual, "filter -F vpn_lockdown -w");
 
   datapath_.SetVpnLockdown(true);
   datapath_.SetVpnLockdown(false);
@@ -1359,16 +1350,16 @@ TEST_F(DatapathTest, SetConntrackHelpers) {
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_Default) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
@@ -1389,86 +1380,86 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
 
 TEST_F(DatapathTest, StartDnsRedirection_User) {
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
 
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables_in_sequence(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A snat_user_dns -p tcp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
 
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "nat -A snat_chrome_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "nat -A snat_chrome_dns -p tcp --dport 53 -j "
                   "MASQUERADE -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
@@ -1493,29 +1484,29 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_chrome_dns -p udp ! -d 100.115.92.130 "
                   "--dport 53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
                   "--dport 53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -I redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -I redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -I redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -I redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
 
   DnsRedirectionRule rule4 = {
@@ -1534,16 +1525,16 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_Default) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
                   "DNAT --to-destination ::1 -w");
 
@@ -1564,86 +1555,86 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
 
 TEST_F(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv4,
+      runner_, IpFamily::kIPv4,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
 
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
       "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D snat_user_dns -p tcp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
 
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "nat -D snat_chrome_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "nat -D snat_chrome_dns -p tcp --dport 53 -j "
                   "MASQUERADE -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -D skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
   Verify_iptables(
-      *runner_, IpFamily::kDual,
+      runner_, IpFamily::kDual,
       "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
@@ -1668,29 +1659,29 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_chrome_dns -p udp ! -d 100.115.92.130 "
                   "--dport 53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
                   "--dport 53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv4,
+  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
-      *runner_, IpFamily::kIPv6,
+      runner_, IpFamily::kIPv6,
       "nat -D redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
 
   DnsRedirectionRule rule4 = {
@@ -1712,41 +1703,41 @@ TEST_F(DatapathTest, PrefixEnforcement) {
   ShillClient::Device cell_device;
   cell_device.ifname = "wwan0";
 
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -N egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -N egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -I OUTPUT -o wwan0 -j egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_.StartSourceIPv6PrefixEnforcement(cell_device);
 
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -s 2001:db8:1:1::/64 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_.UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::/64"));
 
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_.UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
 
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -s 2001:db8:1:2::/64 -j RETURN -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_.UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::/64"));
 
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -D OUTPUT -o wwan0 -j egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6, "filter -X egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6, "filter -X egress_wwan0 -w");
   datapath_.StopSourceIPv6PrefixEnforcement(cell_device);
 }
 
@@ -1761,9 +1752,9 @@ TEST_F(DatapathTest, SetRouteLocalnet) {
 }
 
 TEST_F(DatapathTest, ModprobeAll) {
-  EXPECT_CALL(*runner_, modprobe_all(ElementsAre("ip6table_filter", "ah6",
-                                                 "esp6", "nf_nat_ftp"),
-                                     _));
+  EXPECT_CALL(runner_, modprobe_all(ElementsAre("ip6table_filter", "ah6",
+                                                "esp6", "nf_nat_ftp"),
+                                    _));
 
   datapath_.ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
 }
@@ -1802,28 +1793,28 @@ TEST_F(DatapathTest, ModifyPortRule) {
 }
 
 TEST_F(DatapathTest, EnableQoSDetection) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A qos_detect_static -j qos_detect -w");
 
   datapath_.EnableQoSDetection();
 }
 
 TEST_F(DatapathTest, DisableQoSDetection) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D qos_detect_static -j qos_detect -w");
 
   datapath_.DisableQoSDetection();
 }
 
 TEST_F(DatapathTest, EnableQoSApplyingDSCP) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A POSTROUTING -o wlan0 -j qos_apply_dscp -w");
 
   datapath_.EnableQoSApplyingDSCP("wlan0");
 }
 
 TEST_F(DatapathTest, DisableQoSApplyingDSCP) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D POSTROUTING -o wlan0 -j qos_apply_dscp -w");
 
   datapath_.DisableQoSApplyingDSCP("wlan0");
@@ -1835,13 +1826,13 @@ TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv4) {
       net_base::IPAddress::CreateFromString("5.6.7.8").value(),
   };
 
-  Verify_iptables(*runner_, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
+  Verify_iptables(runner_, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
   for (const auto& proto : {"tcp", "udp"}) {
     const std::string expected_rule =
         base::StrCat({"mangle -A qos_detect_doh -p ", proto,
                       " --dport 443 -d 1.2.3.4,5.6.7.8 -j MARK --set-xmark "
                       "0x00000060/0x000000e0 -w"});
-    Verify_iptables(*runner_, IpFamily::kIPv4, expected_rule);
+    Verify_iptables(runner_, IpFamily::kIPv4, expected_rule);
   }
 
   datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv4, ipv4_input);
@@ -1854,13 +1845,13 @@ TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv6) {
       net_base::IPAddress::CreateFromString("fd00::2").value(),
   };
 
-  Verify_iptables(*runner_, IpFamily::kIPv6, "mangle -F qos_detect_doh -w");
+  Verify_iptables(runner_, IpFamily::kIPv6, "mangle -F qos_detect_doh -w");
   for (const auto& proto : {"tcp", "udp"}) {
     const std::string expected_rule =
         base::StrCat({"mangle -A qos_detect_doh -p ", proto,
                       " --dport 443 -d fd00::1,fd00::2 -j MARK --set-xmark "
                       "0x00000060/0x000000e0 -w"});
-    Verify_iptables(*runner_, IpFamily::kIPv6, expected_rule);
+    Verify_iptables(runner_, IpFamily::kIPv6, expected_rule);
   }
 
   datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv6, ipv6_input);
@@ -1868,27 +1859,27 @@ TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv6) {
 
 TEST_F(DatapathTest, UpdateDoHProvidersForQoSEmpty) {
   // Empty list should still trigger the flush, but no other rules.
-  Verify_iptables(*runner_, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
+  Verify_iptables(runner_, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
   datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv4, {});
 }
 
 TEST_F(DatapathTest, ModifyClatAcceptRules) {
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A FORWARD -i tun_nat64 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kIPv6,
+  Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A FORWARD -o tun_nat64 -j ACCEPT -w");
   datapath_.ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
 }
 
 TEST_F(DatapathTest, AddBorealisQosRule) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A qos_detect_borealis "
                   "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
   datapath_.AddBorealisQoSRule("vmtap6");
 }
 
 TEST_F(DatapathTest, RemoveBorealisQosRule) {
-  Verify_iptables(*runner_, IpFamily::kDual,
+  Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D qos_detect_borealis "
                   "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
   datapath_.RemoveBorealisQoSRule("vmtap6");
