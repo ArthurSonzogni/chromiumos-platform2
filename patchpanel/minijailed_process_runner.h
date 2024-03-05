@@ -28,11 +28,11 @@ void EnterChildProcessJail();
 // Enforces the expected processes are run with the correct privileges.
 class MinijailedProcessRunner {
  public:
-  // Ownership of |mj| is not assumed and must be managed by the caller.
-  // If |mj| is null, the default instance will be used.
-  explicit MinijailedProcessRunner(brillo::Minijail* mj = nullptr);
-  // Provided for testing only.
-  MinijailedProcessRunner(brillo::Minijail* mj, std::unique_ptr<System> system);
+  static MinijailedProcessRunner* GetInstance();
+
+  static std::unique_ptr<MinijailedProcessRunner> CreateForTesting(
+      brillo::Minijail* mj, std::unique_ptr<System> system);
+
   MinijailedProcessRunner(const MinijailedProcessRunner&) = delete;
   MinijailedProcessRunner& operator=(const MinijailedProcessRunner&) = delete;
 
@@ -102,6 +102,8 @@ class MinijailedProcessRunner {
                                 bool log_failures = true);
 
  protected:
+  MinijailedProcessRunner();
+
   // Used by ip() and ip6().
   // Runs a process (argv[0]) with optional arguments (argv[1]...)
   // in a minijail as user |patchpaneld| and user the group |patchpaneld| with
@@ -124,6 +126,8 @@ class MinijailedProcessRunner {
                          bool log_failures);
 
  private:
+  friend base::LazyInstanceTraitsBase<MinijailedProcessRunner>;
+
   int RunSyncDestroy(const std::vector<std::string>& argv,
                      brillo::Minijail* mj,
                      minijail* jail,

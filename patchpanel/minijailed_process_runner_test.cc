@@ -42,7 +42,7 @@ class MinijailProcessRunnerTest : public ::testing::Test {
  protected:
   MinijailProcessRunnerTest() {
     system_ = new MockSystem();
-    runner_ = std::make_unique<MinijailedProcessRunner>(
+    runner_ = MinijailedProcessRunner::CreateForTesting(
         &mj_, base::WrapUnique(system_));
 
     jail_ = brillo::Minijail::GetInstance()->New();

@@ -272,13 +272,15 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 class DatapathTest : public testing::Test {
  protected:
   DatapathTest()
-      : runner_(new MockProcessRunnerForIptablesTest()),
+      : runner_(&runner_obj_),
         firewall_(new MockFirewall()),
         datapath_(runner_, firewall_, &system_) {}
 
   ~DatapathTest() = default;
 
   FakeSystem system_;
+  // TODO(jiejiang): Remove `runner_obj_`.
+  MockProcessRunnerForIptablesTest runner_obj_;
   MockProcessRunnerForIptablesTest* runner_;
   MockFirewall* firewall_;
 
@@ -1318,18 +1320,18 @@ TEST_F(DatapathTest, RedirectDnsRules) {
 // This test needs a mock process runner so it doesn't use Datapath object in
 // the fixture class.
 TEST_F(DatapathTest, DumpIptables) {
-  auto runner = new MockProcessRunner();
+  MockProcessRunner runner;
 
-  EXPECT_CALL(*runner,
+  EXPECT_CALL(runner,
               iptables(Iptables::Table::kMangle, Iptables::Command::kL,
                        StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
       .WillOnce(DoAll(SetArgPointee<6>("<iptables output>"), Return(0)));
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kMangle,
-                                 Iptables::Command::kL, StrEq(""),
-                                 ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
+                                StrEq(""), ElementsAre("-x", "-v", "-n", "-w"),
+                                _, _, _))
       .WillOnce(DoAll(SetArgPointee<6>("<ip6tables output>"), Return(0)));
 
-  Datapath datapath(runner, /*firewall=*/nullptr, /*system=*/nullptr);
+  Datapath datapath(&runner, /*firewall=*/nullptr, /*system=*/nullptr);
   EXPECT_EQ("<iptables output>",
             datapath.DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle));
   EXPECT_EQ("<ip6tables output>",

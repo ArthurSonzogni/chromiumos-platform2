@@ -55,7 +55,7 @@ class QoSService {
   // Provided for testing.
   QoSService(Datapath* datapath,
              std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-             std::unique_ptr<MinijailedProcessRunner> process_runner,
+             MinijailedProcessRunner* process_runner,
              ConntrackMonitor* monitor);
 
   ~QoSService();
@@ -100,7 +100,7 @@ class QoSService {
   // Dependencies.
   Datapath* datapath_;
   std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
-  std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  MinijailedProcessRunner* process_runner_;
   ConntrackMonitor* conntrack_monitor_;
 
   // QoS feature is disabled by default. This value can be changed in `Enable()`

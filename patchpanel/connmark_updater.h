@@ -63,7 +63,7 @@ class ConnmarkUpdater {
   explicit ConnmarkUpdater(ConntrackMonitor* monitor);
   // Provided for testing.
   ConnmarkUpdater(ConntrackMonitor* monitor,
-                  std::unique_ptr<MinijailedProcessRunner> process_runner);
+                  MinijailedProcessRunner* process_runner);
 
   virtual ~ConnmarkUpdater() = default;
 
@@ -89,7 +89,7 @@ class ConnmarkUpdater {
   void HandleConntrackEvent(const ConntrackMonitor::Event& event);
 
   // Dependencies.
-  std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  MinijailedProcessRunner* process_runner_;
   ConntrackMonitor* conntrack_monitor_;
 
   // Pending list of UDP connections whose connmark need to be updated.

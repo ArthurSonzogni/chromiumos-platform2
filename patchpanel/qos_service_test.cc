@@ -221,11 +221,11 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
 // Verifies that ProcessSocketConnectionEvent behaves correctly when
 // feature on the events of feature enable/disable.
 TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
-  auto datapath = MockDatapath();
-  auto runner = std::make_unique<MockProcessRunner>();
+  MockDatapath datapath;
+  MockProcessRunner runner;
   MockConntrackMonitor conntrack_monitor;
-  QoSService qos_svc(&datapath, /*dns_client_factory=*/nullptr,
-                     std::move(runner), &conntrack_monitor);
+  QoSService qos_svc(&datapath, /*dns_client_factory=*/nullptr, &runner,
+                     &conntrack_monitor);
   auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor);
   auto updater_ptr = updater.get();
   qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
@@ -438,13 +438,13 @@ TEST(QoSServiceTest, OnBorealisVMStopped) {
 // task.
 TEST(QoSServiceTest, HandleSocketConnectionEvent) {
   MockDatapath mock_datapath;
-  auto runner = std::make_unique<MockProcessRunner>();
+  MockProcessRunner runner;
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
 
   MockConntrackMonitor monitor;
-  QoSService qos_svc(&mock_datapath, /*dns_client_factory=*/nullptr,
-                     std::move(runner), &monitor);
+  QoSService qos_svc(&mock_datapath, /*dns_client_factory=*/nullptr, &runner,
+                     &monitor);
   qos_svc.Enable();
   auto updater = std::make_unique<MockConnmarkUpdater>(&monitor);
   auto updater_ptr = updater.get();

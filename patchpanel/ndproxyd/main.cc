@@ -26,8 +26,8 @@ void OnGuestIpDiscovery(int if_id, const net_base::IPv6Address& ip6addr) {
   const std::string ifname = system.IfIndextoname(if_id);
   const std::string ip6_str = ip6addr.ToString();
 
-  patchpanel::MinijailedProcessRunner runner;
-  if (runner.ip6("route", "replace", {ip6_str + "/128", "dev", ifname}) != 0) {
+  auto* runner = patchpanel::MinijailedProcessRunner::GetInstance();
+  if (runner->ip6("route", "replace", {ip6_str + "/128", "dev", ifname}) != 0) {
     LOG(WARNING) << "Failed to setup the IPv6 route for interface " << ifname;
   }
 }

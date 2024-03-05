@@ -115,7 +115,7 @@ class Firewall {
                    std::string_view chain,
                    const std::vector<std::string>& argv);
 
-  std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  MinijailedProcessRunner* process_runner_;
 };
 
 }  // namespace patchpanel

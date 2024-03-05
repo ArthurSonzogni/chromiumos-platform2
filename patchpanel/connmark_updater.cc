@@ -35,18 +35,16 @@ std::string getFwmarkWithMask(const Fwmark mark, const Fwmark mask) {
 
 ConnmarkUpdater::ConnmarkUpdater(ConntrackMonitor* monitor)
     : conntrack_monitor_(monitor) {
-  process_runner_ = std::make_unique<MinijailedProcessRunner>();
+  process_runner_ = MinijailedProcessRunner::GetInstance();
   listener_ = conntrack_monitor_->AddListener(
       kConntrackEvents,
       base::BindRepeating(&ConnmarkUpdater::HandleConntrackEvent,
                           weak_factory_.GetWeakPtr()));
 }
 
-ConnmarkUpdater::ConnmarkUpdater(
-    ConntrackMonitor* monitor,
-    std::unique_ptr<MinijailedProcessRunner> process_runner)
-    : conntrack_monitor_(monitor) {
-  process_runner_ = std::move(process_runner);
+ConnmarkUpdater::ConnmarkUpdater(ConntrackMonitor* monitor,
+                                 MinijailedProcessRunner* process_runner)
+    : process_runner_(process_runner), conntrack_monitor_(monitor) {
   listener_ = conntrack_monitor_->AddListener(
       kConntrackEvents,
       base::BindRepeating(&ConnmarkUpdater::HandleConntrackEvent,

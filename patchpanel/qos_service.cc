@@ -175,19 +175,21 @@ class QoSService::DoHUpdater {
 };
 
 QoSService::QoSService(Datapath* datapath, ConntrackMonitor* monitor)
-    : datapath_(datapath), conntrack_monitor_(monitor) {
+    : datapath_(datapath),
+      process_runner_(MinijailedProcessRunner::GetInstance()),
+      conntrack_monitor_(monitor) {
   dns_client_factory_ = std::make_unique<net_base::DNSClientFactory>();
-  process_runner_ = std::make_unique<MinijailedProcessRunner>();
 }
 
 QoSService::QoSService(
     Datapath* datapath,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-    std::unique_ptr<MinijailedProcessRunner> process_runner,
+    MinijailedProcessRunner* process_runner,
     ConntrackMonitor* monitor)
-    : datapath_(datapath), conntrack_monitor_(monitor) {
+    : datapath_(datapath),
+      process_runner_(process_runner),
+      conntrack_monitor_(monitor) {
   dns_client_factory_ = std::move(dns_client_factory);
-  process_runner_ = std::move(process_runner);
 }
 
 QoSService::~QoSService() = default;

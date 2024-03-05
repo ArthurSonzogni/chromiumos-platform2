@@ -67,11 +67,10 @@ const std::string ProtocolName(Protocol proto) {
   return base::ToLowerASCII(ModifyPortRuleRequest::Protocol_Name(proto));
 }
 
-Firewall::Firewall() : Firewall(new MinijailedProcessRunner()) {}
+Firewall::Firewall() : Firewall(MinijailedProcessRunner::GetInstance()) {}
 
-Firewall::Firewall(MinijailedProcessRunner* process_runner) {
-  process_runner_.reset(process_runner);
-}
+Firewall::Firewall(MinijailedProcessRunner* process_runner)
+    : process_runner_(process_runner) {}
 
 bool Firewall::AddAcceptRules(Protocol protocol,
                               uint16_t port,

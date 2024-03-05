@@ -586,7 +586,7 @@ class Datapath {
   bool ModifyIsolatedGuestDropRule(Iptables::Command command,
                                    std::string_view ifname);
 
-  std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  MinijailedProcessRunner* process_runner_;
   std::unique_ptr<Firewall> firewall_;
   // Owned by Manager
   System* system_;

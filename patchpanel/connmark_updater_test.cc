@@ -53,10 +53,10 @@ ConnmarkUpdater::Conntrack5Tuple CreateTCPConnection() {
 // on ConntrackMonitor and initially the pending list is empty.
 TEST(ConnmarkUpdaterTest, CreateConnmarkUpdater) {
   MockConntrackMonitor conntrack_monitor;
-  auto runner = std::make_unique<MockProcessRunner>();
+  MockProcessRunner runner;
   EXPECT_CALL(conntrack_monitor,
               AddListener(ElementsAreArray(kConntrackEvents), _));
-  ConnmarkUpdater updater_(&conntrack_monitor, std::move(runner));
+  ConnmarkUpdater updater_(&conntrack_monitor, &runner);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 0);
 }
 
@@ -64,9 +64,8 @@ TEST(ConnmarkUpdaterTest, CreateConnmarkUpdater) {
 // succeeds or fails, the TCP connection will not be added to the pending list.
 TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
   MockConntrackMonitor conntrack_monitor;
-  auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
-  ConnmarkUpdater updater_(&conntrack_monitor, std::move(runner));
+  MockProcessRunner runner;
+  ConnmarkUpdater updater_(&conntrack_monitor, &runner);
 
   std::vector<std::string> argv = {
       "-p",      "TCP",
@@ -75,7 +74,7 @@ TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
       "--sport", std::to_string(kPort1),
       "--dport", std::to_string(kPort2),
       "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(0));
   updater_.UpdateConnmark(
       CreateTCPConnection(),
@@ -89,7 +88,7 @@ TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
           "--sport", std::to_string(kPort1),
           "--dport", std::to_string(kPort2),
           "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(-1));
   updater_.UpdateConnmark(
       CreateTCPConnection(),
@@ -102,9 +101,8 @@ TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
 // Connection will not be added to the pending list.
 TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
   MockConntrackMonitor conntrack_monitor;
-  auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
-  ConnmarkUpdater updater_(&conntrack_monitor, std::move(runner));
+  MockProcessRunner runner;
+  ConnmarkUpdater updater_(&conntrack_monitor, &runner);
 
   std::vector<std::string> argv = {
       "-p",      "UDP",
@@ -113,7 +111,7 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
       "--sport", std::to_string(kPort1),
       "--dport", std::to_string(kPort2),
       "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(0));
   updater_.UpdateConnmark(
       CreateUDPConnection(),
@@ -127,9 +125,8 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
 // connection, it will only be added once.
 TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
   MockConntrackMonitor conntrack_monitor;
-  auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
-  ConnmarkUpdater updater_(&conntrack_monitor, std::move(runner));
+  MockProcessRunner runner;
+  ConnmarkUpdater updater_(&conntrack_monitor, &runner);
 
   std::vector<std::string> argv = {
       "-p",      "UDP",
@@ -138,14 +135,14 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
       "--sport", std::to_string(kPort1),
       "--dport", std::to_string(kPort2),
       "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(-1));
   updater_.UpdateConnmark(
       CreateUDPConnection(),
       Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
       kFwmarkQoSCategoryMask);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 1);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 
   argv = {"-p",      "UDP",
           "-s",      kIPAddress1,
@@ -153,14 +150,14 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
           "--sport", std::to_string(kPort1),
           "--dport", std::to_string(kPort2),
           "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(-1));
   updater_.UpdateConnmark(
       CreateUDPConnection(),
       Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
       kFwmarkQoSCategoryMask);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 1);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 // Verifies that connmark updater will retry updating connmark after receiving
@@ -169,9 +166,8 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
 // updating regardless of the result.
 TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
   MockConntrackMonitor conntrack_monitor;
-  auto runner = std::make_unique<MockProcessRunner>();
-  auto runner_ptr = runner.get();
-  ConnmarkUpdater updater_(&conntrack_monitor, std::move(runner));
+  MockProcessRunner runner;
+  ConnmarkUpdater updater_(&conntrack_monitor, &runner);
 
   // Adds UDP connection to the pending list.
   std::vector<std::string> argv = {
@@ -181,14 +177,14 @@ TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
       "--sport", std::to_string(kPort1),
       "--dport", std::to_string(kPort2),
       "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(-1));
   updater_.UpdateConnmark(
       CreateUDPConnection(),
       Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
       kFwmarkQoSCategoryMask);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 1);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Verifies that connmark updater will not update connmark when protocol
   // information does not match.
@@ -199,10 +195,10 @@ TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
       .dport = kPort2,
       .proto = IPPROTO_TCP,
       .type = ConntrackMonitor::EventType::kNew};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  EXPECT_CALL(runner, conntrack("-U", _, _)).Times(0);
   conntrack_monitor.DispatchEventForTesting(kTCPEvent);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 1);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Verifies that connmark updater will not update connmark when conntrack
   // event type does not match.
@@ -213,10 +209,10 @@ TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
       .dport = kPort2,
       .proto = IPPROTO_UDP,
       .type = ConntrackMonitor::EventType::kUpdate};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  EXPECT_CALL(runner, conntrack("-U", _, _)).Times(0);
   conntrack_monitor.DispatchEventForTesting(kUDPUpdateEvent);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 1);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Verifies that UDP connection entry in the pending list will be deleted
   // from the list regardless of the result of retrying.
@@ -227,11 +223,11 @@ TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
       .dport = kPort2,
       .proto = IPPROTO_UDP,
       .type = ConntrackMonitor::EventType::kNew};
-  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+  EXPECT_CALL(runner, conntrack("-U", ElementsAreArray(argv), _))
       .WillOnce(Return(-1));
   conntrack_monitor.DispatchEventForTesting(kUDPNewEvent);
   EXPECT_EQ(updater_.GetPendingListSizeForTesting(), 0);
-  Mock::VerifyAndClearExpectations(runner_ptr);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 }  // namespace
 }  // namespace patchpanel

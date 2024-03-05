@@ -218,13 +218,13 @@ ForwardFirewallRuleType GetForwardFirewallRuleType(TrafficSource source) {
 }  // namespace
 
 Datapath::Datapath(System* system)
-    : Datapath(new MinijailedProcessRunner(), new Firewall(), system) {}
+    : Datapath(MinijailedProcessRunner::GetInstance(), new Firewall(), system) {
+}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    Firewall* firewall,
                    System* system)
-    : system_(system) {
-  process_runner_.reset(process_runner);
+    : process_runner_(process_runner), system_(system) {
   firewall_.reset(firewall);
 }
 

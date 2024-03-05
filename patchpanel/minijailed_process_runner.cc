@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -61,6 +62,9 @@ constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
 constexpr char kIptablesSeccompFilterPath[] =
     "/usr/share/policy/iptables-seccomp.policy";
+
+base::LazyInstance<MinijailedProcessRunner>::DestructorAtExit
+    g_process_runner_ = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 
@@ -183,13 +187,21 @@ void EnterChildProcessJail() {
   m->Destroy(jail);
 }
 
-MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj)
-    : MinijailedProcessRunner(mj ? mj : brillo::Minijail::GetInstance(),
-                              std::make_unique<System>()) {}
+MinijailedProcessRunner* MinijailedProcessRunner::GetInstance() {
+  return g_process_runner_.Pointer();
+}
 
-MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj,
-                                                 std::unique_ptr<System> system)
-    : mj_(mj), system_(std::move(system)) {}
+std::unique_ptr<MinijailedProcessRunner>
+MinijailedProcessRunner::CreateForTesting(brillo::Minijail* mj,
+                                          std::unique_ptr<System> system) {
+  auto ret = base::WrapUnique(new MinijailedProcessRunner);
+  ret->mj_ = mj;
+  ret->system_ = std::move(system);
+  return ret;
+}
+
+MinijailedProcessRunner::MinijailedProcessRunner()
+    : mj_(brillo::Minijail::GetInstance()), system_(new System()) {}
 
 int MinijailedProcessRunner::RunIp(const std::vector<std::string>& argv,
                                    bool as_patchpanel_user,

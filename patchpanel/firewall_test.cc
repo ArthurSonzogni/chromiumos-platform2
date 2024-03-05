@@ -71,11 +71,11 @@ void Verify_ip6tables(MockProcessRunner& runner,
 }  // namespace
 
 TEST(FirewallTest, AddAcceptRules_InvalidPorts) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  EXPECT_CALL(*runner, iptables).Times(0);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, iptables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
 
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 0, "iface"));
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 0, "iface"));
@@ -86,76 +86,76 @@ TEST(FirewallTest, AddAcceptRules_InvalidPorts) {
 }
 
 TEST(FirewallTest, AddAcceptRules_ValidInterfaceName) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                   "shortname -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                    "shortname -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "shortname"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
                   "shortname -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p udp --dport 53 -i "
                    "shortname -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "shortname"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                   "middle-dash -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                    "middle-dash -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "middle-dash"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
                   "middle-dash -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p udp --dport 53 -i "
                    "middle-dash -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "middle-dash"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                   "middle.dot -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p tcp --dport 80 -i "
                    "middle.dot -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "middle.dot"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p udp --dport 53 -i "
                   "middle.dot -j ACCEPT -w");
-  Verify_ip6tables(*runner,
+  Verify_ip6tables(runner,
                    "filter -I ingress_port_firewall -p udp --dport 53 -i "
                    "middle.dot -j ACCEPT -w");
   EXPECT_TRUE(
       firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "middle.dot"));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, AddAcceptRules_InvalidInterfaceName) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  EXPECT_CALL(*runner, iptables).Times(0);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, iptables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
 
   EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80,
                                        "reallylonginterfacename"));
@@ -219,12 +219,12 @@ TEST(FirewallTest, AddAcceptRules_InvalidInterfaceName) {
 }
 
 TEST(FirewallTest, AddAcceptRules_IptablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .Times(0);
 
   // Punch hole for TCP port 80, should fail.
@@ -236,22 +236,22 @@ TEST(FirewallTest, AddAcceptRules_IptablesFails) {
 }
 
 TEST(FirewallTest, AddAcceptRules_Ip6tablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p tcp --dport 80 -i iface "
                   "-j ACCEPT -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -I ingress_port_firewall -p udp --dport 53 -i iface "
                   "-j ACCEPT -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D ingress_port_firewall -p tcp --dport 80 -i iface "
                   "-j ACCEPT -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D ingress_port_firewall -p udp --dport 53 -i iface "
                   "-j ACCEPT -w");
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Punch hole for TCP port 80, should fail because 'ip6tables' fails.
@@ -263,12 +263,12 @@ TEST(FirewallTest, AddAcceptRules_Ip6tablesFails) {
 }
 
 TEST(FirewallTest, AddLoopbackLockdownRules_InvalidPort) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .Times(0);
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .Times(0);
 
   // Try to lock down TCP port 0, port 0 is not a valid port.
@@ -280,65 +280,65 @@ TEST(FirewallTest, AddLoopbackLockdownRules_InvalidPort) {
 }
 
 TEST(FirewallTest, AddLoopbackLockdownRules_Success) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_ip6tables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 80));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_ip6tables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::UDP, 53));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_ip6tables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 1234 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 1234));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_ip6tables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 8080 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   ASSERT_TRUE(
       firewall.AddLoopbackLockdownRules(ModifyPortRuleRequest::TCP, 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, AddLoopbackLockdownRules_IptablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
-  EXPECT_CALL(*runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, iptables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .WillRepeatedly(Return(1));
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .Times(0);
 
   // Lock down TCP port 80, should fail.
@@ -350,26 +350,26 @@ TEST(FirewallTest, AddLoopbackLockdownRules_IptablesFails) {
 }
 
 TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_iptables(
-      *runner,
+      runner,
       "filter -D egress_port_firewall -p tcp --dport 80 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_iptables(
-      *runner,
+      runner,
       "filter -I egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
   Verify_iptables(
-      *runner,
+      runner,
       "filter -D egress_port_firewall -p udp --dport 53 -o lo -m owner ! "
       "--uid-owner chronos -j REJECT -w");
-  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
+  EXPECT_CALL(runner, ip6tables(Iptables::Table::kFilter, _, _, _, _, _, _))
       .WillRepeatedly(Return(1));
 
   // Lock down TCP port 80, should fail because 'ip6tables' fails.
@@ -381,12 +381,12 @@ TEST(FirewallTest, AddLoopbackLockdownRules_Ip6tablesFails) {
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   // Invalid input interface. No iptables commands are issued.
-  EXPECT_CALL(*runner, iptables).Times(0);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, iptables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "-startdash",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
@@ -399,11 +399,11 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "enddot.",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Empty interface. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables).Times(0);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, iptables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
@@ -416,7 +416,7 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
@@ -424,15 +424,15 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Trying to delete an IPv4 forward rule with an invalid input port will
   // still trigger an explicit iptables -D command for the associated FORWARD
   // ACCEPT rule. Two such commands are expected.
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i iface -p tcp -d 100.115.92.5 --dport "
                   "8080 -j ACCEPT -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.5 --dport "
                   "8080 -j ACCEPT -w");
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
@@ -441,7 +441,7 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 0, "iface",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 0, "iface",
@@ -449,11 +449,11 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 0, "iface",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   // Invalid output dst port. No iptables commands are issused.
-  EXPECT_CALL(*runner, iptables).Times(0);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, iptables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 5), 0));
@@ -466,159 +466,159 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 5), 0));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_IptablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   // AddIpv4ForwardRule: Firewall should return at the first failure and issue
   // only a single command.
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i iface -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w",
       1);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_IptablesPartialFailure) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -A FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w",
                   1);
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w");
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, DeleteIpv4ForwardRules_IptablesFails) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   // DeleteIpv4ForwardRule: Firewall should try to delete both the DNAT rule
   // and the FORWARD rule regardless of iptables failures.
-  //  Verify_iptables(*runner, "nat -D ingress_port_forwarding -i iface -p tcp
+  //  Verify_iptables(runner, "nat -D ingress_port_forwarding -i iface -p tcp
   //  --dport 80 -j DNAT --to-destination 100.115.92.6:8080 -w");
-  //  Verify_iptables(*runner, "filter -D FORWARD -i iface -p tcp -d
+  //  Verify_iptables(runner, "filter -D FORWARD -i iface -p tcp -d
   //  100.115.92.6 --dport 8080 -j ACCEPT -w");
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i iface -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w",
       1);
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i iface -p tcp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w",
                   1);
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i iface -p udp --dport 80 -j DNAT "
       "--to-destination 100.115.92.6:8080 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i iface -p udp -d 100.115.92.6 --dport "
                   "8080 -j ACCEPT -w");
-  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 80, "iface",
       net_base::IPv4Address(100, 115, 92, 6), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 --dport "
                   "8080 -j ACCEPT -w");
   ASSERT_TRUE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 80, "wlan0",
       net_base::IPv4Address(100, 115, 92, 2), 8080));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i vmtap0 -p tcp -d 100.115.92.2 --dport "
       "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -A FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
   ASSERT_TRUE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, net_base::IPv4Address(100, 115, 92, 2), 5555,
       "vmtap0", net_base::IPv4Address(127, 0, 0, 1), 5550));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i eth0 -p udp --dport 5353 -j DNAT "
       "--to-destination 192.168.1.1:5353 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -A FORWARD -i eth0 -p udp -d 192.168.1.1 --dport "
                   "5353 -j ACCEPT -w");
   ASSERT_TRUE(firewall.AddIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 5353, "eth0",
       net_base::IPv4Address(192, 168, 1, 1), 5353));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i mlan0 -p tcp --dport 5000 -j DNAT "
       "--to-destination 10.0.0.24:5001 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i mlan0 -p tcp -d 10.0.0.24 --dport 5001 "
                   "-j ACCEPT -w");
   ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, std::nullopt, 5000, "mlan0",
       net_base::IPv4Address(10, 0, 0, 24), 5001));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i vmtap0 -p tcp -d 100.115.92.2 --dport "
       "5555 -j DNAT --to-destination 127.0.0.1:5550 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -D FORWARD -i vmtap0 -p tcp -d 127.0.0.1 --dport "
                   "5550 -j ACCEPT -w");
   ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::TCP, net_base::IPv4Address(100, 115, 92, 2), 5555,
       "vmtap0", net_base::IPv4Address(127, 0, 0, 1), 5550));
-  Mock::VerifyAndClearExpectations(runner);
+  Mock::VerifyAndClearExpectations(&runner);
 
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i eth1 -p udp --dport 443 -j DNAT "
       "--to-destination 1.2.3.4:443 -w");
   Verify_iptables(
-      *runner,
+      runner,
       "filter -D FORWARD -i eth1 -p udp -d 1.2.3.4 --dport 443 -j ACCEPT -w");
   ASSERT_TRUE(firewall.DeleteIpv4ForwardRule(
       ModifyPortRuleRequest::UDP, std::nullopt, 443, "eth1",
@@ -626,21 +626,21 @@ TEST(FirewallTest, AddIpv4ForwardRules_ValidRules) {
 }
 
 TEST(FirewallTest, AddIpv4ForwardRules_PartialFailure) {
-  auto runner = new MockProcessRunner();
-  Firewall firewall(runner);
+  MockProcessRunner runner;
+  Firewall firewall(&runner);
 
   // When the second issued FORWARD command fails, expect a delete command to
   // cleanup the ingress_port_forwarding command that succeeded.
   Verify_iptables(
-      *runner,
+      runner,
       "nat -I ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w");
-  Verify_iptables(*runner,
+  Verify_iptables(runner,
                   "filter -A FORWARD -i wlan0 -p tcp -d 100.115.92.2 --dport "
                   "8080 -j ACCEPT -w",
                   1);
   Verify_iptables(
-      *runner,
+      runner,
       "nat -D ingress_port_forwarding -i wlan0 -p tcp --dport 80 -j DNAT "
       "--to-destination 100.115.92.2:8080 -w");
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
