@@ -32,6 +32,10 @@ std::unique_ptr<SuspendChecker> SuspendChecker::Create() {
 
 SuspendChecker::~SuspendChecker() = default;
 
+bool SuspendChecker::IsSuspendAnnounced() const {
+  return base::PathExists(base::FilePath(kSuspendAnnouncedFile));
+}
+
 void SuspendChecker::RunWhenNotSuspending(base::OnceClosure cb) {
   callbacks_.push_back(std::move(cb));
 
@@ -67,7 +71,7 @@ void SuspendChecker::OnWatcherEvent(const base::FilePath& /* path */,
 }
 
 void SuspendChecker::RunCallbacksIfSuspendNotAnnounced() {
-  if (base::PathExists(base::FilePath(kSuspendAnnouncedFile))) {
+  if (IsSuspendAnnounced()) {
     ELOG(INFO) << "Suspend has been announced, deferring tasks";
     return;
   }

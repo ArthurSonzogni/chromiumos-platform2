@@ -469,6 +469,11 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
                                   const std::string& carrier_uuid,
                                   const std::string& variant,
                                   bool use_modems_fw_info) {
+  // Just drop the request if we're suspending. Users can manually retry the
+  // force-flash after the device has resumed.
+  if (suspend_checker_->IsSuspendAnnounced())
+    return false;
+
   auto stub_modem = CreateStubModem(
       device_id, carrier_uuid, helper_directory_.get(), use_modems_fw_info);
   if (!stub_modem)

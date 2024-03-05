@@ -19,6 +19,7 @@ class SuspendChecker {
   static std::unique_ptr<SuspendChecker> Create();
   ~SuspendChecker();
 
+  bool IsSuspendAnnounced() const;
   void RunWhenNotSuspending(base::OnceClosure cb);
 
  private:
