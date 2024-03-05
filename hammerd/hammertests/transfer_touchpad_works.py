@@ -36,7 +36,8 @@ def main(argv):
         common.BASE_VENDOR_ID, common.BASE_PRODUCT_ID, common.BASE_USB_PATH
     )
 
-    # Use unlocked image on dut to verify that TransferTouchpadFirmware call works
+    # Use unlocked image on dut to verify that TransferTouchpadFirmware call
+    # works
     with open(common.IMAGE, "rb") as f:
         ec_image = f.read()
     updater.LoadEcImage(ec_image)
@@ -63,7 +64,8 @@ def main(argv):
     assert updater.CurrentSection() == 0, "Running section should be 0 (RO)"
 
     init_tp_transfer(updater)
-    # Try to flash to invalid addresses. Since image is unlocked this should flash
+    # Try to flash to invalid addresses. Since image is unlocked this should
+    # flash
     flash_invalid_image(updater)
     # Restore valid RW
     restore_valid_rw(updater, common.IMAGE)

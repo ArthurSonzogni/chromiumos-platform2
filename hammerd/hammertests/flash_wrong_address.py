@@ -13,6 +13,7 @@ import time
 import common
 import hammerd_api  # pylint: disable=import-error
 
+
 # These will fail in RO because hammer prevents current image from being
 # updated. It'll fail in RW as RO is protected.
 WRONG_ADDR_RO_OFFSET = "0x00000000"
@@ -73,8 +74,8 @@ def main(argv):
     # First test that RW can't update anything
     flash_invalid_address(updater, True)
 
-    # Uncommenting these line will make the test fail (RO will be able to write to
-    # WRONG_ADDR_RW_OFFSET)
+    # Uncommenting these line will make the test fail (RO will be able to write
+    # to WRONG_ADDR_RW_OFFSET)
     # common.connect_usb(updater)
     # unlock_rw(updater)
     # updater.CloseUsb()

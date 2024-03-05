@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -10,6 +9,7 @@ from __future__ import print_function
 import ctypes
 import sys
 
+
 # Load hammerd-api library.
 _DLL = ctypes.CDLL("libhammerd-api.so")
 ENTROPY_SIZE = ctypes.c_int.in_dll(_DLL, "kEntropySize").value
@@ -19,7 +19,7 @@ X25519_PUBLIC_VALUE_LEN = ctypes.c_int.in_dll(
 ).value
 
 
-class Enum(object):
+class Enum:
     """Enumeration wrapper. ToStr converts enumerator to string."""
 
     @classmethod
@@ -63,7 +63,7 @@ class ChallengeStatus(Enum):
 
 
 class FirstResponsePdu(ctypes.Structure):
-    """Struct of response of first PDU from src/platform/ec/include/update_fw.h"""
+    """Struct of response of first PDU from platform/ec/include/update_fw.h"""
 
     _pack_ = 1
     _fields_ = [
@@ -164,10 +164,10 @@ class WrapperMetaclass(type):
         """Converts Python bytes to a ctypes ByteString pointer.
 
         Args:
-          string: a Python bytes.
+            string: a Python bytes.
 
         Returns:
-          A ctypes pointer to ByteString.
+            A ctypes pointer to ByteString.
         """
         buffer_size = len(string)
         buffer_ptr = ctypes.cast(
@@ -176,7 +176,7 @@ class WrapperMetaclass(type):
         return ctypes.byref(ByteString(buffer_ptr, buffer_size))
 
 
-class FirmwareUpdater(object, metaclass=WrapperMetaclass):
+class FirmwareUpdater(metaclass=WrapperMetaclass):
     """The wrapper of FirmwareUpdater class."""
 
     METHODS = [
@@ -247,7 +247,7 @@ class FirmwareUpdater(object, metaclass=WrapperMetaclass):
         self.object = func(vendor_id, product_id, path)
 
 
-class PairManager(object, metaclass=WrapperMetaclass):
+class PairManager(metaclass=WrapperMetaclass):
     """The wrapper of FirmwareUpdater class."""
 
     METHODS = [

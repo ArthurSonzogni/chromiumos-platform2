@@ -57,16 +57,16 @@ def GetHammerdArguments():
     """Parses the hammerd.override and retrieves the arguments.
 
     The format of the file is:
-      env FOO=1234  # comment of FOO
-      env BAR="string value"  # comment of BAR
+        env FOO=1234  # comment of FOO
+        env BAR="string value"  # comment of BAR
 
     Returns:
-      a dict containing the arguments of hammerd process. The type of the key and
-      value are string. e.g.
-      {
-        'FOO': '1234',
-        'BAR': 'string value'
-      }
+        a dict containing the arguments of hammerd process. The type of the key
+        and value are string. e.g.
+        {
+            'FOO': '1234',
+            'BAR': 'string value'
+        }
     """
     ARGUMENT_FILE_PATH = "/etc/init/hammerd.override"
     REQUIRED_ARGUMENTS = [
@@ -80,7 +80,7 @@ def GetHammerdArguments():
 
     ret = {}
     if os.path.exists(ARGUMENT_FILE_PATH):
-        with open(ARGUMENT_FILE_PATH, "r") as f:
+        with open(ARGUMENT_FILE_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 tokens = shlex.split(line)
                 if len(tokens) >= 2 and tokens[0] == "env":
