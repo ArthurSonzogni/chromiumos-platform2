@@ -69,8 +69,20 @@ class MachineQuirks : public MachineQuirksInterface {
   // machine has an internal monitor or not.
   bool IsExternalDisplayOnly() override;
 
-  // Return true if field_name is found in list_file
-  bool IsQuirkMatch(std::string field_name, std::string list_file);
+  // Reads the DMI value, given a DMI filename
+  bool ReadDMIValFromFile(std::string_view dmi_file_name,
+                          std::string* value_out);
+
+  // Return true if DMI val in the pref string is equal to the product name of
+  // the device
+  bool IsProductNameMatch(std::string_view product_name_pref);
+
+  // Return true if DMI val(s) in string match DMI val(s) of device
+  bool IsDMIMatch(std::string_view dmi_entry);
+
+  // Return true if the DMI IDs pref contains a DMI entry that matches the
+  // device's DMI val(s).
+  bool ContainsDMIMatch(std::string_view dmi_ids_pref);
 
   // Functions used to pass in mock directories for unit tests
   void set_dmi_id_dir_for_test(const base::FilePath& dir) { dmi_id_dir_ = dir; }

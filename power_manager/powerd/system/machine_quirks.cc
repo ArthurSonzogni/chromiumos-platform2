@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/machine_quirks.h"
 
+#include <string_view>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/pattern.h>
@@ -21,7 +23,7 @@ namespace {
 const base::FilePath kDefaultDmiIdDir("/sys/class/dmi/id/");
 
 // Name of product name file for special suspend workarounds.
-const base::FilePath kDefaultProductNameFile("product_name");
+constexpr std::string_view kDefaultProductNameFile = "product_name";
 
 // File containing the product names that require suspend-to-idle.
 const base::FilePath kPowerManagerSuspendToIdleFile("suspend_to_idle_models");
@@ -65,46 +67,29 @@ void MachineQuirks::ApplyQuirksToPrefs() {
 bool MachineQuirks::IsSuspendBlocked() {
   DCHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
-  std::string suspend_prevention_list;
-  // Read suspend prevention list from pref.
-  if (!prefs_->GetString(kSuspendPreventionListPref, &suspend_prevention_list))
+  std::string suspend_prevention_ids_pref;
+  // Read suspend prevention ids pref.
+  if (!prefs_->GetString(kSuspendPreventionListPref,
+                         &suspend_prevention_ids_pref))
     return false;
 
-  std::string product_name;
-  // If the product name is unavailable do not block.
-  base::FilePath product_name_file =
-      base::FilePath(dmi_id_dir_.Append(kDefaultProductNameFile));
-  if (!util::ReadStringFile(product_name_file, &product_name))
-    return false;
-
-  if (IsQuirkMatch(product_name, suspend_prevention_list)) {
-    LOG(INFO) << "Product name " << product_name
-              << " is in power_manager's suspend-prevention list.";
+  if (ContainsDMIMatch(suspend_prevention_ids_pref)) {
     return true;
   }
 
-  // Do not interfere.
+  // Normal case, no quirk is required.
   return false;
 }
 
 bool MachineQuirks::IsSuspendToIdle() {
   CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
-  std::string suspend_to_idle_list;
-  // Read suspend prevention list from pref.
-  if (!prefs_->GetString(kSuspendToIdleListPref, &suspend_to_idle_list))
+  std::string suspend_to_idle_ids_pref;
+  // Read suspend prevention ids pref.
+  if (!prefs_->GetString(kSuspendToIdleListPref, &suspend_to_idle_ids_pref))
     return false;
 
-  std::string product_name;
-  // If the product name is unreadable, assume no.
-  base::FilePath product_name_file =
-      base::FilePath(dmi_id_dir_.Append(kDefaultProductNameFile));
-  if (!util::ReadStringFile(product_name_file, &product_name))
-    return false;
-
-  if (IsQuirkMatch(product_name, suspend_to_idle_list)) {
-    LOG(INFO) << "Product name " << product_name
-              << " is in power_manager's suspend-to-idle list.";
+  if (ContainsDMIMatch(suspend_to_idle_ids_pref)) {
     return true;
   }
 
@@ -115,39 +100,86 @@ bool MachineQuirks::IsSuspendToIdle() {
 bool MachineQuirks::IsExternalDisplayOnly() {
   CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
-  std::string external_display_only_list;
-  // Read external_display_only list from pref.
+  std::string external_display_only_ids_pref;
+  // Read external_display_only ids pref.
   if (!prefs_->GetString(kExternalDisplayOnlyListPref,
-                         &external_display_only_list))
+                         &external_display_only_ids_pref))
     return false;
 
-  std::string product_name;
-  // If the product name is unreadable, assume no.
-  base::FilePath product_name_file =
-      base::FilePath(dmi_id_dir_.Append(kDefaultProductNameFile));
-  if (!util::ReadStringFile(product_name_file, &product_name))
-    return false;
-
-  if (IsQuirkMatch(product_name, external_display_only_list)) {
-    LOG(INFO) << "Product name " << product_name
-              << " is in power_manager's external-display-only list.";
+  if (ContainsDMIMatch(external_display_only_ids_pref))
     return true;
-  }
 
   // Normal case, no quirk is required.
   return false;
 }
 
-bool MachineQuirks::IsQuirkMatch(std::string field_name,
-                                 std::string list_file) {
-  // The file should be a list of product names and product versions
-  // separated by '\n'. One line for each machine that should
-  // be skipped.
-  base::TrimWhitespaceASCII(field_name, base::TRIM_ALL, &field_name);
-  for (const auto& quirk_indice : base::SplitString(
-           list_file, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    if (base::MatchPattern(field_name, quirk_indice)) {
-      // Force suspend-to-idle for matching hardware.
+bool MachineQuirks::ReadDMIValFromFile(std::string_view dmi_file_name,
+                                       std::string* value_out) {
+  const base::FilePath dmi_file(dmi_file_name);
+  base::FilePath dmi_file_path = base::FilePath(dmi_id_dir_.Append(dmi_file));
+  if (!util::ReadStringFile(dmi_file_path, value_out)) {
+    return false;
+  }
+  base::TrimWhitespaceASCII(*value_out, base::TRIM_ALL, value_out);
+  return true;
+}
+
+bool MachineQuirks::IsProductNameMatch(std::string_view product_name_pref) {
+  std::string product_name_dut;
+  if (!ReadDMIValFromFile(kDefaultProductNameFile, &product_name_dut))
+    return false;
+  if (base::MatchPattern(product_name_dut, product_name_pref)) {
+    LOG(INFO) << "Quirk match found for product_name:" << product_name_dut;
+    return true;
+  }
+  return false;
+}
+
+bool MachineQuirks::IsDMIMatch(std::string_view dmi_pref_entry) {
+  // If the DMI entry doesn't follow the key:val format, that means that it just
+  // contains the product_name, so do just a product_name match.
+  if (dmi_pref_entry.find(':') == std::string::npos) {
+    return IsProductNameMatch(dmi_pref_entry);
+  }
+
+  // If the DMI entry is in the key:val format, then we parse and match each
+  // pair. Example: "board_name:A, product_family:B"
+
+  base::StringPairs dmi_pairs;
+  if (!base::SplitStringIntoKeyValuePairs(dmi_pref_entry, ':', ',',
+                                          &dmi_pairs)) {
+    LOG(INFO) << dmi_pref_entry
+              << " in the DMI models list is incorrectly formatted.";
+    return false;
+  }
+
+  // Return false if any DMI keyval fails to match with the DUT's DMI info
+  for (const auto& dmi_keyval : dmi_pairs) {
+    std::string dmi_val;
+    if (!ReadDMIValFromFile(dmi_keyval.first, &dmi_val)) {
+      LOG(INFO) << "Unable to read a DMI val for this model in the list: "
+                << dmi_pref_entry
+                << ". Please note that DMI values ending in _serial or _uuid "
+                   "cannot be read by power_manager.";
+      return false;
+    }
+    if (dmi_keyval.second != dmi_val)
+      return false;
+  }
+
+  // If all the listed DMI values match, then we know it's a match!
+  LOG(INFO) << "Quirk match found for DMI vals " << dmi_pref_entry;
+  return true;
+}
+
+bool MachineQuirks::ContainsDMIMatch(std::string_view dmi_ids_pref) {
+  // The DMI IDs pref is read from models.yaml as a pref and comes originally as
+  // a single string before it is processed into a vector of strings.
+
+  for (const auto& dmi_entry :
+       base::SplitString(dmi_ids_pref, "\n", base::TRIM_WHITESPACE,
+                         base::SPLIT_WANT_NONEMPTY)) {
+    if (IsDMIMatch(dmi_entry)) {
       return true;
     }
   }

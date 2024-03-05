@@ -8,12 +8,15 @@ The role of Machine Quirks is to read DMI info from the kernel at runtime, and t
 
 On the machine, when powerd initializes, first it checks if the `kHasMachineQuirksPref` is activated by the board to see if it should move on.
 
-Next, the [MachineQuirks class](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/power_manager/powerd/system/machine_quirks.cc) collects DMI info from the following location:
+Next, the [MachineQuirks class](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/power_manager/powerd/system/machine_quirks.cc) compares the values in prefs such as `kSuspendToIdleListPref` (and any other list prefs in the MachineQuirks class) to DMI info found in the following location:
 ```
-/sys/class/dmi/id/product_name
+/sys/class/dmi/id/
 ```
+For most cases, it compares the value of `product_name` with the ListPref values. If a match is found, then the respective pref (example:`kSuspendToIdlePref`) is set to true via the Prefs class.
 
-It compares the value of `product_name` with the `kSuspendToIdleListPref` and the `kSuspendPreventionListPref`. If a match is found, then either `kSuspendToIdlePref` or `kDisableIdleSuspendPref` is set to true via the Prefs class.
+
+If multiple DMI values are listed for a model, then it checks each respective DMI file in that directory. It returns a match only if all DMI values match. Properly formatted examples of such quirk entries can be found in
+[machine_quirks_test.cc](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/power_manager/powerd/system/machine_quirks_test.cc).
 
 ### Code:
 [machine_quirks.h](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/power_manager/powerd/system/machine_quirks.h)\

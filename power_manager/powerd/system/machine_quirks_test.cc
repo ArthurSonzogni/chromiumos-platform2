@@ -20,11 +20,10 @@ namespace power_manager::system {
 namespace {
 
 const char sp_models[] =
-    "OptiPlex 740\n"
+    "board_name:valA\n"
     "ThinkPad X120e\n"
     "HP Compaq dc7900";
 const char sti_models[] =
-    "Compaq dc7800\n"
     "compaq dc5800\n"
     "OptiPlex 7020\n"
     "OptiPlex 9010\n"
@@ -32,11 +31,10 @@ const char sti_models[] =
     "HP Compaq 6000 Pro\n"
     "HP Compaq 8000 Elite\n"
     "ThinkCentre M93\n"
-    "ProDesk 600 G1\n"
-    "Surface Pro 3\n";
+    "ProDesk 600 G1\n";
 const char external_display_models[] =
     "HP Engage Go 13.5 inch Mobile System\n"
-    "UTC-115G\n";
+    "board_name:valA, product_family:valB\n";
 }  // namespace
 
 class MachineQuirksTest : public TestEnvironment {
@@ -84,21 +82,6 @@ class MachineQuirksTest : public TestEnvironment {
   MachineQuirks machine_quirks_;
 };
 
-// Tests IsQuirkMatch function by inputting strings that are or aren't on the
-// device lists
-TEST_F(MachineQuirksTest, IsQuirkMatch) {
-  std::string sp_list;
-  prefs_.GetString(kSuspendPreventionListPref, &sp_list);
-  EXPECT_EQ(true, machine_quirks_.IsQuirkMatch("OptiPlex 740", sp_list));
-  EXPECT_EQ(true, machine_quirks_.IsQuirkMatch("HP Compaq dc7900", sp_list));
-  EXPECT_EQ(false, machine_quirks_.IsQuirkMatch("OptiPlex", sp_list));
-
-  prefs_.GetString(kSuspendToIdleListPref, &sp_list);
-  EXPECT_EQ(true, machine_quirks_.IsQuirkMatch("Compaq dc7800", sp_list));
-  EXPECT_EQ(true, machine_quirks_.IsQuirkMatch("Surface Pro 3", sp_list));
-  EXPECT_EQ(false, machine_quirks_.IsQuirkMatch("HP Compaq dc7900", sp_list));
-}
-
 // Test that IsSuspendToIdle is true when the dmi value is a match
 TEST_F(MachineQuirksTest, IsSuspendToIdleTrue) {
   CreateDmiFile("product_name", "OptiPlex 7020");
@@ -117,10 +100,7 @@ TEST_F(MachineQuirksTest, IsSuspendToIdleFalse) {
 
 // Test that IsSuspendBlocked is true when the dmi value is a match
 TEST_F(MachineQuirksTest, IsSuspendBlockedTrue) {
-  CreateDmiFile("product_name", "HP Compaq dc7900");
-  EXPECT_EQ(true, machine_quirks_.IsSuspendBlocked());
-  // Also test for the case when there is whitespace added
-  CreateDmiFile("product_name", " HP Compaq dc7900 ");
+  CreateDmiFile("board_name", "valA");
   EXPECT_EQ(true, machine_quirks_.IsSuspendBlocked());
 }
 
@@ -133,17 +113,18 @@ TEST_F(MachineQuirksTest, IsSuspendBlockedFalse) {
 
 // Test that IsExternalDisplayOnly is true when the dmi value is a match
 TEST_F(MachineQuirksTest, IsExternalDisplayOnlyTrue) {
-  CreateDmiFile("product_name", "UTC-115G");
-  EXPECT_EQ(true, machine_quirks_.IsExternalDisplayOnly());
-  // Also test for the case when there is whitespace added
-  CreateDmiFile("product_name", " UTC-115G ");
+  // Test for the case when there are multiple dmi values
+  CreateDmiFile("board_name", "valA");
+  CreateDmiFile("product_family", "valB");
   EXPECT_EQ(true, machine_quirks_.IsExternalDisplayOnly());
 }
 
-// Test that IsSuspendBlocked is false when there is no matching dmi value
+// Test that IsExternalDisplayOnly is false when there is a mismatch
 TEST_F(MachineQuirksTest, IsExternalDisplayOnlyFalse) {
+  // Test for the case of a partial mismatch
   EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
-  CreateDmiFile("product_name", "foo");
+  CreateDmiFile("board_name", "valA");
+  CreateDmiFile("product_family", "foo");
   EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
 }
 
