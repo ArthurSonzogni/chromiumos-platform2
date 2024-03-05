@@ -548,6 +548,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   client_streams_ = CopyToVector(stream_config->GetStreams());
   std::vector<camera3_stream_t*> hal_streams(client_streams_);
   Size target_size;
+  char* physical_camera_id;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
       continue;
@@ -572,6 +573,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
             .height = still_size_.height,
             .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
             .usage = kStillYuvBufferUsage,
+            .physical_camera_id = s->physical_camera_id,
         });
         hal_streams.push_back(still_yuv_stream_.get());
         yuv_stream_for_blob_ = still_yuv_stream_.get();
@@ -583,6 +585,8 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
     if (!target_size.is_valid() || s->height > target_size.height ||
         (s->height == target_size.height && s->width > target_size.width)) {
       target_size = Size(s->width, s->height);
+      // Assign physical camera id to use in |full_frame_stream_|.
+      physical_camera_id = const_cast<char*>(s->physical_camera_id);
     }
   }
   if (!target_size.is_valid()) {
@@ -607,6 +611,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
       .height = full_frame_size_.height,
       .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
       .usage = kFullFrameBufferUsage,
+      .physical_camera_id = physical_camera_id,
   };
   hal_streams.push_back(&full_frame_stream_);
   if (!yuv_stream_for_blob_) {
