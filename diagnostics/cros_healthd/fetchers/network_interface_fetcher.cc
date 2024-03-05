@@ -112,8 +112,8 @@ bool State::CheckIwResult(const mojom::ExecutedProcessResultPtr& result) {
 // This function handles the callback from executor()->GetScanDump. It will
 // extract data of tx power from "iw <interface> scan dump" command.
 void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
-  DCHECK(wireless_info_);
-  DCHECK(wireless_info_->wireless_link_info);
+  CHECK(wireless_info_);
+  CHECK(wireless_info_->wireless_link_info);
   if (!CheckIwResult(result)) {
     return;
   }
@@ -143,8 +143,8 @@ void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
 // This function handles the callback from executor()->GetInfo. It will
 // extract data of tx power from "iw <interface> info" command.
 void State::HandleInfo(mojom::ExecutedProcessResultPtr result) {
-  DCHECK(wireless_info_);
-  DCHECK(wireless_info_->wireless_link_info);
+  CHECK(wireless_info_);
+  CHECK(wireless_info_->wireless_link_info);
   if (!CheckIwResult(result)) {
     return;
   }
@@ -180,7 +180,7 @@ void State::HandleInfo(mojom::ExecutedProcessResultPtr result) {
 void State::HandleLink(Context* context,
                        base::ScopedClosureRunner on_complete,
                        mojom::ExecutedProcessResultPtr result) {
-  DCHECK(wireless_info_);
+  CHECK(wireless_info_);
   if (!CheckIwResult(result)) {
     return;
   }
