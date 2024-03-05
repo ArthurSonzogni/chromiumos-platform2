@@ -613,6 +613,10 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   if (stage == MigrationStage::kMigrated) {
     LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated' in '"
               << downloads_in_my_files << "'";
+    LOG_IF(WARNING, platform_->FileExists(downloads))
+        << "The folder '" << downloads
+        << "' has been re-created after it was migrated to '"
+        << downloads_in_my_files << "'";
     return true;
   }
 
@@ -866,6 +870,8 @@ void Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
 
   DCHECK(enumerator);
   int num_items = 0;
+  int num_moved = 0;
+
   for (FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
     const FilePath dst_obj = dst.Append(src_obj.BaseName());
@@ -878,8 +884,15 @@ void Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
       if (!platform_->DeletePathRecursively(src_obj)) {
         PLOG(ERROR) << "Cannot delete '" << src_obj << "'";
       }
+
+      continue;
     }
+
+    num_moved++;
   }
+
+  LOG_IF(INFO, num_moved != 0) << "Moved " << num_moved << " items from '"
+                               << src << "' to '" << dst << "'";
 
   ReportMaskedDownloadsItems(num_items);
 }
