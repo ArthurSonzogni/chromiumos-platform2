@@ -1,0 +1,49 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("memory_and_cpu_pkg_config") {
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+    "re2",
+  ]
+}
+
+source_set("memory_and_cpu") {
+  sources = [
+    "cpu_cache.cc",
+    "cpu_stress.cc",
+    "floating_point.cc",
+    "memory.cc",
+    "prime_search.cc",
+    "urandom_v2.cc",
+  ]
+  configs += [ ":memory_and_cpu_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("memory_and_cpu_test") {
+    sources = [
+      "cpu_cache_test.cc",
+      "cpu_stress_test.cc",
+      "floating_point_test.cc",
+      "memory_test.cc",
+      "prime_search_test.cc",
+      "urandom_v2_test.cc",
+    ]
+    configs += [ ":memory_and_cpu_pkg_config" ]
+    deps = [
+      ":memory_and_cpu",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

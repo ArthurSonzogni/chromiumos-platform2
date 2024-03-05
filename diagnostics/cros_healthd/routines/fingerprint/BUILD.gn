@@ -1,0 +1,40 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("fingerprint_pkg_config") {
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
+}
+
+source_set("fingerprint") {
+  sources = [
+    "fingerprint.cc",
+    "fingerprint_alive.cc",
+  ]
+  configs += [ ":fingerprint_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("fingerprint_test") {
+    sources = [
+      "fingerprint_alive_test.cc",
+      "fingerprint_test.cc",
+    ]
+    configs += [ ":fingerprint_pkg_config" ]
+    deps = [
+      ":fingerprint",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

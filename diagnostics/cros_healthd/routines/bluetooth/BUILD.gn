@@ -1,0 +1,60 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("bluetooth_pkg_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
+    "re2",
+  ]
+}
+
+source_set("bluetooth") {
+  sources = [
+    "address_utils.cc",
+    "bluez/bluetooth_base.cc",
+    "bluez/bluetooth_discovery.cc",
+    "bluez/bluetooth_pairing.cc",
+    "bluez/bluetooth_power.cc",
+    "bluez/bluetooth_scanning.cc",
+    "floss/bluetooth_base.cc",
+    "floss/bluetooth_discovery.cc",
+    "floss/bluetooth_pairing.cc",
+    "floss/bluetooth_power.cc",
+    "floss/bluetooth_scanning.cc",
+  ]
+  configs += [ ":bluetooth_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("bluetooth_test") {
+    sources = [
+      "address_utils_test.cc",
+      "bluez/bluetooth_base_test.cc",
+      "bluez/bluetooth_discovery_test.cc",
+      "bluez/bluetooth_pairing_test.cc",
+      "bluez/bluetooth_power_test.cc",
+      "bluez/bluetooth_scanning_test.cc",
+      "floss/bluetooth_base_test.cc",
+      "floss/bluetooth_discovery_test.cc",
+      "floss/bluetooth_pairing_test.cc",
+      "floss/bluetooth_power_test.cc",
+      "floss/bluetooth_scanning_test.cc",
+    ]
+    configs += [ ":bluetooth_pkg_config" ]
+    deps = [
+      ":bluetooth",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

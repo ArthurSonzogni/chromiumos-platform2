@@ -1,0 +1,40 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("hardware_button_pkg_config") {
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
+}
+
+source_set("hardware_button") {
+  sources = [
+    "power_button.cc",
+    "volume_button.cc",
+  ]
+  configs += [ ":hardware_button_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("hardware_button_test") {
+    sources = [
+      "power_button_test.cc",
+      "volume_button_test.cc",
+    ]
+    configs += [ ":hardware_button_pkg_config" ]
+    deps = [
+      ":hardware_button",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("network_pkg_config") {
+  pkg_deps = [ "libchrome" ]
+}
+
+source_set("network") {
+  sources = [
+    "captive_portal.cc",
+    "dns_latency.cc",
+    "dns_resolution.cc",
+    "dns_resolver_present.cc",
+    "gateway_can_be_pinged.cc",
+    "has_secure_wifi_connection.cc",
+    "http_firewall.cc",
+    "https_firewall.cc",
+    "https_latency.cc",
+    "lan_connectivity.cc",
+    "signal_strength.cc",
+    "video_conferencing.cc",
+  ]
+  configs += [ ":network_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("network_test") {
+    sources = [
+      "captive_portal_test.cc",
+      "dns_latency_test.cc",
+      "dns_resolution_test.cc",
+      "dns_resolver_present_test.cc",
+      "gateway_can_be_pinged_test.cc",
+      "has_secure_wifi_connection_test.cc",
+      "http_firewall_test.cc",
+      "https_firewall_test.cc",
+      "https_latency_test.cc",
+      "lan_connectivity_test.cc",
+      "signal_strength_test.cc",
+      "video_conferencing_test.cc",
+    ]
+    configs += [ ":network_pkg_config" ]
+    deps = [
+      ":network",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

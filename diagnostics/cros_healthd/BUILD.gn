@@ -19,19 +19,6 @@ pkg_config("libcros_healthd_pkg_deps") {
 }
 
 source_set("libcros_healthd") {
-  configs += [ ":libcros_healthd_pkg_deps" ]
-  deps = [
-    "events:libcros_healthd_events",
-    "fetchers:libcros_healthd_fetchers",
-    "routines:libdiag_routine",
-    "system:libcros_healthd_system",
-    "//diagnostics/base",
-    "//diagnostics/dbus_bindings",
-    "//diagnostics/mojom:libmojom_utils",
-    "//diagnostics/mojom/external:libcros_healthd_internal",
-    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-  ]
   sources = [
     "cros_healthd_daemon.cc",
     "cros_healthd_diagnostics_service.cc",
@@ -39,6 +26,19 @@ source_set("libcros_healthd") {
     "cros_healthd_routine_factory_impl.cc",
     "event_aggregator.cc",
     "fetch_aggregator.cc",
+  ]
+  configs += [ ":libcros_healthd_pkg_deps" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/events:libcros_healthd_events",
+    "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers",
+    "//diagnostics/cros_healthd/routines",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/dbus_bindings",
+    "//diagnostics/mojom:libmojom_utils",
+    "//diagnostics/mojom/external:libcros_healthd_internal",
+    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 
@@ -87,6 +87,20 @@ if (use.test) {
       "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers_test",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/routines:routine_test",
+      "//diagnostics/cros_healthd/routines/android_network:android_network_test",
+      "//diagnostics/cros_healthd/routines/audio:audio_test",
+      "//diagnostics/cros_healthd/routines/battery_and_power:battery_and_power_test",
+      "//diagnostics/cros_healthd/routines/bluetooth:bluetooth_test",
+      "//diagnostics/cros_healthd/routines/camera:camera_test",
+      "//diagnostics/cros_healthd/routines/fan:fan_test",
+      "//diagnostics/cros_healthd/routines/fingerprint:fingerprint_test",
+      "//diagnostics/cros_healthd/routines/hardware_button:hardware_button_test",
+      "//diagnostics/cros_healthd/routines/led:led_test",
+      "//diagnostics/cros_healthd/routines/memory_and_cpu:memory_and_cpu_test",
+      "//diagnostics/cros_healthd/routines/network:network_test",
+      "//diagnostics/cros_healthd/routines/privacy_screen:privacy_screen_test",
+      "//diagnostics/cros_healthd/routines/sensor:sensor_test",
+      "//diagnostics/cros_healthd/routines/storage:storage_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",

@@ -1,0 +1,55 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("storage_pkg_config") {
+  pkg_deps = [
+    "libchrome",
+    "libdebugd-client",
+    "libmojo",
+    "libspaced",
+    "re2",
+  ]
+}
+
+source_set("storage") {
+  sources = [
+    "disk_read.cc",
+    "emmc_lifetime.cc",
+    "nvme_self_test.cc",
+    "nvme_wear_level.cc",
+    "smartctl_check.cc",
+    "ufs_lifetime.cc",
+  ]
+  configs += [ ":storage_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("storage_test") {
+    sources = [
+      "disk_read_test.cc",
+      "emmc_lifetime_test.cc",
+      "nvme_self_test_test.cc",
+      "nvme_wear_level_test.cc",
+      "smartctl_check_test.cc",
+      "ufs_lifetime_test.cc",
+    ]
+    configs += [ ":storage_pkg_config" ]
+    pkg_deps = [
+      "libdebugd-client-test",
+      "libspaced-test",
+    ]
+    deps = [
+      ":storage",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

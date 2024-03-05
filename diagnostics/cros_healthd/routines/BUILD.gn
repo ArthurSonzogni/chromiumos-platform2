@@ -4,182 +4,70 @@
 
 import("//common-mk/pkg_config.gni")
 
-pkg_config("libdiag_routine_pkg_deps") {
+pkg_config("routines_pkg_config") {
   pkg_deps = [
-    "iioservice_ipc",
-    "libbrillo",
     "libchrome",
-    "libdebugd-client",
     "libmojo",
-    "libspaced",
     "mojo_service_manager",
-    "re2",
-    "system_api",
   ]
 }
 
-source_set("libdiag_routine") {
-  configs += [ ":libdiag_routine_pkg_deps" ]
-  deps = [
-    "//diagnostics/base",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-  ]
+source_set("routines") {
   sources = [
-    "android_network/arc_dns_resolution.cc",
-    "android_network/arc_http.cc",
-    "android_network/arc_ping.cc",
-    "audio/audio_driver.cc",
     "base_routine_control.cc",
-    "battery_and_power/ac_power.cc",
-    "battery_and_power/battery_capacity.cc",
-    "battery_and_power/battery_charge.cc",
-    "battery_and_power/battery_discharge.cc",
-    "battery_and_power/battery_health.cc",
-    "bluetooth/address_utils.cc",
-    "bluetooth/bluez/bluetooth_base.cc",
-    "bluetooth/bluez/bluetooth_discovery.cc",
-    "bluetooth/bluez/bluetooth_pairing.cc",
-    "bluetooth/bluez/bluetooth_power.cc",
-    "bluetooth/bluez/bluetooth_scanning.cc",
-    "bluetooth/floss/bluetooth_base.cc",
-    "bluetooth/floss/bluetooth_discovery.cc",
-    "bluetooth/floss/bluetooth_pairing.cc",
-    "bluetooth/floss/bluetooth_power.cc",
-    "bluetooth/floss/bluetooth_scanning.cc",
-    "camera/camera_availability.cc",
     "diag_routine_with_status.cc",
-    "fan/fan.cc",
-    "fingerprint/fingerprint.cc",
-    "fingerprint/fingerprint_alive.cc",
-    "hardware_button/power_button.cc",
-    "hardware_button/volume_button.cc",
-    "led/led_lit_up.cc",
-    "memory_and_cpu/cpu_cache.cc",
-    "memory_and_cpu/cpu_stress.cc",
-    "memory_and_cpu/floating_point.cc",
-    "memory_and_cpu/memory.cc",
-    "memory_and_cpu/prime_search.cc",
-    "memory_and_cpu/urandom_v2.cc",
-    "network/captive_portal.cc",
-    "network/dns_latency.cc",
-    "network/dns_resolution.cc",
-    "network/dns_resolver_present.cc",
-    "network/gateway_can_be_pinged.cc",
-    "network/has_secure_wifi_connection.cc",
-    "network/http_firewall.cc",
-    "network/https_firewall.cc",
-    "network/https_latency.cc",
-    "network/lan_connectivity.cc",
-    "network/signal_strength.cc",
-    "network/video_conferencing.cc",
-    "privacy_screen/privacy_screen.cc",
     "routine_adapter.cc",
     "routine_service.cc",
-    "sensor/sensitive_sensor.cc",
-    "sensor/sensor_existence_checker.cc",
     "simple_routine.cc",
-    "storage/disk_read.cc",
-    "storage/emmc_lifetime.cc",
-    "storage/nvme_self_test.cc",
-    "storage/nvme_wear_level.cc",
-    "storage/smartctl_check.cc",
-    "storage/ufs_lifetime.cc",
+  ]
+  configs += [ ":routines_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/routines/android_network",
+    "//diagnostics/cros_healthd/routines/audio",
+    "//diagnostics/cros_healthd/routines/battery_and_power",
+    "//diagnostics/cros_healthd/routines/bluetooth",
+    "//diagnostics/cros_healthd/routines/camera",
+    "//diagnostics/cros_healthd/routines/fan",
+    "//diagnostics/cros_healthd/routines/fingerprint",
+    "//diagnostics/cros_healthd/routines/hardware_button",
+    "//diagnostics/cros_healthd/routines/led",
+    "//diagnostics/cros_healthd/routines/memory_and_cpu",
+    "//diagnostics/cros_healthd/routines/network",
+    "//diagnostics/cros_healthd/routines/privacy_screen",
+    "//diagnostics/cros_healthd/routines/sensor",
+    "//diagnostics/cros_healthd/routines/storage",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 
 if (use.test) {
-  pkg_config("libroutine_test_pkg_deps") {
-    pkg_deps = [
-      "iioservice_ipc",
-      "libdebugd-client",
-      "libdebugd-client-test",
-      "libspaced",
-      "libspaced-test",
-      "mojo_service_manager",
-      "system_api",
-    ]
-  }
-
   source_set("libroutine_test_utils") {
-    configs += [ "//common-mk:test" ]
-    deps = [
-      "//diagnostics/base",
-      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-    ]
     sources = [
       "routine_observer_for_testing.cc",
       "routine_test_utils.cc",
       "routine_v2_test_utils.cc",
     ]
+    configs += [ "//common-mk:test" ]
+    deps = [
+      "//diagnostics/base",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+    ]
   }
 
   source_set("routine_test") {
     sources = [
-      "android_network/arc_dns_resolution_test.cc",
-      "android_network/arc_http_test.cc",
-      "android_network/arc_ping_test.cc",
-      "audio/audio_driver_test.cc",
       "base_routine_control_test.cc",
-      "battery_and_power/ac_power_test.cc",
-      "battery_and_power/battery_capacity_test.cc",
-      "battery_and_power/battery_charge_test.cc",
-      "battery_and_power/battery_discharge_test.cc",
-      "battery_and_power/battery_health_test.cc",
-      "bluetooth/address_utils_test.cc",
-      "bluetooth/bluez/bluetooth_base_test.cc",
-      "bluetooth/bluez/bluetooth_discovery_test.cc",
-      "bluetooth/bluez/bluetooth_pairing_test.cc",
-      "bluetooth/bluez/bluetooth_power_test.cc",
-      "bluetooth/bluez/bluetooth_scanning_test.cc",
-      "bluetooth/floss/bluetooth_base_test.cc",
-      "bluetooth/floss/bluetooth_discovery_test.cc",
-      "bluetooth/floss/bluetooth_pairing_test.cc",
-      "bluetooth/floss/bluetooth_power_test.cc",
-      "bluetooth/floss/bluetooth_scanning_test.cc",
-      "camera/camera_availability_test.cc",
       "diag_routine_with_status_test.cc",
-      "fan/fan_test.cc",
-      "fingerprint/fingerprint_alive_test.cc",
-      "fingerprint/fingerprint_test.cc",
-      "hardware_button/power_button_test.cc",
-      "hardware_button/volume_button_test.cc",
-      "led/led_lit_up_test.cc",
-      "memory_and_cpu/cpu_cache_test.cc",
-      "memory_and_cpu/cpu_stress_test.cc",
-      "memory_and_cpu/floating_point_test.cc",
-      "memory_and_cpu/memory_test.cc",
-      "memory_and_cpu/prime_search_test.cc",
-      "memory_and_cpu/urandom_v2_test.cc",
-      "network/captive_portal_test.cc",
-      "network/dns_latency_test.cc",
-      "network/dns_resolution_test.cc",
-      "network/dns_resolver_present_test.cc",
-      "network/gateway_can_be_pinged_test.cc",
-      "network/has_secure_wifi_connection_test.cc",
-      "network/http_firewall_test.cc",
-      "network/https_firewall_test.cc",
-      "network/https_latency_test.cc",
-      "network/lan_connectivity_test.cc",
-      "network/signal_strength_test.cc",
-      "network/video_conferencing_test.cc",
-      "privacy_screen/privacy_screen_test.cc",
       "routine_service_test.cc",
       "routine_v2_test_utils_test.cc",
-      "sensor/sensitive_sensor_test.cc",
-      "sensor/sensor_existence_checker_test.cc",
       "simple_routine_test.cc",
-      "storage/disk_read_test.cc",
-      "storage/emmc_lifetime_test.cc",
-      "storage/nvme_self_test_test.cc",
-      "storage/nvme_wear_level_test.cc",
-      "storage/smartctl_check_test.cc",
-      "storage/ufs_lifetime_test.cc",
     ]
-    configs += [ ":libroutine_test_pkg_deps" ]
+    configs += [ ":routines_pkg_config" ]
     deps = [
-      ":libdiag_routine",
       ":libroutine_test_utils",
+      ":routines",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",

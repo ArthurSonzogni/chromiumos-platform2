@@ -1,0 +1,43 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("battery_and_power_pkg_config") {
+  pkg_deps = [ "libchrome" ]
+}
+
+source_set("battery_and_power") {
+  sources = [
+    "ac_power.cc",
+    "battery_capacity.cc",
+    "battery_charge.cc",
+    "battery_discharge.cc",
+    "battery_health.cc",
+  ]
+  configs += [ ":battery_and_power_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("battery_and_power_test") {
+    sources = [
+      "ac_power_test.cc",
+      "battery_capacity_test.cc",
+      "battery_charge_test.cc",
+      "battery_discharge_test.cc",
+      "battery_health_test.cc",
+    ]
+    configs += [ ":battery_and_power_pkg_config" ]
+    deps = [
+      ":battery_and_power",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}

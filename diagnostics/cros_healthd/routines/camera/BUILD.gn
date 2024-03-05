@@ -1,0 +1,35 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+pkg_config("camera_pkg_config") {
+  pkg_deps = [
+    "libchrome",
+    "mojo_service_manager",
+    "system_api",
+  ]
+}
+
+source_set("camera") {
+  sources = [ "camera_availability.cc" ]
+  configs += [ ":camera_pkg_config" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("camera_test") {
+    sources = [ "camera_availability_test.cc" ]
+    configs += [ ":camera_pkg_config" ]
+    deps = [
+      ":camera",
+      "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+    ]
+  }
+}
