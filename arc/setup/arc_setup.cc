@@ -1427,11 +1427,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   LOG(INFO) << "consumer_auto_update_toggle is "
             << enable_consumer_auto_update_toggle;
 
-  const int host_ureadahead_generation =
-      config_.GetBoolOrDie("HOST_UREADAHEAD_GENERATION");
-  if (host_ureadahead_generation)
-    LOG(INFO) << "host_ureadahead_generation is enabled";
-
   const bool use_dev_caches = config_.GetBoolOrDie("USE_DEV_CACHES");
   if (use_dev_caches)
     LOG(INFO) << "use_dev_caches is set";
@@ -1506,7 +1501,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.enable_notifications_refresh=%d "
       "androidboot.arc.tts.caching=%d "
       "androidboot.enable_consumer_auto_update_toggle=%d "
-      "androidboot.arc.ureadahead_generation=%d "
       "%s" /* Use dev caches */
       "androidboot.enable_privacy_hub_for_chrome=%d "
       "androidboot.arc.signed_in=%d "
@@ -1521,7 +1515,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
       enable_notifications_refresh, enable_tts_caching,
-      enable_consumer_auto_update_toggle, host_ureadahead_generation,
+      enable_consumer_auto_update_toggle,
       GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome,
       arc_signed_in, GetHostUreadaheadModeParam(host_ureadahead_mode).c_str());
 
