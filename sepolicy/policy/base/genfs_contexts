@@ -94,7 +94,7 @@ genfscon functionfs / u:object_r:functionfs:s0
 genfscon fuse / u:object_r:fuse:s0
 genfscon inotifyfs / u:object_r:inotify:s0
 genfscon pstore / u:object_r:pstorefs:s0
-genfscon tracefs / u:object_r:debugfs_tracing:s0
+genfscon tracefs / u:object_r:debugfs_tracing_debug:s0
 genfscon usbfs / u:object_r:usbfs:s0
 genfscon vfat / u:object_r:vfat:s0
 genfscon bpf / u:object_r:fs_bpf:s0
