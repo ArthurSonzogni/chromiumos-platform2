@@ -74,8 +74,8 @@ fn trim_routine(s: &str) -> String {
         .to_string()
 }
 
-fn get_user_hash(environ: &EnvMap) -> Result<String, VmcError> {
-    if let Some(hash) = environ.get("CROS_USER_ID_HASH").map(|s| String::from(*s)) {
+fn get_user_hash(cros_user_id_hash: Option<String>) -> Result<String, VmcError> {
+    if let Some(hash) = cros_user_id_hash {
         return Ok(hash);
     }
     // The current user is the one with a non-empty cryptohome
@@ -186,7 +186,8 @@ macro_rules! try_command {
 struct Command<'a, 'b, 'c> {
     methods: &'a mut Methods,
     args: &'b [&'b str],
-    environ: &'c EnvMap<'c>,
+    user_id_hash: &'c str,
+    interactive: bool,
 }
 
 impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
@@ -288,8 +289,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = &matches.free[0];
-        let user_id_hash = get_user_hash(self.environ)?;
-        let username = self.methods.user_id_hash_to_username(&user_id_hash)?;
+        let username = self.methods.user_id_hash_to_username(self.user_id_hash)?;
 
         let vulkan = matches.opt_present("enable-vulkan");
         let big_gl = matches.opt_present("enable-big-gl");
@@ -332,7 +332,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         self.metrics_send_sample("Vm.VmcStart");
         try_command!(self.methods.vm_start(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             &username,
             features,
             user_disks,
@@ -341,7 +341,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         self.metrics_send_sample("Vm.VmcStartSuccess");
 
         if !matches.opt_present("no-shell") {
-            try_command!(self.methods.vsh_exec(vm_name, &user_id_hash));
+            try_command!(self.methods.vsh_exec(vm_name, self.user_id_hash));
         }
 
         Ok(())
@@ -353,9 +353,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = self.args[0];
-        let user_id_hash = get_user_hash(self.environ)?;
 
-        try_command!(self.methods.vm_stop(vm_name, &user_id_hash));
+        try_command!(self.methods.vm_stop(vm_name, self.user_id_hash));
 
         Ok(())
     }
@@ -364,8 +363,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         if self.args.is_empty() {
             return Err(ExpectedName.into());
         }
-        let user_id_hash = get_user_hash(self.environ)?;
-        try_command!(self.methods.vm_launch(&user_id_hash, self.args));
+        try_command!(self.methods.vm_launch(self.user_id_hash, self.args));
         Ok(())
     }
 
@@ -404,11 +402,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmAndMaybeFileName.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         if let Some(uuid) = try_command!(self.methods.vm_create(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             plugin_vm,
             size,
             file_name,
@@ -416,7 +412,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             params,
         )) {
             println!("VM creation in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "VM creation")?;
+            self.wait_disk_op_completion(&uuid, DiskOpType::Create, "VM creation")?;
         }
         Ok(())
     }
@@ -427,12 +423,14 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = self.args[0];
-        let user_id_hash = get_user_hash(self.environ)?;
         let operation = &self.args[1];
 
-        try_command!(self
-            .methods
-            .vm_adjust(vm_name, &user_id_hash, operation, &self.args[2..]));
+        try_command!(self.methods.vm_adjust(
+            vm_name,
+            self.user_id_hash,
+            operation,
+            &self.args[2..]
+        ));
 
         Ok(())
     }
@@ -447,9 +445,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = &matches.free[0];
-        let user_id_hash = get_user_hash(self.environ)?;
-        let skip_prompt =
-            matches.opt_present("yes") || self.environ.get("VMC_NONINTERACTIVE").is_some();
+        let skip_prompt = matches.opt_present("yes") || !self.interactive;
 
         if !skip_prompt {
             println!(
@@ -468,7 +464,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             }
         }
 
-        match self.methods.disk_destroy(vm_name, &user_id_hash) {
+        match self.methods.disk_destroy(vm_name, self.user_id_hash) {
             Ok(()) => Ok(()),
             Err(e) => {
                 self.metrics_send_sample("Vm.DiskEraseFailed");
@@ -480,13 +476,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     fn wait_disk_op_completion(
         &mut self,
         uuid: &str,
-        user_id_hash: &str,
         op_type: DiskOpType,
         op_name: &str,
     ) -> VmcResult {
         let mut progress_reported = false;
         loop {
-            match self.methods.wait_disk_op(uuid, user_id_hash, op_type) {
+            match self.methods.wait_disk_op(uuid, self.user_id_hash, op_type) {
                 Ok((done, progress)) => {
                     if done {
                         println!("\rOperation completed successfully");
@@ -520,12 +515,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let vm_name = self.args[0];
         let size: u64 = self.args[1].parse().or(Err(ExpectedSize))?;
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
-        match try_command!(self.methods.disk_resize(vm_name, &user_id_hash, size)) {
+        match try_command!(self.methods.disk_resize(vm_name, self.user_id_hash, size)) {
             Some(uuid) => {
                 println!("Resize in progress: {}", uuid);
-                self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Resize, "resize")?;
+                self.wait_disk_op_completion(&uuid, DiskOpType::Resize, "resize")?;
             }
             None => {
                 println!("Operation completed successfully");
@@ -569,18 +562,16 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             None
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         if let Some(uuid) = try_command!(self.methods.vm_export(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             file_name,
             digest_option,
             removable_media,
             force,
         )) {
             println!("Export in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "export")?;
+            self.wait_disk_op_completion(&uuid, DiskOpType::Create, "export")?;
         }
         Ok(())
     }
@@ -597,17 +588,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmAndFileName.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         if let Some(uuid) = try_command!(self.methods.vm_import(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             plugin_vm,
             file_name,
             removable_media
         )) {
             println!("Import in progress: {}", uuid);
-            self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "import")?;
+            self.wait_disk_op_completion(&uuid, DiskOpType::Create, "import")?;
         }
         Ok(())
     }
@@ -618,12 +607,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let uuid = self.args[0];
-        let user_id_hash = get_user_hash(self.environ)?;
 
         let (done, progress) =
             try_command!(self
                 .methods
-                .disk_op_status(uuid, &user_id_hash, DiskOpType::Create));
+                .disk_op_status(uuid, self.user_id_hash, DiskOpType::Create));
         if done {
             println!("Operation completed successfully");
         } else {
@@ -647,10 +635,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedPath.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         let path = try_command!(self.methods.extra_disk_create(
-            &user_id_hash,
+            self.user_id_hash,
             file_name,
             removable_media,
             size
@@ -664,9 +650,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             return Err(ExpectedNoArgs.into());
         }
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
-        let (disk_image_list, total_size) = try_command!(self.methods.disk_list(&user_id_hash));
+        let (disk_image_list, total_size) = try_command!(self.methods.disk_list(self.user_id_hash));
         for disk in disk_image_list {
             let mut extra_info = String::new();
             if let Some(min_size) = disk.min_size {
@@ -694,10 +678,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             return Err(ExpectedName.into());
         }
 
-        let user_id_hash = get_user_hash(self.environ)?;
         let vm_name = self.args[0];
 
-        let logs = try_command!(self.methods.get_vm_logs(vm_name, &user_id_hash));
+        let logs = try_command!(self.methods.get_vm_logs(vm_name, self.user_id_hash));
         print!("{}", logs);
 
         Ok(())
@@ -708,11 +691,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             return Err(ExpectedVmAndPath.into());
         }
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         let vm_name = self.args[0];
         let path = self.args[1];
-        let vm_path = try_command!(self.methods.vm_share_path(vm_name, &user_id_hash, path));
+        let vm_path = try_command!(self.methods.vm_share_path(vm_name, self.user_id_hash, path));
         println!("{} is available at path {}", path, vm_path);
         Ok(())
     }
@@ -722,11 +703,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             return Err(ExpectedVmAndPath.into());
         }
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         let vm_name = self.args[0];
         let path = self.args[1];
-        try_command!(self.methods.vm_unshare_path(vm_name, &user_id_hash, path));
+        try_command!(self
+            .methods
+            .vm_unshare_path(vm_name, self.user_id_hash, path));
         Ok(())
     }
 
@@ -786,19 +767,18 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmAndContainer.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-        let username = self.methods.user_id_hash_to_username(&user_id_hash)?;
+        let username = self.methods.user_id_hash_to_username(self.user_id_hash)?;
 
         try_command!(self.methods.container_create(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             container_name,
             source,
             timeout
         ));
         try_command!(self.methods.container_setup_user(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             container_name,
             &username
         ));
@@ -808,7 +788,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // container boot.
         try_command!(self.methods.container_start(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             container_name,
             privilege_level,
             timeout
@@ -816,7 +796,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         try_command!(self
             .methods
-            .vsh_exec_container(vm_name, &user_id_hash, container_name));
+            .vsh_exec_container(vm_name, self.user_id_hash, container_name));
 
         Ok(())
     }
@@ -828,7 +808,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => (self.args[0], self.args[1]),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
         let mut updates = HashMap::<String, VmDeviceAction>::new();
 
         for u in &self.args[2..] {
@@ -849,7 +828,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let res = try_command!(self.methods.container_update_devices(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             container_name,
             &updates
         ));
@@ -873,11 +852,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmBusDevice.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
         let guest_port = try_command!(self.methods.usb_attach(
             vm_name,
-            &user_id_hash,
+            self.user_id_hash,
             bus,
             device,
             container_name
@@ -904,9 +881,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmPort.into()),
         };
 
-        let user_id_hash = get_user_hash(self.environ)?;
-
-        try_command!(self.methods.usb_detach(vm_name, &user_id_hash, port));
+        try_command!(self.methods.usb_detach(vm_name, self.user_id_hash, port));
 
         println!("usb device detached from port {}", port);
 
@@ -919,9 +894,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = self.args[0];
-        let user_id_hash = get_user_hash(self.environ)?;
 
-        let devices = try_command!(self.methods.usb_list(vm_name, &user_id_hash));
+        let devices = try_command!(self.methods.usb_list(vm_name, self.user_id_hash));
         if devices.is_empty() {
             println!("No attached usb devices");
         }
@@ -952,7 +926,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let matches = opts.parse(self.args).map_err(BadProblemReportArguments)?;
 
         let vm_name = matches.opt_str(VM_NAME_OPTION);
-        let user_id_hash = get_user_hash(self.environ)?;
         let email = matches.opt_str(EMAIL_OPTION);
         let text = if matches.free.is_empty() {
             None
@@ -960,10 +933,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Some(matches.free.join(" "))
         };
 
-        let report_id =
-            try_command!(self
-                .methods
-                .pvm_send_problem_report(vm_name, &user_id_hash, email, text));
+        let report_id = try_command!(self.methods.pvm_send_problem_report(
+            vm_name,
+            self.user_id_hash,
+            email,
+            text
+        ));
 
         println!("Problem report has been sent. Report ID: {}", report_id);
         Ok(())
@@ -1003,14 +978,17 @@ const USAGE: &str = "
 
 /// `vmc` (Virtual Machine Controller) command line interface.
 /// This is the interface accessible from crosh (Ctrl-Alt-T in the browser to access).
-pub struct Vmc;
+pub struct Vmc<'a> {
+    user_id_hash: &'a str,
+    interactive: bool,
+}
 
-impl Vmc {
+impl Vmc<'_> {
     fn print_usage(&self, program_name: &str) {
         eprintln!("USAGE: {}{}", program_name, USAGE);
     }
 
-    fn run(&self, methods: &mut Methods, args: &[&str], environ: &EnvMap) -> VmcResult {
+    fn run(&self, methods: &mut Methods, args: &[&str]) -> VmcResult {
         if args.len() < 2 {
             self.print_usage("vmc");
             return Ok(());
@@ -1030,7 +1008,8 @@ impl Vmc {
         let mut command = Command {
             methods,
             args: &args[2..],
-            environ,
+            user_id_hash: self.user_id_hash,
+            interactive: self.interactive,
         };
 
         let command_name = args[1];
@@ -1065,14 +1044,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     libchromeos::panic_handler::install_memfd_handler();
     let args_string: Vec<String> = std::env::args().collect();
     let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
-    let vars_string: BTreeMap<String, String> = std::env::vars().collect();
-    let vars: EnvMap = vars_string
-        .iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
 
-    let vmc = Vmc {};
-    vmc.run(&mut Methods::new()?, &args, &vars)
+    let interactive = std::env::var("VMC_NONINTERACTIVE").is_err();
+    let cros_user_id_hash = std::env::var("CROS_USER_ID_HASH").ok();
+    let user_id_hash = get_user_hash(cros_user_id_hash)?;
+
+    let vmc = Vmc {
+        user_id_hash: &user_id_hash,
+        interactive,
+    };
+    vmc.run(&mut Methods::new()?, &args)
 }
 
 #[cfg(test)]
@@ -1473,19 +1454,18 @@ mod tests {
 
         let mut methods = mocked_methods();
 
-        let environ = vec![
-            ("CROS_USER_ID_HASH", "fake_hash"),
-            ("VMC_NONINTERACTIVE", "1"),
-        ]
-        .into_iter()
-        .collect();
+        let vmc = Vmc {
+            user_id_hash: "fake_hash",
+            interactive: false,
+        };
+
         for args in DUMMY_SUCCESS_ARGS {
-            if let Err(e) = Vmc.run(&mut methods, args, &environ) {
+            if let Err(e) = vmc.run(&mut methods, args) {
                 panic!("test args failed: {:?}: {}", args, e)
             }
         }
         for args in DUMMY_FAILURE_ARGS {
-            if let Ok(()) = Vmc.run(&mut methods, args, &environ) {
+            if let Ok(()) = vmc.run(&mut methods, args) {
                 panic!("test args should have failed: {:?}", args)
             }
         }
@@ -1510,11 +1490,13 @@ mod tests {
 
         let mut methods = mocked_methods();
 
-        let environ = vec![("CROS_USER_ID_HASH", "fake_hash")]
-            .into_iter()
-            .collect();
+        let vmc = Vmc {
+            user_id_hash: "fake_hash",
+            interactive: false,
+        };
+
         for args in CONTAINER_ARGS {
-            if let Err(e) = Vmc.run(&mut methods, args, &environ) {
+            if let Err(e) = vmc.run(&mut methods, args) {
                 panic!("test args failed: {:?}: {}", args, e)
             }
         }
@@ -1548,7 +1530,7 @@ mod tests {
         ];
 
         for args in DUMMY_PRIVILEGED_SUCCESS_ARGS {
-            if let Err(e) = Vmc.run(&mut methods, args, &environ) {
+            if let Err(e) = vmc.run(&mut methods, args) {
                 panic!("test args failed: {:?}: {}", args, e)
             }
         }
@@ -1567,13 +1549,13 @@ mod tests {
         ];
 
         for args in DUMMY_PRIVILEGED_FAILURE_ARGS {
-            if let Ok(()) = Vmc.run(&mut methods, args, &environ) {
+            if let Ok(()) = vmc.run(&mut methods, args) {
                 panic!("test args should have failed: {:?}", args)
             }
         }
 
         let args = &["vmc", "container", "termina", "a", "--timeout", "600"];
-        if let Err(e) = Vmc.run(&mut methods, args, &environ) {
+        if let Err(e) = vmc.run(&mut methods, args) {
             panic!("test args failed: {:?}: {}", args, e)
         }
     }
