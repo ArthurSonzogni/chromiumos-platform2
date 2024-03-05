@@ -199,7 +199,6 @@ WiFi::WiFi(Manager* manager,
       random_mac_enabled_(false),
       sched_scan_supported_(false),
       broadcast_probe_was_skipped_(false),
-      interworking_select_enabled_(true),
       need_interworking_select_(false),
       last_interworking_select_timestamp_(std::nullopt),
       receive_byte_count_at_connect_(0),
@@ -247,10 +246,6 @@ WiFi::WiFi(Manager* manager,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
   HelpRegisterConstDerivedBool(store, kWakeOnWiFiSupportedProperty,
                                &WiFi::GetWakeOnWiFiSupported);
-
-  HelpRegisterDerivedBool(store, kPasspointInterworkingSelectEnabledProperty,
-                          &WiFi::GetInterworkingSelectEnabled,
-                          &WiFi::SetInterworkingSelectEnabled);
 
   auto perm_mac = manager->device_info()->GetPermAddress(interface_index);
   if (perm_mac) {
@@ -1132,21 +1127,6 @@ bool WiFi::SetRandomMacEnabled(const bool& enabled, Error* error) {
 
 void WiFi::ClearBgscanMethod(Error* /*error*/) {
   bgscan_method_.clear();
-}
-
-bool WiFi::SetInterworkingSelectEnabled(const bool& enabled,
-                                        Error* /* error */) {
-  if (interworking_select_enabled_ == enabled) {
-    // No-op
-    return false;
-  }
-  interworking_select_enabled_ = enabled;
-  if (interworking_select_enabled_) {
-    // Interworking selection has just been enabled, we want to try a selection
-    // after next scan.
-    need_interworking_select_ = true;
-  }
-  return true;
 }
 
 void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
@@ -2398,8 +2378,8 @@ void WiFi::ScanDoneTask() {
       break;
     }
   }
-  if (interworking_select_enabled_ && need_interworking_select_ &&
-      has_hs20_endpoint && provider_->has_passpoint_credentials()) {
+  if (need_interworking_select_ && has_hs20_endpoint &&
+      provider_->has_passpoint_credentials()) {
     LOG(INFO) << __func__ << " start interworking selection";
     // Interworking match is started only if a compatible access point is
     // around and there's credentials to match because such selection

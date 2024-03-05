@@ -483,8 +483,6 @@ constexpr char kMacAddressRandomizationSupportedProperty[] =
     "MACAddressRandomizationSupported";
 constexpr char kNetDetectScanPeriodSecondsProperty[] =
     "NetDetectScanPeriodSeconds";
-constexpr char kPasspointInterworkingSelectEnabledProperty[] =
-    "PasspointInterworkingSelectEnabled";
 constexpr char kWakeOnWiFiSupportedProperty[] = "WakeOnWiFiSupported";
 constexpr char kWakeOnWiFiAllowedProperty[] = "WakeOnWiFiAllowed";
 constexpr char kWakeOnWiFiFeaturesEnabledProperty[] =

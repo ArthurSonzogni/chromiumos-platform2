@@ -464,9 +464,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16_t GetScanInterval(Error* /* error */) /*const*/ {
     return scan_interval_seconds_;
   }
-  bool GetInterworkingSelectEnabled(Error* /* error */) {
-    return interworking_select_enabled_;
-  }
 
   SupplicantProcessProxyInterface* supplicant_process_proxy() const;
 
@@ -483,8 +480,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool GetRandomMacEnabled(Error* error);
   bool SetRandomMacEnabled(const bool& enabled, Error* error);
-
-  bool SetInterworkingSelectEnabled(const bool& enabled, Error* error);
 
   void AssocStatusChanged(const int32_t new_assoc_status);
   void AuthStatusChanged(const int32_t new_auth_status);
@@ -944,11 +939,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Indicates if the last scan skipped the broadcast probe.
   bool broadcast_probe_was_skipped_;
-
-  // Indicates if Passpoint interworking selection is enabled, i.e. if the
-  // device is allowed to start interworking selection when the conditions are
-  // met.
-  bool interworking_select_enabled_;
 
   // Indicates that we should start an interworking selection after the next
   // scan, either because a new  set of credentials was added or a Passpoint

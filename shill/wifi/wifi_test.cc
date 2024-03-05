@@ -572,30 +572,6 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_TRUE(device_->bgscan_method_.empty());
 }
 
-TEST_F(WiFiPropertyTest, PasspointInterworkingProperty) {
-  Error unused_error;
-  device_->mutable_store()->SetBoolProperty(
-      kPasspointInterworkingSelectEnabledProperty, false, &unused_error);
-
-  bool enabled;
-  EXPECT_TRUE(device_->store().GetBoolProperty(
-      kPasspointInterworkingSelectEnabledProperty, &enabled, &unused_error));
-  EXPECT_FALSE(enabled);
-
-  Error error;
-  device_->mutable_store()->SetAnyProperty(
-      kPasspointInterworkingSelectEnabledProperty, brillo::Any(true), &error);
-  EXPECT_TRUE(error.IsSuccess());
-  // We expect the selection to be enabled and a selection to be requested after
-  // next scan.
-  EXPECT_TRUE(device_->interworking_select_enabled_);
-  EXPECT_TRUE(device_->need_interworking_select_);
-
-  EXPECT_TRUE(device_->store().GetBoolProperty(
-      kPasspointInterworkingSelectEnabledProperty, &enabled, &unused_error));
-  EXPECT_TRUE(enabled);
-}
-
 MATCHER_P(EndpointMatch, endpoint, "") {
   return arg->ssid() == endpoint->ssid() &&
          arg->network_mode() == endpoint->network_mode() &&
@@ -1084,9 +1060,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
     wifi_->RequestStationInfo(trigger);
-  }
-  void SetInterworkingSelectEnabled(bool enabled, Error* error) {
-    wifi_->SetInterworkingSelectEnabled(enabled, error);
   }
   void StopRequestingStationInfo() { wifi_->StopRequestingStationInfo(); }
   void EmitStationInfoRequest(WiFiLinkStatistics::Trigger trigger) {
@@ -6082,7 +6055,6 @@ TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect());
 
   StartWiFi();
-  SetInterworkingSelectEnabled(true, nullptr);
 
   // Prepare a scan result compatible with Passpoint.
   std::vector<uint8_t> ies;
@@ -6114,7 +6086,6 @@ TEST_F(WiFiMainTest, BSSUpdateTriggersInterworkingSelect) {
       .WillRepeatedly(Return(credentials.size()));
 
   StartWiFi();
-  SetInterworkingSelectEnabled(true, nullptr);
 
   // First BSS report should not trigger a interworking select.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect()).Times(0);

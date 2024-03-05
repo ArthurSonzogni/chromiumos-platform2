@@ -752,12 +752,3 @@ Properties	string Address [readonly]
 			if this property is false, shill will only start this timer if it has more
 			SSIDs to allow than the NIC supports for net detect. Changes to this
 			property will take effect at the next system suspend.
-
-		boolean PasspointInterworkingSelectEnabled
-
-			(Defined in WiFi)
-
-			Indicates whether the device is allowed to match the set of Passpoint
-			credentials with compatible access points. Setting this value will enable
-			or disable the feature. The value is not persisted across reboots and will
-			be removed or flipped when Passpoint gets enabled by default.
