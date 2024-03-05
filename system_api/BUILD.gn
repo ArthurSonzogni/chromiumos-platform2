@@ -120,7 +120,6 @@ install_dbus_client_headers("install_dbus_headers") {
     "chunneld",
     "crash-reporter",
     "cros-disks",
-    "cros_healthd",
     "cryptohome",
     "debugd",
     "discod",

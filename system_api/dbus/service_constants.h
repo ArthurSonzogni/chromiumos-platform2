@@ -19,7 +19,6 @@
 #include "cfm/dbus-constants.h"
 #include "chunneld/dbus-constants.h"
 #include "cros-disks/dbus-constants.h"
-#include "cros_healthd/dbus-constants.h"
 #include "cryptohome/dbus-constants.h"
 #include "dcad/dbus-constants.h"
 #include "debugd/dbus-constants.h"
@@ -530,8 +529,6 @@ constexpr char kMojoConnectionServiceInterface[] =
 // Methods
 constexpr char kBootstrapMojoConnectionForRollbackNetworkConfigMethod[] =
     "BootstrapMojoConnectionForRollbackNetworkConfigService";
-constexpr char kBootstrapForCrosHealthdInternalServiceFactoryMethod[] =
-    "kBootstrapForCrosHealthdInternalServiceFactoryMethod";
 }  // namespace mojo_connection_service
 
 namespace virtual_file_provider {
