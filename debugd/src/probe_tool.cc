@@ -5,6 +5,7 @@
 #include "debugd/src/probe_tool.h"
 
 #include <fcntl.h>
+#include <sys/wait.h>
 
 #include <iterator>
 #include <memory>
@@ -18,12 +19,16 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/json/json_string_value_serializer.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/errors/error_codes.h>
 #include <re2/re2.h>
@@ -44,6 +49,7 @@ constexpr char kMinijailBindKey[] = "binds";
 constexpr char kMinijailUserKey[] = "user";
 constexpr char kMinijailGroupKey[] = "group";
 constexpr char kMinijailOtherArgsKey[] = "other_args";
+const base::TimeDelta kReapDelay = base::Seconds(10);
 
 bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   int pipe_fd[2];
@@ -85,6 +91,15 @@ std::optional<base::Value::Dict> ParseProbeStatement(
   return probe_statement;
 }
 
+void AsyncReapChildProcess(const pid_t pid) {
+  int status;
+  if (waitpid(pid, &status, WNOHANG) == 0) {
+    // The child process is not waitable now. Try reap it later.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, base::BindOnce(&AsyncReapChildProcess, pid), kReapDelay);
+  }
+}
+
 }  // namespace
 
 bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
@@ -114,7 +129,7 @@ bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
   process->BindFd(out_w_fd.get(), STDOUT_FILENO);
   process->BindFd(err_w_fd.get(), STDERR_FILENO);
   process->Start();
-  process->Release();
+  AsyncReapChildProcess(process->Release());
   *outfd = std::move(out_r_fd);
   *errfd = std::move(err_r_fd);
   return true;
