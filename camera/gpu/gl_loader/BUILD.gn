@@ -12,7 +12,7 @@ group("all") {
 shared_library("libcamera_egl_loader") {
   output_name = "libcamera_egl_loader"
   sources = [ "//camera/gpu/gl_loader/egl_loader.cc" ]
-  public_configs = [ "//camera/build:cros_camera_common" ]
+  configs += [ "//camera/build:cros_camera_common" ]
   libs = [ "dl" ]
   install_path = "lib"
 }
@@ -20,7 +20,7 @@ shared_library("libcamera_egl_loader") {
 shared_library("libcamera_gles_loader") {
   output_name = "libcamera_gles_loader"
   sources = [ "//camera/gpu/gl_loader/gles_loader.cc" ]
-  public_configs = [ "//camera/build:cros_camera_common" ]
+  configs += [ "//camera/build:cros_camera_common" ]
   libs = [ "dl" ]
   install_path = "lib"
 }
