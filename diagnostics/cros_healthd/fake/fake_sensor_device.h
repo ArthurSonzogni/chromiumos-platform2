@@ -5,9 +5,13 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_DEVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_DEVICE_H_
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>

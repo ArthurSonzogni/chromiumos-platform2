@@ -5,11 +5,16 @@
 #include "diagnostics/cros_healthd/fake/fake_chromium_data_collector.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/location.h>
 #include <base/notreached.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
+
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
 

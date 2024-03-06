@@ -4,9 +4,11 @@
 
 #include "diagnostics/cros_healthd/fake/fake_network_diagnostics_routines.h"
 
+#include <optional>
+#include <string>
 #include <utility>
 
-#include <base/notreached.h>
+#include <base/notimplemented.h>
 #include <base/time/time.h>
 
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"

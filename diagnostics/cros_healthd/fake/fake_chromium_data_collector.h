@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback_forward.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>

@@ -8,7 +8,11 @@
 #include <string>
 #include <utility>
 
-#include <base/notreached.h>
+#include <base/notimplemented.h>
+#include <base/time/time.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/system/message_pipe.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 namespace diagnostics {
 

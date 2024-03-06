@@ -4,8 +4,18 @@
 
 #include "diagnostics/cros_healthd/fake/fake_sensor_service.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
+#include <vector>
+
+#include <base/containers/flat_map.h>
+#include <base/notimplemented.h>
+#include <iioservice/mojo/sensor.mojom.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
+#include "diagnostics/cros_healthd/fake/fake_sensor_device.h"
 
 namespace diagnostics {
 

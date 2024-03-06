@@ -5,11 +5,14 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_SENSOR_SERVICE_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <iioservice/mojo/sensor.mojom.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
