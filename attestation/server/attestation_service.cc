@@ -829,17 +829,11 @@ void AttestationService::Decrypt(const DecryptRequest& request,
 void AttestationService::DecryptTask(
     const DecryptRequest& request,
     const std::shared_ptr<DecryptReply>& result) {
-  CertifiedKey key;
-  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
-    result->set_status(STATUS_INVALID_PARAMETER);
-    return;
-  }
-  std::string data;
-  if (!tpm_utility_->Unbind(key.key_blob(), request.encrypted_data(), &data)) {
-    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    return;
-  }
-  result->set_decrypted_data(data);
+  // TODO(b/328355827): See if we need to re-implement the decryption or remove
+  // it.
+  LOG(ERROR) << __func__ << ": decryption is now obsolete.";
+  result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+  return;
 }
 
 void AttestationService::Sign(const SignRequest& request,
