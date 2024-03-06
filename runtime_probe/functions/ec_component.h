@@ -17,8 +17,9 @@
 #include "runtime_probe/utils/ec_component_manifest.h"
 
 namespace ec {
+class GetVersionCommand;
 class I2cReadCommand;
-};
+};  // namespace ec
 
 namespace runtime_probe {
 
@@ -32,15 +33,17 @@ class EcComponentFunction : public PrivilegedProbeFunction {
   // PrivilegedProbeFunction overrides.
   DataType EvalImpl() const override;
 
+  // Virtuals for testing.
   virtual base::ScopedFD GetEcDevice() const;
-
-  std::vector<EcComponentManifest::Component> GetComponentCandidates(
-      std::optional<std::string> type, std::optional<std::string> name) const;
-
   virtual std::unique_ptr<ec::I2cReadCommand> GetI2cReadCommand(
       uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len) const;
+  virtual std::unique_ptr<ec::GetVersionCommand> GetGetVersionCommand() const;
 
-  bool IsValidComponent(const EcComponentManifest::Component&, int) const;
+  std::optional<std::string> GetCurrentECVersion(
+      const base::ScopedFD& ec_dev_fd) const;
+
+  bool IsValidComponent(const EcComponentManifest::Component& comp,
+                        const base::ScopedFD& ec_dev_fd) const;
 
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, type);
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, name);
