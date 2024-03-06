@@ -4,15 +4,10 @@
 
 import("//common-mk/pkg_config.gni")
 
-# Library that provides the minijail configuration used by cros_healthd.
-pkg_config("libcros_healthd_minijail_pkg_deps") {
+source_set("minijail") {
+  sources = [ "minijail_configuration.cc" ]
   pkg_deps = [
     "libchrome",
     "libminijail",
   ]
-}
-
-source_set("libcros_healthd_minijail") {
-  configs += [ ":libcros_healthd_minijail_pkg_deps" ]
-  sources = [ "minijail_configuration.cc" ]
 }

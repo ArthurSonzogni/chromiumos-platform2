@@ -49,9 +49,9 @@ executable("cros_healthd") {
   assert_no_deps = [ "//diagnostics/cros_healthd/delegate/*" ]
   deps = [
     ":libcros_healthd",
-    "executor:libcros_healthd_executor",
-    "minijail:libcros_healthd_minijail",
-    "system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
+    "//diagnostics/cros_healthd/minijail",
+    "//diagnostics/cros_healthd/system:libcros_healthd_system",
   ]
 }
 
