@@ -1584,18 +1584,24 @@ CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
                      ? WrapKeyWithChaps(mechanism_parameter, key, &data)
                      : WrapKeyInternal(mechanism, mechanism_parameter,
                                        *wrapping_key, key, &data);
-
+  const std::string operation =
+      mechanism == kChapsKeyWrapMechanism ? "WrapKeyWithChaps" : "WrapKey";
   if (result != CKR_OK) {
+    chaps_metrics_->ReportChapsSessionStatus(operation,
+                                             static_cast<int>(result));
     return result;
   }
   int out_length = data.size();
   int max_length = *required_out_length;
   *required_out_length = out_length;
   if (max_length < out_length) {
-    return CKR_BUFFER_TOO_SMALL;
+    result = CKR_BUFFER_TOO_SMALL;
+  } else {
+    *wrapped_key = data;
+    result = CKR_OK;
   }
-  *wrapped_key = data;
-  return CKR_OK;
+  chaps_metrics_->ReportChapsSessionStatus(operation, static_cast<int>(result));
+  return result;
 }
 
 CK_RV SessionImpl::WrapKeyInternal(CK_MECHANISM_TYPE mechanism,
@@ -1721,12 +1727,16 @@ CK_RV SessionImpl::UnwrapKey(CK_MECHANISM_TYPE mechanism,
   // kChapsKeyWrapMechanism is a chaps-specific mechanism that doesn't require
   // an unwrapping key.
   CHECK_EQ(mechanism == kChapsKeyWrapMechanism, !unwrapping_key);
-  return mechanism == kChapsKeyWrapMechanism
-             ? UnwrapKeyWithChaps(mechanism_parameter, wrapped_key,
-                                  new_key_handle)
-             : UnwrapKeyInternal(mechanism, mechanism_parameter,
-                                 *unwrapping_key, wrapped_key, attributes,
-                                 num_attributes, new_key_handle);
+  CK_RV result =
+      mechanism == kChapsKeyWrapMechanism
+          ? UnwrapKeyWithChaps(mechanism_parameter, wrapped_key, new_key_handle)
+          : UnwrapKeyInternal(mechanism, mechanism_parameter, *unwrapping_key,
+                              wrapped_key, attributes, num_attributes,
+                              new_key_handle);
+  const std::string operation =
+      mechanism == kChapsKeyWrapMechanism ? "UnwrapKeyWithChaps" : "UnwrapKey";
+  chaps_metrics_->ReportChapsSessionStatus(operation, static_cast<int>(result));
+  return result;
 }
 
 CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
@@ -1890,7 +1900,19 @@ CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
                              int num_attributes,
                              int* new_key_handle) {
   CHECK(new_key_handle);
+  CK_RV result = DeriveKeyRaw(mechanism, mechanism_parameter, base_key,
+                              attributes, num_attributes, new_key_handle);
+  chaps_metrics_->ReportChapsSessionStatus("DeriveKey",
+                                           static_cast<int>(result));
+  return result;
+}
 
+CK_RV SessionImpl::DeriveKeyRaw(CK_MECHANISM_TYPE mechanism,
+                                const std::string& mechanism_parameter,
+                                const Object& base_key,
+                                const CK_ATTRIBUTE_PTR attributes,
+                                int num_attributes,
+                                int* new_key_handle) {
   if (!base_key.GetAttributeBool(CKA_DERIVE, false)) {
     LOG(ERROR) << __func__ << ": Base key not permitted to derive anoher key.";
     return CKR_KEY_FUNCTION_NOT_PERMITTED;

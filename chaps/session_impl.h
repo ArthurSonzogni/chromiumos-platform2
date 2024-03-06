@@ -293,6 +293,12 @@ class SessionImpl : public Session {
   CK_RV UnwrapKeyWithChaps(const std::string& mechanism_parameter,
                            const std::string& wrapped_key,
                            int* new_key_handle);
+  CK_RV DeriveKeyRaw(CK_MECHANISM_TYPE mechanism,
+                     const std::string& mechanism_parameter,
+                     const Object& base_key,
+                     const CK_ATTRIBUTE_PTR attributes,
+                     int num_attributes,
+                     int* new_key_handle);
 
   ChapsFactory* factory_;
   std::vector<int> find_results_;

@@ -173,6 +173,13 @@ const char kChapsSessionDigest[] = "Platform.Chaps.Session.Digest";
 const char kChapsSessionEncrypt[] = "Platform.Chaps.Session.Encrypt";
 const char kChapsSessionSign[] = "Platform.Chaps.Session.Sign";
 const char kChapsSessionVerify[] = "Platform.Chaps.Session.Verify";
+const char kChapsSessionDeriveKey[] = "Platform.Chaps.Session.DeriveKey";
+const char kChapsSessionWrapKey[] = "Platform.Chaps.Session.WrapKey";
+const char kChapsSessionWrapKeyWithChaps[] =
+    "Platform.Chaps.Session.WrapKeyWithChaps";
+const char kChapsSessionUnwrapKey[] = "Platform.Chaps.Session.UnwrapKey";
+const char kChapsSessionUnwrapKeyWithChaps[] =
+    "Platform.Chaps.Session.UnwrapKeyWithChaps";
 const char kChapsRandomSeed[] = "random_seed";
 
 // Test fixture for an initialized SessionImpl instance.
@@ -1997,6 +2004,9 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108) {
       {CKA_ENCRYPT, &yes, sizeof(yes)},
       {CKA_VALUE_LEN, &size, sizeof(size)}};
   int handle = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDeriveKey, static_cast<int>(CKR_OK)))
+      .Times(1);
   EXPECT_EQ(CKR_OK, session_->DeriveKey(CKM_SP800_108_COUNTER_KDF,
                                         kdf_params_proto.SerializeAsString(),
                                         *base_key, derived_key_attr,
@@ -2026,6 +2036,10 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
 
   // The mechanism_parameter isn't serialized from a Sp800108KdfParams proto.
   int handle = 0;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDeriveKey,
+                              static_cast<int>(CKR_MECHANISM_PARAM_INVALID)))
+      .Times(3);
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
             session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
@@ -2074,6 +2088,10 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
       {CKA_VALUE_LEN, &size, sizeof(size)}};
 
   // The base_key doesn't have CKA_DERIVE attribute set to CK_TRUE.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDeriveKey,
+                              static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
+      .Times(1);
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
             session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr, std::size(derived_key_attr),
@@ -2089,6 +2107,10 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
       {CKA_ENCRYPT, &yes, sizeof(yes)},
       {CKA_VALUE_LEN, &size, sizeof(size)}};
   // Currently we don't support deriving DES keys using SP800-108.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDeriveKey,
+                              static_cast<int>(CKR_FUNCTION_NOT_SUPPORTED)))
+      .Times(1);
   EXPECT_EQ(CKR_FUNCTION_NOT_SUPPORTED,
             session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 derived_key_attr2, std::size(derived_key_attr2),
@@ -2099,6 +2121,10 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
                                      {CKA_ENCRYPT, &yes, sizeof(yes)},
                                      {CKA_VALUE_LEN, &size, sizeof(size)}};
   // We cannot only derive symmetric keys using SP800-108.
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionDeriveKey,
+                              static_cast<int>(CKR_TEMPLATE_INCONSISTENT)))
+      .Times(1);
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
             session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", *base_key,
                                 rsapriv_key_attr, std::size(rsapriv_key_attr),
@@ -2131,6 +2157,17 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPSoftware) {
   int aes_size = 32;
   GenerateSecretKey(CKM_AES_KEY_GEN, aes_size, &aeskey);
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
 
   int len = 0;
   string wrapped_key;
@@ -2182,6 +2219,17 @@ TEST_F(TestSessionWithTpmSimulator, WrapKeyRSAOAEPWithHWSec) {
   int aes_size = 32;
   GenerateSecretKey(CKM_AES_KEY_GEN, aes_size, &aeskey);
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_EXTRACTABLE, true);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
 
   int len = 0;
   string wrapped_key;
@@ -2238,6 +2286,31 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_WRAP, true);
   const_cast<Object*>(aeskey)->SetAttributeBool(CKA_UNWRAP, true);
 
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_UNEXTRACTABLE)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
+      .Times(1);
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendSparseToUMA(kChapsSessionWrapKey,
+                      static_cast<int>(CKR_WRAPPING_KEY_TYPE_INCONSISTENT)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_KEY_NOT_WRAPPABLE)))
+      .Times(2);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKey, static_cast<int>(CKR_OK)))
+      .Times(2);
+
   int len = 0;
   string wrapped_key;
   // The key being wrapped doesn't have CKA_EXTRACTABLE attribute set to
@@ -2287,6 +2360,23 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
                          {CKA_VALUE_LEN, &aes_size, sizeof(aes_size)},
                          {CKA_KEY_TYPE, &key_type, sizeof(key_type)}};
 
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_KEY_FUNCTION_NOT_PERMITTED)))
+      .Times(1);
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendSparseToUMA(kChapsSessionUnwrapKey,
+                      static_cast<int>(CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey,
+                              static_cast<int>(CKR_FUNCTION_FAILED)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKey, static_cast<int>(CKR_OK)))
+      .Times(1);
+
   int handle = 0;
   // The unwrapping_key doesn't have CKA_WRAP attribute set to CK_TRUE.
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
@@ -2322,6 +2412,23 @@ TEST_F(TestSessionWithRealObject, WrapKeyRSAOAEPInvalidAttributes) {
 TEST_F(TestSessionWithTpmSimulator, WrapKeyWithChaps) {
   const Object *rsapub, *rsapriv;
   GenerateRSAKeyPair(true, 1024, &rsapub, &rsapriv);
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKeyWithChaps,
+                              static_cast<int>(CKR_KEY_NOT_WRAPPABLE)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionWrapKeyWithChaps,
+                              static_cast<int>(CKR_BUFFER_TOO_SMALL)))
+      .Times(1);
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendSparseToUMA(kChapsSessionWrapKeyWithChaps, static_cast<int>(CKR_OK)))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionUnwrapKeyWithChaps,
+                              static_cast<int>(CKR_OK)))
+      .Times(1);
 
   int len = 0;
   string wrapped_key;
