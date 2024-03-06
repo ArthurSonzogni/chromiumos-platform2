@@ -293,7 +293,7 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
 bool ChromeosStartup::IsVarFull() {
   struct statvfs st;
   base::FilePath var = root_.Append(kVar);
-  if (!startup_dep_->Statvfs(var, &st)) {
+  if (!platform_->StatVFS(var, &st)) {
     PLOG(WARNING) << "Failed statvfs " << var.value();
     return false;
   }

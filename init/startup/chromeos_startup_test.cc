@@ -1029,7 +1029,7 @@ class IsVarFullTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
-    platform_ = std::make_unique<libstorage::FakePlatform>();
+    platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
@@ -1046,13 +1046,14 @@ class IsVarFullTest : public ::testing::Test {
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_;
-  std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
 
 TEST_F(IsVarFullTest, StatvfsFailure) {
+  // Assume the machine storage where the unit test are running is not full.
   EXPECT_FALSE(startup_->IsVarFull());
 }
 
@@ -1063,8 +1064,8 @@ TEST_F(IsVarFullTest, Failure) {
   st.f_bavail = 2600;
   st.f_favail = 110;
   st.f_bsize = 4096;
-  startup_dep_->SetStatvfsResultForPath(var, st);
-
+  EXPECT_CALL(*platform_, StatVFS(var, _))
+      .WillOnce(DoAll(SetArgPointee<1>(st), Return(true)));
   EXPECT_FALSE(startup_->IsVarFull());
 }
 
@@ -1075,8 +1076,8 @@ TEST_F(IsVarFullTest, TrueBavail) {
   st.f_bavail = 1000;
   st.f_favail = 110;
   st.f_bsize = 4096;
-  startup_dep_->SetStatvfsResultForPath(var, st);
-
+  EXPECT_CALL(*platform_, StatVFS(var, _))
+      .WillOnce(DoAll(SetArgPointee<1>(st), Return(true)));
   EXPECT_TRUE(startup_->IsVarFull());
 }
 
@@ -1087,8 +1088,8 @@ TEST_F(IsVarFullTest, TrueFavail) {
   st.f_bavail = 11000;
   st.f_favail = 90;
   st.f_bsize = 4096;
-  startup_dep_->SetStatvfsResultForPath(var, st);
-
+  EXPECT_CALL(*platform_, StatVFS(var, _))
+      .WillOnce(DoAll(SetArgPointee<1>(st), Return(true)));
   EXPECT_TRUE(startup_->IsVarFull());
 }
 
