@@ -1100,10 +1100,11 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
     vm_tools::UpdateStorageBalloonResponse* response) {
   response->set_result(vm_tools::UpdateStorageBalloonResult::SUCCESS);
   if (!balloon_) {
-    balloon_ = std::make_unique<brillo::StorageBalloon>(
+    balloon_ = brillo::StorageBalloon::GenerateStorageBalloon(
         base::FilePath("/mnt/stateful/"));
   }
-  if (!balloon_->Adjust(std::max(
+  if (!balloon_ ||
+      !balloon_->Adjust(std::max(
           int64_t(request->free_space_bytes() - (1 * kGiB)), int64_t(0)))) {
     LOG(ERROR) << "Failed to adjust balloon, free_space_bytes:"
                << request->free_space_bytes() << " state:" << request->state();
