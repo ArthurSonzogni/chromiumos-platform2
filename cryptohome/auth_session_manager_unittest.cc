@@ -157,7 +157,7 @@ TEST_F(AuthSessionManagerTest, CreateRemove) {
   token = auth_session_manager_.CreateAuthSession(
       kUsername, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   std::string serialized_token =
-      *AuthSession::GetSerializedStringFromToken(token);
+      AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
@@ -397,7 +397,7 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = false});
   std::string serialized_token =
-      *AuthSession::GetSerializedStringFromToken(token);
+      AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
@@ -844,7 +844,7 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
                               std::make_unique<base::WallClockTimer>(),
                           .user_exists = false});
   std::string serialized_token =
-      *AuthSession::GetSerializedStringFromToken(token);
+      AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   auth_session_manager_.RemoveAllAuthSessions();

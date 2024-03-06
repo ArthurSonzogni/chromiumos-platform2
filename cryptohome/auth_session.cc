@@ -434,10 +434,9 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       key_store_cert_provider_(std::move(backing_apis.key_store_cert_provider)),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
-      serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
+      serialized_token_(GetSerializedStringFromToken(token_)),
       public_token_(platform_->CreateUnguessableToken()),
-      serialized_public_token_(
-          GetSerializedStringFromToken(public_token_).value_or("")),
+      serialized_public_token_(GetSerializedStringFromToken(public_token_)),
       user_exists_(*params.user_exists) {
   CHECK(!serialized_token_.empty());
   CHECK(auth_factor_status_update_timer_);
@@ -3352,12 +3351,10 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
   return nullptr;
 }
 
-// static
-std::optional<std::string> AuthSession::GetSerializedStringFromToken(
+std::string AuthSession::GetSerializedStringFromToken(
     const base::UnguessableToken& token) {
-  if (token == base::UnguessableToken::Null()) {
-    LOG(ERROR) << "Invalid UnguessableToken given";
-    return std::nullopt;
+  if (token.is_empty()) {
+    return "";
   }
   std::string serialized_token;
   serialized_token.resize(kSizeOfSerializedValueInToken *

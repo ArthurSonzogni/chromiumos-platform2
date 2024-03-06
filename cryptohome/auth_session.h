@@ -20,8 +20,8 @@
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/structures/explicit_init.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -489,8 +489,9 @@ class AuthSession final {
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
-  // token, the next 8 represent the low value of the serialized token.
-  static std::optional<std::string> GetSerializedStringFromToken(
+  // token, the next 8 represent the low value of the serialized token. If given
+  // a null token this will return an empty string.
+  static std::string GetSerializedStringFromToken(
       const base::UnguessableToken& token);
 
   // Static function which returns UnguessableToken object after deconstructing

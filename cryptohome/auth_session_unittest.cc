@@ -525,9 +525,9 @@ TEST_F(AuthSessionTest, ForensicsIntent) {
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
   base::UnguessableToken token = base::UnguessableToken::Null();
-  std::optional<std::string> serialized_token =
+  std::string serialized_token =
       AuthSession::GetSerializedStringFromToken(token);
-  EXPECT_FALSE(serialized_token.has_value());
+  EXPECT_TRUE(serialized_token.empty());
 }
 
 TEST_F(AuthSessionTest, TokenFromEmptyString) {

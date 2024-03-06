@@ -1858,14 +1858,9 @@ void UserDataAuth::Remove(user_data_auth::RemoveRequest request,
         GetAccountId(request.identifier()),
         {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     // Rewrite the request to use the new session ID and not the account ID.
-    std::optional<std::string> serialized_token =
-        AuthSession::GetSerializedStringFromToken(token);
-    if (!serialized_token.has_value()) {
-      // This should never, ever happen.
-      LOG(FATAL) << "Auth Session somehow started with a null token";
-    }
     request.clear_identifier();
-    request.set_auth_session_id(std::move(*serialized_token));
+    request.set_auth_session_id(
+        AuthSession::GetSerializedStringFromToken(token));
   }
 
   RunWithAuthSessionWhenAvailable(

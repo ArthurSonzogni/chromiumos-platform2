@@ -1461,7 +1461,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
                                        const std::string& password) {
     user_data_auth::AuthenticateAuthFactorRequest request;
     request.set_auth_session_id(
-        *AuthSession::GetSerializedStringFromToken(token));
+        AuthSession::GetSerializedStringFromToken(token));
     request.set_auth_factor_label(auth_factor_label);
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
@@ -1474,7 +1474,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
       const std::string& password) {
     user_data_auth::AuthenticateAuthFactorRequest request;
     request.set_auth_session_id(
-        *AuthSession::GetSerializedStringFromToken(token));
+        AuthSession::GetSerializedStringFromToken(token));
     request.add_auth_factor_labels(auth_factor_label);
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
