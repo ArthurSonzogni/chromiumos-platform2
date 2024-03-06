@@ -165,9 +165,7 @@ class GrallocFrameBuffer : public FrameBuffer {
   // Whether the |buffer_| is allocated by this class.
   bool is_buffer_owner_;
 
-  bool is_mapped_;
-
-  // Lock to guard |is_mapped_|.
+  // Lock to guard |data_| and |stride_|.
   base::Lock lock_;
 };
 

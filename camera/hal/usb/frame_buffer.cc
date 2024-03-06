@@ -270,8 +270,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
                                        uint32_t height)
     : buffer_(buffer),
       buffer_manager_(CameraBufferManager::GetInstance()),
-      is_buffer_owner_(false),
-      is_mapped_(false) {
+      is_buffer_owner_(false) {
   int ret = buffer_manager_->Register(buffer_);
   if (ret) {
     LOGF(ERROR) << "Failed to register buffer";
@@ -290,8 +289,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(uint32_t width,
                                        uint32_t fourcc)
     : buffer_(nullptr),
       buffer_manager_(CameraBufferManager::GetInstance()),
-      is_buffer_owner_(true),
-      is_mapped_(false) {
+      is_buffer_owner_(true) {
   if (fourcc != V4L2_PIX_FMT_NV12 && fourcc != V4L2_PIX_FMT_NV12M &&
       fourcc != V4L2_PIX_FMT_YUV420 && fourcc != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Unsupported format: " << FormatToString(fourcc);
@@ -339,9 +337,6 @@ GrallocFrameBuffer::~GrallocFrameBuffer() {
 
 int GrallocFrameBuffer::Map() {
   base::AutoLock l(lock_);
-  if (is_mapped_)
-    return 0;
-
   buffer_size_ = 0;
   for (size_t i = 0; i < num_planes_; i++) {
     buffer_size_ += buffer_manager_->GetPlaneSize(buffer_, i);
@@ -401,20 +396,15 @@ int GrallocFrameBuffer::Map() {
     LOGF(ERROR) << "Failed to map buffer";
     return -EINVAL;
   }
-  is_mapped_ = true;
   return 0;
 }
 
 int GrallocFrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (!is_mapped_)
-    return 0;
-
   if (buffer_manager_->Unlock(buffer_)) {
     LOGF(ERROR) << "Failed to unmap buffer";
     return -EINVAL;
   }
-  is_mapped_ = false;
   return 0;
 }
 

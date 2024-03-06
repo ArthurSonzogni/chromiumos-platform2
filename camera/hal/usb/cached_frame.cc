@@ -559,6 +559,8 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
     LOGF(ERROR) << "JPEG image compression failed";
     return -EINVAL;
   }
+  out_frame.Unmap();
+
   if (!InsertJpegBlob(out_frame, jpeg_data_size)) {
     LOGF(ERROR) << "Inserting JPEG blob failed";
     return -EINVAL;
@@ -601,6 +603,7 @@ static bool InsertJpegBlob(FrameBuffer& out_frame, uint32_t jpeg_data_size) {
   blob.jpeg_size = jpeg_data_size;
   memcpy(out_frame.GetData() + out_frame.GetBufferSize() - sizeof(blob), &blob,
          sizeof(blob));
+  out_frame.Unmap();
   return true;
 }
 
