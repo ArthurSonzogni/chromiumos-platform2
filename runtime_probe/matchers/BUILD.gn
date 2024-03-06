@@ -16,6 +16,7 @@ source_set("matchers") {
     "field_matcher.cc",
     "logical_matcher.cc",
     "matcher.cc",
+    "re_matcher.cc",
   ]
   configs += [ ":target_defaults" ]
 }

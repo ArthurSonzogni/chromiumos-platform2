@@ -154,6 +154,39 @@ TEST(MatchersTest, HexMatcherMustHaveHexStringOperands) {
                             )JSON"));
 }
 
+TEST(MatchersTest, ReMatcherMustHaveReOperand) {
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "RE",
+                                "operand": []
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "RE",
+                                "operand": ["field_a"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "RE",
+                                "operand": ["field_a", "value_a", "value_b"]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "RE",
+                                "operand": ["field_a", 123]
+                              }
+                            )JSON"));
+  EXPECT_FALSE(MakeMatcher(R"JSON(
+                              {
+                                "operator": "RE",
+                                "operand": ["field_a", "not valid re ("]
+                              }
+                            )JSON"));
+}
+
 TEST(MatchersTest, LogicalMatcherMustHaveOperand) {
   EXPECT_FALSE(MakeMatcher(R"JSON(
                               {
@@ -263,6 +296,36 @@ TEST(MatchersTest, HexMatcher) {
   EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
       {
         "field_a": "not hex"
+      }
+    )JSON")));
+  // Field not found
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {}
+    )JSON")));
+}
+
+TEST(MatchersTest, ReMatcher) {
+  auto matcher = Matcher::FromValue(MakeDictValue(R"JSON(
+      {
+        "operator": "RE",
+        "operand": ["field_a", "abc[123]+"]
+      }
+    )JSON"));
+  EXPECT_TRUE(matcher);
+  EXPECT_TRUE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "abc111222333"
+      }
+    )JSON")));
+  // Wrong value
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "aabc123"
+      }
+    )JSON")));
+  EXPECT_FALSE(matcher->Match(MakeDictValue(R"JSON(
+      {
+        "field_a": "abc1234"
       }
     )JSON")));
   // Field not found

@@ -14,6 +14,7 @@
 
 #include "runtime_probe/matchers/field_matcher.h"
 #include "runtime_probe/matchers/logical_matcher.h"
+#include "runtime_probe/matchers/re_matcher.h"
 
 namespace runtime_probe {
 
@@ -42,6 +43,9 @@ std::unique_ptr<Matcher> Matcher::FromValue(const base::Value::Dict& value) {
   }
   if (op == "HEX_EQUAL") {
     return HexEqualMatcher::Create(*operands);
+  }
+  if (op == "RE") {
+    return ReMatcher::Create(*operands);
   }
   if (op == "AND") {
     return AndMatcher::Create(*operands);
