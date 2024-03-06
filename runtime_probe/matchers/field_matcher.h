@@ -40,7 +40,16 @@ class FieldEqualMatcher : public Matcher {
   // Creates the matcher that matches if a field |field_name|'s value is
   // |expected|.
   static std::unique_ptr<FieldEqualMatcher<T>> Create(
-      const std::string& field_name, const std::string& expected) {
+      const base::Value::List& operands) {
+    if (operands.size() != 2 || !operands[0].is_string() ||
+        !operands[1].is_string()) {
+      LOG(ERROR) << "FieldEqualMatcher takes 2 string operands, but got "
+                 << operands;
+      return nullptr;
+    }
+    std::string field_name = operands[0].GetString();
+    std::string expected = operands[1].GetString();
+
     auto expected_parsed = FieldValue::FromString(expected);
     if (!expected_parsed) {
       LOG(ERROR) << "Failed to parse expected value: " << expected;

@@ -20,7 +20,10 @@ constexpr char kField[] = "field";
 
 template <typename T>
 auto MakeMatcher(std::string_view field_value) {
-  return T::Create(kField, std::string{field_value});
+  base::Value::List operands;
+  operands.Append(kField);
+  operands.Append(field_value);
+  return T::Create(operands);
 }
 
 base::Value::Dict MakeComponent(std::string_view field_value) {
