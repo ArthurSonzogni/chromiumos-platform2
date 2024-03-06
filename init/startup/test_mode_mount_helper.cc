@@ -31,6 +31,7 @@ namespace {
 // If the file is present and mount_encrypted failed again, machine would
 // enter self-repair mode.
 constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
+constexpr char kSysKeyLogFile[] = "run/create_system_key.log";
 
 }  // namespace
 
@@ -57,7 +58,10 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   bool sys_key = system_key.value_or(false);
   if (sys_key) {
     LOG(INFO) << "Creating System Key";
-    CreateSystemKey(platform_, root_, stateful_, startup_dep_);
+    std::string output;
+    CreateSystemKey(platform_, root_, stateful_, startup_dep_, &output);
+    base::FilePath log_file = root_.Append(kSysKeyLogFile);
+    platform_->WriteStringToFile(log_file, output);
   }
 
   base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);

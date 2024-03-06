@@ -44,7 +44,6 @@ constexpr auto kWriteFlags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
 constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
 
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
-constexpr char kSysKeyLog[] = "run/create_system_key.log";
 constexpr char kPreserveSysKeyFile[] = "unencrypted/preserve/system.key";
 
 MATCHER_P(IntPtrCheck, expected, "") {
@@ -300,7 +299,6 @@ class SysKeyTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
-    log_file = base_dir.Append(kSysKeyLog);
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
   }
@@ -308,7 +306,6 @@ class SysKeyTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;
-  base::FilePath log_file;
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
 };
@@ -316,25 +313,20 @@ class SysKeyTest : public ::testing::Test {
 TEST_F(SysKeyTest, NoEarlySysKeyFile) {
   base::FilePath no_early = stateful.Append(".no_early_system_key");
   ASSERT_TRUE(platform_->WriteStringToFile(no_early, "1"));
-  ASSERT_TRUE(platform_->WriteStringToFile(log_file, "1"));
-
-  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
-                           startup_dep_.get());
 
   std::string res;
-  platform_->ReadFileToString(log_file, &res);
+  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
+                           startup_dep_.get(), &res);
+
   EXPECT_EQ(res, "Opt not to create a system key in advance.");
 }
 
 TEST_F(SysKeyTest, AlreadySysKey) {
-  ASSERT_TRUE(platform_->WriteStringToFile(log_file, "1"));
   startup_dep_->SetMountEncOutputForArg("info", "NVRAM: available.");
 
-  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
-                           startup_dep_.get());
-
   std::string res;
-  platform_->ReadFileToString(log_file, &res);
+  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
+                           startup_dep_.get(), &res);
   std::string expected =
       "Checking if a system key already exists in NVRAM...\n";
   expected.append("NVRAM: available.\n");
@@ -348,11 +340,10 @@ TEST_F(SysKeyTest, NeedSysKeyBadRandomWrite) {
       .WillOnce(Return(false));
   startup_dep_->SetMountEncOutputForArg("info", "not found.");
 
-  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
-                           startup_dep_.get());
-
   std::string res;
-  platform_->ReadFileToString(log_file, &res);
+  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
+                           startup_dep_.get(), &res);
+
   std::string expected =
       "Checking if a system key already exists in NVRAM...\n";
   expected.append("not found.\n");
@@ -365,11 +356,10 @@ TEST_F(SysKeyTest, NeedSysKeySuccessful) {
   base::FilePath backup = stateful.Append(kPreserveSysKeyFile);
   startup_dep_->SetMountEncOutputForArg("info", "not found.");
   startup_dep_->SetMountEncOutputForArg("set", "MountEncrypted set output.\n");
-  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
-                           startup_dep_.get());
-
   std::string res;
-  platform_->ReadFileToString(log_file, &res);
+  startup::CreateSystemKey(platform_.get(), base_dir, stateful,
+                           startup_dep_.get(), &res);
+
   std::string expected =
       "Checking if a system key already exists in NVRAM...\n";
   expected.append("not found.\n");
