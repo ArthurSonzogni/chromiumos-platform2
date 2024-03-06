@@ -7,7 +7,7 @@
 
 #include <string_view>
 
-#include <base/memory/read_only_shared_memory_region.h>
+#include <base/memory/shared_memory_mapping.h>
 #include <brillo/brillo_export.h>
 #include <mojo/public/cpp/system/handle.h>
 

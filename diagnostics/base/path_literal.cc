@@ -4,10 +4,10 @@
 
 #include "diagnostics/base/path_literal.h"
 
+#include <cstddef>
 #include <string>
 
-#include <base/files/file_util.h>
-#include <base/strings/string_util.h>
+#include <base/files/file_path.h>
 
 #include "diagnostics/base/file_utils.h"
 

@@ -4,6 +4,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 
+#include <cstddef>
 #include <string>
 
 #include <base/containers/span.h>

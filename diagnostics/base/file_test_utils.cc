@@ -4,14 +4,15 @@
 
 #include "diagnostics/base/file_test_utils.h"
 
-#include <memory>
+#include <initializer_list>
+#include <optional>
 #include <string>
 
-#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/files/file_util.h>
+#include <gtest/gtest.h>
 
 #include "diagnostics/base/paths.h"
 

@@ -4,6 +4,7 @@
 
 #include "diagnostics/base/file_utils.h"
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_util.h>

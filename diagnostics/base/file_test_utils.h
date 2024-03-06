@@ -5,7 +5,9 @@
 #ifndef DIAGNOSTICS_BASE_FILE_TEST_UTILS_H_
 #define DIAGNOSTICS_BASE_FILE_TEST_UTILS_H_
 
+#include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 

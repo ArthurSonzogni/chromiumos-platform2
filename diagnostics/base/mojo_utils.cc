@@ -9,7 +9,14 @@
 #include <utility>
 
 #include <base/files/file.h>
+#include <base/files/platform_file.h>
+#include <base/files/scoped_file.h>
+#include <base/memory/platform_shared_memory_region.h>
+#include <base/memory/read_only_shared_memory_region.h>
+#include <base/memory/shared_memory_mapping.h>
+#include <base/unguessable_token.h>
 #include <mojo/public/c/system/types.h>
+#include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
