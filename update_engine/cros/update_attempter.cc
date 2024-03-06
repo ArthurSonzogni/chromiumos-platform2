@@ -1930,14 +1930,13 @@ bool UpdateAttempter::GetStatus(UpdateEngineStatus* out_status) {
     LOG(ERROR) << "Failed to retrieve kPrefsOmahaExtendedDate pref.";
   out_status->extended_date = StringToDate(str_extended_date);
 
-  bool extended_opt_in_required;
+  out_status->extended_opt_in_required = false;
   if (SystemState::Get()->prefs()->Exists(kPrefsOmahaExtendedOptInRequired) &&
-      !SystemState::Get()->prefs()->GetBoolean(kPrefsOmahaExtendedOptInRequired,
-                                               &extended_opt_in_required)) {
+      !SystemState::Get()->prefs()->GetBoolean(
+          kPrefsOmahaExtendedOptInRequired,
+          &out_status->extended_opt_in_required)) {
     LOG(ERROR) << "Failed to retrieve kPrefsOmahaExtendedOptInRequired pref.";
-    extended_opt_in_required = false;
   }
-  out_status->extended_opt_in_required = extended_opt_in_required;
 
   // A powerwash will take place either if the install plan says it is required
   // or if an enterprise rollback is happening.
