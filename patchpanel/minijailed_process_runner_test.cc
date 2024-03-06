@@ -10,6 +10,7 @@
 
 #include <memory>
 
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
@@ -182,5 +183,124 @@ TEST_F(MinijailProcessRunnerTest, conntrack) {
   EXPECT_TRUE(
       runner_->conntrack("-U", {"-p", "TCP", "-s", "8.8.8.8", "-m", "1"}));
 }
+
+// Verifies that iptables-restore is triggered with the expected input.
+TEST_F(MinijailProcessRunnerTest, IptablesBatchModeSuccess) {
+  using Table = Iptables::Table;
+  using Command = Iptables::Command;
+
+  bool success = false;
+  auto batch_mode = runner_->AcquireIptablesBatchMode(&success);
+  EXPECT_EQ(0,
+            runner_->iptables(Table::kMangle, Command::kN, "chain_4", {"-w"}));
+  EXPECT_EQ(0, runner_->iptables(Table::kMangle, Command::kA, "chain_4", {}));
+  EXPECT_EQ(0, runner_->iptables(Table::kNat, Command::kF, "chain_4",
+                                 {"a", "b", "c"}));
+  EXPECT_EQ(0, runner_->iptables(Table::kFilter, Command::kD, "chain_4",
+                                 {"a", "b", "-w"}));
+  EXPECT_EQ(0,
+            runner_->ip6tables(Table::kMangle, Command::kN, "chain_6", {"-w"}));
+  EXPECT_EQ(0, runner_->ip6tables(Table::kMangle, Command::kA, "chain_6", {}));
+  EXPECT_EQ(0, runner_->ip6tables(Table::kNat, Command::kF, "chain_6",
+                                  {"a", "c", "-w"}));
+  EXPECT_EQ(0, runner_->ip6tables(Table::kFilter, Command::kD, "chain_6",
+                                  {"a", "b"}));
+
+  std::string_view expected_ipv4_input =
+      "*filter\n"
+      "-D chain_4 a b\n"
+      "COMMIT\n"
+      "\n"
+      "*mangle\n"
+      ":chain_4 - [0:0]\n"
+      "-A chain_4\n"
+      "COMMIT\n"
+      "\n"
+      "*nat\n"
+      "-F chain_4 a b c\n"
+      "COMMIT\n";
+  std::string_view expected_ipv6_input =
+      "*filter\n"
+      "-D chain_6 a b\n"
+      "COMMIT\n"
+      "\n"
+      "*mangle\n"
+      ":chain_6 - [0:0]\n"
+      "-A chain_6\n"
+      "COMMIT\n"
+      "\n"
+      "*nat\n"
+      "-F chain_6 a c\n"
+      "COMMIT\n";
+
+  std::string actual_ipv4_input;
+  std::string actual_ipv6_input;
+  EXPECT_CALL(mj_,
+              RunAndDestroy(_,
+                            ElementsAre(StrEq("/sbin/iptables-restore"),
+                                        StrEq("-n"), _, StrEq("-w"), nullptr),
+                            _))
+      .WillOnce(WithArgs<1>([&](std::vector<char*> argv) {
+        CHECK(base::ReadFileToString(base::FilePath(argv[2]),
+                                     &actual_ipv4_input));
+        return true;
+      }));
+  EXPECT_CALL(mj_,
+              RunAndDestroy(_,
+                            ElementsAre(StrEq("/sbin/ip6tables-restore"),
+                                        StrEq("-n"), _, StrEq("-w"), nullptr),
+                            _))
+      .WillOnce(WithArgs<1>([&](std::vector<char*> argv) {
+        CHECK(base::ReadFileToString(base::FilePath(argv[2]),
+                                     &actual_ipv6_input));
+        return true;
+      }));
+
+  // Trigger the execution.
+  batch_mode = nullptr;
+
+  EXPECT_TRUE(success);
+  EXPECT_EQ(actual_ipv4_input, expected_ipv4_input);
+  EXPECT_EQ(actual_ipv6_input, expected_ipv6_input);
+
+  // We are no longer in batch mode now. iptables() call should start the
+  // iptables process directly.
+  EXPECT_CALL(mj_, RunAndDestroy(_, Contains(StrEq("/sbin/iptables")), _));
+  runner_->iptables(Table::kMangle, Command::kN, "chain_4", {"-w"});
+  EXPECT_CALL(mj_, RunAndDestroy(_, Contains(StrEq("/sbin/ip6tables")), _));
+  runner_->ip6tables(Table::kMangle, Command::kN, "chain_6", {"-w"});
+
+  // Enter batch mode again, do nothing here, no iptables-restore process will
+  // be started. This is to make sure that the rules won't be leftover.
+  batch_mode = runner_->AcquireIptablesBatchMode(&success);
+  EXPECT_CALL(mj_, RunAndDestroy).Times(0);
+  batch_mode = nullptr;
+}
+
+// Verifies that execution failure can be passed back to the caller.
+TEST_F(MinijailProcessRunnerTest, IptablesBatchModeFailure) {
+  using Table = Iptables::Table;
+  using Command = Iptables::Command;
+
+  bool success = false;
+  auto batch_mode = runner_->AcquireIptablesBatchMode(&success);
+  runner_->iptables(Table::kMangle, Command::kN, "chain_4", {"-w"});
+  runner_->ip6tables(Table::kMangle, Command::kN, "chain_6", {"-w"});
+
+  EXPECT_CALL(mj_, RunAndDestroy).WillRepeatedly(Return(false));
+
+  // Trigger the execution.
+  batch_mode = nullptr;
+
+  EXPECT_FALSE(success);
+}
+
+// Verifies that batch mode cannot be acquired twice.
+TEST_F(MinijailProcessRunnerTest, IptablesBatchModeAcquireTwice) {
+  auto batch_mode = runner_->AcquireIptablesBatchMode();
+  ASSERT_NE(batch_mode.get(), nullptr);
+  ASSERT_EQ(runner_->AcquireIptablesBatchMode(), nullptr);
+}
+
 }  // namespace
 }  // namespace patchpanel

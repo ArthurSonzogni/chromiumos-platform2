@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -237,6 +238,13 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
                                       std::string* output) {
+  if (iptables_batch_mode_) {
+    CHECK_EQ(output, nullptr);
+    AppendPendingIptablesRule(table, command, chain, argv,
+                              &pending_iptables_rules_);
+    return 0;
+  }
+
   return RunIptables(kIptablesPath, table, command, chain, argv, log_failures,
                      output);
 }
@@ -247,6 +255,13 @@ int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
                                        std::string* output) {
+  if (iptables_batch_mode_) {
+    CHECK_EQ(output, nullptr);
+    AppendPendingIptablesRule(table, command, chain, argv,
+                              &pending_ip6tables_rules_);
+    return 0;
+  }
+
   return RunIptables(kIp6tablesPath, table, command, chain, argv, log_failures,
                      output);
 }
@@ -355,6 +370,134 @@ int MinijailedProcessRunner::ip6tables_restore(std::string_view script_file,
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
   mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
+}
+
+using ScopedIptablesBatchMode =
+    MinijailedProcessRunner::ScopedIptablesBatchMode;
+
+ScopedIptablesBatchMode::ScopedIptablesBatchMode(
+    MinijailedProcessRunner* runner, bool* success)
+    : runner_(runner), success_(success) {
+  if (success_ != nullptr) {
+    *success = false;
+  }
+}
+
+ScopedIptablesBatchMode::~ScopedIptablesBatchMode() {
+  bool ret = runner_->RunPendingIptablesInBatch();
+  if (success_ != nullptr) {
+    *success_ = ret;
+  }
+}
+
+std::unique_ptr<ScopedIptablesBatchMode>
+MinijailedProcessRunner::AcquireIptablesBatchMode(bool* success) {
+  if (iptables_batch_mode_) {
+    LOG(ERROR) << "Already in iptables batch mode";
+    return nullptr;
+  }
+  iptables_batch_mode_ = true;
+  return base::WrapUnique(new ScopedIptablesBatchMode(this, success));
+}
+
+void MinijailedProcessRunner::AppendPendingIptablesRule(
+    Iptables::Table table,
+    Iptables::Command command,
+    std::string_view chain,
+    const std::vector<std::string>& argv,
+    TableToRules* pending_rules) {
+  std::vector<std::string> args;
+  using Command = Iptables::Command;
+  switch (command) {
+    case Command::kA:
+    case Command::kD:
+    case Command::kF:
+    case Command::kI:
+    case Command::kX:
+      args = {Iptables::CommandName(command), std::string(chain)};
+      args.insert(args.end(), argv.begin(), argv.end());
+      break;
+    case Command::kN:
+      // Convert `-N chain` to `:chain - [0:0]`, which will flush the rules and
+      // reset counters if the chain exist, or create a new chain otherwise.
+      args = {base::StrCat({":", chain, " - [0:0]"})};
+      break;
+    case Command::kL:
+    case Command::kS:
+    case Command::kC:
+      // These commands are meaningful in iptables-restore, but do not make
+      // sense here.
+      CHECK(false);
+  }
+
+  // TODO(jiejiang): Remove "-w" when calling iptables()/ip6tables().
+  if (args.back() == "-w") {
+    args.pop_back();
+  }
+  CHECK(!base::Contains(args, "-w"));
+
+  (*pending_rules)[table].push_back(base::JoinString(args, " "));
+}
+
+bool MinijailedProcessRunner::RunPendingIptablesInBatch() {
+  CHECK(iptables_batch_mode_);
+  iptables_batch_mode_ = false;
+  bool success = true;
+  success &= RunPendingIptablesInBatchImpl(kIptablesRestorePath,
+                                           pending_iptables_rules_);
+  pending_iptables_rules_.clear();
+  success &= RunPendingIptablesInBatchImpl(kIp6tablesRestorePath,
+                                           pending_ip6tables_rules_);
+  pending_ip6tables_rules_.clear();
+  return success;
+}
+
+bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
+    std::string_view iptables_restore_path,
+    const TableToRules& table_to_rules) {
+  if (table_to_rules.empty()) {
+    // We may have rules only for IPv4 or IPv6, so this is expected.
+    return true;
+  }
+
+  std::vector<std::string> input;
+  for (const auto& [table, rules] : table_to_rules) {
+    input.push_back(base::StrCat({"*", Iptables::TableName(table)}));
+    input.insert(input.end(), rules.begin(), rules.end());
+    // Need a "\n" after "COMMIT". Add it here since JoinString() won't do
+    // it for the last line.
+    input.push_back("COMMIT\n");
+  }
+
+  // TODO(b/328151873): Write to the stdin pipe would be easier in logic but
+  // complicated in implementation now. Refactor this after we have a better
+  // Process abstraction.
+  base::ScopedFD script_fd(memfd_create("iptables-restore", /*flags=*/0));
+  if (!script_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create input file to iptables-restore";
+    return false;
+  }
+  if (!base::WriteFileDescriptor(script_fd.get(),
+                                 base::JoinString(input, "\n"))) {
+    PLOG(ERROR) << "Failed to generate input file to iptables-restore";
+    return false;
+  }
+  auto script_path = base::StringPrintf("/proc/self/fd/%d", script_fd.get());
+
+  minijail* jail = mj_->New();
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask | kBPFCapMask);
+  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+
+  int ret = RunSyncDestroy(
+      {std::string(iptables_restore_path), "-n", script_path, "-w"}, mj_, jail,
+      /*log_failures=*/true, nullptr);
+
+  LOG(INFO) << iptables_restore_path << " finished with " << input.size()
+            << " lines, exit with " << ret;
+
+  // TODO(b/328151873): Parse stderr so we can also log which line contains an
+  // error.
+  return ret == 0;
 }
 
 }  // namespace patchpanel
