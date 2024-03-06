@@ -8,7 +8,8 @@ include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 use crate::plugin_proto::event;
 
 use std::fs::{File, OpenOptions};
-use std::io::prelude::*;
+use std::io::Read;
+use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
@@ -16,6 +17,11 @@ use std::str;
 use std::time::Duration;
 
 use nix::errno::Errno;
+use nix::sys::select;
+use nix::sys::stat;
+use nix::sys::time::TimeVal;
+use nix::sys::time::TimeValLike;
+use nix::unistd;
 
 // Imported from main program
 use crate::Dbus;
@@ -48,10 +54,6 @@ macro_rules! print_to_path {
     }}
 }
 
-fn duration_to_millis(duration: &Duration) -> i64 {
-    duration.as_secs() as i64 * 1000 + duration.subsec_nanos() as i64 / 1_000_000
-}
-
 // Writes |string| to file |path|.  If |append| is true, seeks to end first.
 // If |append| is false, truncates the file first.
 fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
@@ -73,39 +75,15 @@ fn read_nonblocking_pipe(file: &mut File, buf: &mut [u8]) -> Result<usize> {
     Ok(read_bytes)
 }
 
-fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
-    #[allow(clippy::unnecessary_cast)]
-    let mut null_timeout = libc::timeval {
-        tv_sec: 0 as libc::time_t,
-        tv_usec: 0 as libc::suseconds_t,
-    };
-    let null = std::ptr::null_mut();
-    // Safe because we're passing valid values and addresses.
-    let n = unsafe {
-        libc::select(
-            high_fd,
-            inout_read_fds,
-            null,
-            null,
-            &mut null_timeout as *mut libc::timeval,
-        )
-    };
-    if n < 0 {
-        panic!("select: {}", Errno::last());
-    }
-    n
-}
-
-fn mkfifo(path: &Path) -> Result<()> {
-    let path_name = path.to_str().unwrap();
-    let c_path = std::ffi::CString::new(path_name).unwrap();
-    // Safe because c_path points to a valid C string.
-    let status = unsafe { libc::mkfifo(c_path.as_ptr(), 0o644) };
-    if status < 0 {
-        Err(format!("mkfifo: {}: {}", path_name, Errno::last()).into())
-    } else {
-        Ok(())
-    }
+fn non_blocking_select(inout_read_fds: &mut select::FdSet) -> i32 {
+    select::select(
+        inout_read_fds.highest().unwrap() + 1,
+        inout_read_fds,
+        None,
+        None,
+        &mut TimeVal::seconds(0),
+    )
+    .expect("select failed")
 }
 
 // The types of events which are generated internally for testing.  They
@@ -216,19 +194,18 @@ impl Timer for MockTimer {
     // are delivered.
     fn select(
         &mut self,
-        high_fd: i32,
-        inout_read_fds: &mut libc::fd_set,
+        inout_read_fds: &mut select::FdSet,
         timeout: &Duration,
-    ) -> i32 {
+    ) -> Result<libc::c_int> {
         // First check for existing active fds (for instance, the low-mem
         // device).  We must save the original fd_set because when
         // non_blocking_select returns 0, the fd_set is cleared.
         let saved_inout_read_fds = *inout_read_fds;
-        let n = non_blocking_select(high_fd, inout_read_fds);
+        let n = non_blocking_select(inout_read_fds);
         if n != 0 {
-            return n;
+            return Ok(n);
         }
-        let timeout_ms = duration_to_millis(timeout);
+        let timeout_ms = timeout.as_millis() as i64;
         let end_time = self.current_time + timeout_ms;
         // Assume no events occur and we hit the timeout.  Fix later as needed.
         self.current_time = end_time;
@@ -236,7 +213,7 @@ impl Timer for MockTimer {
             if self.event_index == self.test_events.len() {
                 // No more events to deliver, so no need for further select() calls.
                 self.quit_request = true;
-                return 0;
+                return Ok(0);
             }
             // There are still event to be delivered.
             let first_event_time = self.test_events[self.event_index].time;
@@ -245,7 +222,7 @@ impl Timer for MockTimer {
             if first_event_time >= end_time {
                 // No event to deliver before the timeout.
                 debug!("returning because fev = {}", first_event_time);
-                return 0;
+                return Ok(0);
             }
             // Deliver all events with the time stamp of the first event.  (There
             // is at least one.)
@@ -263,11 +240,11 @@ impl Timer for MockTimer {
             // One or more events were delivered, and some of them may fire a
             // select.  First restore the original fd_set.
             *inout_read_fds = saved_inout_read_fds;
-            let n = non_blocking_select(high_fd, inout_read_fds);
+            let n = non_blocking_select(inout_read_fds);
             if n > 0 {
                 debug!("returning at {} with {} events", first_event_time, n);
                 self.current_time = first_event_time;
-                return n;
+                return Ok(n);
             }
         }
     }
@@ -710,7 +687,11 @@ pub fn teardown_test_environment(paths: &Paths) {
 pub fn setup_test_environment(paths: &Paths) {
     std::fs::create_dir(&paths.testing_root)
         .unwrap_or_else(|_| panic!("cannot create {}", paths.testing_root.to_str().unwrap()));
-    mkfifo(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME)).expect("failed to make mock dbus fifo");
+    unistd::mkfifo(
+        &paths.testing_root.join(MOCK_DBUS_FIFO_NAME),
+        stat::Mode::S_IRWXU,
+    )
+    .expect("failed to make mock dbus fifo");
     create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
@@ -735,7 +716,8 @@ pub fn setup_test_environment(paths: &Paths) {
     print_to_path!(sys_vm.join("extra_free_kbytes"), "60000\n")
         .expect("cannot initialize extra_free_kbytes");
 
-    mkfifo(&paths.low_mem_device).expect("could not make mock low-mem device");
+    unistd::mkfifo(&paths.low_mem_device, stat::Mode::S_IRWXU)
+        .expect("could not make mock low-mem device");
 }
 
 pub fn queue_loop() {

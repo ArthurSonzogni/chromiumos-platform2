@@ -29,27 +29,25 @@ extern crate protobuf; // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 use crate::plugin_proto::event;
 
-use chrono::prelude::*;
-use libc::c_void;
-
 #[cfg(not(test))]
 use dbus::ffidisp::{BusType, Connection, ConnectionItem, WatchEvent};
 #[cfg(not(test))]
 use protobuf::Message;
 
-use std::cmp::max;
 use std::collections::hash_map::HashMap;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
-use std::io::prelude::*;
-use std::mem::MaybeUninit;
+use std::io::Read;
+use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
-use std::{io, str};
-// Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
+use std::{io, str};
 
+use chrono::DateTime;
+use chrono::Local;
+use nix::sys::select;
 use procfs::LoadAverage;
 use tempfile::TempDir;
 
@@ -198,15 +196,18 @@ fn read_int(path: &Path) -> Result<u32> {
 
 // The Timer trait allows us to mock time for testing.
 trait Timer {
-    // A wrapper for libc::select() with only ready-to-read fds.
-    fn select(
-        &mut self,
-        nfds: libc::c_int,
-        fds: &mut libc::fd_set,
-        timeout: &Duration,
-    ) -> libc::c_int;
+    // A wrapper for select() with only ready-to-read fds.
+    fn select(&mut self, fds: &mut select::FdSet, timeout: &Duration) -> Result<libc::c_int>;
     fn now(&self) -> i64;
     fn quit_request(&self) -> bool;
+}
+
+#[cfg(not(test))]
+fn duration_to_timeval(duration: &Duration) -> nix::sys::time::TimeVal {
+    nix::sys::time::TimeVal::new(
+        duration.as_secs() as nix::sys::time::time_t,
+        duration.subsec_micros() as nix::sys::time::suseconds_t,
+    )
 }
 
 #[cfg(not(test))]
@@ -228,54 +229,33 @@ impl Timer for GenuineTimer {
 
     fn select(
         &mut self,
-        high_fd: i32,
-        inout_read_fds: &mut libc::fd_set,
+        inout_read_fds: &mut select::FdSet,
         timeout: &Duration,
-    ) -> i32 {
-        let mut libc_timeout = libc::timeval {
-            tv_sec: timeout.as_secs() as libc::time_t,
-            tv_usec: timeout.subsec_micros() as libc::suseconds_t,
-        };
-        let null = std::ptr::null_mut();
-        // Safe because we're passing valid values and addresses.
-        unsafe {
-            libc::select(
-                high_fd,
-                inout_read_fds,
-                null,
-                null,
-                &mut libc_timeout as *mut libc::timeval,
-            )
-        }
-    }
-}
-
-fn default_fd_set() -> libc::fd_set {
-    let mut m = MaybeUninit::<libc::fd_set>::uninit();
-    // The fd set don't need to be initialized to known values because
-    // they are cleared by the following FD_ZERO calls, which are safe
-    // because we're passing libc::fd_sets to them.
-    unsafe {
-        libc::FD_ZERO(m.as_mut_ptr());
-        m.assume_init()
+    ) -> Result<libc::c_int> {
+        let mut timeval = duration_to_timeval(timeout);
+        Ok(select::select(
+            inout_read_fds.highest().ok_or("The fd set is empty")? + 1,
+            inout_read_fds,
+            None,
+            None,
+            &mut timeval,
+        )?)
     }
 }
 
 struct FileWatcher {
-    read_fds: libc::fd_set,
-    inout_read_fds: libc::fd_set,
-    max_fd: i32,
+    read_fds: select::FdSet,
+    inout_read_fds: select::FdSet,
 }
 
 // Interface to the select(2) system call, for ready-to-read only.
 impl FileWatcher {
     fn new() -> FileWatcher {
-        let read_fds = default_fd_set();
-        let inout_read_fds = default_fd_set();
+        let read_fds = select::FdSet::new();
+        let inout_read_fds = select::FdSet::new();
         FileWatcher {
             read_fds,
             inout_read_fds,
-            max_fd: -1,
         }
     }
 
@@ -286,25 +266,12 @@ impl FileWatcher {
     // The ..._fd functions exist because other APIs (e.g. dbus) return RawFds
     // instead of Files.
     fn set_fd(&mut self, fd: RawFd) -> Result<()> {
-        if fd >= libc::FD_SETSIZE as i32 {
-            return Err("set_fd: fd too large".into());
-        }
-        // see comment for |set()|
-        unsafe {
-            libc::FD_SET(fd, &mut self.read_fds);
-        }
-        self.max_fd = max(self.max_fd, fd);
+        self.read_fds.insert(fd);
         Ok(())
     }
 
     fn clear_fd(&mut self, fd: RawFd) -> Result<()> {
-        if fd >= libc::FD_SETSIZE as i32 {
-            return Err("clear_fd: fd is too large".into());
-        }
-        // see comment for |set()|
-        unsafe {
-            libc::FD_CLR(fd, &mut self.read_fds);
-        }
+        self.read_fds.remove(fd);
         Ok(())
     }
 
@@ -314,26 +281,16 @@ impl FileWatcher {
     }
 
     fn has_fired_fd(&mut self, fd: RawFd) -> Result<bool> {
-        if fd >= libc::FD_SETSIZE as i32 {
-            return Err("has_fired_fd: fd is too large".into());
-        }
-        // see comment for |set()|
-        Ok(unsafe { libc::FD_ISSET(fd, &self.inout_read_fds) })
+        Ok(self.inout_read_fds.contains(fd))
     }
 
     fn watch(&mut self, timeout: &Duration, timer: &mut dyn Timer) -> Result<usize> {
         self.inout_read_fds = self.read_fds;
-        let n = timer.select(self.max_fd + 1, &mut self.inout_read_fds, timeout);
-        match n {
-            // into() puts the io::Error in a Box.
-            -1 => Err(io::Error::last_os_error().into()),
-            n => {
-                if n < 0 {
-                    Err(format!("unexpected return value {} from select", n).into())
-                } else {
-                    Ok(n as usize)
-                }
-            }
+        let n = timer.select(&mut self.inout_read_fds, timeout)?;
+        if n < 0 {
+            Err(format!("unexpected return value {} from select", n).into())
+        } else {
+            Ok(n as usize)
         }
     }
 }
@@ -534,18 +491,7 @@ fn parse_vmstats(vmstats: &HashMap<String, i64>) -> Result<[i64; VMSTAT_VALUES_C
 
 fn pread_u32(f: &File) -> Result<u32> {
     let mut buffer: [u8; 20] = [0; 20];
-    // pread is safe to call with valid addresses and buffer length.
-    let length = unsafe {
-        libc::pread(
-            f.as_raw_fd(),
-            &mut buffer[0] as *mut u8 as *mut c_void,
-            buffer.len(),
-            0,
-        )
-    };
-    if length < 0 {
-        return Err("bad pread_u32".into());
-    }
+    let length = nix::sys::uio::pread(f.as_raw_fd(), &mut buffer, 0)?;
     if length == 0 {
         return Err("empty pread_u32".into());
     }
