@@ -118,7 +118,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               (override));
   MOCK_METHOD(bool,
               ReadLink,
-              (const base::FilePath&, base::FilePath*),
+              (const base::FilePath&, base::FilePath*, bool canonicalize),
               (override));
   MOCK_METHOD(bool, IsLink, (const base::FilePath&), (const, override));
   MOCK_METHOD(bool,

@@ -205,7 +205,9 @@ class BRILLO_EXPORT FuzzedPlatform : public Platform {
   void Sync() override;
   bool CreateSymbolicLink(const base::FilePath& path,
                           const base::FilePath& target) override;
-  bool ReadLink(const base::FilePath& path, base::FilePath* target) override;
+  bool ReadLink(const base::FilePath& path,
+                base::FilePath* target,
+                bool canonicalize) override;
   bool SetFileTimes(const base::FilePath& path,
                     const struct timespec& atime,
                     const struct timespec& mtime,

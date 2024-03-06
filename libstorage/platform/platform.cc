@@ -1206,12 +1206,21 @@ bool Platform::CreateSymbolicLink(const base::FilePath& path,
   return true;
 }
 
-bool Platform::ReadLink(const base::FilePath& path, base::FilePath* target) {
+bool Platform::ReadLink(const base::FilePath& path,
+                        base::FilePath* target,
+                        bool canonicalize) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  if (!base::ReadSymbolicLink(path, target)) {
-    PLOG(ERROR) << "Failed to read link " << path.value();
-    return false;
+  if (canonicalize) {
+    if (!base::NormalizeFilePath(path, target)) {
+      PLOG(ERROR) << "Failed to normalize link " << path.value();
+      return false;
+    }
+  } else {
+    if (!base::ReadSymbolicLink(path, target)) {
+      PLOG(ERROR) << "Failed to read link " << path.value();
+      return false;
+    }
   }
   return true;
 }

@@ -414,7 +414,7 @@ TEST_F(PlatformTest, CreateSymbolicLink) {
   EXPECT_EQ(target.value(), read_target.value());
 }
 
-TEST_F(PlatformTest, ReadLink) {
+TEST_F(PlatformTest, ReadLinkAbsolute) {
   const base::FilePath valid_link(GetTempName());
   const base::FilePath not_link(GetTempName());
   const base::FilePath target(GetTempName());
@@ -424,6 +424,29 @@ TEST_F(PlatformTest, ReadLink) {
   EXPECT_TRUE(platform_.ReadLink(valid_link, &read_target));
   EXPECT_EQ(target.value(), read_target.value());
   EXPECT_FALSE(platform_.ReadLink(not_link, &read_target));
+}
+
+TEST_F(PlatformTest, ReadLinkRelative) {
+  // Create a relative link to a target.
+  const base::FilePath valid_link(GetTempName());
+  const base::FilePath absolute_target(GetTempName());
+  const base::FilePath relative_target(absolute_target.BaseName());
+  ASSERT_TRUE(base::CreateSymbolicLink(relative_target, valid_link));
+  base::FilePath read_target;
+  EXPECT_TRUE(platform_.ReadLink(valid_link, &read_target));
+  EXPECT_EQ(relative_target.value(), read_target.value());
+  EXPECT_FALSE(platform_.FileExists(absolute_target));
+
+  // The target file does not exist, so checking the link fails as well.
+  EXPECT_FALSE(platform_.FileExists(absolute_target));
+  EXPECT_FALSE(platform_.FileExists(valid_link));
+  ASSERT_TRUE(platform_.TouchFileDurable(absolute_target));
+
+  EXPECT_TRUE(
+      platform_.ReadLink(valid_link, &read_target, true /* canonicalize */));
+  // The canonicalize is the full patch, accessible.
+  EXPECT_EQ(absolute_target.value(), read_target.value());
+  EXPECT_TRUE(platform_.FileExists(read_target));
 }
 
 TEST_F(PlatformTest, IsLink) {

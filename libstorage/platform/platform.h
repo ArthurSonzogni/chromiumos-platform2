@@ -797,7 +797,10 @@ class BRILLO_EXPORT Platform {
   //   path - The path of the symbolic link to read
   //   target - The path to fill with the symbolic link target.  If an error is
   //   encounted and false is returned, target will be cleared.
-  virtual bool ReadLink(const base::FilePath& path, base::FilePath* target);
+  //   canonicalize - When true, return the resolved absolute file name
+  virtual bool ReadLink(const base::FilePath& path,
+                        base::FilePath* target,
+                        bool canonicalize = false);
 
   // Return true if |path| is a symbolic link, even if the link target does
   // not exist.

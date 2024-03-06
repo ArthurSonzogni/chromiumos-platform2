@@ -74,7 +74,9 @@ class BRILLO_EXPORT FakePlatform : public Platform {
 
   bool CreateSymbolicLink(const base::FilePath& path,
                           const base::FilePath& target) override;
-  bool ReadLink(const base::FilePath& path, base::FilePath* target) override;
+  bool ReadLink(const base::FilePath& path,
+                base::FilePath* target,
+                bool canonicalize) override;
   bool IsLink(const base::FilePath& path) const override;
 
   bool SetFileTimes(const base::FilePath& path,

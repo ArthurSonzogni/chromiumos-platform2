@@ -290,9 +290,10 @@ bool FakePlatform::CreateSymbolicLink(const base::FilePath& path,
 }
 
 bool FakePlatform::ReadLink(const base::FilePath& path,
-                            base::FilePath* target) {
+                            base::FilePath* target,
+                            bool canonicalize) {
   base::FilePath tmp_path;
-  if (!real_platform_.ReadLink(TestFilePath(path), &tmp_path)) {
+  if (!real_platform_.ReadLink(TestFilePath(path), &tmp_path, canonicalize)) {
     return false;
   }
 

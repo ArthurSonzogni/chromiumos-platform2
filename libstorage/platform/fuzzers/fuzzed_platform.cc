@@ -1377,7 +1377,8 @@ bool FuzzedPlatform::CreateSymbolicLink(const base::FilePath& path,
 }
 
 bool FuzzedPlatform::ReadLink(const base::FilePath& path,
-                              base::FilePath* target) {
+                              base::FilePath* target,
+                              bool canonicalize) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(path);
   CHECK(target);
