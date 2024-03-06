@@ -64,10 +64,7 @@ class HandwritingLibrary {
   }
 
   // Returns whether LanguagePacks is enabled.
-  // Currently it's enabled whenever ondevice_handwriting is.
-  static constexpr bool IsUseLanguagePacksEnabled() {
-    return USE_ONDEVICE_HANDWRITING;
-  }
+  static constexpr bool IsUseLanguagePacksEnabled() { return USE_DLC; }
 
   // Gets the singleton HandwritingLibrary. The singleton is initialized with
   // `lib_path` on the first call to GetInstance; for the rest of the calls,

@@ -183,6 +183,7 @@ static_library("ml_common") {
   all_dependent_configs = [ ":ml_common_pkg_deps" ]
   defines = [
     "TC3_VOCAB_ANNOTATOR_IMPL",
+    "USE_DLC=${use.dlc}",
     "USE_INPUT_DEVICES_SPI_HEATMAP=${use.input_devices_spi_heatmap}",
     "USE_ONDEVICE_DOCUMENT_SCANNER=${use.ondevice_document_scanner}",
     "USE_ONDEVICE_DOCUMENT_SCANNER_DLC=${use.ondevice_document_scanner_dlc}",
@@ -321,6 +322,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
     defines = [
+      "USE_DLC=${use.dlc}",
       "USE_ONDEVICE_DOCUMENT_SCANNER=${use.ondevice_document_scanner}",
       "USE_ONDEVICE_DOCUMENT_SCANNER_DLC=${use.ondevice_document_scanner_dlc}",
       "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
@@ -391,6 +393,7 @@ if (use.fuzzer) {
 
     # Enables handwriting for all boards in fuzzer.
     defines = [
+      "USE_DLC=true",
       "USE_ONDEVICE_HANDWRITING=true",
       "USE_ONDEVICE_HANDWRITING_DLC=true",
     ]

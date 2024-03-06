@@ -55,9 +55,6 @@ TEST(HandwritingLibraryTest, CanLoadLibrary) {
               ml::HandwritingLibrary::Status::kLoadLibraryFailed);
     return;
   }
-
-  // Language Packs are disabled by default.
-  EXPECT_FALSE(ml::HandwritingLibrary::IsUseLanguagePacksEnabled());
 }
 
 // Tests each supported language against a file of labeled requests.
