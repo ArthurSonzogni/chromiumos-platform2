@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FLEX_HWIS_FLEX_DISK_METRICS_FLEX_DISK_METRICS_H_
-#define FLEX_HWIS_FLEX_DISK_METRICS_FLEX_DISK_METRICS_H_
+#ifndef FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
+#define FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_
 
 #include <map>
 #include <optional>
@@ -102,4 +102,4 @@ bool SendDiskMetrics(MetricsLibraryInterface& metrics,
                      const MapPartitionLabelToMiBSize& label_to_size_map,
                      const std::vector<std::string>& partition_labels);
 
-#endif  // FLEX_HWIS_FLEX_DISK_METRICS_FLEX_DISK_METRICS_H_
+#endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

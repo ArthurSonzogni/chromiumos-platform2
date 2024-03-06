@@ -13,7 +13,7 @@ group("all") {
     ":install_tmpfiles_config",
     ":install_upstart_config",
     ":libflex_hwis",
-    "//flex_hwis/flex_disk_metrics:all",
+    "//flex_hwis/flex_device_metrics:all",
   ]
   if (use.test) {
     deps += [
@@ -76,7 +76,7 @@ executable("flex_hwis_tool") {
 
 install_config("install_minijail_config") {
   sources = [
-    "minijail/flex_disk_metrics.conf",
+    "minijail/flex_device_metrics.conf",
     "minijail/flex_hwis.conf",
   ]
   install_path = "minijail_conf"
@@ -85,11 +85,11 @@ install_config("install_minijail_config") {
 install_config("install_seccomp_policy") {
   install_path = "seccomp_policy"
   sources = [
-    "seccomp_filters/flex_disk_metrics.policy",
+    "seccomp_filters/flex_device_metrics.policy",
     "seccomp_filters/flex_hwis.policy",
   ]
   outputs = [
-    "flex_disk_metrics-seccomp.policy",
+    "flex_device_metrics-seccomp.policy",
     "flex_hwis-seccomp.policy",
   ]
 }
@@ -101,7 +101,7 @@ install_config("install_tmpfiles_config") {
 
 install_config("install_upstart_config") {
   sources = [
-    "init/upstart/flex_disk_metrics.conf",
+    "init/upstart/flex_device_metrics.conf",
     "init/upstart/flex_hwis.conf",
   ]
   install_path = "upstart"

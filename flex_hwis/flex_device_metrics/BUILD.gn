@@ -5,9 +5,9 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":flex_disk_metrics" ]
+  deps = [ ":flex_device_metrics" ]
   if (use.test) {
-    deps += [ ":flex_disk_metrics_test" ]
+    deps += [ ":flex_device_metrics_test" ]
   }
 }
 
@@ -19,17 +19,17 @@ pkg_config("target_defaults") {
   ]
 }
 
-source_set("flex_disk_metrics_source_set") {
-  sources = [ "flex_disk_metrics.cc" ]
+source_set("flex_device_metrics_source_set") {
+  sources = [ "flex_device_metrics.cc" ]
   configs += [ ":target_defaults" ]
 }
 
-executable("flex_disk_metrics") {
-  sources = [ "flex_disk_metrics_main.cc" ]
+executable("flex_device_metrics") {
+  sources = [ "flex_device_metrics_main.cc" ]
   install_path = "bin"
   configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
-  deps = [ ":flex_disk_metrics_source_set" ]
+  deps = [ ":flex_device_metrics_source_set" ]
 }
 
 if (use.test) {
@@ -37,15 +37,15 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
 
-  executable("flex_disk_metrics_test") {
-    sources = [ "flex_disk_metrics_test.cc" ]
+  executable("flex_device_metrics_test") {
+    sources = [ "flex_device_metrics_test.cc" ]
     configs += [
       "//common-mk:test",
       ":test_pkg_deps",
       ":target_defaults",
     ]
     deps = [
-      ":flex_disk_metrics_source_set",
+      ":flex_device_metrics_source_set",
       "//common-mk/testrunner",
     ]
     run_test = true
