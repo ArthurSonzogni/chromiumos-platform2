@@ -40,6 +40,8 @@ pub mod chromeos {
 
 pub mod deprecated;
 pub mod disk;
+mod open_safely;
+mod open_safely_test;
 pub mod panic_handler;
 pub mod rand;
 pub mod scoped_path;
@@ -51,6 +53,11 @@ use std::fs::File;
 use std::os::unix::io::FromRawFd;
 
 use nix::fcntl::OFlag;
+
+pub use crate::open_safely::{
+    open_at_safely, open_fifo_safely, open_safely, OpenSafelyError, OpenSafelyOptions,
+    OpenSafelyResult,
+};
 
 /// Spawns a pipe pair where the first pipe is the read end and the second pipe is the write end.
 ///

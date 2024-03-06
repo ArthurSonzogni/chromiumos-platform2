@@ -19,6 +19,7 @@ serde = { version = "1.0.114", features = ["derive"] }
 stderrlog = "0.5.0"
 syslog = "6.0.1"
 system_api = { path = "../system_api", optional = true } # provided by ebuild
+tempfile = "3"
 thiserror = "1.0.20"
 vboot_reference-sys = { path = "../../platform/vboot_reference/rust/vboot_reference-sys", optional = true } # provided by ebuild
 zerocopy = "0.6.1"
