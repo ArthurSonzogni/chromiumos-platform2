@@ -80,6 +80,9 @@ MulticastCountersService::MulticastCountersService(Datapath* datapath)
     : datapath_(datapath) {}
 
 void MulticastCountersService::Start() {
+  auto batch_mode =
+      MinijailedProcessRunner::GetInstance()->AcquireIptablesBatchMode();
+
   std::vector<std::string> protocols = {"mdns", "ssdp"};
   for (std::string const& protocol : protocols) {
     datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle,
@@ -125,7 +128,11 @@ void MulticastCountersService::Start() {
   datapath_->ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
                             Iptables::Command::kA, "INPUT", args);
 }
+
 void MulticastCountersService::Stop() {
+  auto batch_mode =
+      MinijailedProcessRunner::GetInstance()->AcquireIptablesBatchMode();
+
   std::vector<std::string> args;
   args = {"-d",      kMdnsMcastAddress.ToString(),
           "-p",      "udp",

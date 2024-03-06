@@ -264,6 +264,10 @@ void CountersService::SetupAccountingRules(const std::string& chain) {
   if (datapath_->CheckChain(IpFamily::kDual, Iptables::Table::kMangle, chain)) {
     return;
   }
+
+  auto batch_mode =
+      MinijailedProcessRunner::GetInstance()->AcquireIptablesBatchMode();
+
   // Creates |chain|.
   if (!datapath_->AddChain(IpFamily::kDual, Iptables::Table::kMangle, chain)) {
     return;
@@ -281,6 +285,9 @@ void CountersService::SetupJumpRules(Iptables::Command command,
                                      const std::string& ifname,
                                      const std::string& rx_chain,
                                      const std::string& tx_chain) {
+  auto batch_mode =
+      MinijailedProcessRunner::GetInstance()->AcquireIptablesBatchMode();
+
   // For each device create a jumping rule in mangle POSTROUTING for egress
   // traffic, and two jumping rules in mangle INPUT and FORWARD for ingress
   // traffic.

@@ -264,6 +264,8 @@ void Datapath::Start() {
   //   connmark. To avoid saving the mark for unrelated connections, we check if
   //   the packet already have a mark at first.
   if (system_->IsEbpfEnabled()) {
+    auto run_iptables_in_batch = process_runner_->AcquireIptablesBatchMode();
+
     const auto install_rule = [this](IpFamily family,
                                      const std::vector<std::string>& args) {
       ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
@@ -799,6 +801,9 @@ bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
 }
 
 bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
+  bool success = false;
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode(&success);
+
   const IpFamily family = ConvertIpFamily(rule.proxy_address.GetFamily());
   switch (rule.type) {
     case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
@@ -807,10 +812,10 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
       }
-      return true;
+      break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
-      return true;
+      break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
       // Start protecting DNS traffic from VPN fwmark tagging.
@@ -840,7 +845,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         return false;
       }
 
-      return true;
+      break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
       if (!ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kI,
@@ -853,15 +858,20 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add user DNS exclude rule";
         return false;
       }
-      return true;
+      break;
     }
     default:
       LOG(ERROR) << "Invalid DNS proxy type " << rule;
       return false;
   }
+
+  batch_mode = nullptr;
+  return success;
 }
 
 void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   const IpFamily family = ConvertIpFamily(rule.proxy_address.GetFamily());
 
   // Whenever the client that requested the rule closes the fd, the requested
@@ -981,6 +991,8 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
                                   const std::string& int_ifname,
                                   TrafficSource source,
                                   bool static_ipv6) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   const std::string& ext_ifname = shill_device.ifname;
   AddDownstreamInterfaceRules(shill_device, int_ifname, source, static_ipv6);
   // If |ext_ifname| is not null, mark egress traffic with the
@@ -1031,6 +1043,8 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
 void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
                                           TrafficSource source,
                                           bool static_ipv6) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   AddDownstreamInterfaceRules(std::nullopt, int_ifname, source, static_ipv6);
 
   // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
@@ -1050,6 +1064,8 @@ void Datapath::StartRoutingDeviceAsUser(
     std::optional<net_base::IPv4Address> peer_ipv4_addr,
     std::optional<IPv6Address> int_ipv6_addr,
     std::optional<net_base::IPv6Address> peer_ipv6_addr) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   AddDownstreamInterfaceRules(std::nullopt, int_ifname, source,
                               peer_ipv6_addr.has_value());
 
@@ -1098,6 +1114,8 @@ void Datapath::StartRoutingDeviceAsUser(
 
 void Datapath::StopRoutingDevice(const std::string& int_ifname,
                                  TrafficSource source) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   auto forward_firewall_rule_type = GetForwardFirewallRuleType(source);
   if (forward_firewall_rule_type == ForwardFirewallRuleType::kTethering) {
     // Assume there is a single and unique tethering setup across the device.
@@ -1348,6 +1366,8 @@ void Datapath::RemoveIPv6Address(const std::string& ifname,
 }
 
 void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
+
   const std::string& ext_ifname = shill_device.ifname;
   int ifindex = system_->IfNametoindex(ext_ifname);
   if (ifindex == 0) {
