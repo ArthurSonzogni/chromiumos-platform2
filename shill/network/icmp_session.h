@@ -17,26 +17,32 @@
 #include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <base/time/default_tick_clock.h>
-#include <base/time/tick_clock.h>
 #include <base/time/time.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/socket.h>
 
-#include "shill/network/icmp.h"
+#include "shill/event_dispatcher.h"
 
 namespace shill {
 
-class EventDispatcher;
-
 // The IcmpSession class encapsulates the task of performing a stateful exchange
 // of echo requests and echo replies between this host and another (i.e. ping).
-// The Icmp class is used to perform the sending of echo requests. Each
-// IcmpSession object only allows one ICMP session to be running at one time.
-// Multiple ICMP sessions can be run concurrently by creating multiple
-// IcmpSession objects.
+// Each IcmpSession object only allows one ICMP sequence of requests to be
+// running at one time. Multiple ICMP sessions can be run concurrently by
+// creating multiple IcmpSession objects.
 class IcmpSession {
  public:
+  // The number of echo requests sent by one session.
+  static constexpr int kTotalNumEchoRequests = 3;
+  // The interval between each echo request. Default for ping.
+  static constexpr base::TimeDelta kEchoRequestInterval = base::Seconds(1);
+  // The ICMP echo code, specified in RFC 792.
+  static constexpr int kIcmpEchoCode = 0;
+  // The timeout of the session. We should not need more than 1 second after the
+  // last request is sent to receive the final reply.
+  static constexpr base::TimeDelta kTimeout =
+      kEchoRequestInterval * kTotalNumEchoRequests + base::Seconds(1);
+
   // The result of an ICMP session is a vector of time deltas representing how
   // long it took to receive a echo reply for each sent echo request. The vector
   // is sorted in the order that the echo requests were sent. Zero time deltas
@@ -45,7 +51,15 @@ class IcmpSession {
   using IcmpSessionResultCallback =
       base::OnceCallback<void(const IcmpSessionResult&)>;
 
-  explicit IcmpSession(EventDispatcher* dispatcher);
+  // Creates a instance and override the echo ID, only used for testing.
+  static std::unique_ptr<IcmpSession> CreateForTesting(
+      EventDispatcher* dispatcher,
+      std::unique_ptr<net_base::SocketFactory> socket_factory,
+      int echo_id);
+
+  explicit IcmpSession(EventDispatcher* dispatcher,
+                       std::unique_ptr<net_base::SocketFactory> socket_factory =
+                           std::make_unique<net_base::SocketFactory>());
   IcmpSession(const IcmpSession&) = delete;
   IcmpSession& operator=(const IcmpSession&) = delete;
 
@@ -85,27 +99,30 @@ class IcmpSession {
   static bool IsPacketLossPercentageGreaterThan(const IcmpSessionResult& result,
                                                 int percentage_threshold);
 
+  // Computes the checksum for Echo Request |hdr| of length |len| according
+  // to specifications in RFC 792.
+  static uint16_t ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len);
+
+  // Accesses the private data or method for testing.
+  int GetEchoIdForTesting() const { return echo_id_; }
+  void OnEchoReplyReceivedForTesting(base::span<const uint8_t> message) {
+    OnEchoReplyReceived(message);
+  }
+
  private:
   using SentRecvTimePair = std::pair<base::TimeTicks, base::TimeTicks>;
 
-  friend class IcmpSessionTest;
-
-  FRIEND_TEST(IcmpSessionTest, Constructor);  // for |echo_id_|
-
   static uint16_t kNextUniqueEchoId;  // unique across IcmpSession objects
-  static constexpr int kTotalNumEchoRequests = 3;
-  // default for ping
-  static constexpr base::TimeDelta kEchoRequestInterval = base::Seconds(1);
-  // We should not need more than 1 second after the last request is sent to
-  // receive the final reply.
-  static constexpr base::TimeDelta kTimeout =
-      kEchoRequestInterval * kTotalNumEchoRequests + base::Seconds(1);
 
   // Sends a single echo request to the destination. This function will call
   // itself repeatedly via the event loop every |kEchoRequestInterval|
   // until |kNumEchoRequestToSend| echo requests are sent or the timeout is
   // reached.
   void TransmitEchoRequestTask();
+
+  // Sends an ICMP Echo Request (Ping) packet to |address| in IPv4 and IPv6.
+  bool TransmitV4EchoRequest(const net_base::IPv4Address& address);
+  bool TransmitV6EchoRequest(const net_base::IPv6Address& address);
 
   // Called by |icmp_->socket()| when the ICMP socket is ready to read.
   void OnIcmpReadable();
@@ -126,20 +143,22 @@ class IcmpSession {
   // started.
   void ReportResultAndStopSession();
 
-  base::WeakPtrFactory<IcmpSession> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
 
-  std::unique_ptr<Icmp> icmp_;
+  std::unique_ptr<net_base::SocketFactory> socket_factory_;
+  std::unique_ptr<net_base::Socket> socket_;
+  std::optional<net_base::IPAddress> destination_;
+  int interface_index_ = -1;
 
-  const uint16_t echo_id_;  // unique ID for this object's echo request/replies
-  uint16_t current_sequence_number_;
+  // unique ID for this object's echo request/replies
+  uint16_t echo_id_;
+  uint16_t current_sequence_number_ = 0;
   std::map<uint16_t, SentRecvTimePair> seq_num_to_sent_recv_time_;
   std::set<uint16_t> received_echo_reply_seq_numbers_;
-  // Allow for an injectable tick clock for testing.
-  base::TickClock* tick_clock_;
-  base::DefaultTickClock default_tick_clock_;
   base::CancelableOnceClosure timeout_callback_;
   IcmpSessionResultCallback result_callback_;
+
+  base::WeakPtrFactory<IcmpSession> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

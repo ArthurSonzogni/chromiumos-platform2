@@ -4,434 +4,352 @@
 
 #include "shill/network/icmp_session.h"
 
+#include <netinet/icmp6.h>
+
+#include <algorithm>
+#include <iterator>
 #include <memory>
 
 #include <base/containers/span.h>
-#include <base/test/simple_test_tick_clock.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/byte_utils.h>
 #include <net-base/mock_socket.h>
 
-#include "shill/mock_event_dispatcher.h"
-#include "shill/network/mock_icmp.h"
-
-using testing::_;
-using testing::NiceMock;
-using testing::Return;
-using testing::StrictMock;
-using testing::Test;
+#include "shill/event_dispatcher.h"
 
 namespace shill {
-
 namespace {
 
+using testing::_;
+using testing::ElementsAreArray;
+using testing::Return;
+
+// These binary blobs representing ICMP headers and their respective checksums
+// were taken directly from Wireshark ICMP packet captures and are given in big
+// endian. The checksum field is zeroed in |kIcmpEchoRequestEvenLen| and
+// |kIcmpEchoRequestOddLen| so the checksum can be calculated on the header in
+// IcmpTest.ComputeIcmpChecksum.
+alignas(struct icmphdr) constexpr uint8_t kIcmpEchoRequestEvenLen[] = {
+    0x08, 0x00, 0x00, 0x00, 0x71, 0x50, 0x00, 0x00};
+alignas(struct icmphdr) constexpr uint8_t kIcmpEchoRequestEvenLenChecksum[] = {
+    0x86, 0xaf};
+alignas(struct icmphdr) constexpr uint8_t kIcmpEchoRequestOddLen[] = {
+    0x08, 0x00, 0x00, 0x00, 0xac, 0x51, 0x00, 0x00, 0x00, 0x00, 0x01};
+constexpr uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
+
+// The echo ID of the ICMP session.
+constexpr int kEchoId = 0;
 // Note: this IPv4 header is given in network byte order, since
 // IcmpSession::OnEchoReplyReceived expects to receive a raw IP packet.
-const uint8_t kIpHeader[] = {0x45, 0x80, 0x00, 0x1c, 0x63, 0xd3, 0x00,
-                             0x00, 0x39, 0x01, 0xcc, 0x9f, 0x4a, 0x7d,
-                             0xe0, 0x18, 0x64, 0x6e, 0xc1, 0xea};
+constexpr uint8_t kIpHeader[] = {0x45, 0x80, 0x00, 0x1c, 0x63, 0xd3, 0x00,
+                                 0x00, 0x39, 0x01, 0xcc, 0x9f, 0x4a, 0x7d,
+                                 0xe0, 0x18, 0x64, 0x6e, 0xc1, 0xea};
 // ICMPv4 echo replies with 0 bytes of data and and echo ID 0. Sequence numbers
-// are 0x8, 0x9, and 0xa respectively to simulate replies to a sequence of sent
+// are 0x0, 0x1, and 0x2 respectively to simulate replies to a sequence of sent
 // echo requests.  Note that these only match on little-endian hosts.
-const uint8_t kIcmpEchoReply1[] = {0x00, 0x00, 0xf7, 0xff,
-                                   0x00, 0x00, 0x08, 0x00};
-const uint16_t kIcmpEchoReply1_SeqNum = 0x08;
-const uint8_t kIcmpEchoReply2[] = {0x00, 0x00, 0xf6, 0xff,
-                                   0x00, 0x00, 0x09, 0x00};
-const uint16_t kIcmpEchoReply2_SeqNum = 0x09;
-const uint8_t kIcmpEchoReply3[] = {0x00, 0x00, 0xf5, 0xff,
-                                   0x00, 0x00, 0x0a, 0x00};
-const uint16_t kIcmpEchoReply3_SeqNum = 0x0a;
+constexpr uint8_t kIcmpEchoReply1[] = {0x00, 0x00, 0xf7, 0xff,
+                                       0x00, 0x00, 0x00, 0x00};
+constexpr uint8_t kIcmpEchoReply2[] = {0x00, 0x00, 0xf6, 0xff,
+                                       0x00, 0x00, 0x01, 0x00};
+constexpr uint8_t kIcmpEchoReply3[] = {0x00, 0x00, 0xf5, 0xff,
+                                       0x00, 0x00, 0x02, 0x00};
 
-// ICMPv6 echo reply with 0 bytes of data, echo ID 0, and sequence number 0x8.
-const uint8_t kIcmpV6EchoReply1[] = {0x81, 0x00, 0x76, 0xff,
-                                     0x00, 0x00, 0x08, 0x00};
+// ICMPv6 echo reply with 0 bytes of data, echo ID 0, and sequence number 0x0,
+// 0x1, and 0x2.
+constexpr uint8_t kIcmpV6EchoReply1[] = {0x81, 0x00, 0x76, 0xff,
+                                         0x00, 0x00, 0x00, 0x00};
+constexpr uint8_t kIcmpV6EchoReply2[] = {0x81, 0x00, 0x75, 0xff,
+                                         0x00, 0x00, 0x01, 0x00};
+constexpr uint8_t kIcmpV6EchoReply3[] = {0x81, 0x00, 0x74, 0xff,
+                                         0x00, 0x00, 0x02, 0x00};
 
 // This ICMPv4 echo reply has an echo ID of 0xe, which is different from the
 // echo ID used in the unit tests (0).
-const uint8_t kIcmpEchoReplyDifferentEchoID[] = {0x00, 0x00, 0xea, 0xff,
-                                                 0x0e, 0x00, 0x0b, 0x00};
+constexpr uint8_t kIcmpEchoReplyDifferentEchoID[] = {0x00, 0x00, 0xea, 0xff,
+                                                     0x0e, 0x00, 0x0b, 0x00};
 
-const net_base::IPAddress kIPAddress =
+const net_base::IPAddress kIPv4Address =
     *net_base::IPAddress::CreateFromString("10.0.1.1");
-const net_base::IPAddress kIP6Address =
+const net_base::IPAddress kIPv6Address =
     *net_base::IPAddress::CreateFromString("2001:db8::1234:5678");
-const int kInterfaceIndex = 3;
+constexpr int kInterfaceIndex = 3;
 
-}  // namespace
+std::vector<uint8_t> ConcatBuffers(base::span<const uint8_t> a,
+                                   base::span<const uint8_t> b) {
+  std::vector<uint8_t> ret;
+  ret.reserve(a.size() + b.size());
+  std::copy(a.begin(), a.end(), std::back_inserter(ret));
+  std::copy(b.begin(), b.end(), std::back_inserter(ret));
+  return ret;
+}
 
-class IcmpSessionTest : public Test {
+class IcmpSessionTest : public testing::Test {
  public:
-  IcmpSessionTest() : icmp_session_(&dispatcher_) {}
-  ~IcmpSessionTest() override = default;
-
   void SetUp() override {
-    icmp_session_.tick_clock_ = &testing_clock_;
-    icmp_ = new NiceMock<MockIcmp>();
-    // Passes ownership.
-    icmp_session_.icmp_.reset(icmp_);
-    ON_CALL(*icmp_, IsStarted()).WillByDefault(Return(false));
-  }
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
 
-  void TearDown() override {
-    EXPECT_CALL(*icmp_, IsStarted());
-    IcmpSession::kNextUniqueEchoId = 0;
+    icmp_session_ = IcmpSession::CreateForTesting(
+        &dispatcher_, std::move(socket_factory), kEchoId);
   }
 
   MOCK_METHOD(void, ResultCallback, (const IcmpSession::IcmpSessionResult&));
 
  protected:
-  void StartAndVerify(const net_base::IPAddress& destination,
-                      int interface_index) {
-    EXPECT_CALL(*icmp_, IsStarted());
-    EXPECT_CALL(*icmp_, Start(destination, interface_index))
-        .WillOnce(Return(true));
-    icmp_->destination_ = destination;
-    icmp_->socket_ = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeout()));
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    EXPECT_TRUE(Start(destination, interface_index));
-    EXPECT_TRUE(GetSeqNumToSentRecvTime()->empty());
-    EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
-    EXPECT_CALL(*icmp_, IsStarted()).WillRepeatedly(Return(true));
-  }
-
-  bool Start(const net_base::IPAddress& destination, int interface_index) {
-    return icmp_session_.Start(destination, interface_index,
-                               base::BindOnce(&IcmpSessionTest::ResultCallback,
-                                              base::Unretained(this)));
-  }
-
-  void Stop() { icmp_session_.Stop(); }
-
-  bool SeqNumToSentRecvTimeContains(uint16_t seq_num) {
-    return icmp_session_.seq_num_to_sent_recv_time_.find(seq_num) !=
-           icmp_session_.seq_num_to_sent_recv_time_.end();
-  }
-
-  bool ReceivedEchoReplySeqNumbersContains(uint16_t seq_num) {
-    return icmp_session_.received_echo_reply_seq_numbers_.find(seq_num) !=
-           icmp_session_.received_echo_reply_seq_numbers_.end();
-  }
-
-  void TransmitEchoRequestTask(bool transmit_request_success) {
-    EXPECT_CALL(*icmp_, TransmitEchoRequest(icmp_session_.echo_id_,
-                                            GetCurrentSequenceNumber()))
-        .WillOnce(Return(transmit_request_success));
-    icmp_session_.TransmitEchoRequestTask();
-  }
-
-  void ReportResultAndStopSession() {
-    icmp_session_.ReportResultAndStopSession();
-  }
-
-  void VerifyIcmpSessionStopped() {
-    EXPECT_TRUE(icmp_session_.timeout_callback_.IsCancelled());
-  }
-
-  void OnEchoReplyReceived(base::span<const uint8_t> data) {
-    icmp_session_.OnEchoReplyReceived(data);
-  }
-
-  IcmpSession::IcmpSessionResult GenerateIcmpResult() {
-    return icmp_session_.GenerateIcmpResult();
-  }
-
-  std::map<uint16_t, IcmpSession::SentRecvTimePair>* GetSeqNumToSentRecvTime() {
-    return &icmp_session_.seq_num_to_sent_recv_time_;
-  }
-  std::set<uint16_t>* GetReceivedEchoReplySeqNumbers() {
-    return &icmp_session_.received_echo_reply_seq_numbers_;
-  }
-  uint16_t GetNextUniqueEchoId() const {
-    return IcmpSession::kNextUniqueEchoId;
-  }
-  int GetTotalNumEchoRequests() const {
-    return IcmpSession::kTotalNumEchoRequests;
-  }
-  int GetCurrentSequenceNumber() const {
-    return icmp_session_.current_sequence_number_;
-  }
-  void SetCurrentSequenceNumber(uint16_t val) {
-    icmp_session_.current_sequence_number_ = val;
-  }
-  base::TimeDelta GetTimeout() const { return IcmpSession::kTimeout; }
-  base::TimeDelta GetEchoRequestInterval() const {
-    return IcmpSession::kEchoRequestInterval;
-  }
-
-  // required by base::FileDescriptorWatcher.
   base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::MainThreadType::IO};
+      // required by base::FileDescriptorWatcher.
+      base::test::TaskEnvironment::MainThreadType::IO,
+      // required by FastForwardBy().
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+  };
+  EventDispatcher dispatcher_;
 
-  MockIcmp* icmp_;
-  StrictMock<MockEventDispatcher> dispatcher_;
-  IcmpSession icmp_session_;
-  base::SimpleTestTickClock testing_clock_;
+  std::unique_ptr<IcmpSession> icmp_session_;
+  net_base::MockSocketFactory* socket_factory_;  // Owned by |icmp_session_|.
 };
 
-TEST_F(IcmpSessionTest, Constructor) {
-  // |icmp_session_| should have been assigned the value of |kNextUniqueEchoId|
-  // on construction, and caused the value of this static variable to be
-  // incremented.
-  uint16_t saved_echo_id = GetNextUniqueEchoId();
-  EXPECT_EQ(saved_echo_id - 1, icmp_session_.echo_id_);
-
-  // The next IcmpSession object constructed, |session| should get the next
-  // unique value of |kNextUniqueEchoId|, and further increment this variable.
-  IcmpSession session(&dispatcher_);
-  EXPECT_EQ(saved_echo_id, session.echo_id_);
-  EXPECT_EQ(saved_echo_id + 1, GetNextUniqueEchoId());
+TEST_F(IcmpSessionTest, EchoId) {
+  // Each IcmpSession should have different echo ID.
+  IcmpSession session1(&dispatcher_);
+  IcmpSession session2(&dispatcher_);
+  EXPECT_NE(session1.GetEchoIdForTesting(), session2.GetEchoIdForTesting());
 }
 
-TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
-  StartAndVerify(kIPAddress, kInterfaceIndex);
+TEST_F(IcmpSessionTest, SocketOpenFail) {
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
+      .WillOnce(Return(nullptr));
 
-  // Since an ICMP session is already started, we should fail to start it again.
-  EXPECT_CALL(*icmp_, Start(kIPAddress, kInterfaceIndex)).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
-  EXPECT_FALSE(Start(kIPAddress, kInterfaceIndex));
+  EXPECT_FALSE(
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex, base::DoNothing()));
+  EXPECT_FALSE(icmp_session_->IsStarted());
 }
 
-TEST_F(IcmpSessionTest, StopWhileNotStarted) {
-  // Attempting to stop the ICMP session while it is not started should do
-  // nothing.
-  EXPECT_CALL(*icmp_, IsStarted()).WillOnce(Return(false));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  EXPECT_CALL(*icmp_, Stop()).Times(0);
-  Stop();
+MATCHER_P2(IsIcmpHeader, echo_id, sequence, "") {
+  struct icmphdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
+  icmp_header.type = ICMP_ECHO;
+  icmp_header.code = IcmpSession::kIcmpEchoCode;
+  icmp_header.un.echo.id = echo_id;
+  icmp_header.un.echo.sequence = sequence;
+  icmp_header.checksum =
+      IcmpSession::ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
+
+  return arg.size() == sizeof(icmp_header) &&
+         memcmp(arg.data(), &icmp_header, arg.size()) == 0;
+}
+
+MATCHER_P(IsSocketAddressV4, address, "") {
+  const struct sockaddr_in* sock_addr =
+      reinterpret_cast<const struct sockaddr_in*>(arg);
+  const auto addr_bytes = address.ToByteString();
+  return sock_addr->sin_family == net_base::ToSAFamily(address.GetFamily()) &&
+         memcmp(&sock_addr->sin_addr.s_addr, addr_bytes.data(),
+                addr_bytes.size()) == 0;
+}
+
+MATCHER_P(IsSocketAddressV6, address, "") {
+  const struct sockaddr_in6* sock_addr =
+      reinterpret_cast<const struct sockaddr_in6*>(arg);
+  const auto addr_bytes = address.ToByteString();
+  return sock_addr->sin6_family == net_base::ToSAFamily(address.GetFamily()) &&
+         memcmp(&sock_addr->sin6_addr, addr_bytes.data(), addr_bytes.size()) ==
+             0;
 }
 
 TEST_F(IcmpSessionTest, SessionSuccess) {
   // Test a successful ICMP session where the sending of requests and receiving
   // of replies are interleaved. Moreover, test the case where transmitting an
   // echo request fails.
+  const std::vector<base::TimeDelta> result = {base::Milliseconds(100),
+                                               base::Milliseconds(300),
+                                               base::Milliseconds(500)};
+  EXPECT_CALL(*this, ResultCallback(ElementsAreArray(result)));
 
-  base::TimeTicks now = testing_clock_.NowTicks();
-  base::TimeTicks kSentTime1 = base::TimeTicks::FromInternalValue(10);
-  base::TimeTicks kRecvTime1 = base::TimeTicks::FromInternalValue(20);
-  base::TimeTicks kSentTime2 = base::TimeTicks::FromInternalValue(30);
-  base::TimeTicks kSentTime3 = base::TimeTicks::FromInternalValue(40);
-  base::TimeTicks kRecvTime2 = base::TimeTicks::FromInternalValue(50);
-  base::TimeTicks kWrongEchoIDRecvTime = base::TimeTicks::FromInternalValue(60);
-  base::TimeTicks kRecvTime3 = base::TimeTicks::FromInternalValue(70);
+  net_base::MockSocket* mock_socket = nullptr;
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
+      .WillOnce([&mock_socket]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        mock_socket = socket.get();
+        return socket;
+      });
 
-  IcmpSession::IcmpSessionResult expected_result = {
-      kRecvTime1 - kSentTime1,
-      kRecvTime2 - kSentTime2,
-      kRecvTime3 - kSentTime3,
-  };
+  EXPECT_TRUE(
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+                           base::BindOnce(&IcmpSessionTest::ResultCallback,
+                                          base::Unretained(this))));
+  // When the session is started, Start() should fail.
+  EXPECT_FALSE(
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex, base::DoNothing()));
 
-  // Initiate session.
-  StartAndVerify(kIPAddress, kInterfaceIndex);
+  // Send 1st request immediately (T + 0s).
+  EXPECT_CALL(*mock_socket,
+              SendTo(IsIcmpHeader(kEchoId, 0), 0,
+                     IsSocketAddressV4(kIPv4Address), sizeof(sockaddr_in)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.RunUntilIdle();
 
-  // Send the first echo request.
-  testing_clock_.Advance(kSentTime1 - now);
-  now = testing_clock_.NowTicks();
-  SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(true);
-  EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
-  EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
-  EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply1_SeqNum).first);
-  EXPECT_EQ(kIcmpEchoReply2_SeqNum, GetCurrentSequenceNumber());
+  // Receive 1st response (T + 0.1s).
+  task_environment_.FastForwardBy(result[0]);
+  icmp_session_->OnEchoReplyReceivedForTesting(
+      ConcatBuffers(kIpHeader, kIcmpEchoReply1));
 
-  // Receive first reply.
-  testing_clock_.Advance(kRecvTime1 - now);
-  now = testing_clock_.NowTicks();
-  uint8_t buffer_1[sizeof(kIpHeader) + sizeof(kIcmpEchoReply1)];
-  memcpy(buffer_1, kIpHeader, sizeof(kIpHeader));
-  memcpy(buffer_1 + sizeof(kIpHeader), kIcmpEchoReply1,
-         sizeof(kIcmpEchoReply1));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(buffer_1);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
+  // Send 2nd request (T + 1s).
+  EXPECT_CALL(*mock_socket,
+              SendTo(IsIcmpHeader(kEchoId, 1), 0,
+                     IsSocketAddressV4(kIPv4Address), sizeof(sockaddr_in)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.FastForwardBy(IcmpSession::kEchoRequestInterval -
+                                  result[0]);
 
-  // Send the second echo request.
-  testing_clock_.Advance(kSentTime2 - now);
-  now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(true);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply2_SeqNum));
-  EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply2_SeqNum).first);
-  EXPECT_EQ(kIcmpEchoReply3_SeqNum, GetCurrentSequenceNumber());
+  // Receive 2nd response (T + 1.3s).
+  task_environment_.FastForwardBy(result[1]);
+  icmp_session_->OnEchoReplyReceivedForTesting(
+      ConcatBuffers(kIpHeader, kIcmpEchoReply2));
 
-  // Sending final request.
-  testing_clock_.Advance(kSentTime3 - now);
-  now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
-  EXPECT_CALL(*icmp_, Stop()).Times(0);
-  TransmitEchoRequestTask(true);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply3_SeqNum));
-  EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply3_SeqNum).first);
-  EXPECT_EQ(kIcmpEchoReply3_SeqNum + 1, GetCurrentSequenceNumber());
+  // Receive a wrong response (T + 1.3s).
+  icmp_session_->OnEchoReplyReceivedForTesting(
+      ConcatBuffers(kIpHeader, kIcmpEchoReplyDifferentEchoID));
 
-  // Receive second reply.
-  testing_clock_.Advance(kRecvTime2 - now);
-  now = testing_clock_.NowTicks();
-  uint8_t buffer_2[sizeof(kIpHeader) + sizeof(kIcmpEchoReply2)];
-  memcpy(buffer_2, kIpHeader, sizeof(kIpHeader));
-  memcpy(buffer_2 + sizeof(kIpHeader), kIcmpEchoReply2,
-         sizeof(kIcmpEchoReply2));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  EXPECT_CALL(*icmp_, Stop()).Times(0);
-  OnEchoReplyReceived(buffer_2);
-  EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
-  EXPECT_EQ(2, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply2_SeqNum));
+  // Send 3rd request (T + 2s).
+  EXPECT_CALL(*mock_socket,
+              SendTo(IsIcmpHeader(kEchoId, 2), 0,
+                     IsSocketAddressV4(kIPv4Address), sizeof(sockaddr_in)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.FastForwardBy(IcmpSession::kEchoRequestInterval -
+                                  result[1]);
 
-  // Receive a reply that has an echo ID that does not match that of this
-  // ICMP session. This reply will not be processed.
-  testing_clock_.Advance(kWrongEchoIDRecvTime - now);
-  now = testing_clock_.NowTicks();
-  uint8_t buffer_3[sizeof(kIpHeader) + sizeof(kIcmpEchoReplyDifferentEchoID)];
-  memcpy(buffer_3, kIpHeader, sizeof(kIpHeader));
-  memcpy(buffer_3 + sizeof(kIpHeader), kIcmpEchoReplyDifferentEchoID,
-         sizeof(kIcmpEchoReplyDifferentEchoID));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  EXPECT_CALL(*icmp_, Stop()).Times(0);
-  OnEchoReplyReceived(buffer_3);
-  EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
-  EXPECT_EQ(2, GetReceivedEchoReplySeqNumbers()->size());
-
-  // Receive third reply, which concludes the ICMP session.
-  testing_clock_.Advance(kRecvTime3 - now);
-  now = testing_clock_.NowTicks();
-  uint8_t buffer_4[sizeof(kIpHeader) + sizeof(kIcmpEchoReply3)];
-  memcpy(buffer_4, kIpHeader, sizeof(kIpHeader));
-  memcpy(buffer_4 + sizeof(kIpHeader), kIcmpEchoReply3,
-         sizeof(kIcmpEchoReply3));
-  EXPECT_CALL(*this, ResultCallback(expected_result));
-  EXPECT_CALL(*icmp_, Stop());
-  OnEchoReplyReceived(buffer_4);
-  EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
-  EXPECT_EQ(3, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply3_SeqNum));
-
-  VerifyIcmpSessionStopped();
+  // Receive 3rd response (T + 2.5s).
+  task_environment_.FastForwardBy(result[2]);
+  icmp_session_->OnEchoReplyReceivedForTesting(
+      ConcatBuffers(kIpHeader, kIcmpEchoReply3));
 }
 
-TEST_F(IcmpSessionTest, ICMPv6) {
-  // Initiate session.
-  StartAndVerify(kIP6Address, kInterfaceIndex);
+TEST_F(IcmpSessionTest, SessionSuccessIPv6) {
+  struct icmp6_hdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
+  icmp_header.icmp6_type = ICMP6_ECHO_REQUEST;
+  icmp_header.icmp6_code = IcmpSession::kIcmpEchoCode;
+  icmp_header.icmp6_id = kEchoId;
+  icmp_header.icmp6_seq = 0;
 
-  // Send an echo request.
-  SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(true);
-  EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
-  EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
-  EXPECT_EQ(kIcmpEchoReply2_SeqNum, GetCurrentSequenceNumber());
+  net_base::MockSocket* mock_socket = nullptr;
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6))
+      .WillOnce([&mock_socket]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        mock_socket = socket.get();
+        return socket;
+      });
 
-  // Receive a reply.
-  uint8_t buffer_1[sizeof(kIcmpV6EchoReply1)];
-  memcpy(buffer_1, kIcmpV6EchoReply1, sizeof(kIcmpV6EchoReply1));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(buffer_1);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
+  EXPECT_CALL(*this, ResultCallback).Times(1);
+  EXPECT_TRUE(
+      icmp_session_->Start(kIPv6Address, kInterfaceIndex,
+                           base::BindOnce(&IcmpSessionTest::ResultCallback,
+                                          base::Unretained(this))));
 
-  EXPECT_CALL(*icmp_, Stop());
-  Stop();
-  VerifyIcmpSessionStopped();
+  // Send 1st request.
+  icmp_header.icmp6_seq = 0;
+  EXPECT_CALL(
+      *mock_socket,
+      SendTo(ElementsAreArray(net_base::byte_utils::ToBytes(icmp_header)), 0,
+             IsSocketAddressV6(kIPv6Address), sizeof(sockaddr_in6)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.RunUntilIdle();
+
+  // Receive 1st response.
+  icmp_session_->OnEchoReplyReceivedForTesting(kIcmpV6EchoReply1);
+
+  // Send 2nd request.
+  icmp_header.icmp6_seq = 1;
+  EXPECT_CALL(
+      *mock_socket,
+      SendTo(ElementsAreArray(net_base::byte_utils::ToBytes(icmp_header)), 0,
+             IsSocketAddressV6(kIPv6Address), sizeof(sockaddr_in6)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.FastForwardBy(IcmpSession::kEchoRequestInterval);
+
+  // Receive 2nd response.
+  icmp_session_->OnEchoReplyReceivedForTesting(kIcmpV6EchoReply2);
+
+  // Send 3rd request.
+  icmp_header.icmp6_seq = 2;
+  EXPECT_CALL(
+      *mock_socket,
+      SendTo(ElementsAreArray(net_base::byte_utils::ToBytes(icmp_header)), 0,
+             IsSocketAddressV6(kIPv6Address), sizeof(sockaddr_in6)))
+      .WillOnce(Return(sizeof(struct icmphdr)));
+  task_environment_.FastForwardBy(IcmpSession::kEchoRequestInterval);
+
+  // Receive 3rd response.
+  icmp_session_->OnEchoReplyReceivedForTesting(kIcmpV6EchoReply3);
 }
 
-TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
-  // Test a failed ICMP session where we neither send out all echo requests nor
-  // receive all echo replies before stopping the ICMP session (because of a
-  // timeout or a manually-triggered stop). Moreover, test that echo requests
-  // that are sent unsuccessfully are sent again.
+TEST_F(IcmpSessionTest, StopSession) {
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, SendTo).Times(0);
+        return socket;
+      });
 
-  base::TimeTicks now = testing_clock_.NowTicks();
-  base::TimeTicks kSentTime1 = base::TimeTicks::FromInternalValue(10);
-  base::TimeTicks kSentTime2 = base::TimeTicks::FromInternalValue(20);
-  base::TimeTicks kRecvTime1 = base::TimeTicks::FromInternalValue(30);
-  base::TimeTicks kResendTime1 = base::TimeTicks::FromInternalValue(40);
+  EXPECT_CALL(*this, ResultCallback).Times(0);
+  EXPECT_TRUE(
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+                           base::BindOnce(&IcmpSessionTest::ResultCallback,
+                                          base::Unretained(this))));
 
-  IcmpSession::IcmpSessionResult expected_partial_result = {
-      kRecvTime1 - kSentTime1,
-      base::TimeDelta(),
-  };
-
-  // Initiate session.
-  StartAndVerify(kIPAddress, kInterfaceIndex);
-
-  // Send the first echo request successfully.
-  testing_clock_.Advance(kSentTime1 - now);
-  now = testing_clock_.NowTicks();
-  SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(true);
-  EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
-  EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
-  EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply1_SeqNum).first);
-  EXPECT_EQ(kIcmpEchoReply2_SeqNum, GetCurrentSequenceNumber());
-
-  // Send the second echo request unsuccessfully.
-  testing_clock_.Advance(kSentTime2 - now);
-  now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(false);
-  EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
-  EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
-  EXPECT_FALSE(SeqNumToSentRecvTimeContains(kIcmpEchoReply2_SeqNum));
-  // The sequence number should still be incremented when we fail to transmit an
-  // echo request.
-  EXPECT_EQ(kIcmpEchoReply3_SeqNum, GetCurrentSequenceNumber());
-
-  // Receive first reply.
-  testing_clock_.Advance(kRecvTime1 - now);
-  now = testing_clock_.NowTicks();
-  uint8_t buffer_1[sizeof(kIpHeader) + sizeof(kIcmpEchoReply1)];
-  memcpy(buffer_1, kIpHeader, sizeof(kIpHeader));
-  memcpy(buffer_1 + sizeof(kIpHeader), kIcmpEchoReply1,
-         sizeof(kIcmpEchoReply1));
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(buffer_1);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
-
-  // Resend second echo request successfully.
-  testing_clock_.Advance(kResendTime1 - now);
-  now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
-  TransmitEchoRequestTask(true);
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
-  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply3_SeqNum));
-  EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply3_SeqNum).first);
-  EXPECT_EQ(kIcmpEchoReply3_SeqNum + 1, GetCurrentSequenceNumber());
-
-  // Timeout triggered, so report partial results.
-  EXPECT_CALL(*this, ResultCallback(expected_partial_result));
-  EXPECT_CALL(*icmp_, Stop());
-  ReportResultAndStopSession();
-  EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
-  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
-  VerifyIcmpSessionStopped();
+  icmp_session_->Stop();
+  task_environment_.FastForwardBy(IcmpSession::kTimeout);
 }
 
-TEST_F(IcmpSessionTest, DoNotReportResultsOnStop) {
-  // Initiate session.
-  StartAndVerify(kIPAddress, kInterfaceIndex);
+TEST_F(IcmpSessionTest, SessionTimeout) {
+  // An empty result should be returned after timeout when ICMP requests are
+  // always sent successfully, but no response is received.
+  const std::vector<base::TimeDelta> result = {
+      base::TimeDelta(), base::TimeDelta(), base::TimeDelta()};
+  EXPECT_CALL(*this, ResultCallback(ElementsAreArray(result)));
 
-  // Session interrupted manually by calling Stop(), so do not report results.
-  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  EXPECT_CALL(*icmp_, Stop());
-  Stop();
-  VerifyIcmpSessionStopped();
+  net_base::MockSocket* mock_socket = nullptr;
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
+      .WillOnce([&mock_socket]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        mock_socket = socket.get();
+        return socket;
+      });
+
+  EXPECT_TRUE(
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+                           base::BindOnce(&IcmpSessionTest::ResultCallback,
+                                          base::Unretained(this))));
+
+  EXPECT_CALL(*mock_socket, SendTo)
+      .WillRepeatedly(Return(sizeof(struct icmphdr)));
+  task_environment_.FastForwardBy(IcmpSession::kTimeout);
 }
 
-TEST_F(IcmpSessionTest, AnyRepliesReceived) {
+TEST(IcmpSessionStaticTest, ComputeIcmpChecksum) {
+  EXPECT_EQ(
+      *reinterpret_cast<const uint16_t*>(kIcmpEchoRequestEvenLenChecksum),
+      IcmpSession::ComputeIcmpChecksum(
+          *reinterpret_cast<const struct icmphdr*>(kIcmpEchoRequestEvenLen),
+          sizeof(kIcmpEchoRequestEvenLen)));
+  EXPECT_EQ(
+      *reinterpret_cast<const uint16_t*>(kIcmpEchoRequestOddLenChecksum),
+      IcmpSession::ComputeIcmpChecksum(
+          *reinterpret_cast<const struct icmphdr*>(kIcmpEchoRequestOddLen),
+          sizeof(kIcmpEchoRequestOddLen)));
+}
+
+TEST(IcmpSessionStaticTest, AnyRepliesReceived) {
   IcmpSession::IcmpSessionResult none_sent;
   EXPECT_FALSE(IcmpSession::AnyRepliesReceived(none_sent));
 
@@ -453,7 +371,7 @@ TEST_F(IcmpSessionTest, AnyRepliesReceived) {
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(two_sent_one_received));
 }
 
-TEST_F(IcmpSessionTest, IsPacketLossPercentageGreaterThan) {
+TEST(IcmpSessionStaticTest, IsPacketLossPercentageGreaterThan) {
   // If we sent no echo requests out, we expect no replies, therefore we have
   // 0% packet loss.
   IcmpSession::IcmpSessionResult none_sent_none_received;
@@ -485,4 +403,5 @@ TEST_F(IcmpSessionTest, IsPacketLossPercentageGreaterThan) {
       three_sent_two_received, 10));
 }
 
+}  // namespace
 }  // namespace shill

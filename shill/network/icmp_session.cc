@@ -5,6 +5,8 @@
 #include "shill/network/icmp_session.h"
 
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -14,17 +16,17 @@
 
 #include <base/check_op.h>
 #include <base/containers/span.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/notreached.h>
-#include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
+#include <net-base/socket.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
 namespace {
 const int kIPHeaderLengthUnitBytes = 4;
-}
+}  // namespace
 
 namespace shill {
 
@@ -34,13 +36,22 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 
 uint16_t IcmpSession::kNextUniqueEchoId = 0;
 
-IcmpSession::IcmpSession(EventDispatcher* dispatcher)
-    : weak_ptr_factory_(this),
-      dispatcher_(dispatcher),
-      icmp_(new Icmp()),
-      echo_id_(kNextUniqueEchoId),
-      current_sequence_number_(0),
-      tick_clock_(&default_tick_clock_) {
+std::unique_ptr<IcmpSession> IcmpSession::CreateForTesting(
+    EventDispatcher* dispatcher,
+    std::unique_ptr<net_base::SocketFactory> socket_factory,
+    int echo_id) {
+  auto icmp_session =
+      std::make_unique<IcmpSession>(dispatcher, std::move(socket_factory));
+  icmp_session->echo_id_ = echo_id;
+  return icmp_session;
+}
+
+IcmpSession::IcmpSession(
+    EventDispatcher* dispatcher,
+    std::unique_ptr<net_base::SocketFactory> socket_factory)
+    : dispatcher_(dispatcher),
+      socket_factory_(std::move(socket_factory)),
+      echo_id_(kNextUniqueEchoId) {
   // Each IcmpSession will have a unique echo ID to identify requests and reply
   // messages.
   ++kNextUniqueEchoId;
@@ -61,13 +72,34 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
     LOG(WARNING) << "ICMP session already started";
     return false;
   }
-  if (!icmp_->Start(destination, interface_index)) {
+
+  std::unique_ptr<net_base::Socket> socket;
+  switch (destination.GetFamily()) {
+    case net_base::IPFamily::kIPv4:
+      socket = socket_factory_->Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC,
+                                       IPPROTO_ICMP);
+      break;
+    case net_base::IPFamily::kIPv6:
+      socket = socket_factory_->Create(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
+                                       IPPROTO_ICMPV6);
+      break;
+  }
+  if (socket == nullptr) {
+    PLOG(ERROR) << "Could not create ICMP socket";
+    return false;
+  }
+  if (!base::SetNonBlocking(socket->Get())) {
+    PLOG(ERROR) << "Could not set socket to be non-blocking";
     return false;
   }
 
-  icmp_->socket()->SetReadableCallback(base::BindRepeating(
-      &IcmpSession::OnIcmpReadable, base::Unretained(this)));
+  socket_ = std::move(socket);
+  destination_ = destination;
+  interface_index_ = interface_index;
   result_callback_ = std::move(result_callback);
+
+  socket_->SetReadableCallback(base::BindRepeating(&IcmpSession::OnIcmpReadable,
+                                                   base::Unretained(this)));
   timeout_callback_.Reset(BindOnce(&IcmpSession::ReportResultAndStopSession,
                                    weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
@@ -86,11 +118,12 @@ void IcmpSession::Stop() {
     return;
   }
   timeout_callback_.Cancel();
-  icmp_->Stop();
+
+  socket_ = nullptr;
 }
 
 bool IcmpSession::IsStarted() const {
-  return icmp_->IsStarted();
+  return socket_ != nullptr;
 }
 
 // static
@@ -126,15 +159,48 @@ bool IcmpSession::IsPacketLossPercentageGreaterThan(
   return packet_loss_percentage > percentage_threshold;
 }
 
+// static
+uint16_t IcmpSession::ComputeIcmpChecksum(const struct icmphdr& hdr,
+                                          size_t len) {
+  // Compute Internet Checksum for "len" bytes beginning at location "hdr".
+  // Adapted directly from the canonical implementation in RFC 1071 Section 4.1.
+  uint32_t sum = 0;
+  const uint16_t* addr = reinterpret_cast<const uint16_t*>(&hdr);
+
+  while (len > 1) {
+    sum += *addr;
+    ++addr;
+    len -= sizeof(*addr);
+  }
+
+  // Add left-over byte, if any.
+  if (len > 0) {
+    sum += *reinterpret_cast<const uint8_t*>(addr);
+  }
+
+  // Fold 32-bit sum to 16 bits.
+  while (sum >> 16) {
+    sum = (sum & 0xffff) + (sum >> 16);
+  }
+
+  return static_cast<uint16_t>(~sum);
+}
+
 void IcmpSession::TransmitEchoRequestTask() {
   if (!IsStarted()) {
     // This might happen when ping times out or is stopped between two calls
     // to IcmpSession::TransmitEchoRequestTask.
     return;
   }
-  if (icmp_->TransmitEchoRequest(echo_id_, current_sequence_number_)) {
+
+  DCHECK(destination_);
+  const bool success =
+      (destination_->GetFamily() == net_base::IPFamily::kIPv4)
+          ? TransmitV4EchoRequest(*destination_->ToIPv4Address())
+          : TransmitV6EchoRequest(*destination_->ToIPv6Address());
+  if (success) {
     seq_num_to_sent_recv_time_[current_sequence_number_] =
-        std::make_pair(tick_clock_->NowTicks(), base::TimeTicks());
+        std::make_pair(base::TimeTicks::Now(), base::TimeTicks());
   }
   ++current_sequence_number_;
   // If we fail to transmit the echo request, fall through instead of returning,
@@ -148,6 +214,65 @@ void IcmpSession::TransmitEchoRequestTask() {
                        weak_ptr_factory_.GetWeakPtr()),
         kEchoRequestInterval);
   }
+}
+
+bool IcmpSession::TransmitV4EchoRequest(const net_base::IPv4Address& address) {
+  struct icmphdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
+  icmp_header.type = ICMP_ECHO;
+  icmp_header.code = kIcmpEchoCode;
+  icmp_header.un.echo.id = echo_id_;
+  icmp_header.un.echo.sequence = current_sequence_number_;
+  icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
+  const base::span<const uint8_t> payload = {
+      reinterpret_cast<const uint8_t*>(&icmp_header), sizeof(icmp_header)};
+
+  struct sockaddr_in destination_address;
+  destination_address.sin_family = AF_INET;
+  destination_address.sin_addr = address.ToInAddr();
+
+  const std::optional<size_t> result = socket_->SendTo(
+      payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
+      sizeof(destination_address));
+  if (!result) {
+    PLOG(ERROR) << "Socket sendto failed";
+  } else if (result < payload.size()) {
+    LOG(ERROR) << "Socket sendto returned " << *result
+               << " which is less than the expected result " << payload.size();
+  }
+
+  return result == payload.size();
+}
+
+bool IcmpSession::TransmitV6EchoRequest(const net_base::IPv6Address& address) {
+  struct icmp6_hdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
+  icmp_header.icmp6_type = ICMP6_ECHO_REQUEST;
+  icmp_header.icmp6_code = kIcmpEchoCode;
+  icmp_header.icmp6_id = echo_id_;
+  icmp_header.icmp6_seq = current_sequence_number_;
+  const base::span<const uint8_t> payload = {
+      reinterpret_cast<const uint8_t*>(&icmp_header), sizeof(icmp_header)};
+  // icmp6_cksum is filled in by the kernel for IPPROTO_ICMPV6 sockets
+  // (RFC3542 section 3.1)
+
+  struct sockaddr_in6 destination_address;
+  memset(&destination_address, 0, sizeof(destination_address));
+  destination_address.sin6_family = AF_INET6;
+  destination_address.sin6_scope_id = interface_index_;
+  destination_address.sin6_addr = address.ToIn6Addr();
+
+  const std::optional<size_t> result = socket_->SendTo(
+      payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
+      sizeof(destination_address));
+  if (!result) {
+    PLOG(ERROR) << "Socket sendto failed";
+  } else if (result < payload.size()) {
+    LOG(ERROR) << "Socket sendto returned " << *result
+               << " which is less than the expected result " << payload.size();
+  }
+
+  return result == payload.size();
 }
 
 int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
@@ -174,7 +299,7 @@ int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
   }
 
   // Make sure the message is valid and matches a pending echo request.
-  if (received_icmp_header->code != Icmp::kIcmpEchoCode) {
+  if (received_icmp_header->code != kIcmpEchoCode) {
     LOG(WARNING) << "ICMP header code is invalid";
     return -1;
   }
@@ -207,7 +332,7 @@ int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
   }
 
   // Make sure the message is valid and matches a pending echo request.
-  if (received_icmp_header->icmp6_code != Icmp::kIcmpEchoCode) {
+  if (received_icmp_header->icmp6_code != kIcmpEchoCode) {
     LOG(WARNING) << "ICMPv6 header code is invalid";
     return -1;
   }
@@ -224,7 +349,7 @@ int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
 
 void IcmpSession::OnIcmpReadable() {
   std::vector<uint8_t> message;
-  if (icmp_->socket()->RecvMessage(&message)) {
+  if (socket_->RecvMessage(&message)) {
     OnEchoReplyReceived(message);
   } else {
     PLOG(ERROR) << __func__ << ": failed to receive message from socket";
@@ -234,14 +359,13 @@ void IcmpSession::OnIcmpReadable() {
 }
 
 void IcmpSession::OnEchoReplyReceived(base::span<const uint8_t> message) {
-  const auto& destination = icmp_->destination();
-  if (!destination) {
+  if (!destination_) {
     LOG(WARNING) << "Failed to get ICMP destination";
     return;
   }
 
   int received_seq_num = -1;
-  switch (destination->GetFamily()) {
+  switch (destination_->GetFamily()) {
     case net_base::IPFamily::kIPv4:
       received_seq_num = OnV4EchoReplyReceived(message);
       break;
@@ -269,7 +393,7 @@ void IcmpSession::OnEchoReplyReceived(base::span<const uint8_t> message) {
   }
 
   // Record the time that the echo reply was received.
-  seq_num_to_sent_recv_time_pair->second.second = tick_clock_->NowTicks();
+  seq_num_to_sent_recv_time_pair->second.second = base::TimeTicks::Now();
   received_echo_reply_seq_numbers_.insert(received_seq_num);
 
   if (received_echo_reply_seq_numbers_.size() == kTotalNumEchoRequests) {
