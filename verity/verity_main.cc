@@ -18,10 +18,9 @@
 #include <brillo/strings/string_utils.h>
 
 #include "verity/file_hasher.h"
+#include "verity/verity_mode.h"
 
 namespace {
-
-typedef enum { VERITY_NONE = 0, VERITY_CREATE, VERITY_VERIFY } verity_mode_t;
 
 int verity_create(const std::string& alg,
                   const std::string& image_path,
@@ -58,8 +57,8 @@ int verity_create(const std::string& alg,
 }  // namespace
 
 int main(int argc, char** argv) {
-  verity_mode_t mode = VERITY_CREATE;
-  std::string alg = "sha256", payload = "", hashtree = "", salt = "";
+  std::string alg = "sha256", payload = "", hashtree = "", salt = "",
+              mode_str = "";
   unsigned int payload_blocks = 0;
   bool vanilla = false;
 
@@ -87,7 +86,8 @@ int main(int argc, char** argv) {
     } else if (key == "root_hexdigest") {
       // Silently drop root_hexdigest for now...
     } else if (key == "mode") {
-      // Silently drop the mode for now...
+      // Silently drop mode for now...
+      // We do not want legacy usage...
     } else if (key == "salt") {
       salt = val;
     } else if (key == "vanilla") {
@@ -98,8 +98,10 @@ int main(int argc, char** argv) {
     }
   }
 
-  // Silently drop the mode for now...
-  DEFINE_string(mode, "create", "Only 'create'");
+  const auto& mode_help = base::JoinString(
+      {"Supported:", verity::kVerityModeCreate, verity::kVerityModeVerify},
+      " ");
+  DEFINE_string(mode, verity::kVerityModeCreate, mode_help.c_str());
   // We used to advertise more algorithms, but they've never been implemented:
   // sha512 sha384 sha mdc2 ripemd160 md4 md2
   DEFINE_string(alg, alg, "Hash algorithm to use. Only sha256 for now");
@@ -117,8 +119,8 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "verity userspace tool");
 
-  switch (mode) {
-    case VERITY_CREATE:
+  switch (verity::ToVerityMode(FLAGS_mode)) {
+    case verity::VERITY_CREATE:
       if (FLAGS_alg.empty() || FLAGS_payload.empty() ||
           FLAGS_hashtree.empty()) {
         LOG(ERROR) << "missing data: " << (FLAGS_alg.empty() ? "alg " : "")

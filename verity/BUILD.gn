@@ -39,6 +39,7 @@ shared_library("libdm-bht") {
     "dm_verity_table.cc",
     "file_hasher.cc",
     "hasher.cc",
+    "verity_mode.cc",
   ]
   install_path = "lib"
   configs += [ ":target_defaults" ]
@@ -62,6 +63,7 @@ install_config("install_headers") {
     "dm-bht.h",
     "dm_verity_table.h",
     "file_hasher.h",
+    "verity_mode.h",
   ]
   install_path = "/usr/include/verity"
 }
@@ -87,9 +89,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    deps = [
-      "//common-mk/testrunner",
-    ]
+    deps = [ "//common-mk/testrunner" ]
     run_test = true
   }
 
@@ -98,6 +98,7 @@ if (use.test) {
       "dm-bht_test.cc",
       "dm_verity_table_test.cc",
       "file_hasher_test.cc",
+      "verity_mode_test.cc",
     ]
     configs += [
       "//common-mk:test",
