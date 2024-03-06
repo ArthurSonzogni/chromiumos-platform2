@@ -551,7 +551,8 @@ void ManagerDBusAdaptor::ConnectToP2PGroup(
 }
 
 void ManagerDBusAdaptor::DestroyP2PGroup(
-    DBusMethodResponsePtr<brillo::VariantDictionary> response, int shill_id) {
+    DBusMethodResponsePtr<brillo::VariantDictionary> response,
+    uint32_t shill_id) {
   SLOG(this, 2) << __func__;
   auto on_result_fn =
       [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,
@@ -565,7 +566,8 @@ void ManagerDBusAdaptor::DestroyP2PGroup(
 }
 
 void ManagerDBusAdaptor::DisconnectFromP2PGroup(
-    DBusMethodResponsePtr<brillo::VariantDictionary> response, int shill_id) {
+    DBusMethodResponsePtr<brillo::VariantDictionary> response,
+    uint32_t shill_id) {
   SLOG(this, 2) << __func__;
   auto on_result_fn =
       [](shill::DBusMethodResponsePtr<brillo::VariantDictionary> response,

@@ -152,10 +152,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
       const brillo::VariantDictionary& args) override;
   void DestroyP2PGroup(
       DBusMethodResponsePtr<brillo::VariantDictionary> response,
-      int shill_id) override;
+      uint32_t shill_id) override;
   void DisconnectFromP2PGroup(
       DBusMethodResponsePtr<brillo::VariantDictionary> response,
-      int shill_id) override;
+      uint32_t shill_id) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

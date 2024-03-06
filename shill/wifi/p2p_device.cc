@@ -170,7 +170,7 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
                  << iface_type();
     return group_info;
   }
-  group_info.Set<Integer>(kP2PGroupInfoShillIDProperty, shill_id());
+  group_info.Set<uint32_t>(kP2PGroupInfoShillIDProperty, shill_id());
   group_info.Set<String>(kP2PGroupInfoStateProperty, GroupInfoState(state_));
 
   if (!group_ssid_.empty())
@@ -199,7 +199,7 @@ KeyValueStore P2PDevice::GetClientInfo() const {
                  << iface_type();
     return client_info;
   }
-  client_info.Set<Integer>(kP2PClientInfoShillIDProperty, shill_id());
+  client_info.Set<uint32_t>(kP2PClientInfoShillIDProperty, shill_id());
   client_info.Set<String>(kP2PClientInfoStateProperty, ClientInfoState(state_));
 
   if (!group_ssid_.empty())

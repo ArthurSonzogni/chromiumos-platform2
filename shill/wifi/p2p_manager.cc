@@ -284,7 +284,8 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
 }
 
-void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int shill_id) {
+void P2PManager::DestroyP2PGroup(P2PResultCallback callback,
+                                 uint32_t shill_id) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
@@ -305,7 +306,7 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int shill_id) {
 }
 
 void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
-                                        int shill_id) {
+                                        uint32_t shill_id) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 

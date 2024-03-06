@@ -56,11 +56,12 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
 
   // Destroy the existing P2P group and tear down the P2P group-owner interface.
   void DestroyP2PGroup(base::OnceCallback<void(KeyValueStore result)> callback,
-                       int shill_id);
+                       uint32_t shill_id);
 
   // Disconnect from a P2P group. Will destroy the P2P client interface.
   void DisconnectFromP2PGroup(
-      base::OnceCallback<void(KeyValueStore result)> callback, int shill_id);
+      base::OnceCallback<void(KeyValueStore result)> callback,
+      uint32_t shill_id);
 
   // D-Bus property getters
   // This property is temporary and will be removed when the feature is mature.
