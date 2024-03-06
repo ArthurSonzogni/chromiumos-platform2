@@ -11,14 +11,12 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <net-base/byte_utils.h>
-#include <net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
 #include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
-#include "shill/supplicant/supplicant_peer_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
@@ -29,19 +27,6 @@ namespace {
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 // Return error if p2p group cannot be fully stopped within |kStopTimeout| time.
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
-
-// TODO(b/308081318): move to P2PPeer class
-String PeerMacAddress(const KeyValueStore& properties) {
-  std::string mac_address;
-  if (properties.Contains<ByteArray>(
-          WPASupplicant::kPeerPropertyDeviceAddress)) {
-    mac_address = net_base::MacAddress::CreateFromBytes(
-                      properties.Get<ByteArray>(
-                          WPASupplicant::kPeerPropertyDeviceAddress))
-                      ->ToString();
-  }
-  return mac_address;
-}
 
 const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
   switch (state) {
@@ -153,12 +138,7 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
 Stringmaps P2PDevice::GroupInfoClients() const {
   Stringmaps clients;
   for (auto const& peer : group_peers_) {
-    Stringmap client;
-    client.insert(
-        {kP2PGroupInfoClientMACAddressProperty, PeerMacAddress(peer.second)});
-    // TODO(b/299915001): retrieve IPv4/IPv6Address and Hostname from patchpanel
-    // TODO(b/301049348): retrieve vendor class from wpa_supplicant
-    clients.push_back(client);
+    clients.push_back(peer.second.get()->GetPeerProperties());
   }
   return clients;
 }
@@ -874,76 +854,42 @@ void P2PDevice::NetworkFailure(const std::string& reason) {
   PostDeviceEvent(DeviceEvent::kNetworkFailure);
 }
 
-KeyValueStore P2PDevice::PeerProperties(const dbus::ObjectPath& peer) {
-  // TODO(b/308081318): move to P2PPeer class
-  KeyValueStore properties;
-  std::unique_ptr<SupplicantPeerProxyInterface> proxy =
-      ControlInterface()->CreateSupplicantPeerProxy(
-          RpcIdentifier(peer.value()));
-  proxy->GetProperties(&properties);
-  proxy.reset();
-  return properties;
-}
-
 void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
-  switch (state_) {
-    case P2PDeviceState::kGOConfiguring:
-    case P2PDeviceState::kGOActive: {
-      if (base::Contains(group_peers_, peer)) {
-        LOG(WARNING) << "Ignored " << __func__
-                     << " while already connected, path: " << peer.value();
-        return;
-      }
-      // TODO(b/308081318): implement P2PPeer class
-      KeyValueStore properties = PeerProperties(peer);
-      LOG(INFO) << log_name() << ": Peer connected, path: " << peer.value();
-      group_peers_[peer] = properties;
-      PostDeviceEvent(DeviceEvent::kPeerConnected);
-    } break;
-    case P2PDeviceState::kUninitialized:
-    case P2PDeviceState::kReady:
-    case P2PDeviceState::kClientAssociating:
-    case P2PDeviceState::kClientConfiguring:
-    case P2PDeviceState::kClientConnected:
-    case P2PDeviceState::kClientDisconnecting:
-    case P2PDeviceState::kGOStarting:
-    case P2PDeviceState::kGOStopping:
-      LOG(WARNING) << log_name() << ": Ignored " << __func__
-                   << " while in state " << P2PDeviceStateName(state_);
-      break;
+  if (state_ != P2PDeviceState::kGOConfiguring &&
+      state_ != P2PDeviceState::kGOActive) {
+    return;
   }
+
+  if (base::Contains(group_peers_, peer)) {
+    LOG(WARNING) << "Ignored " << __func__
+                 << " while already connected, path: " << peer.value();
+    return;
+  }
+  group_peers_[peer] =
+      std::make_unique<P2PPeer>(this, peer, ControlInterface());
+  LOG(INFO) << log_name() << ": Peer connected, path: " << peer.value();
+  PostDeviceEvent(DeviceEvent::kPeerConnected);
 }
 
 void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
-  switch (state_) {
-    case P2PDeviceState::kGOConfiguring:
-    case P2PDeviceState::kGOActive: {
-      if (!base::Contains(group_peers_, peer)) {
-        LOG(WARNING) << "Ignored " << __func__
-                     << " while not connected, path: " << peer.value();
-        return;
-      }
-      // TODO(b/308081318): implement P2PPeer class
-      LOG(INFO) << log_name() << ": Peer disconnected, path: " << peer.value();
-      group_peers_.erase(peer);
-      PostDeviceEvent(DeviceEvent::kPeerDisconnected);
-    } break;
-    case P2PDeviceState::kUninitialized:
-    case P2PDeviceState::kReady:
-    case P2PDeviceState::kClientAssociating:
-    case P2PDeviceState::kClientConfiguring:
-    case P2PDeviceState::kClientConnected:
-    case P2PDeviceState::kClientDisconnecting:
-    case P2PDeviceState::kGOStarting:
-    case P2PDeviceState::kGOStopping:
-      LOG(WARNING) << log_name() << ": Ignored " << __func__
-                   << " while in state " << P2PDeviceStateName(state_);
-      break;
+
+  if (state_ != P2PDeviceState::kGOConfiguring &&
+      state_ != P2PDeviceState::kGOActive) {
+    return;
   }
+
+  if (!base::Contains(group_peers_, peer)) {
+    LOG(WARNING) << "Ignored " << __func__
+                 << " while not connected, path: " << peer.value();
+    return;
+  }
+  LOG(INFO) << log_name() << ": Peer disconnected, path: " << peer.value();
+  group_peers_.erase(peer);
+  PostDeviceEvent(DeviceEvent::kPeerDisconnected);
 }
 
 void P2PDevice::StartingTimerExpired() {

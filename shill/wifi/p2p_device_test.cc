@@ -150,19 +150,6 @@ class P2PDeviceTest : public testing::Test {
         std::string("/Peers/deadbeef01") + std::to_string(peer_id));
   }
 
-  ByteArray DefaultPeerAddress(int peer_id) {
-    std::string mac_address =
-        std::string("de:ad:be:ef:01:0") + std::to_string(peer_id);
-    return net_base::MacAddress::CreateFromString(mac_address)->ToBytes();
-  }
-
-  KeyValueStore DefaultPeerProperties(int peer_id) {
-    KeyValueStore properties;
-    properties.Set<ByteArray>(WPASupplicant::kPeerPropertyDeviceAddress,
-                              DefaultPeerAddress(peer_id));
-    return properties;
-  }
-
   void FastForwardBy(base::TimeDelta time) {
     dispatcher_.task_environment().FastForwardBy(time);
   }
@@ -292,17 +279,13 @@ TEST_F(P2PDeviceTest, GroupInfo) {
       .Times(num_of_peers);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     auto peer_proxy = std::make_unique<MockSupplicantPeerProxy>();
-    auto peer_properties = DefaultPeerProperties(peer_id);
     auto peer_path = DefaultPeerObjectPath(peer_id);
 
-    EXPECT_CALL(*peer_proxy, GetProperties(_))
-        .WillOnce(DoAll(SetArgPointee<0>(peer_properties), Return(true)));
     ON_CALL(control_interface_, CreateSupplicantPeerProxy(_))
         .WillByDefault(Return(ByMove(std::move(peer_proxy))));
     go_device_->PeerJoined(peer_path);
 
     EXPECT_TRUE(base::Contains(go_device_->group_peers_, peer_path));
-    EXPECT_EQ(go_device_->group_peers_[peer_path], peer_properties);
     EXPECT_EQ(go_device_->group_peers_.size(), peer_id + 1);
   }
   DispatchPendingEvents();
@@ -534,17 +517,13 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
       .Times(num_of_peers);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     auto peer_proxy = std::make_unique<MockSupplicantPeerProxy>();
-    auto peer_properties = DefaultPeerProperties(peer_id);
     auto peer_path = DefaultPeerObjectPath(peer_id);
 
-    EXPECT_CALL(*peer_proxy, GetProperties(_))
-        .WillOnce(DoAll(SetArgPointee<0>(peer_properties), Return(true)));
     ON_CALL(control_interface_, CreateSupplicantPeerProxy(_))
         .WillByDefault(Return(ByMove(std::move(peer_proxy))));
     go_device_->PeerJoined(peer_path);
 
     EXPECT_TRUE(base::Contains(go_device_->group_peers_, peer_path));
-    EXPECT_EQ(go_device_->group_peers_[peer_path], peer_properties);
     EXPECT_EQ(go_device_->group_peers_.size(), peer_id + 1);
   }
   DispatchPendingEvents();

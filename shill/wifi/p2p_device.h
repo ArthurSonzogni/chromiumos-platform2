@@ -18,6 +18,7 @@
 #include "shill/supplicant/supplicant_group_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/p2p_peer.h"
 #include "shill/wifi/p2p_service.h"
 
 namespace shill {
@@ -278,9 +279,6 @@ class P2PDevice : public LocalDevice,
   void NetworkFinished();
   void NetworkFailure(const std::string& reason);
 
-  // TODO(b/308081318) move to P2PPeer class
-  KeyValueStore PeerProperties(const dbus::ObjectPath& peer);
-
   // These methods handle p2p group start/stop timers.
   // TODO(b/323064949): Move all timeout handling logic into P2PManager.
   void StartingTimerExpired();
@@ -335,8 +333,8 @@ class P2PDevice : public LocalDevice,
   // The wpa_supplicant persistent group path used for p2p client connection.
   RpcIdentifier supplicant_persistent_group_path_;
 
-  // TODO(b/308081318) move to P2PPeer class
-  std::map<dbus::ObjectPath, KeyValueStore> group_peers_;
+  // Map of associated P2P peers.
+  std::map<dbus::ObjectPath, std::unique_ptr<P2PPeer>> group_peers_;
 
   // Executes when the p2p group start timer expires. Calls
   // StartingTimerExpired.

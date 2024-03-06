@@ -39,7 +39,7 @@ class P2PService : public LocalService {
   KeyValueStore GetSupplicantGOConfigurationParameters() const;
   KeyValueStore GetSupplicantClientConfigurationParameters() const;
 
-  // The hex-encoded tethering SSID name to be used in WiFi P2P. No value means
+  // The hex-encoded SSID name to be used in WiFi P2P. No value means
   // randomly generate a SSID with Direct- prefix.
   std::optional<std::string> hex_ssid_;
 
