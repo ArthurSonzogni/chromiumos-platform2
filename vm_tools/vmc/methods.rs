@@ -626,6 +626,18 @@ impl Methods {
         dbus_message_to_proto(&message)
     }
 
+    fn sync_protobus_timeout_with_vector_of_fd<I: ProtoMessage, O: ProtoMessage>(
+        &self,
+        message: Message,
+        request: &I,
+        fds: Vec<OwnedFd>,
+        timeout: Duration,
+    ) -> Result<O, Box<dyn Error>> {
+        let method = message.append2(request.write_to_bytes()?, fds);
+        let message = self.connection.send_with_reply_and_block(method, timeout)?;
+        dbus_message_to_proto(&message)
+    }
+
     fn protobus_wait_for_signal_timeout<O: ProtoMessage>(
         &mut self,
         interface: &str,
@@ -1400,13 +1412,6 @@ impl Methods {
             TREMPLIN_STARTED_SIGNAL,
         )?;
 
-        let message = Message::new_method_call(
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            VM_CONCIERGE_INTERFACE,
-            START_VM_METHOD,
-        )?;
-
         let mut owned_fds = Vec::new();
         // User-specified kernel
         if let Some(path) = user_disks.kernel {
@@ -1497,8 +1502,17 @@ impl Methods {
         };
 
         // Send a protobuf request with the FDs.
-        let response: StartVmResponse =
-            self.sync_protobus_timeout(message, &request, &owned_fds, tremplin_timeout)?;
+        let response: StartVmResponse = self.sync_protobus_timeout_with_vector_of_fd(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                START_VM2_METHOD,
+            )?,
+            &request,
+            owned_fds,
+            tremplin_timeout,
+        )?;
 
         match response.status.enum_value() {
             Ok(VmStatus::VM_STATUS_STARTING) => {
