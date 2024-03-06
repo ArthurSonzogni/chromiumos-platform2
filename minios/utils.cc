@@ -42,6 +42,8 @@ const char kTarCommand[] = "/usr/bin/tar";
 const char kTarCompressFlags[] = "-czhf";
 
 const char kVpdCommand[] = "/usr/bin/vpd";
+const char kVpdPartitionSelectFlag[] = "-i";
+const char kVpdRWPartitionValue[] = "RW_VPD";
 const char kVpdAddValueFlag[] = "-s";
 const char kVpdRetrieveValueFlag[] = "-g";
 const char kVpdLogStoreSecretKey[] = "minios_log_store_key";
@@ -437,7 +439,8 @@ std::optional<brillo::SecureBlob> GetLogStoreKey(
   std::string std_out, std_err;
 
   if (!process_manager->RunCommandWithOutput(
-          {kVpdCommand, kVpdRetrieveValueFlag, kVpdLogStoreSecretKey},
+          {kVpdCommand, kVpdPartitionSelectFlag, kVpdRWPartitionValue,
+           kVpdRetrieveValueFlag, kVpdLogStoreSecretKey},
           &return_code, &std_out, &std_err) ||
       return_code != 0) {
     LOG(ERROR) << "VPD get failed, code: " << return_code;
@@ -469,7 +472,9 @@ bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
   const auto& key_value_pair =
       std::string{kVpdLogStoreSecretKey} + "=" + hex_key.to_string();
   if (process_manager->RunCommand(
-          {kVpdCommand, kVpdAddValueFlag, key_value_pair}, {}) != 0) {
+          {kVpdCommand, kVpdPartitionSelectFlag, kVpdRWPartitionValue,
+           kVpdAddValueFlag, key_value_pair},
+          {}) != 0) {
     LOG(ERROR) << "VPD save operation failed";
     return false;
   }

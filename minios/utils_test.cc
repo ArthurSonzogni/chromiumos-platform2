@@ -352,8 +352,8 @@ TEST(UtilsTest, GetLogStoreKeyTest) {
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
-  const std::vector<std::string>& kExpectedArgs = {"/usr/bin/vpd", "-g",
-                                                   "minios_log_store_key"};
+  const std::vector<std::string>& kExpectedArgs = {
+      "/usr/bin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
 
   EXPECT_CALL(*mock_process_manager_,
               RunCommandWithOutput(kExpectedArgs, _, _, _))
@@ -372,8 +372,8 @@ TEST(UtilsTest, GetLogStoreKeyFailureTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
   const std::string& kKey = "short_key";
 
-  const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
-                                                  "minios_log_store_key"};
+  const std::vector<std::string> kExpectedArgs = {
+      "/usr/bin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
 
   EXPECT_CALL(*mock_process_manager_,
               RunCommandWithOutput(kExpectedArgs, _, _, _))
@@ -435,7 +435,7 @@ TEST(UtilsTest, SaveLogKeyTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string> expected_args = {
-      "/usr/bin/vpd", "-s",
+      "/usr/bin/vpd", "-i", "RW_VPD", "-s",
       "minios_log_store_key=" +
           brillo::SecureBlobToSecureHex(kValidKey).to_string()};
 
@@ -449,7 +449,7 @@ TEST(UtilsTest, ClearLogStoreKeyTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string> expected_args = {
-      "/usr/bin/vpd", "-s",
+      "/usr/bin/vpd", "-i", "RW_VPD", "-s",
       "minios_log_store_key=" +
           brillo::SecureBlobToSecureHex(kZeroKey).to_string()};
 
