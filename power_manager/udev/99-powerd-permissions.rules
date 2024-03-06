@@ -2,12 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# For all the following permission changes, we only need to process them once,
-# when the relevant device is added.
+# wakeup attributes may appear statically (at 'add' time) for some devices,
+# while others will be added dynamically by various runtime triggers, for
+# 'bind' or 'change'.
+ACTION=="add|bind|change", TEST=="power/wakeup", \
+  RUN+="/bin/chown power:power \"$sys$devpath/power/wakeup\""
+
+# For all the following permission changes, the corresponding attribute is
+# available when the device is added.
 ACTION!="add", GOTO="powerd_permissions_end"
 
-TEST=="power/wakeup", \
-  RUN+="/bin/chown power:power \"$sys$devpath/power/wakeup\""
 TEST=="power/control", \
   RUN+="/bin/chown power:power \"$sys$devpath/power/control\""
 TEST=="power/autosuspend_delay_ms", \
