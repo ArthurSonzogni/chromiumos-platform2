@@ -2,18 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-pkg_config("target_default") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libdrm",
-    "libmojo",
-    "re2",
-  ]
-}
-
 source_set("fetchers") {
   sources = [
     "boot_performance.cc",
@@ -21,36 +9,41 @@ source_set("fetchers") {
     "psr_fetcher.cc",
     "touchpad_fetcher.cc",
   ]
-  configs += [ ":target_default" ]
   libs = [ "bootstat" ]
+  public_pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  pkg_deps = [
+    "libmetrics",
+    "re2",
+  ]
+  public_deps = [
+    "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+    "//diagnostics/cros_healthd/delegate/utils",
   ]
 }
 
 if (use.test) {
-  pkg_config("target_test") {
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libchrome-test",
-    ]
-  }
-
   source_set("test") {
     sources = [
       "boot_performance_test.cc",
       "touchpad_fetcher_test.cc",
     ]
-    configs += [
-      ":target_test",
-      "//common-mk:test",
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
     ]
     deps = [
       ":fetchers",
       "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/base:test_support",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }
 }

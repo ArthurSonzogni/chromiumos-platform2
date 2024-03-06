@@ -2,15 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-pkg_config("target_default") {
-  pkg_deps = [
-    "libchrome",
-    "libmojo",
-  ]
-}
-
 source_set("events") {
   sources = [
     "audio_jack_evdev_delegate.cc",
@@ -21,32 +12,30 @@ source_set("events") {
     "touchscreen_evdev_delegate.cc",
     "volume_button_evdev_delegate.cc",
   ]
-  configs += [ ":target_default" ]
-  deps = [
-    "//diagnostics/base",
+  public_pkg_deps = [ "libmojo" ]
+  public_deps = [
     "//diagnostics/cros_healthd/delegate/utils",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+    "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
   ]
+  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
 }
 
 if (use.test) {
-  pkg_config("test_pkg_deps") {
-    pkg_deps = [
-      "libchrome",
-      "libchrome-test",
-      "libmojo",
-    ]
-  }
-
   source_set("test") {
     sources = [
       "audio_jack_evdev_delegate_test.cc",
       "power_button_evdev_delegate_test.cc",
     ]
-    configs += [
-      ":test_pkg_deps",
-      "//common-mk:test",
+    pkg_deps = [
+      "libchrome-test",
+      "libmojo",
     ]
-    deps = [ ":events" ]
+    deps = [
+      ":events",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/delegate/utils",
+      "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+    ]
   }
 }

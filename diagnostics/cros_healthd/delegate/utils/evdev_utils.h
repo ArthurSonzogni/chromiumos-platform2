@@ -17,7 +17,6 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/delegate/utils/libevdev_wrapper.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
