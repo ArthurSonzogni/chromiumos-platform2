@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <array>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -47,6 +48,12 @@ std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
 std::unique_ptr<ec::FpUnlockTemplateCommand>
 EcCommandFactory::FpUnlockTemplateCommand(uint16_t finger_num) {
   return FpUnlockTemplateCommand::Create(finger_num);
+}
+
+std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>
+EcCommandFactory::FpMigrateTemplateToNonceContextCommand(
+    const std::string& user_id) {
+  return FpMigrateTemplateToNonceContextCommand::Create(user_id);
 }
 
 std::unique_ptr<ec::ChargeControlSetCommand>

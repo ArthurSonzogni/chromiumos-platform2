@@ -50,6 +50,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpUnlockTemplateCommand,
               (uint16_t finger_num),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpMigrateTemplateToNonceContextCommand>,
+              FpMigrateTemplateToNonceContextCommand,
+              (const std::string& user_id),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::ChargeControlSetCommand>,
               ChargeControlSetCommand,
               (uint32_t mode, uint8_t lower, uint8_t upper),
