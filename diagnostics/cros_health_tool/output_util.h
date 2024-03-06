@@ -5,8 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_OUTPUT_UTIL_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_OUTPUT_UTIL_H_
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -18,6 +21,7 @@
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 

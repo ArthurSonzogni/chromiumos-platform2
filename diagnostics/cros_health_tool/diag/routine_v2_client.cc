@@ -9,9 +9,11 @@
 #include <string>
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/notreached.h>
 #include <base/values.h>
-#include <mojo/service_constants.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"

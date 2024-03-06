@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -15,7 +16,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>

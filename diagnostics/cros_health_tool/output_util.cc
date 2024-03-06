@@ -5,13 +5,16 @@
 #include "diagnostics/cros_health_tool/output_util.h"
 
 #include <iostream>
+#include <optional>
+#include <string>
 
 #include <base/json/json_writer.h>
-#include <base/strings/string_number_conversions.h>
+#include <base/logging.h>
 #include <base/values.h>
 
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 

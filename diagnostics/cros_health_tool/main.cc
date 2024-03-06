@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdlib.h>
-
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/message_loop/message_pump_type.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/syslog_logging.h>

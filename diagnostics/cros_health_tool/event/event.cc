@@ -11,7 +11,6 @@
 #include <string>
 #include <utility>
 
-#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>

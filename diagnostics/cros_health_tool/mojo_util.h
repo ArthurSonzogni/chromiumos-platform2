@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_MOJO_UTIL_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_MOJO_UTIL_H_
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>

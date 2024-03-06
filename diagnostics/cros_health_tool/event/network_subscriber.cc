@@ -5,10 +5,12 @@
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 
 #include <iostream>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/external/network_health_types.mojom.h"

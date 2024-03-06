@@ -4,22 +4,22 @@
 
 #include "diagnostics/cros_health_tool/diag/diag.h"
 
-#include <stdlib.h>
-
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
-#include <iterator>
 #include <limits>
 #include <map>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <utility>
 
+#include <base/command_line.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <brillo/flag_helper.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"

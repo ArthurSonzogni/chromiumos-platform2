@@ -8,6 +8,7 @@
 #include <base/no_destructor.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/connect.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 namespace diagnostics {
 
