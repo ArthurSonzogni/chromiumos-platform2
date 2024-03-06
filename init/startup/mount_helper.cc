@@ -222,7 +222,7 @@ bool MountHelper::MountVarAndHomeChronos() {
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {
-  std::optional<bool> encrypted = GetFlags().encstateful;
+  std::optional<bool> encrypted = flags_.encstateful;
   bool encrypted_state = encrypted.value_or(false);
   if (encrypted_state) {
     return UmountVarAndHomeChronosEncrypted();
@@ -233,18 +233,6 @@ bool MountHelper::DoUmountVarAndHomeChronos() {
 void MountHelper::SetMountStackForTest(
     const std::stack<base::FilePath>& mount_stack) {
   mount_stack_ = mount_stack;
-}
-
-Flags MountHelper::GetFlags() {
-  return flags_;
-}
-
-base::FilePath MountHelper::GetRoot() {
-  return root_;
-}
-
-base::FilePath MountHelper::GetStateful() {
-  return stateful_;
 }
 
 }  // namespace startup

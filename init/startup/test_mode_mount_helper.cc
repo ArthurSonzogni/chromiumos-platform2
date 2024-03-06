@@ -20,8 +20,8 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/security_manager.h"
+#include "init/startup/startup_dep_impl.h"
 #include "init/startup/test_mode_mount_helper.h"
 
 namespace {
@@ -50,15 +50,14 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If the call create_system_key is successful, mount_var_and_home_chronos
   // will skip the normal system key generation procedure; otherwise, it will
   // generate and persist a key via its normal workflow.
-  std::optional<bool> system_key = GetFlags().sys_key_util;
+  std::optional<bool> system_key = flags_.sys_key_util;
   bool sys_key = system_key.value_or(false);
   if (sys_key) {
     LOG(INFO) << "Creating System Key";
-    CreateSystemKey(GetRoot(), GetStateful(), startup_dep_);
+    CreateSystemKey(root_, stateful_, startup_dep_);
   }
 
-  base::FilePath encrypted_failed =
-      GetStateful().Append(kMountEncryptedFailedFile);
+  base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
   struct stat statbuf;
   bool ret;
   if (!startup_dep_->Stat(encrypted_failed, &statbuf) ||
@@ -79,14 +78,14 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
     std::vector<std::string> crash_args{"--mount_failure",
                                         "--mount_device='encstateful'"};
     startup_dep_->AddClobberCrashReport(crash_args);
-    base::FilePath backup = GetStateful().Append("corrupted_encryption");
+    base::FilePath backup = stateful_.Append("corrupted_encryption");
     brillo::DeletePathRecursively(backup);
     base::CreateDirectory(backup);
     if (!base::SetPosixFilePermissions(backup, 0755)) {
       PLOG(WARNING) << "chmod failed for " << backup.value();
     }
 
-    base::FileEnumerator enumerator(GetStateful(), false /* recursive */,
+    base::FileEnumerator enumerator(stateful_, false /* recursive */,
                                     base::FileEnumerator::FILES);
     for (base::FilePath path = enumerator.Next(); !path.empty();
          path = enumerator.Next()) {

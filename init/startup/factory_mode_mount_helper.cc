@@ -40,7 +40,7 @@ FactoryModeMountHelper::FactoryModeMountHelper(StartupDep* startup_dep,
     : MountHelper(startup_dep, flags, root, stateful, dev_mode) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
-  base::FilePath option_file = GetStateful().Append(kOptionsFile);
+  base::FilePath option_file = stateful_.Append(kOptionsFile);
   std::string option = "";
   if (base::PathExists(option_file)) {
     base::ReadFileToString(option_file, &option);
@@ -51,13 +51,13 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
     // really write to stateful partition, using option 'tmpfs' will mount
     // tmpfs on /var to improve performance. (especially when running
     // tests like touchpad, touchscreen).
-    base::FilePath var = GetRoot().Append(kVar);
+    base::FilePath var = root_.Append(kVar);
     if (!startup_dep_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0,
                              "")) {
       return false;
     }
-    base::FilePath stateful_home_chronos = GetStateful().Append(kHomeChronos);
-    base::FilePath home_chronos = GetRoot().Append(kHomeChronos);
+    base::FilePath stateful_home_chronos = stateful_.Append(kHomeChronos);
+    base::FilePath home_chronos = root_.Append(kHomeChronos);
     if (!startup_dep_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
                              "")) {
       return false;

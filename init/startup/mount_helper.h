@@ -64,10 +64,6 @@ class MountHelper {
   bool MountVarAndHomeChronosUnencrypted();
   bool MountVarAndHomeChronos();
 
-  Flags GetFlags();
-  base::FilePath GetRoot();
-  base::FilePath GetStateful();
-
   // Checks for encstateful flag, then calls the appropriate
   // UmountVarAndHomeChronos function.
   bool DoUmountVarAndHomeChronos();
