@@ -26,10 +26,13 @@
 #include <bindings/device_management_backend.pb.h>
 #include <bindings/policy_common_definitions.pb.h>
 #include <brillo/errors/error.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
 #include <dbus/bus.h>
+#include <debugd/dbus-proxies.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/storage.h"
 
@@ -113,6 +116,7 @@ namespace fbpreprocessor {
 SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
     : session_manager_proxy_(
           std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)),
+      debugd_proxy_(std::make_unique<org::chromium::debugdProxy>(bus)),
       base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
       fw_dumps_allowed_by_policy_(false),
@@ -142,18 +146,79 @@ void SessionStateManager::OnSessionStateChanged(const std::string& state) {
       LOG(ERROR) << "Failed to update primary user.";
       return;
     }
-    if (!UpdatePolicy()) {
-      LOG(ERROR) << "Failed to retrieve policy.";
-    }
-    for (auto& observer : observers_) {
-      observer.OnUserLoggedIn(primary_user_hash_);
-    }
+    HandleUserLogin();
   } else if (state == kSessionStateStopped) {
     ResetPrimaryUser();
-    for (auto& observer : observers_) {
-      observer.OnUserLoggedOut();
-    }
+    HandleUserLogout();
   }
+}
+
+void SessionStateManager::HandleUserLogin() {
+  // |NotifyObserversOnUserLogin| is scheduled after the debug buffer clearing
+  // task, whether the task is successful or not, to make sure the observers
+  // will perform the rest of login tasks and handle them properly. The success
+  // and failure cases of debug buffer clearing differ in the treatment of the
+  // policy flag, which is handled in |OnClearFirmwareDumpBufferResponse| and
+  // |OnClearFirmwareDumpBufferError|, respectively.
+  // For example, the observer |input_manager| must delete all existing raw
+  // dumps as one of the follow-up tasks upon user login, and therefore it is
+  // required to notify observers for both cases. As for the sequence, buffer
+  // clearing is required before old dump deletion to make sure old buffer will
+  // not be included in new dumps. Likewise for other observers.
+  debugd_proxy_->ClearFirmwareDumpBufferAsync(
+      static_cast<uint32_t>(debugd::FirmwareDumpType::WIFI),
+      /*success_callback=*/
+      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferResponse,
+                     weak_factory_.GetWeakPtr(), /*is_login=*/true)
+          .Then(base::BindOnce(&SessionStateManager::NotifyObserversOnUserLogin,
+                               weak_factory_.GetWeakPtr())),
+      /*error_callback=*/
+      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferError,
+                     weak_factory_.GetWeakPtr())
+          .Then(base::BindOnce(&SessionStateManager::NotifyObserversOnUserLogin,
+                               weak_factory_.GetWeakPtr())));
+}
+
+void SessionStateManager::HandleUserLogout() {
+  NotifyObserversOnUserLogout();
+  debugd_proxy_->ClearFirmwareDumpBufferAsync(
+      static_cast<uint32_t>(debugd::FirmwareDumpType::WIFI),
+      /*success_callback=*/
+      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferResponse,
+                     weak_factory_.GetWeakPtr(), /*is_login=*/false),
+      /*error_callback=*/
+      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferError,
+                     weak_factory_.GetWeakPtr()));
+}
+
+void SessionStateManager::OnClearFirmwareDumpBufferResponse(bool is_login,
+                                                            bool success) {
+  VLOG(kLocalDebugVerbosity) << __func__;
+  if (!success) {
+    LOG(ERROR) << "Request for clearing firmware dump buffer was responded, "
+                  "but the firmware/driver execution failed.";
+    // When buffer clearing fails, disable the feature from policy to avoid
+    // potential policy violation from cross-session debug buffer.
+    fw_dumps_allowed_by_policy_ = false;
+    return;
+  }
+  LOG(INFO) << "Request for clearing firmware dump buffer was successful.";
+  // For user login, the task that retrieves the policy must be performed after
+  // the call to |ClearFirmwareDumpBufferAsync| being successful, to make sure
+  // no new firmware dumps will be generated when there's potential
+  // cross-session debug data in the buffer.
+  if (is_login && !UpdatePolicy()) {
+    LOG(ERROR) << "Failed to retrieve policy.";
+  }
+}
+
+void SessionStateManager::OnClearFirmwareDumpBufferError(brillo::Error* error) {
+  VLOG(kLocalDebugVerbosity) << __func__;
+  LOG(ERROR) << "Failed to clear firmware dump buffer (" << error->GetCode()
+             << "): " << error->GetMessage();
+  // When buffer clearing fails, disable the feature from policy to avoid
+  // potential policy violation from cross-session debug buffer.
+  fw_dumps_allowed_by_policy_ = false;
 }
 
 void SessionStateManager::AddObserver(Observer* observer) {
@@ -162,6 +227,18 @@ void SessionStateManager::AddObserver(Observer* observer) {
 
 void SessionStateManager::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
+}
+
+void SessionStateManager::NotifyObserversOnUserLogin() {
+  for (auto& observer : observers_) {
+    observer.OnUserLoggedIn(primary_user_hash_);
+  }
+}
+
+void SessionStateManager::NotifyObserversOnUserLogout() {
+  for (auto& observer : observers_) {
+    observer.OnUserLoggedOut();
+  }
 }
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {

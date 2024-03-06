@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
+#include <debugd/dbus-proxies.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/manager.h"
@@ -64,6 +65,32 @@ class SessionStateManager : public SessionStateManagerInterface {
  private:
   void OnSessionStateChanged(const std::string& state);
 
+  // Performs tasks for user login, including clearing debug buffer and then
+  // notifying all observers the user login event. If the debug buffer clearing
+  // task is successful, fetch the policy for the current user session.
+  void HandleUserLogin();
+
+  // Performs tasks for user logout, including clearing debug buffer and
+  // notifying all observers the user logout event. Unlike |HandleUserLogin|,
+  // the debug buffer clearing task is best-effort and other tasks do not
+  // depend on it.
+  void HandleUserLogout();
+
+  // Handler for the response of the asynchronous D-Bus method call to
+  // |org.chromium.debugd.ClearFirmwareDumpBuffer| that clears debug buffer.
+  // |is_login| indicates if this function is invoked during user login.
+  // |success| is the D-Bus method return indicating if the low-level execution
+  // is successful.
+  void OnClearFirmwareDumpBufferResponse(bool is_login, bool success);
+
+  // Handler for the error return of the asynchronous D-Bus method call to
+  // |org.chromium.debugd.ClearFirmwareDumpBuffer| that clears debug buffer.
+  void OnClearFirmwareDumpBufferError(brillo::Error* error);
+
+  // Notify all observers the user login and logout events
+  void NotifyObserversOnUserLogin();
+  void NotifyObserversOnUserLogout();
+
   // Query session manager for the current primary user. Returns std::nullopt
   // when there was an error while getting primary user.
   // If successful, the first member of the pair is the username and the second
@@ -105,6 +132,9 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Proxy for dbus communication with session manager / login.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
+
+  // Proxy for dbus communication with debugd.
+  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
 
   // Base directory to the root of the daemon-store where the firmware dumps are
   // stored, typically /run/daemon-store/fbpreprocessord/. Unit tests can
