@@ -522,6 +522,11 @@ constexpr char kStateOnline[] = "online";
 constexpr char kStateDisconnect[] = "disconnecting";
 constexpr char kStateFailure[] = "failure";
 
+// Shill CheckPortal property values.
+constexpr char kCheckPortalTrue[] = "true";
+constexpr char kCheckPortalFalse[] = "false";
+constexpr char kCheckPortalHTTPOnly[] = "http-only";
+
 // Shill WiFi roam state options.
 constexpr char kRoamStateIdle[] = "idle";
 constexpr char kRoamStateAssociation[] = "association";
