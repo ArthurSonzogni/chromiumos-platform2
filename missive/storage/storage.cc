@@ -4,6 +4,7 @@
 
 #include "missive/storage/storage.h"
 
+#include <string_view>
 #include <utility>
 
 #include <base/barrier_closure.h>
@@ -35,15 +36,16 @@
 #include <base/types/expected.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/health/health_module.h"
+#include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_util.h"
-#include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
@@ -54,6 +56,9 @@
 #include "missive/proto/priority_name.h"
 
 namespace reporting {
+
+constexpr std::string_view kUmaDeleteEmptyMultigenerationQueueDirectories =
+    "Platform.Missive.DeleteEmptyMultigenerationQueueDirectories";
 
 // Context for creating a single queue. Upon success, calls the callback with
 // the GenerationGuid passed into the context, otherwise error status.
@@ -215,8 +220,17 @@ void Storage::Create(
 
     void OnStart() override {
       CheckOnValidSequence();
-      StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
-          storage_->options_.directory());
+
+      const bool executed_without_error =
+          StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
+              storage_->options_.directory());
+
+      const auto res = analytics::Metrics::SendBoolToUMA(
+          /*name=*/kUmaDeleteEmptyMultigenerationQueueDirectories.data(),
+          executed_without_error);
+      LOG_IF(ERROR, !res) << "SendEnumToUMA failure, "
+                          << kUmaDeleteEmptyMultigenerationQueueDirectories
+                          << " " << executed_without_error;
 
       // Get the information we need to create queues
       queue_parameters_ = StorageDirectory::FindQueueDirectories(

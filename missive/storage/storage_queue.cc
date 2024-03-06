@@ -28,6 +28,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
@@ -49,7 +50,6 @@
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
-#include "base/location.h"
 #include "missive/analytics/metrics.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
