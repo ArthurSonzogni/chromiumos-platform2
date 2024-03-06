@@ -172,4 +172,24 @@ TEST(DmVerityTableTest, VanillaFormatNoSaltParse) {
       dm_verity_table->Print(DmVerityTable::Format::VANILLA).value_or(""));
 }
 
+TEST(DmVerityTableTest, Getters) {
+  constexpr char kAlg[] = "sha256";
+  const DmVerityTable::DevInfo kDataDev{
+      .dev = "ROOT_DEV",
+      .block_count = 2,
+  };
+  const DmVerityTable::DevInfo kHashDev{
+      .dev = "HASH_DEV",
+  };
+  constexpr auto kHashPlacement(DmVerityTable::HashPlacement::COLOCATED);
+  const DmVerityTable kDmVerityTable(kAlg, kRootDigest, kSalt, kDataDev,
+                                     kHashDev, kHashPlacement);
+  EXPECT_EQ(kAlg, kDmVerityTable.GetAlgorithm());
+  EXPECT_EQ(kRootDigest, kDmVerityTable.GetRootDigest());
+  EXPECT_EQ(kSalt, kDmVerityTable.GetSalt());
+  EXPECT_EQ(kDataDev, kDmVerityTable.GetDataDevice());
+  EXPECT_EQ(kHashDev, kDmVerityTable.GetHashDevice());
+  EXPECT_EQ(kHashPlacement, kDmVerityTable.GetHashPlacement());
+}
+
 }  // namespace verity

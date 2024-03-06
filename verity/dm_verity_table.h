@@ -78,6 +78,11 @@ class BRILLO_EXPORT DmVerityTable {
     uint64_t block_size = PAGE_SIZE;
     // The device's block count.
     uint64_t block_count = 0;
+
+    bool operator==(const DevInfo& o) const {
+      return dev == o.dev && block_size == o.block_size &&
+             block_count == o.block_count;
+    }
   };
 
   DmVerityTable(const std::string& alg,
@@ -106,6 +111,14 @@ class BRILLO_EXPORT DmVerityTable {
   // Prints the dm-verity table in the requested `Format`.
   // Returns `std::nullopt` on error.
   std::optional<std::string> Print(Format format);
+
+  // All the getters you'd need!
+  std::string GetAlgorithm() const;
+  RootDigestType GetRootDigest() const;
+  std::optional<SaltType> GetSalt() const;
+  DevInfo GetDataDevice() const;
+  DevInfo GetHashDevice() const;
+  HashPlacement GetHashPlacement() const;
 
  private:
   std::string alg_;

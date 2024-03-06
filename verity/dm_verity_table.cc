@@ -261,4 +261,28 @@ std::optional<DmVerityTable> DmVerityTable::Parse(const std::string& table_str,
   }
 }
 
+std::string DmVerityTable::GetAlgorithm() const {
+  return alg_;
+}
+
+DmVerityTable::RootDigestType DmVerityTable::GetRootDigest() const {
+  return root_digest_;
+}
+
+std::optional<DmVerityTable::SaltType> DmVerityTable::GetSalt() const {
+  return salt_;
+}
+
+DmVerityTable::DevInfo DmVerityTable::GetDataDevice() const {
+  return data_dev_;
+}
+
+DmVerityTable::DevInfo DmVerityTable::GetHashDevice() const {
+  return hash_dev_;
+}
+
+DmVerityTable::HashPlacement DmVerityTable::GetHashPlacement() const {
+  return hash_placement_;
+}
+
 }  // namespace verity
