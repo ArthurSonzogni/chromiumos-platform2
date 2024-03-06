@@ -17,5 +17,5 @@ criteria: |
   same as Tast's default login.
 cases:
   - id: "TestLogin"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...
