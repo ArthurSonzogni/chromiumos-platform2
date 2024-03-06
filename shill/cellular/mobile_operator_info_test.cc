@@ -177,6 +177,44 @@ TEST_F(MobileOperatorInfoMainTest, IsServingMobileNetworkOperatorKnown) {
   EXPECT_FALSE(operator_info_->IsServingMobileNetworkOperatorKnown());
 }
 
+TEST_F(MobileOperatorInfoMainTest, IsTestNetwork) {
+  std::string mccmnc = "00101";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_TRUE(operator_info_->IsTestNetwork());
+  mccmnc = "001001";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_TRUE(operator_info_->IsTestNetwork());
+
+  mccmnc = "021001";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_FALSE(operator_info_->IsTestNetwork());
+  mccmnc = "310410";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_FALSE(operator_info_->IsTestNetwork());
+}
+
+TEST_F(MobileOperatorInfoMainTest, IsPrivateNetwork) {
+  std::string mccmnc = "999999";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_TRUE(operator_info_->IsPrivateNetwork());
+  mccmnc = "99940";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_TRUE(operator_info_->IsPrivateNetwork());
+  mccmnc = "99999";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_TRUE(operator_info_->IsPrivateNetwork());
+
+  mccmnc = "021001";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_FALSE(operator_info_->IsPrivateNetwork());
+  mccmnc = "310410";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_FALSE(operator_info_->IsPrivateNetwork());
+  mccmnc = "9999";
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(mccmnc));
+  EXPECT_FALSE(operator_info_->IsPrivateNetwork());
+}
+
 TEST_F(MobileOperatorInfoMainTest, uuid) {
   const std::string uuid = "uuid";
   EXPECT_CALL(*home_, uuid()).WillOnce(ReturnRef(uuid));

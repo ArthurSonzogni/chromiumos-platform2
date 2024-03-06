@@ -106,6 +106,11 @@ class MobileOperatorInfo {
   // determined.
   virtual bool IsServingMobileNetworkOperatorKnown() const;
 
+  // Query whether the MCCMNC corresponds to a test network.
+  virtual bool IsTestNetwork() const;
+  // Query whether the MCCMNC corresponds to a private network.
+  virtual bool IsPrivateNetwork() const;
+
   // The unique identifier of this carrier. This is primarily used to
   // identify the user profile in store for each carrier. This identifier is
   // access technology agnostic.

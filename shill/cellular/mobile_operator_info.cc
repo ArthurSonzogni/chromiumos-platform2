@@ -120,6 +120,20 @@ bool MobileOperatorInfo::IsServingMobileNetworkOperatorKnown() const {
   return result;
 }
 
+bool MobileOperatorInfo::IsTestNetwork() const {
+  bool result =
+      home_->mccmnc().length() >= 5 && home_->mccmnc().starts_with("001");
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
+}
+
+bool MobileOperatorInfo::IsPrivateNetwork() const {
+  bool result =
+      home_->mccmnc().length() >= 5 && home_->mccmnc().starts_with("999");
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
+}
+
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
 const std::string& MobileOperatorInfo::uuid() const {

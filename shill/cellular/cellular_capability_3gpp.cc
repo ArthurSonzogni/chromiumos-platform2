@@ -2307,6 +2307,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   cellular()->OnProfilesChanged();
 
   if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown() &&
+      !cellular()->mobile_operator_info()->IsPrivateNetwork() &&
       deferred_fallback_attach_needed_) {
     deferred_fallback_attach_needed_ = false;
     // If the carrier is not in shill's db, shill should use the custom APN or
