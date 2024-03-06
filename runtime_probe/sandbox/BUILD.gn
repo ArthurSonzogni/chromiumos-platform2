@@ -46,6 +46,9 @@ install_seccomp_policy("install_sandbox_seccomp") {
       "${_arch}/wireless_network-seccomp.policy",
     ]
   }
+  if (_arch == "amd64" || _arch == "arm64") {
+    sources += [ "${_arch}/ec_component-seccomp.policy" ]
+  }
   install_path = "/etc/runtime_probe/sandbox"
 }
 
