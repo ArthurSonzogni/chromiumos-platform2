@@ -117,16 +117,21 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "verity userspace tool");
 
-  if (FLAGS_alg.empty() || FLAGS_payload.empty() || FLAGS_hashtree.empty()) {
-    LOG(ERROR) << "missing data: " << (FLAGS_alg.empty() ? "alg " : "")
-               << (FLAGS_payload.empty() ? "payload " : "")
-               << (FLAGS_hashtree.empty() ? "hashtree " : "");
-    return -1;
+  switch (mode) {
+    case VERITY_CREATE:
+      if (FLAGS_alg.empty() || FLAGS_payload.empty() ||
+          FLAGS_hashtree.empty()) {
+        LOG(ERROR) << "missing data: " << (FLAGS_alg.empty() ? "alg " : "")
+                   << (FLAGS_payload.empty() ? "payload " : "")
+                   << (FLAGS_hashtree.empty() ? "hashtree " : "");
+        return -1;
+      }
+
+      return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
+                           FLAGS_hashtree, FLAGS_salt, FLAGS_vanilla);
+    default:
+      break;
   }
 
-  if (mode == VERITY_CREATE) {
-    return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
-                         FLAGS_hashtree, FLAGS_salt, FLAGS_vanilla);
-  }
   LOG(FATAL) << "Unsupported mode passed in";
 }
