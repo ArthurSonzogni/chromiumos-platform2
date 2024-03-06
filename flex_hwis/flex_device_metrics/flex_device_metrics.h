@@ -102,4 +102,31 @@ bool SendDiskMetrics(MetricsLibraryInterface& metrics,
                      const MapPartitionLabelToMiBSize& label_to_size_map,
                      const std::vector<std::string>& partition_labels);
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class CpuIsaLevel {
+  // Unknown ISA level (CPU is probably not x86-64).
+  kUnknown = 0,
+
+  // See https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
+  // for details of the levels.
+  kX86_64_V1 = 1,
+  kX86_64_V2 = 2,
+  kX86_64_V3 = 3,
+  kX86_64_V4 = 4,
+
+  kMaxValue = kX86_64_V4,
+};
+
+// Get the x86-64 ISA level of the CPU.
+CpuIsaLevel GetCpuIsaLevel();
+
+// Send the CPU ISA level metric.
+//
+// This is an enum metric, see `GetCpuIsaLevel` for details of `isa_level`.
+//
+// Returns true on success, false if any error occurs.
+bool SendCpuIsaLevelMetric(MetricsLibraryInterface& metrics,
+                           CpuIsaLevel isa_level);
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

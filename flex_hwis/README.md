@@ -56,3 +56,11 @@ The partition metrics can be checked locally by navigating to
 
 These are sparse metrics, meaning the exact value is reported rather
 than a bucket spanning a range of values.
+
+### CPU ISA level
+
+ChromeOS Flex runs on a wide range of x86-64 CPUs. This enum metric
+categorizes the CPU by its ISA level. See [isa-levels] for details of
+the levels.
+
+[isa-levels]: https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels

@@ -164,3 +164,12 @@ TEST(FlexDiskMetrics, MultiplePartitionFailure) {
   EXPECT_FALSE(
       SendDiskMetrics(metrics, label_to_size_map, {"multiple", "KERN-A"}));
 }
+
+// Test successfully sending the CPU ISA level metric.
+TEST(FlexCpuMetrics, SendCpuIsaLevelMetric) {
+  StrictMock<MetricsLibraryMock> metrics;
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexCpuIsaLevel", 2, 5))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendCpuIsaLevelMetric(metrics, CpuIsaLevel::kX86_64_V2));
+}

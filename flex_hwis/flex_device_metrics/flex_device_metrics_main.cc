@@ -45,9 +45,13 @@ int main() {
   const MapPartitionLabelToMiBSize label_to_size_map =
       GetPartitionSizeMap(base::FilePath("/"), root_disk_device_name.value());
 
-  if (SendDiskMetrics(metrics, label_to_size_map, partition_labels)) {
-    return EXIT_SUCCESS;
-  } else {
+  if (!SendDiskMetrics(metrics, label_to_size_map, partition_labels)) {
     return EXIT_FAILURE;
   }
+
+  if (!SendCpuIsaLevelMetric(metrics, GetCpuIsaLevel())) {
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
 }

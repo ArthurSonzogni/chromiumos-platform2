@@ -132,3 +132,23 @@ bool SendDiskMetrics(MetricsLibraryInterface& metrics,
 
   return success;
 }
+
+CpuIsaLevel GetCpuIsaLevel() {
+  if (__builtin_cpu_supports("x86-64-v4")) {
+    return CpuIsaLevel::kX86_64_V4;
+  } else if (__builtin_cpu_supports("x86-64-v3")) {
+    return CpuIsaLevel::kX86_64_V3;
+  } else if (__builtin_cpu_supports("x86-64-v2")) {
+    return CpuIsaLevel::kX86_64_V2;
+  } else if (__builtin_cpu_supports("x86-64")) {
+    return CpuIsaLevel::kX86_64_V1;
+  } else {
+    LOG(ERROR) << "CPU does not support any expected x86-64 ISA level";
+    return CpuIsaLevel::kUnknown;
+  }
+}
+
+bool SendCpuIsaLevelMetric(MetricsLibraryInterface& metrics,
+                           CpuIsaLevel isa_level) {
+  return metrics.SendEnumToUMA("Platform.FlexCpuIsaLevel", isa_level);
+}
