@@ -97,10 +97,10 @@ if (use.test || use.fuzzer) {
       "//common-mk:test",
     ]
     public_configs = [ ":libcros_healthd_system_test_utils_public_pkg_deps" ]
+    public_deps = [ "//diagnostics/cros_healthd/fake" ]
     deps = [
       ":libcros_healthd_system",
       "//diagnostics/base",
-      "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
     ]
     sources = [
       "fake_bluez_event_hub.cc",

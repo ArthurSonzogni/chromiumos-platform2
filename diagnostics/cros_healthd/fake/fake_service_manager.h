@@ -10,8 +10,7 @@
 #include <string>
 
 #include <mojo/public/cpp/bindings/receiver.h>
-
-#include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 namespace diagnostics {
 

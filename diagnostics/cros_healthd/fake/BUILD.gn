@@ -4,28 +4,26 @@
 
 import("//common-mk/pkg_config.gni")
 
-# Library that provides the fake cros_healthd implementation.
-pkg_config("libfake_cros_healthd_pkg_deps") {
-  pkg_deps = [
-    "iioservice_ipc",
-    "libbrillo",
-    "libchrome",
-    "mojo_service_manager",
-  ]
-}
-
-source_set("libfake_cros_healthd") {
-  configs += [ ":libfake_cros_healthd_pkg_deps" ]
-  deps = [
-    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-  ]
-  sources = [
-    "fake_chromium_data_collector.cc",
-    "fake_network_diagnostics_routines.cc",
-    "fake_network_health_service.cc",
-    "fake_sensor_device.cc",
-    "fake_sensor_service.cc",
-    "fake_service_manager.cc",
-  ]
+if (use.test || use.fuzzer) {
+  source_set("fake") {
+    sources = [
+      "fake_chromium_data_collector.cc",
+      "fake_network_diagnostics_routines.cc",
+      "fake_network_health_service.cc",
+      "fake_sensor_device.cc",
+      "fake_sensor_service.cc",
+      "fake_service_manager.cc",
+    ]
+    public_pkg_deps = [
+      "iioservice_ipc",
+      "libchrome",
+      "libmojo",
+      "mojo_service_manager",
+    ]
+    public_deps = [
+      "//diagnostics/mojom/external:libcros_healthd_internal",
+      "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
+      "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
+    ]
+  }
 }
