@@ -71,16 +71,6 @@ bool CreateDirAndWriteFile(const base::FilePath& path,
              contents.length();
 }
 
-void CreateBaseAndSetNames(base::FilePath* base_dir,
-                           base::FilePath* lsb_file,
-                           base::FilePath* stateful) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  *base_dir = temp_dir.GetPath();
-  *lsb_file = base_dir->Append(kLsbRelease);
-  *stateful = base_dir->Append(kStatefulPartition);
-}
-
 void RestoreconTestFunc(const base::FilePath& path,
                         const std::vector<base::FilePath>& exclude,
                         bool is_recursive,
@@ -640,7 +630,10 @@ class ConfigTest : public ::testing::Test {
   ConfigTest() {}
 
   void SetUp() override {
-    CreateBaseAndSetNames(&base_dir_, &lsb_file_, &stateful_);
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir_ = temp_dir_.GetPath();
+    lsb_file_ = base_dir_.Append(kLsbRelease);
+    stateful_ = base_dir_.Append(kStatefulPartition);
     startup_dep_ = std::make_unique<startup::FakeStartupDep>();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     crossystem_ = platform_->GetCrosssystem();
@@ -655,6 +648,7 @@ class ConfigTest : public ::testing::Test {
   }
 
   crossystem::Crossystem* crossystem_;
+  base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_;
   base::FilePath lsb_file_;
   base::FilePath stateful_;
