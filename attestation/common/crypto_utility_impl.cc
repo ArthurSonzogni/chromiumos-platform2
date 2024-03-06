@@ -32,6 +32,8 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
+using brillo::BlobFromString;
+using brillo::BlobToString;
 using ::hwsec::TPMError;
 
 namespace {
@@ -128,7 +130,7 @@ bool CryptoUtilityImpl::CreateSealedKey(std::string* aes_key,
       const brillo::Blob& sealed_key_blob,
       hwsec_->Seal(brillo::SecureBlob(*aes_key)),
       _.WithStatus<TPMError>("Failed to seal aes key").LogError().As(false));
-  *sealed_key = brillo::BlobToString(sealed_key_blob);
+  *sealed_key = BlobToString(sealed_key_blob);
   return true;
 }
 
@@ -860,17 +862,14 @@ bool CryptoUtilityImpl::CreateSPKACInternal(
   }
   std::string data_to_sign(reinterpret_cast<char*>(buffer), length);
   OPENSSL_free(buffer);
-  std::string signature;
-  if (!tpm_utility_->Sign(key_blob, data_to_sign, &signature)) {
-    LOG(ERROR) << __func__ << ": Failed to sign SPKAC.";
-    return false;
-  }
+  ASSIGN_OR_RETURN(
+      brillo::Blob && signature,
+      hwsec_->Sign(BlobFromString(key_blob), BlobFromString(data_to_sign)),
+      _.WithStatus<TPMError>("Failed to sign SPKAC").LogError().As(false));
 
   // Fill in the signature and algorithm.
-  if (!ASN1_BIT_STRING_set(
-          spki.get()->signature,
-          reinterpret_cast<unsigned char*>(const_cast<char*>(signature.data())),
-          signature.size())) {
+  if (!ASN1_BIT_STRING_set(spki.get()->signature, signature.data(),
+                           signature.size())) {
     LOG(ERROR) << __func__ << ": Failed to set signature in SPKAC.";
     return false;
   }

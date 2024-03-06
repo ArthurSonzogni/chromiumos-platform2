@@ -40,6 +40,7 @@
 #include "attestation/server/mock_key_store.h"
 
 using brillo::BlobFromString;
+using brillo::BlobToString;
 using hwsec::EndorsementAuth;
 using hwsec::KeyRestriction;
 using hwsec::TPMError;
@@ -57,6 +58,7 @@ using testing::Return;
 using testing::ReturnRef;
 using testing::SetArgPointee;
 using testing::StrictMock;
+using testing::WithArg;
 using testing::WithArgs;
 
 namespace attestation {
@@ -210,6 +212,10 @@ ACTION_TEMPLATE(InvokeCallbackArgument,
   std::get<k>(args).Run(p0);
 }
 
+std::string Transform(const std::string& method, const std::string& input) {
+  return input + "_fake_transform_" + method;
+}
+
 }  // namespace
 
 class AttestationServiceBaseTest : public testing::Test {
@@ -276,6 +282,10 @@ class AttestationServiceBaseTest : public testing::Test {
     CHECK(
         CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
+    EXPECT_CALL(mock_hwsec_, Sign(_, _))
+        .WillRepeatedly(WithArg<1>(Invoke([](const brillo::Blob& in) {
+          return BlobFromString(Transform("Sign", BlobToString(in)));
+        })));
   }
 
  protected:
@@ -691,9 +701,8 @@ TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
 }
 
 TEST_F(AttestationServiceBaseTest, SignSimpleChallengeSuccess) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillRepeatedly(ReturnValue(BlobFromString("signature")));
   auto callback = [](base::OnceClosure quit_closure,
                      const SignSimpleChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -715,7 +724,8 @@ TEST_F(AttestationServiceBaseTest, SignSimpleChallengeSuccess) {
 }
 
 TEST_F(AttestationServiceBaseTest, SignSimpleChallengeInternalFailure) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   auto callback = [](base::OnceClosure quit_closure,
                      const SignSimpleChallengeReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -803,9 +813,8 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
           google_keys_.va_encryption_key(va_type_).modulus_in_hex(), _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(MockEncryptedData(key_info_str)),
                             Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillRepeatedly(ReturnValue(BlobFromString("signature")));
   auto callback = [](base::OnceClosure quit_closure,
                      const SignEnterpriseChallengeReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -845,7 +854,8 @@ TEST_P(AttestationServiceEnterpriseTest,
   key_info.SerializeToString(&key_info_str);
   EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   auto callback = [](base::OnceClosure quit_closure,
                      const SignEnterpriseChallengeReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -967,9 +977,8 @@ TEST_P(AttestationServiceEnterpriseTest,
       .WillOnce(
           DoAll(SetArgPointee<3>(std::string("fake_spkac")), Return(true)));
 
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillOnce(ReturnValue(BlobFromString("signature")));
 
   auto callback = [](const std::string& expected_key_info_str,
                      base::OnceClosure quit_closure,
@@ -1022,9 +1031,8 @@ class AttestationServiceCustomerIdTest : public AttestationServiceBaseTest {
         VerifySignatureUsingHexKey(
             _, google_keys_.va_signing_key(DEFAULT_VA).modulus_in_hex(), _, _))
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
-        .WillRepeatedly(
-            DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+    EXPECT_CALL(mock_hwsec_, Sign(_, _))
+        .WillRepeatedly(ReturnValue(BlobFromString("signature")));
 
     KeyInfo key_info = CreateChallengeKeyInfo(customer_id);
     std::string key_info_str;
@@ -1687,7 +1695,7 @@ TEST_P(AttestationServiceTest, SignSuccess) {
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure, const SignReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
+    EXPECT_EQ(Transform("Sign", "data"), reply.signature());
     std::move(quit_closure).Run();
   };
   SignRequest request;
@@ -1703,7 +1711,7 @@ TEST_P(AttestationServiceTest, SignSuccessNoUser) {
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure, const SignReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
+    EXPECT_EQ(Transform("Sign", "data"), reply.signature());
     std::move(quit_closure).Run();
   };
   SignRequest request;
@@ -1745,7 +1753,8 @@ TEST_P(AttestationServiceTest, SignKeyNotFoundNoUser) {
 }
 
 TEST_P(AttestationServiceTest, SignUnbindFailure) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Sign(_, _))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure, const SignReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());

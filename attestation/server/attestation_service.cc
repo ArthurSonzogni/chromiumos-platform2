@@ -861,12 +861,14 @@ void AttestationService::SignTask(const SignRequest& request,
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
-  std::string signature;
-  if (!tpm_utility_->Sign(key.key_blob(), request.data_to_sign(), &signature)) {
+  auto hwsec_result = hwsec_->Sign(BlobFromString(key.key_blob()),
+                                   BlobFromString(request.data_to_sign()));
+  if (!hwsec_result.ok()) {
+    LOG(ERROR) << __func__ << ": Failed to sign: " << hwsec_result.status();
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
-  result->set_signature(signature);
+  result->set_signature(BlobToString(hwsec_result.value()));
 }
 
 void AttestationService::RegisterKeyWithChapsToken(
@@ -3108,14 +3110,14 @@ void AttestationService::SignSimpleChallengeTask(
 bool AttestationService::SignChallengeData(const CertifiedKey& key,
                                            const std::string& data_to_sign,
                                            std::string* response) {
-  std::string signature;
-  if (!tpm_utility_->Sign(key.key_blob(), data_to_sign, &signature)) {
-    LOG(ERROR) << __func__ << ": Failed to sign data.";
-    return false;
-  }
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& signature,
+      hwsec_->Sign(BlobFromString(key.key_blob()),
+                   BlobFromString(data_to_sign)),
+      _.WithStatus<TPMError>("Failed to sign data").LogError().As(false));
   SignedData signed_data;
   signed_data.set_data(data_to_sign);
-  signed_data.set_signature(signature);
+  signed_data.set_signature(BlobToString(signature));
   if (!signed_data.SerializeToString(response)) {
     LOG(ERROR) << __func__ << ": Failed to serialize signed data.";
     return false;
