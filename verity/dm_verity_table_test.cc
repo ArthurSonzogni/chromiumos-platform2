@@ -120,4 +120,56 @@ TEST(DmVerityTableTest, VanillaFormatNotColocated) {
       s.value());
 }
 
+TEST(DmVerityTableTest, ChromeOSFormatParse) {
+  constexpr char kTable[] =
+      ("0 16 verity payload=ROOT_DEV hashtree=HASH_DEV hashstart=16 "
+       "alg=sha256 root_hexdigest=21f0268f4a293d8110074c678a651c638d"
+       "56a610dd2662975a35d451d3258018 salt=abcdef0123456789abcdef01"
+       "23456789abcdef0123456789abcdef0123456789");
+  auto dm_verity_table =
+      DmVerityTable::Parse(kTable, DmVerityTable::Format::CROS);
+  ASSERT_TRUE(dm_verity_table);
+  EXPECT_EQ(kTable,
+            dm_verity_table->Print(DmVerityTable::Format::CROS).value_or(""));
+}
+
+TEST(DmVerityTableTest, ChromeOSFormatNoSaltParse) {
+  constexpr char kTable[] =
+      ("0 16 verity payload=ROOT_DEV hashtree=HASH_DEV hashstart=16 "
+       "alg=sha256 root_hexdigest=21f0268f4a293d8110074c678a651c638d"
+       "56a610dd2662975a35d451d3258018");
+  auto dm_verity_table =
+      DmVerityTable::Parse(kTable, DmVerityTable::Format::CROS);
+  ASSERT_TRUE(dm_verity_table);
+  EXPECT_EQ(kTable,
+            dm_verity_table->Print(DmVerityTable::Format::CROS).value_or(""));
+}
+
+TEST(DmVerityTableTest, VanillaFormatParse) {
+  constexpr char kTable[] =
+      ("0 16 verity 0 ROOT_DEV HASH_DEV 4096 4096 "
+       "2 2 sha256 21f0268f4a293d8110074c678a651c638d"
+       "56a610dd2662975a35d451d3258018 abcdef0123456789abcdef01"
+       "23456789abcdef0123456789abcdef0123456789");
+  auto dm_verity_table =
+      DmVerityTable::Parse(kTable, DmVerityTable::Format::VANILLA);
+  ASSERT_TRUE(dm_verity_table);
+  EXPECT_EQ(
+      kTable,
+      dm_verity_table->Print(DmVerityTable::Format::VANILLA).value_or(""));
+}
+
+TEST(DmVerityTableTest, VanillaFormatNoSaltParse) {
+  constexpr char kTable[] =
+      ("0 16 verity 0 ROOT_DEV HASH_DEV 4096 4096 "
+       "2 2 sha256 21f0268f4a293d8110074c678a651c638d"
+       "56a610dd2662975a35d451d3258018 -");
+  auto dm_verity_table =
+      DmVerityTable::Parse(kTable, DmVerityTable::Format::VANILLA);
+  ASSERT_TRUE(dm_verity_table);
+  EXPECT_EQ(
+      kTable,
+      dm_verity_table->Print(DmVerityTable::Format::VANILLA).value_or(""));
+}
+
 }  // namespace verity

@@ -39,6 +39,36 @@ class BRILLO_EXPORT DmVerityTable {
     SEPARATE,
   };
 
+  enum CrOSIndex {
+    C_DATA_START_SECTOR = 0,
+    C_NUM_DATA_SECTOR,
+    C_VERITY_TARGET,
+    C_PAYLOAD,
+    C_HASHTREE,
+    C_HASH_START,
+    C_ALGORITHM,
+    C_ROOT_DIGEST,
+    C_SALT,
+    C_LAST_INDEX,  // Note: Always keep as the last value.
+  };
+
+  enum VanillaIndex {
+    V_DATA_START_SECTOR = 0,
+    V_NUM_DATA_SECTOR,
+    V_VERITY_TARGET,
+    V_VERSION,
+    V_DATA_DEVICE,
+    V_HASH_DEVICE,
+    V_DATA_DEVICE_BLOCK_SIZE,
+    V_HASH_DEVICE_BLOCK_SIZE,
+    V_DATA_DEVICE_BLOCK_END,
+    V_HASH_DEVICE_BLOCK_START,
+    V_ALGORITHM,
+    V_ROOT_DIGEST,
+    V_SALT,
+    V_LAST_INDEX,  // Note: Always keep as the last value.
+  };
+
   // `DevInfo` represents device information such as the root or hash device
   // when targeting verity.
   struct DevInfo {
@@ -64,8 +94,14 @@ class BRILLO_EXPORT DmVerityTable {
         hash_placement_(hash_placement) {}
   virtual ~DmVerityTable() = default;
 
-  DmVerityTable(DmVerityTable&) = delete;
+  DmVerityTable(const DmVerityTable&) = delete;
   DmVerityTable& operator=(const DmVerityTable&) = delete;
+
+  DmVerityTable(DmVerityTable&&) = default;
+  DmVerityTable& operator=(DmVerityTable&&) = default;
+
+  static std::optional<DmVerityTable> Parse(const std::string& table_str,
+                                            Format format);
 
   // Prints the dm-verity table in the requested `Format`.
   // Returns `std::nullopt` on error.
