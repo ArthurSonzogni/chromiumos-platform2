@@ -143,6 +143,15 @@ void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
     last_ping_acked_ = true;
     metrics_->SendLivenessPingResponseTime(response_time);
     metrics_->SendLivenessPingResult(/*success=*/true);
+
+    // Browser state is logged in when the DBus message failed to be delivered,
+    // e.g. due to a message timeout. The reason for having this warning is
+    // that it will be parsed by anomaly_detector, therefore if the browser
+    // state hasn't been logged there's no point in printing this warning.
+    if (response_time.InSeconds() > 0 && remaining_retries_ != retry_limit_) {
+      LOG(WARNING) << "Browser responded to ping after "
+                   << response_time.InSeconds() << "s";
+    }
     return;
   }
   if (remaining_retries_) {
