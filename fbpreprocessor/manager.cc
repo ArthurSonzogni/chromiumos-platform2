@@ -54,16 +54,8 @@ bool Manager::FirmwareDumpsAllowed() const {
     LOG(ERROR) << "PlatformFeaturesClient not instantiated.";
     return false;
   }
-  return (session_state_manager_->FirmwareDumpsAllowedByPolicy() &&
-          platform_features_->FirmwareDumpsAllowedByFinch()) ||
-         bypass_allowed_for_tests_;
-}
-
-void Manager::BypassAllowedForTests(bool bypass) {
-  if (bypass) {
-    LOG(WARNING) << "Bypassing checks to allow firmware dumps.";
-  }
-  bypass_allowed_for_tests_ = bypass;
+  return session_state_manager_->FirmwareDumpsAllowedByPolicy() &&
+         platform_features_->FirmwareDumpsAllowedByFinch();
 }
 
 }  // namespace fbpreprocessor
