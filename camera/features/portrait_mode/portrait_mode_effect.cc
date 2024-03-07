@@ -48,7 +48,7 @@ int32_t PortraitModeEffect::Initialize(CameraMojoChannelManagerToken* token) {
   if (!gpu_algo_manager_) {
     LOGF(WARNING)
         << "Cannot connect to GPU algorithm service. Disable portrait mode.";
-    return 0;
+    return -EINVAL;
   }
   return 0;
 }
