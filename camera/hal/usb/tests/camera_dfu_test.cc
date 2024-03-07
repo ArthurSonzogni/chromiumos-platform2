@@ -106,9 +106,11 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
     ASSERT_TRUE(PutDeviceIntoAppMode()) << "Device not found";
     ASSERT_EQ(GetDfuModeDevice(), nullptr)
         << "Found conflicting device in DFU mode";
-    auto app_dev = GetAppModeDevice();
-    ASSERT_NE(app_dev, nullptr);
-    orig_fw_version_ = app_dev->bcd_device();
+    {
+      auto app_dev = GetAppModeDevice();
+      ASSERT_NE(app_dev, nullptr);
+      orig_fw_version_ = app_dev->bcd_device();
+    }
 
     // Backup current firmware
     EXPECT_TRUE(BackupDeviceFirmware());
