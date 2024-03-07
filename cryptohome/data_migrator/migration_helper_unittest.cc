@@ -236,11 +236,14 @@ TEST_F(MigrationHelperTest, CopySymlink) {
       to_dir_.Append(kFileName);
 
   // Verify that all links have been copied correctly
-  EXPECT_TRUE(platform_.ReadLink(kToRelLinkPath, &target));
+  EXPECT_TRUE(
+      platform_.ReadLink(kToRelLinkPath, &target, false /* canonicalize */));
   EXPECT_EQ(kRelLinkTarget.value(), target.value());
-  EXPECT_TRUE(platform_.ReadLink(kToAbsLinkPath, &target));
+  EXPECT_TRUE(
+      platform_.ReadLink(kToAbsLinkPath, &target, false /* canonicalize */));
   EXPECT_EQ(kAbsLinkTarget, target.value());
-  EXPECT_TRUE(platform_.ReadLink(kToTargetInMigrationDirAbsLinkPath, &target));
+  EXPECT_TRUE(platform_.ReadLink(kToTargetInMigrationDirAbsLinkPath, &target,
+                                 false /* canonicalize */));
   EXPECT_EQ(kExpectedTargetInMigrationDirAbsLinkTarget.value(), target.value());
 }
 
