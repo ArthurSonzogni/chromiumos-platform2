@@ -17,7 +17,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/paths.h"
-#include "diagnostics/cros_healthd/executor/executor.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -43,9 +43,10 @@ class FanRoutineTest : public BaseFileTest {
   void SetUp() {
     // Expect all tests to run reset fan control.
     EXPECT_CALL(*mock_context_.mock_executor(), SetAllFanAutoControl(_))
-        .WillRepeatedly([=](Executor::SetAllFanAutoControlCallback callback) {
-          std::move(callback).Run(std::nullopt);
-        });
+        .WillRepeatedly(
+            [=](mojom::Executor::SetAllFanAutoControlCallback callback) {
+              std::move(callback).Run(std::nullopt);
+            });
     // Defaults to 1 fan in setup.
     SetFanCrosConfig("1");
     // Create cros ec.
@@ -85,17 +86,17 @@ class FanRoutineTest : public BaseFileTest {
 TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedIncrease) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmChange},
                                 std::nullopt);
       });
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
@@ -127,18 +128,18 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedIncrease) {
 TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmDelta},
                                 std::nullopt);
@@ -146,7 +147,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
@@ -179,22 +180,22 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
 TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after decrease.
         std::move(callback).Run({kFanSpeed - FanRoutine::kFanRpmDelta},
                                 std::nullopt);
@@ -202,14 +203,14 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
@@ -245,30 +246,30 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
 TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after decrease.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after decrease.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after decrease.
         std::move(callback).Run({kFanSpeed - FanRoutine::kFanRpmDelta},
                                 std::nullopt);
@@ -276,14 +277,14 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
@@ -318,44 +319,44 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
 TEST_F(FanRoutineTest, RoutineFailureByNoFanSpeedChange) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after decrease.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after decrease.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after decrease.
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       });
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
@@ -391,35 +392,35 @@ TEST_F(FanRoutineTest, RoutineFailureByNoFanSpeedChange) {
 TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmDelta - 1},
                                 std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmDelta - 1},
                                 std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmDelta - 1},
                                 std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after decrease.
         std::move(callback).Run({kFanSpeed - FanRoutine::kFanRpmDelta + 1},
                                 std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after decrease.
         std::move(callback).Run({kFanSpeed - FanRoutine::kFanRpmDelta + 1},
                                 std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after decrease.
         std::move(callback).Run({kFanSpeed - FanRoutine::kFanRpmDelta + 1},
                                 std::nullopt);
@@ -427,14 +428,14 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
@@ -467,7 +468,7 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
 // `GetAllFanSpeed`.
 TEST_F(FanRoutineTest, RoutineExceptionByGetFanSpeedError) {
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({}, "Custom Error");
       });
 
@@ -483,12 +484,12 @@ TEST_F(FanRoutineTest, RoutineExceptionByGetFanSpeedError) {
 // `SetFanSpeed`.
 TEST_F(FanRoutineTest, RoutineExceptionBySetFanSpeedError) {
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({0}, std::nullopt);
       });
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
         std::move(callback).Run("custom error");
       });
@@ -507,10 +508,10 @@ TEST_F(FanRoutineTest, MultipleFanRoutineSuccess) {
   constexpr int kFanSpeed1 = 1000;
   constexpr int kFanSpeed2 = 0;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed1, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed1 + FanRoutine::kFanRpmChange,
                                  kFanSpeed2 + FanRoutine::kFanRpmChange},
                                 std::nullopt);
@@ -518,7 +519,7 @@ TEST_F(FanRoutineTest, MultipleFanRoutineSuccess) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms,
                     UnorderedElementsAre(
@@ -553,35 +554,35 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
   constexpr int kFanSpeed1 = 1000;
   constexpr int kFanSpeed2 = 0;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed1, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after increase.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after increase.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after increase.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // First response after decrease.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Second response after decrease.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         // Third response after decrease.
         std::move(callback).Run(
             {kFanSpeed1 + FanRoutine::kFanRpmDelta, kFanSpeed2}, std::nullopt);
@@ -589,7 +590,7 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms,
                     UnorderedElementsAre(
@@ -598,7 +599,7 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(1, 0)));
         std::move(callback).Run(std::nullopt);
@@ -627,7 +628,7 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
 // Test that the routine will fail if there is no fan, but expected a fan.
 TEST_F(FanRoutineTest, RoutineFailureByTooLittleFan) {
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({}, std::nullopt);
       });
 
@@ -656,17 +657,17 @@ TEST_F(FanRoutineTest, RoutineFailureByTooManyFan) {
   SetFanCrosConfig("3");
   constexpr int kFanSpeed = 1000;
   EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed}, std::nullopt);
       })
-      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+      .WillOnce([=](mojom::Executor::GetAllFanSpeedCallback callback) {
         std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmChange},
                                 std::nullopt);
       });
 
   EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
-                    Executor::SetFanSpeedCallback callback) {
+                    mojom::Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
         EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));

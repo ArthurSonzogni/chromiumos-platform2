@@ -36,8 +36,6 @@ class DlcManager;
 class ProcessControl;
 struct ServiceConfig;
 
-bool IsValidWirelessInterfaceName(const std::string& interface_name);
-
 // Production implementation of the mojom::Executor Mojo interface.
 class Executor final : public ash::cros_healthd::mojom::Executor {
  public:

@@ -17,8 +17,8 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/paths.h"
-#include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
@@ -48,7 +48,7 @@ class PrimeSearchRoutineTestBase : public BaseFileTest {
         .WillRepeatedly(
             [=, this](base::TimeDelta exec_duration, uint64_t max_num,
                       mojo::PendingReceiver<mojom::ProcessControl> receiver,
-                      Executor::RunPrimeSearchCallback callback) {
+                      mojom::Executor::RunPrimeSearchCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_exec_duration_ = exec_duration;
               received_max_num_ = max_num;
@@ -68,7 +68,7 @@ class PrimeSearchRoutineTestBase : public BaseFileTest {
   FakeProcessControl fake_process_control_;
   base::TimeDelta received_exec_duration_ = base::Seconds(0);
   uint64_t received_max_num_ = 0;
-  Executor::RunPrimeSearchCallback received_callback_;
+  mojom::Executor::RunPrimeSearchCallback received_callback_;
 };
 
 class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {

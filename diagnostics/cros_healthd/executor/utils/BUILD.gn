@@ -11,6 +11,7 @@ pkg_config("pkg_deps") {
     "libchrome",
     "libdlcservice-client",
     "libmojo",
+    "re2",
     "vboot_host",
   ]
 }
@@ -20,6 +21,7 @@ source_set("utils") {
     "delegate_process.cc",
     "dlc_manager.cc",
     "file.cc",
+    "network_utils.cc",
     "process_control.cc",
     "sandboxed_process.cc",
     "scoped_process_control.cc",
@@ -48,6 +50,7 @@ if (use.test) {
       "dlc_manager_test.cc",
       "fake_process_control.cc",
       "file_test.cc",
+      "network_utils_test.cc",
       "sandboxed_process_test.cc",
       "scoped_process_control_test.cc",
     ]

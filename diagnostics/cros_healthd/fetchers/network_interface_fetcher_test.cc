@@ -20,7 +20,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -270,22 +269,6 @@ TEST_F(NetworkInterfaceFetcherTest, MissingRxBitrateSetToZero) {
   const auto& link_info = wireless_info->wireless_link_info;
   ASSERT_FALSE(link_info.is_null());
   EXPECT_EQ(link_info->rx_bit_rate_mbps, 0);
-}
-
-// Test case: test wireless device name
-TEST_F(NetworkInterfaceFetcherTest, InterfaceName) {
-  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan0"));
-  EXPECT_TRUE(IsValidWirelessInterfaceName("mlan0"));
-  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan8"));
-  EXPECT_TRUE(IsValidWirelessInterfaceName("mlan8"));
-  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan10"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("xlan0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("Wlan0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("mlan-0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("wlanwaywaytolong0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("wln0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("man0"));
-  EXPECT_FALSE(IsValidWirelessInterfaceName("wlan"));
 }
 
 }  // namespace diagnostics

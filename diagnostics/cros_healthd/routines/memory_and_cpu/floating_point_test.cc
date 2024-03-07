@@ -16,8 +16,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
@@ -47,7 +47,7 @@ class FloatingPointRoutineTestBase : public testing::Test {
         .WillRepeatedly(
             [=, this](base::TimeDelta exec_duration,
                       mojo::PendingReceiver<mojom::ProcessControl> receiver,
-                      Executor::RunFloatingPointCallback callback) {
+                      mojom::Executor::RunFloatingPointCallback callback) {
               fake_process_control_.BindReceiver(std::move(receiver));
               received_exec_duration_ = exec_duration;
               received_callback_ = std::move(callback);
@@ -65,7 +65,7 @@ class FloatingPointRoutineTestBase : public testing::Test {
   MockContext mock_context_;
   FakeProcessControl fake_process_control_;
   base::TimeDelta received_exec_duration_ = base::Seconds(0);
-  Executor::RunFloatingPointCallback received_callback_;
+  mojom::Executor::RunFloatingPointCallback received_callback_;
 };
 
 class FloatingPointRoutineTest : public FloatingPointRoutineTestBase {

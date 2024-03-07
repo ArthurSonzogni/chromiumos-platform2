@@ -44,6 +44,7 @@
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
 #include "diagnostics/cros_healthd/executor/utils/file.h"
+#include "diagnostics/cros_healthd/executor/utils/network_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -138,10 +139,6 @@ namespace dlc {
 constexpr char kFio[] = "fio-dlc";
 
 }  // namespace dlc
-
-// wireless interface name start with "wl" or "ml" and end it with a number. All
-// characters are in lowercase.  Max length is 16 characters.
-constexpr auto kWirelessInterfaceRegex = R"(([wm]l[a-z][a-z0-9]{1,12}[0-9]))";
 
 // Whitelist of msr registers that can be read by the ReadMsr call.
 constexpr uint32_t kMsrAccessAllowList[] = {
@@ -242,11 +239,6 @@ std::optional<std::vector<std::string>> GenerateFioCommand(
 }
 
 }  // namespace
-
-// Exported for testing.
-bool IsValidWirelessInterfaceName(const std::string& interface_name) {
-  return (RE2::FullMatch(interface_name, kWirelessInterfaceRegex, nullptr));
-}
 
 Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,

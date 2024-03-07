@@ -11,7 +11,6 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
