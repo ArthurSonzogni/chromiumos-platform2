@@ -167,14 +167,23 @@ int sl_process_pending_configure_acks(struct sl_window* window,
 #endif
 
   if (window->managed && host_surface) {
-    uint32_t width = window->width + window->border_width * 2;
-    uint32_t height = window->height + window->border_width * 2;
-    // Early out if we expect contents to match window size at some point in
-    // the future.
-    if (!window->viewport_override &&
-        (width != host_surface->contents_width ||
-         height != host_surface->contents_height)) {
-      return 0;
+    if (window->viewport_override) {
+      // If viewport override is set, only check viewport size and completely
+      // ignore window size for containerized windows.
+      if (sl_window_is_containerized(window) &&
+          (window->viewport_height != window->viewport_height_realized ||
+           window->viewport_width != window->viewport_width_realized)) {
+        return 0;
+      }
+    } else {
+      uint32_t width = window->width + window->border_width * 2;
+      uint32_t height = window->height + window->border_width * 2;
+      // Early out if we expect contents to match window size at some point in
+      // the future.
+      if ((width != host_surface->contents_width ||
+           height != host_surface->contents_height)) {
+        return 0;
+      }
     }
   }
 
@@ -250,6 +259,22 @@ static void sl_internal_xdg_surface_configure_barrier_done(
 
 static const int32_t kUnspecifiedCoord = INT32_MIN;
 
+bool sl_window_is_containerized(struct sl_window* window) {
+  bool window_containerized = false;
+#ifdef QUIRKS_SUPPORT
+  window_containerized = window->ctx->quirks.IsEnabled(
+      window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
+#endif
+  return window_containerized;
+}
+
+void sl_window_reset_viewport(struct sl_window* window) {
+  window->viewport_width = -1;
+  window->viewport_height = -1;
+  window->viewport_override = false;
+  // Note that viewport destination is reset during surface_commit.
+}
+
 // Handle a configure event on a toplevel object from the compositor.
 //
 // window: The window being configured.
@@ -271,6 +296,15 @@ void sl_internal_toplevel_configure(struct sl_window* window,
     // Ignore requests with no states if --ignore-stateless-toplevel-configure
     // is set.
     return;
+  }
+
+  bool window_containerized = sl_window_is_containerized(window);
+
+  if (window_containerized) {
+    // Process window states first, so that window position and size can be
+    // configured based on the states. If the window is not containerized, we
+    // process the states last.
+    sl_internal_toplevel_configure_state_containerized(window, states);
   }
 
   if (width && height) {
@@ -301,12 +335,140 @@ void sl_internal_toplevel_configure(struct sl_window* window,
     // position must be done before size.
     sl_internal_toplevel_configure_position(window, x, y, width_in_pixels,
                                             height_in_pixels, config_idx);
-    sl_internal_toplevel_configure_size(window, x, y, width, height,
-                                        width_in_pixels, height_in_pixels,
-                                        config_idx);
+
+    // We don't need to resize windows using viewports that are windowed and
+    // resizble.
+    if (window_containerized) {
+      sl_internal_toplevel_configure_size_containerized(
+          window, x, y, width, height, width_in_pixels, height_in_pixels,
+          config_idx);
+    } else {
+      sl_internal_toplevel_configure_size(window, x, y, width, height,
+                                          width_in_pixels, height_in_pixels,
+                                          config_idx);
+    }
   }
 
-  sl_internal_toplevel_configure_state(window, states);
+  if (!window_containerized) {
+    sl_internal_toplevel_configure_state(window, states);
+  }
+}
+
+void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
+                                                       int32_t x,
+                                                       int32_t y,
+                                                       int32_t host_width,
+                                                       int32_t host_height,
+                                                       int32_t width_in_pixels,
+                                                       int32_t height_in_pixels,
+                                                       int& mut_config_idx) {
+  // Forward resizes to the client if requested size fits within the min&max
+  // dimensions. Note that min&max dimensions are strictly set by the X11 client
+  // only (and forwarded to Exo immediately). If min&max dimensions are not set,
+  // we will set the size of the window to screen size (see below).
+  if (window->max_height >= width_in_pixels &&
+      window->min_height <= width_in_pixels &&
+      window->max_width >= height_in_pixels &&
+      window->max_height <= height_in_pixels) {
+    sl_window_reset_viewport(window);
+    window->next_config.mask |= XCB_CONFIG_WINDOW_WIDTH |
+                                XCB_CONFIG_WINDOW_HEIGHT |
+                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
+    window->next_config.values[mut_config_idx++] = width_in_pixels;
+    window->next_config.values[mut_config_idx++] = height_in_pixels;
+    window->next_config.values[mut_config_idx++] = 0;
+    return;
+  }
+
+  auto output = window->paired_surface->output.get();
+
+  // Set the window size to be either max or min window size, set by the X11
+  // client. If width/height min and max are 0, set the window size to the size
+  // of the screen.
+  // We are effectively maximizing the window as much as we can within the
+  // specified range, then down-scaling. This is to have consistent window
+  // rendering experience with the most-expected use-case (fullscreen game,
+  // user hits fullscreen toggle key). However, once we have better upscaling
+  // algorithm, we should consider minimizing the size (or average?) then
+  // upscaling in viewports instead.
+  int safe_window_width =
+      window->max_width ? window->max_width : window->min_width;
+  int safe_window_height =
+      window->max_height ? window->max_height : window->min_height;
+  if (!safe_window_width || !safe_window_height) {
+    safe_window_width = output->width;
+    safe_window_height = output->height;
+  }
+
+  window->next_config.mask |= XCB_CONFIG_WINDOW_WIDTH |
+                              XCB_CONFIG_WINDOW_HEIGHT |
+                              XCB_CONFIG_WINDOW_BORDER_WIDTH;
+  window->next_config.values[mut_config_idx++] = safe_window_width;
+  window->next_config.values[mut_config_idx++] = safe_window_height;
+  window->next_config.values[mut_config_idx++] = 0;
+
+  // Use viewport to resize surface as per Exo request.
+  window->viewport_override = true;
+
+  int32_t safe_window_width_in_wl = safe_window_width;
+  int32_t safe_window_height_in_wl = safe_window_height;
+  sl_transform_guest_to_host(window->ctx, window->paired_surface,
+                             &safe_window_width_in_wl,
+                             &safe_window_height_in_wl);
+
+  // TODO(endlesspring): consider ignoring aspect ratio and filling the entire
+  // screen if Exo wants the window to be fullscreen. This wills require having
+  // pointer scale in x and y, instead of one.
+  // if (window->compositor_fullscreen) {
+  //   window->viewport_width = output->logical_width;
+  //   window->viewport_height = output->logical_height;
+  //   window->viewport_pointer_scale =
+  //       static_cast<float>(safe_window_width_in_wl) / window->viewport_width;
+  //   return;
+  // }
+
+  // Adjust viewport while maintaining aspect ratio
+  float width_ratio = static_cast<float>(safe_window_width) / width_in_pixels;
+  float height_ratio =
+      static_cast<float>(safe_window_height) / height_in_pixels;
+  if (std::abs(width_ratio - height_ratio) < 0.005) {
+    window->viewport_width = host_width;
+    window->viewport_height = host_height;
+    // If Exo sets a size that is of a different aspect ratio we shrink
+    // the window to maintain aspect ratio. We do this by always shrinking
+    // the side that is now proportionally larger as if we expand the
+    // smaller side it might result in the window becoming larger than the
+    // allowed bounds of the screen.
+  } else if (width_ratio < height_ratio) {
+    window->viewport_width =
+        (static_cast<float>(safe_window_width) * host_height) /
+        safe_window_height;
+    window->viewport_height = host_height;
+
+  } else if (width_ratio > height_ratio) {
+    window->viewport_height =
+        (static_cast<float>(safe_window_height) * host_width) /
+        safe_window_width;
+    window->viewport_width = host_width;
+  }
+  window->viewport_pointer_scale =
+      static_cast<float>(safe_window_width_in_wl) / window->viewport_width;
+
+  if (window->xdg_toplevel) {
+    // Override X11 client-defined min and max size to a value relative to
+    // display screen size.
+    // When client client updates min/max, window->min/max_width/height values
+    // are updated, then xdg_toplevel calls are made (see
+    // sl_handle_property_notify for details). This results in Exo adjusting
+    // the window size appropriately, resulting in this snippet
+    // (part of toplevel_configure) to run and override the max/min again. This
+    // allows the X11 client to continue resize itself but also allow the user
+    // to resize the window at will within the constraints.
+    xdg_toplevel_set_max_size(window->xdg_toplevel, output->logical_width * 0.8,
+                              output->logical_height * 0.8);
+    xdg_toplevel_set_min_size(window->xdg_toplevel, output->logical_width * 0.4,
+                              output->logical_height * 0.4);
+  }
 }
 
 void sl_internal_toplevel_configure_size(struct sl_window* window,
@@ -361,12 +523,10 @@ void sl_internal_toplevel_configure_size(struct sl_window* window,
     xdg_toplevel_set_max_size(window->xdg_toplevel, window->viewport_width,
                               window->viewport_height);
   } else if (window->viewport_override) {
-    window->viewport_width = -1;
-    window->viewport_height = -1;
+    sl_window_reset_viewport(window);
     wp_viewport_shim()->set_destination(window->paired_surface->viewport,
                                         window->viewport_width,
                                         window->viewport_height);
-    window->viewport_override = false;
   }
 
   window->next_config.mask |= XCB_CONFIG_WINDOW_WIDTH |
@@ -422,12 +582,23 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
   }
 }
 
+void sl_internal_toplevel_configure_set_activated(struct sl_window* window,
+                                                  bool activated) {
+  if (activated != window->activated) {
+    if (activated != (window->ctx->host_focus_window == window)) {
+      window->ctx->host_focus_window = activated ? window : nullptr;
+      window->ctx->needs_set_input_focus = 1;
+    }
+    window->activated = activated;
+  }
+}
+
 void sl_internal_toplevel_configure_state(struct sl_window* window,
                                           struct wl_array* states) {
   // States: https://wayland.app/protocols/xdg-shell#xdg_toplevel:enum:state
   // Note that if there are no states specified, it is not-maximized,
   // not-fullscreen, not-currently-being-resized and not-activated window.
-  int activated = 0;
+  bool activated = false;
   window->allow_resize = 1;
   window->compositor_fullscreen = 0;
 
@@ -463,7 +634,7 @@ void sl_internal_toplevel_configure_state(struct sl_window* window,
           window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
     }
     if (*state == XDG_TOPLEVEL_STATE_ACTIVATED) {
-      activated = 1;
+      activated = true;
       window->next_config.states[state_idx++] =
           window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
     }
@@ -471,14 +642,69 @@ void sl_internal_toplevel_configure_state(struct sl_window* window,
       window->allow_resize = 0;
   }
 
-  if (activated != window->activated) {
-    if (activated != (window->ctx->host_focus_window == window)) {
-      window->ctx->host_focus_window = activated ? window : nullptr;
-      window->ctx->needs_set_input_focus = 1;
-    }
-    window->activated = activated;
+  sl_internal_toplevel_configure_set_activated(window, activated);
+
+  // Override previous state definitions
+  window->next_config.states_length = state_idx;
+}
+
+void sl_internal_toplevel_configure_state_containerized(
+    struct sl_window* window, struct wl_array* states) {
+  // States: https://wayland.app/protocols/xdg-shell#xdg_toplevel:enum:state
+  // Note that if there are no states specified, it is not-maximized,
+  // not-fullscreen, not-currently-being-resized and not-activated window.
+  bool activated = false;
+  window->allow_resize = 1;
+  window->compositor_fullscreen = 0;
+
+  uint32_t* state;
+  int state_idx = 0;
+
+  // Keep the fullscreen state if X11 client decided to be fullscreen. Ignore
+  // compositor's request.
+  if (window->fullscreen) {
+    window->allow_resize = 0;
+    window->next_config.states[state_idx++] =
+        window->ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value;
   }
 
+  // Ditto as above, but maximize state.
+  if (window->maximized) {
+    window->allow_resize = 0;
+    window->next_config.states[state_idx++] =
+        window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+    window->next_config.states[state_idx++] =
+        window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+  }
+
+  sl_array_for_each(state, states) {
+    // Note that we are ignoring maximized state for reasons specified above. We
+    // are not even taking note of what the compositor wants since we don't have
+    // to for window containerization.
+    if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
+      // Mark as compositor request to be fullscreen, so that other sizing
+      // operations can operate to fulfill Exo's request.
+      window->compositor_fullscreen = 1;
+    }
+    if (*state == XDG_TOPLEVEL_STATE_ACTIVATED) {
+      activated = true;
+      window->next_config.states[state_idx++] =
+          window->ctx->atoms[ATOM_NET_WM_STATE_FOCUSED].value;
+    }
+    if (*state == XDG_TOPLEVEL_STATE_RESIZING) {
+      window->allow_resize = 0;
+    }
+  }
+
+  // Set focus appropriately.
+  sl_internal_toplevel_configure_set_activated(window, activated);
+
+  if (!window->compositor_fullscreen) {
+    // Ignore the window decoration settings done by the X11 client, and show
+    // frame decorations if Exo treats the surface as non-fullscreen.
+    zaura_surface_set_frame(window->aura_surface,
+                            ZAURA_SURFACE_FRAME_TYPE_NORMAL);
+  }
   // Override previous state definitions
   window->next_config.states_length = state_idx;
 }

@@ -27,6 +27,7 @@
 struct sl_config {
   uint32_t serial = 0;
   uint32_t mask = 0;
+  // Values and states here are consumed during sl_configure_window
   uint32_t values[5];
   uint32_t states_length = 0;
   uint32_t states[3];
@@ -93,14 +94,33 @@ struct sl_window {
   int dark_frame = 0;
   uint32_t size_flags = P_POSITION;
   int focus_model_take_focus = 0;
+  // TODO(b/331112549): introduce and utilize size structs for width/height
   int min_width = 0;
   int min_height = 0;
   int max_width = 0;
   int max_height = 0;
+
+  // If true, use overridden viewport_width/height values to set destination.
+  int viewport_override = false;
+  // Determines scale factor for pointer movements. Incorrect value (i.e.
+  // viewport scaling factor was not calculated correctly for X and Y axis.
+  // Currently we assume X and Y axis have the same factor) will result in
+  // pointer offset.
+  double viewport_pointer_scale = 0;
+  // Configured viewport destination width and height, usually done during
+  // xdg_toplevel_configure. Only utilized if viewport_override is true.
   int viewport_width = -1;
   int viewport_height = -1;
-  int viewport_override = false;
-  double viewport_pointer_scale = 0;
+  // The latest width and height that viewport.set_destination was called with
+  // (ie. sent to Exo), usually done in host_surface_commit.
+  int viewport_width_realized = -1;
+  int viewport_height_realized = -1;
+
+  // If true, check if borderless window should be set to fullscreen in Exo
+  // during surface_commit. Initially set to true because some games (that
+  // launch in borderless-windowed mode) assume the default state is fullscreen
+  // not set.
+  bool maybe_promote_to_fullscreen = true;
 
 #ifdef QUIRKS_SUPPORT
   // Quirk feature flags previously applied to this window, for which log
@@ -238,6 +258,8 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window);
 void sl_update_application_id(struct sl_context* ctx, struct sl_window* window);
 void sl_configure_window(struct sl_window* window);
 void sl_send_configure_notify(struct sl_window* window);
+// TODO(b/331132756): Refactor containerization logic into more OO style, this
+// will probably impact other areas of code as well.
 void sl_internal_toplevel_configure(struct sl_window* window,
                                     int32_t x,
                                     int32_t y,
@@ -252,6 +274,14 @@ void sl_internal_toplevel_configure_size(struct sl_window* window,
                                          int32_t width_in_pixels,
                                          int32_t height_in_pixels,
                                          int& mut_config_idx);
+void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
+                                                       int32_t x,
+                                                       int32_t y,
+                                                       int32_t host_width,
+                                                       int32_t host_height,
+                                                       int32_t width_in_pixels,
+                                                       int32_t height_in_pixels,
+                                                       int& mut_config_idx);
 void sl_internal_toplevel_configure_position(struct sl_window* window,
                                              uint32_t x,
                                              uint32_t y,
@@ -260,6 +290,8 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
                                              int& mut_config_idx);
 void sl_internal_toplevel_configure_state(struct sl_window* window,
                                           struct wl_array* states);
+void sl_internal_toplevel_configure_state_containerized(
+    struct sl_window* window, struct wl_array* states);
 
 int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface);
@@ -284,5 +316,8 @@ void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y);
 void sl_window_get_width_height(struct sl_window* window,
                                 uint32_t* w,
                                 uint32_t* h);
+
+bool sl_window_is_containerized(struct sl_window* window);
+void sl_window_reset_viewport(struct sl_window* window);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_

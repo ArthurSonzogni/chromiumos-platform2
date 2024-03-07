@@ -159,9 +159,12 @@ static void sl_adjust_window_size_for_screen_size(struct sl_window* window) {
               window->id);
   struct sl_context* ctx = window->ctx;
 
-  // Clamp size to screen.
-  window->width = MIN(window->width, ctx->screen->width_in_pixels);
-  window->height = MIN(window->height, ctx->screen->height_in_pixels);
+  if (!sl_window_is_containerized(window)) {
+    // Clamp size to screen if the window is not containerized. Containerized
+    // window's size can only be modified by the X11 client.
+    window->width = MIN(window->width, ctx->screen->width_in_pixels);
+    window->height = MIN(window->height, ctx->screen->height_in_pixels);
+  }
 }
 
 static void sl_adjust_window_position_for_screen_size(
@@ -1834,6 +1837,10 @@ void sl_handle_client_message(struct sl_context* ctx,
             window->pending_fullscreen_change = true;
           }
         } else if (action == NET_WM_STATE_REMOVE) {
+          // Preemptively ask Exo to remove fullscreen then check during surface
+          // commit (ie. after all states aggregated).
+          window->maybe_promote_to_fullscreen = true;
+
           window->fullscreen = 0;
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
@@ -2257,7 +2264,17 @@ void sl_handle_property_notify(struct sl_context* ctx,
     if (!window)
       return;
 
-    window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
+    // TODO(b/331114878): It is probably more correct and safer to leave
+    // size_flags as-is and report min/max size explicitly.
+    if (sl_window_is_containerized(window)) {
+      // Always report min/max size if window is containerized. We want Exo to
+      // adjust window size (if appropriate) based on every window property
+      // change.
+      window->size_flags |= P_MIN_SIZE | P_MAX_SIZE;
+    } else {
+      // Don't report min/max size by default.
+      window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
+    }
 
     if (event->state != XCB_PROPERTY_DELETE) {
       struct sl_wm_size_hints size_hints = {0};

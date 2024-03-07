@@ -6,6 +6,7 @@
 #include "../sommelier-timing.h"     // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "../sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "../sommelier-window.h"     // NOLINT(build/include_directory)
 #include "../sommelier-xshape.h"     // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"   // NOLINT(build/include_directory)
 #include "sommelier-formats.h"       // NOLINT(build/include_directory)
@@ -26,6 +27,7 @@
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 struct sl_host_compositor {
   struct sl_compositor* compositor;
@@ -611,6 +613,7 @@ void sl_host_surface_commit(struct wl_client* client,
   if (host->ctx->timing != nullptr) {
     host->ctx->timing->UpdateLastCommit(resource_id);
   }
+  struct sl_window* window = host->window;
   struct sl_viewport* viewport = nullptr;
 
   if (!wl_list_empty(&host->contents_viewport))
@@ -755,6 +758,12 @@ void sl_host_surface_commit(struct wl_client* client,
                                       &vp_width, &vp_height)) {
         wp_viewport_shim()->set_destination(host->viewport, vp_width,
                                             vp_height);
+        if (window) {
+          window->viewport_width_realized = vp_width;
+          window->viewport_height_realized = vp_height;
+        }
+      } else {
+        wp_viewport_shim()->set_destination(host->viewport, -1, -1);
       }
     } else {
       wl_surface_set_buffer_scale(host->proxy, scale);
@@ -825,6 +834,21 @@ void sl_host_surface_commit(struct wl_client* client,
     sl_mmap_end_access(host->contents_shm_mmap);
     sl_mmap_unref(host->contents_shm_mmap);
     host->contents_shm_mmap = nullptr;
+  }
+
+  if (window && sl_window_is_containerized(window)) {
+    // Force borderless windows to be fullscreen if
+    // window->borderless_window_check - this value is set to true when
+    // client sends NET_WM_STATE_REMOVE for ATOM_NET_WM_STATE_FULLSCREEN.
+    if (!window->fullscreen && !window->decorated &&
+        !window->compositor_fullscreen && window->maybe_promote_to_fullscreen &&
+        !window->iconified && window->activated) {
+      window->maybe_promote_to_fullscreen = false;
+      // Requesting Exo to set the window to fullscreen will result in
+      // toplevel_configure, which updates the states (and
+      // compositor_fullscreen is set appropriately as per request).
+      xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
+    }
   }
 }
 

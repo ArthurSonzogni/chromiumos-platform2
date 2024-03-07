@@ -152,12 +152,16 @@ struct sl_host_surface {
   struct wl_surface* proxy;
   struct wp_viewport* viewport;
   struct wl_buffer* proxy_buffer;
+
+  // Window content size from XWayland: wl_surface.attach(passing a wl_buffer of
+  // size w', h').
   uint32_t contents_width;
   uint32_t contents_height;
   uint32_t contents_shm_format;
   int32_t contents_scale;
   int32_t contents_x_offset;
   int32_t contents_y_offset;
+
   double xdg_scale_x;
   double xdg_scale_y;
   bool scale_round_on_x;
