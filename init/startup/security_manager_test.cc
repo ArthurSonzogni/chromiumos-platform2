@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>
 #include <libstorage/platform/platform.h>
+#include <linux/loadpin.h>
 
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/mock_startup_dep_impl.h"
@@ -38,10 +39,6 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace {
-
-// Define in test to catch source changes in flags.
-constexpr auto kWriteFlags = O_WRONLY | O_NOFOLLOW | O_CLOEXEC;
-constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
 
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 constexpr char kPreserveSysKeyFile[] = "unencrypted/preserve/system.key";
@@ -201,32 +198,19 @@ TEST_F(SecurityManagerTest, EmptyAfter_v5_9) {
 TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
   ASSERT_TRUE(platform_->DeleteFile(loadpin_verity_path_));
 
-  base::ScopedFD loadpin_verity(
-      HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(),
-                        O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
-  // int fd = loadpin_verity.get();
-  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, _))
-      .WillOnce(Return(ByMove(std::move(loadpin_verity))));
-  // `loadpin_verity` is moved, do not use.
-  EXPECT_CALL(*mock_startup_dep_, Ioctl(_, _, _)).Times(0);
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
+      .Times(0);
 
+  // The call should succeed as there is no LoadPin verity file.
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
                                                  mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
-  ASSERT_TRUE(platform_->DeleteFile(loadpin_verity_path_));
-
-  base::ScopedFD loadpin_verity(
-      HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
-  // int fd = loadpin_verity.get();
-  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
-      .WillOnce(DoAll(
-          // Override the `errno` to be non-`ENOENT`.
-          InvokeWithoutArgs([] { errno = EACCES; }),
-          Return(ByMove(std::move(loadpin_verity)))));
-  // `loadpin_verity` is moved, do not use.
-  EXPECT_CALL(*mock_startup_dep_, Ioctl(_, _, _)).Times(0);
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
+      .Times(0);
 
   // The call should fail as failure to open LoadPin verity file.
   EXPECT_FALSE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
@@ -234,30 +218,39 @@ TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, ValidDigests) {
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
+      .WillOnce(Return(0));
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
                                                  mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
   ASSERT_TRUE(platform_->DeleteFile(trusted_verity_digests_path_));
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
+      .WillOnce(Return(0));
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
                                                  mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
+  // List all the expected calls to OpenFile.
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"));
   EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, "r"))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
+  EXPECT_CALL(*platform_, OpenFile(dev_null_path_, "r"));
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
+      .WillOnce(Return(0));
 
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
                                                  mock_startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"));
   EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, "r"))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
-
   EXPECT_CALL(*platform_, OpenFile(dev_null_path_, "r"))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
@@ -267,24 +260,7 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
-  base::ScopedFD loadpin_verity(
-      HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
-  int fd = loadpin_verity.get();
-
-  base::ScopedFD trusted_verity_digests(HANDLE_EINTR(
-      open(trusted_verity_digests_path_.value().c_str(), kReadFlags)));
-  int digests_fd = trusted_verity_digests.get();
-
-  EXPECT_CALL(*mock_startup_dep_, Open(loadpin_verity_path_, kWriteFlags))
-      .WillOnce(Return(ByMove(std::move(loadpin_verity))));
-  // `loadpin_verity` is moved, do not use.
-
-  EXPECT_CALL(*mock_startup_dep_,
-              Open(trusted_verity_digests_path_, kReadFlags))
-      .WillOnce(Return(ByMove(std::move(trusted_verity_digests))));
-  // `trusted_verity_digests` is moved, do not use.
-
-  EXPECT_CALL(*mock_startup_dep_, Ioctl(fd, _, IntPtrCheck(digests_fd)))
+  EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
       .WillOnce(Return(-1));
 
   EXPECT_FALSE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,

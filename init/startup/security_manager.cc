@@ -170,13 +170,14 @@ bool SetupLoadPinVerityDigests(libstorage::Platform* platform,
   //   2b. Otherwise, we must feed LoadPin with an invalid digests file.
 
   // Open (write) the LoadPin dm-verity attribute file.
-  FILE* fd = platform->OpenFile(loadpin_verity, "w");
-  if (!fd) {
+  if (!platform->FileExists(loadpin_verity)) {
     // This means LoadPin dm-verity attribute is not supported.
     // No further action is required.
-    if (errno == ENOENT) {
-      return true;
-    }
+    return true;
+  }
+
+  FILE* fd = platform->OpenFile(loadpin_verity, "w");
+  if (!fd) {
     // TODO(kimjae): Need to somehow handle this failure, as this still means
     // later a digest can get fed into LoadPin.
     PLOG(ERROR) << "Failed to open LoadPin verity file.";
@@ -205,7 +206,7 @@ bool SetupLoadPinVerityDigests(libstorage::Platform* platform,
 
   // Write trusted digests or /dev/null into LoadPin.
   int arg1 = fileno(digests_fd);
-  int ret = ioctl(fileno(fd), LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, &arg1);
+  int ret = platform->Ioctl(fd, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, &arg1);
   if (ret != 0) {
     PLOG(WARNING) << "Unable to setup trusted DLC verity digests";
   }
