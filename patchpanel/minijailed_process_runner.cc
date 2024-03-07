@@ -388,28 +388,29 @@ using ScopedIptablesBatchMode =
     MinijailedProcessRunner::ScopedIptablesBatchMode;
 
 ScopedIptablesBatchMode::ScopedIptablesBatchMode(
-    MinijailedProcessRunner* runner, bool* success)
-    : runner_(runner), success_(success) {
-  if (success_ != nullptr) {
-    *success = false;
-  }
-}
+    MinijailedProcessRunner* runner)
+    : runner_(runner) {}
 
 ScopedIptablesBatchMode::~ScopedIptablesBatchMode() {
-  bool ret = runner_->RunPendingIptablesInBatch();
-  if (success_ != nullptr) {
-    *success_ = ret;
+  if (runner_->iptables_batch_mode_) {
+    runner_->RunPendingIptablesInBatch();
   }
 }
 
 std::unique_ptr<ScopedIptablesBatchMode>
-MinijailedProcessRunner::AcquireIptablesBatchMode(bool* success) {
+MinijailedProcessRunner::AcquireIptablesBatchMode() {
   if (iptables_batch_mode_) {
     LOG(ERROR) << "Already in iptables batch mode";
     return nullptr;
   }
   iptables_batch_mode_ = true;
-  return base::WrapUnique(new ScopedIptablesBatchMode(this, success));
+  return base::WrapUnique(new ScopedIptablesBatchMode(this));
+}
+
+bool MinijailedProcessRunner::CommitIptablesRules(
+    std::unique_ptr<ScopedIptablesBatchMode> batch_mode) {
+  CHECK(batch_mode);
+  return RunPendingIptablesInBatch();
 }
 
 bool MinijailedProcessRunner::AppendPendingIptablesRule(

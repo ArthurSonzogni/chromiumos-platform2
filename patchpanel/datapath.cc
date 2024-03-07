@@ -18,6 +18,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -732,8 +733,7 @@ bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
 }
 
 bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
-  bool success = false;
-  auto batch_mode = process_runner_->AcquireIptablesBatchMode(&success);
+  auto batch_mode = process_runner_->AcquireIptablesBatchMode();
 
   const IpFamily family = ConvertIpFamily(rule.proxy_address.GetFamily());
   switch (rule.type) {
@@ -797,8 +797,13 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       return false;
   }
 
-  batch_mode = nullptr;
-  return success;
+  if (batch_mode) {
+    return process_runner_->CommitIptablesRules(std::move(batch_mode));
+  } else {
+    // This means that the caller of this function already acquired the batch
+    // mode. The execution will be done there.
+    return true;
+  }
 }
 
 void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {

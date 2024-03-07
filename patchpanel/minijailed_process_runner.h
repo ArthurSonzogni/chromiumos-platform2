@@ -38,10 +38,9 @@ class MinijailedProcessRunner {
    private:
     friend class MinijailedProcessRunner;  // to access ctor
 
-    ScopedIptablesBatchMode(MinijailedProcessRunner* runner, bool* success);
+    explicit ScopedIptablesBatchMode(MinijailedProcessRunner* runner);
 
     MinijailedProcessRunner* runner_;
-    bool* success_;
   };
 
   static MinijailedProcessRunner* GetInstance();
@@ -77,16 +76,19 @@ class MinijailedProcessRunner {
   //   the returning success only indicates that the input argument passes the
   //   basic check instead of the rule is executed successfully (return 0 on
   //   success or -1 otherwise).
-  // - When the returned object of this function is destructed, all the cached
-  //   iptables commands will be executed using iptables-restore. If |success|
-  //   is not nullptr, the execution result will be written into it so that the
-  //   caller can read it. |success| will be reset to false after this function
-  //   is called.
+  // - When either 1) the returned object of this function is destructed or 2)
+  //   CommitIptablesRules() is called, all the cached iptables commands will be
+  //   executed using iptables-restore. Their difference is that the caller can
+  //   get the execution result with CommitIptablesRules().
   // - Due to the nature of iptables-restore, the cached rules can be partially
   //   submitted on failure (if the cached rules are for multiple tables). Thus
   //   all the rules in batch must be expected to succeed.
-  std::unique_ptr<ScopedIptablesBatchMode> AcquireIptablesBatchMode(
-      bool* success = nullptr);
+  std::unique_ptr<ScopedIptablesBatchMode> AcquireIptablesBatchMode();
+
+  // Executes the pending rules started from |batch_mode| is acquired. This
+  // function has same effect with dropping |batch_mode| directly, except that
+  // this function will return whether the execution succeeded or not.
+  bool CommitIptablesRules(std::unique_ptr<ScopedIptablesBatchMode> batch_mode);
 
   // Runs iptables. If |output| is not nullptr, it will be filled with the
   // result from stdout of iptables command.
