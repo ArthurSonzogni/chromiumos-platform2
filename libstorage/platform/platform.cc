@@ -288,10 +288,11 @@ bool Platform::Mount(const FilePath& from,
                      const std::string& type,
                      uint32_t mount_flags,
                      const std::string& mount_options) {
-  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(from.IsAbsolute() || from.value().empty()) << "from=" << from;
   DCHECK(to.IsAbsolute()) << "to=" << to;
 
-  if (mount(from.value().c_str(), to.value().c_str(), type.c_str(), mount_flags,
+  std::string from_path = !from.value().empty() ? from.value() : type;
+  if (mount(from_path.c_str(), to.value().c_str(), type.c_str(), mount_flags,
             mount_options.c_str())) {
     return false;
   }
