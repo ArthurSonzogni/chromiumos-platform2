@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -18,7 +19,7 @@ namespace {
 
 class FirmwareDumpTest : public ::testing::Test {
  protected:
-  void SetUp() override { ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir()); }
+  void SetUp() override { CHECK(tmp_dir_.CreateUniqueTempDir()); }
 
   base::ScopedTempDir tmp_dir_;
 };
@@ -52,13 +53,13 @@ TEST_F(FirmwareDumpTest, DumpFileDots) {
 TEST_F(FirmwareDumpTest, DeleteRemovesFiles) {
   base::FilePath dmp(tmp_dir_.GetPath().Append("test"));
 
-  ASSERT_TRUE(base::WriteFile(dmp, "testdata"));
-  ASSERT_TRUE(base::PathExists(dmp));
+  base::WriteFile(dmp, "testdata");
+  EXPECT_TRUE(base::PathExists(dmp));
 
   FirmwareDump fw(dmp);
-  ASSERT_TRUE(fw.Delete());
+  EXPECT_TRUE(fw.Delete());
   // dmp file no longer exists.
-  ASSERT_FALSE(base::PathExists(dmp));
+  EXPECT_FALSE(base::PathExists(dmp));
 }
 
 TEST_F(FirmwareDumpTest, PrintToOStream) {
