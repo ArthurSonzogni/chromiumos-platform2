@@ -322,6 +322,7 @@ ChromeosStartup::ChromeosStartup(
 
 void ChromeosStartup::EarlySetup() {
   const base::FilePath sysfs = root_.Append(kSysfs);
+  const base::FilePath empty;
   gid_t debugfs_grp;
   if (!brillo::userdb::GetGroupInfo(kDebugfsAccessGrp, &debugfs_grp)) {
     PLOG(WARNING) << "Can't get gid for " << kDebugfsAccessGrp;
@@ -329,7 +330,7 @@ void ChromeosStartup::EarlySetup() {
     char data[25];
     snprintf(data, sizeof(data), "mode=0750,uid=0,gid=%d", debugfs_grp);
     const base::FilePath debug = sysfs.Append(kKernelDebug);
-    if (!startup_dep_->Mount("debugfs", debug, "debugfs", kCommonMountFlags,
+    if (!startup_dep_->Mount(empty, debug, "debugfs", kCommonMountFlags,
                              data)) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << debug.value();
@@ -343,7 +344,7 @@ void ChromeosStartup::EarlySetup() {
   // dependence on debugfs.
   const base::FilePath tracefs = sysfs.Append(kKernelTracing);
   // All users may need to access the tracing directory.
-  if (!startup_dep_->Mount("tracefs", tracefs, "tracefs", kCommonMountFlags,
+  if (!startup_dep_->Mount(empty, tracefs, "tracefs", kCommonMountFlags,
                            "mode=0755")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << tracefs.value();
@@ -352,8 +353,8 @@ void ChromeosStartup::EarlySetup() {
   // Mount configfs, if present.
   const base::FilePath configfs = sysfs.Append(kKernelConfig);
   if (base::DirectoryExists(configfs)) {
-    if (!startup_dep_->Mount("configfs", configfs, "configfs",
-                             kCommonMountFlags, "")) {
+    if (!startup_dep_->Mount(empty, configfs, "configfs", kCommonMountFlags,
+                             "")) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << configfs.value();
     }
@@ -367,7 +368,7 @@ void ChromeosStartup::EarlySetup() {
     const std::string data =
         base::StrCat({"mode=0770,gid=", std::to_string(bpffs_grp)});
     const base::FilePath bpffs = sysfs.Append(kBpf);
-    if (!startup_dep_->Mount("bpffs", bpffs, "bpf", kCommonMountFlags,
+    if (!startup_dep_->Mount(empty, bpffs, "bpf", kCommonMountFlags,
                              data.c_str())) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << bpffs.value();
@@ -376,8 +377,8 @@ void ChromeosStartup::EarlySetup() {
 
   // Mount securityfs as it is used to configure inode security policies below.
   const base::FilePath securityfs = sysfs.Append(kKernelSecurity);
-  if (!startup_dep_->Mount("securityfs", securityfs, "securityfs",
-                           kCommonMountFlags, "")) {
+  if (!startup_dep_->Mount(empty, securityfs, "securityfs", kCommonMountFlags,
+                           "")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << securityfs.value();
   }
@@ -948,7 +949,7 @@ int ChromeosStartup::Run() {
   // still possible.
   const base::FilePath kernel_sec =
       root_.Append(kSysfs).Append(kKernelSecurity);
-  if (!startup_dep_->Mount("securityfs", kernel_sec, "securityfs",
+  if (!startup_dep_->Mount(base::FilePath(), kernel_sec, "securityfs",
                            MS_REMOUNT | MS_RDONLY | kCommonMountFlags, "")) {
     PLOG(WARNING) << "Failed to remount " << kernel_sec << " as readonly.";
   }

@@ -135,7 +135,7 @@ TEST_F(UefiDelegateTest, MountEfivarfs) {
   ASSERT_TRUE(base::CreateDirectory(efivars_dir));
 
   EXPECT_CALL(mock_startup_dep_,
-              Mount(kFsTypeEfivarfs, efivars_dir, kFsTypeEfivarfs,
+              Mount(base::FilePath(), efivars_dir, kFsTypeEfivarfs,
                     kCommonMountFlags, "uid=123,gid=456"))
       .WillOnce(Return(true));
 
@@ -207,12 +207,13 @@ TEST_F(UefiDelegateTest, MountEfiSystemPartition) {
   ASSERT_TRUE(base::CreateDirectory(root_dir_.Append("run")));
 
   const base::FilePath esp_dir = root_dir_.Append(kEspDir);
+  const base::FilePath root_dev = base::FilePath("/dev/sda12");
 
   EXPECT_CALL(mock_startup_dep_, GetRootDevicePartitionPath(kEspLabel))
-      .WillOnce(Return(base::FilePath("/dev/sda12")));
+      .WillOnce(Return(root_dev));
   EXPECT_CALL(mock_startup_dep_,
-              Mount(base::FilePath("/dev/sda12"), esp_dir, kFsTypeVfat,
-                    kCommonMountFlags, "uid=123,gid=456,umask=007"))
+              Mount(root_dev, esp_dir, kFsTypeVfat, kCommonMountFlags,
+                    "uid=123,gid=456,umask=007"))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(uefi_delegate_->MountEfiSystemPartition(

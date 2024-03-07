@@ -55,11 +55,6 @@ class FakeStartupDep : public StartupDep {
              const std::string& type,
              unsigned long flags,  // NOLINT(runtime/int)
              const std::string& data) override;
-  bool Mount(const std::string& src,
-             const base::FilePath& dst,
-             const std::string& type,
-             unsigned long flags,  // NOLINT(runtime/int)
-             const std::string& data) override;
   bool Umount(const base::FilePath& path) override;
   base::ScopedFD Open(const base::FilePath& pathname, int flags) override;
   // NOLINTNEXTLINE(runtime/int)

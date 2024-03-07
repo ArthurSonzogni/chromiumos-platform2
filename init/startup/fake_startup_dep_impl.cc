@@ -103,20 +103,6 @@ bool FakeStartupDep::Mount(const base::FilePath& src,
   return src.value().compare(it->second) == 0;
 }
 
-bool FakeStartupDep::Mount(const std::string& src,
-                           const base::FilePath& dst,
-                           const std::string& type,
-                           unsigned long flags,  // NOLINT(runtime/int)
-                           const std::string& data) {
-  std::unordered_map<std::string, std::string>::iterator it;
-  it = mount_result_map_.find(dst.value());
-  if (it == mount_result_map_.end()) {
-    return false;
-  }
-
-  return src.compare(it->second) == 0;
-}
-
 bool FakeStartupDep::Umount(const base::FilePath& path) {
   umount_vector_.push_back(path.value());
   return true;

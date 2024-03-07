@@ -57,11 +57,6 @@ class StartupDep {
                      const std::string& type,
                      unsigned long flags,  // NOLINT(runtime/int)
                      const std::string& data);
-  virtual bool Mount(const std::string& src,
-                     const base::FilePath& dst,
-                     const std::string& type,
-                     unsigned long flags,  // NOLINT(runtime/int)
-                     const std::string& data);
 
   // Wrapper around umount(2).
   virtual bool Umount(const base::FilePath& path);

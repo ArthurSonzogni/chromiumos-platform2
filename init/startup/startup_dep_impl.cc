@@ -60,16 +60,8 @@ bool StartupDep::Mount(const base::FilePath& src,
                        const std::string& type,
                        const unsigned long flags,  // NOLINT(runtime/int)
                        const std::string& data) {
-  return mount(src.value().c_str(), dst.value().c_str(), type.c_str(), flags,
-               data.c_str()) == 0;
-}
-
-bool StartupDep::Mount(const std::string& src,
-                       const base::FilePath& dst,
-                       const std::string& type,
-                       const unsigned long flags,  // NOLINT(runtime/int)
-                       const std::string& data) {
-  return mount(src.c_str(), dst.value().c_str(), type.c_str(), flags,
+  std::string src_path = !src.value().empty() ? src.value() : type;
+  return mount(src_path.c_str(), dst.value().c_str(), type.c_str(), flags,
                data.c_str()) == 0;
 }
 

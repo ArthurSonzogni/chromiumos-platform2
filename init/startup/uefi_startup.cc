@@ -54,7 +54,7 @@ bool UefiDelegateImpl::MountEfivarfs(const UserAndGroup& fwupd) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
   const std::string data =
       "uid=" + std::to_string(fwupd.uid) + ",gid=" + std::to_string(fwupd.gid);
-  if (!startup_dep_.Mount(/*src=*/kFsTypeEfivarfs,
+  if (!startup_dep_.Mount(/*src=*/base::FilePath(),
                           /*dst=*/efivars_dir,
                           /*type=*/kFsTypeEfivarfs,
                           /*flags=*/kCommonMountFlags,

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_STARTUP_MOCK_PLATFORM_IMPL_H_
-#define INIT_STARTUP_MOCK_PLATFORM_IMPL_H_
+#ifndef INIT_STARTUP_MOCK_STARTUP_DEP_IMPL_H_
+#define INIT_STARTUP_MOCK_STARTUP_DEP_IMPL_H_
 
 #include <string>
 
@@ -27,14 +27,6 @@ class MockStartupDep : public StartupDep {
   MOCK_METHOD(bool,
               Mount,
               (const base::FilePath& src,
-               const base::FilePath& dst,
-               const std::string& type,
-               unsigned long flags,  // NOLINT(runtime/int)
-               const std::string& data),
-              (override));
-  MOCK_METHOD(bool,
-              Mount,
-              (const std::string& src,
                const base::FilePath& dst,
                const std::string& type,
                unsigned long flags,  // NOLINT(runtime/int)
@@ -64,4 +56,4 @@ class MockStartupDep : public StartupDep {
 
 }  // namespace startup
 
-#endif  // INIT_STARTUP_MOCK_PLATFORM_IMPL_H_
+#endif  // INIT_STARTUP_MOCK_STARTUP_DEP_IMPL_H_
