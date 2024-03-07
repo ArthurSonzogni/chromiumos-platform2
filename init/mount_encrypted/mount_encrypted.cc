@@ -20,7 +20,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
@@ -70,9 +69,8 @@ int main(int argc, const char* argv[]) {
   libstorage::StorageContainerFactory storage_container_factory(
       &platform, init_metrics::InitMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
-  brillo::LogicalVolumeManager lvm;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, &platform, &device_mapper, &lvm, &storage_container_factory);
+      rootdir, &platform, &device_mapper, &storage_container_factory);
 
   auto tpm_system_key = encryption::TpmSystemKey(
       &platform, init_metrics::InitMetrics::Get(), rootdir);

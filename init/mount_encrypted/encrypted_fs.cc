@@ -132,7 +132,6 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     const base::FilePath& rootdir,
     libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper,
-    brillo::LogicalVolumeManager* lvm,
     libstorage::StorageContainerFactory* storage_container_factory) {
   // Calculate the maximum size of the encrypted stateful partition.
   // truncate()/ftruncate() use int64_t for file size.
@@ -189,6 +188,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                      .fixed_backing = snapshot_exists}};
 
   } else {
+    brillo::LogicalVolumeManager* lvm = platform->GetLogicalVolumeManager();
     brillo::PhysicalVolume pv(stateful_device,
                               std::make_shared<brillo::LvmCommandRunner>());
     std::optional<brillo::VolumeGroup> vg = lvm->GetVolumeGroup(pv);

@@ -15,7 +15,6 @@
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
@@ -64,7 +63,6 @@ class EncryptedFs {
       const base::FilePath& rootdir,
       libstorage::Platform* platform,
       brillo::DeviceMapper* device_mapper,
-      brillo::LogicalVolumeManager* lvm,
       libstorage::StorageContainerFactory* storage_container_factory);
 
   // Setup mounts the encrypted mount by:
