@@ -4,6 +4,7 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <unordered_set>
@@ -13,6 +14,7 @@
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -866,6 +868,40 @@ MaybeCrashReport ModemfwdParser::ParseLogEntry(const std::string& line) {
   return CrashReport(
       std::move(text),
       {"--modemfwd_failure", base::StringPrintf("--weight=%d", weight)});
+}
+
+SessionManagerParser::SessionManagerParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+// Logged by session_manager when browser takes too long to respond to a ping.
+constexpr LazyRE2 browser_hang = {R"(Browser responded to ping after (\d+)s)"};
+
+MaybeCrashReport SessionManagerParser::ParseLogEntry(const std::string& line) {
+  std::string response_time;
+  if (!RE2::PartialMatch(line, *browser_hang, &response_time)) {
+    return std::nullopt;
+  }
+
+  int val;
+  if (!base::StringToInt(response_time, &val)) {
+    LOG(ERROR) << "Failed to parse " << response_time;
+    return std::nullopt;
+  }
+
+  // Weight is calculated based on how long the browser was unresponsive for.
+  // The upper bound is 60s. After that time session_manager will restart the
+  // browser. For now hangs shorter than 6s are ignored.
+  if (val < 6) {
+    return std::nullopt;
+  }
+
+  int weight = std::max(1, 60 - val);
+  if (!testonly_send_all_ && base::RandGenerator(weight) != 0) {
+    return std::nullopt;
+  }
+
+  return CrashReport(
+      base::StrCat({"browser_hang-", response_time, "s\n"}),
+      {"--browser_hang", base::StringPrintf("--weight=%d", weight)});
 }
 
 }  // namespace anomaly

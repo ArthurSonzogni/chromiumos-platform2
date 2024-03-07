@@ -41,6 +41,7 @@ const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
 const char* const GenericFailureCollector::kHermesFailure = "hermes_failure";
 const char* const GenericFailureCollector::kTetheringFailure =
     "tethering-failure";
+const char* const GenericFailureCollector::kBrowserHang = "browser_hang";
 
 GenericFailureCollector::GenericFailureCollector(
     const scoped_refptr<
@@ -201,6 +202,12 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
               .cb = base::BindRepeating(
                   &GenericFailureCollector::CollectWithWeight,
                   generic_failure_collector, kTetheringFailure, options.weight),
+          },
+          {
+              .should_handle = options.browser_hang,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kBrowserHang, options.weight),
           },
       }};
 }

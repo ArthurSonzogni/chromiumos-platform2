@@ -93,6 +93,8 @@ Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
       std::make_unique<anomaly::HermesParser>(testonly_send_all);
   parsers_["modemfwd"] =
       std::make_unique<anomaly::ModemfwdParser>(testonly_send_all);
+  parsers_["session_manager"] =
+      std::make_unique<anomaly::SessionManagerParser>(testonly_send_all);
 
   // If any log file is missing, the LogReader will try to reopen the file on
   // GetNextEntry method call. After multiple attempts however LogReader will

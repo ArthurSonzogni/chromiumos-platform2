@@ -37,6 +37,7 @@ using ::anomaly::ParserRun;
 using ::anomaly::ParserTest;
 using ::anomaly::SELinuxParser;
 using ::anomaly::ServiceParser;
+using ::anomaly::SessionManagerParser;
 using ::anomaly::ShillParser;
 using ::anomaly::SuspendParser;
 using ::anomaly::TcsdParser;
@@ -929,4 +930,13 @@ TEST(AnomalyDetectorTest, CellularFailureModemfwdNonCellularSku) {
   ModemfwdParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_MODEMFWD_FAILURE_SKIP_UPLOAD",
              {modemfwd_failure_non_cellular}, &parser);
+}
+
+TEST(AnomalyDetectorTest, BrowserHang) {
+  ParserRun browser_hang = {
+      .expected_substr = "browser_hang-20s",
+      .expected_flags = {
+          {"--browser_hang", base::StringPrintf("--weight=%d", 40)}}};
+  SessionManagerParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_BROWSER_HANG", {browser_hang}, &parser);
 }

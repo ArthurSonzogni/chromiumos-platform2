@@ -377,6 +377,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(guest_oom_event, false,
               "OOM event in Crostini (captured via stdin)");
   DEFINE_bool(tethering_failure, false, "Report tethering failure");
+  DEFINE_bool(browser_hang, false, "Report browser hang");
 
   OpenStandardFileDescriptors();
 
@@ -679,6 +680,7 @@ int main(int argc, char* argv[]) {
       .service_failure = FLAGS_service_failure,
       .guest_oom_event = FLAGS_guest_oom_event,
       .tethering_failure = FLAGS_tethering_failure,
+      .browser_hang = FLAGS_browser_hang,
       .weight = FLAGS_weight};
 
   collectors.push_back(GenericFailureCollector::GetHandlerInfo(
