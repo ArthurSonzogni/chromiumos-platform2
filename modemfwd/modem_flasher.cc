@@ -22,7 +22,6 @@
 #include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/notification_manager.h"
-#include "modemfwd/upstart_job_controller.h"
 
 namespace modemfwd {
 
