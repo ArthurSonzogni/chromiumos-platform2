@@ -15,7 +15,7 @@
 #include "base/task/single_thread_task_runner.h"
 
 namespace lorgnette {
-constexpr char kDlcId[] = "sane-backends-extras-dlc";
+constexpr char kDlcId[] = "sane-backends-pfu";
 
 void DlcClient::Init(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>

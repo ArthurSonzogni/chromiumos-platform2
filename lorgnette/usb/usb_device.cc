@@ -19,8 +19,9 @@ namespace {
 
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
-// TODO(rishabhagr) Change this to actual values
-std::set<VidPid> kScannersRequiringDlc = {};
+// Scanners requiring the sane-backends-pfu DLC.
+std::set<VidPid> kScannersRequiringDlc = {
+    {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff}, {0x05ca, 0x0307}};
 
 }  // namespace
 
