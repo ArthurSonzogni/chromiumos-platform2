@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -22,11 +23,15 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 #include <base/task/bind_post_task.h>
+#include <ml_core/dlc/dlc_ids.h>
 #include <sys/types.h>
 
 #include "common/camera_hal3_helpers.h"
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "cutils/native_handle.h"
 #include "features/auto_framing/tracing.h"
+#include "features/super_resolution/single_frame_upsampler.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/shared_image.h"
 
@@ -58,6 +63,31 @@ constexpr uint32_t kStillYuvBufferUsage =
     GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE;
 #endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 constexpr int kSyncWaitTimeoutMs = 300;
+
+inline int DivideRoundUp(int dividend, int divisor) {
+  CHECK_GT(divisor, 0);
+  return (dividend + divisor - 1) / divisor;
+}
+
+// Ensure even input dimensions for GPU cropping.
+std::pair<uint32_t, uint32_t> GetEvenInputDimensions(
+    const Rect<float>& crop_region, const Size& active_array_dimension) {
+  const uint32_t crop_width =
+      DivideRoundUp(crop_region.width * active_array_dimension.width, 2) * 2;
+  const uint32_t crop_height =
+      DivideRoundUp(crop_region.height * active_array_dimension.height, 2) * 2;
+  return std::make_pair(crop_width, crop_height);
+}
+
+// Check if the request can be applied upsampling.
+bool IsUpsampleRequestValid(uint32_t target_width,
+                            uint32_t target_height,
+                            const Rect<float>& adjusted_crop_region,
+                            const Size& active_array_dimension) {
+  auto [crop_width, crop_height] =
+      GetEvenInputDimensions(adjusted_crop_region, active_array_dimension);
+  return target_width > crop_width && target_height > crop_height;
+}
 
 // Find the largest (video, still) stream resolutions with full FOV.
 std::pair<Size, Size> GetFullFrameResolutions(
@@ -332,6 +362,12 @@ FramingStreamManipulator::FramingStreamManipulator(
     config_.SetCallback(base::BindRepeating(
         &FramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   }
+
+  const base::FilePath dlc_root_path =
+      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
+  if (!dlc_root_path.empty()) {
+    CreateUpsampler(dlc_root_path);
+  }
 }
 
 FramingStreamManipulator::~FramingStreamManipulator() {
@@ -471,6 +507,17 @@ bool FramingStreamManipulator::IsManualZoomSupported() {
   }
   // TODO(b/314267048): Enable by default once the feature is launched.
   return false;
+}
+
+void FramingStreamManipulator::CreateUpsampler(
+    const base::FilePath& dlc_root_path) {
+  DCHECK(!single_frame_upsampler_);
+  single_frame_upsampler_ = std::make_unique<SingleFrameUpsampler>();
+
+  if (!single_frame_upsampler_->Initialize(dlc_root_path)) {
+    LOGF(ERROR) << "Failed to initialize SingleFrameUpsampler";
+    single_frame_upsampler_ = nullptr;
+  }
 }
 
 bool FramingStreamManipulator::InitializeOnThread(
@@ -671,8 +718,11 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
           .height = full_frame_stream_.height,
           .format = base::checked_cast<uint32_t>(full_frame_stream_.format),
           .usage = full_frame_stream_.usage,
+          // TODO(b/328541174): We will get full frame buffer allocation errors
+          // during still capture request. Temporarily increase the buffer count
+          // as a workaround.
           .max_num_buffers =
-              base::strict_cast<size_t>(full_frame_stream_.max_buffers) + 1,
+              base::strict_cast<size_t>(full_frame_stream_.max_buffers) + 2,
       });
 
   if (blob_stream_) {
@@ -968,6 +1018,12 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
       "frame_number", frame_number,
       perfetto::Flow::ProcessScoped(full_frame_buffer.flow_id()));
 
+  const base::FilePath dlc_root_path =
+      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
+  if (!single_frame_upsampler_ && !dlc_root_path.empty()) {
+    CreateUpsampler(dlc_root_path);
+  }
+
   if (full_frame_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
              << frame_number;
@@ -1010,9 +1066,10 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
           static_cast<float>(full_frame_size_.height * b.stream->width) /
               static_cast<float>(full_frame_size_.width * b.stream->height));
     }
-    std::optional<base::ScopedFD> release_fence = CropBufferOnThread(
-        *full_frame_buffer.buffer(), base::ScopedFD(), *b.buffer,
-        base::ScopedFD(b.acquire_fence), adjusted_crop_region);
+    std::optional<base::ScopedFD> release_fence =
+        CropAndScaleOnThread(*full_frame_buffer.buffer(), base::ScopedFD(),
+                             *b.buffer, base::ScopedFD(b.acquire_fence),
+                             adjusted_crop_region, /*try_upsample=*/false);
     if (!release_fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
       ++metrics_.errors[AutoFramingError::kProcessResultError];
@@ -1037,10 +1094,10 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
         *ctx->crop_region,
         static_cast<float>(full_frame_size_.height * blob_stream_->width) /
             static_cast<float>(full_frame_size_.width * blob_stream_->height));
-    std::optional<base::ScopedFD> release_fence =
-        CropBufferOnThread(*full_frame_buffer.buffer(), base::ScopedFD(),
-                           *ctx->cropped_still_yuv_buffer->handle(),
-                           base::ScopedFD(), adjusted_crop_region);
+    std::optional<base::ScopedFD> release_fence = CropAndScaleOnThread(
+        *full_frame_buffer.buffer(), base::ScopedFD(),
+        *ctx->cropped_still_yuv_buffer->handle(), base::ScopedFD(),
+        adjusted_crop_region, /*try_upsample=*/true);
     if (!release_fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
       ++metrics_.errors[AutoFramingError::kProcessResultError];
@@ -1063,6 +1120,12 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
   DCHECK_NE(ctx, nullptr);
   TRACE_AUTO_FRAMING("frame_number", frame_number,
                      perfetto::Flow::ProcessScoped(still_yuv_buffer.flow_id()));
+
+  const base::FilePath dlc_root_path =
+      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
+  if (!single_frame_upsampler_ && !dlc_root_path.empty()) {
+    CreateUpsampler(dlc_root_path);
+  }
 
   if (still_yuv_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "
@@ -1088,11 +1151,11 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
       *ctx->crop_region,
       static_cast<float>(full_frame_size_.height * blob_stream_->width) /
           static_cast<float>(full_frame_size_.width * blob_stream_->height));
-  std::optional<base::ScopedFD> release_fence =
-      CropBufferOnThread(*still_yuv_buffer.buffer(),
-                         base::ScopedFD(still_yuv_buffer.take_release_fence()),
-                         *ctx->cropped_still_yuv_buffer->handle(),
-                         base::ScopedFD(), adjusted_crop_region);
+  std::optional<base::ScopedFD> release_fence = CropAndScaleOnThread(
+      *still_yuv_buffer.buffer(),
+      base::ScopedFD(still_yuv_buffer.take_release_fence()),
+      *ctx->cropped_still_yuv_buffer->handle(), base::ScopedFD(),
+      adjusted_crop_region, /*try_upsample=*/true);
   if (!release_fence.has_value()) {
     LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
     ++metrics_.errors[AutoFramingError::kProcessResultError];
@@ -1573,12 +1636,13 @@ void FramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
   capture_contexts_.erase(frame_number);
 }
 
-std::optional<base::ScopedFD> FramingStreamManipulator::CropBufferOnThread(
+std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
     buffer_handle_t input_yuv,
     base::ScopedFD input_release_fence,
     buffer_handle_t output_yuv,
     base::ScopedFD output_acquire_fence,
-    const Rect<float>& crop_region) {
+    const Rect<float>& crop_region,
+    bool try_upsample) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
 
@@ -1593,6 +1657,22 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropBufferOnThread(
     return std::nullopt;
   }
 
+  bool is_upsample_request =
+      try_upsample && single_frame_upsampler_ &&
+      IsUpsampleRequestValid(CameraBufferManager::GetWidth(output_yuv),
+                             CameraBufferManager::GetHeight(output_yuv),
+                             crop_region, active_array_dimension_);
+
+  // Allocate a buffer to hold the cropped yuv for still capture upsampling.
+  ScopedBufferHandle upsample_input_buffer;
+  if (is_upsample_request) {
+    auto [crop_width, crop_height] =
+        GetEvenInputDimensions(crop_region, active_array_dimension_);
+    upsample_input_buffer = CameraBufferManager::AllocateScopedBuffer(
+        crop_width, crop_height, HAL_PIXEL_FORMAT_YCbCr_420_888,
+        kStillYuvBufferUsage);
+  }
+
   SharedImage input_image = SharedImage::CreateFromBuffer(
       input_yuv, Texture2D::Target::kTarget2D, true);
   if (!input_image.IsValid()) {
@@ -1600,7 +1680,8 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropBufferOnThread(
     return std::nullopt;
   }
   SharedImage output_image = SharedImage::CreateFromBuffer(
-      output_yuv, Texture2D::Target::kTarget2D, true);
+      is_upsample_request ? *upsample_input_buffer : output_yuv,
+      Texture2D::Target::kTarget2D, true);
   if (!output_image.IsValid()) {
     LOGF(ERROR) << "Failed to create shared image from output buffer";
     return std::nullopt;
@@ -1610,6 +1691,18 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropBufferOnThread(
       input_image.y_texture(), input_image.uv_texture(), crop_region,
       output_image.y_texture(), output_image.uv_texture(),
       options_.output_filter_mode);
+
+  // Perform upsampling on the cropped yuv buffer for still capture.
+  if (is_upsample_request) {
+    std::optional<base::ScopedFD> upsample_fence =
+        single_frame_upsampler_->ProcessRequest(
+            *upsample_input_buffer, output_yuv, EglFence().GetNativeFd());
+    if (!upsample_fence.has_value()) {
+      LOGF(ERROR) << "Failed to upsample from cropped buffer";
+      return std::nullopt;
+    }
+    return upsample_fence;
+  }
 
   EglFence fence;
   return fence.GetNativeFd();

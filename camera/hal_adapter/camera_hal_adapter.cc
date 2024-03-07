@@ -26,6 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/files/file_util.h>
 #include <camera/camera_metadata.h>
+#include <libsegmentation/feature_management.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <system/camera_metadata_hidden.h>
 
@@ -72,6 +73,13 @@ constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 
 const char kEffectsLibraryPath[] = "/usr/share/cros-camera/libfs";
+
+// Return true if single frame super resolution is supported on the device.
+bool IsSuperResolutionSupported() {
+  segmentation::FeatureManagement feature_management;
+  return feature_management.GetFeatureLevel() == 1;
+}
+
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -147,9 +155,7 @@ bool CameraHalAdapter::Start() {
     LOGF(INFO) << "Effects are not enabled, skipping DLC.";
   }
 
-  // TODO(julianachang): Temporarily setting `super_res_enabled_` to false.
-  // Selective enabling will be implemented in a follow-up work.
-  if (super_res_enabled_) {
+  if (IsSuperResolutionSupported()) {
     LOGF(INFO) << "Super resolution is enabled. Setting DLC root path.";
 
     super_res_dlc_client_ = DlcClient::Create(

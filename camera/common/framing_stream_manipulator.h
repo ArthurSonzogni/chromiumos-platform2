@@ -28,6 +28,7 @@
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
 #include "features/auto_framing/auto_framing_client.h"
 #endif
+#include "features/super_resolution/single_frame_upsampler.h"
 
 namespace cros {
 
@@ -136,6 +137,8 @@ class FramingStreamManipulator : public StreamManipulator {
     base::flat_map<AutoFramingError, int> errors;
   };
 
+  void CreateUpsampler(const base::FilePath& dlc_root_path);
+
   bool InitializeOnThread(const camera_metadata_t* static_info,
                           StreamManipulator::Callbacks callbacks);
   bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
@@ -167,14 +170,17 @@ class FramingStreamManipulator : public StreamManipulator {
   CaptureContext* GetCaptureContext(uint32_t frame_number) const;
   void RemoveCaptureContext(uint32_t frame_number);
 
-  // Crops |input_yuv| into |output_yuv| with the |crop_region|.  Returns
-  // release fence on the output buffer, or nullopt if there's failure.
-  std::optional<base::ScopedFD> CropBufferOnThread(
+  // Perform single frame upsampling on still capture. Default to use Bicubic
+  // algorithm to crop and scale. Crops |input_yuv| into |output_yuv| with the
+  // |crop_region|. Returns release fence on the output buffer, or nullopt if
+  // there's failure.
+  std::optional<base::ScopedFD> CropAndScaleOnThread(
       buffer_handle_t input_yuv,
       base::ScopedFD input_fence,
       buffer_handle_t output_yuv,
       base::ScopedFD output_fence,
-      const Rect<float>& crop_region);
+      const Rect<float>& crop_region,
+      bool try_upsample);
 
   bool GetAutoFramingEnabled();
 
@@ -186,6 +192,9 @@ class FramingStreamManipulator : public StreamManipulator {
   GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   StreamManipulator::Callbacks callbacks_;
+
+  // SingleFrameUpsampler instance.
+  std::unique_ptr<SingleFrameUpsampler> single_frame_upsampler_;
 
   std::unique_ptr<CameraMetrics> camera_metrics_;
 

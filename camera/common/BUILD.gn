@@ -321,6 +321,7 @@ source_set("stream_manipulator") {
 
   deps = [
     ":jpeg",
+    "//camera/features/super_resolution",
     "//camera/gpu:gpu_resources",
   ]
   if (use.camera_feature_auto_framing) {
