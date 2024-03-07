@@ -276,7 +276,6 @@ void sl_internal_toplevel_configure(struct sl_window* window,
   if (width && height) {
     int32_t width_in_pixels = width;
     int32_t height_in_pixels = height;
-    int value_idx = 0;
 
     // We are receiving a request to resize a window (in logical dimensions)
     // If the request is equal to the cached values we used to make adjustments
@@ -296,99 +295,135 @@ void sl_internal_toplevel_configure(struct sl_window* window,
     sl_transform_host_to_guest(window->ctx, window->paired_surface,
                                &width_in_pixels, &height_in_pixels);
 
-    // Workaround using viewport for when Exo sets sizes that are not
-    // within the bounds the client requested.
-    // TODO(b/316990641): Implement resizing via viewports if
-    // window->fullscreen==true but window->compositor_fullscreen==false.
-    // Only do this when --only-client-can-exit-fullscreen is set.
-    if (window->ctx->viewport_resize &&
-        ((window->max_width != 0 && width_in_pixels > window->max_width) ||
-         (window->min_width != 0 && width_in_pixels < window->min_width) ||
-         (window->max_height != 0 && height_in_pixels > window->max_height) ||
-         (window->min_height != 0 && height_in_pixels < window->min_height))) {
-      window->viewport_override = true;
-      float width_ratio = static_cast<float>(window->width) / width_in_pixels;
-      float height_ratio =
-          static_cast<float>(window->height) / height_in_pixels;
-      if (std::abs(width_ratio - height_ratio) < 0.01) {
-        window->viewport_override = true;
-        window->viewport_width = width;
-        window->viewport_height = height;
-        // If Exo sets a size that is of a different aspect ratio we shrink
-        // the window to maintain aspect ratio. We do this by always shrinking
-        // the side that is now proportionally larger as if we expand the
-        // smaller side it might result in the window becoming larger than the
-        // allowed bounds of the screen.
-      } else if (width_ratio < height_ratio) {
-        window->viewport_width =
-            (static_cast<float>(window->width) * height) / window->height;
-        window->viewport_height = height;
-
-      } else if (width_ratio > height_ratio) {
-        window->viewport_height =
-            (static_cast<float>(window->height) * width) / window->width;
-        window->viewport_width = width;
-      }
-
-      int32_t window_width = window->width;
-      int32_t window_height = window->height;
-      sl_transform_guest_to_host(window->ctx, window->paired_surface,
-                                 &window_width, &window_height);
-      window->viewport_pointer_scale =
-          static_cast<float>(window_width) / window->viewport_width;
-      xdg_toplevel_set_min_size(window->xdg_toplevel, window->viewport_width,
-                                window->viewport_height);
-      xdg_toplevel_set_max_size(window->xdg_toplevel, window->viewport_width,
-                                window->viewport_height);
-    } else if (window->viewport_override) {
-      window->viewport_width = -1;
-      window->viewport_height = -1;
-      wp_viewport_shim()->set_destination(paired_surface->viewport,
-                                          window->viewport_width,
-                                          window->viewport_height);
-      window->viewport_override = false;
-    }
-    window->next_config.mask = XCB_CONFIG_WINDOW_WIDTH |
-                               XCB_CONFIG_WINDOW_HEIGHT |
-                               XCB_CONFIG_WINDOW_BORDER_WIDTH;
-    if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
-      // Convert to virtual coordinates
-      int32_t guest_x = x;
-      int32_t guest_y = y;
-      sl_transform_host_position_to_guest_position(
-          window->ctx, window->paired_surface, &guest_x, &guest_y);
-
-      window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      window->next_config.values[value_idx++] = guest_x;
-      window->next_config.values[value_idx++] = guest_y;
-    } else if (!(window->size_flags & (US_POSITION | P_POSITION))) {
-      window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      const sl_host_output* output = window->paired_surface
-                                         ? window->paired_surface->output.get()
-                                         : nullptr;
-      if (output) {
-        window->next_config.values[value_idx++] =
-            output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
-        window->next_config.values[value_idx++] =
-            (output->virt_rotated_height - height_in_pixels) / 2;
-      } else {
-        window->next_config.values[value_idx++] =
-            window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
-        window->next_config.values[value_idx++] =
-            window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
-      }
-    }
-    if (window->viewport_override) {
-      window->next_config.values[value_idx++] = window->width;
-      window->next_config.values[value_idx++] = window->height;
-      window->next_config.values[value_idx++] = 0;
-    } else {
-      window->next_config.values[value_idx++] = width_in_pixels;
-      window->next_config.values[value_idx++] = height_in_pixels;
-      window->next_config.values[value_idx++] = 0;
-    }
+    int config_idx = 0;
+    window->next_config.mask = 0;
+    // Refer to enum xcb_config_window_t for the order of configuration,
+    // position must be done before size.
+    sl_internal_toplevel_configure_position(window, x, y, width_in_pixels,
+                                            height_in_pixels, config_idx);
+    sl_internal_toplevel_configure_size(window, x, y, width, height,
+                                        width_in_pixels, height_in_pixels,
+                                        config_idx);
   }
 
+  sl_internal_toplevel_configure_state(window, states);
+}
+
+void sl_internal_toplevel_configure_size(struct sl_window* window,
+                                         int32_t x,
+                                         int32_t y,
+                                         int32_t host_width,
+                                         int32_t host_height,
+                                         int32_t width_in_pixels,
+                                         int32_t height_in_pixels,
+                                         int& mut_config_idx) {
+  // Workaround using viewport for when Exo sets sizes that are not
+  // within the bounds the client requested.
+  // TODO(b/316990641): Implement resizing via viewports if
+  // window->fullscreen==true but window->compositor_fullscreen==false.
+  // Only do this when --only-client-can-exit-fullscreen is set.
+  if (window->ctx->viewport_resize &&
+      ((window->max_width != 0 && width_in_pixels > window->max_width) ||
+       (window->min_width != 0 && width_in_pixels < window->min_width) ||
+       (window->max_height != 0 && height_in_pixels > window->max_height) ||
+       (window->min_height != 0 && height_in_pixels < window->min_height))) {
+    window->viewport_override = true;
+    float width_ratio = static_cast<float>(window->width) / width_in_pixels;
+    float height_ratio = static_cast<float>(window->height) / height_in_pixels;
+    if (std::abs(width_ratio - height_ratio) < 0.01) {
+      window->viewport_override = true;
+      window->viewport_width = host_width;
+      window->viewport_height = host_height;
+      // If Exo sets a size that is of a different aspect ratio we shrink
+      // the window to maintain aspect ratio. We do this by always shrinking
+      // the side that is now proportionally larger as if we expand the
+      // smaller side it might result in the window becoming larger than the
+      // allowed bounds of the screen.
+    } else if (width_ratio < height_ratio) {
+      window->viewport_width =
+          (static_cast<float>(window->width) * host_height) / window->height;
+      window->viewport_height = host_height;
+
+    } else if (width_ratio > height_ratio) {
+      window->viewport_height =
+          (static_cast<float>(window->height) * host_width) / window->width;
+      window->viewport_width = host_width;
+    }
+
+    int32_t window_width = window->width;
+    int32_t window_height = window->height;
+    sl_transform_guest_to_host(window->ctx, window->paired_surface,
+                               &window_width, &window_height);
+    window->viewport_pointer_scale =
+        static_cast<float>(window_width) / window->viewport_width;
+    xdg_toplevel_set_min_size(window->xdg_toplevel, window->viewport_width,
+                              window->viewport_height);
+    xdg_toplevel_set_max_size(window->xdg_toplevel, window->viewport_width,
+                              window->viewport_height);
+  } else if (window->viewport_override) {
+    window->viewport_width = -1;
+    window->viewport_height = -1;
+    wp_viewport_shim()->set_destination(window->paired_surface->viewport,
+                                        window->viewport_width,
+                                        window->viewport_height);
+    window->viewport_override = false;
+  }
+
+  window->next_config.mask |= XCB_CONFIG_WINDOW_WIDTH |
+                              XCB_CONFIG_WINDOW_HEIGHT |
+                              XCB_CONFIG_WINDOW_BORDER_WIDTH;
+  if (window->viewport_override) {
+    window->next_config.values[mut_config_idx++] = window->width;
+    window->next_config.values[mut_config_idx++] = window->height;
+    window->next_config.values[mut_config_idx++] = 0;
+  } else {
+    window->next_config.values[mut_config_idx++] = width_in_pixels;
+    window->next_config.values[mut_config_idx++] = height_in_pixels;
+    window->next_config.values[mut_config_idx++] = 0;
+  }
+}
+
+void sl_internal_toplevel_configure_position(struct sl_window* window,
+                                             uint32_t x,
+                                             uint32_t y,
+                                             int32_t width_in_pixels,
+                                             int32_t height_in_pixels,
+                                             int& mut_config_idx) {
+  if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
+    // Convert to virtual coordinates
+    int32_t guest_x = x;
+    int32_t guest_y = y;
+
+    sl_transform_host_position_to_guest_position(
+        window->ctx, window->paired_surface, &guest_x, &guest_y);
+
+    window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+    window->next_config.values[mut_config_idx++] = guest_x;
+    window->next_config.values[mut_config_idx++] = guest_y;
+
+  } else if (!(window->size_flags & (US_POSITION | P_POSITION))) {
+    uint32_t new_x = 0;
+    uint32_t new_y = 0;
+
+    const sl_host_output* output =
+        window->paired_surface ? window->paired_surface->output.get() : nullptr;
+    if (output) {
+      new_x =
+          output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
+      new_y = (output->virt_rotated_height - height_in_pixels) / 2;
+    } else {
+      new_x = window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
+      new_y = window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
+    }
+
+    window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+    window->next_config.values[mut_config_idx++] = new_x;
+    window->next_config.values[mut_config_idx++] = new_y;
+  }
+}
+
+void sl_internal_toplevel_configure_state(struct sl_window* window,
+                                          struct wl_array* states) {
   // States: https://wayland.app/protocols/xdg-shell#xdg_toplevel:enum:state
   // Note that if there are no states specified, it is not-maximized,
   // not-fullscreen, not-currently-being-resized and not-activated window.

@@ -244,6 +244,22 @@ void sl_internal_toplevel_configure(struct sl_window* window,
                                     int32_t width,
                                     int32_t height,
                                     struct wl_array* states);
+void sl_internal_toplevel_configure_size(struct sl_window* window,
+                                         int32_t x,
+                                         int32_t y,
+                                         int32_t host_width,
+                                         int32_t host_height,
+                                         int32_t width_in_pixels,
+                                         int32_t height_in_pixels,
+                                         int& mut_config_idx);
+void sl_internal_toplevel_configure_position(struct sl_window* window,
+                                             uint32_t x,
+                                             uint32_t y,
+                                             int32_t width_in_pixels,
+                                             int32_t height_in_pixels,
+                                             int& mut_config_idx);
+void sl_internal_toplevel_configure_state(struct sl_window* window,
+                                          struct wl_array* states);
 
 int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface);
