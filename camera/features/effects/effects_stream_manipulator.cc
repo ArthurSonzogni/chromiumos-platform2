@@ -67,6 +67,9 @@ namespace {
 const int kSyncWaitTimeoutMs = 1000;
 const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
 const uint32_t kMaxInflightReprocessingRequests = 20;
+// Practically most HALs configure <= 6 in-flight requests. Too high value
+// may cause OOM; too low can cause frame drops in the graph.
+const int kGraphMaxFramesInflightDefault = 7;
 
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
@@ -331,6 +334,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   void SetEffect(EffectsConfig new_config);
   bool SetupGlThread(base::FilePath config_file_path);
+  // Load the pipeline with effects config from |runtime_options_|.
+  bool EnsurePipelineSetupOnGlThread();
   void ShutdownOnGlThread();
   void RenderEffect(std::unique_ptr<ProcessContext> process_context,
                     int64_t timestamp);
@@ -362,8 +367,9 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   StreamManipulator::Callbacks callbacks_;
 
   // Maximum number of frames that can be queued into effects pipeline.
-  // Determined at stream configuration.
-  uint32_t graph_max_frames_in_flight_ = 0;
+  // Use the default value to setup the pipeline early.
+  // This will be updated at stream configuration.
+  uint32_t graph_max_frames_in_flight_ = kGraphMaxFramesInflightDefault;
 
   ReprocessingRequestTracker reprocessing_request_tracker_;
 
@@ -577,6 +583,40 @@ bool EffectsStreamManipulatorImpl::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   callbacks_ = std::move(callbacks);
+  gl_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::BindOnce(
+          &EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread,
+          base::Unretained(this)));
+  return true;
+}
+
+bool EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread() {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  if (!pipeline_ &&
+      !runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId).empty()) {
+    CreatePipeline(base::FilePath(
+        runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)));
+  }
+  if (!pipeline_)
+    return false;
+
+  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig(),
+                                      default_segmentation_model_type_);
+  if (active_runtime_effects_config_ != new_config) {
+    active_runtime_effects_config_ = new_config;
+    // Ignore the mojo config if the override config file is being used. This is
+    // to avoid race conditions in tests where Chrome is also setting a default
+    // (no-op) config mojo. Note that this flag isn't unset, so the camera
+    // service must be restarted after the override config file has been
+    // deleted.
+    if (!override_config_exists_) {
+      SetEffect(new_config);
+    } else {
+      LOGF(WARNING) << "Override config exists, ignoring mojo effect settings: "
+                    << kOverrideEffectsConfigFile;
+    }
+  }
   return true;
 }
 
@@ -880,29 +920,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     return true;
   }
 
-  if (!pipeline_ &&
-      !runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId).empty()) {
-    CreatePipeline(base::FilePath(
-        runtime_options_->GetDlcRootPath(dlc_client::kMlCoreDlcId)));
-  }
-  if (!pipeline_)
+  if (!EnsurePipelineSetupOnGlThread()) {
     return true;
-
-  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig(),
-                                      default_segmentation_model_type_);
-  if (active_runtime_effects_config_ != new_config) {
-    active_runtime_effects_config_ = new_config;
-    // Ignore the mojo config if the override config file is being used. This is
-    // to avoid race conditions in tests where Chrome is also setting a default
-    // (no-op) config mojo. Note that this flag isn't unset, so the camera
-    // service must be restarted after the override config file has been
-    // deleted.
-    if (!override_config_exists_) {
-      SetEffect(new_config);
-    } else {
-      LOGF(WARNING) << "Override config exists, ignoring mojo effect settings: "
-                    << kOverrideEffectsConfigFile;
-    }
   }
 
   auto timestamp = TryGetSensorTimestamp(&result);

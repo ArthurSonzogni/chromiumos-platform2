@@ -156,6 +156,8 @@ void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
 
   stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
   stream_manipulator_->OnConfiguredStreams(&stream_config_);
+
+  WaitForEffectSetAndReset();
 }
 
 void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
@@ -262,7 +264,6 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
 
   InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
-  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -282,7 +283,6 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
 
   InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
-  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -302,7 +302,6 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
 
   InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
-  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -382,7 +381,6 @@ TEST_F(EffectsStreamManipulatorTest, OpenCLCacheStartup) {
   runtime_options_.SetEffectsConfig(std::move(config));
   InitialiseStreamManipulator();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
-  WaitForEffectSetAndReset();
 }
 }  // namespace cros::tests
 
