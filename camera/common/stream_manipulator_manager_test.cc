@@ -49,8 +49,7 @@ class FakeStreamManipulator : public StreamManipulator {
     return true;
   }
 
-  bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
-                        const StreamEffectMap* stream_effects_map) override {
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override {
     return true;
   }
 
@@ -162,8 +161,7 @@ TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
                                      &returned_msg, &notify_returned));
 
   Camera3StreamConfiguration stream_config;
-  StreamEffectMap stream_effects_map;
-  manager.ConfigureStreams(&stream_config, &stream_effects_map);
+  manager.ConfigureStreams(&stream_config);
   manager.OnConfiguredStreams(&stream_config);
 
   manager.ConstructDefaultRequestSettings(&metadata, 0);
@@ -203,8 +201,7 @@ TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
                                      &returned_msg, &notify_returned));
 
   Camera3StreamConfiguration stream_config;
-  StreamEffectMap stream_effects_map;
-  manager.ConfigureStreams(&stream_config, &stream_effects_map);
+  manager.ConfigureStreams(&stream_config);
   manager.OnConfiguredStreams(&stream_config);
 
   manager.ConstructDefaultRequestSettings(&metadata, 0);
@@ -251,8 +248,7 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
                                      &returned_msg, &notify_returned));
 
   Camera3StreamConfiguration stream_config;
-  StreamEffectMap stream_effects_map;
-  manager.ConfigureStreams(&stream_config, &stream_effects_map);
+  manager.ConfigureStreams(&stream_config);
   manager.OnConfiguredStreams(&stream_config);
 
   manager.ConstructDefaultRequestSettings(&metadata, 0);
@@ -308,8 +304,7 @@ TEST(StreamManipulatorManagerTest, SynchronizationTest) {
                                      &returned_msg, &notify_returned));
 
   Camera3StreamConfiguration stream_config;
-  StreamEffectMap stream_effects_map;
-  manager.ConfigureStreams(&stream_config, &stream_effects_map);
+  manager.ConfigureStreams(&stream_config);
   manager.OnConfiguredStreams(&stream_config);
 
   manager.ConstructDefaultRequestSettings(&metadata, 0);

@@ -128,8 +128,7 @@ bool FrameAnnotatorStreamManipulator::Initialize(
 }
 
 bool FrameAnnotatorStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   yuv_stream_ = nullptr;
 
   for (const auto* s : stream_config->GetStreams()) {

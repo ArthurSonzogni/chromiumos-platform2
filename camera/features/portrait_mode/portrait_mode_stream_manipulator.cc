@@ -92,13 +92,12 @@ bool PortraitModeStreamManipulator::Initialize(
 }
 
 bool PortraitModeStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effect_map) {
+    Camera3StreamConfiguration* stream_config) {
   bool ret = false;
   thread_.PostTaskSync(
       FROM_HERE,
       base::BindOnce(&PortraitModeStreamManipulator::ConfigureStreamsOnThread,
-                     base::Unretained(this), stream_config, stream_effect_map),
+                     base::Unretained(this), stream_config),
       &ret);
   return ret;
 }
@@ -175,8 +174,7 @@ bool PortraitModeStreamManipulator::InitializeOnThread(
 }
 
 bool PortraitModeStreamManipulator::ConfigureStreamsOnThread(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   CHECK(thread_.IsCurrentThread());
   TRACE_PORTRAIT_MODE();
 
@@ -196,7 +194,7 @@ bool PortraitModeStreamManipulator::ConfigureStreamsOnThread(
   for (auto* s : client_streams_) {
     if (s->format == HAL_PIXEL_FORMAT_BLOB) {
       // Check if existing stream for Portrait Mode effect.
-      if (!IsPortraitModeStream(s, stream_effects_map)) {
+      if (!IsPortraitModeStream(s, stream_config->stream_effects_map())) {
         blob_stream_ = s;
         hal_streams.push_back(s);
       } else {

@@ -58,8 +58,7 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
 }
 
 bool ZslStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   TRACE_ZSL([&](perfetto::EventContext ctx) {
     stream_config->PopulateEventAnnotation(ctx);
   });

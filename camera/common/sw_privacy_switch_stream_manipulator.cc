@@ -76,8 +76,7 @@ bool SWPrivacySwitchStreamManipulator::Initialize(
 }
 
 bool SWPrivacySwitchStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   return true;
 }
 
@@ -150,8 +149,8 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
       }
     }
     if (!buffer_cleared) {
-      LOGF(ERROR) << "Failed to clear the buffer:"
-                  << " hal_pixel_format = " << buffer.stream()->format
+      LOGF(ERROR) << "Failed to clear the buffer:" << " hal_pixel_format = "
+                  << buffer.stream()->format
                   << ", width = " << buffer.stream()->width
                   << ", height = " << buffer.stream()->height;
       buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;

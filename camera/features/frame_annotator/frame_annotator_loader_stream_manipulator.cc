@@ -73,11 +73,9 @@ bool FrameAnnotatorLoaderStreamManipulator::Initialize(
 }
 
 bool FrameAnnotatorLoaderStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   if (stream_manipulator_) {
-    return stream_manipulator_->ConfigureStreams(stream_config,
-                                                 stream_effects_map);
+    return stream_manipulator_->ConfigureStreams(stream_config);
   }
   return true;
 }

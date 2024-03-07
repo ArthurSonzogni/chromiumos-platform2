@@ -30,8 +30,7 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks) override;
-  bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
-                        const StreamEffectMap* stream_effects_map) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;

@@ -96,8 +96,7 @@ bool FaceDetectionStreamManipulator::Initialize(
 }
 
 bool FaceDetectionStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   TRACE_FACE_DETECTION();
 
   return true;
@@ -413,8 +412,8 @@ void FaceDetectionStreamManipulator::OnOptionsUpdated(
     options_.log_frame_metadata = log_frame_metadata;
   }
 
-  VLOGF(1) << "Face detection config:"
-           << " use_cros_face_detector=" << options_.enable
+  VLOGF(1) << "Face detection config:" << " use_cros_face_detector="
+           << options_.enable
            << " fd_frame_interval=" << options_.fd_frame_interval;
 }
 

@@ -102,7 +102,6 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<EffectsStreamManipulator> stream_manipulator_;
   Camera3StreamConfiguration stream_config_;
-  StreamEffectMap stream_effects_map_;
   base::FilePath config_path_;
 
   ScopedBufferHandle output_buffer_;
@@ -154,7 +153,7 @@ void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
       StreamManipulator::Callbacks{.result_callback = result_cb,
                                    .notify_callback = base::DoNothing()});
 
-  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
+  stream_manipulator_->ConfigureStreams(&stream_config_);
   stream_manipulator_->OnConfiguredStreams(&stream_config_);
 
   WaitForEffectSetAndReset();

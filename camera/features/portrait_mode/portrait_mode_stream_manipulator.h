@@ -38,8 +38,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks) override;
-  bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
-                        const StreamEffectMap* stream_effects_map) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
@@ -82,8 +81,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
 
   bool InitializeOnThread(const camera_metadata_t* static_info,
                           StreamManipulator::Callbacks callbacks);
-  bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config,
-                                const StreamEffectMap* stream_effects_map);
+  bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
   bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor result);

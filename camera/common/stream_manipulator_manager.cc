@@ -337,12 +337,11 @@ bool StreamManipulatorManager::Initialize(
 }
 
 bool StreamManipulatorManager::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   TRACE_COMMON();
 
   for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->ConfigureStreams(stream_config, stream_effects_map);
+    stream_manipulator->ConfigureStreams(stream_config);
   }
   return true;
 }

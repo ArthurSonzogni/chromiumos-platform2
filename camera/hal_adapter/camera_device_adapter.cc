@@ -412,17 +412,18 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     session_parameters =
         internal::DeserializeCameraMetadata(config->session_parameters);
   }
-  Camera3StreamConfiguration stream_config(camera3_stream_configuration_t{
-      .num_streams = static_cast<uint32_t>(streams_ptr.size()),
-      .streams = streams_ptr.data(),
-      .operation_mode = static_cast<camera3_stream_configuration_mode_t>(
-          config->operation_mode),
-      .session_parameters = session_parameters.get(),
-  });
+  Camera3StreamConfiguration stream_config(
+      camera3_stream_configuration_t{
+          .num_streams = static_cast<uint32_t>(streams_ptr.size()),
+          .streams = streams_ptr.data(),
+          .operation_mode = static_cast<camera3_stream_configuration_mode_t>(
+              config->operation_mode),
+          .session_parameters = session_parameters.get(),
+      },
+      &stream_effects_map);
 
   // TODO(kamesan): Handle the failures.
-  stream_manipulator_manager_->ConfigureStreams(&stream_config,
-                                                &stream_effects_map);
+  stream_manipulator_manager_->ConfigureStreams(&stream_config);
 
   int32_t result = 0;
   {

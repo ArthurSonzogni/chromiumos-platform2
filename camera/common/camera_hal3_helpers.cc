@@ -258,11 +258,13 @@ Camera3StreamBuffer::Camera3StreamBuffer(
 //
 
 Camera3StreamConfiguration::Camera3StreamConfiguration(
-    const camera3_stream_configuration_t& stream_list)
+    const camera3_stream_configuration_t& stream_list,
+    const StreamEffectMap* stream_effects_map)
     : streams_(stream_list.streams,
                stream_list.streams + stream_list.num_streams),
       operation_mode_(stream_list.operation_mode),
-      session_parameters_(stream_list.session_parameters) {}
+      session_parameters_(stream_list.session_parameters),
+      stream_effects_map_(stream_effects_map) {}
 
 base::span<camera3_stream_t* const> Camera3StreamConfiguration::GetStreams()
     const {

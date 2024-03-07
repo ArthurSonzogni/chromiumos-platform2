@@ -273,7 +273,8 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   // Default constructor creates an invalid instance.
   Camera3StreamConfiguration() = default;
   explicit Camera3StreamConfiguration(
-      const camera3_stream_configuration_t& stream_list);
+      const camera3_stream_configuration_t& stream_list,
+      const StreamEffectMap* stream_effects_map = nullptr);
   ~Camera3StreamConfiguration() = default;
 
   Camera3StreamConfiguration(Camera3StreamConfiguration&& other) = default;
@@ -312,6 +313,10 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   uint32_t num_streams() const { return streams_.size(); }
   uint32_t operation_mode() const { return operation_mode_; }
 
+  const StreamEffectMap* stream_effects_map() const {
+    return stream_effects_map_;
+  }
+
  private:
   bool IsLocked() const;
 
@@ -320,6 +325,8 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   const camera_metadata_t* session_parameters_ = nullptr;
 
   std::optional<camera3_stream_configuration_t> raw_configuration_;
+
+  const StreamEffectMap* stream_effects_map_;
 };
 
 // A helper class to make it easy to modify camera3_capture_request_t and

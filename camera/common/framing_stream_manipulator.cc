@@ -400,8 +400,7 @@ bool FramingStreamManipulator::Initialize(
 }
 
 bool FramingStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config,
-    const StreamEffectMap* stream_effects_map) {
+    Camera3StreamConfiguration* stream_config) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
