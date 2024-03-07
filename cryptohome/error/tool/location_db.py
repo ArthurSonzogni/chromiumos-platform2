@@ -845,7 +845,6 @@ class AuthorManager:
     COMMITTERS = [
         (1500, "zuan@chromium.org"),
         (1700, "yich@google.com"),
-        (1900, "anastasiian@google.com"),
         (2100, "jadmanski@google.com"),
         (2300, "thomascedeno@google.com"),
         (2500, "betuls@google.com"),
