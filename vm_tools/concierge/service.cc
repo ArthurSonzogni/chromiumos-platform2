@@ -3763,6 +3763,41 @@ void Service::DetachUsbDevice(
   response_cb->Return(response);
 }
 
+void Service::AttachKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AttachKeyResponse>>
+        response_cb,
+    const AttachKeyRequest& request,
+    const base::ScopedFD& hidraw) {
+  ASYNC_SERVICE_METHOD();
+
+  AttachKeyResponse response;
+
+  VmId vm_id(request.owner_id(), request.vm_name());
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
+    response.set_reason("Requested VM does not exist");
+    response_cb->Return(response);
+    return;
+  }
+
+  uint8_t guest_port{};
+  if (!iter->second->AttachKey(hidraw.get(), &guest_port)) {
+    LOG(ERROR) << "Failed to attach security key.";
+    response.set_reason("Error from crosvm");
+    response_cb->Return(response);
+    return;
+  }
+  response.set_success(true);
+  response.set_guest_port(guest_port);
+  response_cb->Return(response);
+}
+
 void Service::ListUsbDevices(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         ListUsbDeviceResponse>> response_cb,

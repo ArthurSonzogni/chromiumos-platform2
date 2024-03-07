@@ -171,6 +171,12 @@ bool AttachUsbDevice(const std::string& socket_path,
                      uint8_t* out_port,
                      apps::VmType vm_type);
 
+// Attaches and shares a security key from the given opened |hidraw_fd|.
+bool AttachKey(const std::string& socket_path,
+               int hidraw_fd,
+               uint8_t* out_port,
+               apps::VmType vm_type);
+
 // Detaches the usb device at guest |port|.
 bool DetachUsbDevice(const std::string& socket_path, uint8_t port);
 

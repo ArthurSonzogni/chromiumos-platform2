@@ -141,6 +141,9 @@ class VmBaseImpl {
                                int fd,
                                uint8_t* out_port);
 
+  // Attach a security key device from the hidraw opened fd to the vm.
+  virtual bool AttachKey(int hidraw_fd, uint8_t* out_port);
+
   // Detach the usb device at guest port.
   virtual bool DetachUsbDevice(uint8_t port);
 

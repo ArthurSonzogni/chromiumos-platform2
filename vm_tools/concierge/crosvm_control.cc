@@ -99,6 +99,13 @@ bool CrosvmControl::UsbAttach(const std::string& socket_path,
                                   dev_path.c_str(), out_port);
 }
 
+bool CrosvmControl::KeyAttach(const std::string& socket_path,
+                              const std::string& hidraw_path,
+                              uint8_t* out_port) {
+  return crosvm_client_security_key_attach(socket_path.c_str(),
+                                           hidraw_path.c_str(), out_port);
+}
+
 bool CrosvmControl::UsbDetach(const std::string& socket_path, uint8_t port) {
   return crosvm_client_usb_detach(socket_path.c_str(), port);
 }

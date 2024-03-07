@@ -126,6 +126,22 @@ class CrosvmControl {
                          const std::string& dev_path,
                          uint8_t* out_port);
 
+  // Attaches a u2f security key to crosvm instance whose control socket is
+  // listening on `socket_path`.
+  //
+  // The function returns the number of entries written.
+  // Arguments
+  //
+  // `socket_path` - Path to the crosvm control socket
+  // `hidraw_path` - Path to the hidraw device of the security key (like
+  // `/dev/hidraw0`)
+  // `out_port` - (optional) internal port will be written here if provided.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool KeyAttach(const std::string& socket_path,
+                         const std::string& hidraw_path,
+                         uint8_t* out_port);
+
   // Detaches an USB device from crosvm instance whose control socket is
   // listening on `socket_path`. `port` determines device to be detached.
   //

@@ -88,6 +88,11 @@ bool VmBaseImpl::AttachUsbDevice(uint8_t bus,
       GetVmSocketPath(), bus, addr, vid, pid, fd, out_port, GetInfo().type);
 }
 
+bool VmBaseImpl::AttachKey(int hidraw_fd, uint8_t* out_port) {
+  return vm_tools::concierge::AttachKey(GetVmSocketPath(), hidraw_fd, out_port,
+                                        GetInfo().type);
+}
+
 bool VmBaseImpl::DetachUsbDevice(uint8_t port) {
   return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port);
 }

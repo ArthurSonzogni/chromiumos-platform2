@@ -64,6 +64,7 @@ enum ChromeOSError {
     CrostiniVmDisabledReason(String),
     DiskImageOutOfSpace,
     FailedAdjustVm(String),
+    FailedAttachKey(String),
     FailedAttachUsb(String),
     FailedAllocateExtraDisk {
         path: PathBuf,
@@ -144,6 +145,7 @@ impl fmt::Display for ChromeOSError {
             }
             DiskImageOutOfSpace => write!(f, "not enough disk space"),
             FailedAdjustVm(reason) => write!(f, "failed to adjust vm: {}", reason),
+            FailedAttachKey(reason) => write!(f, "failed to attach security key to vm: {}", reason),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
             FailedAllocateExtraDisk { path, reason } => write!(
                 f,
@@ -2028,6 +2030,38 @@ impl Methods {
         }
     }
 
+    fn attach_key(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        hidraw_fd: OwnedFd,
+    ) -> Result<u8, Box<dyn Error>> {
+        let mut request = AttachKeyRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name = vm_name.to_owned();
+
+        let response:  AttachKeyResponse = self.sync_protobus_timeout(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                ATTACH_KEY_METHOD,
+            )?,
+            &request,
+            &[hidraw_fd],
+            DEFAULT_TIMEOUT,
+        )?;
+
+        if !response.success {
+            return Err(FailedAttachKey(response.reason).into());
+        }
+
+        let guest_port: u8 = response.guest_port as u8;
+
+        // TODO(morg): need to implement sharing security key with container
+        Ok(guest_port)
+    }
+
     fn detach_usb(
         &mut self,
         vm_name: &str,
@@ -2620,6 +2654,18 @@ impl Methods {
         let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
         let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
         self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd, container_name)
+    }
+
+    pub fn key_attach(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        hidraw_device: &str,
+    ) -> Result<u8, Box<dyn Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        let hidraw_file = OpenOptions::new().read(true).write(true).open(hidraw_device)?;
+        let hidraw_fd = OwnedFd::from(hidraw_file);
+        self.attach_key(vm_name, user_id_hash, hidraw_fd)
     }
 
     pub fn usb_detach(

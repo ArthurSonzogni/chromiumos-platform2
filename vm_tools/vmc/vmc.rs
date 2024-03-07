@@ -44,6 +44,7 @@ enum VmcError {
     ExpectedVmAndSize,
     ExpectedVmBusDevice,
     ExpectedVmDeviceUpdates,
+    ExpectedVmHidrawDevice,
     ExpectedVmPort,
     UnexpectedSizeWithPluginVm,
     InvalidVmDevice(String),
@@ -122,6 +123,9 @@ impl fmt::Display for VmcError {
             ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
             ExpectedUUID => write!(f, "expected <command UUID>"),
             ExpectedVmDeviceUpdates => write!(f, "expected args `<device>:<enable|disable>`"),
+            ExpectedVmHidrawDevice => {
+                write!(f, "expected <vm name> <hidraw file>")
+            }
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
             UnexpectedSizeWithPluginVm => {
                 write!(f, "unexpected --size parameter; -p doesn't support --size")
@@ -844,6 +848,26 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn key_attach(&mut self) -> VmcResult {
+        // TODO(morg): need to implement command for sharing security key with container too
+        let (vm_name, hidraw_device) = match self.args.len() {
+            2 => (self.args[0], self.args[1]),
+            _ => return Err(ExpectedVmHidrawDevice.into()),
+        };
+
+        let guest_port = try_command!(self.methods.key_attach(
+                vm_name,
+                self.user_id_hash,
+                hidraw_device,
+        ));
+
+        println!(
+            "Security key at {} shared with vm {} at port={}",
+            hidraw_device, vm_name, guest_port
+        );
+        Ok(())
+    }
+
     fn usb_detach(&mut self) -> VmcResult {
         let (vm_name, port) = match self.args.len() {
             2 => (self.args[0], self.args[1].parse().or(Err(ExpectedU8Port))?),
@@ -941,6 +965,7 @@ const USAGE: &str = "
      usb-attach <vm name> <bus>:<device> [<container name>] |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
+     key-attach <vm name> <hidraw path> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
      --help | -h ]
 ";
@@ -1003,6 +1028,7 @@ impl Vmc<'_> {
             "usb-attach" => command.usb_attach(),
             "usb-detach" => command.usb_detach(),
             "usb-list" => command.usb_list(),
+            "key-attach" => command.key_attach(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }

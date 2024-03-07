@@ -71,6 +71,28 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="AttachKey">
+      <tp:docstring>
+        Attaches a Security Key to a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachKeyRequest"/>
+      </arg>
+      <arg type="h" name="hidraw" direction="in">
+        <tp:docstring>
+          File descriptor to the hidraw device, typically /dev/hidraw0
+        </tp:docstring>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachKeyResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see reason when not.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="AttachNetDevice">
       <tp:docstring>
         Attaches a net tap device to a VM.
@@ -98,6 +120,9 @@
                     value="vm_tools::concierge::AttachUsbDeviceRequest"/>
       </arg>
       <arg type="h" name="fd" direction="in">
+        <tp:docstring>
+          File descriptor to the USB device, typically /dev/bus/usb/$BUS/$DEVICE
+        </tp:docstring>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

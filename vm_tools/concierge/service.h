@@ -305,6 +305,11 @@ class Service final : public org::chromium::VmConciergeInterface,
                            AttachUsbDeviceResponse>> response_cb,
                        const AttachUsbDeviceRequest& request,
                        const base::ScopedFD& fd) override;
+  void AttachKey(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AttachKeyResponse>>
+          response_cb,
+      const AttachKeyRequest& request,
+      const base::ScopedFD& hidraw) override;
   void DetachUsbDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                            DetachUsbDeviceResponse>> response_cb,
                        const DetachUsbDeviceRequest& request) override;

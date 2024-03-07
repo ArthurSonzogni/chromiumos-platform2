@@ -522,6 +522,17 @@ bool AttachUsbDevice(const std::string& socket_path,
   return attach_success;
 }
 
+bool AttachKey(const std::string& socket_path,
+               int hidraw_fd,
+               uint8_t* out_port,
+               apps::VmType vm_type) {
+  std::string hidraw_path = "/proc/self/fd/" + std::to_string(hidraw_fd);
+
+  fcntl(hidraw_fd, F_SETFD, 0);  // Remove the CLOEXEC
+
+  return CrosvmControl::Get()->KeyAttach(socket_path, hidraw_path, out_port);
+}
+
 bool DetachUsbDevice(const std::string& socket_path, uint8_t port) {
   return CrosvmControl::Get()->UsbDetach(socket_path, port);
 }
