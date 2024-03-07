@@ -12,9 +12,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "install_attributes/mock_install_attributes_reader.h"
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 
 namespace em = enterprise_management;
 
@@ -684,38 +681,6 @@ TEST_F(DevicePolicyImplTest, GetDeviceExtendedAutoUpdateEnabled_Unset) {
                    device_policy_proto);
 
   EXPECT_FALSE(device_policy_.GetDeviceExtendedAutoUpdateEnabled());
-}
-
-// Test that the policy is loaded only if the request token is present.
-TEST_F(DevicePolicyImplTest, LoadPolicyRequestTokenPresenceCases) {
-  device_policy_.set_install_attributes_for_testing(
-      std::make_unique<MockInstallAttributesReader>(
-          InstallAttributesReader::kDeviceModeEnterprise, true));
-  device_policy_.set_verify_policy_for_testing(false);
-
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-
-  base::FilePath file_path(temp_dir.GetPath().Append("policy"));
-  device_policy_.set_policy_path_for_testing(file_path);
-  base::File file(file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-
-  // Create policy file without request token.
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::PolicyFetchResponse policy_response;
-  em::PolicyData policy_data;
-  policy_data.set_policy_value(device_policy_proto.SerializeAsString());
-  policy_response.set_policy_data(policy_data.SerializeAsString());
-  std::string data = policy_response.SerializeAsString();
-  file.Write(0, data.c_str(), data.length());
-  ASSERT_FALSE(device_policy_.LoadPolicy(/*delete_invalid_files=*/false));
-
-  // Create policy file with request token.
-  policy_data.set_request_token("1234");
-  policy_response.set_policy_data(policy_data.SerializeAsString());
-  data = policy_response.SerializeAsString();
-  file.Write(0, data.c_str(), data.length());
-  ASSERT_TRUE(device_policy_.LoadPolicy(/*delete_invalid_files=*/false));
 }
 
 }  // namespace policy

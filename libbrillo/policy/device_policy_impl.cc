@@ -1161,12 +1161,6 @@ bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
     LOG(ERROR) << "Policy signature verification failed!";
     return false;
   }
-
-  // The policy data must have a DMToken if the device is managed.
-  if (!policy_data_->has_request_token() && IsEnterpriseEnrolled()) {
-    LOG(ERROR) << "Enrolled policy has no DMToken!";
-    return false;
-  }
   if (!device_policy_->ParseFromString(policy_data_->policy_value())) {
     LOG(ERROR) << "Policy on disk could not be parsed!";
     return false;
