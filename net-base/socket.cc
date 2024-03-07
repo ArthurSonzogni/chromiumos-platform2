@@ -255,7 +255,7 @@ std::unique_ptr<Socket> SocketFactory::CreateNetlink(
   if (receive_buffer_size) {
     if (!socket->SetReceiveBuffer(*receive_buffer_size)) {
       PLOG(WARNING) << "Failed to increase receive buffer size to "
-                    << SocketFactory::kNetlinkReceiveBufferSize << "b";
+                    << *receive_buffer_size << "b";
     }
   }
 
