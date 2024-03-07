@@ -1319,6 +1319,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthAuthFactorNotFoundInAuthenticateAuthFactor = 747,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialIgnored = 748,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpTryCreateRateLimiterInsertFailed = 749,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockRemoveCredentialFailed = 750,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

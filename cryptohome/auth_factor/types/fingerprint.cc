@@ -274,8 +274,11 @@ CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
           kFingerprintAuthChannel, policies, reset_secret, delay_sched,
           kExpirationLockout.InSeconds());
   if (!result.ok()) {
-    return MakeStatus<error::CryptohomeTPMError>(
-        std::move(result).err_status());
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthFactorFpTryCreateRateLimiterInsertFailed))
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(result).err_status()));
   }
   uint64_t& label = result.value();
 

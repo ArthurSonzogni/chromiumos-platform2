@@ -481,7 +481,10 @@ void FingerprintAuthBlock::ContinuePrepareForRemoval(
     }
     // Other LE errors might be resolved by retrying, so fail the remove
     // operation here.
-    std::move(callback).Run(MakeStatus<CryptohomeTPMError>(std::move(status)));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockRemoveCredentialFailed))
+            .Wrap(MakeStatus<CryptohomeTPMError>(std::move(status))));
     return;
   }
 
