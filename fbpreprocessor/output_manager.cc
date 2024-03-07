@@ -77,6 +77,11 @@ void OutputManager::OnUserLoggedIn(const std::string& user_dir) {
 
 void OutputManager::OnUserLoggedOut() {
   LOG(INFO) << "User logged out.";
+  // When we're notified that the user has logged out the daemon-store could be
+  // unmounted already, so we should not try to delete the files from disk.
+  // We merely clear the list of files that we're managing. The files themselves
+  // will be deleted the next time the user logs in.
+  ClearManagedFiles(/*delete_files=*/false);
   user_root_dir_.clear();
 }
 
@@ -181,10 +186,13 @@ void OutputManager::OnExpiredFile() {
   files_lock_.Release();
 }
 
-void OutputManager::DeleteAllManagedFiles() {
+void OutputManager::ClearManagedFiles(bool delete_files) {
   files_lock_.Acquire();
-  for (auto f : files_) {
-    DeleteFirmwareDump(f.fw_dump(), __func__);
+  expiration_timer_.Stop();
+  if (delete_files) {
+    for (auto f : files_) {
+      DeleteFirmwareDump(f.fw_dump(), __func__);
+    }
   }
   files_.clear();
   files_lock_.Release();
@@ -192,7 +200,7 @@ void OutputManager::DeleteAllManagedFiles() {
 
 void OutputManager::DeleteAllFiles() {
   VLOG(kLocalDebugVerbosity) << __func__;
-  DeleteAllManagedFiles();
+  ClearManagedFiles(/*delete_files=*/true);
   base::FileEnumerator files(user_root_dir_.Append(kProcessedDirectory),
                              false /* recursive */,
                              base::FileEnumerator::FILES);

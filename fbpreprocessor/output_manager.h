@@ -87,7 +87,14 @@ class OutputManager : public SessionStateManager::Observer,
 
   void OnExpiredFile();
 
-  void DeleteAllManagedFiles();
+  // OutputManager maintains a list of firmware dumps "under management" that
+  // have been added to the list with calls to AddFirmwareDump().
+  // ClearManagedFiles() clears the list of firmware dumps managed by
+  // OutputManager.
+  // In addition, if |delete_files| is true then the function will attempt to
+  // delete the files from disk. Otherwise it will only clear the list without
+  // deleting the files from disk.
+  void ClearManagedFiles(bool delete_files);
 
   void DeleteAllFiles();
 

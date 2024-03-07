@@ -215,4 +215,36 @@ TEST_F(OutputManagerTest, DisallowingFeatureReturnsEmptyFirmwareList) {
   EXPECT_EQ(found, std::set<std::string>());
 }
 
+TEST_F(OutputManagerTest, UserLogoutReturnsEmptyFirmwareList) {
+  SimulateUserLogin();
+
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(fw_dump);
+
+  SimulateUserLogout();
+
+  // The Manager has notified OutputManager that the user logged out. Expect
+  // that OutputManager::GetDebugDumps() returns an empty list of firmware
+  // dumps.
+  std::set<std::string> found;
+  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  EXPECT_EQ(found, std::set<std::string>());
+}
+
+TEST_F(OutputManagerTest, UserLogoutDoesNotDeleteFiles) {
+  SimulateUserLogin();
+
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(fw_dump);
+
+  SimulateUserLogout();
+
+  // The Manager has notified OutputManager that the user logged out. Even
+  // though OutputManager::GetDebugDumps() won't report those files anymore, the
+  // files have not been deleted from disk.
+  EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
+}
+
 }  // namespace fbpreprocessor
