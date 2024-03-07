@@ -270,7 +270,11 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
                   message_sender,
                   process_cache,
                   policies_features_broker,
-                  batch_interval_s) {}
+                  batch_interval_s) {
+    prev_tx_rx_totals_ = std::make_unique<
+        base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>>(
+        bpf::kMaxFlowMapEntries);
+  }
 
   std::string GetName() const override;
   void Flush() override {
@@ -297,21 +301,36 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
           atomic_event) override;
   template <typename ProtoT>
   void FillProcessTree(ProtoT proto,
-                       const bpf::cros_process_task_info& task) const {
-    auto hierarchy =
-        process_cache_->GetProcessHierarchy(task.pid, task.start_time, 2);
+                       const bpf::cros_process_start& process_start,
+                       bool has_full_process_start) const {
+    if (has_full_process_start) {
+      process_cache_->FillProcessFromBpf(
+          process_start.task_info, process_start.image_info,
+          proto->mutable_process(), device_user_->GetUsernamesForRedaction());
+      auto parent_process = process_cache_->GetProcessHierarchy(
+          process_start.task_info.ppid,
+          process_start.task_info.parent_start_time, 1);
+      if (parent_process.size() == 1) {
+        proto->set_allocated_parent_process(parent_process[0].release());
+      }
+      return;
+    }
+    // No full process info included, fallback to using cache.
+    auto hierarchy = process_cache_->GetProcessHierarchy(
+        process_start.task_info.pid, process_start.task_info.start_time, 2);
     if (hierarchy.empty()) {
       LOG(ERROR) << absl::StrFormat(
           "pid %d cmdline(%s) not in process cache. "
           "Creating a degraded %s filled with information available from BPF "
           "process map.",
-          task.pid, task.commandline, proto->GetTypeName());
-
+          process_start.task_info.pid, process_start.task_info.commandline,
+          proto->GetTypeName());
       ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-          task, proto->mutable_process(),
+          process_start.task_info, proto->mutable_process(),
           device_user_->GetUsernamesForRedaction());
       auto parent_process = process_cache_->GetProcessHierarchy(
-          task.ppid, task.parent_start_time, 1);
+          process_start.task_info.ppid,
+          process_start.task_info.parent_start_time, 1);
       if (parent_process.size() == 1) {
         proto->set_allocated_parent_process(parent_process[0].release());
       }
@@ -322,13 +341,25 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
     if (hierarchy.size() == 2) {
       proto->set_allocated_parent_process(hierarchy[1].release());
     }
+
+    if (proto->has_process()) {
+      proto->mutable_process()->clear_meta_first_appearance();
+    }
+    if (proto->has_parent_process()) {
+      proto->mutable_parent_process()->clear_meta_first_appearance();
+    }
   }
+
   void HandleRingBufferEvent(const bpf::cros_event& bpf_event) override;
   std::unique_ptr<cros_xdr::reporting::NetworkSocketListenEvent>
   MakeListenEvent(
       const secagentd::bpf::cros_network_socket_listen& listen_event) const;
   std::unique_ptr<cros_xdr::reporting::NetworkFlowEvent> MakeFlowEvent(
       const secagentd::bpf::cros_synthetic_network_flow& flow_event) const;
+  std::unique_ptr<
+      base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>>
+      prev_tx_rx_totals_;  // declaring this as a value member strangely seems
+                           // to make it const.
 };
 
 class ProcessPlugin : public PluginInterface {

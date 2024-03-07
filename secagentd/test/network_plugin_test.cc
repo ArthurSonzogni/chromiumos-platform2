@@ -38,14 +38,19 @@ struct ExpectedProcess {
 const uint64_t kDefaultPid{1452};
 constexpr bpf::time_ns_t kSpawnStartTime{2222};
 
-const bpf::cros_process_task_info kDefaultProcess = {
-    .pid = 5139,
-    .ppid = 5132,
-    .start_time = 51382,
-    .parent_start_time = 5786,
-    .uid = 382,
-    .gid = 4234,
-};
+const bpf::cros_process_start kDefaultProcessInfo = {
+    .task_info = {.pid = 5139,
+                  .ppid = 5132,
+                  .start_time = 51382,
+                  .parent_start_time = 5786,
+                  .uid = 382,
+                  .gid = 4234},
+    .image_info =
+        {
+            .inode = 24,
+            .mode = 123,
+        },
+    .spawn_namespace = {.cgroup_ns = 54}};
 
 const std::vector<ExpectedProcess> kDefaultProcessHierarchy{
     {.pid = kDefaultPid,
@@ -162,10 +167,10 @@ TEST_F(NetworkPluginTestFixture, TestBPFEventIsAvailable) {
               .data.socket_listen =
                   {
                       /* 192.168.0.1 */
-                      .common = {.family = bpf::CROS_FAMILY_AF_INET,
-                                 .protocol = bpf::CROS_PROTOCOL_TCP,
-                                 .process{.pid = kDefaultPid,
-                                          .start_time = kSpawnStartTime}},
+                      .family = bpf::CROS_FAMILY_AF_INET,
+                      .protocol = bpf::CROS_PROTOCOL_TCP,
+                      .process_info = {.task_info{
+                          .pid = kDefaultPid, .start_time = kSpawnStartTime}},
                       .socket_type = SOCK_STREAM,
                       .port = 1234,
                       .ipv4_addr = 0x0100A8C0,
@@ -207,8 +212,8 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   bpf::cros_synthetic_network_flow flow;
   flow.flow_map_key.five_tuple = tuple;
   flow.flow_map_value = val;
-
-  flow.flow_map_value.task_info = kDefaultProcess;
+  flow.flow_map_value.has_full_process_info = false;
+  flow.flow_map_value.process_info = kDefaultProcessInfo;
 
   auto event = CreateCrosFlowEvent(flow);
   std::vector<std::unique_ptr<pb::Process>> hierarchy;
@@ -221,7 +226,8 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
     hierarchy.back()->set_rel_start_time_s(p.rel_start_time_s);
     expected_hierarchy.emplace_back(*hierarchy.back());
   }
-  auto& process = event.data.network_event.data.flow.flow_map_value.task_info;
+  auto& process =
+      event.data.network_event.data.flow.flow_map_value.process_info.task_info;
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(process.pid, process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
@@ -262,6 +268,105 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
             "1:xQuGZjr6e08tldWqhl7702m03YU=");
 }
+
+TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEventWithFullProcessInfo) {
+  bpf::cros_network_5_tuple tuple;
+  // inet_pton stores in network byte order.
+  inet_pton(AF_INET, "168.152.10.1", &tuple.remote_addr.addr4);
+  inet_pton(AF_INET, "192.168.0.1", &tuple.local_addr.addr4);
+  tuple.local_port = 4591;
+  tuple.remote_port = 5231;
+  tuple.protocol = bpf::CROS_PROTOCOL_TCP;
+
+  bpf::cros_flow_map_value val;
+  val.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
+  val.garbage_collect_me = false;
+  val.rx_bytes = 1456;
+  val.tx_bytes = 2563;
+
+  bpf::cros_synthetic_network_flow flow;
+  flow.flow_map_key.five_tuple = tuple;
+  flow.flow_map_value = val;
+  flow.flow_map_value.has_full_process_info = true;
+  flow.flow_map_value.process_info = kDefaultProcessInfo;
+
+  auto event = CreateCrosFlowEvent(flow);
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+  hierarchy.push_back(std::make_unique<pb::Process>());
+  hierarchy.back()->set_canonical_pid(kDefaultProcessHierarchy[1].pid);
+  hierarchy.back()->set_canonical_uid(kDefaultProcessHierarchy[1].uid);
+  hierarchy.back()->set_commandline(kDefaultProcessHierarchy[1].cmdline);
+  hierarchy.back()->set_rel_start_time_s(
+      kDefaultProcessHierarchy[1].rel_start_time_s);
+  std::vector<pb::Process> expected_hierarchy;
+  expected_hierarchy.emplace_back(*hierarchy.back());
+
+  auto& process =
+      event.data.network_event.data.flow.flow_map_value.process_info.task_info;
+
+  std::list<std::string> redacted_usernames = {"username"};
+  EXPECT_CALL(*device_user_, GetUsernamesForRedaction)
+      .WillOnce(Return(redacted_usernames));
+  auto& process_info = flow.flow_map_value.process_info;
+  EXPECT_CALL(*process_cache_, FillProcessFromBpf(_, _, _, redacted_usernames))
+      .WillOnce(WithArg<2>(
+          Invoke([&process_info](cros_xdr::reporting::Process* process_proto) {
+            process_proto->set_canonical_pid(process_info.task_info.pid);
+            process_proto->set_canonical_uid(process_info.task_info.uid);
+            process_proto->set_rel_start_time_s(
+                process_info.task_info.start_time);
+            process_proto->mutable_image()->set_inode(
+                process_info.image_info.inode);
+            process_proto->mutable_image()->set_mode(
+                process_info.image_info.mode);
+          })));
+  // Expect an attempt to use cache to retrieve parent.
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(process.ppid, process.parent_start_time, 1))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
+  pb::NetworkEventAtomicVariant actual_sent_event;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(1)
+      .WillOnce([&actual_sent_event](
+                    std::unique_ptr<pb::NetworkEventAtomicVariant> e) {
+        actual_sent_event = *e;
+      });
+  cbs_.ring_buffer_event_callback.Run(event);
+  auto& actual_process = actual_sent_event.network_flow().process();
+  /* Expect that the process proto is filled by the info in the bpf event.*/
+  EXPECT_THAT(actual_process.canonical_pid(), process_info.task_info.pid);
+  EXPECT_THAT(actual_process.canonical_uid(), process_info.task_info.uid);
+  EXPECT_THAT(actual_process.rel_start_time_s(),
+              process_info.task_info.start_time);
+
+  EXPECT_THAT(actual_process.image().inode(), process_info.image_info.inode);
+  EXPECT_THAT(actual_process.image().mode(), process_info.image_info.mode);
+
+  EXPECT_THAT(expected_hierarchy[0],
+              EqualsProto(actual_sent_event.network_flow().parent_process()));
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().local_ip(),
+            "192.168.0.1");
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().local_port(), 4591);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().remote_ip(),
+            "168.152.10.1");
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().remote_port(),
+            5231);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().protocol(),
+            pb::TCP);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().direction(),
+            pb::NetworkFlow_Direction_OUTGOING);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().rx_bytes(), 1456);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().tx_bytes(), 2563);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().community_id_v1(),
+            "1:xQuGZjr6e08tldWqhl7702m03YU=");
+}
 TEST_F(NetworkPluginTestFixture, TestSSDPFiltering) {
   // UUT should ignore SSDP broadcast traffic from patchpanel.
   const uint32_t kPatchPanelPid{0xDEADBEEF};
@@ -293,9 +398,10 @@ TEST_F(NetworkPluginTestFixture, TestSSDPFiltering) {
   patchpaneld_tuple.local_port = 1900;
   patchpaneld_tuple.protocol = bpf::CROS_PROTOCOL_UDP;
   patchpaneld_value.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
-  patchpaneld_value.task_info.pid = kPatchPanelPid;
-  patchpaneld_value.task_info.start_time = kPatchPanelStartTime;
-  patchpaneld_flow.flow_map_value.task_info.pid = kPatchPanelPid;
+  patchpaneld_value.process_info.task_info.pid = kPatchPanelPid;
+  patchpaneld_value.process_info.task_info.start_time = kPatchPanelStartTime;
+  patchpaneld_flow.flow_map_value.process_info.task_info.pid = kPatchPanelPid;
+  patchpaneld_flow.flow_map_value.has_full_process_info = false;
   auto flow_event = CreateCrosFlowEvent(patchpaneld_flow);
   cbs_.ring_buffer_event_callback.Run(flow_event);
 }
@@ -326,8 +432,9 @@ TEST_F(NetworkPluginTestFixture, TestAvahiScriptFiltering) {
   inet_pton(AF_INET, "239.255.255.250", &avahi_tuple.local_addr.addr4);
   avahi_tuple.local_port = 12;
   avahi_tuple.protocol = bpf::CROS_PROTOCOL_TCP;
-  avahi_value.task_info.pid = kAvahiPid;
-  avahi_value.task_info.start_time = kAvahiStartTime;
+  avahi_value.process_info.task_info.pid = kAvahiPid;
+  avahi_value.process_info.task_info.start_time = kAvahiStartTime;
+  avahi_value.has_full_process_info = false;
   auto avahi_event = CreateCrosFlowEvent(avahi_flow);
   cbs_.ring_buffer_event_callback.Run(avahi_event);
 }
@@ -351,10 +458,10 @@ TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
               .data.socket_listen =
                   {
                       /* 192.168.0.1 */
-                      .common = {.family = bpf::CROS_FAMILY_AF_INET,
-                                 .protocol = bpf::CROS_PROTOCOL_TCP,
-                                 .process{.pid = kDefaultPid,
-                                          .start_time = kSpawnStartTime}},
+                      .family = bpf::CROS_FAMILY_AF_INET,
+                      .protocol = bpf::CROS_PROTOCOL_TCP,
+                      .process_info{.task_info{.pid = kDefaultPid,
+                                               .start_time = kSpawnStartTime}},
                       .socket_type = SOCK_STREAM,
                       .port = 1234,
                       .ipv4_addr = 0x0100A8C0,
@@ -363,9 +470,10 @@ TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
       .type = bpf::kNetworkEvent,
   };
   const auto& socket_event = a.data.network_event.data.socket_listen;
-  EXPECT_CALL(*process_cache_,
-              GetProcessHierarchy(socket_event.common.process.pid,
-                                  socket_event.common.process.start_time, 2))
+  EXPECT_CALL(
+      *process_cache_,
+      GetProcessHierarchy(socket_event.process_info.task_info.pid,
+                          socket_event.process_info.task_info.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
@@ -459,10 +567,10 @@ TEST_P(IPv6VariationsTestFixture, TestSocketListenIPv6) {
               .type = bpf::cros_network_event_type::kNetworkSocketListen,
               .data.socket_listen =
                   {/* 192.168.0.1 */
-                   .common = {.family = bpf::CROS_FAMILY_AF_INET6,
-                              .protocol = bpf::CROS_PROTOCOL_TCP,
-                              .process{.pid = kDefaultPid,
-                                       .start_time = kSpawnStartTime}},
+                   .family = bpf::CROS_FAMILY_AF_INET6,
+                   .protocol = bpf::CROS_PROTOCOL_TCP,
+                   .process_info{.task_info{.pid = kDefaultPid,
+                                            .start_time = kSpawnStartTime}},
                    .socket_type = 0,
                    .port = 1234},
           },
@@ -472,9 +580,10 @@ TEST_P(IPv6VariationsTestFixture, TestSocketListenIPv6) {
   memmove(ipv6_field, GetParam().first.data(), sizeof(ipv6_field));
   auto expected_ipaddr = GetParam().second;
   const auto& socket_event = a.data.network_event.data.socket_listen;
-  EXPECT_CALL(*process_cache_,
-              GetProcessHierarchy(socket_event.common.process.pid,
-                                  socket_event.common.process.start_time, 2))
+  EXPECT_CALL(
+      *process_cache_,
+      GetProcessHierarchy(socket_event.process_info.task_info.pid,
+                          socket_event.process_info.task_info.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
@@ -547,19 +656,19 @@ TEST_P(ProtocolVariationsTestFixture, TestSocketListenProtocols) {
           {
               .type = bpf::cros_network_event_type::kNetworkSocketListen,
               .data.socket_listen =
-                  {.common = {.family = bpf::CROS_FAMILY_AF_INET,
-                              .protocol = bpf::CROS_PROTOCOL_TCP,
-                              .process{.pid = kDefaultPid,
-                                       .start_time = kSpawnStartTime}},
+                  {.family = bpf::CROS_FAMILY_AF_INET,
+                   .protocol = bpf::CROS_PROTOCOL_TCP,
+                   .process_info{.task_info = {.pid = kDefaultPid,
+                                               .start_time = kSpawnStartTime}},
                    .socket_type = SOCK_STREAM,
                    .port = 1234,
                    .ipv4_addr = 0x1020304},
           },
       .type = bpf::kNetworkEvent,
   };
-  a.data.network_event.data.socket_listen.common.protocol = GetParam();
+  a.data.network_event.data.socket_listen.protocol = GetParam();
   pb::NetworkProtocol expected_protocol;
-  switch (a.data.network_event.data.socket_listen.common.protocol) {
+  switch (a.data.network_event.data.socket_listen.protocol) {
     case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP:
     case bpf::cros_network_protocol::CROS_PROTOCOL_ICMP6:
       expected_protocol = pb::NetworkProtocol::ICMP;
@@ -578,9 +687,10 @@ TEST_P(ProtocolVariationsTestFixture, TestSocketListenProtocols) {
       break;
   }
   const auto& socket_event = a.data.network_event.data.socket_listen;
-  EXPECT_CALL(*process_cache_,
-              GetProcessHierarchy(socket_event.common.process.pid,
-                                  socket_event.common.process.start_time, 2))
+  EXPECT_CALL(
+      *process_cache_,
+      GetProcessHierarchy(socket_event.process_info.task_info.pid,
+                          socket_event.process_info.task_info.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
@@ -653,23 +763,24 @@ TEST_P(SocketTypeVariationsTestFixture, TestSocketListenSocketTypes) {
       .data.network_event =
           {
               .type = bpf::cros_network_event_type::kNetworkSocketListen,
-              .data.socket_listen =
-                  {.common = {.family = bpf::CROS_FAMILY_AF_INET,
-                              .protocol = bpf::CROS_PROTOCOL_TCP,
-                              .process{.pid = kDefaultPid,
-                                       .start_time = kSpawnStartTime}},
-                   .socket_type = SOCK_STREAM,
-                   .port = 1234,
-                   .ipv4_addr = 0x1020304},
+              .data.socket_listen = {.family = bpf::CROS_FAMILY_AF_INET,
+                                     .protocol = bpf::CROS_PROTOCOL_TCP,
+                                     .process_info{.task_info{
+                                         .pid = kDefaultPid,
+                                         .start_time = kSpawnStartTime}},
+                                     .socket_type = SOCK_STREAM,
+                                     .port = 1234,
+                                     .ipv4_addr = 0x1020304},
           },
       .type = bpf::kNetworkEvent,
   };
   a.data.network_event.data.socket_listen.socket_type = GetParam().first;
   auto expected_socket_type = GetParam().second;
   const auto& socket_event = a.data.network_event.data.socket_listen;
-  EXPECT_CALL(*process_cache_,
-              GetProcessHierarchy(socket_event.common.process.pid,
-                                  socket_event.common.process.start_time, 2))
+  EXPECT_CALL(
+      *process_cache_,
+      GetProcessHierarchy(socket_event.process_info.task_info.pid,
+                          socket_event.process_info.task_info.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)

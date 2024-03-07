@@ -33,11 +33,11 @@ bool operator<(const secagentd::bpf::cros_flow_map_key& lhs,
   return std::tie(lhs_tuple.family, lhs_tuple.protocol,
                   lhs_tuple.remote_addr.addr4, lhs_tuple.local_addr.addr4,
                   lhs_daddr6, lhs_saddr6, lhs_tuple.local_port,
-                  lhs_tuple.remote_port, lhs.sock) <
+                  lhs_tuple.remote_port, lhs.sock_id) <
          std::tie(rhs_tuple.family, rhs_tuple.protocol,
                   rhs_tuple.remote_addr.addr4, rhs_tuple.local_addr.addr4,
                   rhs_raddr6, rhs_laddr6, rhs_tuple.local_port,
-                  rhs_tuple.remote_port, rhs.sock);
+                  rhs_tuple.remote_port, rhs.sock_id);
 }
 }  // namespace bpf
 
@@ -216,13 +216,13 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
     const bpf::cros_network_socket_listen& l) const {
   auto listen_proto = std::make_unique<pb::NetworkSocketListenEvent>();
   auto* socket = listen_proto->mutable_socket();
-  if (l.common.family == bpf::CROS_FAMILY_AF_INET) {
+  if (l.family == bpf::CROS_FAMILY_AF_INET) {
     std::array<char, INET_ADDRSTRLEN> buff4;
     if (inet_ntop(AF_INET, &l.ipv4_addr, buff4.data(), buff4.size()) !=
         nullptr) {
       socket->set_bind_addr(buff4.data());
     }
-  } else if (l.common.family == bpf::CROS_FAMILY_AF_INET6) {
+  } else if (l.family == bpf::CROS_FAMILY_AF_INET6) {
     std::array<char, INET6_ADDRSTRLEN> buff6;
     if (inet_ntop(AF_INET6, l.ipv6_addr, buff6.data(), buff6.size()) !=
         nullptr) {
@@ -230,7 +230,7 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
     }
   }
   socket->set_bind_port(l.port);
-  socket->set_protocol(BpfProtocolToPbProtocol(l.common.protocol));
+  socket->set_protocol(BpfProtocolToPbProtocol(l.protocol));
   switch (l.socket_type) {
     case __socket_type::SOCK_STREAM:
       socket->set_socket_type(pb::SocketType::SOCK_STREAM);
@@ -251,26 +251,26 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
       socket->set_socket_type(pb::SocketType::SOCK_PACKET);
       break;
   }
-  FillProcessTree(listen_proto.get(), l.common.process);
+  FillProcessTree(listen_proto.get(), l.process_info, l.has_full_process_info);
   return listen_proto;
 }
 
 std::unique_ptr<cros_xdr::reporting::NetworkFlowEvent>
 NetworkPlugin::MakeFlowEvent(
     const secagentd::bpf::cros_synthetic_network_flow& flow_event) const {
-  static base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>
-      prev_tx_rx_totals(bpf::kMaxFlowMapEntries);
   auto flow_proto = std::make_unique<pb::NetworkFlowEvent>();
   auto* flow = flow_proto->mutable_network_flow();
   auto& five_tuple = flow_event.flow_map_key.five_tuple;
   bpf::cros_flow_map_key k = flow_event.flow_map_key;
-  auto it = prev_tx_rx_totals.Get(k);
 
-  if (it == prev_tx_rx_totals.end()) {
+  auto it = prev_tx_rx_totals_->Get(k);
+
+  if (it == prev_tx_rx_totals_->end()) {
     flow->set_rx_bytes(flow_event.flow_map_value.rx_bytes);
     flow->set_tx_bytes(flow_event.flow_map_value.tx_bytes);
     if (!flow_event.flow_map_value.garbage_collect_me) {
-      prev_tx_rx_totals.Put(flow_event.flow_map_key, flow_event.flow_map_value);
+      prev_tx_rx_totals_->Put(flow_event.flow_map_key,
+                              flow_event.flow_map_value);
     }
   } else {
     auto rx_bytes = flow_event.flow_map_value.rx_bytes - it->second.rx_bytes;
@@ -284,7 +284,7 @@ NetworkPlugin::MakeFlowEvent(
     flow->set_rx_bytes(rx_bytes);
     flow->set_tx_bytes(tx_bytes);
     if (flow_event.flow_map_value.garbage_collect_me) {
-      prev_tx_rx_totals.Erase(it);
+      prev_tx_rx_totals_->Erase(it);
     }
   }
 
@@ -338,7 +338,8 @@ NetworkPlugin::MakeFlowEvent(
       break;
   }
 
-  FillProcessTree(flow_proto.get(), flow_event.flow_map_value.task_info);
+  FillProcessTree(flow_proto.get(), flow_event.flow_map_value.process_info,
+                  flow_event.flow_map_value.has_full_process_info);
   // TODO(b:294579287): Make event filtering more generic, before doing that
   // process cache hits need to be drastically improved.
   if (IsFilteredOut(*flow_proto)) {

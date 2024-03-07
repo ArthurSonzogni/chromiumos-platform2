@@ -184,13 +184,6 @@ enum cros_network_socket_direction {
   CROS_SOCKET_DIRECTION_UNKNOWN  // non-connection based socket.
 };
 
-struct cros_network_common {
-  int dev_if;  // The device interface index that this socket is bound to.
-  enum cros_network_family family;
-  enum cros_network_protocol protocol;
-  struct cros_process_task_info process;
-} __attribute__((aligned(8)));
-
 union cros_ip_addr {
   uint32_t addr4;
   uint8_t addr6[16];
@@ -217,31 +210,28 @@ struct cros_network_5_tuple {
 
 struct cros_flow_map_key {
   struct cros_network_5_tuple five_tuple;
-  uint64_t sock;  // Holds struct socket * but force to 64-bit value
-  // because on ARM64 we have 64-bit kernel and 32-bit userspace
-  // so a pointer in the BPF will be 64-bits while this same pointer would be
-  // 32-bits in userspace. This would cause issues.
+  uint64_t sock_id;
 } __attribute__((aligned(8)));
 
 struct cros_flow_map_value {
   enum cros_network_socket_direction direction;
   uint32_t tx_bytes;
   uint32_t rx_bytes;
-  struct cros_process_task_info task_info;
+  struct cros_process_start process_info;
+  bool has_full_process_info;
+  bool garbage_collect_me;
   // TODO(b/264550183): add remote_hostname
   // TODO(b/264550183): add application protocol
   // TODO(b/264550183): add http_host
   // TODO(b/264550183): add sni_host
-  bool garbage_collect_me;
-} __attribute__((aligned(8)));
-
-struct cros_sock_to_process_map_value {
-  struct cros_network_common common;
-  bool garbage_collect_me;
 } __attribute__((aligned(8)));
 
 struct cros_network_socket_listen {
-  struct cros_network_common common;
+  int dev_if;  // The device interface index that this socket is bound to.
+  enum cros_network_family family;
+  enum cros_network_protocol protocol;
+  struct cros_process_start process_info;
+  bool has_full_process_info;
   uint8_t socket_type;  // SOCK_STREAM, SOCK_DGRAM etc..
   uint32_t port;
   uint32_t ipv4_addr;

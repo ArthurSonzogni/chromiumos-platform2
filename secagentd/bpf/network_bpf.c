@@ -20,12 +20,23 @@
 #include "secagentd/bpf/port/include/uapi/asm-generic/errno.h"
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
+
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
 #define CROS_NF_HOOK_OK (1)
+
+struct cros_sk_info {
+  enum cros_network_family family;
+  enum cros_network_protocol protocol;
+  struct cros_process_start process_start;
+  // include a flow_map_value to drastically reduce stack usage.
+  struct cros_flow_map_value flow_map_value_scratchpad;
+  uint64_t sock_id;
+  bool has_full_process_info;
+} __attribute__((aligned(8)));
 
 struct {
   __uint(type, BPF_MAP_TYPE_LRU_HASH);
@@ -41,21 +52,15 @@ struct {
   __type(value, int64_t);
 } cros_network_external_interfaces SEC(".maps");
 
-/* The process protocol and family information
- * remains the same for a socket for its lifetime.
- * so record it just once.
- */
 struct {
-  __uint(type, BPF_MAP_TYPE_LRU_HASH);
-  __uint(max_entries, CROS_MAX_SOCKET);
-  __type(key, uint64_t);  // A unique ID for a socket.
-  __type(value, struct cros_sock_to_process_map_value);
-} process_map SEC(".maps");
-#define CROS_SOCK_INVALID (2)
-#define CROS_IF_NOT_EXTERNAL (3)
-#define CROS_FAILED_HEAP_ALLOC (4)
-#define CROS_NO_SOCK_TO_PROCESS (5)
+  __uint(type, BPF_MAP_TYPE_SK_STORAGE);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+  __type(key, int);
+  __type(value, struct cros_sk_info);
+} sk_storage SEC(".maps");
 
+// Populated by process exec bpf program and reused by network events bpf
+// to achieve full process context.
 struct {
   __uint(type, BPF_MAP_TYPE_HASH);
   __uint(max_entries, 65536);  // up to 2^16 task info for processes can be
@@ -65,6 +70,12 @@ struct {
   __uint(map_flags, BPF_F_NO_PREALLOC);
   __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
 } shared_process_info SEC(".maps");
+
+#define CROS_SOCK_INVALID (2)
+#define CROS_IF_NOT_EXTERNAL (3)
+#define CROS_FAILED_HEAP_ALLOC (4)
+#define CROS_NO_SOCK_TO_PROCESS (5)
+#define CROS_NO_SK_STORAGE_ALLOCATED (6)
 
 /* A recording of sockets that have at least one
  * flow map entry associated with it.
@@ -78,24 +89,6 @@ struct {
   __type(key, uint64_t);    // A unique ID for a socket.
   __type(value, uint64_t);  // Also the address of the socket.
 } active_socket_map SEC(".maps");
-
-/* BPF Verifier only allows a stack of 512 bytes max.
- * Use this one simple trick that BPF verifiers hate
- * to get around this limitation.
- */
-struct {
-  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-  __uint(key_size, sizeof(uint32_t));
-  __uint(value_size, sizeof(struct cros_sock_to_process_map_value));
-  __uint(max_entries, 1);
-} heap_cros_network_common_map SEC(".maps");
-
-struct {
-  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-  __uint(key_size, sizeof(uint32_t));
-  __uint(value_size, sizeof(struct cros_flow_map_value));
-  __uint(max_entries, 1);
-} heap_cros_flow_map_value SEC(".maps");
 
 // Inspired by net/ipv6/exthdrs_core.c:ipv6_find_hdr
 // Return the first non extension next header value
@@ -174,18 +167,6 @@ determine_protocol(int family, int socket_type, int protocol) {
   }
   // The socket type is dgram or stream but the protocol isn't one we recognize.
   return CROS_PROTOCOL_UNKNOWN;
-}
-
-static void __attribute__((always_inline))
-cros_fill_common(struct cros_network_common* common,
-                 const struct socket* sock) {
-  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
-  struct sock* sk = BPF_CORE_READ(sock, sk);
-  int socket_type = BPF_CORE_READ(sock, type);
-  common->family = BPF_CORE_READ(sk, __sk_common).skc_family;
-  common->protocol = determine_protocol(common->family, socket_type,
-                                        BPF_CORE_READ(sk, sk_protocol));
-  cros_fill_task_info(&common->process, t);
 }
 
 // Grab the network_device associated with a sk_buff.
@@ -387,32 +368,53 @@ static inline __attribute__((always_inline)) bool cros_socket_is_monitored(
   uint64_t sock_key = (uint64_t)(BPF_PROBE_READ(sk, sk_socket));
   return bpf_map_lookup_elem(&active_socket_map, &sock_key) != NULL;
 }
-
-static inline __attribute__((always_inline)) int create_process_map_entry(
-    struct socket* sock, const char* ctx) {
-  struct cros_sock_to_process_map_value* process_value;
-  const uint32_t zero = 0;
-  uint64_t key = (uint64_t)sock;
-  process_value = bpf_map_lookup_elem(&heap_cros_network_common_map, &zero);
-  if (process_value == NULL) {
-    bpf_printk(
-        "ERROR: Failed to allocate a cros_sock_to_process_map_value off a map "
-        "backed heap for %s",
-        ctx);
-    return -CROS_FAILED_HEAP_ALLOC;
+static inline __attribute__((always_inline)) bool fill_process_start(
+    struct cros_process_start* process_start) {
+  struct task_struct* t = (struct task_struct*)bpf_get_current_task_btf();
+  int pid = t->tgid;
+  struct cros_process_start* process_start_from_exec =
+      bpf_map_lookup_elem(&shared_process_info, &pid);
+  if (process_start_from_exec != NULL) {
+    __builtin_memcpy(&process_start->task_info,
+                     &process_start_from_exec->task_info,
+                     sizeof(process_start->task_info));
+    __builtin_memcpy(&process_start->image_info,
+                     &process_start_from_exec->image_info,
+                     sizeof(process_start->image_info));
+    __builtin_memcpy(&process_start->spawn_namespace,
+                     &process_start_from_exec->spawn_namespace,
+                     sizeof(process_start->spawn_namespace));
+    return true;
   }
-  __builtin_memset(process_value, 0,
-                   sizeof(struct cros_sock_to_process_map_value));
-  cros_fill_common(&process_value->common, sock);
-  process_value->garbage_collect_me = false;
-  bpf_map_update_elem(&process_map, &sock, process_value, BPF_NOEXIST);
-  return 0;
+  cros_fill_task_info(&process_start->task_info, t);
+  return false;
+}
+
+// Create a sk_storage and populate it. If storage already exists then do
+// nothing.
+static inline __attribute__((always_inline)) struct cros_sk_info*
+create_process_map_entry(struct socket* sock, const char* ctx) {
+  struct cros_sk_info* sk_info =
+      bpf_sk_storage_get(&sk_storage, sock->sk, 0, 0);
+  if (sk_info != NULL) {
+    return sk_info;
+  }
+  sk_info =
+      bpf_sk_storage_get(&sk_storage, sock->sk, 0, BPF_SK_STORAGE_GET_F_CREATE);
+  if (!sk_info) {
+    return sk_info;
+  }
+  sk_info->family = sock->sk->__sk_common.skc_family;
+  sk_info->protocol =
+      determine_protocol(sk_info->family, sock->type, sock->sk->sk_protocol);
+  sk_info->sock_id = bpf_get_socket_cookie(sock->sk);
+  sk_info->has_full_process_info = fill_process_start(&sk_info->process_start);
+  return sk_info;
 }
 
 static inline __attribute__((always_inline)) int cros_maybe_new_socket(
-    struct socket* sock) {
-  uint64_t sock_key = (uint64_t)(sock);
-  uint32_t zero = 0;
+    uint64_t sock_id) {
+  uint64_t sock_key = sock_id;
   if (bpf_map_update_elem(&active_socket_map, &sock_key, &sock_key,
                           BPF_NOEXIST) != 0) {
     return -1;
@@ -421,33 +423,33 @@ static inline __attribute__((always_inline)) int cros_maybe_new_socket(
 }
 
 static inline __attribute__((always_inline)) int cros_new_flow_entry(
-    struct cros_flow_map_key* key_ref,
+    struct cros_sk_info* sk_info,
+    struct cros_flow_map_key* map_key,
     enum cros_network_socket_direction direction,
     uint32_t tx_bytes,
     uint32_t rx_bytes) {
-  struct cros_flow_map_value* value;
-  // Use the process value from the heap.
-  const uint32_t zero = 0;
-  value = bpf_map_lookup_elem(&heap_cros_flow_map_value, &zero);
-  if (value == NULL) {
-    // This is a pretty fatal error so add a return value for
-    // cros_new_flow_entry
-    bpf_printk("ERROR: Unable to map-allocate a flow map value for creation.");
-    return -CROS_FAILED_HEAP_ALLOC;
-  }
+  struct cros_flow_map_value* value = &sk_info->flow_map_value_scratchpad;
   value->garbage_collect_me = false;
   value->direction = direction;
   value->rx_bytes = rx_bytes;
   value->tx_bytes = tx_bytes;
-  uint64_t sock = key_ref->sock;
-  struct cros_sock_to_process_map_value* process_value =
-      bpf_map_lookup_elem(&process_map, &sock);
-  if (process_value == NULL) {
-    return -CROS_NO_SOCK_TO_PROCESS;
+  value->has_full_process_info = false;
+
+  __builtin_memcpy(&value->process_info.task_info,
+                   &sk_info->process_start.task_info,
+                   sizeof(value->process_info.task_info));
+
+  if (sk_info->has_full_process_info == true) {
+    __builtin_memcpy(&value->process_info.image_info,
+                     &sk_info->process_start.image_info,
+                     sizeof(value->process_info.image_info));
+    __builtin_memcpy(&value->process_info.spawn_namespace,
+                     &sk_info->process_start.spawn_namespace,
+                     sizeof(value->process_info.spawn_namespace));
+    value->has_full_process_info = true;
   }
-  __builtin_memcpy(&value->task_info, &process_value->common.process,
-                   sizeof(value->task_info));
-  if (bpf_map_update_elem(&cros_network_flow_map, key_ref, value, BPF_NOEXIST) <
+
+  if (bpf_map_update_elem(&cros_network_flow_map, map_key, value, BPF_NOEXIST) <
       0) {
     bpf_printk("WARNING: Could not create flow entry: Entry already exists.");
   }
@@ -463,33 +465,33 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
   if (!cros_is_ifindex_external(skb)) {
     return -CROS_IF_NOT_EXTERNAL;
   }
-  struct sock* sk = BPF_CORE_READ(skb, sk);
-  struct socket* sock = BPF_CORE_READ(skb, sk, sk_socket);
-  if (sock == NULL) {
-    // don't care about flows that aren't associated with sockets.
-    return -CROS_SOCK_INVALID;
+  struct cros_sk_info* sk_info = bpf_sk_storage_get(&sk_storage, skb->sk, 0, 0);
+  if (sk_info == NULL) {
+    return -CROS_NO_SK_STORAGE_ALLOCATED;
   }
-  cros_maybe_new_socket(sock);
-  struct cros_flow_map_value* value_ref;
-  struct cros_flow_map_key key;
+  cros_maybe_new_socket(sk_info->sock_id);
+  struct cros_flow_map_value* flow_map_value;
+  struct cros_flow_map_key flow_map_key;
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
-  __builtin_memset(&key, 0, sizeof(key));
-  key.sock = (uint64_t)BPF_CORE_READ(sk, sk_socket);
+  __builtin_memset(&flow_map_key, 0, sizeof(flow_map_key));
+  flow_map_key.sock_id = sk_info->sock_id;
+  flow_map_key.five_tuple.family = sk_info->family;
+  flow_map_key.five_tuple.protocol = sk_info->protocol;
   int bytes = 0;
 
   if (is_ipv6) {
-    bytes = cros_fill_ipv6_5_tuple(&key.five_tuple, skb, is_tx);
+    bytes = cros_fill_ipv6_5_tuple(&flow_map_key.five_tuple, skb, is_tx);
   } else {
-    bytes = cros_fill_ipv4_5_tuple(&key.five_tuple, skb, is_tx);
+    bytes = cros_fill_ipv4_5_tuple(&flow_map_key.five_tuple, skb, is_tx);
   }
 
-  value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
-  if (value_ref) {  // entry already exists.
+  flow_map_value = bpf_map_lookup_elem(&cros_network_flow_map, &flow_map_key);
+  if (flow_map_value) {  // entry already exists.
     if (is_tx) {
-      value_ref->tx_bytes = value_ref->tx_bytes + bytes;
+      flow_map_value->tx_bytes = flow_map_value->tx_bytes + bytes;
     } else {
-      value_ref->rx_bytes = value_ref->rx_bytes + bytes;
+      flow_map_value->rx_bytes = flow_map_value->rx_bytes + bytes;
     }
   } else {
     // The socket was likely in operation before this BPF program was loaded
@@ -497,57 +499,63 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
     enum cros_network_socket_direction dir = CROS_SOCKET_DIRECTION_UNKNOWN;
 
     if (is_tx) {
-      return cros_new_flow_entry(&key, /*direction*/ dir,
+      return cros_new_flow_entry(/*sk_info=*/sk_info,
+                                 /*map_key=*/&flow_map_key,
+                                 /*direction=*/dir,
                                  /*tx_bytes*/ bytes, /*rx_bytes*/ 0);
 
     } else {
-      return cros_new_flow_entry(&key, /*direction*/ dir,
-                                 /*tx_bytes*/ 0, /*rx_bytes*/ bytes);
+      return cros_new_flow_entry(/*sk_info=*/sk_info,
+                                 /*map_key=*/&flow_map_key,
+                                 /*direction=*/dir,
+                                 /*tx_bytes=*/0, /*rx_bytes=*/bytes);
     }
   }
   return 0;
 }
 
-CROS_IF_FUNCTION_HOOK("fexit/inet_listen",
-                      "raw_tracepoint/cros_inet_listen_exit")
+CROS_IF_FUNCTION_HOOK("fexit/inet_listen", "tp_btf/cros_inet_listen_exit")
 int BPF_PROG(cros_handle_inet_listen,
-             struct socket* socket,
+             struct socket* sock,
              int backlog,
              int rv) {
   if (rv != 0) {
     return 0;
   }
-  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
+  struct task_struct* t = (struct task_struct*)bpf_get_current_task_btf();
   if (is_kthread(t)) {
     return 0;
   }
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (event == NULL) {
+    bpf_printk("inet_listen unable to reserve buffer");
     return 0;
   }
-  struct sock* sk = BPF_CORE_READ(socket, sk);
+  struct sock* sk = sock->sk;
   event->type = kNetworkEvent;
   event->data.network_event.type = kNetworkSocketListen;
   struct cros_network_socket_listen* sl =
       &(event->data.network_event.data.socket_listen);
-  cros_fill_common(&sl->common, socket);
-  sl->socket_type = BPF_CORE_READ(socket, type);
+  int socket_type = sock->type;
+  sl->family = sk->__sk_common.skc_family;
+  sl->protocol = determine_protocol(sl->family, socket_type, sk->sk_protocol);
+  sl->has_full_process_info = fill_process_start(&sl->process_info);
+  sl->socket_type = sock->type;
   // Extract out the source port.
-  sl->port = BPF_CORE_READ(sk, __sk_common).skc_num;
+  sl->port = sk->__sk_common.skc_num;
   // Fill out the IPv4 address.
-  sl->ipv4_addr = BPF_CORE_READ(sk, __sk_common).skc_rcv_saddr;
-  __builtin_memcpy(
-      sl->ipv6_addr,
-      BPF_CORE_READ(sk, __sk_common).skc_v6_rcv_saddr.in6_u.u6_addr8,
-      sizeof(sl->ipv6_addr) / sizeof(uint8_t));
+  sl->ipv4_addr = sk->__sk_common.skc_rcv_saddr;
+  __builtin_memcpy(sl->ipv6_addr,
+                   sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8,
+                   sizeof(sl->ipv6_addr) / sizeof(uint8_t));
   bpf_ringbuf_submit(event, 0);
   return 0;
 }
 
 // ipv4 receive path. Right before userspace receives the packet.
 CROS_IF_FUNCTION_HOOK("fentry/ip_protocol_deliver_rcu",
-                      "raw_tracepoint/cros_ip_protocol_deliver_rcu_enter")
+                      "tp_btf/cros_ip_protocol_deliver_rcu_enter")
 int BPF_PROG(cros_handle_ip_protocol_deliver_rcu_enter,
              struct net* net,
              struct sk_buff* skb,
@@ -565,7 +573,7 @@ int BPF_PROG(cros_handle_ip_output,
              struct sock* sk,
              struct sk_buff* skb)
 #else
-SEC("raw_tracepoint/cros__ip_local_out_exit")
+SEC("tp_btf/cros__ip_local_out_exit")
 int BPF_PROG(cros_handle__ip_local_out_exit,
              struct net* net,
              struct sock* sk,
@@ -583,7 +591,7 @@ int BPF_PROG(cros_handle__ip_local_out_exit,
 // IPv6 transmit path. Fairly close to where a packet gets handed off
 // to the device layer.
 CROS_IF_FUNCTION_HOOK("fentry/ip6_finish_output2",
-                      "raw_tracepoint/cros_ip6_finish_output2_enter")
+                      "tp_btf/cros_ip6_finish_output2_enter")
 int BPF_PROG(cros_handle_ip6_finish_output2_enter,
              struct net* net,
              struct sock* sk,
@@ -595,7 +603,7 @@ int BPF_PROG(cros_handle_ip6_finish_output2_enter,
 }
 
 CROS_IF_FUNCTION_HOOK("fentry/ip6_input_finish",
-                      "raw_tracepoint/cros_ip6_input_finish_enter")
+                      "tp_btf/cros_ip6_input_finish_enter")
 int BPF_PROG(cros_handle_ip6_input_exit,
              struct net* net,
              struct sock* sk,
@@ -606,8 +614,7 @@ int BPF_PROG(cros_handle_ip6_input_exit,
   return 0;
 }
 
-CROS_IF_FUNCTION_HOOK("fexit/inet_accept",
-                      "raw_tracepoint/cros_inet_accept_exit")
+CROS_IF_FUNCTION_HOOK("fexit/inet_accept", "tp_btf/cros_inet_accept_exit")
 int BPF_PROG(cros_handle_inet_accept_exit,
              struct socket* sock,
              struct socket* newsock,
@@ -622,28 +629,33 @@ int BPF_PROG(cros_handle_inet_accept_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = (uint64_t)newsock;
-  cros_maybe_new_socket(newsock);
-  cros_fill_5_tuple_from_sock(&key.five_tuple, newsock);
-  // new socket, new process entry.
-  if (create_process_map_entry(newsock, "inet_accept") < 0) {
-    bpf_printk("ERROR: inet_accept unable to capture process context.");
+  struct cros_sk_info* sk_info =
+      create_process_map_entry(newsock, "inet_accept");
+  if (!sk_info) {
+    bpf_printk(
+        "cros_network_accept_exit was unable to allocate and populate "
+        "sk_info");
     return 0;
   }
+  key.sock_id = sk_info->sock_id;
+  cros_maybe_new_socket(sk_info->sock_id);
+  cros_fill_5_tuple_from_sock(&key.five_tuple, newsock);
+  // new socket, new process entry.
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {  // entry already exist.. this shouldn't be the case.
     bpf_printk(
         "cros_network_accept_exit encountered a socket with existing flow "
         "entry");
   } else {  // entry does not exist so must be an outbound connection.
-    cros_new_flow_entry(&key, /*direction*/ CROS_SOCKET_DIRECTION_IN,
-                        /*tx_bytes*/ 0, /*rx_bytes*/ 0);
+    cros_new_flow_entry(/*sk_info=*/sk_info, /*map_key=*/&key,
+                        /*direction=*/CROS_SOCKET_DIRECTION_IN,
+                        /*tx_bytes=*/0, /*rx_bytes=*/0);
   }
   return 0;
 }
 
 CROS_IF_FUNCTION_HOOK("fexit/__inet_stream_connect",
-                      "raw_tracepoint/cros_inet_stream_connect_exit")
+                      "tp_btf/cros_inet_stream_connect_exit")
 int BPF_PROG(cros_handle___inet_stream_connect_exit,
              struct socket* sock,
              struct sockaddr* uaddr,
@@ -659,25 +671,26 @@ int BPF_PROG(cros_handle___inet_stream_connect_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  key.sock = (uint64_t)sock;
-  cros_maybe_new_socket(sock);
-  cros_fill_5_tuple_from_sock(&key.five_tuple, sock);
-  if (create_process_map_entry(sock, "inet_connect") < 0) {
-    bpf_printk("ERROR: inet_accept unable to record process context.");
+  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_connect");
+  if (!sk_info) {
+    bpf_printk("inet_connect was unable to allocate and populate sk_info");
     return 0;
   }
+  key.sock_id = sk_info->sock_id;
+  cros_maybe_new_socket(sk_info->sock_id);
+  cros_fill_5_tuple_from_sock(&key.five_tuple, sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {
     value_ref->direction = CROS_SOCKET_DIRECTION_OUT;
   } else {  // entry does not exist so must be an outbound connection.
-    cros_new_flow_entry(&key, /*direction*/ CROS_SOCKET_DIRECTION_OUT,
-                        /*tx_bytes*/ 0, /*rx_bytes*/ 0);
+    cros_new_flow_entry(/*sk_info=*/sk_info, /*map_key=*/&key,
+                        /*direction=*/CROS_SOCKET_DIRECTION_OUT,
+                        /*tx_bytes=*/0, /*rx_bytes=*/0);
   }
   return 0;
 }
 
-CROS_IF_FUNCTION_HOOK("fentry/inet_release",
-                      "raw_tracepoint/cros_inet_release_enter")
+CROS_IF_FUNCTION_HOOK("fentry/inet_release", "tp_btf/cros_inet_release_enter")
 int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
   uint64_t key = (uint64_t)sock;
   if (bpf_map_delete_elem(&active_socket_map, &key) == -1) {
@@ -686,24 +699,22 @@ int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
   return 0;
 }
 
-CROS_IF_FUNCTION_HOOK("fentry/inet_sendmsg",
-                      "raw_tracepoint/cros_inet_sendmsg_enter")
+CROS_IF_FUNCTION_HOOK("fentry/inet_sendmsg", "tp_btf/cros_inet_sendmsg_enter")
 int BPF_PROG(cros_handle_inet_sendmsg_enter,
              struct socket* sock,
              struct msghdr* msg,
              size_t size) {
   // This is a safe area to grab process context.
-  struct sock* sk = BPF_CORE_READ(sock, sk);
-  if (create_process_map_entry(sock, "inet_sendmsg") < 0) {
-    bpf_printk("ERROR: inet_sendmsg unable to capture process context.");
+  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_sendmsg");
+  if (!sk_info) {
+    bpf_printk("inet_sendmsg was unable to allocate and populate sk_info");
     return 0;
   }
-  cros_maybe_new_socket(sock);
+  cros_maybe_new_socket(sk_info->sock_id);
   return 0;
 }
 
-CROS_IF_FUNCTION_HOOK("fexit/inet_recvmsg",
-                      "raw_tracepoint/cros_inet_recvmsg_exit")
+CROS_IF_FUNCTION_HOOK("fexit/inet_recvmsg", "tp_btf/cros_inet_recvmsg_exit")
 int BPF_PROG(cros_handle_inet_recvmsg_exit,
              struct socket* sock,
              struct msghdr* msg,
@@ -711,9 +722,11 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
              int flags,
              int rv) {
   // This is a safe area to grab process context.
-  if (create_process_map_entry(sock, "inet_recvmsg") < 0) {
-    bpf_printk("ERROR: inet_recvmsg unable to capture process context.");
+  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_recvmsg");
+  if (!sk_info) {
+    bpf_printk("inet_recvmsg was unable to allocate and populate sk_info");
+    return 0;
   }
-  cros_maybe_new_socket(sock);
+  cros_maybe_new_socket(sk_info->sock_id);
   return 0;
 }

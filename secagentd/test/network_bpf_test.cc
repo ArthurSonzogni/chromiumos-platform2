@@ -67,7 +67,6 @@ class NetworkBpfTestFixture : public ::testing::Test {
         reinterpret_cast<bpf_map*>(0xDEDE);
     fake_network_bpf_.maps.active_socket_map =
         reinterpret_cast<bpf_map*>(0xDEED);
-    fake_network_bpf_.maps.process_map = reinterpret_cast<bpf_map*>(0xDADA);
     fake_network_bpf_.maps.rb = reinterpret_cast<bpf_map*>(0xCADE);
   }
 

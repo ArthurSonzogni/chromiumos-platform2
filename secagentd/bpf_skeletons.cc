@@ -180,8 +180,7 @@ void NetworkBpfSkeleton::ScanFlowMap() {
         // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
       }
-      if (active_sockets.find(next_key->sock) == active_sockets.end()) {
-        event_flow_map_value.garbage_collect_me = true;
+      if (active_sockets.find(next_key->sock_id) == active_sockets.end()) {
         // Delay the deletion of flow map events. It may not be safe to
         // delete elements while we're iterating through the map.
         flow_map_entries_to_delete.push_back(*next_key);
