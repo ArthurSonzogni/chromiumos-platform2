@@ -4,7 +4,7 @@
 
 import("//common-mk/mojom_bindings_generator.gni")
 
-group("cros_healthd_executor_mojo_bindings") {
+group("mojom") {
   deps = [
     ":delegate_mojo_bindings",
     ":executor_mojo_bindings",

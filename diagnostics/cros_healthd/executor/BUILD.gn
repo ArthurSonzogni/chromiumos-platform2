@@ -2,30 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-# Library that provides utilities used by cros_healthd's root-level executor.
-pkg_config("libcros_healthd_executor_pkg_deps") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libdlcservice-client",
-    "libec",
-    "libmojo",
-    "re2",
-  ]
-}
-
-source_set("libcros_healthd_executor") {
+source_set("executor") {
   sources = [
     "executor.cc",
     "executor_daemon.cc",
   ]
-  configs += [ ":libcros_healthd_executor_pkg_deps" ]
+  public_pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
+  ]
+  pkg_deps = [ "libdlcservice-client" ]
+  public_deps = [
+    "//diagnostics/cros_healthd/executor/utils",
+    "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
+  ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/executor/utils",
-    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

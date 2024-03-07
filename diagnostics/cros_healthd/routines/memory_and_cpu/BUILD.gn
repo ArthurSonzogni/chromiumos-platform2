@@ -43,6 +43,7 @@ if (use.test) {
       ":memory_and_cpu",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/executor/utils:test_support",
       "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",

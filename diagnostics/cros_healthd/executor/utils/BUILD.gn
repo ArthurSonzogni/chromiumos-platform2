@@ -2,20 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-# Library that provides utilities used by cros_healthd's root-level executor.
-pkg_config("pkg_deps") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libdlcservice-client",
-    "libmojo",
-    "re2",
-    "vboot_host",
-  ]
-}
-
 source_set("utils") {
   sources = [
     "delegate_process.cc",
@@ -26,37 +12,51 @@ source_set("utils") {
     "sandboxed_process.cc",
     "scoped_process_control.cc",
   ]
-  configs += [ ":pkg_deps" ]
-  deps = [
-    "//diagnostics/base",
-    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+  public_pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
   ]
+  pkg_deps = [
+    "libdlcservice-client",
+    "re2",
+    "vboot_host",
+  ]
+  public_deps = [ "//diagnostics/cros_healthd/mojom" ]
+  deps = [ "//diagnostics/base" ]
 }
 
 if (use.test) {
-  pkg_config("test_pkg_deps") {
-    pkg_deps = [
-      "libchrome-test",
-      "libdlcservice-client-test",
+  source_set("test_support") {
+    sources = [ "fake_process_control.cc" ]
+    public_pkg_deps = [
+      "libchrome",
+      "libmojo",
     ]
+    public_deps = [ "//diagnostics/cros_healthd/mojom:executor_mojo_bindings" ]
   }
 
   source_set("test") {
-    deps = [
-      "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-    ]
     sources = [
       "dlc_manager_test.cc",
-      "fake_process_control.cc",
       "file_test.cc",
       "network_utils_test.cc",
       "sandboxed_process_test.cc",
       "scoped_process_control_test.cc",
     ]
-    configs += [
-      ":pkg_deps",
-      ":test_pkg_deps",
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "libdlcservice-client",
+      "libdlcservice-client-test",
+      "libmojo",
+    ]
+    deps = [
+      ":test_support",
+      ":utils",
+      "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
     ]
   }
 }
