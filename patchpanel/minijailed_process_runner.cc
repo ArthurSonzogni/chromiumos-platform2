@@ -460,14 +460,16 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
     return true;
   }
 
-  std::vector<std::string> input;
+  std::vector<std::string> lines;
   for (const auto& [table, rules] : table_to_rules) {
-    input.push_back(base::StrCat({"*", Iptables::TableName(table)}));
-    input.insert(input.end(), rules.begin(), rules.end());
+    lines.push_back(base::StrCat({"*", Iptables::TableName(table)}));
+    lines.insert(lines.end(), rules.begin(), rules.end());
     // Need a "\n" after "COMMIT". Add it here since JoinString() won't do
     // it for the last line.
-    input.push_back("COMMIT\n");
+    lines.push_back("COMMIT\n");
   }
+
+  std::string input = base::JoinString(lines, "\n");
 
   // TODO(b/328151873): Write to the stdin pipe would be easier in logic but
   // complicated in implementation now. Refactor this after we have a better
@@ -477,8 +479,7 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
     PLOG(ERROR) << "Failed to create input file to iptables-restore";
     return false;
   }
-  if (!base::WriteFileDescriptor(script_fd.get(),
-                                 base::JoinString(input, "\n"))) {
+  if (!base::WriteFileDescriptor(script_fd.get(), input)) {
     PLOG(ERROR) << "Failed to generate input file to iptables-restore";
     return false;
   }
@@ -492,11 +493,13 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
       {std::string(iptables_restore_path), "-n", script_path, "-w"}, mj_, jail,
       /*log_failures=*/true, nullptr);
 
-  LOG(INFO) << iptables_restore_path << " finished with " << input.size()
-            << " lines, exit with " << ret;
-
   // TODO(b/328151873): Parse stderr so we can also log which line contains an
   // error.
+  if (ret != 0) {
+    LOG(ERROR) << iptables_restore_path << " exited with " << ret
+               << ", input: " << input;
+  }
+
   return ret == 0;
 }
 
