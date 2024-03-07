@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sstream>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "fbpreprocessor/firmware_dump.h"
@@ -59,6 +59,14 @@ TEST_F(FirmwareDumpTest, DeleteRemovesFiles) {
   ASSERT_TRUE(fw.Delete());
   // dmp file no longer exists.
   ASSERT_FALSE(base::PathExists(dmp));
+}
+
+TEST_F(FirmwareDumpTest, PrintToOStream) {
+  // Verify the << operator.
+  std::stringstream ss;
+  FirmwareDump dump(base::FilePath("test.dmp"));
+  ss << dump;
+  EXPECT_EQ(ss.str(), "test.dmp");
 }
 
 }  // namespace
