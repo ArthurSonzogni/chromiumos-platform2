@@ -353,7 +353,7 @@ int MinijailedProcessRunner::conntrack(std::string_view command,
 int MinijailedProcessRunner::iptables_restore(std::string_view script_file,
                                               bool log_failures) {
   std::vector<std::string> args = {std::string(kIptablesRestorePath),
-                                   std::string(script_file)};
+                                   std::string(script_file), "-w"};
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
@@ -364,7 +364,7 @@ int MinijailedProcessRunner::iptables_restore(std::string_view script_file,
 int MinijailedProcessRunner::ip6tables_restore(std::string_view script_file,
                                                bool log_failures) {
   std::vector<std::string> args = {std::string(kIp6tablesRestorePath),
-                                   std::string(script_file)};
+                                   std::string(script_file), "-w"};
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
