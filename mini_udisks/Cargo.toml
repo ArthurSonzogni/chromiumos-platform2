@@ -1,0 +1,5 @@
+[package]
+name = "mini_udisks"
+version = "1.0.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
