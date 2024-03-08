@@ -125,6 +125,12 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       base::OnceCallback<void(bool success)> callback,
       dbus::Response* response);
 
+  // Handler for EnrollLegacyTemplate. |callback| will be called on behalf of
+  // the caller of EnrollLegacyTemplate.
+  void OnEnrollLegacyTemplateResponse(
+      base::OnceCallback<void(bool success)> callback,
+      dbus::Response* response);
+
   // Handler for *Credential commands
   template <typename ReplyProto>
   void OnProtoResponse(

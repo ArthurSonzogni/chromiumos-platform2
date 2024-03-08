@@ -497,6 +497,7 @@ TEST_F(BiometricsCommandProcessorImplTest, EnrollLegacyTemplateSuccess) {
 
 TEST_F(BiometricsCommandProcessorImplTest, ListLegacyRecordsSuccess) {
   biod::ListLegacyRecordsReply reply;
+  reply.set_status(biod::ListLegacyRecordsReply::SUCCESS);
   auto record1 = reply.add_legacy_records();
   auto record2 = reply.add_legacy_records();
   record1->set_legacy_record_id("record 1");
@@ -516,6 +517,20 @@ TEST_F(BiometricsCommandProcessorImplTest, ListLegacyRecordsSuccess) {
   ASSERT_TRUE(result.IsReady());
   ASSERT_THAT(result.Get(), IsOkAnd(UnorderedElementsAre(LegacyRecordEq(lr1),
                                                          LegacyRecordEq(lr2))));
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, ListLegacyRecordsFailed) {
+  biod::ListLegacyRecordsReply reply;
+  reply.set_status(biod::ListLegacyRecordsReply::UNKNOWN);
+
+  EXPECT_CALL(*mock_proxy_, ListLegacyRecords)
+      .WillOnce([&reply](auto&& callback) { std::move(callback).Run(reply); });
+  TestFuture<CryptohomeStatusOr<std::vector<LegacyRecord>>> result;
+  processor_->ListLegacyRecords(result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  EXPECT_EQ(result.Get().status()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
 }
 
 }  // namespace

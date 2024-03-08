@@ -679,6 +679,13 @@ void BiometricsCommandProcessorImpl::OnListLegacyRecordsReply(
         user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
     return;
   }
+  if (reply->status() != biod::ListLegacyRecordsReply::SUCCESS) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorListLegacyRecordsFailed),
+        ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+    return;
+  }
 
   auto records = reply->legacy_records();
   std::vector<LegacyRecord> results;

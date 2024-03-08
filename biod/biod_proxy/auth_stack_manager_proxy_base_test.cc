@@ -361,7 +361,7 @@ TEST_F(AuthStackManagerProxyBaseTest, DeleteCredentialInvalidResponse) {
 // Test that EnrollLegacyTemplate returns false if no dbus response.
 TEST_F(AuthStackManagerProxyBaseTest, EnrollLegacyTemplateNoResponse) {
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
-  // this case OnStartEnrollSessionResponse) with an empty response.
+  // this case OnEnrollLegacyTemplateResponse) with an empty response.
   auto ExecuteCallbackWithEmptyResponse =
       [](dbus::MethodCall* unused_method, int unused_ms,
          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
@@ -380,40 +380,30 @@ TEST_F(AuthStackManagerProxyBaseTest, EnrollLegacyTemplateNoResponse) {
   EXPECT_EQ(GetBiodEnrollSession(), nullptr);
 }
 
-// Test that EnrollLegacyTemplate succeeds and the object proxy saved by
-// EnrollLegacyTemplate is what the mock provides.
+// Test that EnrollLegacyTemplate succeeds.
 TEST_F(AuthStackManagerProxyBaseTest, EnrollLegacyTemplateGetSessionProxy) {
-  // The path must be correctly formatted for the writer to accept it.
-  const dbus::ObjectPath enroll_session_path("/org/chromium/Foo/AuthSession");
-  auto enroll_session_proxy = base::MakeRefCounted<dbus::MockObjectProxy>(
-      mock_bus_.get(), kBiodServiceName, enroll_session_path);
   // Set the underlying |mock_object_proxy_| to invoke the dbus callback (in
   // this case OnStatEnrollSessionResponse) with a fake response containing
   // |enroll_session_path|.
   auto ExecuteCallbackWithFakeResponse =
-      [enroll_session_path](
-          dbus::MethodCall* unused_method, int unused_ms,
-          base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
+      [](dbus::MethodCall* unused_method, int unused_ms,
+         base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
-        writer.AppendObjectPath(enroll_session_path);
+        writer.AppendBool(true);
         std::move(*dbus_callback).Run(fake_response.get());
       };
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
-  EXPECT_CALL(*mock_bus_, GetObjectProxy(kBiodServiceName, enroll_session_path))
-      .WillOnce(Return(enroll_session_proxy.get()));
 
   status_ = false;
-  EXPECT_NE(GetBiodEnrollSession(), enroll_session_proxy.get());
   // Install a lambda as the client callback and verify it is run.
   EnrollLegacyTemplateRequest request;
   proxy_base_->EnrollLegacyTemplate(
       request,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_TRUE(status_);
-  EXPECT_EQ(GetBiodEnrollSession(), enroll_session_proxy.get());
 }
 
 // Test that ListLegacyRecords returns nullopt if no dbus response.
@@ -444,6 +434,7 @@ TEST_F(AuthStackManagerProxyBaseTest, ListLegacyRecordsNoResponse) {
 // Test that ListLegacyRecords returns correct results.
 TEST_F(AuthStackManagerProxyBaseTest, ListLegacyRecords) {
   ListLegacyRecordsReply reply;
+  reply.set_status(ListLegacyRecordsReply::SUCCESS);
   auto record = reply.add_legacy_records();
   record->set_legacy_record_id("fake");
   record->set_label("fake label");
@@ -469,7 +460,8 @@ TEST_F(AuthStackManagerProxyBaseTest, ListLegacyRecords) {
         status_ = true;
       }));
   EXPECT_TRUE(status_);
-  EXPECT_TRUE(reply_ret.has_value());
+  ASSERT_TRUE(reply_ret.has_value());
+  EXPECT_EQ(reply_ret->status(), ListLegacyRecordsReply::SUCCESS);
   EXPECT_EQ(reply_ret->legacy_records_size(), 1);
   auto record_ret = reply_ret->legacy_records(0);
   EXPECT_EQ(record_ret.legacy_record_id(), record->legacy_record_id());

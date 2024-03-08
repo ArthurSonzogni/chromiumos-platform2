@@ -153,5 +153,10 @@ message LegacyRecord {
 }
 
 message ListLegacyRecordsReply {
+  enum ListLegacyRecordsStatus {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+  }
+  optional ListLegacyRecordsStatus status = 2;
   repeated LegacyRecord legacy_records = 1;
 }

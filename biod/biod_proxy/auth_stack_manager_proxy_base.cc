@@ -163,11 +163,11 @@ void AuthStackManagerProxyBase::EnrollLegacyTemplate(
   dbus::MessageWriter method_writer(&method_call);
   method_writer.AppendProtoAsArrayOfBytes(request);
 
-  // EnrollLegacyTemplate sharts an enroll session, which needs to
-  // be terminated later by EndEnrollSession.
+  // EnrollLegacyTemplate loads the template as a newly enrolled one. No session
+  // is started and EndEnrollSession is not needed.
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
-      base::BindOnce(&AuthStackManagerProxyBase::OnStartEnrollSessionResponse,
+      base::BindOnce(&AuthStackManagerProxyBase::OnEnrollLegacyTemplateResponse,
                      base::Unretained(this), std::move(callback)));
 }
 
@@ -205,6 +205,25 @@ void AuthStackManagerProxyBase::OnStartAuthSessionResponse(
     base::OnceCallback<void(bool success)> callback, dbus::Response* response) {
   biod_auth_session_ = HandleStartSessionResponse(response);
   std::move(callback).Run(biod_auth_session_ != nullptr);
+}
+
+void AuthStackManagerProxyBase::OnEnrollLegacyTemplateResponse(
+    base::OnceCallback<void(bool success)> callback, dbus::Response* response) {
+  if (!response) {
+    LOG(ERROR) << "EnrollLegacyTemplate had no response.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  dbus::MessageReader response_reader(response);
+  bool success;
+  if (!response_reader.PopBool(&success)) {
+    LOG(ERROR) << "EnrollLegacyTemplate had incorrect response.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  std::move(callback).Run(success);
 }
 
 dbus::ObjectProxy* AuthStackManagerProxyBase::HandleStartSessionResponse(

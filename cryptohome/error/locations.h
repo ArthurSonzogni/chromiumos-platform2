@@ -2081,6 +2081,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthGetPinWeaverInfoIsEnabledFailed = 3452,
   /* ./userdataauth.cc */
   kLocUserDataAuthGetPinWeaverInfoCheckFailed = 3453,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorListLegacyRecordsFailed = 3454,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
