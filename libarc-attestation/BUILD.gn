@@ -7,7 +7,6 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":arc-attestation-cmd",
-    ":install_libarc-attestation_headers",
     ":libarc-attestation",
   ]
 
@@ -88,11 +87,6 @@ source_set("libarc-attestation-source") {
 shared_library("libarc-attestation") {
   deps = [ ":libarc-attestation-source" ]
   install_path = "lib"
-}
-
-install_config("install_libarc-attestation_headers") {
-  sources = [ "lib/interface.h" ]
-  install_path = "/usr/include/chromeos/libarc-attestation"
 }
 
 executable("arc-attestation-cmd") {
