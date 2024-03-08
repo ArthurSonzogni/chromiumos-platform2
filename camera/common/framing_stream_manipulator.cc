@@ -12,6 +12,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <system/camera_metadata.h>
 #include <utility>
 
 #include <base/check.h>
@@ -385,8 +386,12 @@ bool FramingStreamManipulator::UpdateVendorTags(
     VendorTagManager& vendor_tag_manager) {
   if (!vendor_tag_manager.Add(kCrosDigitalZoomVendorKey,
                               kCrosDigitalZoomVendorTagSectionName,
-                              kCrosDigitalZoomVendorTagName, TYPE_BYTE)) {
-    LOGF(ERROR) << "Failed to add digital zoom vendor tag";
+                              kCrosDigitalZoomVendorTagName, TYPE_BYTE) ||
+      !vendor_tag_manager.Add(kCrosDigitalZoomRequestedVendorKey,
+                              kCrosDigitalZoomVendorTagSectionName,
+                              kCrosDigitalZoomRequestedVendorTagName,
+                              TYPE_BYTE)) {
+    LOGF(ERROR) << "Failed to add digital zoom vendor tags";
     return false;
   }
   return true;
@@ -508,8 +513,7 @@ bool FramingStreamManipulator::IsManualZoomSupported() {
   if (base::PathExists(base::FilePath(kForceEnableManualZoomPath))) {
     return true;
   }
-  // TODO(b/314267048): Enable by default once the feature is launched.
-  return false;
+  return true;
 }
 
 #if USE_DLC
@@ -587,6 +591,21 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
     return false;
   }
   ResetOnThread();
+
+  android::CameraMetadata session_parameters(
+      clone_camera_metadata(stream_config->session_parameters()));
+  auto request_entry =
+      session_parameters.find(kCrosDigitalZoomRequestedVendorKey);
+  bool manual_zoom_requested =
+      request_entry.count > 0 && request_entry.data.i32[0] == 1;
+
+  // Skip stream configuration if neither auto framing nor manual zoom will be
+  // performed throughout the session.
+  stream_config_skipped_ = !auto_framing_supported_ && !manual_zoom_requested;
+  if (stream_config_skipped_) {
+    VLOGF(1) << "Skip configuring streams as there is no usage";
+    return true;
+  }
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Config streams from client:";
@@ -703,8 +722,8 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
     stream_config->PopulateEventAnnotation(ctx);
   });
 
-  if (setup_failed_) {
-    return false;
+  if (setup_failed_ || stream_config_skipped_) {
+    return !setup_failed_;
   }
 
   if (VLOG_IS_ON(1)) {
@@ -799,8 +818,8 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING("frame_number", request->frame_number());
 
-  if (setup_failed_) {
-    return false;
+  if (setup_failed_ || stream_config_skipped_) {
+    return !setup_failed_;
   }
 
   if (VLOG_IS_ON(2)) {
@@ -913,8 +932,8 @@ bool FramingStreamManipulator::ProcessCaptureResultOnThread(
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING("frame_number", result->frame_number());
 
-  if (setup_failed_) {
-    return false;
+  if (setup_failed_ || stream_config_skipped_) {
+    return !setup_failed_;
   }
 
   if (VLOG_IS_ON(2)) {

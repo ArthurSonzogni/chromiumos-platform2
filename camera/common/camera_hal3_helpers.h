@@ -312,6 +312,9 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   bool is_valid() const { return !streams_.empty(); }
   uint32_t num_streams() const { return streams_.size(); }
   uint32_t operation_mode() const { return operation_mode_; }
+  const camera_metadata_t* session_parameters() const {
+    return session_parameters_;
+  }
 
   const StreamEffectMap* stream_effects_map() const {
     return stream_effects_map_;

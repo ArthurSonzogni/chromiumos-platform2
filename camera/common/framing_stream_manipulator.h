@@ -40,6 +40,13 @@ constexpr uint32_t kCrosDigitalZoomVendorKey = kCrosDigitalZoomVendorTagStart;
 constexpr char kCrosDigitalZoomVendorTagSectionName[] = "com.google";
 constexpr char kCrosDigitalZoomVendorTagName[] = "com.google.crosDigitalZoom";
 
+// Vendor tag to indicate whether CrOS digital zoom is requested from the client
+// when configured the streams.
+constexpr uint32_t kCrosDigitalZoomRequestedVendorKey =
+    kCrosDigitalZoomVendorTagStart + 1;
+constexpr char kCrosDigitalZoomRequestedVendorTagName[] =
+    "com.google.crosDigitalZoomRequested";
+
 class FramingStreamManipulator : public StreamManipulator {
  public:
   // The auto framing config file that overrides the default one for debugging.
@@ -212,6 +219,10 @@ class FramingStreamManipulator : public StreamManipulator {
   // Flagged if any failure during Initialize() and ConfigureStreams() that
   // disables auto-framing processing.
   bool setup_failed_ = false;
+
+  // Flagged if |ConfigureStreams| is skipped because both auto framing and
+  // manual zoom will not be enabled throughout the camera session.
+  bool stream_config_skipped_ = false;
 
   // Per-stream-config contexts.
   State state_ = State::kDisabled;
