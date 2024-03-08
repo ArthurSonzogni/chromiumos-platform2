@@ -248,8 +248,12 @@ enum class DownloadsMigrationStatus {
   // Cannot set the xattr to "migrated".
   kCannotSetXattrToMigrated = 7,
 
+  // ~/MyFiles/Downloads is already marked as "migrated", but a new ~/Downloads
+  // folder somehow reappeared.
+  kReappeared = 8,
+
   // Maximum enum value. Must be updated if more values are added.
-  kMaxValue = kCannotSetXattrToMigrated
+  kMaxValue = kReappeared
 };
 
 // Various counts for ReportVaultKeysetMetrics.

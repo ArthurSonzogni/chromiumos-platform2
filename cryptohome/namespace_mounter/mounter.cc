@@ -612,6 +612,7 @@ bool Mounter::HandleMyFilesDownloads(const FilePath& user_home) {
 }
 
 bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
+  using enum DownloadsMigrationStatus;
   const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
   const FilePath downloads = user_home.Append(kDownloadsDir);
@@ -622,16 +623,14 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
       GetDownloadsMigrationXattr(platform_, downloads_in_my_files);
 
   if (stage == MigrationStage::kMigrated) {
-    LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated' in '"
-              << downloads_in_my_files << "'";
-    LOG_IF(WARNING, platform_->FileExists(downloads))
-        << "The folder '" << downloads
-        << "' has been re-created after it was migrated to '"
-        << downloads_in_my_files << "'";
+    LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated'";
+    if (platform_->FileExists(downloads)) {
+      LOG(WARNING) << "The ~/Downloads folder has been re-created after it was "
+                      "migrated to ~/MyFiles/Downloads";
+      ReportDownloadsMigrationStatus(kReappeared);
+    }
     return true;
   }
-
-  using enum DownloadsMigrationStatus;
 
   // If ~/Downloads doesn't exist and ~/MyFiles/Downloads does exist, this might
   // be a freshly set-up cryptohome or the previous xattr setting failed. Update
@@ -639,9 +638,9 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // usable state so return true.
   if (!platform_->FileExists(downloads) &&
       platform_->FileExists(downloads_in_my_files)) {
-    LOG(INFO) << "The 'Downloads' folder is already in the right place '"
-              << downloads_in_my_files
-              << "', but its xattr is still marked as '" << stage << "'";
+    LOG(INFO) << "The 'Downloads' folder is already in ~/MyFiles/Downloads, "
+                 "but its xattr is still marked as '"
+              << stage << "'";
 
     if (stage == MigrationStage::kMigrating) {
       ReportDownloadsMigrationStatus(kFixXattr);
@@ -672,8 +671,7 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
     // backup of ~/MyFiles/Downloads to ~/Downloads-backup so exit.
     if (!platform_->DeletePathRecursively(downloads_backup)) {
       PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                  << "Cannot delete old backup folder '" << downloads_backup
-                  << "'";
+                  << "Cannot delete old backup folder ~/Downloads-backup";
       ReportDownloadsMigrationStatus(kCannotCleanUp);
       return false;
     }
@@ -692,28 +690,25 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // ~/MyFiles/Downloads so the migration can start from here.
   if (!platform_->Rename(downloads_in_my_files, downloads_backup)) {
     PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                << "Cannot back up '" << downloads_in_my_files << "' as '"
-                << downloads_backup << "'";
+                << "Cannot back up ~/MyFiles/Downloads as ~/Downloads-backup";
     ReportDownloadsMigrationStatus(kCannotBackUp);
     return false;
   }
 
-  LOG(INFO) << "Backed up '" << downloads_in_my_files << "' as '"
-            << downloads_backup << "'";
+  LOG(INFO) << "Backed up ~/MyFiles/Downloads as ~/Downloads-backup";
 
   // Move ~/Downloads to ~/MyFiles/Downloads. On success this will ensure the
   // following 2 folders exist:
   //   - ~/Downloads-backup, ~/MyFiles/Downloads
   if (!platform_->Rename(downloads, downloads_in_my_files)) {
     PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                << "Cannot move '" << downloads << "' to '"
-                << downloads_in_my_files << "'";
+                << "Cannot move ~/Downloads to ~/MyFiles/Downloads";
 
     // Restore the ~/Downloads-backup folder back to ~/MyFiles/Downloads to
     // ensure the upcoming bind mount has a destination.
     if (!platform_->Rename(downloads_backup, downloads_in_my_files)) {
-      PLOG(ERROR) << "Cannot restore '" << downloads_in_my_files
-                  << "' from backup '" << downloads_backup << "'";
+      PLOG(ERROR)
+          << "Cannot restore ~/MyFiles/Downloads from ~/Downloads-backup";
       // This is not a good state to be in. The bind mount will fail as there
       // will be no target because the user's directories are created prior to
       // this stage.
@@ -727,14 +722,14 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
       // ~/Downloads and ~/MyFiles/Downloads so on next login the migration can
       // try again.
       ReportDownloadsMigrationStatus(kCannotMoveToMyFiles);
-      LOG(ERROR) << "Failed moving 'Downloads' into 'MyFiles' but successfully "
+      LOG(ERROR) << "Failed moving ~/Downloads into ~/MyFiles but successfully "
                     "restored the backup directory";
     }
 
     return false;
   }
 
-  LOG(INFO) << "Moved the 'Downloads' folder into 'MyFiles'";
+  LOG(INFO) << "Moved ~/Downloads into ~/MyFiles";
 
   // The migration has completed successfully, to ensure no further migrations
   // occur update the xattr to be "migrated". If this fails, the cryptohome is
@@ -749,7 +744,8 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // This is considered the point of no return. The migration has, for all
   // intents and purposes, successfully completed.
   ReportDownloadsMigrationStatus(kSuccess);
-  LOG(INFO) << "The 'Downloads' folder was successfully migrated to 'MyFiles'";
+  LOG(INFO) << "The ~/Downloads folder was successfully migrated to "
+               "~/MyFiles/Downloads and marked as 'migrated'";
   return true;
 }
 
