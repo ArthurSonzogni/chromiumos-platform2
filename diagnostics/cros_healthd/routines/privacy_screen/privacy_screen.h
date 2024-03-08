@@ -5,11 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+class Context;
 
 const char kPrivacyScreenRoutineSucceededMessage[] =
     "Privacy screen routine passes.";

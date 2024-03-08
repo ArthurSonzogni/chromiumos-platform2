@@ -2,16 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-pkg_config("privacy_screen_pkg_config") {
-  pkg_deps = [ "libchrome" ]
-}
-
 source_set("privacy_screen") {
   sources = [ "privacy_screen.cc" ]
-  configs += [ ":privacy_screen_pkg_config" ]
+  pkg_deps = [ "libchrome" ]
+  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/mojom/external:libcros_healthd_internal",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
@@ -19,11 +17,15 @@ source_set("privacy_screen") {
 if (use.test) {
   source_set("privacy_screen_test") {
     sources = [ "privacy_screen_test.cc" ]
-    configs += [ ":privacy_screen_pkg_config" ]
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
     deps = [
       ":privacy_screen",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
     ]

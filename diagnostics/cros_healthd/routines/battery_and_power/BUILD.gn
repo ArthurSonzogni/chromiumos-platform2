@@ -15,6 +15,7 @@ source_set("battery_and_power") {
     "battery_health.cc",
   ]
   configs += [ ":battery_and_power_pkg_config" ]
+  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",

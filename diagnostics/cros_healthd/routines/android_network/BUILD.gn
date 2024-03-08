@@ -13,6 +13,7 @@ source_set("android_network") {
     "arc_ping.cc",
   ]
   configs += [ ":android_network_pkg_config" ]
+  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",

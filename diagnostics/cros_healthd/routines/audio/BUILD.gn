@@ -14,6 +14,7 @@ pkg_config("audio_pkg_config") {
 source_set("audio") {
   sources = [ "audio_driver.cc" ]
   configs += [ ":audio_pkg_config" ]
+  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",

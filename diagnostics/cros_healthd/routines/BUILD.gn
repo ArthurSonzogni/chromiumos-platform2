@@ -12,17 +12,9 @@ pkg_config("routines_pkg_config") {
   ]
 }
 
-source_set("routines") {
-  sources = [
-    "base_routine_control.cc",
-    "diag_routine_with_status.cc",
-    "routine_adapter.cc",
-    "routine_service.cc",
-    "simple_routine.cc",
-  ]
-  configs += [ ":routines_pkg_config" ]
+group("routines") {
   deps = [
-    "//diagnostics/base",
+    ":utils",
     "//diagnostics/cros_healthd/routines/android_network",
     "//diagnostics/cros_healthd/routines/audio",
     "//diagnostics/cros_healthd/routines/battery_and_power",
@@ -37,8 +29,22 @@ source_set("routines") {
     "//diagnostics/cros_healthd/routines/privacy_screen",
     "//diagnostics/cros_healthd/routines/sensor",
     "//diagnostics/cros_healthd/routines/storage",
+  ]
+}
+
+source_set("utils") {
+  sources = [
+    "base_routine_control.cc",
+    "diag_routine_with_status.cc",
+    "routine_adapter.cc",
+    "routine_service.cc",
+    "simple_routine.cc",
+  ]
+  configs += [ ":routines_pkg_config" ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+  deps = [
+    "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
 

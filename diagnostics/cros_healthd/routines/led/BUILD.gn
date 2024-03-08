@@ -12,6 +12,7 @@ pkg_config("led_pkg_config") {
 source_set("led") {
   sources = [ "led_lit_up.cc" ]
   configs += [ ":led_pkg_config" ]
+  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
