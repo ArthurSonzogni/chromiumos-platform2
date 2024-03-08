@@ -3,3 +3,10 @@ name = "mini_udisks"
 version = "1.0.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+dbus = "0.9"
+dbus-crossroads = "0.5"
+libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
+log = "0.4"
