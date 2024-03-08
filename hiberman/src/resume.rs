@@ -342,7 +342,8 @@ impl ResumeConductor {
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
 
-        TimestampFile::new(&hibermeta_mount).record_timestamp("resume_start.ts", &self.timestamp_start)?;
+        TimestampFile::new(&hibermeta_mount)
+            .record_timestamp("resume_start.ts", &self.timestamp_start)?;
 
         let now = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
         let prep_time = now
@@ -444,7 +445,9 @@ impl ResumeConductor {
             .context("Failed to set up buffer device for hiberimage")?;
 
         // briefly mount hibermeta to read the size of the hiberimage.
-        let image_size = volume_manager.setup_hibermeta_lv(true)?.read_hiberimage_size()?;
+        let image_size = volume_manager
+            .setup_hibermeta_lv(true)?
+            .read_hiberimage_size()?;
 
         let ram_size = get_ram_size();
         // Don't fill up more than 33% of the RAM.
