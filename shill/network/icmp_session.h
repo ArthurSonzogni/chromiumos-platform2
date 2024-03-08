@@ -68,15 +68,17 @@ class IcmpSession {
   virtual ~IcmpSession();
 
   // Starts an ICMP session, sending |kNumEchoRequestsToSend| echo requests to
-  // |destination|, |kEchoRequestInterval| apart. |result_callback| will
-  // be called a) after all echo requests are sent and all echo replies are
-  // received, or b) after |kTimeout| have passed. |result_callback| will
-  // only be invoked once on the first occurrence of either of these events.
-  // |interface_index| is the IPv6 scope ID, which can be 0 for a global
-  // |destination| but must be a positive integer if |destination| is a
-  // link-local address. It is unused on IPv4.
+  // |destination| via the network interface |interface_name|,
+  // |kEchoRequestInterval| apart. |result_callback| will be called a) after all
+  // echo requests are sent and all echo replies are received, or b) after
+  // |kTimeout| have passed. |result_callback| will only be invoked once on the
+  // first occurrence of either of these events. |interface_index| is the IPv6
+  // scope ID, which can be 0 for a global |destination| but must be the value
+  // matching |interface_name| if |destination| is a link-local address. It is
+  // unused on IPv4.
   virtual bool Start(const net_base::IPAddress& destination,
                      int interface_index,
+                     std::string_view interface_name,
                      IcmpSessionResultCallback result_callback);
 
   // Stops the current ICMP session by closing the ICMP socket and resetting

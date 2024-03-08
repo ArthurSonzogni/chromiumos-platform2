@@ -23,6 +23,7 @@ class MockIcmpSession : public IcmpSession {
               Start,
               (const net_base::IPAddress&,
                int,
+               std::string_view,
                IcmpSession::IcmpSessionResultCallback),
               (override));
   MOCK_METHOD(void, Stop, (), (override));

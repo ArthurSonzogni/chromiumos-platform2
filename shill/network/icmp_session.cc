@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
 
@@ -19,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <net-base/byte_utils.h>
 #include <net-base/socket.h>
 
 #include "shill/event_dispatcher.h"
@@ -63,6 +65,7 @@ IcmpSession::~IcmpSession() {
 
 bool IcmpSession::Start(const net_base::IPAddress& destination,
                         int interface_index,
+                        std::string_view interface_name,
                         IcmpSessionResultCallback result_callback) {
   if (!dispatcher_) {
     LOG(ERROR) << "Invalid dispatcher";
@@ -90,6 +93,19 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
   }
   if (!base::SetNonBlocking(socket->Get())) {
     PLOG(ERROR) << "Could not set socket to be non-blocking";
+    return false;
+  }
+
+  if (interface_name.size() >= IFNAMSIZ) {
+    LOG(ERROR) << "The interface name '" << interface_name << "' is too long";
+    return false;
+  }
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  memcpy(ifr.ifr_name, interface_name.data(), interface_name.size());
+  if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                          net_base::byte_utils::AsBytes(ifr))) {
+    PLOG(ERROR) << "Failed to bind socket on " << interface_name;
     return false;
   }
 

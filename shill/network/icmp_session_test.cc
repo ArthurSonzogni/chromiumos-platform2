@@ -4,6 +4,7 @@
 
 #include "shill/network/icmp_session.h"
 
+#include <net/if.h>
 #include <netinet/icmp6.h>
 
 #include <algorithm>
@@ -78,6 +79,7 @@ const net_base::IPAddress kIPv4Address =
 const net_base::IPAddress kIPv6Address =
     *net_base::IPAddress::CreateFromString("2001:db8::1234:5678");
 constexpr int kInterfaceIndex = 3;
+constexpr std::string_view kInterfaceName = "eth0";
 
 std::vector<uint8_t> ConcatBuffers(base::span<const uint8_t> a,
                                    base::span<const uint8_t> b) {
@@ -125,8 +127,8 @@ TEST_F(IcmpSessionTest, SocketOpenFail) {
               Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce(Return(nullptr));
 
-  EXPECT_FALSE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex, base::DoNothing()));
+  EXPECT_FALSE(icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+                                    kInterfaceName, base::DoNothing()));
   EXPECT_FALSE(icmp_session_->IsStarted());
 }
 
@@ -162,6 +164,15 @@ MATCHER_P(IsSocketAddressV6, address, "") {
              0;
 }
 
+MATCHER_P(InterfaceNameEq, name, "") {
+  if (arg.size() != sizeof(struct ifreq)) {
+    return false;
+  }
+
+  const struct ifreq* ifr = reinterpret_cast<const struct ifreq*>(arg.data());
+  return strncmp(ifr->ifr_name, name.data(), IFNAMSIZ) == 0;
+}
+
 TEST_F(IcmpSessionTest, SessionSuccess) {
   // Test a successful ICMP session where the sending of requests and receiving
   // of replies are interleaved. Moreover, test the case where transmitting an
@@ -177,16 +188,19 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
       .WillOnce([&mock_socket]() {
         auto socket = std::make_unique<net_base::MockSocket>();
         mock_socket = socket.get();
+        EXPECT_CALL(*mock_socket, SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                                             InterfaceNameEq(kInterfaceName)))
+            .WillOnce(Return(true));
         return socket;
       });
 
   EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
                            base::BindOnce(&IcmpSessionTest::ResultCallback,
                                           base::Unretained(this))));
   // When the session is started, Start() should fail.
-  EXPECT_FALSE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex, base::DoNothing()));
+  EXPECT_FALSE(icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+                                    kInterfaceName, base::DoNothing()));
 
   // Send 1st request immediately (T + 0s).
   EXPECT_CALL(*mock_socket,
@@ -245,12 +259,15 @@ TEST_F(IcmpSessionTest, SessionSuccessIPv6) {
       .WillOnce([&mock_socket]() {
         auto socket = std::make_unique<net_base::MockSocket>();
         mock_socket = socket.get();
+        EXPECT_CALL(*mock_socket, SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                                             InterfaceNameEq(kInterfaceName)))
+            .WillOnce(Return(true));
         return socket;
       });
 
   EXPECT_CALL(*this, ResultCallback).Times(1);
   EXPECT_TRUE(
-      icmp_session_->Start(kIPv6Address, kInterfaceIndex,
+      icmp_session_->Start(kIPv6Address, kInterfaceIndex, kInterfaceName,
                            base::BindOnce(&IcmpSessionTest::ResultCallback,
                                           base::Unretained(this))));
 
@@ -296,13 +313,16 @@ TEST_F(IcmpSessionTest, StopSession) {
               Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce([]() {
         auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                                        InterfaceNameEq(kInterfaceName)))
+            .WillOnce(Return(true));
         EXPECT_CALL(*socket, SendTo).Times(0);
         return socket;
       });
 
   EXPECT_CALL(*this, ResultCallback).Times(0);
   EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
                            base::BindOnce(&IcmpSessionTest::ResultCallback,
                                           base::Unretained(this))));
 
@@ -323,11 +343,14 @@ TEST_F(IcmpSessionTest, SessionTimeout) {
       .WillOnce([&mock_socket]() {
         auto socket = std::make_unique<net_base::MockSocket>();
         mock_socket = socket.get();
+        EXPECT_CALL(*mock_socket, SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
+                                             InterfaceNameEq(kInterfaceName)))
+            .WillOnce(Return(true));
         return socket;
       });
 
   EXPECT_TRUE(
-      icmp_session_->Start(kIPv4Address, kInterfaceIndex,
+      icmp_session_->Start(kIPv4Address, kInterfaceIndex, kInterfaceName,
                            base::BindOnce(&IcmpSessionTest::ResultCallback,
                                           base::Unretained(this))));
 
