@@ -21,9 +21,15 @@
 #include "ml_core/dlc/dlc_metrics.h"
 
 namespace {
-constexpr int kMaxInstallAttempts = 5;
+
+// The first install attempt will take place at t=0.
+// The nth retry will take place at t=kBaseDelay*2^n.
+// E.g. {0, 2*kBaseDelay, 4*kBaseDelay, 8*kBaseDelay, ...}
+constexpr base::TimeDelta kBaseDelay = base::Seconds(1);
+constexpr int kMaxInstallAttempts = 8;
+
+// Timeout for each install attempt.
 constexpr int kDlcInstallTimeout = 50000;
-constexpr base::TimeDelta kBaseDelay = base::Seconds(5);
 
 class DlcClientImpl : public cros::DlcClient {
  public:
