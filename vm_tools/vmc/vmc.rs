@@ -188,11 +188,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optflag(
             "",
-            "enable-vulkan",
-            "when starting the vm, enable vulkan support (implies --enable-gpu)",
-        );
-        opts.optflag(
-            "",
             "enable-big-gl",
             "when starting the vm, request Big GL renderer (implies --enable-gpu)",
         );
@@ -267,10 +262,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let vm_name = &matches.free[0];
         let username = self.methods.user_id_hash_to_username(self.user_id_hash)?;
 
-        let vulkan = matches.opt_present("enable-vulkan");
         let big_gl = matches.opt_present("enable-big-gl");
         let virtgpu_native_context = matches.opt_present("enable-virtgpu-native-context");
-        let gpu = virtgpu_native_context || big_gl || vulkan || matches.opt_present("enable-gpu");
+        let gpu = virtgpu_native_context || big_gl || matches.opt_present("enable-gpu");
         let dgpu_passthrough = matches.opt_present("enable-dgpu-passthrough");
         let timeout = matches
             .opt_str("timeout")
@@ -281,7 +275,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let features = VmFeatures {
             gpu,
             dgpu_passthrough,
-            vulkan,
             big_gl,
             virtgpu_native_context,
             vtpm_proxy: matches.opt_present("vtpm-proxy"),
@@ -922,7 +915,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = "
-   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] \
+   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-big-gl] \
            [--enable-virtgpu-native-context] [--enable-audio-capture] [--extra-disk PATH] \
            [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] \
            [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
@@ -1109,8 +1102,6 @@ mod tests {
             &["vmc", "start", "termina"],
             &["vmc", "start", "--enable-gpu", "termina"],
             &["vmc", "start", "termina", "--enable-gpu"],
-            &["vmc", "start", "termina", "--enable-vulkan"],
-            &["vmc", "start", "termina", "--enable-gpu", "--enable-vulkan"],
             &["vmc", "start", "termina", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-gpu", "--enable-big-gl"],
             &["vmc", "start", "termina", "--enable-virtgpu-native-context"],
@@ -1120,14 +1111,6 @@ mod tests {
                 "termina",
                 "--enable-gpu",
                 "--enable-virtgpu-native-context",
-            ],
-            &[
-                "vmc",
-                "start",
-                "termina",
-                "--enable-gpu",
-                "--enable-vulkan",
-                "--enable-big-gl",
             ],
             &["vmc", "start", "termina", "--vtpm-proxy"],
             &["vmc", "start", "termina", "--enable-audio-capture"],

@@ -194,13 +194,6 @@ message StartVmRequest {
   // Enable Virtio GPU in the started Vm. It uses integrated GPU on the host.
   bool enable_gpu = 8;
 
-  // Provide a software-based virtual Trusted Platform Module to the VM. The TPM
-  // is backed by libtpm2's TPM simulator and does not interact with any
-  // physical TPM on the host device. TPM state does not persist across VM
-  // launches. In order for the VM to see the virtual TPM, the guest kernel must
-  // contain a virtio TPM driver.
-  bool software_tpm = 9 [deprecated = true];
-
   // Enable audio capture in the started Vm.
   bool enable_audio_capture = 11;
 
@@ -231,9 +224,6 @@ message StartVmRequest {
 
   // Kernel cmdline parameters that will be passed to crosvm.
   repeated string kernel_params = 17;
-
-  // DEPRECATED: Vulkan is enabled when it's supported, and GPU is enabled.
-  bool enable_vulkan = 18 [deprecated = true];
 
   // Enable Big GL rendering for the started Vm (default is GLES).
   bool enable_big_gl = 19;
@@ -383,9 +373,6 @@ message StartArcVmRequest {
   // Whether broadcast anr prenotify is enabled.
   bool enable_broadcast_anr_prenotify = 25;
 
-  // Size of logd config in kBytes, -1 if disabled
-  int32 logd_config_size = 26 [deprecated = true];
-
   // Whether virtio blk data is enabled
   bool enable_virtio_blk_data = 27;
 
@@ -414,11 +401,6 @@ message StartArcVmRequest {
   // Implementation and a more detailed description can be found in
   // src/third_party/kernel/v5.10-arcvm/mm/vmscan.c
   int32 mglru_reclaim_swappiness = 36;
-
-  // Whether updating O4C (Optimized for Chromebook applications) list via A2C2
-  // (ARC Application Compatibility Configuration Delivery) is enabled (See
-  // go/a2c2 for project details.)
-  bool update_o4c_list_via_a2c2 = 37 [deprecated = true];
 
   enum UsapProfileType {
     // Default USAP profile suitable for all devices.
@@ -451,10 +433,6 @@ message StartArcVmRequest {
 
   // Ureadahead mode used
   UreadaheadMode ureadahead_mode = 40;
-
-  // Whether rw is enabled
-  // Deprecated, rootfs_writable should be used instead
-  bool enable_rw = 41 [deprecated = true];
 
   // Controls whether WebView Zygote is lazily initialized in ARC.
   bool enable_web_view_zygote_lazy_init = 42;
