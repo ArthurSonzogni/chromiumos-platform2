@@ -1425,6 +1425,18 @@ message RecoveryExtendedInfoReply {
   repeated string recovery_ids = 1;
 }
 
+// Send a request to Cryptohome to lock the AuthFactor with auth_factor_type
+// against the authentication operation until the system is rebooted.
+message LockFactorUntilRebootRequest {
+  // Currently implemented only for CryptohomeRecovery factor type.
+  AuthFactorType auth_factor_type = 1;
+}
+
+message LockFactorUntilRebootReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+}
+
 message GetAuthFactorExtendedInfoRequest {
   // The account of a user.
   cryptohome.AccountIdentifier account_id = 1;
