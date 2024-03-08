@@ -191,8 +191,7 @@ class Manager : public ForwardingService {
   friend class ManagerTest;
 
   // The initialization tasks that are not necessary for handling dbus methods.
-  // This run after DBusDaemon::OnInit() for boot performance.
-  void Initialize();
+  void RunDelayedInitialization();
 
   // Callbacks from |shill_client_|.
   void OnShillDefaultLogicalDeviceChanged(

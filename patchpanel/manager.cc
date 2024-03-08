@@ -118,10 +118,30 @@ Manager::Manager(const base::FilePath& cmd_path,
   // a singleton.
   NetworkApplier::GetInstance()->Start();
 
-  // Run after DBusDaemon::OnInit().
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  // Post a delayed task to run the delayed initialization which may take time
+  // but not necessary for handling dbus methods. There are two main purposes
+  // here:
+  // 1) Make patchpanel D-Bus service ready as early as possible.
+  // 2) Specifically we want to handle the ConfigureNetwork() request as early
+  //    as possible which is critical to basic network connectivity.
+  //
+  // The delay value (1 second) is selected arbitrarily.
+  //
+  // Caveats:
+  // - It's possible that ConfigureNetwork() request doesn't come in in the
+  //   timeout, and thus this logic actually delayed its execution by at most 1
+  //   second.
+  // - The tasks in RunDelayedInitialization() is just not critical to handling
+  //   D-Bus request but still critical to the full connectivity, so we may
+  //   waste some time which can be used to set it up.
+  //
+  // Ideally what we want to do here is to schedule a low-priority task with
+  // deadline, which can not be implemented with a very easy way now.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Manager::Initialize, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&Manager::RunDelayedInitialization,
+                     weak_factory_.GetWeakPtr()),
+      base::Seconds(1));
 }
 
 Manager::~Manager() {
@@ -150,7 +170,9 @@ Manager::~Manager() {
   datapath_->Stop();
 }
 
-void Manager::Initialize() {
+void Manager::RunDelayedInitialization() {
+  LOG(INFO) << __func__ << ": start";
+
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
   shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
@@ -172,6 +194,8 @@ void Manager::Initialize() {
   shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
       base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
                           weak_factory_.GetWeakPtr()));
+
+  LOG(INFO) << __func__ << ": finished";
 }
 
 void Manager::OnShillDefaultLogicalDeviceChanged(
