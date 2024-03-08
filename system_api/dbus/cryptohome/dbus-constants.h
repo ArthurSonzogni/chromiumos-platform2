@@ -68,6 +68,8 @@ inline constexpr char kLockFactorUntilReboot[] = "LockFactorUntilReboot";
 inline constexpr char kModifyAuthFactorIntents[] = "ModifyAuthFactorIntents";
 inline constexpr char kCreateVaultkeyset[] = "CreateVaultKeyset";
 inline constexpr char kGetArcDiskFeatures[] = "GetArcDiskFeatures";
+inline constexpr char kMigrateLegacyFingerprints[] =
+    "MigrateLegacyFingerprints";
 
 // Methods of the |kCryptohomePkcs11Interface| interface:
 inline constexpr char kPkcs11IsTpmTokenReady[] = "Pkcs11IsTpmTokenReady";

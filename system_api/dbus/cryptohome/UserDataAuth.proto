@@ -1595,6 +1595,16 @@ message ModifyAuthFactorIntentsReply {
   AuthIntentsForAuthFactorType auth_intents = 3;
 }
 
+message MigrateLegacyFingerprintsRequest {
+  // The id of a running AuthSession.
+  bytes auth_session_id = 1;
+}
+
+message MigrateLegacyFingerprintsReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+}
+
 // Fingerprint scan results.
 enum FingerprintScanResult {
   FINGERPRINT_SCAN_RESULT_SUCCESS = 0;
