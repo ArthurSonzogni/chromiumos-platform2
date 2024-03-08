@@ -68,6 +68,7 @@
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
+#include "cryptohome/fp_migration/legacy_record.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
@@ -5188,6 +5189,18 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::MigrateLegacyFingerprintsReply>
+  MigrateLegacyFingerprintsSync(
+      const user_data_auth::MigrateLegacyFingerprintsRequest& in_request) {
+    TestFuture<user_data_auth::MigrateLegacyFingerprintsReply> reply_future;
+    userdataauth_->MigrateLegacyFingerprints(
+        in_request,
+        reply_future.GetCallback<
+            const user_data_auth::MigrateLegacyFingerprintsReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
  protected:
   // Mock mount factory for mocking Mount objects.
   MockMountFactory mount_factory_;
@@ -5890,6 +5903,53 @@ TEST_F(UserDataAuthApiTest, MountGuestWithOtherMounts) {
   EXPECT_THAT(guest_reply->error_info(),
               HasPossibleActions(
                   std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, MigrateLegacyFingerprintsEmptyListSucceeds) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  // Set up mount.
+  SetupMount(*kUsername1);
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
+  std::vector<LegacyRecord> empty_list;
+  ON_CALL(*bio_processor_, ListLegacyRecords(_))
+      .WillByDefault([empty_list](auto&& callback) {
+        std::move(callback).Run(empty_list);
+      });
+
+  std::optional<std::string> auth_session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
+  ASSERT_TRUE(auth_session_id.has_value());
+
+  // Check that MigrateLegacyFingerprints succeeds when there is no legacy fp to
+  // be migrated.
+  user_data_auth::MigrateLegacyFingerprintsRequest req;
+  req.set_auth_session_id(auth_session_id.value());
+  std::optional<user_data_auth::MigrateLegacyFingerprintsReply> reply =
+      MigrateLegacyFingerprintsSync(req);
+  ASSERT_TRUE(reply.has_value());
+  ASSERT_EQ(reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthApiTest, MigrateLegacyFingerprintsNoActiveUserSession) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  // Set up mount.
+  SetupMount(*kUsername1);
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(false));
+
+  std::optional<std::string> auth_session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
+  ASSERT_TRUE(auth_session_id.has_value());
+
+  // Check that MigrateLegacyFingerprints succeeds when there is no legacy fp to
+  // be migrated.
+  user_data_auth::MigrateLegacyFingerprintsRequest req;
+  req.set_auth_session_id(auth_session_id.value());
+  std::optional<user_data_auth::MigrateLegacyFingerprintsReply> reply =
+      MigrateLegacyFingerprintsSync(req);
+  ASSERT_TRUE(reply.has_value());
+  ASSERT_EQ(reply->error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 }  // namespace cryptohome

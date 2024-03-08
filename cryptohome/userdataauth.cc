@@ -4551,4 +4551,59 @@ void UserDataAuth::RestoreDeviceKeyWithSession(
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
+void UserDataAuth::MigrateLegacyFingerprints(
+    user_data_auth::MigrateLegacyFingerprintsRequest request,
+    OnDoneCallback<user_data_auth::MigrateLegacyFingerprintsReply> on_done) {
+  AssertOnMountThread();
+  RunWithAuthorizedAuthSessionWhenAvailable(
+      AuthIntent::kDecrypt, auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInMigrateFps),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInMigrateFps),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::MigrateLegacyFingerprintsWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::MigrateLegacyFingerprintsWithSession(
+    user_data_auth::MigrateLegacyFingerprintsRequest request,
+    OnDoneCallback<user_data_auth::MigrateLegacyFingerprintsReply> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::MigrateLegacyFingerprintsReply reply;
+  if (auth_session->ephemeral_user()) {
+    auto status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthEphemeralAuthSessionAttemptMigrateFps),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  // Only AuthSession for decrypt supports legacy fingerprint migration.
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    auto status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionDecryptFailedInMigrateFps),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  // Check the user is already mounted.
+  UserSession* const session = sessions_->Find(auth_session->username());
+  if (!session || !session->IsActive()) {
+    auto status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetSessionFailedInMigrateFps),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  session_decrypt->MigrateLegacyFingerprints(base::BindOnce(
+      &ReplyWithStatus<user_data_auth::MigrateLegacyFingerprintsReply>,
+      std::move(auth_session).BindForCallback(), std::move(on_done)));
+}
+
 }  // namespace cryptohome

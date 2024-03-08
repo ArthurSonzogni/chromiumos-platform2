@@ -1428,4 +1428,34 @@ void UserDataAuthAdaptor::GetArcDiskFeatures(
   response->Return(reply);
 }
 
+void UserDataAuthAdaptor::MigrateLegacyFingerprints(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::MigrateLegacyFingerprintsReply>> response,
+    const user_data_auth::MigrateLegacyFingerprintsRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoMigrateLegacyFingerprints,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::MigrateLegacyFingerprintsReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoMigrateLegacyFingerprints(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::MigrateLegacyFingerprintsReply>> response,
+    const user_data_auth::MigrateLegacyFingerprintsRequest& in_request) {
+  service_->MigrateLegacyFingerprints(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::MigrateLegacyFingerprintsReply>>
+                 local_response,
+             const user_data_auth::MigrateLegacyFingerprintsReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 }  // namespace cryptohome

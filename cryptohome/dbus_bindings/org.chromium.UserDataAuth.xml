@@ -588,6 +588,20 @@ do.
       </arg>
     </method>
 
+    <!-- Migrate legacy fingerprints to sign-in auth factors.. -->
+    <method name="MigrateLegacyFingerprints">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateLegacyFingerprintsRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateLegacyFingerprintsReply"/>
+      </arg>
+    </method>
+
     <!-- Emitted to update the remaining time on an authfactor lockout time -->
     <signal name="AuthFactorStatusUpdate">
       <annotation name="org.chromium.DBus.Method.Kind"

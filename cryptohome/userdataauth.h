@@ -663,6 +663,10 @@ class UserDataAuth {
       user_data_auth::RestoreDeviceKeyRequest request,
       OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done);
 
+  void MigrateLegacyFingerprints(
+      user_data_auth::MigrateLegacyFingerprintsRequest request,
+      OnDoneCallback<user_data_auth::MigrateLegacyFingerprintsReply> on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {
@@ -913,6 +917,10 @@ class UserDataAuth {
   void RestoreDeviceKeyWithSession(
       user_data_auth::RestoreDeviceKeyRequest request,
       OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done,
+      InUseAuthSession auth_session);
+  void MigrateLegacyFingerprintsWithSession(
+      user_data_auth::MigrateLegacyFingerprintsRequest request,
+      OnDoneCallback<user_data_auth::MigrateLegacyFingerprintsReply> on_done,
       InUseAuthSession auth_session);
 
   // =============== Feature Experiment Related Methods ===============
