@@ -256,14 +256,6 @@ std::optional<int> DevicePolicyImpl::GetPolicyRefreshRate() const {
                               .device_policy_refresh_rate());
 }
 
-bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
-  if (!device_policy_->has_guest_mode_enabled())
-    return false;
-  *guest_mode_enabled =
-      device_policy_->guest_mode_enabled().guest_mode_enabled();
-  return true;
-}
-
 bool DevicePolicyImpl::GetCameraEnabled(bool* camera_enabled) const {
   if (!device_policy_->has_camera_enabled())
     return false;

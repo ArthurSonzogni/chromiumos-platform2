@@ -265,10 +265,6 @@ TEST_F(LibpolicyTest, DevicePolicyAllSetTest) {
   EXPECT_EQ(100, refresh_rate);
 
   bool bool_value = true;
-  ASSERT_TRUE(policy.GetGuestModeEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
   ASSERT_TRUE(policy.GetCameraEnabled(&bool_value));
   EXPECT_FALSE(bool_value);
 
@@ -500,7 +496,6 @@ TEST_F(LibpolicyTest, DevicePolicyNoneSetTest) {
   DevicePolicy::EphemeralSettings ephemeral_settings;
 
   EXPECT_FALSE(policy.GetPolicyRefreshRate().has_value());
-  EXPECT_FALSE(policy.GetGuestModeEnabled(&bool_value));
   EXPECT_FALSE(policy.GetCameraEnabled(&bool_value));
   EXPECT_FALSE(policy.GetShowUserNames(&bool_value));
   EXPECT_FALSE(policy.GetDataRoamingEnabled(&bool_value));
