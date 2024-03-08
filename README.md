@@ -124,6 +124,7 @@ copies.
 | [mems_setup](./mems_setup/) | Boot-time initializer tool for sensors |
 | [metrics](./metrics/) | Client side user metrics collection |
 | [midis](./midis/) | [MIDI](https://en.wikipedia.org/wiki/MIDI) service |
+| [mini_udisks](./mini_udisks/) | Daemon providing a partial UDisks2 API for Flex firmware updates |
 | [minios](./minios/) | A minimal OS used during recovery |
 | [missive](./missive/) | Daemon for the storage of encrypted records for managed devices. |
 | [mist](./mist/) | Modem USB Interface Switching Tool |
