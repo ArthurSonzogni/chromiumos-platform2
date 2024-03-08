@@ -66,8 +66,6 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // To determine when to refetch after a chrome restart, use
   // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
   // value.
-  // This can be called on the sequence where the D-Bus is processed. I.e.
-  // in the process where the DBusThread is not set up, or on the DBusThread.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -89,8 +87,6 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // To determine when to refetch after a chrome restart, use
   // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
   // value.
-  // This can be called on the sequence where the D-Bus is processed. I.e.
-  // in the process where the DBusThread is not set up, or on the DBusThread.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -144,8 +140,6 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // To determine when to refetch after a chrome restart, use
   // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
   // value.
-  // This can be called on the sequence where the D-Bus is processed. I.e.
-  // in the process where the DBusThread is not set up, or on the DBusThread.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
