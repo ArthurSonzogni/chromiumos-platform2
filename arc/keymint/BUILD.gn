@@ -229,6 +229,7 @@ shared_library("libarckeymint_context") {
     "//common-mk:visibility_default",
     ":boringssl_config",
   ]
+  libs = [ "arc-attestation" ]
 
   # NOSORT
   pkg_deps = [
