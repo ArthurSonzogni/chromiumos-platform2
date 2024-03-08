@@ -1,0 +1,4 @@
+default_file_name = "messages"
+default_file_severity = "info"
+
+[programs]
