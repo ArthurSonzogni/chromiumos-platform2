@@ -931,7 +931,12 @@ void CameraDeviceAdapter::OnBufferRetired(uint64_t buffer_id) {
 
   CHECK(buffer_ids_active_in_client_.contains(buffer_id));
   buffer_ids_active_in_client_.erase(buffer_id);
-  buffer_handles_.erase(buffer_id);
+
+  // Retires buffers marked as returned. Buffers in use should be retired when
+  // they are returned to the client.
+  auto buffer_handle_iter = buffer_handles_.find(buffer_id);
+  if (buffer_handle_iter->second->state == kReturned)
+    buffer_handles_.erase(buffer_id);
 }
 
 bool CameraDeviceAdapter::IsRequestOrResultStalling() {
