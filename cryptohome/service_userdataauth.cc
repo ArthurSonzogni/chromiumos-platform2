@@ -667,6 +667,35 @@ void UserDataAuthAdaptor::DoGetRecoveryRequest(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::LockFactorUntilReboot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::LockFactorUntilRebootReply>> response,
+    const user_data_auth::LockFactorUntilRebootRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoLockFactorUntilReboot,
+                     weak_factory_.GetWeakPtr(),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::LockFactorUntilRebootReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoLockFactorUntilReboot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::LockFactorUntilRebootReply>> response,
+    const user_data_auth::LockFactorUntilRebootRequest& in_request) {
+  service_->LockFactorUntilReboot(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::LockFactorUntilRebootReply>> local_response,
+             const user_data_auth::LockFactorUntilRebootReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::CreateVaultKeyset(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::CreateVaultKeysetReply>> response,

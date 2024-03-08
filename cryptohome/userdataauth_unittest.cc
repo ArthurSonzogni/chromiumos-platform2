@@ -5258,6 +5258,74 @@ MATCHER_P(HasPossibleActions, actions, "") {
   return to_match.size() == 0;
 }
 
+TEST_F(UserDataAuthApiTest, LockRecoverySuccessFileExists) {
+  user_data_auth::LockFactorUntilRebootRequest req;
+  req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  TestFuture<user_data_auth::LockFactorUntilRebootReply> reply;
+
+  EXPECT_CALL(system_apis_.platform, FileExists(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(true));
+
+  userdataauth_->LockFactorUntilReboot(
+      req,
+      reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
+  EXPECT_THAT(reply.Get().has_error_info(), IsFalse());
+}
+
+TEST_F(UserDataAuthApiTest, LockRecoverySuccessCreate) {
+  user_data_auth::LockFactorUntilRebootRequest req;
+  req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  TestFuture<user_data_auth::LockFactorUntilRebootReply> reply;
+
+  EXPECT_CALL(system_apis_.platform, FileExists(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform,
+              TouchFileDurable(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(true));
+
+  userdataauth_->LockFactorUntilReboot(
+      req,
+      reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
+  EXPECT_THAT(reply.Get().has_error_info(), IsFalse());
+}
+
+TEST_F(UserDataAuthApiTest, LockRecoveryFails) {
+  user_data_auth::LockFactorUntilRebootRequest req;
+  req.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  TestFuture<user_data_auth::LockFactorUntilRebootReply> reply;
+
+  EXPECT_CALL(system_apis_.platform, FileExists(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(false));
+  EXPECT_CALL(system_apis_.platform,
+              TouchFileDurable(GetRecoveryFactorLockPath()))
+      .WillOnce(Return(false));
+
+  userdataauth_->LockFactorUntilReboot(
+      req,
+      reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
+  EXPECT_THAT(reply.Get().error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_RETRY,
+                            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, LockWrongTypeFails) {
+  user_data_auth::LockFactorUntilRebootRequest req;
+  req.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  TestFuture<user_data_auth::LockFactorUntilRebootReply> reply;
+
+  userdataauth_->LockFactorUntilReboot(
+      req,
+      reply.GetCallback<const user_data_auth::LockFactorUntilRebootReply&>());
+  EXPECT_THAT(
+      reply.Get().error_info(),
+      HasPossibleActions(std::set({user_data_auth::PossibleAction::
+                                       POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+}
+
 TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   // If a home directory is mounted it'll return false for Remove().
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(false));

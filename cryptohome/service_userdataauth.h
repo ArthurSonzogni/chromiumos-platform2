@@ -370,6 +370,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetRecoveryRequestReply>> response,
       const user_data_auth::GetRecoveryRequestRequest& in_request);
 
+  void LockFactorUntilReboot(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::LockFactorUntilRebootReply>> response,
+      const user_data_auth::LockFactorUntilRebootRequest& in_request) override;
+
+  void DoLockFactorUntilReboot(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::LockFactorUntilRebootReply>> response,
+      const user_data_auth::LockFactorUntilRebootRequest& in_request);
+
   void CreateVaultKeyset(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::CreateVaultKeysetReply>> response,

@@ -651,6 +651,10 @@ class UserDataAuth {
       user_data_auth::GetRecoveryRequestRequest request,
       OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done);
 
+  void LockFactorUntilReboot(
+      user_data_auth::LockFactorUntilRebootRequest request,
+      OnDoneCallback<user_data_auth::LockFactorUntilRebootReply> on_done);
+
   void CreateVaultKeyset(
       user_data_auth::CreateVaultKeysetRequest request,
       OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done);

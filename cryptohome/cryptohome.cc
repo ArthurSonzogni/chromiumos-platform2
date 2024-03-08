@@ -265,6 +265,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_recovery_ids",
                                     "get_recoverable_key_stores",
                                     "is_pw_pk_establishment_blocked",
+                                    "lock_factor_until_reboot",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -330,6 +331,7 @@ enum ActionEnum {
   ACTION_GET_RECOVERY_IDS,
   ACTION_GET_RECOVERABLE_KEY_STORES,
   ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
+  ACTION_LOCK_FACTOR_UNTIL_REBOOT,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -3125,6 +3127,34 @@ int main(int argc, char** argv) {
     } else {
       printer.PrintHumanOutput("false\n");
     }
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_LOCK_FACTOR_UNTIL_REBOOT],
+                 action.c_str())) {
+    user_data_auth::LockFactorUntilRebootRequest req;
+    user_data_auth::AuthFactorType auth_factor_type;
+    if (!GetAuthFactorType(printer, cl, &auth_factor_type)) {
+      return 1;
+    }
+    req.set_auth_factor_type(auth_factor_type);
+    user_data_auth::LockFactorUntilRebootReply reply;
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.LockFactorUntilReboot(req, &reply, &error,
+                                                  timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "LockFactorUntilReboot call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput(
+          "LockFactorUntilReboot failed to create flag file.\n");
+      return static_cast<int>(reply.error());
+    }
+    printer.PrintHumanOutput("CryptohomeRecovery factor is locked.\n");
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");

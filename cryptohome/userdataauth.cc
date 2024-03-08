@@ -4414,6 +4414,39 @@ void UserDataAuth::GetRecoveryRequest(
           }));
 }
 
+void UserDataAuth::LockFactorUntilReboot(
+    user_data_auth::LockFactorUntilRebootRequest request,
+    OnDoneCallback<user_data_auth::LockFactorUntilRebootReply> on_done) {
+  AssertOnMountThread();
+  user_data_auth::LockFactorUntilRebootReply reply;
+
+  if (request.auth_factor_type() !=
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthWrongFactorTypeInLockFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+    return;
+  }
+
+  if (!platform_->FileExists(GetRecoveryFactorLockPath()) &&
+      !platform_->TouchFileDurable(GetRecoveryFactorLockPath())) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthTouchFailedInLockFactor),
+            ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    return;
+  }
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
 void UserDataAuth::CreateVaultKeyset(
     user_data_auth::CreateVaultKeysetRequest request,
     OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done) {

@@ -1687,6 +1687,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorRecoveryGetFactorDelayInvalidBlockState = 2512,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockLockedUntilReboot = 2513,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthWrongFactorTypeInLockFactor = 2514,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthTouchFailedInLockFactor = 2515,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
