@@ -54,6 +54,7 @@ config("host_target_defaults") {
   configs = [ ":host_target_defaults_pkgs" ]
   defines = [
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
+    "USE_CROSVM_FIXED_BLOB_MAPPING=${use.crosvm_fixed_blob_mapping}",
     "USE_CROSVM_VIRTIO_VIDEO=${use.crosvm_virtio_video}",
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_CROSVM_VENUS_GWP_ASAN=${use.venus_gwp_asan}",

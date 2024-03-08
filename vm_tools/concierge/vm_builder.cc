@@ -523,6 +523,12 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     if (!gpu_cache_size_str_.empty()) {
       gpu_arg += ",cache-size=" + gpu_cache_size_str_;
     }
+    gpu_arg += ",fixed-blob-mapping=";
+    if constexpr (USE_CROSVM_FIXED_BLOB_MAPPING) {
+      gpu_arg += "true";
+    } else {
+      gpu_arg += "false";
+    }
     args.emplace_back("--gpu", gpu_arg);
 
     if (enable_render_server_) {
