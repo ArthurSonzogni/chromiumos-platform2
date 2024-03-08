@@ -21,6 +21,7 @@ using ec::EcCommandFactoryInterface;
 using ec::EcCommandInterface;
 using ec::FpGetNonceCommand;
 using ec::FpInfoCommand;
+using ec::FpMigrateTemplateToNonceContextCommand;
 using ec::FpMode;
 using ec::FpPairingKeyKeygenCommand;
 using ec::FpPairingKeyLoadCommand;
@@ -353,6 +354,16 @@ class CrosFpDevice_UploadTemplate : public testing::Test {
     MOCK_METHOD(uint32_t, Result, (), (override, const));
   };
 
+  class MockFpMigrateTemplateToNonceContextCommand
+      : public FpMigrateTemplateToNonceContextCommand {
+   public:
+    MockFpMigrateTemplateToNonceContextCommand() {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(uint32_t, Result, (), (override, const));
+  };
+
   metrics::MockBiodMetrics mock_biod_metrics_;
   ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
   std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
@@ -431,6 +442,68 @@ TEST_F(CrosFpDevice_UploadTemplate, UnlockCommandFailure) {
       });
 
   EXPECT_FALSE(mock_cros_fp_device_->UnlockTemplates(kFingerNum));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, MigrateSuccess) {
+  const std::string kUserId = "user";
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce(
+          [](std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+            return std::make_unique<NiceMock<MockFpTemplateCommand>>(
+                tmpl, max_write_size, commit);
+          });
+  EXPECT_CALL(*mock_ec_command_factory_, FpMigrateTemplateToNonceContextCommand)
+      .WillOnce([&kUserId](const std::string& user_id) {
+        EXPECT_EQ(user_id, kUserId);
+        return std::make_unique<
+            NiceMock<MockFpMigrateTemplateToNonceContextCommand>>();
+      });
+
+  EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_SUCCESS));
+  EXPECT_TRUE(mock_cros_fp_device_->MigrateLegacyTemplate(kUserId, templ));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, MigrateUploadFailure) {
+  std::string kUserId = "user";
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce(
+          [](std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+            auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
+                tmpl, max_write_size, commit);
+            EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+            return cmd;
+          });
+
+  EXPECT_CALL(mock_biod_metrics_,
+              SendUploadTemplateResult(metrics::kCmdRunFailure));
+  EXPECT_FALSE(mock_cros_fp_device_->MigrateLegacyTemplate(kUserId, templ));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, MigrateRunFailure) {
+  std::string kUserId = "user";
+  std::vector<uint8_t> templ;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
+      .WillOnce(
+          [](std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+            return std::make_unique<NiceMock<MockFpTemplateCommand>>(
+                tmpl, max_write_size, commit);
+          });
+  EXPECT_CALL(*mock_ec_command_factory_, FpMigrateTemplateToNonceContextCommand)
+      .WillOnce([&kUserId](const std::string& user_id) {
+        EXPECT_EQ(user_id, kUserId);
+        auto cmd = std::make_unique<
+            NiceMock<MockFpMigrateTemplateToNonceContextCommand>>();
+        EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_SUCCESS));
+  EXPECT_FALSE(mock_cros_fp_device_->MigrateLegacyTemplate(kUserId, templ));
 }
 
 class CrosFpDevice_HwErrors : public testing::Test {

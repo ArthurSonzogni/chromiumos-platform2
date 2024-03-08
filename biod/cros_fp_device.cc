@@ -896,4 +896,35 @@ void CrosFpDevice::SetMkbpEventCallback(CrosFpDevice::MkbpCallback callback) {
   mkbp_event_ = callback;
 }
 
+bool CrosFpDevice::MigrateLegacyTemplate(const std::string& user_id,
+                                         const VendorTemplate& tmpl) {
+  auto fp_template_cmd = ec_command_factory_->FpTemplateCommand(
+      tmpl, ec_protocol_info_.max_write, /*commit=*/false);
+
+  if (!fp_template_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to run FP_TEMPLATE command";
+    biod_metrics_->SendUploadTemplateResult(metrics::kCmdRunFailure);
+    return false;
+  }
+  biod_metrics_->SendUploadTemplateResult(fp_template_cmd->Result());
+
+  if (fp_template_cmd->Result() != EC_RES_SUCCESS) {
+    LOG(ERROR) << "FP_TEMPLATE command failed";
+    return false;
+  }
+
+  auto migrate_cmd =
+      ec_command_factory_->FpMigrateTemplateToNonceContextCommand(user_id);
+  if (!migrate_cmd) {
+    LOG(ERROR) << "Invalid migrate legacy template params.";
+    return false;
+  }
+  if (!migrate_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to migrate legacy template: "
+               << migrate_cmd->Result();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace biod

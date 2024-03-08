@@ -76,6 +76,10 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
               LoadPairingKey,
               (const brillo::Blob& encrypted_pairing_key),
               (override));
+  MOCK_METHOD(bool,
+              MigrateLegacyTemplate,
+              (const std::string& user_id, const VendorTemplate& tmpl),
+              (override));
 };
 
 }  // namespace biod

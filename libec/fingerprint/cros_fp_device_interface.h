@@ -119,6 +119,13 @@ class CrosFpDeviceInterface {
   // persisted on the host.
   virtual bool LoadPairingKey(const brillo::Blob& encrypted_pairing_key) = 0;
 
+  // Migrate a legacy template |tmpl| (which was created in a user id context
+  // |user_id| instead of nonce context) to a template in the nonce context.
+  // This marks the uploaded template as newly enrolled so it should be
+  // downloaded by GetTemplate() afterwards.
+  virtual bool MigrateLegacyTemplate(const std::string& user_id,
+                                     const VendorTemplate& tmpl) = 0;
+
   virtual int MaxTemplateCount() = 0;
   virtual int TemplateVersion() = 0;
   virtual int DeadPixelCount() = 0;
