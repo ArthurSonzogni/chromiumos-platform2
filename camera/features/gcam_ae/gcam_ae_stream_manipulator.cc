@@ -120,7 +120,7 @@ bool GcamAeStreamManipulator::ConfigureStreams(
 
   if (yuv_stream_) {
     VLOGF(1) << "YUV stream for Gcam AE processing: "
-             << GetDebugString(yuv_stream_);
+             << GetDebugString(yuv_stream_) << ", owned: NO";
   } else {
     LOGF(WARNING) << "No YUV stream suitable for Gcam AE processing";
   }

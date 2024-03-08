@@ -682,6 +682,10 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
     for (auto* s : stream_config->GetStreams()) {
       VLOGF(1) << "  " << GetDebugString(s);
     }
+    if (yuv_stream_for_blob_) {
+      VLOGF(1) << "YUV for BLOB: " << GetDebugString(yuv_stream_for_blob_)
+               << ", owned: " << (still_yuv_stream_ ? "YES" : "NO");
+    }
   }
 
   return true;

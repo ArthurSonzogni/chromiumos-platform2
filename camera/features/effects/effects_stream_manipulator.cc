@@ -693,12 +693,19 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
                   .height = s->height,
                   .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
                   .usage = GRALLOC_USAGE_SW_READ_OFTEN,
+                  .physical_camera_id = s->physical_camera_id,
                   .crop_rotate_scale_degrees = s->crop_rotate_scale_degrees,
               });
           SetStillCaptureUsage(context->yuv_stream_for_blob_owned.get());
           context->yuv_stream_for_blob =
               context->yuv_stream_for_blob_owned.get();
           modified_streams.push_back(context->yuv_stream_for_blob);
+        }
+        if (context->yuv_stream_for_blob) {
+          VLOGF(1) << "YUV for BLOB: "
+                   << GetDebugString(context->yuv_stream_for_blob)
+                   << ", owned: "
+                   << (context->yuv_stream_for_blob_owned ? "YES" : "NO");
         }
       }
       metrics_.RecordStreamSize(context->stream_type, s->width * s->height);

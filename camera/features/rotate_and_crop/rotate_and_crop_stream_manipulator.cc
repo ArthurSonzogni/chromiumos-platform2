@@ -388,12 +388,17 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
           .physical_camera_id = blob_stream_->physical_camera_id,
           .crop_rotate_scale_degrees = hal_crs_degrees,
       };
+      SetStillCaptureUsage(&yuv_stream_for_blob_owned_.value());
       yuv_stream_for_blob_ = &yuv_stream_for_blob_owned_.value();
       stream_config->AppendStream(&yuv_stream_for_blob_owned_.value());
       scaled_yuv_buffer_for_blob_ = CameraBufferManager::AllocateScopedBuffer(
           blob_stream_->width, blob_stream_->height,
           HAL_PIXEL_FORMAT_YCBCR_420_888,
           GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
+    }
+    if (yuv_stream_for_blob_) {
+      VLOGF(1) << "YUV for BLOB: " << GetDebugString(yuv_stream_for_blob_)
+               << ", owned: " << (yuv_stream_for_blob_owned_ ? "YES" : "NO");
     }
   }
 

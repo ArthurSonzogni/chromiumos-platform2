@@ -486,6 +486,9 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
           modified_streams.push_back(s);
           modified_streams.push_back(context->hdrnet_stream.get());
           ++num_blob_streams;
+          VLOGF(1) << "YUV for BLOB: "
+                   << GetDebugString(context->hdrnet_stream.get())
+                   << ", owned: YES";
           hdrnet_metrics_.max_blob_stream_size =
               std::max(static_cast<int>(context->hdrnet_stream->width *
                                         context->hdrnet_stream->height),
