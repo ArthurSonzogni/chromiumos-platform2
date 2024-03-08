@@ -81,7 +81,6 @@ LEGACYLIST = {
     "modem-utilities",
     "nnapi",
     "oobe_config",
-    "os_install_service",
     "p2p",
     "pciguard",
     "perfetto_simple_producer",
