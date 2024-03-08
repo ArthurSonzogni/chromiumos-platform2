@@ -186,7 +186,7 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
   void CheckRoutineUpdate(uint32_t progress_percent,
                           mojom::DiagnosticRoutineStatusEnum status,
                           std::string status_message) {
-    routine_->PopulateStatusUpdate(&update_, true);
+    routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
                                status_message);

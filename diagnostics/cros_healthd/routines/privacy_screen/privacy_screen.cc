@@ -56,20 +56,20 @@ void PrivacyScreenRoutine::Cancel() {
   // This routine cannot be cancelled.
 }
 
-void PrivacyScreenRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                bool include_output) {
+void PrivacyScreenRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
   auto status = GetStatus();
 
   auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = status;
   update->status_message = GetStatusMessage();
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   if (status == mojom::DiagnosticRoutineStatusEnum::kReady ||
       status == mojom::DiagnosticRoutineStatusEnum::kRunning) {
-    response->progress_percent = 0;
+    response.progress_percent = 0;
   } else {
-    response->progress_percent = 100;
+    response.progress_percent = 100;
   }
 }
 

@@ -75,14 +75,14 @@ void BatteryChargeRoutine::Cancel() {
                kBatteryChargeRoutineCancelledMessage);
 }
 
-void BatteryChargeRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                bool include_output) {
+void BatteryChargeRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
   auto status = GetStatus();
   if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
     auto interactive_update = mojom::InteractiveRoutineUpdate::New();
     interactive_update->user_message =
         mojom::DiagnosticRoutineUserMessageEnum::kPlugInACPower;
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewInteractiveUpdate(
             std::move(interactive_update));
   } else {
@@ -90,17 +90,17 @@ void BatteryChargeRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
     noninteractive_update->status = status;
     noninteractive_update->status_message = GetStatusMessage();
 
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
             std::move(noninteractive_update));
   }
 
   CalculateProgressPercent();
-  response->progress_percent = progress_percent_;
+  response.progress_percent = progress_percent_;
   if (include_output && !output_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_, &json);
-    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
+    response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 }
 

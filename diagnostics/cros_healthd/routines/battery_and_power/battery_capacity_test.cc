@@ -46,7 +46,7 @@ class BatteryCapacityRoutineTest : public testing::Test {
 
     // Since the BatteryCapacityRoutine has finished by the time Start()
     // returns, there is no need to wait.
-    routine_->PopulateStatusUpdate(&update_, true);
+    routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
   }
 
   FakePowerdAdapter* fake_powerd_adapter() {

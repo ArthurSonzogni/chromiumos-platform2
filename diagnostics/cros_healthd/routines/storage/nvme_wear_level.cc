@@ -91,17 +91,17 @@ void NvmeWearLevelRoutine::UpdateStatusWithProgressPercent(
   percent_ = percent;
 }
 
-void NvmeWearLevelRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                bool include_output) {
+void NvmeWearLevelRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
   auto status = GetStatus();
 
   auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = status;
   update->status_message = GetStatusMessage();
 
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  response->progress_percent = percent_;
+  response.progress_percent = percent_;
 
   if (include_output && !output_dict_.empty()) {
     // If routine status is not at completed/cancelled then prints the debugd
@@ -110,7 +110,7 @@ void NvmeWearLevelRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
         status != mojom::DiagnosticRoutineStatusEnum::kCancelled) {
       std::string json;
       base::JSONWriter::Write(output_dict_, &json);
-      response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
+      response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
     }
   }
 }

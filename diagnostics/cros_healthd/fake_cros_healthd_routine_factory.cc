@@ -41,8 +41,8 @@ class FakeDiagnosticRoutine : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                            bool include_output) override;
+  void PopulateStatusUpdate(bool include_output,
+                            mojom::RoutineUpdate& response) override;
   mojom::DiagnosticRoutineStatusEnum GetStatus() override;
   void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
@@ -108,12 +108,10 @@ void FakeDiagnosticRoutine::Cancel() {
   ++num_actual_cancel_calls_;
 }
 
-void FakeDiagnosticRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                 bool include_output) {
-  CHECK(response);
-
-  response->progress_percent = progress_percent_;
-  response->output = CreateReadOnlySharedMemoryRegionMojoHandle(output_);
+void FakeDiagnosticRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
+  response.progress_percent = progress_percent_;
+  response.output = CreateReadOnlySharedMemoryRegionMojoHandle(output_);
 }
 
 mojom::DiagnosticRoutineStatusEnum FakeDiagnosticRoutine::GetStatus() {
@@ -141,8 +139,8 @@ class FakeNonInteractiveDiagnosticRoutine final : public FakeDiagnosticRoutine {
   ~FakeNonInteractiveDiagnosticRoutine() override;
 
   // FakeDiagnosticRoutine overrides:
-  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                            bool include_output) override;
+  void PopulateStatusUpdate(bool include_output,
+                            mojom::RoutineUpdate& response) override;
 
  private:
   // Used to populate the noninteractive_routine_update for calls to
@@ -170,12 +168,12 @@ FakeNonInteractiveDiagnosticRoutine::~FakeNonInteractiveDiagnosticRoutine() =
     default;
 
 void FakeNonInteractiveDiagnosticRoutine::PopulateStatusUpdate(
-    mojom::RoutineUpdate* response, bool include_output) {
-  FakeDiagnosticRoutine::PopulateStatusUpdate(response, include_output);
+    bool include_output, mojom::RoutineUpdate& response) {
+  FakeDiagnosticRoutine::PopulateStatusUpdate(include_output, response);
   auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = GetStatus();
   update->status_message = status_message_;
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
 }
 

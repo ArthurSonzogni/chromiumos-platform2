@@ -64,7 +64,7 @@ class NvmeWearLevelRoutineTest : public testing::Test {
                                 mojom::RoutineUpdateUnionPtr()};
 
     routine_->Start();
-    routine_->PopulateStatusUpdate(&update, true);
+    routine_->PopulateStatusUpdate(/*include_output=*/true, update);
     return mojom::RoutineUpdate::New(update.progress_percent,
                                      std::move(update.output),
                                      std::move(update.routine_update_union));

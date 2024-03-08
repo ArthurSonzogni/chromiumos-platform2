@@ -141,7 +141,7 @@ class FloatingPointRoutineAdapterTest : public FloatingPointRoutineTestBase {
 
   mojom::RoutineUpdatePtr GetUpdate() {
     mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-    routine_adapter_->PopulateStatusUpdate(update.get(), true);
+    routine_adapter_->PopulateStatusUpdate(/*include_output=*/true, *update);
     return update;
   }
 

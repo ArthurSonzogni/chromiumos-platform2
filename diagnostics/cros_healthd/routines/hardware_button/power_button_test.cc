@@ -52,7 +52,7 @@ class PowerButtonRoutineTest : public testing::Test {
                            const std::string& expected_status_message) {
     mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
                                  mojom::RoutineUpdateUnionPtr()};
-    routine.PopulateStatusUpdate(&update_, /*include_output*/ true);
+    routine.PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, 100);
     VerifyNonInteractiveUpdate(update_.routine_update_union, expected_status,
                                expected_status_message);
@@ -61,7 +61,7 @@ class PowerButtonRoutineTest : public testing::Test {
   void VerifyWaitingState(PowerButtonRoutine& routine, int progress_percent) {
     mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
                                  mojom::RoutineUpdateUnionPtr()};
-    routine.PopulateStatusUpdate(&update_, /*include_output*/ true);
+    routine.PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyInteractiveUpdate(
         update_.routine_update_union,

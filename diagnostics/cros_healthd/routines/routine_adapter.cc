@@ -208,10 +208,10 @@ void RoutineAdapter::Cancel() {
 }
 
 mojom::DiagnosticRoutineStatusEnum RoutineAdapter::GetStatus() {
-  auto update = mojom::RoutineUpdate::New();
-  PopulateStatusUpdate(update.get(), false);
-  if (update->routine_update_union->is_noninteractive_update()) {
-    return update->routine_update_union->get_noninteractive_update()->status;
+  mojom::RoutineUpdate update;
+  PopulateStatusUpdate(/*include_output=*/false, update);
+  if (update.routine_update_union->is_noninteractive_update()) {
+    return update.routine_update_union->get_noninteractive_update()->status;
   }
   // If the update is an interactive update, the status is kWaiting.
   return mojom::DiagnosticRoutineStatusEnum::kWaiting;
@@ -234,16 +234,14 @@ void RoutineAdapter::RegisterStatusChangedCallback(
   status_changed_callbacks_.push_back(std::move(callback));
 }
 
-void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                          bool include_output) {
-  CHECK(response);
-
+void RoutineAdapter::PopulateStatusUpdate(bool include_output,
+                                          mojom::RoutineUpdate& response) {
   if (error_occured_) {
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kError;
     update->status_message = error_message_;
     NotifyStatusChanged(update->status);
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
   }
@@ -252,7 +250,7 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kCancelled;
     NotifyStatusChanged(update->status);
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
   }
@@ -261,14 +259,14 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kUnknown;
     NotifyStatusChanged(update->status);
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
   }
 
   CHECK(cached_state_);
 
-  response->progress_percent = cached_state_->percentage;
+  response.progress_percent = cached_state_->percentage;
 
   switch (cached_state_->state_union->which()) {
     case mojom::RoutineStateUnion::Tag::kUnrecognizedArgument: {
@@ -279,7 +277,7 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       auto update = mojom::NonInteractiveRoutineUpdate::New();
       update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
       NotifyStatusChanged(update->status);
-      response->routine_update_union =
+      response.routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }
@@ -287,7 +285,7 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       auto update = mojom::NonInteractiveRoutineUpdate::New();
       update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
       NotifyStatusChanged(update->status);
-      response->routine_update_union =
+      response.routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }
@@ -311,7 +309,7 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       }
       update->status_message = waiting_ptr->message;
       NotifyStatusChanged(update->status);
-      response->routine_update_union =
+      response.routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }
@@ -328,12 +326,12 @@ void RoutineAdapter::PopulateStatusUpdate(mojom::RoutineUpdate* response,
           update->status_message = "Got null routine output.";
 
         } else {
-          response->output =
+          response.output =
               ConvertRoutineDetailToMojoHandle(finished_ptr->detail);
         }
       }
       NotifyStatusChanged(update->status);
-      response->routine_update_union =
+      response.routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }

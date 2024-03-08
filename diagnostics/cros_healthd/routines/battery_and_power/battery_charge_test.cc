@@ -79,7 +79,7 @@ class BatteryChargeRoutineTest : public testing::Test {
   mojom::RoutineUpdatePtr GetUpdate() {
     mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
-    routine_->PopulateStatusUpdate(&update, true);
+    routine_->PopulateStatusUpdate(/*include_output=*/true, update);
     return mojom::RoutineUpdate::New(update.progress_percent,
                                      std::move(update.output),
                                      std::move(update.routine_update_union));

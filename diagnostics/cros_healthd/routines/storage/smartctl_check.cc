@@ -144,24 +144,24 @@ void SmartctlCheckRoutine::UpdateStatusWithProgressPercent(
   percent_ = percent;
 }
 
-void SmartctlCheckRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                bool include_output) {
+void SmartctlCheckRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
   auto status = GetStatus();
 
   auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = status;
   update->status_message = GetStatusMessage();
 
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  response->progress_percent = percent_;
+  response.progress_percent = percent_;
 
   if (include_output && !output_dict_.empty() &&
       (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
        status == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
-    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
+    response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 }
 

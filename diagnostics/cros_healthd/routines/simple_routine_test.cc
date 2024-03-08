@@ -90,7 +90,7 @@ class SimpleRoutineTest : public testing::Test {
 
     // Since the SimpleRoutine has finished by the time Start() returns, there
     // is no need to wait.
-    routine_->PopulateStatusUpdate(&update_, include_output);
+    routine_->PopulateStatusUpdate(include_output, update_);
   }
 
  private:

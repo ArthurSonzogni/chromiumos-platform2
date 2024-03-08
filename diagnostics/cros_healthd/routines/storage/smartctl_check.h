@@ -56,8 +56,9 @@ class SmartctlCheckRoutine final : public DiagnosticRoutineWithStatus {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
-                            bool include_output) override;
+  void PopulateStatusUpdate(
+      bool include_output,
+      ash::cros_healthd::mojom::RoutineUpdate& response) override;
 
  private:
   void OnDebugdResultCallback(const std::string& result);

@@ -34,8 +34,8 @@ class DiagnosticRoutine {
   virtual void Cancel() = 0;
   // Populates |response| with the current status of the diagnostic routine.
   virtual void PopulateStatusUpdate(
-      ash::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) = 0;
+      bool include_output,
+      ash::cros_healthd::mojom::RoutineUpdate& response) = 0;
   virtual ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() = 0;
   // Registers a callback that will be invoked each time the status changes.
   // On each status change, the new status will be passed as the argument to

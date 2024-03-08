@@ -64,39 +64,39 @@ void PowerButtonRoutine::Resume() {}
 
 void PowerButtonRoutine::Cancel() {}
 
-void PowerButtonRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                              bool include_output) {
+void PowerButtonRoutine::PopulateStatusUpdate(bool include_output,
+                                              mojom::RoutineUpdate& response) {
   auto status = GetStatus();
 
   if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
     auto interactive_update = mojom::InteractiveRoutineUpdate::New();
     interactive_update->user_message =
         mojom::DiagnosticRoutineUserMessageEnum::kPressPowerButton;
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewInteractiveUpdate(
             std::move(interactive_update));
   } else {
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = status;
     update->status_message = GetStatusMessage();
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   }
 
   if (status == mojom::DiagnosticRoutineStatusEnum::kReady) {
-    response->progress_percent = 0;
+    response.progress_percent = 0;
   } else if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting ||
              status == mojom::DiagnosticRoutineStatusEnum::kRunning) {
     if (start_ticks_.has_value()) {
-      response->progress_percent =
+      response.progress_percent =
           100 * (base::TimeTicks::Now() - start_ticks_.value()) /
           base::Seconds(timeout_seconds_);
     } else {
-      response->progress_percent = 0;
+      response.progress_percent = 0;
       LOG(ERROR) << "start_ticks_ is not set";
     }
   } else {
-    response->progress_percent = 100;
+    response.progress_percent = 100;
   }
 }
 

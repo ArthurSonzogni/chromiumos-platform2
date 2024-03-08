@@ -65,38 +65,37 @@ void BluetoothPowerRoutine::Cancel() {
   LOG(ERROR) << "Bluetooth power routine cannot be cancelled";
 }
 
-void BluetoothPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                                 bool include_output) {
-  DCHECK(response);
+void BluetoothPowerRoutine::PopulateStatusUpdate(
+    bool include_output, mojom::RoutineUpdate& response) {
   auto status = GetStatus();
 
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
           mojom::NonInteractiveRoutineUpdate::New(status, GetStatusMessage()));
 
   if (include_output) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
-    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
+    response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 
   // The routine is failed.
   if (status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
       status == mojom::DiagnosticRoutineStatusEnum::kError) {
-    response->progress_percent = 100;
+    response.progress_percent = 100;
     return;
   }
 
   // The routine is not started.
   if (status == mojom::DiagnosticRoutineStatusEnum::kReady) {
-    response->progress_percent = 0;
+    response.progress_percent = 0;
     return;
   }
 
   double step_percent = step_ * 100 / TestStep::kComplete;
   double running_time_ratio =
       (base::TimeTicks::Now() - start_ticks_) / kPowerRoutineTimeout;
-  response->progress_percent =
+  response.progress_percent =
       step_percent + (100 - step_percent) * std::min(1.0, running_time_ratio);
 }
 

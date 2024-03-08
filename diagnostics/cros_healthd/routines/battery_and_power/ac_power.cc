@@ -86,8 +86,8 @@ void AcPowerRoutine::Cancel() {
   }
 }
 
-void AcPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                          bool include_output) {
+void AcPowerRoutine::PopulateStatusUpdate(bool include_output,
+                                          mojom::RoutineUpdate& response) {
   auto status = GetStatus();
   if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
     auto interactive_update = mojom::InteractiveRoutineUpdate::New();
@@ -95,7 +95,7 @@ void AcPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
         (expected_power_status_ == mojom::AcPowerStatusEnum::kConnected)
             ? mojom::DiagnosticRoutineUserMessageEnum::kPlugInACPower
             : mojom::DiagnosticRoutineUserMessageEnum::kUnplugACPower;
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewInteractiveUpdate(
             std::move(interactive_update));
   } else {
@@ -103,13 +103,13 @@ void AcPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
     noninteractive_update->status = status;
     noninteractive_update->status_message = GetStatusMessage();
 
-    response->routine_update_union =
+    response.routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
             std::move(noninteractive_update));
   }
 
   CalculateProgressPercent();
-  response->progress_percent = progress_percent_;
+  response.progress_percent = progress_percent_;
 }
 
 void AcPowerRoutine::CalculateProgressPercent() {

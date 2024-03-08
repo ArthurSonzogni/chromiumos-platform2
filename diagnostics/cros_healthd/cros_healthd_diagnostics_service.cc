@@ -149,7 +149,7 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
       // Retrieving the status and output of a routine is handled below.
       break;
     case mojom::DiagnosticRoutineCommandEnum::kRemove:
-      routine->PopulateStatusUpdate(&update, include_output);
+      routine->PopulateStatusUpdate(include_output, update);
       if (update.routine_update_union->is_noninteractive_update()) {
         update.routine_update_union->get_noninteractive_update()->status =
             mojom::DiagnosticRoutineStatusEnum::kRemoved;
@@ -165,7 +165,7 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
       break;
   }
 
-  routine->PopulateStatusUpdate(&update, include_output);
+  routine->PopulateStatusUpdate(include_output, update);
   std::move(callback).Run(mojom::RoutineUpdate::New(
       update.progress_percent, std::move(update.output),
       std::move(update.routine_update_union)));

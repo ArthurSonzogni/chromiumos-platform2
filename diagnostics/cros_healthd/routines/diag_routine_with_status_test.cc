@@ -30,8 +30,8 @@ class FakeRoutine : public DiagnosticRoutineWithStatus {
   void Start() override {}
   void Resume() override {}
   void Cancel() override {}
-  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                            bool include_output) override {}
+  void PopulateStatusUpdate(bool include_output,
+                            mojom::RoutineUpdate& response) override {}
 
   // Access the protected functions for testing.
   std::string GetStatusMessageForTesting() {

@@ -49,8 +49,8 @@ void SimpleRoutine::Start() {
 void SimpleRoutine::Resume() {}
 void SimpleRoutine::Cancel() {}
 
-void SimpleRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                         bool include_output) {
+void SimpleRoutine::PopulateStatusUpdate(bool include_output,
+                                         mojom::RoutineUpdate& response) {
   auto status = GetStatus();
   // Because simple routines are non-interactive, we will never include a user
   // message.
@@ -58,14 +58,14 @@ void SimpleRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   update->status = status;
   update->status_message = GetStatusMessage();
 
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  response->progress_percent = CalculateProgressPercent(status);
+  response.progress_percent = CalculateProgressPercent(status);
 
   if (include_output && !output_dict_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
-    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
+    response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 }
 

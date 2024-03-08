@@ -61,14 +61,14 @@ void FingerprintRoutine::Resume() {}
 
 void FingerprintRoutine::Cancel() {}
 
-void FingerprintRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
-                                              bool include_output) {
+void FingerprintRoutine::PopulateStatusUpdate(bool include_output,
+                                              mojom::RoutineUpdate& response) {
   auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = GetStatus();
   update->status_message = GetStatusMessage();
-  response->routine_update_union =
+  response.routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  response->progress_percent = step_ * 100 / TestStep::kComplete;
+  response.progress_percent = step_ * 100 / TestStep::kComplete;
 }
 
 bool FingerprintRoutine::CheckCheckerboardThreshold(

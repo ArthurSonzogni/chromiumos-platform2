@@ -103,7 +103,7 @@ class BluezBluetoothPowerRoutineTest : public testing::Test {
                           mojom::DiagnosticRoutineStatusEnum status,
                           std::string status_message,
                           base::Value::Dict output_dict = base::Value::Dict()) {
-    routine_->PopulateStatusUpdate(&update_, true);
+    routine_->PopulateStatusUpdate(/*include_output=*/true, update_);
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
                                status_message);
