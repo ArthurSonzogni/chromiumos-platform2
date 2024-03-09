@@ -12,8 +12,7 @@ Conflicts=pre-shutdown.service
 # Default parameters to be overridden by systemd configuration.
 Environment="SHILL_LOG_LEVEL=0" \
 	"SHILL_LOG_SCOPES=" \
-	"BLOCKED_DEVICES=" \
-	"SHILL_TEST_DEVICES="
+	"BLOCKED_DEVICES="
 Restart=on-failure
 
 ExecStartPre=/bin/sh /usr/share/cros/init/shill-pre-start.sh

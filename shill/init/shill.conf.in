@@ -26,16 +26,12 @@ env SHILL_LOG_VMODULES="object_proxy=0,dbus_object=0,bus=0"
 env ALLOWED_DEVICES=
 env BLOCKED_DEVICES=
 
-# Hook for mod_for_test_scripts/100setupTestingInterface.
-env SHILL_TEST_DEVICES=""
-
 # Allow the parameters to be overridden by upstart commands and events.
 import ALLOWED_DEVICES
 import BLOCKED_DEVICES
 import SHILL_LOG_LEVEL
 import SHILL_LOG_SCOPES
 import SHILL_LOG_VMODULES
-import SHILL_TEST_DEVICES
 
 # Make shill killable, because if it has a leak it's better to
 # restart it than to OOM-panic.

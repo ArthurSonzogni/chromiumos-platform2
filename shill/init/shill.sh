@@ -25,12 +25,8 @@ if [ -n "${SHILL_LOG_VMODULES}" ]; then
   set -- "$@" --vmodule="${SHILL_LOG_VMODULES}"
 fi
 
-if [ -n "${BLOCKED_DEVICES}" ] && [ -n "${SHILL_TEST_DEVICES}" ]; then
-  set -- "$@" --devices-blocked="${BLOCKED_DEVICES},${SHILL_TEST_DEVICES}"
-elif [ -n "${BLOCKED_DEVICES}" ]; then
+if [ -n "${BLOCKED_DEVICES}" ]; then
   set -- "$@" --devices-blocked="${BLOCKED_DEVICES}"
-elif [ -n "${SHILL_TEST_DEVICES}" ]; then
-  set -- "$@" --devices-blocked="${SHILL_TEST_DEVICES}"
 fi
 
 if [ -n "${ALLOWED_DEVICES}" ]; then
