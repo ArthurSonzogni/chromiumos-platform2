@@ -26,13 +26,10 @@
 #include <bindings/device_management_backend.pb.h>
 #include <bindings/policy_common_definitions.pb.h>
 #include <brillo/errors/error.h>
-#include <chromeos/dbus/debugd/dbus-constants.h>
 #include <dbus/bus.h>
-#include <debugd/dbus-proxies.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <session_manager/dbus-proxies.h>
 
-#include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/storage.h"
 
@@ -116,7 +113,6 @@ namespace fbpreprocessor {
 SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
     : session_manager_proxy_(
           std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)),
-      debugd_proxy_(std::make_unique<org::chromium::debugdProxy>(bus)),
       base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
       fw_dumps_allowed_by_policy_(false),
@@ -131,76 +127,33 @@ SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
 void SessionStateManager::OnSessionStateChanged(const std::string& state) {
   LOG(INFO) << "Session state changed to " << state;
 
-  // Clear debug buffer when session state changed to either login or logout.
-  // For user login, the initialization tasks (wrapped in |HandleUserLogin|)
-  // must be performed after the call to |ClearFirmwareDumpBufferAsync| being
-  // successful, to make sure there's no cross-session debug data in the low
-  // level buffers. That is, |HandleUserLogin| is only invoked when
-  // |ClearFirmwareDumpBufferAsync| calls |OnClearFirmwareDumpBufferResponse|
-  // and the method return |success| is true. If |ClearFirmwareDumpBufferAsync|
-  // fails, don't initialize for that user session.
-  debugd_proxy_->ClearFirmwareDumpBufferAsync(
-      static_cast<uint32_t>(debugd::FirmwareDumpType::WIFI),
-      /*success_callback=*/
-      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferResponse,
-                     weak_factory_.GetWeakPtr(), state == kSessionStateStarted),
-      /*error_callback=*/
-      base::BindOnce(&SessionStateManager::OnClearFirmwareDumpBufferError,
-                     weak_factory_.GetWeakPtr()));
-
-  // For user logout, |ClearFirmwareDumpBufferAsync| is a best-effort task. The
-  // logout cleanup sequence does not depend on |ClearFirmwareDumpBufferAsync|.
-  if (state == kSessionStateStopped) {
+  if (state == kSessionStateStarted) {
+    // Always check the number of active sessions, even if the primary user is
+    // still the same, since we want to disable the feature if a secondary
+    // session has been started.
+    if (!UpdateActiveSessions()) {
+      LOG(ERROR) << "Failed to retrieve active sessions.";
+    }
+    if (!primary_user_hash_.empty()) {
+      LOG(INFO) << "Primary user already exists. Not updating primary user.";
+      return;
+    }
+    if (!UpdatePrimaryUser()) {
+      LOG(ERROR) << "Failed to update primary user.";
+      return;
+    }
+    if (!UpdatePolicy()) {
+      LOG(ERROR) << "Failed to retrieve policy.";
+    }
+    for (auto& observer : observers_) {
+      observer.OnUserLoggedIn(primary_user_hash_);
+    }
+  } else if (state == kSessionStateStopped) {
     ResetPrimaryUser();
     for (auto& observer : observers_) {
       observer.OnUserLoggedOut();
     }
   }
-}
-
-void SessionStateManager::HandleUserLogin() {
-  VLOG(kLocalDebugVerbosity) << __func__;
-  // Always check the number of active sessions, even if the primary user is
-  // still the same, since we want to disable the feature if a secondary
-  // session has been started.
-  if (!UpdateActiveSessions()) {
-    LOG(ERROR) << "Failed to retrieve active sessions.";
-  }
-  if (!primary_user_hash_.empty()) {
-    LOG(INFO) << "Primary user already exists. Not updating primary user.";
-    return;
-  }
-  if (!UpdatePrimaryUser()) {
-    LOG(ERROR) << "Failed to update primary user.";
-    return;
-  }
-  if (!UpdatePolicy()) {
-    LOG(ERROR) << "Failed to retrieve policy.";
-  }
-  for (auto& observer : observers_) {
-    observer.OnUserLoggedIn(primary_user_hash_);
-  }
-}
-
-void SessionStateManager::OnClearFirmwareDumpBufferResponse(bool is_login,
-                                                            bool success) {
-  VLOG(kLocalDebugVerbosity) << __func__;
-  if (!success) {
-    LOG(ERROR) << "Request for clearing firmware dump buffer was responded, "
-                  "but the firmware/driver execution failed.";
-    return;
-  }
-  LOG(INFO) << "Request for clearing firmware dump buffer was successful.";
-  if (is_login) {
-    HandleUserLogin();
-  }
-}
-
-void SessionStateManager::OnClearFirmwareDumpBufferError(
-    brillo::Error* error) const {
-  VLOG(kLocalDebugVerbosity) << __func__;
-  LOG(ERROR) << "Failed to clear firmware dump buffer (" << error->GetCode()
-             << "): " << error->GetMessage();
 }
 
 void SessionStateManager::AddObserver(Observer* observer) {
