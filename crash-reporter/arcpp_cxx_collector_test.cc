@@ -21,6 +21,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 using brillo::ClearLog;
@@ -85,7 +86,7 @@ class MockArcppCxxCollector : public ArcppCxxCollector {
                 base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
                 std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
-  MOCK_METHOD(ErrorType,
+  MOCK_METHOD(CrashCollectionStatus,
               ConvertCoreToMinidump,
               (pid_t pid,
                const base::FilePath&,
@@ -359,7 +360,7 @@ TEST_F(ArcppCxxCollectorTest, WritesMeta) {
       ConvertCoreToMinidump(123, base::FilePath("/tmp/crash_reporter/123"),
                             Property(&base::FilePath::value, EndsWith("core")),
                             Property(&base::FilePath::value, EndsWith("dmp"))))
-      .WillOnce(Return(CrashCollector::kErrorNone));
+      .WillOnce(Return(CrashCollectionStatus::kSuccess));
 
   UserCollectorBase::CrashAttributes attrs;
   attrs.pid = 123;

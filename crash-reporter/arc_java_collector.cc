@@ -18,6 +18,8 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/crash_collection_status.h"
+#include "crash-reporter/crash_collector.h"
 #include "crash-reporter/crash_collector_names.h"
 
 using base::File;
@@ -64,10 +66,12 @@ bool ArcJavaCollector::HandleCrash(
   LogCrash(message.str(), "handling");
 
   bool out_of_capacity = false;
-  if (!CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
-                                log, uptime, &out_of_capacity)) {
+  CrashCollectionStatus status =
+      CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
+                               log, uptime, &out_of_capacity);
+  if (!IsSuccessCode(status)) {
     if (!out_of_capacity) {
-      EnqueueCollectionErrorLog(kErrorSystemIssue, exec);
+      EnqueueCollectionErrorLog(status, exec);
     }
     return false;
   }
@@ -138,7 +142,7 @@ void ArcJavaCollector::AddArcMetaData(const std::string& process,
     AddCrashMetaData(arc_util::kSilentKey, "true");
 }
 
-bool ArcJavaCollector::CreateReportForJavaCrash(
+CrashCollectionStatus ArcJavaCollector::CreateReportForJavaCrash(
     const std::string& crash_type,
     const arc_util::BuildProperty& build_property,
     const CrashLogHeaderMap& map,
@@ -147,9 +151,11 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
     base::TimeDelta uptime,
     bool* out_of_capacity) {
   FilePath crash_dir;
-  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, out_of_capacity)) {
-    LOG(ERROR) << "Failed to create or find crash directory";
-    return false;
+  CrashCollectionStatus status =
+      GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, out_of_capacity);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to create or find crash directory: " << status;
+    return status;
   }
 
   const auto process = arc_util::GetCrashLogHeader(map, arc_util::kProcessKey);
@@ -160,7 +166,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
   const int size = static_cast<int>(log.size());
   if (WriteNewFile(log_path, log) != size) {
     PLOG(ERROR) << "Failed to write log";
-    return false;
+    return CrashCollectionStatus::kFailedLogFileWrite;
   }
 
   AddArcMetaData(process, crash_type, uptime);
@@ -186,7 +192,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
       AddCrashMetaData(arc_util::kSignatureField, out.str());
     } else {
       LOG(ERROR) << "Invalid crash type: " << crash_type;
-      return false;
+      return CrashCollectionStatus::kInvalidCrashType;
     }
   } else {
     const FilePath info_path = GetCrashPath(crash_dir, basename, "info");
@@ -194,7 +200,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
 
     if (WriteNewFile(info_path, exception_info) != size) {
       PLOG(ERROR) << "Failed to write exception info";
-      return false;
+      return CrashCollectionStatus::kFailedInfoFileWrite;
     }
 
     AddCrashMetaUploadText(arc_util::kExceptionInfoField,
@@ -202,8 +208,7 @@ bool ArcJavaCollector::CreateReportForJavaCrash(
   }
 
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
-  FinishCrash(meta_path, process, log_path.BaseName().value());
-  return true;
+  return FinishCrash(meta_path, process, log_path.BaseName().value());
 }
 
 // static

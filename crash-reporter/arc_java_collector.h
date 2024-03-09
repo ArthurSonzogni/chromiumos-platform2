@@ -72,13 +72,14 @@ class ArcJavaCollector : public CrashCollector {
 
   using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
 
-  bool CreateReportForJavaCrash(const std::string& crash_type,
-                                const arc_util::BuildProperty& build_property,
-                                const CrashLogHeaderMap& map,
-                                const std::string& exception_info,
-                                const std::string& log,
-                                base::TimeDelta uptime,
-                                bool* out_of_capacity);
+  CrashCollectionStatus CreateReportForJavaCrash(
+      const std::string& crash_type,
+      const arc_util::BuildProperty& build_property,
+      const CrashLogHeaderMap& map,
+      const std::string& exception_info,
+      const std::string& log,
+      base::TimeDelta uptime,
+      bool* out_of_capacity);
 
   // The type of crash received when HandleCrash() is called.
   std::string received_crash_type_;

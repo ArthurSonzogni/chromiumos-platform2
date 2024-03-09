@@ -21,6 +21,7 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/kernel_util.h"
 #include "crash-reporter/util.h"
@@ -77,11 +78,13 @@ bool ArcvmKernelCollector::HandleCrashWithRamoopsStreamAndTimestamp(
 
   bool out_of_capacity = false;
   base::FilePath crash_dir;
-  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir,
-                                      &out_of_capacity)) {
-    LOG(ERROR) << "Failed to create or find crash directory";
-    if (!out_of_capacity)
-      EnqueueCollectionErrorLog(kErrorSystemIssue, kKernelExecName);
+  CrashCollectionStatus status =
+      GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, &out_of_capacity);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to create or find crash directory: " << status;
+    if (!out_of_capacity) {
+      EnqueueCollectionErrorLog(status, kKernelExecName);
+    }
     return false;
   }
 

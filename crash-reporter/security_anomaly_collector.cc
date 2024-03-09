@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 
 namespace {
@@ -86,9 +87,10 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
     return false;
 
   base::FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
-                                      nullptr))
+  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
+          constants::kRootUid, &crash_directory, nullptr))) {
     return false;
+  }
 
   std::string dump_basename = FormatDumpBasename(kExecName, time(nullptr), 0);
   base::FilePath meta_path =

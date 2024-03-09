@@ -23,6 +23,7 @@
 #include <brillo/process/process.h>
 
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
@@ -217,7 +218,7 @@ bool ArcppCxxCollector::ShouldDump(pid_t pid,
   return UserCollectorBase::ShouldDump(reason);
 }
 
-UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
+CrashCollectionStatus ArcppCxxCollector::ConvertCoreToMinidump(
     pid_t pid,
     const base::FilePath& container_dir,
     const base::FilePath& core_path,
@@ -225,7 +226,7 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
   FilePath root;
   if (!GetArcRoot(&root)) {
     LOG(ERROR) << "Failed to get ARC root";
-    return kErrorSystemIssue;
+    return CrashCollectionStatus::kFailedGetArcRoot;
   }
 
   const char* collector_path = kCoreCollectorPath;
@@ -257,7 +258,7 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
 
   if (exit_code < 0) {
     PLOG(ERROR) << "Failed to start " << collector_path;
-    return kErrorSystemIssue;
+    return CrashCollectionStatus::kCoreCollectorFailed;
   }
 
   if (exit_code == EX_OK) {
@@ -266,7 +267,7 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
     ArcppCxxCollector::GetExecutableBaseNameAndDirectoryFromPid(
         pid, &process, &exec_directory);
     AddArcMetaData(process);
-    return kErrorNone;
+    return CrashCollectionStatus::kSuccess;
   }
 
   util::LogMultilineError(error);
@@ -274,12 +275,19 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
   LOG(ERROR) << collector_path << " failed with exit code " << exit_code;
   switch (exit_code) {
     case EX_OSFILE:
-      return kErrorInvalidCoreFile;
+      return CrashCollectionStatus::kCoreCollectorReturnedOSFile;
     case EX_SOFTWARE:
-      return kErrorCore2MinidumpConversion;
+      return CrashCollectionStatus::kCoreCollectorReturnedSoftware;
+    case EX_USAGE:
+      return CrashCollectionStatus::kCoreCollectorReturnedUsage;
+    case EX_IOERR:
+      return CrashCollectionStatus::kCoreCollectorReturnedIOErr;
+    case EX_CANTCREAT:
+      return CrashCollectionStatus::kCoreCollectorReturnedCantCreat;
+    case EX_OSERR:
+      return CrashCollectionStatus::kCoreCollectorReturnedOSErr;
     default:
-      return base::PathExists(core_path) ? kErrorSystemIssue
-                                         : kErrorReadCoreData;
+      return CrashCollectionStatus::kCoreCollectorReturnedUnknownValue;
   }
 }
 

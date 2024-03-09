@@ -32,6 +32,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector_base.h"
@@ -141,17 +142,23 @@ void UserCollector::Initialize(const std::string& our_path,
 
 UserCollector::~UserCollector() {}
 
-void UserCollector::FinishCrash(const base::FilePath& meta_path,
-                                const std::string& exec_name,
-                                const std::string& payload_name) {
+CrashCollectionStatus UserCollector::FinishCrash(
+    const base::FilePath& meta_path,
+    const std::string& exec_name,
+    const std::string& payload_name) {
   VmSupport* vm_support = VmSupport::Get();
-  if (vm_support)
+  if (vm_support) {
     vm_support->AddMetadata(this);
+  }
 
-  UserCollectorBase::FinishCrash(meta_path, exec_name, payload_name);
+  CrashCollectionStatus status =
+      UserCollectorBase::FinishCrash(meta_path, exec_name, payload_name);
 
-  if (vm_support)
+  if (vm_support) {
     vm_support->FinishCrash(meta_path);
+  }
+
+  return status;
 }
 
 CrashCollector::ComputedCrashSeverity UserCollector::ComputeSeverity(
@@ -345,12 +352,12 @@ bool UserCollector::ValidateProcFiles(const FilePath& container_dir) const {
   return true;
 }
 
-UserCollector::ErrorType UserCollector::ValidateCoreFile(
+CrashCollectionStatus UserCollector::ValidateCoreFile(
     const FilePath& core_path) const {
   int fd = HANDLE_EINTR(open(core_path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "Could not open core file " << core_path.value();
-    return kErrorReadCoreData;
+    return CrashCollectionStatus::kFailureOpeningCoreFile;
   }
 
   char e_ident[EI_NIDENT];
@@ -358,13 +365,13 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   IGNORE_EINTR(close(fd));
   if (!read_ok) {
     LOG(ERROR) << "Could not read header of core file";
-    return kErrorInvalidCoreFile;
+    return CrashCollectionStatus::kFailureReadingCoreFileHeader;
   }
 
   if (e_ident[EI_MAG0] != ELFMAG0 || e_ident[EI_MAG1] != ELFMAG1 ||
       e_ident[EI_MAG2] != ELFMAG2 || e_ident[EI_MAG3] != ELFMAG3) {
     LOG(ERROR) << "Invalid core file";
-    return kErrorInvalidCoreFile;
+    return CrashCollectionStatus::kBadCoreFileMagic;
   }
 
 #if __WORDSIZE == 64
@@ -373,11 +380,11 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   if (e_ident[EI_CLASS] == ELFCLASS32) {
     LOG(ERROR) << "Conversion of 32-bit core file on 64-bit platform is "
                << "currently not supported";
-    return kErrorUnsupported32BitCoreFile;
+    return CrashCollectionStatus::kFailureUnsupported32BitCoreFile;
   }
 #endif
 
-  return kErrorNone;
+  return CrashCollectionStatus::kSuccess;
 }
 
 bool UserCollector::CopyStdinToCoreFile(const base::FilePath& core_path) {
@@ -671,7 +678,7 @@ bool UserCollector::ShouldDump(pid_t pid,
   return ShouldDump(pid, ShouldHandleChromeCrashes(), exec, reason);
 }
 
-UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
+CrashCollectionStatus UserCollector::ConvertCoreToMinidump(
     pid_t pid,
     const FilePath& container_dir,
     const FilePath& core_path,
@@ -683,28 +690,28 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
       CopyOffProcFiles(pid, container_dir) && ValidateProcFiles(container_dir);
 
   if (!CopyStdinToCoreFile(core_path)) {
-    return kErrorReadCoreData;
+    return CrashCollectionStatus::kFailureCopyingCoreData;
   }
 
   if (!proc_files_usable) {
     LOG(INFO) << "Skipped converting core file to minidump due to "
               << "unusable proc files";
-    return kErrorUnusableProcFiles;
+    return CrashCollectionStatus::kUnusableProcFiles;
   }
 
-  ErrorType error = ValidateCoreFile(core_path);
-  if (error != kErrorNone) {
-    return error;
+  CrashCollectionStatus status = ValidateCoreFile(core_path);
+  if (!IsSuccessCode(status)) {
+    return status;
   }
 
   if (!RunCoreToMinidump(core_path,
                          container_dir,  // procfs directory
                          minidump_path,
                          container_dir)) {  // temporary directory
-    return kErrorCore2MinidumpConversion;
+    return CrashCollectionStatus::kFailureCore2MinidumpConversion;
   }
 
-  return kErrorNone;
+  return CrashCollectionStatus::kSuccess;
 }
 
 namespace {

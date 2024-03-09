@@ -32,6 +32,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
@@ -130,9 +131,14 @@ bool ChromeCollector::HandleCrashWithDumpData(
   FilePath dir;
   if (!dump_dir.empty()) {
     dir = FilePath(dump_dir);
-  } else if (!GetCreatedCrashDirectoryByEuid(uid, &dir, nullptr)) {
-    LOG(ERROR) << "Can't create crash directory for uid " << uid;
-    return false;
+  } else {
+    CrashCollectionStatus status =
+        GetCreatedCrashDirectoryByEuid(uid, &dir, nullptr);
+    if (!IsSuccessCode(status)) {
+      LOG(ERROR) << "Can't create crash directory for uid " << uid << ": "
+                 << status;
+      return false;
+    }
   }
 
   std::string dump_basename =

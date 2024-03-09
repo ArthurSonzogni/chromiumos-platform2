@@ -34,6 +34,7 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 #include "crash-reporter/vm_support.h"
@@ -75,7 +76,7 @@ class UserCollectorMock : public UserCollector {
               (pid_t),
               (const, override));
   MOCK_METHOD(void, AnnounceUserCrash, (), (override));
-  MOCK_METHOD(ErrorType,
+  MOCK_METHOD(CrashCollectionStatus,
               ConvertCoreToMinidump,
               (pid_t pid,
                const base::FilePath&,
@@ -318,7 +319,7 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
                   Property(&FilePath::value,
                            AllOf(StartsWith(crash_prefix), EndsWith("dmp")))))
       .Times(expected_mock_calls)
-      .WillRepeatedly(Return(CrashCollector::kErrorNone));
+      .WillRepeatedly(Return(CrashCollectionStatus::kSuccess));
 
   UserCollectorBase::CrashAttributes attrs;
   attrs.pid = 5;
@@ -355,7 +356,7 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
                   Property(&FilePath::value,
                            AllOf(StartsWith(crash_prefix), EndsWith("dmp")))))
       .Times(expected_mock_calls)
-      .WillRepeatedly(Return(CrashCollector::kErrorNone));
+      .WillRepeatedly(Return(CrashCollectionStatus::kSuccess));
 
   UserCollectorBase::CrashAttributes attrs;
   attrs.pid = 5;
@@ -623,7 +624,7 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
   FilePath core_file = test_dir_.Append("core");
 
   // Core file does not exist
-  EXPECT_EQ(UserCollector::kErrorReadCoreData,
+  EXPECT_EQ(CrashCollectionStatus::kFailureOpeningCoreFile,
             collector_.ValidateCoreFile(core_file));
   char e_ident[EI_NIDENT];
   e_ident[EI_MAG0] = ELFMAG0;
@@ -641,14 +642,15 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
   // Core file has the expected header
   ASSERT_TRUE(
       test_util::CreateFile(core_file, std::string(e_ident, sizeof(e_ident))));
-  EXPECT_EQ(UserCollector::kErrorNone, collector_.ValidateCoreFile(core_file));
+  EXPECT_EQ(CrashCollectionStatus::kSuccess,
+            collector_.ValidateCoreFile(core_file));
 
 #if __WORDSIZE == 64
   // 32-bit core file on 64-bit platform
   e_ident[EI_CLASS] = ELFCLASS32;
   ASSERT_TRUE(
       test_util::CreateFile(core_file, std::string(e_ident, sizeof(e_ident))));
-  EXPECT_EQ(UserCollector::kErrorUnsupported32BitCoreFile,
+  EXPECT_EQ(CrashCollectionStatus::kFailureUnsupported32BitCoreFile,
             collector_.ValidateCoreFile(core_file));
   e_ident[EI_CLASS] = ELFCLASS64;
 #endif
@@ -656,13 +658,13 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
   // Invalid core files
   ASSERT_TRUE(test_util::CreateFile(core_file,
                                     std::string(e_ident, sizeof(e_ident) - 1)));
-  EXPECT_EQ(UserCollector::kErrorInvalidCoreFile,
+  EXPECT_EQ(CrashCollectionStatus::kFailureReadingCoreFileHeader,
             collector_.ValidateCoreFile(core_file));
 
   e_ident[EI_MAG0] = 0;
   ASSERT_TRUE(
       test_util::CreateFile(core_file, std::string(e_ident, sizeof(e_ident))));
-  EXPECT_EQ(UserCollector::kErrorInvalidCoreFile,
+  EXPECT_EQ(CrashCollectionStatus::kBadCoreFileMagic,
             collector_.ValidateCoreFile(core_file));
 }
 

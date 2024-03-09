@@ -44,6 +44,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/types/expected.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
@@ -59,6 +60,7 @@
 #include <zlib.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -1023,12 +1025,12 @@ bool CrashCollector::UseDaemonStore() {
   return true;
 }
 
-std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
-    uid_t process_euid,
-    uid_t default_user_id,
-    mode_t* mode,
-    uid_t* directory_owner,
-    gid_t* directory_group) {
+base::expected<base::FilePath, CrashCollectionStatus>
+CrashCollector::GetCrashDirectoryInfoOld(uid_t process_euid,
+                                         uid_t default_user_id,
+                                         mode_t* mode,
+                                         uid_t* directory_owner,
+                                         gid_t* directory_group) {
   // User crashes should go into the cryptohome, since they may contain PII.
   // For system crashes, and crashes in the VM, there may not be a cryptohome
   // mounted, so we use the system crash path.
@@ -1041,7 +1043,8 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
       if (!brillo::userdb::GetGroupInfo(constants::kCrashName,
                                         directory_owner)) {
         PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
-        return std::nullopt;
+        return base::unexpected(
+            CrashCollectionStatus::kFailedCrashNameGroupInfoForOld);
       }
     } else {
       *mode = kUserCrashPathMode;
@@ -1051,10 +1054,16 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return std::nullopt;
+      return base::unexpected(
+          CrashCollectionStatus::kFailedCrashUserGroupNameGroupInfoForOld);
     }
-    return GetUserCrashDirectoryOld(crash_directory_selection_method_ ==
-                                    kAlwaysUseDaemonStore);
+    std::optional<base::FilePath> maybe_path = GetUserCrashDirectoryOld(
+        crash_directory_selection_method_ == kAlwaysUseDaemonStore);
+    if (!maybe_path) {
+      return base::unexpected(
+          CrashCollectionStatus::kFailedGetUserCrashDirectoryOld);
+    }
+    return *maybe_path;
   }
 #endif  // !USE_KVM_GUEST
   *mode = kSystemCrashDirectoryMode;
@@ -1062,18 +1071,19 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kFailedCrashGroupNameGroupInfoForOld);
   }
   return system_crash_path_;
 }
 
-std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
-    uid_t process_euid,
-    uid_t default_user_id,
-    bool* can_create_or_fix,
-    mode_t* mode,
-    uid_t* directory_owner,
-    gid_t* directory_group) {
+base::expected<base::FilePath, CrashCollectionStatus>
+CrashCollector::GetCrashDirectoryInfoNew(uid_t process_euid,
+                                         uid_t default_user_id,
+                                         bool* can_create_or_fix,
+                                         mode_t* mode,
+                                         uid_t* directory_owner,
+                                         gid_t* directory_group) {
   // Crashes that happen while a user is logged-in should go into the
   // cryptohome, since they may contain PII.
   // For crashes that occur when no one is logged in, or test device
@@ -1096,27 +1106,29 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     *mode = constants::kDaemonStoreCrashPathMode;
     if (!brillo::userdb::GetGroupInfo(constants::kCrashName, directory_owner)) {
       PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
-      return std::nullopt;
+      return base::unexpected(CrashCollectionStatus::kFailedCrashNameGroupInfo);
     }
     if (!brillo::userdb::GetGroupInfo(constants::kCrashUserGroupName,
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return std::nullopt;
+      return base::unexpected(
+          CrashCollectionStatus::kFailedCrashUserGroupNameGroupInfo);
     }
-    std::optional<FilePath> maybe_path = GetUserCrashDirectoryNew();
+    std::optional<base::FilePath> maybe_path = GetUserCrashDirectoryNew();
     if (maybe_path) {
       // We *cannot* create or fix /run/daemon-store/crash/..., so don't try.
       // Only cryptohome's namespace mounter is capable of mounting it
       // correctly.
       *can_create_or_fix = false;
-      return maybe_path;
+      return *maybe_path;
     }
   }
 
   if (crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
     LOG(ERROR) << "Using daemon-store failed but daemon-store was required";
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kNoUserCrashDirectoryWhenRequired);
   }
 
   // Otherwise, we can't use daemon store, so try the fallback directory if
@@ -1127,7 +1139,8 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return std::nullopt;
+      return base::unexpected(
+          CrashCollectionStatus::kFailedCrashUserGroupNameGroupInfo);
     }
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
@@ -1147,18 +1160,19 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kFailedCrashGroupNameGroupInfo);
   }
   return system_crash_path_;
 }
 
-std::optional<base::FilePath> CrashCollector::GetCreatedCrashDirectory(
-    base::FilePath& full_path,
-    bool can_create_or_fix,
-    mode_t directory_mode,
-    mode_t directory_owner,
-    mode_t directory_group,
-    bool* out_of_capacity) {
+base::expected<base::FilePath, CrashCollectionStatus>
+CrashCollector::GetCreatedCrashDirectory(base::FilePath& full_path,
+                                         bool can_create_or_fix,
+                                         mode_t directory_mode,
+                                         mode_t directory_owner,
+                                         mode_t directory_group,
+                                         bool* out_of_capacity) {
   // Note: We "leak" dirfd to children so the /proc symlink below stays valid
   // in their own context.  We can't pass other /proc paths as they might not
   // be accessible in the children (when dropping privs), and we don't want to
@@ -1168,13 +1182,14 @@ std::optional<base::FilePath> CrashCollector::GetCreatedCrashDirectory(
     if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
                                      directory_group, &dirfd)) {
       LOG(ERROR) << "CreateDirectory failed.";
-      return std::nullopt;
+      return base::unexpected(
+          CrashCollectionStatus::kCreateCrashDirectoryFailed);
     }
   } else {
     if (!OpenCrashDirectory(full_path, directory_mode, directory_owner,
                             directory_group, &dirfd)) {
       LOG(ERROR) << "OpenCrashDirectory(" << full_path.value() << ") failed.";
-      return std::nullopt;
+      return base::unexpected(CrashCollectionStatus::kOpenCrashDirectoryFailed);
     }
   }
 
@@ -1186,16 +1201,17 @@ std::optional<base::FilePath> CrashCollector::GetCreatedCrashDirectory(
             << "' via symlinked handle '" << crash_dir_procfd.value() << "'";
 
   if (!CheckHasCapacity(crash_dir_procfd, (full_path).value())) {
+    // TODO(b/177552411): Remove the out_of_capacity output parameter and just
+    // have callers check the return value of kOutOfCapacity.
     if (out_of_capacity)
       *out_of_capacity = true;
-    return std::nullopt;
+    return base::unexpected(CrashCollectionStatus::kOutOfCapacity);
   }
   return crash_dir_procfd;
 }
 
-bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
-                                                    FilePath* crash_directory,
-                                                    bool* out_of_capacity) {
+CrashCollectionStatus CrashCollector::GetCreatedCrashDirectoryByEuid(
+    uid_t euid, FilePath* crash_directory, bool* out_of_capacity) {
   if (out_of_capacity)
     *out_of_capacity = false;
 
@@ -1203,26 +1219,26 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   // bother creating one.
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     crash_directory->clear();
-    return true;
+    return CrashCollectionStatus::kSuccess;
   }
 
   // For testing.
   if (!forced_crash_directory_.empty()) {
     *crash_directory = forced_crash_directory_;
-    return true;
+    return CrashCollectionStatus::kSuccess;
   }
 
   uid_t default_user_id;
   if (!brillo::userdb::GetUserInfo(kDefaultUserName, &default_user_id,
                                    nullptr)) {
     LOG(ERROR) << "Could not find default user info";
-    return false;
+    return CrashCollectionStatus::kGetDefaultUserInfoFailed;
   }
 
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  std::optional<base::FilePath> maybe_path;
+  base::expected<base::FilePath, CrashCollectionStatus> maybe_path;
   bool can_create_or_fix = true;
   // Roll a die to decide whether to attempt using daemon-store. Even if this
   // comes up as true, we might not use daemon-store (for example if the user is
@@ -1239,20 +1255,20 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
         GetCrashDirectoryInfoOld(euid, default_user_id, &directory_mode,
                                  &directory_owner, &directory_group);
   }
-  if (!maybe_path) {
-    return false;
+  if (!maybe_path.has_value()) {
+    return maybe_path.error();
   }
-  std::optional<base::FilePath> maybe_dir;
+  base::expected<base::FilePath, CrashCollectionStatus> maybe_dir;
 
   maybe_dir = GetCreatedCrashDirectory(*maybe_path, can_create_or_fix,
                                        directory_mode, directory_owner,
                                        directory_group, out_of_capacity);
 
   if (!maybe_dir.has_value()) {
-    return false;
+    return maybe_dir.error();
   }
   *crash_directory = *maybe_dir;
-  return true;
+  return CrashCollectionStatus::kSuccess;
 }
 
 // static
@@ -1455,8 +1471,9 @@ bool CrashCollector::GetMultipleLogContents(
     collated_log_contents.append(log_contents);
   }
 
-  if (collated_log_contents.empty())
+  if (collated_log_contents.empty()) {
     return false;
+  }
 
   return WriteLogContents(collated_log_contents, output_file);
 }
@@ -1783,15 +1800,16 @@ CrashCollector::ComputedCrashSeverity CrashCollector::ComputeSeverity(
   };
 }
 
-void CrashCollector::FinishCrash(const FilePath& meta_path,
-                                 const std::string& exec_name,
-                                 const std::string& payload_name) {
+CrashCollectionStatus CrashCollector::FinishCrash(
+    const FilePath& meta_path,
+    const std::string& exec_name,
+    const std::string& payload_name) {
   DCHECK(!is_finished_);
 
   // All files are relative to the metadata, so reject anything else.
   if (payload_name.find('/') != std::string::npos) {
     LOG(ERROR) << "Upload files must be basenames only: " << payload_name;
-    return;
+    return CrashCollectionStatus::kInvalidPayloadName;
   }
 
   const FilePath payload_path = meta_path.DirName().Append(payload_name);
@@ -1886,11 +1904,13 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
                    "done=1\n",
                    extra_metadata_.c_str(), now_millis, exec_name_line.c_str(),
                    version_info.c_str(), payload_name.c_str());
+  CrashCollectionStatus result = CrashCollectionStatus::kSuccess;
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
   if (WriteNewFile(meta_path, meta_data) < 0) {
     PLOG(ERROR) << "Unable to write meta " << meta_path.value();
+    result = CrashCollectionStatus::kFailedMetaWrite;
   }
 
   // Record report created metric in UMA.
@@ -1933,6 +1953,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   }
 
   is_finished_ = true;
+  return result;
 }
 
 std::string CrashCollector::CrashSeverityEnumToString(
@@ -2192,9 +2213,11 @@ bool CrashCollector::AddVariations(std::string_view file,
   return true;
 }
 
-void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
+void CrashCollector::EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
                                                const std::string& orig_exec) {
-  LOG(INFO) << "Writing conversion problems as separate crash report.";
+  std::string type = CrashCollectionStatusToString(error_type);
+  LOG(INFO) << "Writing conversion problems (" << type
+            << ") as separate crash report.";
 
   const std::string exec = "crash_reporter_failure";
   // We use a distinct basename to avoid having to deal with any possible files
@@ -2212,12 +2235,13 @@ void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
   AddCrashMetaUploadData("orig_exec", orig_exec);
 
   FilePath crash_path;
-  if (!GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr)) {
-    LOG(ERROR) << "Could not even get log directory; out of space?";
+  CrashCollectionStatus get_directory_status =
+      GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr);
+  if (!IsSuccessCode(get_directory_status)) {
+    LOG(ERROR) << "Could not even get log directory: " << get_directory_status;
     return;
   }
 
-  std::string type = GetErrorTypeSignature(error_type);
   AddCrashMetaData("sig", base::StrCat({kCollectionErrorSignature, "_", type}));
   AddCrashMetaData("error_type", type);
   FilePath log_path = GetCrashPath(crash_path, basename, "log");
@@ -2249,23 +2273,4 @@ void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
 void CrashCollector::LogCrash(const std::string& message,
                               const std::string& reason) const {
   LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
-}
-
-std::string CrashCollector::GetErrorTypeSignature(ErrorType error_type) const {
-  switch (error_type) {
-    case kErrorSystemIssue:
-      return "system-issue";
-    case kErrorReadCoreData:
-      return "read-core-data";
-    case kErrorUnusableProcFiles:
-      return "unusable-proc-files";
-    case kErrorInvalidCoreFile:
-      return "invalid-core-file";
-    case kErrorUnsupported32BitCoreFile:
-      return "unsupported-32bit-core-file";
-    case kErrorCore2MinidumpConversion:
-      return "core2md-conversion";
-    default:
-      return "";
-  }
 }

@@ -18,6 +18,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
@@ -371,8 +372,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   }
 
   FilePath root_crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
-                                      &root_crash_directory, nullptr)) {
+  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
+          constants::kRootUid, &root_crash_directory, nullptr))) {
     return false;
   }
 

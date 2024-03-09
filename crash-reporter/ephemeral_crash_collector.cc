@@ -15,6 +15,7 @@
 #include <brillo/process/process.h>
 #include <metrics/metrics_library.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -78,8 +79,10 @@ bool EphemeralCrashCollector::Collect() {
       base::FilePath destination_directory;
 
       // If the crash reporter directory is already fully occupied, then exit.
-      if (!GetCreatedCrashDirectoryByEuid(0, &destination_directory, nullptr))
+      if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
+              0, &destination_directory, nullptr))) {
         break;
+      }
 
       base::FilePath destination_path =
           destination_directory.Append(source_path.BaseName());

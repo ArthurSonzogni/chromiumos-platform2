@@ -17,6 +17,7 @@
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 
 // Disallow fallback directory -- VM collector is run in a sandbox without
@@ -40,8 +41,10 @@ bool VmCollector::Collect(pid_t pid) {
   }
 
   base::FilePath crash_path;
-  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_path, nullptr)) {
-    LOG(ERROR) << "Failed to create or find crash directory";
+  CrashCollectionStatus status =
+      GetCreatedCrashDirectoryByEuid(geteuid(), &crash_path, nullptr);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to create or find crash directory: " << status;
     return false;
   }
   std::string basename = FormatDumpBasename("vm_crash", time(nullptr), pid);

@@ -22,6 +22,7 @@
 
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 
 ArcvmCxxCollector::ArcvmCxxCollector(
@@ -70,11 +71,16 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
 
   bool out_of_capacity = false;
   base::FilePath crash_dir;
-  if (!GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir,
-                                      &out_of_capacity)) {
-    LOG(ERROR) << "Failed to create or find crash directory";
-    if (!out_of_capacity)
-      EnqueueCollectionErrorLog(kErrorSystemIssue, crash_info.exec_name);
+  CrashCollectionStatus status =
+      GetCreatedCrashDirectoryByEuid(geteuid(), &crash_dir, &out_of_capacity);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to create or find crash directory: " << status;
+    // TODO(b/177552411): Remove all the various explicit checks in collectors
+    // about out_of_capacity. Just have EnqueueCollectionErrorLog check if the
+    // status is kOutOfCapacity and skip the error handling in that case.
+    if (!out_of_capacity) {
+      EnqueueCollectionErrorLog(status, crash_info.exec_name);
+    }
     return false;
   }
 

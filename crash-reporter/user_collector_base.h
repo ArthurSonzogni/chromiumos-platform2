@@ -21,6 +21,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 class UserCollectorBase : public CrashCollector {
  public:
   explicit UserCollectorBase(
@@ -130,7 +132,7 @@ class UserCollectorBase : public CrashCollector {
                           const std::string& exec,
                           std::string* reason) = 0;
 
-  virtual ErrorType ConvertCoreToMinidump(
+  virtual CrashCollectionStatus ConvertCoreToMinidump(
       pid_t pid,
       const base::FilePath& container_dir,
       const base::FilePath& core_path,
@@ -139,13 +141,14 @@ class UserCollectorBase : public CrashCollector {
   // Adds additional metadata for a crash of executable |exec| with |pid|.
   virtual void AddExtraMetadata(const std::string& exec, pid_t pid) {}
 
-  ErrorType ConvertAndEnqueueCrash(pid_t pid,
-                                   const std::string& exec,
-                                   uid_t supplied_ruid,
-                                   gid_t supplied_rgid,
-                                   int signal,
-                                   const base::TimeDelta& crash_time,
-                                   bool* out_of_capacity);
+  CrashCollectionStatus ConvertAndEnqueueCrash(
+      pid_t pid,
+      const std::string& exec,
+      uid_t supplied_ruid,
+      gid_t supplied_rgid,
+      int signal,
+      const base::TimeDelta& crash_time,
+      bool* out_of_capacity);
 
   // Helper function for populating seccomp related fields from the contents of
   // /proc/<pid>/syscall.
@@ -153,12 +156,12 @@ class UserCollectorBase : public CrashCollector {
 
   // Determines the crash directory for given pid based on pid's owner,
   // and creates the directory if necessary with appropriate permissions.
-  // Returns true whether or not directory needed to be created, false on
-  // any failure.
-  bool GetCreatedCrashDirectory(pid_t pid,
-                                uid_t supplied_ruid,
-                                base::FilePath* crash_file_path,
-                                bool* out_of_capacity);
+  // Returns kSuccess whether or not directory needed to be created.
+  CrashCollectionStatus GetCreatedCrashDirectory(
+      pid_t pid,
+      uid_t supplied_ruid,
+      base::FilePath* crash_file_path,
+      bool* out_of_capacity);
 
   bool directory_failure_ = false;
 };

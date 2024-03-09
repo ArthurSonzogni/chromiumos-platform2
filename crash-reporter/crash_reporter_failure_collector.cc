@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 
 using base::FilePath;
@@ -36,8 +37,8 @@ bool CrashReporterFailureCollector::Collect() {
   LOG(INFO) << "Detected crash_reporter failure";
 
   FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
-                                      nullptr)) {
+  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
+          constants::kRootUid, &crash_directory, nullptr))) {
     return false;
   }
 

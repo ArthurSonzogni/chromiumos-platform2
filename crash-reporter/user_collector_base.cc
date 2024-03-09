@@ -25,6 +25,7 @@
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 #include "crash-reporter/vm_support.h"
@@ -145,12 +146,12 @@ bool UserCollectorBase::HandleCrash(
     AddExtraMetadata(exec, attrs.pid);
 
     bool out_of_capacity = false;
-    ErrorType error_type =
+    CrashCollectionStatus status =
         ConvertAndEnqueueCrash(attrs.pid, exec, attrs.uid, attrs.gid,
                                attrs.signal, crash_time, &out_of_capacity);
-    if (error_type != kErrorNone) {
+    if (!IsSuccessCode(status)) {
       if (!out_of_capacity) {
-        EnqueueCollectionErrorLog(error_type, exec);
+        EnqueueCollectionErrorLog(status, exec);
       }
       return false;
     }
@@ -298,7 +299,7 @@ const FilePath UserCollectorBase::GetCrashProcessingDir() {
   return FilePath("/tmp/crash_reporter");
 }
 
-UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
+CrashCollectionStatus UserCollectorBase::ConvertAndEnqueueCrash(
     pid_t pid,
     const std::string& exec,
     uid_t supplied_ruid,
@@ -318,18 +319,21 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
 #endif  // USE_DIRENCRYPTION
 
   FilePath crash_path;
-  if (!GetCreatedCrashDirectory(pid, supplied_ruid, &crash_path,
-                                out_of_capacity)) {
-    LOG(ERROR) << "Unable to find/create process-specific crash path";
-    return kErrorSystemIssue;
+  if (CrashCollectionStatus status = GetCreatedCrashDirectory(
+          pid, supplied_ruid, &crash_path, out_of_capacity);
+      !IsSuccessCode(status)) {
+    LOG(ERROR) << "Unable to find/create process-specific crash path: "
+               << status;
+    return status;
   }
 
   // Directory like /tmp/crash_reporter/1234 which contains the
   // procfs entries and other temporary files used during conversion.
   const FilePath container_dir =
       GetCrashProcessingDir().Append(StringPrintf("%d", pid));
-  if (!ClobberContainerDirectory(container_dir))
-    return kErrorSystemIssue;
+  if (!ClobberContainerDirectory(container_dir)) {
+    return CrashCollectionStatus::kFailedClobberContainerDirectory;
+  }
 
   std::string dump_basename = FormatDumpBasename(exec, time(nullptr), pid);
   FilePath core_path = GetCrashPath(crash_path, dump_basename, "core");
@@ -360,13 +364,15 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   }
 
   if (send_this_crash) {
-    ErrorType error_type =
+    CrashCollectionStatus status =
         ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
-    if (error_type != kErrorNone) {
-      if (error_type != kErrorReadCoreData)
+    if (!IsSuccessCode(status)) {
+      if (status != CrashCollectionStatus::kFailureCopyingCoreData &&
+          status != CrashCollectionStatus::kFailureOpeningCoreFile) {
         LOG(INFO) << "Leaving core file at " << core_path.value()
-                  << " due to conversion error";
-      return error_type;
+                  << " due to conversion error: " << status;
+      }
+      return status;
     } else {
       base::FilePath target;
       if (!NormalizeFilePath(minidump_path, &target))
@@ -402,11 +408,13 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     LOG(WARNING) << "Failed to get process uptime.";
   }
 
+  CrashCollectionStatus status = CrashCollectionStatus::kSuccess;
   if (send_this_crash) {
-    // Here we commit to sending this file.  We must not return false
-    // after this point or we will generate a log report as well as a
-    // crash report.
-    FinishCrash(meta_path, exec, minidump_path.BaseName().value());
+    // Here we commit to sending this file. If FinishCrash succeeds, we must
+    // return that success code after this point or we will generate a log
+    // report as well as a crash report. Do not add other return statements
+    // or change status below here.
+    status = FinishCrash(meta_path, exec, minidump_path.BaseName().value());
   }
 
   if (!util::IsDeveloperImage()) {
@@ -417,7 +425,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   }
 
   base::DeletePathRecursively(container_dir);
-  return kErrorNone;
+  return status;
 }
 
 void UserCollectorBase::HandleSyscall(const std::string& exec,
@@ -452,15 +460,16 @@ void UserCollectorBase::HandleSyscall(const std::string& exec,
              << "' not included in its seccomp policy";
 }
 
-bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
-                                                 uid_t supplied_ruid,
-                                                 FilePath* crash_file_path,
-                                                 bool* out_of_capacity) {
+CrashCollectionStatus UserCollectorBase::GetCreatedCrashDirectory(
+    pid_t pid,
+    uid_t supplied_ruid,
+    FilePath* crash_file_path,
+    bool* out_of_capacity) {
   FilePath process_path = GetProcessPath(pid);
   std::string status;
   if (directory_failure_) {
     LOG(ERROR) << "Purposefully failing to create spool directory";
-    return false;
+    return CrashCollectionStatus::kTestingFailure;
   }
 
   uid_t uid;
@@ -471,7 +480,7 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
     std::string process_state;
     if (!GetStateFromStatus(status_lines, &process_state)) {
       LOG(ERROR) << "Could not find process state in status file";
-      return false;
+      return CrashCollectionStatus::kBadProcessState;
     }
     LOG(INFO) << "State of crashed process [" << pid << "]: " << process_state;
 
@@ -479,7 +488,7 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
     int id;
     if (!GetIdFromStatus(kUserId, kIdEffective, status_lines, &id)) {
       LOG(ERROR) << "Could not find euid in status file";
-      return false;
+      return CrashCollectionStatus::kBadUserIdStatusLine;
     }
     uid = id;
   } else {
@@ -489,11 +498,13 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
     uid = supplied_ruid;
   }
 
-  if (!GetCreatedCrashDirectoryByEuid(uid, crash_file_path, out_of_capacity)) {
-    LOG(ERROR) << "Could not create crash directory";
-    return false;
+  if (CrashCollectionStatus status =
+          GetCreatedCrashDirectoryByEuid(uid, crash_file_path, out_of_capacity);
+      !IsSuccessCode(status)) {
+    LOG(ERROR) << "Could not create crash directory: " << status;
+    return status;
   }
-  return true;
+  return CrashCollectionStatus::kSuccess;
 }
 
 std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {

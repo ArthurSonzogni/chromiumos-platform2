@@ -24,6 +24,8 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/user_collector_base.h"
 
+enum class CrashCollectionStatus;
+
 inline constexpr char kBoardProperty[] = "ro.product.board";
 inline constexpr char kCpuAbiProperty[] = "ro.product.cpu.abi";
 inline constexpr char kDevicePropertyP[] = "ro.product.device";
@@ -120,10 +122,11 @@ class ArcppCxxCollector : public UserCollectorBase {
                   const std::string& exec,
                   std::string* reason) override;
 
-  ErrorType ConvertCoreToMinidump(pid_t pid,
-                                  const base::FilePath& container_dir,
-                                  const base::FilePath& core_path,
-                                  const base::FilePath& minidump_path) override;
+  CrashCollectionStatus ConvertCoreToMinidump(
+      pid_t pid,
+      const base::FilePath& container_dir,
+      const base::FilePath& core_path,
+      const base::FilePath& minidump_path) override;
 
   // Adds the |process| and other ARC-related info as metadata.
   void AddArcMetaData(const std::string& process);

@@ -19,6 +19,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
@@ -120,8 +121,8 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   auto logging_cmds = ConstructLoggingCommands(device_type_, is_mount_failure);
 
   base::FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
-                                      nullptr)) {
+  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
+          constants::kRootUid, &crash_directory, nullptr))) {
     return true;
   }
 

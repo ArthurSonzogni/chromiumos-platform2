@@ -19,12 +19,14 @@
 #include <utility>
 #include <vector>
 
+#include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <debugd/dbus-proxies.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
@@ -32,6 +34,7 @@
 #include <session_manager/dbus-proxies.h>
 #include <zlib.h>
 
+enum class CrashCollectionStatus;
 enum class CrashReporterCollector;
 
 // Walk the directory tree to make sure we avoid symlinks.
@@ -75,16 +78,6 @@ class CrashCollector {
     // they are in volatile storage and the user may turn off their machine in
     // frustration shortly.
     kCrashLoopSendingMode
-  };
-
-  enum ErrorType {
-    kErrorNone,
-    kErrorSystemIssue,
-    kErrorReadCoreData,
-    kErrorUnusableProcFiles,
-    kErrorInvalidCoreFile,
-    kErrorUnsupported32BitCoreFile,
-    kErrorCore2MinidumpConversion,
   };
 
   // These values are persisted to logs. Entries should not be renumbered and
@@ -429,42 +422,39 @@ class CrashCollector {
 
   // This is going away once the experiment is done.
   // TODO(b/186659673): Validate daemon-store usage and remove this.
-  std::optional<base::FilePath> GetCrashDirectoryInfoOld(
-      uid_t process_euid,
-      uid_t default_user_id,
-      mode_t* mode,
-      uid_t* directory_owner,
-      gid_t* directory_group);
+  base::expected<base::FilePath, CrashCollectionStatus>
+  GetCrashDirectoryInfoOld(uid_t process_euid,
+                           uid_t default_user_id,
+                           mode_t* mode,
+                           uid_t* directory_owner,
+                           gid_t* directory_group);
   // Once the daemon-store experiment is done, rename to just
   // GetCrashDirectoryInfo.
   // TODO(b/186659673): Validate daemon-store usage and rename this.
-  std::optional<base::FilePath> GetCrashDirectoryInfoNew(
-      uid_t process_euid,
-      uid_t default_user_id,
-      bool* can_create_or_fix,
-      mode_t* mode,
-      uid_t* directory_owner,
-      gid_t* directory_group);
+  base::expected<base::FilePath, CrashCollectionStatus>
+  GetCrashDirectoryInfoNew(uid_t process_euid,
+                           uid_t default_user_id,
+                           bool* can_create_or_fix,
+                           mode_t* mode,
+                           uid_t* directory_owner,
+                           gid_t* directory_group);
 
   // This is common helper function to open/create crash directory
   // for given mode, owner, group.
-  std::optional<base::FilePath> GetCreatedCrashDirectory(
-      base::FilePath& full_path,
-      bool can_create_or_fix,
-      mode_t directory_mode,
-      mode_t directory_owner,
-      mode_t directory_group,
-      bool* out_of_capacity);
+  base::expected<base::FilePath, CrashCollectionStatus>
+  GetCreatedCrashDirectory(base::FilePath& full_path,
+                           bool can_create_or_fix,
+                           mode_t directory_mode,
+                           mode_t directory_owner,
+                           mode_t directory_group,
+                           bool* out_of_capacity);
 
   // Determines the crash directory for given euid, and creates the directory if
   // necessary with appropriate permissions.  If |out_of_capacity| is not
   // nullptr, it is set to indicate if the call failed due to not having
-  // capacity in the crash directory. Returns true whether or not directory
-  // needed to be created, false on any failure.  If the crash directory is at
-  // capacity, returns false.
-  bool GetCreatedCrashDirectoryByEuid(uid_t euid,
-                                      base::FilePath* crash_file_path,
-                                      bool* out_of_capacity);
+  // capacity in the crash directory.
+  CrashCollectionStatus GetCreatedCrashDirectoryByEuid(
+      uid_t euid, base::FilePath* crash_file_path, bool* out_of_capacity);
 
   // Create a directory using the specified mode/user/group, and make sure it
   // is actually a directory with the specified permissions.
@@ -606,9 +596,9 @@ class CrashCollector {
   // crash. Write a file of metadata about crash and, if in crash-loop mode,
   // sends the UploadSingleCrash message to debugd. Not called if we failed to
   // make a good crash report.
-  virtual void FinishCrash(const base::FilePath& meta_path,
-                           const std::string& exec_name,
-                           const std::string& payload_name);
+  virtual CrashCollectionStatus FinishCrash(const base::FilePath& meta_path,
+                                            const std::string& exec_name,
+                                            const std::string& payload_name);
 
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();
@@ -658,7 +648,7 @@ class CrashCollector {
   // Clears metadata for existing report.
   // orig_exec: Name of the executable in which we were processing a crash when
   // the failure happened.
-  void EnqueueCollectionErrorLog(ErrorType error_type,
+  void EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
                                  const std::string& orig_exec);
 
   // Logs a |message| detailing a crash, along with the |reason| for which the
@@ -739,11 +729,6 @@ class CrashCollector {
   // kLacros }. If so, return |product| unmodified. If not, return
   // Product::kUnknownValue. This value is reported to UMA.
   Product ValidateProductGroupForHistogram(Product product) const;
-
-  // Returns an error type signature for a given |error_type| value,
-  // which is reported to the crash server along with the
-  // crash_reporter-user-collection signature.
-  std::string GetErrorTypeSignature(ErrorType error_type) const;
 
   // If not null, GetUptime() will return *override_uptime_for_testing_;
   std::unique_ptr<base::TimeDelta> override_uptime_for_testing_;

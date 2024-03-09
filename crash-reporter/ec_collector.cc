@@ -18,6 +18,7 @@
 #include <libec/ec_panicinfo.h>
 #include <metrics/metrics_library.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/util.h"
 
@@ -77,7 +78,8 @@ bool ECCollector::Collect(bool use_saved_lsb) {
 
   LOG(INFO) << "Received crash notification from EC (handling)";
   FilePath root_crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(0, &root_crash_directory, nullptr)) {
+  if (!IsSuccessCode(
+          GetCreatedCrashDirectoryByEuid(0, &root_crash_directory, nullptr))) {
     return true;
   }
 

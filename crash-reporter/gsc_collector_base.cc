@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 
@@ -234,9 +235,10 @@ bool GscCollectorBase::Collect(bool use_saved_lsb) {
             << prev_crash_id_ << ", Latest crash ID: " << latest_crash_id_;
 
   FilePath root_crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
-                                      &root_crash_directory, nullptr)) {
-    LOG(ERROR) << "Failed to create crash directory.";
+  CrashCollectionStatus status = GetCreatedCrashDirectoryByEuid(
+      constants::kRootUid, &root_crash_directory, nullptr);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to create crash directory: " << status;
     return false;
   }
 

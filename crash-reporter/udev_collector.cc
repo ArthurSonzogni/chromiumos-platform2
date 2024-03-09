@@ -23,6 +23,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
@@ -33,6 +34,7 @@
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_adaptor.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/udev_bluetooth_util.h"
@@ -248,8 +250,10 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     crash_directory = *maybe_crash_directory;
   } else {
     // Make sure the crash directory exists, or create it if it doesn't.
-    if (!GetCreatedCrashDirectoryByEuid(0, &crash_directory, nullptr)) {
-      LOG(ERROR) << "Could not get crash directory.";
+    CrashCollectionStatus status =
+        GetCreatedCrashDirectoryByEuid(0, &crash_directory, nullptr);
+    if (!IsSuccessCode(status)) {
+      LOG(ERROR) << "Could not get crash directory: " << status;
       return false;
     }
   }
@@ -293,15 +297,20 @@ UdevCollector::GetConnectivityFwdumpStoragePath() {
   }
 
   bool out_of_capacity = false;
-  std::optional<base::FilePath> maybe_dir = GetCreatedCrashDirectory(
-      *maybe_directory, /*can_create_or_fix=*/false, directory_mode,
-      directory_owner, directory_group, &out_of_capacity);
+  base::expected<base::FilePath, CrashCollectionStatus> maybe_dir =
+      GetCreatedCrashDirectory(*maybe_directory, /*can_create_or_fix=*/false,
+                               directory_mode, directory_owner, directory_group,
+                               &out_of_capacity);
 
   if (out_of_capacity) {
     LOG(ERROR) << "Storage path is full, cannot add more fwdump files.";
     return std::nullopt;
   }
-  return maybe_dir;
+  if (!maybe_dir.has_value()) {
+    LOG(ERROR) << "Could not get fwdump directory: " << maybe_dir.error();
+    return std::nullopt;
+  }
+  return *maybe_dir;
 }
 
 bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,

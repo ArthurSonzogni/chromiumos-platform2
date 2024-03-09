@@ -36,6 +36,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/threading/simple_thread.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/object_path.h>
 #include <dbus/message.h>
@@ -46,6 +47,7 @@
 #include <metrics/metrics_library_mock.h>
 #include <policy/mock_device_policy.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/paths.h"
@@ -1421,9 +1423,10 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
 
   collector_.crash_directory_selection_method_ =
       CrashCollector::kAlwaysUseDaemonStore;
-  std::optional<FilePath> path_maybe = collector_.GetCrashDirectoryInfoNew(
-      kChronosUid, kChronosUid, &can_create_or_fix, &directory_mode,
-      &directory_owner, &directory_group);
+  base::expected<base::FilePath, CrashCollectionStatus> path_maybe =
+      collector_.GetCrashDirectoryInfoNew(kChronosUid, kChronosUid,
+                                          &can_create_or_fix, &directory_mode,
+                                          &directory_owner, &directory_group);
   EXPECT_FALSE(path_maybe.has_value());
 #endif  // USE_KVM_GUEST
 }
@@ -2245,7 +2248,7 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
   collector_.set_crash_directory_for_test(test_dir_);
 
   collector_.EnqueueCollectionErrorLog(
-      CrashCollector::kErrorUnsupported32BitCoreFile, "some_exec");
+      CrashCollectionStatus::kFailureUnsupported32BitCoreFile, "some_exec");
 
   base::FilePath meta_file_path;
   ASSERT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -2260,8 +2263,9 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "upload_var_collector=crash_reporter_failure\n"
       "upload_var_orig_collector=mock\n"
       "upload_var_orig_exec=some_exec\n"
-      "sig=crash_reporter-user-collection_unsupported-32bit-core-file\n"
-      "error_type=unsupported-32bit-core-file\n"
+      "sig=crash_reporter-user-collection_32 bit core "
+      "files not supported on 64-bit systems\n"
+      "error_type=32 bit core files not supported on 64-bit systems\n"
       "upload_file_pslog=%s\n"
       "upload_var_channel=beta\n"
       "upload_var_client_computed_severity=UNSPECIFIED\n"

@@ -23,6 +23,8 @@
 
 #include "crash-reporter/user_collector_base.h"
 
+enum class CrashCollectionStatus;
+
 // User crash collector.
 class UserCollector : public UserCollectorBase {
  public:
@@ -77,9 +79,9 @@ class UserCollector : public UserCollectorBase {
   static constexpr char kChromeSubprocessCmdlineSeparator = ' ';
 
  protected:
-  void FinishCrash(const base::FilePath& meta_path,
-                   const std::string& exec_name,
-                   const std::string& payload_name) override;
+  CrashCollectionStatus FinishCrash(const base::FilePath& meta_path,
+                                    const std::string& exec_name,
+                                    const std::string& payload_name) override;
 
   void BeginHandlingCrash(pid_t pid,
                           const std::string& exec,
@@ -147,12 +149,12 @@ class UserCollector : public UserCollectorBase {
   // and thus become unusable.
   bool ValidateProcFiles(const base::FilePath& container_dir) const;
 
-  // Validates the core file at |core_path| and returns kErrorNone if
+  // Validates the core file at |core_path| and returns kSuccess if
   // the file contains the ELF magic bytes and an ELF class that matches the
   // platform (i.e. 32-bit ELF on a 32-bit platform or 64-bit ELF on a 64-bit
   // platform), which is due to the limitation in core2md. It returns an error
   // type otherwise.
-  ErrorType ValidateCoreFile(const base::FilePath& core_path) const;
+  CrashCollectionStatus ValidateCoreFile(const base::FilePath& core_path) const;
   // Copy off stdin to a core file.
   bool CopyStdinToCoreFile(const base::FilePath& core_path);
   // Heart of CopyStdinToCoreFile. Split out for easier unit testing. Does NOT
@@ -176,10 +178,11 @@ class UserCollector : public UserCollectorBase {
                   const std::string& exec,
                   std::string* reason) override;
 
-  ErrorType ConvertCoreToMinidump(pid_t pid,
-                                  const base::FilePath& container_dir,
-                                  const base::FilePath& core_path,
-                                  const base::FilePath& minidump_path) override;
+  CrashCollectionStatus ConvertCoreToMinidump(
+      pid_t pid,
+      const base::FilePath& container_dir,
+      const base::FilePath& core_path,
+      const base::FilePath& minidump_path) override;
 
   void SetHandlingEarlyChromeCrashForTesting(bool early_chrome_crash) {
     handling_early_chrome_crash_ = early_chrome_crash;

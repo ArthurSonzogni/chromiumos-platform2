@@ -16,6 +16,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
 
 MissedCrashCollector::MissedCrashCollector(
@@ -50,9 +51,10 @@ bool MissedCrashCollector::Collect(int pid,
   // "correct" userid here would mean allowing writes to many more locations in
   // that minijail config. I'd rather keep the write restrictions as tight as
   // possible unless we actually have sensitive information here.
-  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
-                                      nullptr)) {
-    LOG(WARNING) << "Could not get crash directory (full?)";
+  CrashCollectionStatus status = GetCreatedCrashDirectoryByEuid(
+      constants::kRootUid, &crash_directory, nullptr);
+  if (!IsSuccessCode(status)) {
+    LOG(WARNING) << "Could not get crash directory: " << status;
     return true;
   }
 
