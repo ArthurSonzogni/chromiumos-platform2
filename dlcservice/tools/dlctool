@@ -335,6 +335,11 @@ main() {
   echo "Creating DLC from: ${DIR_NAME}"
   deploy_dlc
 
+  # Do not remove this, there will be lingering descriptors and mounts within
+  # imageloader's namespace.
+  echo "Stopping imageloader"
+  stop imageloader
+
   # Explicit stop and start, restart isn't as fresh.
   echo "Stopping dlcservice"
   stop dlcservice
