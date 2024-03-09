@@ -181,7 +181,9 @@ class BRILLO_EXPORT FuzzedPlatform : public Platform {
                             int added_flags,
                             int removed_flags) override;
   bool HasNoDumpFileAttribute(const base::FilePath& path) override;
-  bool Rename(const base::FilePath& from, const base::FilePath& to) override;
+  bool Rename(const base::FilePath& from,
+              const base::FilePath& to,
+              bool cros_fs) override;
   base::Time GetCurrentTime() const override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
   bool StatFS(const base::FilePath& path, struct statfs* fs) override;

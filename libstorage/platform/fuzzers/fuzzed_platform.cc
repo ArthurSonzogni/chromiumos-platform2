@@ -1105,7 +1105,8 @@ bool FuzzedPlatform::HasNoDumpFileAttribute(const base::FilePath& path) {
 }
 
 bool FuzzedPlatform::Rename(const base::FilePath& from,
-                            const base::FilePath& to) {
+                            const base::FilePath& to,
+                            bool cros_fs) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(from);
   AssertIsValidAbsolutePath(to);

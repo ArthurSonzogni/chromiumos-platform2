@@ -1068,11 +1068,16 @@ bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
          (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
-bool Platform::Rename(const FilePath& from, const FilePath& to) {
+bool Platform::Rename(const FilePath& from, const FilePath& to, bool cros_fs) {
   DCHECK(from.IsAbsolute()) << "from=" << from;
   DCHECK(to.IsAbsolute()) << "to=" << to;
 
-  return base::ReplaceFile(from, to, /*error=*/nullptr);
+  // Try ReplaceFile first, but will not work when |to| and |from| are on
+  // a different volume.
+  if (base::ReplaceFile(from, to, /*error=*/nullptr))
+    return true;
+
+  return cros_fs && base::Move(from, to);
 }
 
 bool Platform::Copy(const FilePath& from, const FilePath& to) {

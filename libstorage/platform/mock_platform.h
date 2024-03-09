@@ -85,7 +85,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               (override));
   MOCK_METHOD(bool,
               Rename,
-              (const base::FilePath&, const base::FilePath&),
+              (const base::FilePath&, const base::FilePath&, bool),
               (override));
   MOCK_METHOD(bool,
               Copy,

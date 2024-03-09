@@ -52,7 +52,9 @@ class BRILLO_EXPORT FakePlatform : public Platform {
       std::vector<base::FilePath>* ent_list) override;
   bool IsDirectoryEmpty(const base::FilePath& path) override;
 
-  bool Rename(const base::FilePath& from, const base::FilePath& to) override;
+  bool Rename(const base::FilePath& from,
+              const base::FilePath& to,
+              bool cros_fs) override;
   base::FilePath FindFilesystemDevice(
       const base::FilePath& filesystem) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;

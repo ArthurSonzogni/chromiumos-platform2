@@ -1187,8 +1187,9 @@ TEST_F(DownloadsBindMountMigrationTest,
 
   // Ignore all other calls to Rename but when the ~/Downloads-backup rename
   // call is made, return false to mock a failure.
-  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
-  EXPECT_CALL(platform_, Rename(downloads_in_my_files_, downloads_backup_))
+  EXPECT_CALL(platform_, Rename(_, _, false)).Times(AnyNumber());
+  EXPECT_CALL(platform_,
+              Rename(downloads_in_my_files_, downloads_backup_, false))
       .WillOnce(Return(false));
   ASSERT_THAT(mount_helper_->PerformMount(
                   MountType::DIR_CRYPTO, kUser,
@@ -1215,8 +1216,8 @@ TEST_F(DownloadsBindMountMigrationTest,
 
   // Ignore all other calls to Rename but when the ~/Downloads-backup rename
   // call is made, return false to mock a failure.
-  EXPECT_CALL(platform_, Rename(_, _)).Times(AnyNumber());
-  EXPECT_CALL(platform_, Rename(downloads_, downloads_in_my_files_))
+  EXPECT_CALL(platform_, Rename(_, _, false)).Times(AnyNumber());
+  EXPECT_CALL(platform_, Rename(downloads_, downloads_in_my_files_, false))
       .WillOnce(Return(false));
   ASSERT_THAT(mount_helper_->PerformMount(
                   MountType::DIR_CRYPTO, kUser,

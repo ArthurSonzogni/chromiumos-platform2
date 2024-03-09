@@ -189,8 +189,9 @@ void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
 
 // Platform API
 bool FakePlatform::Rename(const base::FilePath& from,
-                          const base::FilePath& to) {
-  return real_platform_.Rename(TestFilePath(from), TestFilePath(to));
+                          const base::FilePath& to,
+                          bool cros_fs) {
+  return real_platform_.Rename(TestFilePath(from), TestFilePath(to), cros_fs);
 }
 
 base::FilePath FakePlatform::FindFilesystemDevice(

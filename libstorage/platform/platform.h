@@ -691,7 +691,11 @@ class BRILLO_EXPORT Platform {
   // Parameters
   //  from
   //  to
-  virtual bool Rename(const base::FilePath& from, const base::FilePath& to);
+  //  cros_fs: Allow copy when to and from are not on the same filesystem.
+  //    false by default, can be slow.
+  virtual bool Rename(const base::FilePath& from,
+                      const base::FilePath& to,
+                      bool cros_fs = false);
 
   // Returns the current time.
   virtual base::Time GetCurrentTime() const;
