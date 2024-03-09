@@ -371,11 +371,27 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
       const Size blob_size(blob_stream_->width, blob_stream_->height);
       std::optional<Size> yuv_size =
           FindYuvSizeForRotateAndCrop(blob_size, available_yuv_sizes_);
+      int yuv_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
       if (!yuv_size.has_value()) {
         LOGF(ERROR) << "No suitable YUV resolution for cropping into "
                     << blob_size.ToString();
         return false;
       }
+
+      // A quirk for handling nautilus ipu3 limitation: b/323451172.
+      if (DeviceConfig::Create()->GetModelName() == "nautilus" &&
+          ((blob_stream_->width == 640 && blob_stream_->height == 480) ||
+           (blob_stream_->width == 320 && blob_stream_->height == 240))) {
+        for (auto* stream : stream_config->GetStreams()) {
+          if (stream->stream_type == CAMERA3_STREAM_OUTPUT &&
+              (stream->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
+               stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
+            yuv_size = Size(stream->width, stream->height);
+            yuv_format = stream->format;
+          }
+        }
+      }
+
       if (yuv_size.value() != blob_size) {
         LOGF(WARNING) << "Using " << yuv_size->ToString() << " YUV to generate "
                       << blob_size.ToString() << " BLOB";
@@ -383,7 +399,7 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
       yuv_stream_for_blob_owned_ = camera3_stream_t{
           .width = yuv_size->width,
           .height = yuv_size->height,
-          .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
+          .format = yuv_format,
           .usage = GRALLOC_USAGE_SW_READ_OFTEN,
           .physical_camera_id = blob_stream_->physical_camera_id,
           .crop_rotate_scale_degrees = hal_crs_degrees,
@@ -392,8 +408,7 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
       yuv_stream_for_blob_ = &yuv_stream_for_blob_owned_.value();
       stream_config->AppendStream(&yuv_stream_for_blob_owned_.value());
       scaled_yuv_buffer_for_blob_ = CameraBufferManager::AllocateScopedBuffer(
-          blob_stream_->width, blob_stream_->height,
-          HAL_PIXEL_FORMAT_YCBCR_420_888,
+          blob_stream_->width, blob_stream_->height, yuv_format,
           GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
     }
     if (yuv_stream_for_blob_) {
