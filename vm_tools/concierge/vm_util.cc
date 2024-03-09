@@ -27,7 +27,6 @@
 
 #include <absl/strings/str_split.h>
 #include <base/base64.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
