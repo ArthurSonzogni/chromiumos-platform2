@@ -47,6 +47,12 @@ class MockAuthStackManager : public AuthStackManager {
               (override));
   MOCK_METHOD(void, OnUserLoggedOut, (), (override));
   MOCK_METHOD(void, OnUserLoggedIn, (const std::string&), (override));
+  MOCK_METHOD(ListLegacyRecordsReply, ListLegacyRecords, (), (override));
+  MOCK_METHOD(void,
+              EnrollLegacyTemplate,
+              (const EnrollLegacyTemplateRequest&,
+               AuthStackManager::EnrollLegacyTemplateCallback),
+              (override));
   MOCK_METHOD(void,
               SetEnrollScanDoneHandler,
               (const EnrollScanDoneCallback& on_enroll_scan_done),

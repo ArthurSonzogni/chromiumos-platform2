@@ -65,8 +65,6 @@ BiometricsDaemon::BiometricsDaemon() {
         "%s/%s", kBiodServicePath, kCrosFpAuthStackManagerName));
     auto biod_storage = std::make_unique<BiodStorage>(
         base::FilePath(kBiodLibPath), biod::kCrosFpAuthStackManagerName);
-    // Access is always allowed in BiodLibPath.
-    biod_storage->set_allow_access(true);
     auto record_manager =
         std::make_unique<CrosFpRecordManager>(std::move(biod_storage));
     // We don't use validation value in AuthStackManager flow.
@@ -76,10 +74,21 @@ BiometricsDaemon::BiometricsDaemon() {
     auto pk_storage = std::make_unique<PairingKeyStorageImpl>(
         kBiodLibPath, kCrosFpAuthStackManagerName);
 
+    // Sets the root path to /run/daemon-store/biod/, which is bound to
+    // /home/root/<user_id>/biod/.
+    auto legacy_biod_storage =
+        std::make_unique<BiodStorage>(base::FilePath(kBiodDaemonStorePath),
+                                      biod::kCrosFpBiometricsManagerName);
+    auto legacy_record_manager =
+        std::make_unique<CrosFpRecordManager>(std::move(legacy_biod_storage));
+    auto legacy_session_manager = std::make_unique<CrosFpSessionManagerImpl>(
+        std::move(legacy_record_manager));
+
     auto cros_fp_manager = std::make_unique<CrosFpAuthStackManager>(
         std::move(power_button_filter), std::move(cros_fp_device),
         biod_metrics_.get(), std::move(session_manager), std::move(pk_storage),
-        hwsec_factory_.GetPinWeaverManagerFrontend());
+        hwsec_factory_.GetPinWeaverManagerFrontend(),
+        std::move(legacy_session_manager));
     if (cros_fp_manager && cros_fp_manager->Initialize()) {
       auth_stack_managers_.emplace_back(
           std::make_unique<AuthStackManagerWrapper>(

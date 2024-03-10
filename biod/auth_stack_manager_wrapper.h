@@ -69,6 +69,12 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
   bool EnrollSessionCancel(brillo::ErrorPtr* error);
   bool AuthSessionEnd(brillo::ErrorPtr* error);
 
+  void ListLegacyRecords(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             const ListLegacyRecordsReply&>> response);
+  void EnrollLegacyTemplate(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+      const EnrollLegacyTemplateRequest& request);
+
   std::unique_ptr<AuthStackManager> auth_stack_manager_;
   SessionStateManagerInterface* session_state_manager_;
 

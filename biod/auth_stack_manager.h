@@ -84,6 +84,18 @@ class AuthStackManager {
   // This will be called when a user logs in.
   virtual void OnUserLoggedIn(const std::string& user_id) = 0;
 
+  // Migration APIs
+
+  // Lists the legacy templates of the currently logged-in user.
+  virtual ListLegacyRecordsReply ListLegacyRecords() = 0;
+
+  using EnrollLegacyTemplateCallback = base::OnceCallback<void(bool success)>;
+  // Migrates a legacy template (which was created in a user id context instead
+  // of nonce context) to a template in the nonce context. The legacy template's
+  // template_id will be specified by the request.
+  virtual void EnrollLegacyTemplate(const EnrollLegacyTemplateRequest& request,
+                                    EnrollLegacyTemplateCallback callback) = 0;
+
   // The callbacks should remain valid as long as this object is valid.
 
   // This is a repeating callback because it is set by the AuthStack dbus

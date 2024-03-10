@@ -85,6 +85,12 @@ AuthStackManagerWrapper::AuthStackManagerWrapper(
   auth_stack_interface->AddMethodHandler(
       kAuthStackManagerDeleteCredentialMethod, base::Unretained(this),
       &AuthStackManagerWrapper::DeleteCredential);
+  auth_stack_interface->AddMethodHandler(
+      kAuthStackManagerListLegacyRecordsMethod, base::Unretained(this),
+      &AuthStackManagerWrapper::ListLegacyRecords);
+  auth_stack_interface->AddMethodHandler(
+      kAuthStackManagerEnrollLegacyTemplateMethod, base::Unretained(this),
+      &AuthStackManagerWrapper::EnrollLegacyTemplate);
   dbus_object_.RegisterAsync(std::move(completion_callback));
 
   // Add this AuthStackManagerWrapper instance to observe session state
@@ -326,6 +332,22 @@ bool AuthStackManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
     FinalizeAuthSessionObject();
   }
   return true;
+}
+
+void AuthStackManagerWrapper::ListLegacyRecords(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<const ListLegacyRecordsReply&>>
+        response) {
+  response->Return(auth_stack_manager_->ListLegacyRecords());
+}
+
+void AuthStackManagerWrapper::EnrollLegacyTemplate(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    const EnrollLegacyTemplateRequest& request) {
+  auto callback = [](std::unique_ptr<DBusMethodResponse<bool>> response,
+                     bool success) { response->Return(success); };
+  auth_stack_manager_->EnrollLegacyTemplate(
+      request, base::BindOnce(std::move(callback), std::move(response)));
 }
 
 void AuthStackManagerWrapper::OnUserLoggedIn(

@@ -151,11 +151,16 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
         std::make_unique<hwsec::MockPinWeaverManagerFrontend>();
     mock_pinweaver_manager_ = mock_pinweaver_manager.get();
 
+    auto mock_legacy_session_manager =
+        std::make_unique<MockCrosFpSessionManager>();
+    // Keep a pointer to session manager, to manipulate it later.
+    mock_legacy_session_manager_ = mock_legacy_session_manager.get();
+
     auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
         std::move(mock_power_button_filter), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
-        std::move(mock_pk_storage), std::move(mock_pinweaver_manager), state,
-        pending_match_event);
+        std::move(mock_pk_storage), std::move(mock_pinweaver_manager),
+        std::move(mock_legacy_session_manager), state, pending_match_event);
 
     cros_fp_auth_stack_manager->SetEnrollScanDoneHandler(
         base::BindRepeating(&CrosFpAuthStackManagerTest::EnrollScanDoneHandler,
@@ -184,6 +189,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
   MockCrosFpSessionManager* mock_session_manager_;
   MockCrosFpDevice* mock_cros_dev_;
   hwsec::MockPinWeaverManagerFrontend* mock_pinweaver_manager_;
+  MockCrosFpSessionManager* mock_legacy_session_manager_;
   CrosFpDevice::MkbpCallback on_mkbp_event_;
 };
 

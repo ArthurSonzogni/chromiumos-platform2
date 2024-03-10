@@ -31,6 +31,7 @@ bool CrosFpSessionManagerImpl::LoadUser(std::string user_id) {
   if (user_.has_value()) {
     return false;
   }
+  record_manager_->SetAllowAccess(true);
   std::vector<Record> records = record_manager_->GetRecordsForUser(user_id);
   user_ = std::move(user_id);
 
@@ -51,6 +52,7 @@ void CrosFpSessionManagerImpl::UnloadUser() {
   user_.reset();
   records_.clear();
   record_manager_->RemoveRecordsFromMemory();
+  record_manager_->SetAllowAccess(false);
 }
 
 bool CrosFpSessionManagerImpl::CreateRecord(

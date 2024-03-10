@@ -62,6 +62,7 @@ TEST_F(CrosFpSessionManagerTest, LoadUnloadUser) {
   EXPECT_FALSE(session_manager_->GetUser().has_value());
 
   EXPECT_CALL(*mock_record_manager_, GetRecordsForUser(kUser));
+  EXPECT_CALL(*mock_record_manager_, SetAllowAccess(true));
 
   EXPECT_TRUE(session_manager_->LoadUser(kUser));
   const std::optional<std::string>& user = session_manager_->GetUser();
@@ -69,6 +70,7 @@ TEST_F(CrosFpSessionManagerTest, LoadUnloadUser) {
   EXPECT_EQ(*user, kUser);
 
   EXPECT_CALL(*mock_record_manager_, RemoveRecordsFromMemory);
+  EXPECT_CALL(*mock_record_manager_, SetAllowAccess(false));
 
   session_manager_->UnloadUser();
   EXPECT_FALSE(session_manager_->GetUser().has_value());

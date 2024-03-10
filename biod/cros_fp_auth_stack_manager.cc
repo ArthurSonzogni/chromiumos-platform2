@@ -43,6 +43,7 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<CrosFpSessionManager> session_manager,
     std::unique_ptr<PairingKeyStorage> pk_storage,
     std::unique_ptr<const hwsec::PinWeaverManagerFrontend> pinweaver_manager,
+    std::unique_ptr<CrosFpSessionManager> legacy_session_manager,
     State state,
     std::optional<uint32_t> pending_match_event)
     : biod_metrics_(biod_metrics),
@@ -55,6 +56,8 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
       pending_match_event_(pending_match_event),
       maintenance_scheduler_(std::make_unique<MaintenanceScheduler>(
           cros_dev_.get(), biod_metrics_)),
+      migrator_(std::make_unique<CrosFpMigrator>(
+          this, std::move(legacy_session_manager))),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
@@ -62,6 +65,7 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
   CHECK(session_manager_);
   CHECK(pk_storage_);
   CHECK(pinweaver_manager_);
+  CHECK(migrator_);
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpAuthStackManager::OnMkbpEvent, base::Unretained(this)));
@@ -831,6 +835,39 @@ bool CrosFpAuthStackManager::CanStartAuth() {
 
 bool CrosFpAuthStackManager::CanAuthenticateCredential() {
   return state_ == State::kAuthDone;
+}
+
+ListLegacyRecordsReply CrosFpAuthStackManager::ListLegacyRecords() {
+  return migrator_->ListLegacyRecords();
+}
+
+void CrosFpAuthStackManager::EnrollLegacyTemplate(
+    const EnrollLegacyTemplateRequest& request,
+    AuthStackManager::EnrollLegacyTemplateCallback callback) {
+  migrator_->EnrollLegacyTemplate(request, std::move(callback));
+}
+
+CrosFpAuthStackManager::CrosFpMigrator::CrosFpMigrator(
+    CrosFpAuthStackManager* manager,
+    std::unique_ptr<CrosFpSessionManager> session_manager)
+    : manager_(manager), session_manager_(std::move(session_manager)) {
+  CHECK(manager_);
+  CHECK(session_manager_);
+}
+
+ListLegacyRecordsReply
+CrosFpAuthStackManager::CrosFpMigrator::ListLegacyRecords() {
+  // TODO(b/328734871): Implement migrator logic.
+  ListLegacyRecordsReply reply;
+  reply.set_status(ListLegacyRecordsReply::UNKNOWN);
+  return reply;
+}
+
+void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
+    const EnrollLegacyTemplateRequest& request,
+    AuthStackManager::EnrollLegacyTemplateCallback callback) {
+  // TODO(b/328734871): Implement migrator logic.
+  std::move(callback).Run(false);
 }
 
 }  // namespace biod

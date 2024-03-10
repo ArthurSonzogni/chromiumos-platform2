@@ -64,6 +64,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
       std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage,
       std::unique_ptr<const hwsec::PinWeaverManagerFrontend> pinweaver_manager,
+      std::unique_ptr<CrosFpSessionManager> legacy_session_manager,
       State state = State::kNone,
       // This param allows tests to set an initial |pending_match_event_| when
       // initial state is State::kAuthDone.
@@ -95,6 +96,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
       const DeleteCredentialRequest& request) override;
   void OnUserLoggedOut() override;
   void OnUserLoggedIn(const std::string& user_id) override;
+  ListLegacyRecordsReply ListLegacyRecords() override;
+  void EnrollLegacyTemplate(
+      const EnrollLegacyTemplateRequest& request,
+      AuthStackManager::EnrollLegacyTemplateCallback callback) override;
   void SetEnrollScanDoneHandler(const AuthStackManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;
   void SetAuthScanDoneHandler(
@@ -110,6 +115,26 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
  private:
   using SessionAction = base::RepeatingCallback<void(const uint32_t event)>;
+
+  // In charge of handling the migration APIs.
+  class CrosFpMigrator {
+   public:
+    CrosFpMigrator(CrosFpAuthStackManager* manager,
+                   std::unique_ptr<CrosFpSessionManager> session_manager);
+
+    // See AuthStackManager::ListLegacyRecords.
+    ListLegacyRecordsReply ListLegacyRecords();
+
+    // See AuthStackManager::EnrollLegacyTemplate.
+    void EnrollLegacyTemplate(
+        const EnrollLegacyTemplateRequest& request,
+        AuthStackManager::EnrollLegacyTemplateCallback callback);
+
+   private:
+    CrosFpAuthStackManager* manager_;
+
+    std::unique_ptr<CrosFpSessionManager> session_manager_;
+  };
 
   // For testing.
   friend class CrosFpAuthStackManagerPeer;
@@ -188,6 +213,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
   std::optional<uint32_t> pending_match_event_;
 
   std::unique_ptr<MaintenanceScheduler> maintenance_scheduler_;
+
+  // In charge of handling legacy fingerprint migration APIs.
+  std::unique_ptr<CrosFpMigrator> migrator_;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };
