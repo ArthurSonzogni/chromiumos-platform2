@@ -248,8 +248,10 @@ class Service final : public org::chromium::VmConciergeInterface,
           vm_tools::concierge::SyncVmTimesResponse>> response_cb) override;
 
   // Handles a request to create a disk image.
-  void CreateDiskImage(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender sender) override;
+  void CreateDiskImage(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           CreateDiskImageResponse>> response_cb,
+                       const CreateDiskImageRequest& request,
+                       const std::vector<base::ScopedFD>& FileHandles) override;
   // TODO(b/324960184): Remove.
   void CreateDiskImage2(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

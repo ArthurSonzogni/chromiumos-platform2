@@ -153,15 +153,16 @@
       <tp:docstring>
         Creates a disk image.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
-      <!--
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::CreateDiskImageRequest"/>
       </arg>
-      <arg type="h" name="in_fd" direction="in" optional="true">
+      <arg type="ah" name="in_fd" direction="in" optional="true">
         <tp:docstring>
-          fd for storage for STORAGE_CRYPTOHOME_PLUGINVM case.
+          an fd for installation media when creating a Parallels VM disk image
+          (STORAGE_CRYPTOHOME_PLUGINVM case). Otherwise should be an empty
+          array.
         </tp:docstring>
       </arg>
       <arg type="ay" name="response" direction="out">
@@ -171,11 +172,10 @@
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
       </arg>
-      -->
     </method>
     <method name="CreateDiskImage2">
       <tp:docstring>
-        Creates a disk image. TODO(b/324960184): Remove.
+        Creates a disk image. TODO(b/324960184): Remove after migrating users to CreateDiskImage.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
@@ -184,8 +184,9 @@
       </arg>
       <arg type="ah" name="in_fd" direction="in" optional="true">
         <tp:docstring>
-          fd for storage for STORAGE_CRYPTOHOME_PLUGINVM case. Otherwise should
-          be an empty array.
+          an fd for installation media when creating a Parallels VM disk image
+          (STORAGE_CRYPTOHOME_PLUGINVM case). Otherwise should be an empty
+          array.
         </tp:docstring>
       </arg>
       <arg type="ay" name="response" direction="out">

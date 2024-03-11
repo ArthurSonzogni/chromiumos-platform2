@@ -2659,38 +2659,27 @@ bool CreateFilesystem(const base::FilePath& disk_location,
 }
 
 void Service::CreateDiskImage(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  RAW_SERVICE_METHOD();
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        CreateDiskImageResponse>> response_cb,
+    const CreateDiskImageRequest& request,
+    const std::vector<base::ScopedFD>& file_handles) {
+  ASYNC_SERVICE_METHOD();
 
-  dbus::MessageReader reader(method_call);
-
-  CreateDiskImageRequest request;
   CreateDiskImageResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse CreateDiskImageRequest from message";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Unable to parse CreateImageDiskRequest");
-
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
 
   base::ScopedFD in_fd;
   if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
-    if (!reader.PopFileDescriptor(&in_fd)) {
+    if (file_handles.size() == 0) {
       LOG(ERROR) << "CreateDiskImage: no fd found";
       response.set_failure_reason("no source fd found");
 
-      SendDbusResponse(std::move(response_sender), method_call, response);
+      response_cb->Return(response);
       return;
     }
+    in_fd.reset(dup(file_handles[0].get()));
   }
 
-  SendDbusResponse(
-      std::move(response_sender), method_call,
-      CreateDiskImageInternal(std::move(request), std::move(in_fd)));
+  response_cb->Return(CreateDiskImageInternal(request, std::move(in_fd)));
   return;
 }
 
