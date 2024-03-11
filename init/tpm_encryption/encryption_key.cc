@@ -192,14 +192,13 @@ brillo::SecureBlob GetKeyFromKernelCmdline() {
 EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
                              const base::FilePath& rootdir)
     : loader_(loader) {
-  base::FilePath stateful_mount = rootdir.AppendASCII(paths::kStatefulMount);
-  key_path_ = stateful_mount.AppendASCII(paths::kEncryptedKey);
-  needs_finalization_path_ =
-      stateful_mount.AppendASCII(paths::kNeedsFinalization);
+  base::FilePath stateful_mount = rootdir.Append(paths::kStatefulMount);
+  key_path_ = stateful_mount.Append(paths::kEncryptedKey);
+  needs_finalization_path_ = stateful_mount.Append(paths::kNeedsFinalization);
   preservation_request_path_ =
-      stateful_mount.AppendASCII(paths::kStatefulPreservationRequest);
+      stateful_mount.Append(paths::kStatefulPreservationRequest);
   preserved_previous_key_path_ =
-      stateful_mount.AppendASCII(paths::kPreservedPreviousKey);
+      stateful_mount.Append(paths::kPreservedPreviousKey);
 }
 
 bool EncryptionKey::SetTpmSystemKey() {

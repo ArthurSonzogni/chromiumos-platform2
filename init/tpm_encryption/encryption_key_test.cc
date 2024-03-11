@@ -187,13 +187,13 @@ class EncryptionKeyTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
-        tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
+        tmpdir_.GetPath().Append("mnt/stateful_partition")));
     ASSERT_TRUE(base::CreateDirectory(
-        tmpdir_.GetPath().AppendASCII(paths::cryptohome::kTpmOwned).DirName()));
+        tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned).DirName()));
 
     metrics_singleton_ =
         std::make_unique<init_metrics::ScopedInitMetricsSingleton>(
-            tmpdir_.GetPath().AppendASCII("metrics").value());
+            tmpdir_.GetPath().Append("metrics").value());
 
     ClearTPM();
     ResetLoader();
@@ -221,7 +221,7 @@ class EncryptionKeyTest : public testing::Test {
     tlcl_.SetOwned({0x5e, 0xc2, 0xe7});
     if (!USE_TPM2) {
       ASSERT_TRUE(base::WriteFile(
-          tmpdir_.GetPath().AppendASCII(paths::cryptohome::kTpmOwned), ""));
+          tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
     }
   }
 
@@ -261,7 +261,7 @@ class EncryptionKeyTest : public testing::Test {
   void SetupPendingFirmwareUpdate(bool available, int exit_status) {
     // Put the firmware update request into place.
     base::FilePath update_request_path(
-        tmpdir_.GetPath().AppendASCII(paths::kFirmwareUpdateRequest));
+        tmpdir_.GetPath().Append(paths::kFirmwareUpdateRequest));
     ASSERT_TRUE(base::CreateDirectory(update_request_path.DirName()));
     base::File update_request_file(
         update_request_path,
@@ -272,8 +272,8 @@ class EncryptionKeyTest : public testing::Test {
     base::FilePath firmware_update_image_path;
     if (available) {
       firmware_update_image_path = tmpdir_.GetPath()
-                                       .AppendASCII(paths::kFirmwareDir)
-                                       .AppendASCII("placeholder_fw.bin");
+                                       .Append(paths::kFirmwareDir)
+                                       .Append("placeholder_fw.bin");
       ASSERT_TRUE(base::CreateDirectory(firmware_update_image_path.DirName()));
       base::File firmware_update_image_file(
           firmware_update_image_path,
@@ -286,7 +286,7 @@ class EncryptionKeyTest : public testing::Test {
         "#!/bin/sh\necho \"%s\"\nexit %d",
         firmware_update_image_path.value().c_str(), exit_status);
     base::FilePath firmware_update_locator_path =
-        tmpdir_.GetPath().AppendASCII(paths::kFirmwareUpdateLocator);
+        tmpdir_.GetPath().Append(paths::kFirmwareUpdateLocator);
     ASSERT_TRUE(base::CreateDirectory(firmware_update_locator_path.DirName()));
     ASSERT_TRUE(base::WriteFile(firmware_update_locator_path, script.data(),
                                 script.size()));
@@ -358,7 +358,7 @@ class EncryptionKeyTest : public testing::Test {
 
   void SetStaleOwnershipFlag() {
     ASSERT_TRUE(base::WriteFile(
-        tmpdir_.GetPath().AppendASCII(paths::cryptohome::kTpmOwned), ""));
+        tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
   }
 
 #endif

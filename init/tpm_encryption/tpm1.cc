@@ -372,7 +372,7 @@ bool Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
     }
   } else {
     const base::FilePath tpm_owned_path =
-        rootdir_.AppendASCII(paths::cryptohome::kTpmOwned);
+        rootdir_.Append(paths::cryptohome::kTpmOwned);
     if (base::PathExists(tpm_owned_path)) {
       LOG(ERROR)
           << "Unable to define space because TPM is already fully initialized.";
@@ -406,13 +406,12 @@ bool Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
 
   // Reset ownership state files to make them consistent with TPM ownership.
   base::FilePath tpm_status_path =
-      rootdir_.AppendASCII(paths::cryptohome::kTpmStatus);
-  base::FilePath tpm_owned_path =
-      rootdir_.AppendASCII(paths::cryptohome::kTpmOwned);
+      rootdir_.Append(paths::cryptohome::kTpmStatus);
+  base::FilePath tpm_owned_path = rootdir_.Append(paths::cryptohome::kTpmOwned);
   base::FilePath shall_initialize_path =
-      rootdir_.AppendASCII(paths::cryptohome::kShallInitialize);
+      rootdir_.Append(paths::cryptohome::kShallInitialize);
   base::FilePath attestation_database_path =
-      rootdir_.AppendASCII(paths::cryptohome::kAttestationDatabase);
+      rootdir_.Append(paths::cryptohome::kAttestationDatabase);
   if (!brillo::DeleteFile(tpm_status_path) ||
       !brillo::DeleteFile(tpm_owned_path) ||
       !brillo::SyncFileOrDirectory(tpm_status_path.DirName(), true, false) ||
@@ -643,7 +642,7 @@ std::string Tpm1SystemKeyLoader::FormatIFXFieldUpgradeInfo() {
 
 bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   // Make sure a TPM firmware upgrade has been requested.
-  if (!base::PathExists(rootdir_.AppendASCII(paths::kFirmwareUpdateRequest))) {
+  if (!base::PathExists(rootdir_.Append(paths::kFirmwareUpdateRequest))) {
     LOG(ERROR) << "TPM firmware update wasn't requested.";
     return false;
   }
@@ -660,7 +659,7 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   tpm_firmware_update_locator.SetCloseUnusedFileDescriptors(true);
   tpm_firmware_update_locator.RedirectUsingPipe(STDOUT_FILENO, false);
   tpm_firmware_update_locator.AddArg(
-      rootdir_.AppendASCII(paths::kFirmwareUpdateLocator).value());
+      rootdir_.Append(paths::kFirmwareUpdateLocator).value());
   tpm_firmware_update_locator.AddArg(version_info);
   tpm_firmware_update_locator.AddArg(ifx_field_upgrade_info);
   if (!tpm_firmware_update_locator.Start()) {
@@ -685,10 +684,9 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
       *newline_pos = '\0';
     }
     base::FilePath update_path(update_location);
-    LOG(INFO) << "Checking whether "
-              << rootdir_.AppendASCII(paths::kFirmwareDir) << " is a parent of "
-              << update_path;
-    if (!rootdir_.AppendASCII(paths::kFirmwareDir).IsParent(update_path) ||
+    LOG(INFO) << "Checking whether " << rootdir_.Append(paths::kFirmwareDir)
+              << " is a parent of " << update_path;
+    if (!rootdir_.Append(paths::kFirmwareDir).IsParent(update_path) ||
         !base::PathExists(update_path)) {
       LOG(ERROR) << "Failure locating TPM firmware update file.";
       return false;
@@ -754,7 +752,7 @@ bool Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   // In case there is no encstateful space, the lockbox space is only valid once
   // tpm manager has initialized TPM with random password and recreated the
   // space.
-  *valid = base::PathExists(rootdir_.AppendASCII(paths::cryptohome::kTpmOwned));
+  *valid = base::PathExists(rootdir_.Append(paths::cryptohome::kTpmOwned));
   return true;
 }
 
