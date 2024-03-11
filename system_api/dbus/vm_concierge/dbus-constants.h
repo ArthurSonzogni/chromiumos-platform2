@@ -21,7 +21,6 @@ const char kAttachNetDeviceMethod[] = "AttachNetDevice";
 const char kAttachUsbDeviceMethod[] = "AttachUsbDevice";
 const char kCancelDiskImageMethod[] = "CancelDiskImageOperation";
 const char kCreateDiskImageMethod[] = "CreateDiskImage";
-const char kCreateDiskImage2Method[] = "CreateDiskImage2";
 const char kDestroyDiskImageMethod[] = "DestroyDiskImage";
 const char kDetachNetDeviceMethod[] = "DetachNetDevice";
 const char kDetachUsbDeviceMethod[] = "DetachUsbDevice";
