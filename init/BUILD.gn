@@ -238,6 +238,7 @@ if (use.syslog) {
   install_config("install_chromeos-cleanup-logs") {
     sources = [ "chromeos-cleanup-logs" ]
     install_path = "sbin"
+    type = "executable"
   }
 
   install_config("install_rsyslog") {
