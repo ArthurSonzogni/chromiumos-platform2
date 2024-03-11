@@ -1553,9 +1553,15 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (!auto_connect_disabled &&
-      (ModemIsEnabledButNotRegistered() ||
-       capability_->IsSetInitialEpsBearerSettingsInProgress())) {
+  if (ModemIsEnabledButNotRegistered() ||
+      capability_->IsSetInitialEpsBearerSettingsInProgress()) {
+    if (auto_connect_disabled) {
+      LOG(WARNING)
+          << LoggingTag() << ": " << __func__
+          << ": Waiting for Modem registration and auto connect is disabled";
+      return;
+    }
+
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Waiting for Modem registration.";
     SetPendingConnect(service->iccid());
