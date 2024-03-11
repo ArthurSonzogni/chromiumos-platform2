@@ -34,8 +34,9 @@ pub const UPDATE_ENGINE: &str = "/usr/bin/update_engine_client";
 
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
-// The return value of cryptohome when call install_attributes_get and the value is not set.
-const CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED: i32 = 34;
+// The return value from device_management_client at install_attributes_get
+// and the value is not set.
+const DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED: i32 = 4;
 // 30 seconds is the default timeout for epoll.
 const DEFAULT_EPOLL_TIMEOUT: i32 = 30000;
 const MAX_EPOLL_EVENTS: i32 = 1;
@@ -161,18 +162,20 @@ pub fn is_removable() -> Result<bool> {
 }
 
 pub fn is_consumer_device() -> Result<bool> {
-    let output = Command::new("/usr/sbin/cryptohome")
+    let output = Command::new("/usr/sbin/device_management_client")
         .arg("--action=install_attributes_get")
         .arg("--name=enterprise.mode")
         .output()?;
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    // If the attribute is not set, cryptohome will treat it as an error, return
-    // CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED and output nothing.
+    // If the attribute is not set, device_management_client will treat it as an error, return
+    // DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED and output nothing.
     match output.status.code() {
         Some(0) => Ok(!stdout.contains("enterprise")),
-        Some(CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED) if stdout.is_empty() => Ok(true),
+        Some(DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED) if stdout.is_empty() => {
+            Ok(true)
+        }
         None => Err(Error::WrappedError("failed to get exit code".to_string())),
         _ => Err(Error::WrappedError(stdout)),
     }
