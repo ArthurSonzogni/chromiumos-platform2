@@ -321,7 +321,6 @@ source_set("stream_manipulator") {
 
   deps = [
     ":jpeg",
-    "//camera/features/super_resolution",
     "//camera/gpu:gpu_resources",
   ]
   if (use.camera_feature_auto_framing) {
@@ -341,6 +340,9 @@ source_set("stream_manipulator") {
   }
   if (use.camera_feature_portrait_mode) {
     deps += [ "//camera/features/portrait_mode" ]
+  }
+  if (use.dlc) {
+    deps += [ "//camera/features/super_resolution" ]
   }
 }
 
