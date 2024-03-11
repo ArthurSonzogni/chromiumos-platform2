@@ -16,7 +16,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/secure_blob.h"
-#include "gmock/gmock.h"
 #include "install_attributes/mock_install_attributes_reader.h"
 #include "policy/device_policy_impl.h"
 #include "policy/tests/crypto_helpers.h"
@@ -284,7 +283,9 @@ TEST_F(LibpolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetAllowNewUsers(&bool_value));
   EXPECT_FALSE(bool_value);
 
-  EXPECT_THAT(policy.GetMetricsEnabled(), testing::Optional(false));
+  bool_value = true;
+  ASSERT_TRUE(policy.GetMetricsEnabled(&bool_value));
+  EXPECT_FALSE(bool_value);
 
   bool_value = true;
   ASSERT_TRUE(policy.GetReportVersionInfo(&bool_value));
@@ -505,7 +506,7 @@ TEST_F(LibpolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetShowUserNames(&bool_value));
   EXPECT_FALSE(policy.GetDataRoamingEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAllowNewUsers(&bool_value));
-  EXPECT_THAT(policy.GetMetricsEnabled(), testing::Optional(true));
+  EXPECT_FALSE(policy.GetMetricsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(policy.GetUnenrolledHwDataUsageEnabled().has_value());
   // DeviceFlexHwDataForProductImprovementEnabled defaults to true,

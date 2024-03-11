@@ -35,6 +35,11 @@ const char kValidGuidOld[] = "56ff27bf7f774919b08488416d597fd8";
 const char kValidGuid[] = "56ff27bf-7f77-4919-b084-88416d597fd8";
 }  // namespace
 
+ACTION_P(SetMetricsPolicy, enabled) {
+  *arg0 = enabled;
+  return true;
+}
+
 class MetricsLibraryTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -62,9 +67,9 @@ class MetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*device_policy_, GetMetricsEnabled())
+    EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
-        .WillRepeatedly(Return(true));
+        .WillRepeatedly(SetMetricsPolicy(true));
     lib_->SetPolicyProvider(new policy::PolicyProvider(
         std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     // Defeat metrics enabled caching between tests.
@@ -187,9 +192,12 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
   ASSERT_EQ(id, kValidGuid);
 }
 
-// MetricsEnabled is true -> AreMetricsEnabled returns true.
-TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueIsTrueIfSetViaPolicy) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled())
+// MetricsEnabled policy not present, enterprise managed
+// -> AreMetricsEnabled returns true.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueNoPolicyManaged) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged())
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(lib_->AreMetricsEnabled());
 
@@ -209,18 +217,42 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueIsTrueIfSetViaPolicy) {
 
 // Shouldn't check device policy if per-user consent is off.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyNoPerUser) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled()).Times(0);
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).Times(0);
   EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).Times(0);
 
   SetPerUserConsent(false);
   EXPECT_FALSE(lib_->AreMetricsEnabled());
 }
 
-// MetricsEnabled policy set to false -> AreMetricsEnabled returns false.
-TEST_F(MetricsLibraryTest,
-       AreMetricsEnabledFalseStaysFalseIndependentOfUserConsentOrCache) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled())
+// MetricsEnabled policy not present, not enterprise managed
+// -> AreMetricsEnabled returns false.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyUnmanaged) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged())
+      .WillRepeatedly(Return(false));
+  EXPECT_FALSE(lib_->AreMetricsEnabled());
+
+  // Per-user shouldn't affect that -- we haven't set per-user consent at all.
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_->AreMetricsEnabled());
+
+  // Even if per-user is enabled, if device policy is not enabled we shouldn't
+  // enable consent.
+  SetPerUserConsent(true);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_->AreMetricsEnabled());
+
+  // Same if it's disabled.
+  SetPerUserConsent(false);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_->AreMetricsEnabled());
+}
+
+// MetricsEnabled policy set to false -> AreMetricsEnabled returns false.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillRepeatedly(SetMetricsPolicy(false));
   EXPECT_FALSE(lib_->AreMetricsEnabled());
 
   // Per-user shouldn't affect that -- we haven't set per-user consent at all.
@@ -235,25 +267,6 @@ TEST_F(MetricsLibraryTest,
   SetPerUserConsent(false);
   ClearCachedEnabledTime();
   EXPECT_FALSE(lib_->AreMetricsEnabled());
-}
-
-TEST_F(MetricsLibraryTest,
-       NotEnterpriseManagedAndMetricsEnabledUnsetResortsToConstentFile) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled())
-      .WillRepeatedly(Return(std::nullopt));
-  base::DeleteFile(test_consent_id_file_);
-
-  // No consent by file, no metrics enabled.
-  EXPECT_FALSE(lib_->AreMetricsEnabled());
-
-  // Place a valid consent file.
-  ASSERT_GT(
-      base::WriteFile(test_consent_id_file_, kValidGuid, strlen(kValidGuid)),
-      0);
-  ASSERT_TRUE(lib_->ConsentId(&id));
-
-  // Consent file is present, metrics are on.
-  EXPECT_TRUE(lib_->AreMetricsEnabled());
 }
 
 // MetricsEnabled policy set to true -> AreMetricsEnabled returns true.
@@ -483,13 +496,13 @@ void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
   // times in a row.
   for (int i = 0; i < 100; ++i) {
     lib_->cached_enabled_time_ = 0;
-    EXPECT_CALL(*device_policy_, GetMetricsEnabled())
-        .WillOnce(Return(!to_value));
+    EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+        .WillOnce(SetMetricsPolicy(!to_value));
     ASSERT_EQ(!to_value, lib_->AreMetricsEnabled());
     testing::Mock::VerifyAndClearExpectations(device_policy_);
 
-    ON_CALL(*device_policy_, GetMetricsEnabled())
-        .WillByDefault(Return(to_value));
+    ON_CALL(*device_policy_, GetMetricsEnabled(_))
+        .WillByDefault(SetMetricsPolicy(to_value));
     if (lib_->AreMetricsEnabled() == !to_value)
       return;
     testing::Mock::VerifyAndClearExpectations(device_policy_);
@@ -499,11 +512,13 @@ void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
 
 void MetricsLibraryTest::VerifyEnabledCacheEviction(bool to_value) {
   lib_->cached_enabled_time_ = 0;
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled()).WillOnce(Return(!to_value));
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillOnce(SetMetricsPolicy(!to_value));
   ASSERT_EQ(!to_value, lib_->AreMetricsEnabled());
   testing::Mock::VerifyAndClearExpectations(device_policy_);
 
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled()).WillOnce(Return(to_value));
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillOnce(SetMetricsPolicy(to_value));
   ASSERT_LT(abs(static_cast<int>(time(nullptr) - lib_->cached_enabled_time_)),
             5);
   // Sleep one second (or cheat to be faster).
@@ -537,9 +552,9 @@ class CMetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*device_policy_, GetMetricsEnabled())
+    EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
-        .WillRepeatedly(Return(true));
+        .WillRepeatedly(SetMetricsPolicy(true));
     ml.SetPolicyProvider(new policy::PolicyProvider(
         std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     ml.cached_enabled_time_ = 0;
@@ -555,7 +570,8 @@ class CMetricsLibraryTest : public testing::Test {
 };
 
 TEST_F(CMetricsLibraryTest, AreMetricsEnabledFalse) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled()).WillOnce(Return(false));
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillOnce(SetMetricsPolicy(false));
   EXPECT_FALSE(CMetricsLibraryAreMetricsEnabled(lib_));
 }
 
