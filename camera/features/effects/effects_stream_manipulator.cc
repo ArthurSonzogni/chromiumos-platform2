@@ -391,6 +391,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
                            const SharedImage* result_image);
   void ReturnCaptureResult(Camera3CaptureDescriptor& result);
 
+  std::atomic<bool> needs_reset_ = false;
+
   std::unique_ptr<ReloadableConfigFile> config_;
   base::FilePath config_file_path_;
   bool override_config_exists_ GUARDED_BY_CONTEXT(gl_thread_checker_) = false;
@@ -528,6 +530,12 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
     metrics_.RecordError(CameraEffectError::kGPUInitializationError);
+  } else {
+    gl_thread_.PostTaskAsync(
+        FROM_HERE,
+        base::BindOnce(
+            &EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread,
+            base::Unretained(this)));
   }
 }
 
@@ -618,11 +626,6 @@ bool EffectsStreamManipulatorImpl::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   callbacks_ = std::move(callbacks);
-  gl_thread_.PostTaskAsync(
-      FROM_HERE,
-      base::BindOnce(
-          &EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread,
-          base::Unretained(this)));
   return true;
 }
 
@@ -661,9 +664,15 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
     stream_config->PopulateEventAnnotation(ctx);
   });
   UploadAndResetMetricsData();
-  gl_thread_.PostTaskSync(
-      FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::ResetState,
-                                base::Unretained(this)));
+
+  // |gl_thread_| might be busy loading the pipeline.
+  // Blocking here directly adds to overall ConfigureStreams latency.
+  if (needs_reset_) {
+    gl_thread_.PostTaskSync(
+        FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::ResetState,
+                                  base::Unretained(this)));
+  }
+  needs_reset_ = true;
 
   base::AutoLock lock(stream_contexts_lock_);
   base::span<camera3_stream_t* const> client_requested_streams =
@@ -772,6 +781,7 @@ void EffectsStreamManipulatorImpl::ResetState() {
     }
   }
   stream_contexts_.clear();
+  needs_reset_ = false;
 }
 
 bool EffectsStreamManipulatorImpl::OnConfiguredStreams(
