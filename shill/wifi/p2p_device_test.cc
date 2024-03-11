@@ -197,6 +197,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -217,6 +218,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -238,6 +240,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -249,6 +252,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoInterfaceProperty),
+            kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
   group_info = go_device_->GetGroupInfo();
@@ -258,6 +263,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -269,6 +275,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoInterfaceProperty),
+            kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
   // Emulate PeerJoined signals from wpa_supplicant.
@@ -297,6 +305,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -308,6 +317,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoInterfaceProperty),
+            kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),
             num_of_peers);
 
@@ -326,6 +337,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -337,6 +349,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoInterfaceProperty),
+            kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),
             num_of_peers);
 
@@ -353,6 +367,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
   EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
@@ -382,6 +397,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
@@ -401,6 +417,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
@@ -421,6 +438,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
@@ -432,6 +450,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PFrequency);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
+            kInterfaceName);
 
   client_info = client_device_->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
@@ -440,6 +460,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
@@ -451,6 +472,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PFrequency);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
+            kInterfaceName);
 
   // Disconnect group.
   EXPECT_TRUE(client_device_->Disconnect());
@@ -464,6 +487,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
@@ -475,6 +499,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PFrequency);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
             kP2PPassphrase);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
+            kInterfaceName);
 
   // Emulate GroupFinished signal from wpa_supplicant
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
@@ -489,6 +515,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),

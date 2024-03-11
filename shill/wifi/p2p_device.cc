@@ -165,6 +165,9 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
   if (!group_passphrase_.empty())
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
 
+  if (link_name().has_value())
+    group_info.Set<String>(kP2PGroupInfoInterfaceProperty, *link_name());
+
   group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty, GroupInfoClients());
 
   // TODO(b/299915001): retrieve IPv4/IPv6Address from patchpanel
@@ -191,9 +194,13 @@ KeyValueStore P2PDevice::GetClientInfo() const {
   if (group_frequency_)
     client_info.Set<Integer>(kP2PClientInfoFrequencyProperty, group_frequency_);
 
-  if (!group_passphrase_.empty())
+  if (!group_passphrase_.empty()) {
     client_info.Set<String>(kP2PClientInfoPassphraseProperty,
                             group_passphrase_);
+  }
+
+  if (link_name().has_value())
+    client_info.Set<String>(kP2PClientInfoInterfaceProperty, *link_name());
 
   // TODO(b/299915001): retrieve IPv4/IPv6Address from Shill::Network class
   // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
@@ -632,6 +639,7 @@ void P2PDevice::TeardownGroup() {
   group_frequency_ = 0;
   group_passphrase_ = "";
   group_peers_.clear();
+  link_name_ = std::nullopt;
 
   DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();

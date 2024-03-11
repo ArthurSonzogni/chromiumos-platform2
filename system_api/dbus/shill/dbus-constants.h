@@ -1118,6 +1118,7 @@ constexpr char kP2PCapabilitiesClientReadinessReady[] = "ready";
 constexpr char kP2PCapabilitiesClientReadinessNotReady[] = "not_ready";
 
 // Manager kP2PGroupInfosProperty dictionary key names.
+constexpr char kP2PGroupInfoInterfaceProperty[] = "interface";
 constexpr char kP2PGroupInfoShillIDProperty[] = "shill_id";
 constexpr char kP2PGroupInfoStateProperty[] = "state";
 constexpr char kP2PGroupInfoSSIDProperty[] = "ssid";
@@ -1144,6 +1145,7 @@ constexpr char kP2PGroupInfoClientHostnameProperty[] = "hostname";
 constexpr char kP2PGroupInfoClientVendorClassProperty[] = "vendor_class";
 
 // Manager kP2PClientInfoProperty dictionary key names.
+constexpr char kP2PClientInfoInterfaceProperty[] = "interface";
 constexpr char kP2PClientInfoShillIDProperty[] = "shill_id";
 constexpr char kP2PClientInfoStateProperty[] = "state";
 constexpr char kP2PClientInfoSSIDProperty[] = "ssid";

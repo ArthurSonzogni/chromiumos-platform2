@@ -828,6 +828,9 @@ Properties	object ActiveProfile [readonly]
 				This represents the selected channel on which the network
 				is hosted.
 
+			string interface
+				The client's interface name (for example "p2p-wlan0-0").
+
 			dict group_owner
 				Representation of the Group Owner to which the Client is
 				connecting, or connected. This dictionary has the following
@@ -912,6 +915,9 @@ Properties	object ActiveProfile [readonly]
 			int frequency
 				This represents the selected channel on which the group
 				is hosted.
+
+			string interface
+				The group's interface name (for example "p2p-wlan0-0").
 
 			array{dict} clients
 				A list of clients of the P2P group. Each of these dictionaries
