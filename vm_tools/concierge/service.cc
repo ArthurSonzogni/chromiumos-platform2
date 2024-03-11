@@ -2675,7 +2675,7 @@ void Service::CreateDiskImage(
     return;
   }
 
-  base::ScopedFD in_fd{};
+  base::ScopedFD in_fd;
   if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
     if (!reader.PopFileDescriptor(&in_fd)) {
       LOG(ERROR) << "CreateDiskImage: no fd found";
@@ -2689,6 +2689,33 @@ void Service::CreateDiskImage(
   SendDbusResponse(
       std::move(response_sender), method_call,
       CreateDiskImageInternal(std::move(request), std::move(in_fd)));
+  return;
+}
+
+// TODO(b/324960184): Remove when CreateDiskImage becomes an async
+// implementation.
+void Service::CreateDiskImage2(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        CreateDiskImageResponse>> response_cb,
+    const CreateDiskImageRequest& request,
+    const std::vector<base::ScopedFD>& file_handles) {
+  ASYNC_SERVICE_METHOD();
+
+  CreateDiskImageResponse response;
+
+  base::ScopedFD in_fd;
+  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
+    if (file_handles.size() == 0) {
+      LOG(ERROR) << "CreateDiskImage: no fd found";
+      response.set_failure_reason("no source fd found");
+
+      response_cb->Return(response);
+      return;
+    }
+    in_fd.reset(dup(file_handles[0].get()));
+  }
+
+  response_cb->Return(CreateDiskImageInternal(request, std::move(in_fd)));
   return;
 }
 
