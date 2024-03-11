@@ -30,6 +30,7 @@ regex = "1.0.6"
 rustyline = "9.1.1"
 metrics_rs = { path = "../metrics/rust-client" } # provided by ebuild
 shell-words = "1.0.0"
+signal-hook-registry = "*"
 system_api = { path = "../system_api" } # provided by ebuild
 textwrap = "0.11.0"
 tlsdate_dbus = { path = "../../third_party/tlsdate" } # provided by ebuild
