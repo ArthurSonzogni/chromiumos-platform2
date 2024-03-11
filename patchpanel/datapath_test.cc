@@ -752,14 +752,32 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
 }
 
 TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
-  EXPECT_CALL(runner_, iptables).Times(0);
-  EXPECT_CALL(runner_, ip6tables).Times(0);
-  EXPECT_CALL(runner_, ip).Times(0);
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -I OUTPUT -o ap0 -j egress_tethering -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -I INPUT -i ap0 -j ingress_tethering -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -A FORWARD -o ap0 -j ACCEPT -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -A FORWARD -i ap0 -j ACCEPT -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING -i ap0 -j PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kIPv4,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x00000001/0x00000001 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x00002700/0x00003f00 -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "mangle -A PREROUTING_ap0 -j CONNMARK --restore-mark "
+                  "--mask 0xffff0000 -w");
+  Verify_ip(runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
+  Verify_ip(runner_, "link set dev ap0 up multicast on");
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
-  info.upstream_device = ShillClient::Device();
-  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
@@ -777,7 +795,7 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
-  EXPECT_CALL(runner_, ip(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(runner_, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
@@ -791,14 +809,22 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
 }
 
 TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
-  EXPECT_CALL(runner_, iptables).Times(0);
-  EXPECT_CALL(runner_, ip6tables).Times(0);
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -D OUTPUT -o ap0 -j egress_tethering -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -D INPUT -i ap0 -j ingress_tethering -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -D FORWARD -o ap0 -j ACCEPT -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "filter -D FORWARD -i ap0 -j ACCEPT -w");
+  Verify_iptables(runner_, IpFamily::kDual,
+                  "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
   EXPECT_CALL(runner_, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
-  info.upstream_device = ShillClient::Device();
-  info.upstream_device->ifname = "wwan0";
   info.downstream_ifname = "ap0";
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;

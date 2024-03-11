@@ -146,17 +146,6 @@ IpFamily ConvertIpFamily(net_base::IPFamily family) {
                                                : IpFamily::kIPv6;
 }
 
-TrafficSource DownstreamNetworkInfoTrafficSource(
-    const DownstreamNetworkInfo& info) {
-  switch (info.topology) {
-    case DownstreamNetworkTopology::kTethering:
-      return TrafficSource::kTetherDownstream;
-    // TODO(b/257880335): Distinguish between WiFi Direct and WiFi LOHS
-    case DownstreamNetworkTopology::kLocalOnly:
-      return TrafficSource::kWiFiDirect;
-  }
-}
-
 std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {
   switch (auto_dnat_target) {
     case AutoDNATTarget::kArc:
@@ -1602,18 +1591,17 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
 }
 
 bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
-  if (info.topology == DownstreamNetworkTopology::kLocalOnly) {
-    LOG(ERROR) << __func__ << " " << info << ": LocalOnly is not supported";
-    return false;
-  }
-
-  if (!info.upstream_device) {
+  if (info.topology == DownstreamNetworkTopology::kTethering &&
+      !info.upstream_device) {
     LOG(ERROR) << __func__ << " " << info << ": no upstream Device defined";
     return false;
+  } else if (info.topology == DownstreamNetworkTopology::kLocalOnly &&
+             info.upstream_device) {
+    LOG(ERROR) << __func__ << " " << info
+               << ": invalid upstream Device argument";
+    return false;
   }
 
-  // TODO(b/239559602) Clarify which service, shill or networking, is in charge
-  // of IFF_UP and MAC address configuration.
   if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
                           info.ipv4_cidr,
                           /*ipv6_cidr=*/std::nullopt,
@@ -1636,22 +1624,40 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
 
-  // int_ipv4_addr is not necessary if route_on_vpn == false
-  const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StartRoutingDevice(*info.upstream_device, info.downstream_ifname, source);
+  switch (info.topology) {
+    case DownstreamNetworkTopology::kLocalOnly:
+      // TODO(b:309710428): Replace StartRoutingDeviceAsSystem with local-only
+      // routing mode to prevent forwarding to an external physical or virtual
+      // network.
+      StartRoutingDeviceAsSystem(info.downstream_ifname,
+                                 info.GetTrafficSource(),
+                                 /*static_ipv6=*/false);
+      break;
+    case DownstreamNetworkTopology::kTethering:
+      // int_ipv4_addr is not necessary if route_on_vpn == false
+      StartRoutingDevice(*info.upstream_device, info.downstream_ifname,
+                         info.GetTrafficSource());
+      break;
+  }
+
   return true;
 }
 
 void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
-  if (info.topology == DownstreamNetworkTopology::kLocalOnly) {
-    LOG(ERROR) << __func__ << " " << info << ": LocalOnly is not supported";
+  if (info.topology == DownstreamNetworkTopology::kTethering &&
+      !info.upstream_device) {
+    LOG(ERROR) << __func__ << " " << info << ": no upstream Device defined";
+    return;
+  } else if (info.topology == DownstreamNetworkTopology::kLocalOnly &&
+             info.upstream_device) {
+    LOG(ERROR) << __func__ << " " << info
+               << ": invalid upstream Device argument";
     return;
   }
 
   // Skip unconfiguring the downstream interface: shill will either destroy it
   // or flip it back to client mode and restart a Network on top.
-  StopRoutingDevice(info.downstream_ifname,
-                    DownstreamNetworkInfoTrafficSource(info));
+  StopRoutingDevice(info.downstream_ifname, info.GetTrafficSource());
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "OUTPUT", kEgressTetheringChain,
                  /*iif=*/"", /*oif=*/info.downstream_ifname);

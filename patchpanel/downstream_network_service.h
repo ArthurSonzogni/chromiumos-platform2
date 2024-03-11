@@ -17,6 +17,7 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/metrics.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -71,6 +72,10 @@ struct DownstreamNetworkInfo {
 
   // Creates the configuration of the DHCPServerController.
   std::optional<DHCPServerController::Config> ToDHCPServerConfig() const;
+
+  // Returns the TrafficSource to assign to traffic originated from the
+  // downstream interface of this DownstreamNetworkInfo object.
+  TrafficSource GetTrafficSource() const;
 };
 
 // Describes a downstream client's information. See NetworkClientInfo in

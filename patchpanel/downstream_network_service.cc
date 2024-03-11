@@ -142,6 +142,16 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
       dhcp_domain_searches, mtu, dhcp_options);
 }
 
+TrafficSource DownstreamNetworkInfo::GetTrafficSource() const {
+  switch (topology) {
+    case DownstreamNetworkTopology::kTethering:
+      return TrafficSource::kTetherDownstream;
+    // TODO(b/257880335): Distinguish between WiFi Direct and WiFi LOHS
+    case DownstreamNetworkTopology::kLocalOnly:
+      return TrafficSource::kWiFiDirect;
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const DownstreamNetworkInfo& info) {
   stream << "{ topology: ";
