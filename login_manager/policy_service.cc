@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/types/expected.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -26,6 +27,7 @@
 #include "login_manager/dbus_util.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
+#include "login_manager/policy_service_util.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/resilient_policy_store.h"
 #include "login_manager/system_utils.h"
@@ -129,6 +131,33 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
                                 Completion completion) {
+  // Use `policy_data_signature_type` field to determine which algorithm
+  // to use.
+  // In some cases the field is missing, but the blob is still signed
+  // with SHA1_RSA (e.g. device owner settings). That's why we default to
+  // SHA1_RSA.
+  // The algorithm is used to validate both new keys signatures and policy data
+  // signatures. Refer to the PolicyFetchResponse definition for more details.
+  em::PolicyFetchRequest::SignatureType policy_data_signature_type =
+      em::PolicyFetchRequest::SHA1_RSA;
+  if (policy.has_policy_data_signature_type()) {
+    policy_data_signature_type = policy.policy_data_signature_type();
+  }
+  // Treat `signature_type` of `em::PolicyFetchRequest::NONE` as unsigned,
+  // which is not supported.
+  base::expected<crypto::SignatureVerifier::SignatureAlgorithm, std::string>
+      mapped_policy_data_signature_type =
+          MapSignatureType(policy_data_signature_type);
+  if (!mapped_policy_data_signature_type.has_value()) {
+    constexpr char kErrorMessage[] = "Invalid policy data signature type.";
+    LOG(ERROR) << kErrorMessage << " Signature type mapping error: "
+               << mapped_policy_data_signature_type.error() << ".";
+    std::move(completion)
+        .Run(CreateError(dbus_error::kInvalidParameter, kErrorMessage));
+
+    return;
+  }
+
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
@@ -141,7 +170,7 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
         LOG(INFO) << "Attempting policy key rotation.";
         installed =
             key()->Rotate(der, StringToBlob(policy.new_public_key_signature()),
-                          crypto::SignatureVerifier::RSA_PKCS1_SHA1);
+                          mapped_policy_data_signature_type.value());
       }
     } else if (key_flags & KEY_INSTALL_NEW) {
       LOG(INFO) << "Attempting to install new policy key.";
@@ -153,9 +182,12 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
     }
 
     if (!installed) {
+      constexpr char kErrorMessage[] = "Failed to install policy key!";
+      LOG(ERROR) << kErrorMessage << " Used signature type: "
+                 << mapped_policy_data_signature_type.value() << ".";
       std::move(completion)
-          .Run(CREATE_ERROR_AND_LOG(dbus_error::kPubkeySetIllegal,
-                                    "Failed to install policy key!"));
+          .Run(CreateError(dbus_error::kPubkeySetIllegal, kErrorMessage));
+
       return;
     }
 
@@ -166,10 +198,13 @@ void PolicyService::StorePolicy(const PolicyNamespace& ns,
   // Validate signature on policy and persist to disk.
   if (!key()->Verify(StringToBlob(policy.policy_data()),
                      StringToBlob(policy.policy_data_signature()),
-                     crypto::SignatureVerifier::RSA_PKCS1_SHA1)) {
+                     mapped_policy_data_signature_type.value())) {
+    constexpr char kErrorMessage[] = "Signature could not be verified.";
+    LOG(ERROR) << kErrorMessage << " Used signature type: "
+               << mapped_policy_data_signature_type.value() << ".";
     std::move(completion)
-        .Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
-                                  "Signature could not be verified."));
+        .Run(CreateError(dbus_error::kVerifyFail, kErrorMessage));
+
     return;
   }
 

@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "crypto/signature_verifier.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
@@ -157,17 +158,76 @@ const int PolicyServiceTest::kAllKeyFlags = PolicyService::KEY_ROTATE |
 const char PolicyServiceTest::kSignalSuccess[] = "success";
 const char PolicyServiceTest::kSignalFailure[] = "failure";
 
-TEST_F(PolicyServiceTest, Store) {
-  InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
+// Parametrized fixture to test that both SHA1_RSA and SHA256_RSA are
+// correctly supported.
+struct PolicySignatureTypeToAlgorithm {
+  em::PolicyFetchRequest::SignatureType policy_signature_type;
+  crypto::SignatureVerifier::SignatureAlgorithm expected_signature_algorithm;
+};
+class PolicyServiceWithParameterizedPolicySignatureTypeTest
+    : public PolicyServiceTest,
+      public testing::WithParamInterface<PolicySignatureTypeToAlgorithm> {
+ public:
+  em::PolicyFetchRequest::SignatureType GetPolicySignatureType() {
+    return GetParam().policy_signature_type;
+  }
+
+  crypto::SignatureVerifier::SignatureAlgorithm
+  GetExpectedSignatureAlgorithm() {
+    return GetParam().expected_signature_algorithm;
+  }
+
+  void InitPolicyWithSignatureType(const std::vector<uint8_t>& data,
+                                   const std::vector<uint8_t>& signature,
+                                   const std::vector<uint8_t>& key,
+                                   const std::vector<uint8_t>& key_signature) {
+    PolicyServiceTest::InitPolicy(data, signature, key, key_signature);
+    policy_proto_.set_policy_data_signature_type(GetPolicySignatureType());
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(PolicyServiceWithParameterizedPolicySignatureTypeTest,
+                         PolicyServiceWithParameterizedPolicySignatureTypeTest,
+                         ::testing::ValuesIn<PolicySignatureTypeToAlgorithm>(
+                             {{em::PolicyFetchRequest::SHA1_RSA,
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA1},
+                              {em::PolicyFetchRequest::SHA256_RSA,
+                               crypto::SignatureVerifier::RSA_PKCS1_SHA256}}));
+
+TEST_P(PolicyServiceWithParameterizedPolicySignatureTypeTest, Store) {
+  InitPolicyWithSignatureType(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
+  EXPECT_CALL(key_,
+              Verify(fake_data_, fake_sig_, GetExpectedSignatureAlgorithm()))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
+  ExpectPersistPolicy(&s2);
+
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
+
+  fake_loop_.Run();
+}
+
+TEST_P(PolicyServiceWithParameterizedPolicySignatureTypeTest, StoreRotation) {
+  InitPolicyWithSignatureType(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
+
+  Sequence s1, s2;
+  ExpectKeyEqualsFalse(&s1);
+  ExpectKeyPopulated(&s2, true);
+  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
+                           GetExpectedSignatureAlgorithm()))
+      .InSequence(s1, s2)
+      .WillOnce(Return(true));
+  ExpectKeyPopulated(&s1, true);
+  ExpectVerifyAndSetPolicy(&s2);
+  ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
   service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
@@ -288,27 +348,6 @@ TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
   ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kPubkeySetIllegal);
 }
 
-TEST_F(PolicyServiceTest, StoreRotation) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
-
-  Sequence s1, s2;
-  ExpectKeyEqualsFalse(&s1);
-  ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_), _))
-      .InSequence(s1, s2)
-      .WillOnce(Return(true));
-  ExpectKeyPopulated(&s1, true);
-  ExpectVerifyAndSetPolicy(&s2);
-  ExpectPersistKey(&s1);
-  ExpectPersistPolicy(&s2);
-
-  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-                  kAllKeyFlags,
-                  MockPolicyService::CreateExpectSuccessCallback());
-
-  fake_loop_.Run();
-}
-
 TEST_F(PolicyServiceTest, StoreRotationClobber) {
   InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
 
@@ -361,6 +400,41 @@ TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
   ExpectKeyPopulated(&s2, true);
 
   ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kPubkeySetIllegal);
+}
+
+TEST_F(PolicyServiceTest, StoreRejectsSignatureTypeNone) {
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
+  policy_proto_.set_policy_data_signature_type(
+      enterprise_management::PolicyFetchRequest::NONE);
+
+  ExpectStoreFail(PolicyService::KEY_NONE, dbus_error::kInvalidParameter);
+}
+
+TEST_F(PolicyServiceTest, StoreDefaultsSignatureTypeToSHA1) {
+  InitPolicy(fake_data_, fake_sig_, fake_key_, fake_key_sig_);
+  policy_proto_.clear_policy_data_signature_type();
+
+  Sequence s1, s2;
+  ExpectKeyEqualsFalse(&s1);
+  ExpectKeyPopulated(&s2, true);
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_,
+                           crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+      .InSequence(s1, s2)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_),
+                           crypto::SignatureVerifier::RSA_PKCS1_SHA1))
+      .InSequence(s1, s2)
+      .WillOnce(Return(true));
+  ExpectKeyPopulated(&s1, true);
+  ExpectVerifyAndSetPolicy(&s2);
+  ExpectPersistKey(&s1);
+  ExpectPersistPolicy(&s2);
+
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
+
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, Retrieve) {
