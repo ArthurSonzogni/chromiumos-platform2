@@ -51,6 +51,9 @@ class PinWeaverManager {
   // All public PW operation functions should first call StateIsReady().
   virtual Status StateIsReady() = 0;
 
+  // Checks whether there is any credential in the PinWeaver tree.
+  virtual StatusOr<bool> HasAnyCredential() = 0;
+
   // Inserts an LE credential into the system.
   //
   // The Low entropy credential is represented by |le_secret|, and the high

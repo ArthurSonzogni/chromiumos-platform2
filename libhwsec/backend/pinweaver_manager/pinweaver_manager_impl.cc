@@ -94,6 +94,11 @@ Status PinWeaverManagerImpl::StateIsReady() {
   return OkStatus();
 }
 
+StatusOr<bool> PinWeaverManagerImpl::HasAnyCredential() {
+  RETURN_IF_ERROR(StateIsReady());
+  return hash_tree_->HasAnyUsedLabel();
+}
+
 StatusOr<uint64_t> PinWeaverManagerImpl::InsertCredential(
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob& le_secret,

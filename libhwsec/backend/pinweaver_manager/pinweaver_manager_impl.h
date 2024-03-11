@@ -51,6 +51,8 @@ class PinWeaverManagerImpl : public PinWeaverManager {
 
   Status StateIsReady() override;
 
+  StatusOr<bool> HasAnyCredential() override;
+
   StatusOr<uint64_t> InsertCredential(
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& le_secret,

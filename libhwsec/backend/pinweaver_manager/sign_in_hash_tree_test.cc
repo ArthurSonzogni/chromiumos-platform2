@@ -206,6 +206,9 @@ TEST(SignInHashTreeTest, UpdateHashCacheOnInsertRemove) {
                                  cred_data, metadata_lost));
   ASSERT_EQ(kRootHash14_4_1, returned_hash);
 
+  // There should be no used labels in the tree.
+  EXPECT_FALSE(tree->HasAnyUsedLabel());
+
   // Insert a label.
   ASSERT_TRUE(tree->StoreLabel(SignInHashTree::Label(21, 14, 2), kSampleHash1,
                                kSampleCredData1, false));
@@ -213,11 +216,17 @@ TEST(SignInHashTreeTest, UpdateHashCacheOnInsertRemove) {
   tree->GetRootHash(returned_hash);
   EXPECT_EQ(kRootHash14_4_2, returned_hash);
 
+  // Now there should be a used label in the tree.
+  EXPECT_TRUE(tree->HasAnyUsedLabel());
+
   // Remove the label; the root hash should be what it was earlier.
   ASSERT_TRUE(tree->RemoveLabel(SignInHashTree::Label(21, 14, 2)));
   returned_hash.clear();
   tree->GetRootHash(returned_hash);
   EXPECT_EQ(kRootHash14_4_1, returned_hash);
+
+  // No used labels in the tree again.
+  EXPECT_FALSE(tree->HasAnyUsedLabel());
 }
 
 }  // namespace hwsec

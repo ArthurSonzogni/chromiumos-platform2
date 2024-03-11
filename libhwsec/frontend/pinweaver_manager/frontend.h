@@ -54,6 +54,9 @@ class PinWeaverManagerFrontend : public Frontend {
   // initialized, not locked out, and hash tree is valid.
   virtual Status Initialize() const = 0;
 
+  // Checks whether there is any credential in the PinWeaver tree.
+  virtual StatusOr<bool> HasAnyCredential() const = 0;
+
   // Tries to insert a credential into the TPM.
   //
   // The LE credential to be added is in |le_secret|. Along with

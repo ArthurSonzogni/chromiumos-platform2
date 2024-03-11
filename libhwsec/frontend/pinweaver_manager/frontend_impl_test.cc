@@ -447,10 +447,12 @@ TEST_F(PinWeaverManagerImplTest, InvalidLabelCheck) {
 
 // Insert a credential and then remove it.
 // Check that a subsequent CheckCredential on that label fails.
+// Also, check that HasAnyCredential returns correct result.
 TEST_F(PinWeaverManagerImplTest, BasicInsertRemove) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
+  EXPECT_THAT(pinweaver_manager_->HasAnyCredential(), IsOkAndHolds(false));
   uint64_t label1 =
       pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
@@ -458,9 +460,11 @@ TEST_F(PinWeaverManagerImplTest, BasicInsertRemove) {
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
+  EXPECT_THAT(pinweaver_manager_->HasAnyCredential(), IsOkAndHolds(true));
   ASSERT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
   EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+  EXPECT_THAT(pinweaver_manager_->HasAnyCredential(), IsOkAndHolds(false));
 }
 
 // Check that a reset unlocks a locked out credential.

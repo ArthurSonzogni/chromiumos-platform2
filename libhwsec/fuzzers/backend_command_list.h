@@ -91,6 +91,7 @@ using FuzzCommandList =
                 &Backend::PinWeaverManager::GetDelaySchedule,
                 &Backend::PinWeaverManager::GetExpirationInSeconds,
                 &Backend::PinWeaverManager::GetWrongAuthAttempts,
+                &Backend::PinWeaverManager::HasAnyCredential,
                 &Backend::PinWeaverManager::InsertCredential,
                 &Backend::PinWeaverManager::InsertRateLimiter,
                 &Backend::PinWeaverManager::RemoveCredential,

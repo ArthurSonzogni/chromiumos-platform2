@@ -24,6 +24,8 @@ class MockPinWeaverManager : public PinWeaverManager {
       return;
     ON_CALL(*this, StateIsReady)
         .WillByDefault(Invoke(default_, &PinWeaverManager::StateIsReady));
+    ON_CALL(*this, HasAnyCredential)
+        .WillByDefault(Invoke(default_, &PinWeaverManager::HasAnyCredential));
     ON_CALL(*this, InsertCredential)
         .WillByDefault(Invoke(default_, &PinWeaverManager::InsertCredential));
     ON_CALL(*this, CheckCredential)
@@ -52,6 +54,7 @@ class MockPinWeaverManager : public PinWeaverManager {
   }
 
   MOCK_METHOD(Status, StateIsReady, (), (override));
+  MOCK_METHOD(StatusOr<bool>, HasAnyCredential, (), (override));
   MOCK_METHOD(StatusOr<uint64_t>,
               InsertCredential,
               (const std::vector<hwsec::OperationPolicySetting>& policies,

@@ -39,6 +39,10 @@ Status PinWeaverManagerFrontendImpl::Initialize() const {
   return middleware_.CallSync<&Backend::PinWeaverManager::StateIsReady>();
 }
 
+StatusOr<bool> PinWeaverManagerFrontendImpl::HasAnyCredential() const {
+  return middleware_.CallSync<&Backend::PinWeaverManager::HasAnyCredential>();
+}
+
 StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertCredential(
     const std::vector<OperationPolicySetting>& policies,
     const brillo::SecureBlob& le_secret,

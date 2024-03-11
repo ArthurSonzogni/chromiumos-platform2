@@ -287,6 +287,12 @@ std::optional<SignInHashTree::Label> SignInHashTree::GetFreeLabel() {
   return Label(new_label, leaf_length_, bits_per_level_);
 }
 
+bool SignInHashTree::HasAnyUsedLabel() {
+  std::vector<uint64_t> used_keys;
+  plt_.GetUsedKeys(used_keys);
+  return !used_keys.empty();
+}
+
 void SignInHashTree::GetRootHash(std::vector<uint8_t>& root_hash) {
   root_hash.assign(GetInnerHashArrayPointer(0),
                    GetInnerHashArrayPointer(0) + kHashSize);

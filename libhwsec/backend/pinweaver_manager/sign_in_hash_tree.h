@@ -260,6 +260,9 @@ class SignInHashTree {
   // bits_per_per_level_ = 0);
   std::optional<Label> GetFreeLabel();
 
+  // Returns whether there is any used label in the tree.
+  bool HasAnyUsedLabel();
+
   // Fills the current root hash from |inner_hash_array_| into |root_hash|.
   // Note that it DOESN'T regenerate the entire |inner_hash_array_|, the
   // caller need to additionally call GenerateInnerHashArray() or similar
