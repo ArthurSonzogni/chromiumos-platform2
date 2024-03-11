@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTOHOME_METRICS_H_
 
 #include <string>
+#include <string_view>
 
 #include <base/files/file.h>
 #include <base/time/time.h>
@@ -252,8 +253,12 @@ enum class DownloadsMigrationStatus {
   // folder somehow reappeared.
   kReappeared = 8,
 
+  // It looks like a newly created cryptohome. There is nothing to move, and the
+  // xattr is set to "migrated".
+  kSetXattrForNewCryptoHome = 9,
+
   // Maximum enum value. Must be updated if more values are added.
-  kMaxValue = kReappeared
+  kMaxValue = kSetXattrForNewCryptoHome
 };
 
 // Various counts for ReportVaultKeysetMetrics.
@@ -549,6 +554,15 @@ void ReportMaskedDownloadsItems(int num_items);
 // Reports the overall status after attempting to migrate a user's ~/Downloads
 // to ~/MyFiles/Downloads.
 void ReportDownloadsMigrationStatus(DownloadsMigrationStatus status);
+
+// Reports the success or failure of the given `operation` as UMA histogram
+// `"Cryptohome.DownloadsBindMountMigration." + operation`. If `success` is
+// true, this function records a success event, ie an error with the value 0. If
+// `success` is false, this function records an error with the current `errno`
+// value. In any case, this function preserves the current `errno` value, so
+// that it can be further used.
+void ReportDownloadsMigrationOperation(std::string_view operation,
+                                       bool success);
 
 // Cryptohome Error Reporting related UMAs
 

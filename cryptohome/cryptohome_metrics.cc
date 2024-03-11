@@ -4,6 +4,7 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 
+#include <cerrno>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -684,9 +685,20 @@ void ReportMaskedDownloadsItems(int num_items) {
                        kNumBuckets);
 }
 
-void ReportDownloadsMigrationStatus(DownloadsMigrationStatus status) {
+void ReportDownloadsMigrationStatus(const DownloadsMigrationStatus status) {
   if (g_metrics) {
     g_metrics->SendEnumToUMA(kDownloadsMigrationStatus, status);
+  }
+}
+
+void ReportDownloadsMigrationOperation(const std::string_view operation,
+                                       const bool success) {
+  if (g_metrics) {
+    const int error = errno;
+    g_metrics->SendSparseToUMA(
+        base::StrCat({"Cryptohome.DownloadsBindMountMigration.", operation}),
+        success ? 0 : error);
+    errno = error;
   }
 }
 
