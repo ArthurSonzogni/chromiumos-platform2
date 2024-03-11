@@ -214,6 +214,40 @@ bool ParseSegmentationModelType(const std::string& model,
   return true;
 }
 
+class EffectsPipelineTracker {
+ public:
+  explicit EffectsPipelineTracker(EffectsMetricsData& metrics)
+      : metrics_(metrics) {}
+
+  void Reset() {
+    first_frame_received_ = false;
+    dropped_frame_count_ = 0;
+  }
+
+  void TrackDroppedFrame() {
+    dropped_frame_count_++;
+    if (first_frame_received_) {
+      LOGF(ERROR) << "Failed to process effects pipeline";
+      metrics_.RecordError(CameraEffectError::kPipelineFailed);
+    } else {
+      VLOGF(1) << "Failed to process effects pipeline at startup";
+    }
+  }
+
+  void TrackProcessedFrame() {
+    if (!first_frame_received_) {
+      first_frame_received_ = true;
+      LOGF(INFO) << "Dropped frames count at effects pipeline startup: "
+                 << dropped_frame_count_;
+    }
+  }
+
+ private:
+  size_t dropped_frame_count_ = 0;
+  std::atomic<bool> first_frame_received_ = false;
+  EffectsMetricsData metrics_;
+};
+
 }  // namespace
 
 class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
@@ -407,6 +441,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   EffectsMetricsData metrics_;
   std::unique_ptr<EffectsMetricsUploader> metrics_uploader_;
+  EffectsPipelineTracker effects_pipeline_tracker_;
 
   std::unique_ptr<base::OneShotTimer> marker_file_timer_;
 };
@@ -470,7 +505,8 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
       runtime_options_(runtime_options),
       still_capture_processor_(std::move(still_capture_processor)),
       gl_thread_("EffectsGlThread"),
-      set_effect_callback_(callback) {
+      set_effect_callback_(callback),
+      effects_pipeline_tracker_(metrics_) {
   DETACH_FROM_THREAD(gl_thread_checker_);
 
   CHECK(gl_thread_.Start());
@@ -723,6 +759,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
 void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   reprocessing_request_tracker_.Reset();
+  effects_pipeline_tracker_.Reset();
   process_contexts_.clear();
   still_capture_processor_->Reset();
   base::AutoLock lock(stream_contexts_lock_);
@@ -1145,8 +1182,7 @@ void EffectsStreamManipulatorImpl::RenderEffect(
                                it->second->rgba_image.texture().handle(),
                                it->second->rgba_image.texture().width(),
                                it->second->rgba_image.texture().height())) {
-    LOGF(ERROR) << "Failed to process effects pipeline";
-    metrics_.RecordError(CameraEffectError::kPipelineFailed);
+    effects_pipeline_tracker_.TrackDroppedFrame();
     process_contexts_.erase(it);
   }
 }
@@ -1169,6 +1205,7 @@ void EffectsStreamManipulatorImpl::OnFrameProcessed(int64_t timestamp,
                                                     uint32_t width,
                                                     uint32_t height) {
   TRACE_EFFECTS("timestamp", timestamp);
+  effects_pipeline_tracker_.TrackProcessedFrame();
 
   // Synchronously wait until the texture is consumed before the pipeline
   // recycles it.
