@@ -63,8 +63,7 @@ ProcessManager::ProcessManager(const base::FilePath& proc) : proc_path_(proc) {}
 
 std::vector<ActiveMount> ProcessManager::GetMountsForProcess(pid_t pid) {
   base::FilePath mounts_for_process =
-      proc_path_.AppendASCII(base::NumberToString(pid))
-          .AppendASCII(kMountInfoPath);
+      proc_path_.Append(base::NumberToString(pid)).Append(kMountInfoPath);
   std::string mount_info;
   std::vector<ActiveMount> ret;
 

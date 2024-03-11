@@ -41,60 +41,59 @@ class ProcessManagerTest : public ::testing::Test {
                     const std::vector<OpenFileDescriptor>& fds,
                     const std::vector<OpenFileDescriptor>& maps) {
     base::FilePath pid_dir =
-        tmp_dir_.GetPath().AppendASCII(base::NumberToString(pid));
+        tmp_dir_.GetPath().Append(base::NumberToString(pid));
     ASSERT_TRUE(base::CreateDirectory(pid_dir));
 
     // Set up mountinfo.
-    base::FilePath mountinfo = pid_dir.AppendASCII("mountinfo");
+    base::FilePath mountinfo = pid_dir.Append("mountinfo");
     ASSERT_TRUE(base::WriteFile(mountinfo, mountinfo_contents));
 
     // Set up comm for the process.
-    base::FilePath comm_path = pid_dir.AppendASCII("comm");
+    base::FilePath comm_path = pid_dir.Append("comm");
     ASSERT_TRUE(base::WriteFile(comm_path, comm));
 
     // Set up file descriptors.
-    base::FilePath fd_dir = pid_dir.AppendASCII("fd");
+    base::FilePath fd_dir = pid_dir.Append("fd");
     ASSERT_TRUE(base::CreateDirectory(fd_dir));
 
     // Set up file descriptors. Add a few fake descriptors at the beginning to
     // test handling of stdin/stdout/pipes.
-    ASSERT_TRUE(base::WriteFile(fd_dir.AppendASCII("0"), "foo"));
-    ASSERT_TRUE(base::WriteFile(fd_dir.AppendASCII("1"), "bar"));
-    ASSERT_TRUE(base::WriteFile(fd_dir.AppendASCII("2"), "baz"));
+    ASSERT_TRUE(base::WriteFile(fd_dir.Append("0"), "foo"));
+    ASSERT_TRUE(base::WriteFile(fd_dir.Append("1"), "bar"));
+    ASSERT_TRUE(base::WriteFile(fd_dir.Append("2"), "baz"));
 
     // Set up map_files.
-    base::FilePath map_files = pid_dir.AppendASCII("map_files");
+    base::FilePath map_files = pid_dir.Append("map_files");
     ASSERT_TRUE(base::WriteFile(map_files, "foo"));
 
     int current_fd = 3;
     // Target dir contains the targets for the symbolic links.
-    base::FilePath target_dir = tmp_dir_.GetPath().AppendASCII("targets");
+    base::FilePath target_dir = tmp_dir_.GetPath().Append("targets");
     ASSERT_TRUE(base::CreateDirectory(target_dir));
 
     for (auto& fd : fds) {
       base::FilePath symlink =
-          fd_dir.AppendASCII(base::NumberToString(current_fd++));
-      base::FilePath target = target_dir.AppendASCII(fd.path.value());
+          fd_dir.Append(base::NumberToString(current_fd++));
+      base::FilePath target = target_dir.Append(fd.path.value());
       ASSERT_TRUE(base::WriteFile(target, "foo"));
       ASSERT_TRUE(base::CreateSymbolicLink(target, symlink));
     }
 
     for (auto& map : maps) {
-      base::FilePath symlink = fd_dir.AppendASCII(map.path.value());
-      base::FilePath target = target_dir.AppendASCII(map.path.value());
+      base::FilePath symlink = fd_dir.Append(map.path.value());
+      base::FilePath target = target_dir.Append(map.path.value());
       ASSERT_TRUE(base::WriteFile(target, "foo"));
       ASSERT_TRUE(base::CreateSymbolicLink(target, symlink));
     }
 
     // Set up mount namespace symlink. Re-use the fd directory for storing
     // the target.
-    base::FilePath ns_dir = pid_dir.AppendASCII("ns");
+    base::FilePath ns_dir = pid_dir.Append("ns");
     ASSERT_TRUE(base::CreateDirectory(ns_dir));
 
-    base::FilePath mnt_ns_path = target_dir.AppendASCII(mnt_ns);
+    base::FilePath mnt_ns_path = target_dir.Append(mnt_ns);
     ASSERT_TRUE(base::WriteFile(mnt_ns_path, "foo"));
-    ASSERT_TRUE(
-        base::CreateSymbolicLink(mnt_ns_path, ns_dir.AppendASCII("mnt")));
+    ASSERT_TRUE(base::CreateSymbolicLink(mnt_ns_path, ns_dir.Append("mnt")));
   }
 
   void SetUp() override {
@@ -115,8 +114,8 @@ class ProcessManagerTest : public ::testing::Test {
 };
 
 TEST_F(ProcessManagerTest, InvalidProcessTest) {
-  ASSERT_TRUE(base::WriteFile(
-      tmp_dir_.GetPath().AppendASCII("proc").AppendASCII("123"), "foo", 3));
+  ASSERT_TRUE(base::WriteFile(tmp_dir_.GetPath().Append("proc").Append("123"),
+                              "foo", 3));
   EXPECT_EQ(pm_->GetProcessList(true, true).size(), 1);
 }
 
