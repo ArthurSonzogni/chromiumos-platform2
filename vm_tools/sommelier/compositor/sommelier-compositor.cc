@@ -739,6 +739,9 @@ void sl_host_surface_commit(struct wl_client* client,
         }
       } else {
         // Reset the host viewport if client viewport does not exist
+        // TODO(b/328699937): There may be a bug/race in this section with
+        // another part of Sommelier, leading to buffer size mismatch in
+        // fullscreen mode.
         wl_fixed_t negative_one = wl_fixed_from_int(-1);
         wp_viewport_set_source(host->viewport, negative_one, negative_one,
                                negative_one, negative_one);
