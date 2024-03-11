@@ -17,5 +17,5 @@ criteria: |
   ML Service for a decision about whether to dim the screen
 cases:
   - id: "SmartDim"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...

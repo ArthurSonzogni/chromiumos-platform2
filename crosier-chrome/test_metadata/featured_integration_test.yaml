@@ -18,11 +18,11 @@ criteria: |
   Verifies features are enabled/disabled as expected and parameters are unchanged
 cases:
   - id: "FeatureLibraryLateBoot/experiment_default"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
   - id: "FeatureLibraryLateBoot/experiment_disabled_without_params"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
   - id: "FeatureLibraryLateBoot/experiment_enabled_with_params"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
   - id: "FeatureLibraryLateBoot/experiment_enabled_without_params"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...

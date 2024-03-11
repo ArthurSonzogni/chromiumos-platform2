@@ -20,7 +20,7 @@ criteria: |
   tested separately in the CloseLidPref test below.
 cases:
   - id: "CloseLidDbusIntegration"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
   - id: "CloseLidPref"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...

@@ -16,5 +16,5 @@ criteria: |
   The test installs a component update and uses it to make an ML-based dimming decision.
 cases:
   - id: "SmartDim"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...

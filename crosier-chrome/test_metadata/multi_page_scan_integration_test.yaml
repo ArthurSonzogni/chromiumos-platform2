@@ -16,5 +16,5 @@ criteria: |
   Perform a multi page scan and verify that the scan was performed successfully.
 cases:
   - id: "MultiPageScan"
-    tags: ["crosier:crosierdemosuite"]
+    tags: ["crosier:crosierdemosuite", "crosier:cq"]
 ...
