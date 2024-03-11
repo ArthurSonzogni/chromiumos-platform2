@@ -27,8 +27,10 @@
 #include "cros-camera/common_types.h"
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
 #include "features/auto_framing/auto_framing_client.h"
-#endif
+#endif  // USE_CAMERA_FEATURE_AUTO_FRAMING
+#if USE_DLC
 #include "features/super_resolution/single_frame_upsampler.h"
+#endif  // USE_DLC
 
 namespace cros {
 
@@ -193,8 +195,10 @@ class FramingStreamManipulator : public StreamManipulator {
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   StreamManipulator::Callbacks callbacks_;
 
+#if USE_DLC
   // SingleFrameUpsampler instance.
   std::unique_ptr<SingleFrameUpsampler> single_frame_upsampler_;
+#endif  // USE_DLC
 
   std::unique_ptr<CameraMetrics> camera_metrics_;
 
@@ -223,7 +227,7 @@ class FramingStreamManipulator : public StreamManipulator {
 
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
   AutoFramingClient auto_framing_client_;
-#endif
+#endif  // USE_CAMERA_FEATURE_AUTO_FRAMING
 
   std::unique_ptr<CameraBufferPool> full_frame_buffer_pool_;
   std::unique_ptr<CameraBufferPool> still_yuv_buffer_pool_;

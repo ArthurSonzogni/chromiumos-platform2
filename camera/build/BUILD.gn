@@ -45,6 +45,7 @@ config("cros_camera_common") {
     "USE_CAMERA_FEATURE_FRAME_ANNOTATOR=${use.camera_feature_frame_annotator}",
     "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
     "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
+    "USE_DLC=${use.dlc}",
     "USE_IPU6=${use.ipu6}",
     "USE_IPU6EP=${use.ipu6ep}",
     "USE_IPU6EPMTL=${use.ipu6epmtl}",
