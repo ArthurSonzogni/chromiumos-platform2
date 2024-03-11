@@ -23,9 +23,9 @@
           File descriptor for input.
         </tp:docstring>
       </arg>
-      <arg name="outfd" type="h" direction="in">
+      <arg name="eventfd" type="h" direction="in">
         <tp:docstring>
-          File descriptor to send output to.
+          Event FD to listen for SIGWINCH events.
         </tp:docstring>
       </arg>
       <arg name="handle" type="s" direction="out">

@@ -136,7 +136,7 @@ bool DebugdDBusAdaptor::CroshShellStart(
     const base::ScopedFD& shell_lifeline_fd,
     const base::ScopedFD& caller_lifeline_fd,
     const base::ScopedFD& infd,
-    const base::ScopedFD& outfd,
+    const base::ScopedFD& eventfd,
     std::string* handle) {
   // TODO(b/315342353): utilize caller_lifeline_fd.
   if (!dev_features_tool_wrapper_->restriction().InDevMode()) {
@@ -145,7 +145,7 @@ bool DebugdDBusAdaptor::CroshShellStart(
     return false;
   }
 
-  return crosh_shell_tool_->Run(shell_lifeline_fd, infd, outfd, handle, error);
+  return crosh_shell_tool_->Run(shell_lifeline_fd, infd, eventfd, handle, error);
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,

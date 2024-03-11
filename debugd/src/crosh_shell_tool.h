@@ -26,7 +26,7 @@ class CroshShellTool : public SubprocessTool {
 
   bool Run(const base::ScopedFD& shell_lifeline_fd,
            const base::ScopedFD& infd,
-           const base::ScopedFD& outfd,
+           const base::ScopedFD& eventfd,
            std::string* out_id,
            brillo::ErrorPtr* error);
 };

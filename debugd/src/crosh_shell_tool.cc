@@ -7,6 +7,7 @@
 #include "debugd/src/error_utils.h"
 
 #include <fcntl.h>
+#include <poll.h>
 #include <span>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
@@ -60,9 +61,46 @@ void SetOwnerToChronos(const base::ScopedFD& fd) {
   }
 }
 
+// Sets up a separate process to listen for SIGWINCH on the provided eventfd.
+//
+// When an event is received, an ioctl() is triggered so that any foreground
+// processes the shell has launched can resize correctly.
+void SigwinchThread(int fd, int primary_fd, int eventfd) {
+  switch (fork()) {
+    case -1:
+      PLOG(ERROR) << "fork " << kCroshSyscallErrorString;
+      exit(1);
+    case 0:
+      // Child.
+
+      pollfd pfd = {eventfd, POLLIN, 0};
+      while (true) {
+        int poll_result = poll(&pfd, 1, -1);
+
+        if (poll_result > 0 && pfd.revents & POLLIN) {
+          winsize window_size;
+          // Get the window size with TIOCGWINSZ, then set it with TIOCSWINSZ
+          // ioctl() calls so that the shell can resize child programs.
+          if (ioctl(fd, TIOCGWINSZ, &window_size) != 0) {
+            PLOG(ERROR) << kCroshIoctlErrorString;
+            exit(1);
+          }
+          if (ioctl(primary_fd, TIOCSWINSZ, &window_size) != 0) {
+            PLOG(ERROR) << kCroshIoctlErrorString;
+            exit(1);
+          }
+        }
+      }
+
+      // For the default parent case, we just return because we don't need to
+      // use the child PID.
+  }
+}
+
 // Sets up a pseudo terminal and exec’s into a shell process.
 void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
-                         const base::ScopedFD& infd) {
+                         const base::ScopedFD& infd,
+                         const base::ScopedFD& eventfd) {
   if (!shell_lifeline_fd.is_valid()) {
     PLOG(ERROR) << "Invalid lifeline fd provided";
     exit(1);
@@ -172,6 +210,10 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
         PLOG(ERROR) << "execl " << kCroshSyscallErrorString;
         exit(1);
       }
+      break;
+    default:
+      // Parent.
+      SigwinchThread(fd, primary_fd, eventfd.get());
   }
 
   scoped_subordinate_fd.reset();
@@ -250,11 +292,9 @@ void ReapChildProcess(const pid_t pid) {
 
 bool CroshShellTool::Run(const base::ScopedFD& shell_lifeline_fd,
                          const base::ScopedFD& infd,
-                         const base::ScopedFD& outfd,
+                         const base::ScopedFD& eventfd,
                          std::string* out_id,
                          brillo::ErrorPtr* error) {
-  // TODO(akhna): remove outfd parameter.
-
   // Fork so the D-Bus call can return.
   const pid_t pid = fork();
   switch (pid) {
@@ -266,7 +306,7 @@ bool CroshShellTool::Run(const base::ScopedFD& shell_lifeline_fd,
       // Child.
 
       // SetUpPseudoTerminal() will exit() for error conditions.
-      SetUpPseudoTerminal(shell_lifeline_fd, infd);
+      SetUpPseudoTerminal(shell_lifeline_fd, infd, eventfd);
       break;
     default:
       // Parent.
