@@ -2,7 +2,6 @@
 name = "memd"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
-build = "build.rs"
 include = ["Cargo.toml", "*.rs", "src/**/*"]
 edition = "2021"
 
@@ -17,6 +16,7 @@ nix = "0.26"
 procfs = "0.15"
 protobuf = "3.2"
 syslog = "6.0.1"
+system_api = { path = "../../system_api" } # provided by ebuild
 tempfile = "3.0"
 time = "0.3"
 

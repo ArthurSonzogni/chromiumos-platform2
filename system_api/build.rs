@@ -112,6 +112,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "system_api/dbus/printscanmgr/printscanmgr_service.proto",
     ),
     (
+        "metrics_event",
+        "system_api/dbus/metrics_event/metrics_event.proto",
+    ),
+    (
         "recoverable_key_store",
         "system_api/dbus/cryptohome/recoverable_key_store.proto",
     ),

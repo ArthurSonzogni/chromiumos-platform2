@@ -25,10 +25,6 @@ extern crate procfs;
 extern crate syslog;
 extern crate tempfile;
 
-extern crate protobuf; // needed by proto_include.rs
-include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
-use crate::plugin_proto::event;
-
 #[cfg(not(test))]
 use dbus::ffidisp::{BusType, Connection, ConnectionItem, WatchEvent};
 #[cfg(not(test))]
@@ -49,6 +45,7 @@ use chrono::DateTime;
 use chrono::Local;
 use nix::sys::select;
 use procfs::LoadAverage;
+use system_api::metrics_event;
 use tempfile::TempDir;
 
 #[cfg(test)]
@@ -536,8 +533,10 @@ trait Dbus {
     // Processes incoming dbus events as indicated by |watcher|.  Returns
     // vectors of tab discards reported by chrome, and OOM kills reported by
     // the anomaly detector.
-    fn process_dbus_events(&mut self, watcher: &mut FileWatcher)
-        -> Result<Vec<(event::Type, i64)>>;
+    fn process_dbus_events(
+        &mut self,
+        watcher: &mut FileWatcher,
+    ) -> Result<Vec<(metrics_event::event::Type, i64)>>;
 }
 
 #[cfg(not(test))]
@@ -566,8 +565,8 @@ impl Dbus for GenuineDbus {
     fn process_dbus_events(
         &mut self,
         watcher: &mut FileWatcher,
-    ) -> Result<Vec<(event::Type, i64)>> {
-        let mut events: Vec<(event::Type, i64)> = Vec::new();
+    ) -> Result<Vec<(metrics_event::event::Type, i64)>> {
+        let mut events: Vec<(metrics_event::event::Type, i64)> = Vec::new();
         for &fd in self.fds.iter() {
             if !watcher.has_fired_fd(fd)? {
                 continue;
@@ -592,7 +591,7 @@ impl Dbus for GenuineDbus {
                     // Read first item in signal message as byte blob and
                     // parse blob into protobuf.
                     let raw_buffer: Vec<u8> = message.read1()?;
-                    let mut protobuf = plugin_proto::Event::new();
+                    let mut protobuf = metrics_event::Event::new();
                     protobuf.merge_from_bytes(&raw_buffer)?;
 
                     let event_type = protobuf.type_.enum_value_or_default();
@@ -923,9 +922,9 @@ impl<'a> Sampler<'a> {
                 }
                 for event in events {
                     let sample_type = match event.0 {
-                        event::Type::TAB_DISCARD => SampleType::TabDiscard,
-                        event::Type::OOM_KILL => SampleType::OomKillBrowser,
-                        event::Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
+                        metrics_event::event::Type::TAB_DISCARD => SampleType::TabDiscard,
+                        metrics_event::event::Type::OOM_KILL => SampleType::OomKillBrowser,
+                        metrics_event::event::Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
                         _ => {
                             warn!("unknown event type {:?}", event.0);
                             continue;
