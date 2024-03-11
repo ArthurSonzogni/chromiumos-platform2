@@ -1781,3 +1781,16 @@ message GetRecoverableKeyStoresReply {
   CryptohomeErrorInfo error_info = 2;
   repeated cryptohome.RecoverableKeyStore key_stores = 3;
 }
+
+// GetPinWeaverInfo returns the device PinWeaver information.
+message GetPinWeaverInfoRequest {
+  // No parameter is needed to retrieve PinWeaver info.
+}
+
+// The reply message of GetPinWeaverInfo.
+message GetPinWeaverInfoReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+  // Whether there's any PinWeaver credential on the device.
+  bool has_credential = 3;
+}

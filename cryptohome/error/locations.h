@@ -1349,10 +1349,6 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   /* ./auth_session.cc */
   kLocAuthSessionPrepareChapsKeyNoFileSystemKeyset = 1700,
-  //////////////////////////////////////////////////
-  //// This is a separator block at value 1900
-  //// See location_db.py for more info.
-  //////////////////////////////////////////////////
   /* ./cryptorecovery/recovery_crypto_impl.cc */
   kLocRecoveryCryptoNoContextInDecryptResponse = 1900,
   /* ./cryptorecovery/recovery_crypto_impl.cc */
@@ -2079,6 +2075,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoverableKeyStoreCreateDontCreate = 3450,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintIsExpiredNoExpiration = 3451,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetPinWeaverInfoIsEnabledFailed = 3452,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetPinWeaverInfoCheckFailed = 3453,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

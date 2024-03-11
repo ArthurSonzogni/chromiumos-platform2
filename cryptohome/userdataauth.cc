@@ -2535,6 +2535,41 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::GetPinWeaverInfoReply UserDataAuth::GetPinWeaverInfo() {
+  user_data_auth::GetPinWeaverInfoReply reply;
+
+  hwsec::StatusOr<bool> enabled = hwsec_pw_manager_->IsEnabled();
+  if (!enabled.ok()) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetPinWeaverInfoIsEnabledFailed),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE),
+        &reply);
+    return reply;
+  }
+  if (!*enabled) {
+    PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+    reply.set_has_credential(false);
+    return reply;
+  }
+
+  hwsec::StatusOr<bool> has_cred = hwsec_pw_manager_->HasAnyCredential();
+  if (!has_cred.ok()) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetPinWeaverInfoCheckFailed),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE),
+        &reply);
+    return reply;
+  }
+  reply.set_has_credential(*has_cred);
+
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
+}
+
 bool UserDataAuth::OwnerUserExists() {
   AssertOnOriginThread();
   ObfuscatedUsername owner;

@@ -1340,6 +1340,27 @@ void CryptohomeMiscAdaptor::GetRsuDeviceId(
   response->Return(reply);
 }
 
+void CryptohomeMiscAdaptor::GetPinWeaverInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetPinWeaverInfoReply>> response,
+    const user_data_auth::GetPinWeaverInfoRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &CryptohomeMiscAdaptor::DoGetPinWeaverInfo,
+          weak_factory_.GetWeakPtr(),
+          ThreadSafeDBusMethodResponse<user_data_auth::GetPinWeaverInfoReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void CryptohomeMiscAdaptor::DoGetPinWeaverInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetPinWeaverInfoReply>> response,
+    const user_data_auth::GetPinWeaverInfoRequest& in_request) {
+  response->Return(service_->GetPinWeaverInfo());
+}
+
 void UserDataAuthAdaptor::GetAuthSessionStatus(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetAuthSessionStatusReply>> response,

@@ -726,6 +726,15 @@ class CryptohomeMiscAdaptor
           user_data_auth::GetRsuDeviceIdReply>> response,
       const user_data_auth::GetRsuDeviceIdRequest& in_request) override;
 
+  void GetPinWeaverInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetPinWeaverInfoReply>> response,
+      const user_data_auth::GetPinWeaverInfoRequest& in_request) override;
+  void DoGetPinWeaverInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetPinWeaverInfoReply>> response,
+      const user_data_auth::GetPinWeaverInfoRequest& in_request);
+
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
 

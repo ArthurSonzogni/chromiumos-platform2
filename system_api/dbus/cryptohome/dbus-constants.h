@@ -100,6 +100,7 @@ inline constexpr char kGetLoginStatus[] = "GetLoginStatus";
 inline constexpr char kLockToSingleUserMountUntilReboot[] =
     "LockToSingleUserMountUntilReboot";
 inline constexpr char kGetRsuDeviceId[] = "GetRsuDeviceId";
+inline constexpr char kGetPinWeaverInfo[] = "GetPinWeaverInfo";
 
 // Signals of the |kUserDataAuthInterface| interface:
 inline constexpr char kDircryptoMigrationProgress[] =

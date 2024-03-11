@@ -1551,6 +1551,41 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   EXPECT_FALSE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 }
 
+TEST_F(UserDataAuthTest, GetPinWeaverInfo) {
+  // Case 1: PinWeaver has credential.
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, IsEnabled).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, HasAnyCredential)
+      .WillOnce(Return(true));
+
+  auto reply = userdataauth_->GetPinWeaverInfo();
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(reply.has_credential());
+
+  // Case 2: PinWeaver has no credentials.
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, IsEnabled).WillOnce(Return(true));
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, HasAnyCredential)
+      .WillOnce(Return(false));
+
+  reply = userdataauth_->GetPinWeaverInfo();
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(reply.has_credential());
+
+  // Case 3: PinWeaver is not enabled.
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, IsEnabled).WillOnce(Return(false));
+
+  reply = userdataauth_->GetPinWeaverInfo();
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(reply.has_credential());
+
+  // Case 4: Get PinWeaver status failed.
+  EXPECT_CALL(system_apis_.hwsec_pw_manager, IsEnabled)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  reply = userdataauth_->GetPinWeaverInfo();
+  EXPECT_EQ(reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+}
+
 // ======================= CleanUpStaleMounts tests ==========================
 
 namespace {

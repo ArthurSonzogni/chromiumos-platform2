@@ -389,6 +389,9 @@ class UserDataAuth {
   // Returns whether ARC quota is supported.
   bool IsArcQuotaSupported();
 
+  // Returns the device PinWeaver information.
+  user_data_auth::GetPinWeaverInfoReply GetPinWeaverInfo();
+
   // =============== Miscellaneous ===============
 
   // This will be called after hwsec is ready.

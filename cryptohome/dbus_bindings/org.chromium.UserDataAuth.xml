@@ -964,5 +964,18 @@ do.
                     value="user_data_auth::GetRsuDeviceIdReply" />
       </arg>
     </method>
+
+    <method name="GetPinWeaverInfo">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetPinWeaverInfoRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetPinWeaverInfoReply" />
+      </arg>
+    </method>
   </interface>
 </node>
