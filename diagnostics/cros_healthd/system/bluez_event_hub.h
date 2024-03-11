@@ -7,11 +7,21 @@
 
 #include <string>
 
+#include <base/callback_list.h>
 #include <base/functional/callback.h>
 #include <dbus/object_path.h>
-#include <base/callback_list.h>
 
-#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+namespace org {
+class bluezProxy;
+
+namespace bluez {
+class Adapter1ProxyInterface;
+class AdminPolicyStatus1ProxyInterface;
+class Battery1ProxyInterface;
+class Device1ProxyInterface;
+}  // namespace bluez
+
+}  // namespace org
 
 namespace diagnostics {
 

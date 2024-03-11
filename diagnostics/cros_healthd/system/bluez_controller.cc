@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+
 namespace diagnostics {
 
 BluezController::BluezController(org::bluezProxy* bluez_proxy)

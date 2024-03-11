@@ -7,7 +7,17 @@
 
 #include <vector>
 
-#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+namespace org {
+class bluezProxy;
+
+namespace bluez {
+class Adapter1ProxyInterface;
+class AdminPolicyStatus1ProxyInterface;
+class Battery1ProxyInterface;
+class Device1ProxyInterface;
+}  // namespace bluez
+
+}  // namespace org
 
 namespace diagnostics {
 

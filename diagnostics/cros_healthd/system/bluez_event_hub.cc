@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+
 namespace diagnostics {
 
 BluezEventHub::BluezEventHub(org::bluezProxy* bluez_proxy) {

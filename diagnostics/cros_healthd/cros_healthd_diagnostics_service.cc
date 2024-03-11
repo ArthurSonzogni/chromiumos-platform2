@@ -29,6 +29,7 @@
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"

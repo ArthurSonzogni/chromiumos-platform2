@@ -39,6 +39,7 @@
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 
 namespace diagnostics {

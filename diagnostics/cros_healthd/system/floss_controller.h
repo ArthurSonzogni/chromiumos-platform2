@@ -7,8 +7,19 @@
 
 #include <vector>
 
-#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
-#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
+namespace org::chromium::bluetooth {
+class BluetoothProxyInterface;
+class BluetoothAdminProxyInterface;
+class BluetoothQAProxyInterface;
+class BatteryManagerProxyInterface;
+class ManagerProxyInterface;
+class ObjectManagerProxy;
+
+namespace Manager {
+class ObjectManagerProxy;
+}  // namespace Manager
+
+}  // namespace org::chromium::bluetooth
 
 namespace diagnostics {
 

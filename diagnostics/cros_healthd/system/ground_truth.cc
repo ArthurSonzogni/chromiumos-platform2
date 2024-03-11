@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"

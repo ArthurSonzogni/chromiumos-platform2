@@ -11,13 +11,28 @@
 #include <vector>
 
 #include <base/callback_list.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
 #include <dbus/object_path.h>
 
-#include "diagnostics/cros_healthd/system/floss_callback_services.h"
-#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
-#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
+namespace org::chromium::bluetooth {
+class BluetoothProxyInterface;
+class BluetoothGattProxyInterface;
+class ManagerProxyInterface;
+class ObjectManagerProxy;
+
+namespace Manager {
+class ObjectManagerProxy;
+}  // namespace Manager
+
+}  // namespace org::chromium::bluetooth
 
 namespace diagnostics {
+class BluetoothCallbackService;
+class BluetoothConnectionCallbackService;
+class ManagerCallbackService;
+class ScannerCallbackService;
 
 namespace floss {
 

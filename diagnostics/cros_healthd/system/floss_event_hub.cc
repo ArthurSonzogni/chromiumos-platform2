@@ -11,7 +11,10 @@
 
 #include <base/strings/string_number_conversions.h>
 
+#include "diagnostics/cros_healthd/system/floss_callback_services.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 
 namespace diagnostics {
 

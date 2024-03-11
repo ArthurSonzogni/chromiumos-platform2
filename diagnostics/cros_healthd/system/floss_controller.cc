@@ -4,6 +4,9 @@
 
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
+
 namespace diagnostics {
 
 FlossController::FlossController(
