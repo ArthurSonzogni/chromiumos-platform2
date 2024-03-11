@@ -9,7 +9,6 @@ use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::iter::FromIterator;
 use std::os::fd::OwnedFd;
-use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::AsRawFd;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -25,6 +24,7 @@ use dbus::{
     Message,
 };
 use libchromeos::chromeos::is_dev_mode;
+use libchromeos::OpenSafelyOptions;
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
 
@@ -510,7 +510,7 @@ fn open_user_path(
     user_id_hash: &str,
     name: &str,
     removable_media: Option<&str>,
-    open_options: &OpenOptions,
+    open_options: &OpenSafelyOptions,
 ) -> Result<(File, PathBuf), Box<dyn Error>> {
     let path = match removable_media {
         Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT).join(media_path).join(name),
@@ -973,7 +973,7 @@ impl Methods {
                     user_id_hash,
                     source,
                     removable_media,
-                    OpenOptions::new().read(true),
+                    OpenSafelyOptions::new().read(true),
                 )?;
                 request.source_size = source_file.size;
                 Some(source_file.fd)
@@ -1052,7 +1052,7 @@ impl Methods {
             // We are not using `O_NOFOLLOW` in open flags, as `O_NOFOLLOW` only preempts symlinks
             // for the final part of the path, which is guaranteed to not exist by
             // `create_new(true)`.
-            OpenOptions::new()
+            OpenSafelyOptions::new()
                 .write(true)
                 .read(true)
                 .create_new(true)
@@ -1067,7 +1067,7 @@ impl Methods {
         user_id_hash: &str,
         name: &str,
         removable_media: Option<&str>,
-        open_options: &OpenOptions,
+        open_options: &OpenSafelyOptions,
     ) -> Result<InputFile, Box<dyn Error>> {
         let (file, _path) = open_user_path(user_id_hash, name, removable_media, open_options)?;
         InputFile::new(file)
@@ -1146,7 +1146,7 @@ impl Methods {
             user_id_hash,
             import_name,
             removable_media,
-            OpenOptions::new().read(true),
+            OpenSafelyOptions::new().read(true),
         )?;
 
         let mut request = ImportDiskImageRequest::new();
@@ -1428,7 +1428,9 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+                OpenSafelyOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NOFOLLOW),
             )?;
             request.fds.push(start_vm_request::FdType::KERNEL.into());
             owned_fds.push(file.fd);
@@ -1440,7 +1442,7 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new()
+                OpenSafelyOptions::new()
                     .read(true)
                     .write(user_disks.writable_rootfs)
                     .custom_flags(libc::O_NOFOLLOW),
@@ -1456,7 +1458,7 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new()
+                OpenSafelyOptions::new()
                     .read(true)
                     .write(true) // extra disk is writable
                     .custom_flags(libc::O_NOFOLLOW),
@@ -1471,7 +1473,9 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+                OpenSafelyOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NOFOLLOW),
             )?;
             request.fds.push(start_vm_request::FdType::INITRD.into());
             owned_fds.push(file.fd);
@@ -1483,7 +1487,9 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW),
+                OpenSafelyOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NOFOLLOW),
             )?;
             request.fds.push(start_vm_request::FdType::BIOS.into());
             owned_fds.push(file.fd);
@@ -1495,7 +1501,7 @@ impl Methods {
                 user_id_hash,
                 &path,
                 None,
-                OpenOptions::new()
+                OpenSafelyOptions::new()
                     .read(true)
                     .write(true)
                     .custom_flags(libc::O_NOFOLLOW),
@@ -2042,7 +2048,7 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
 
-        let response:  AttachKeyResponse = self.sync_protobus_timeout(
+        let response: AttachKeyResponse = self.sync_protobus_timeout(
             Message::new_method_call(
                 VM_CONCIERGE_SERVICE_NAME,
                 VM_CONCIERGE_SERVICE_PATH,
@@ -2665,7 +2671,10 @@ impl Methods {
         hidraw_device: &str,
     ) -> Result<u8, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
-        let hidraw_file = OpenOptions::new().read(true).write(true).open(hidraw_device)?;
+        let hidraw_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(hidraw_device)?;
         let hidraw_fd = OwnedFd::from(hidraw_file);
         self.attach_key(vm_name, user_id_hash, hidraw_fd)
     }
