@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <openssl/evp.h>
 #include <openssl/rsa.h>
 
 #include "policy/device_policy_impl.h"
@@ -102,8 +103,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
 
     brillo::Blob policy_data = proto_generator.Generate();
-    brillo::Blob signature =
-        policy::SignData(brillo::BlobToString(policy_data), *env.pkey());
+    brillo::Blob signature = policy::SignData(brillo::BlobToString(policy_data),
+                                              *env.pkey(), *EVP_sha1());
 
     brillo::Blob result = brillo::FuzzedProtoGenerator(
                               {std::move(policy_data), std::move(signature)},

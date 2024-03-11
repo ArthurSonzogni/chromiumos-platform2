@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
+#include <openssl/evp.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -176,13 +177,11 @@ CreateFullySetPolicyDataValue() {
 
 // Generates a private and public key pair, signs |policy_data_value|,
 // constructs PolicyFetchResponse proto.
-// Persists the proto to |policy_path|, and the public key to
-// |public_key_path|.
-// Returns false if fails to persist, true otherwise.
-bool SignAndPersist(
+std::optional<enterprise_management::PolicyFetchResponse>
+BuildPolicyFetchResponse(
     const enterprise_management::ChromeDeviceSettingsProto& policy_data_value,
-    const base::FilePath& policy_path,
-    const base::FilePath& public_key_path) {
+    const enterprise_management::PolicyFetchRequest::SignatureType
+        signature_type) {
   enterprise_management::PolicyData policy_data;
   policy_data.set_request_token("fake_request_token");
   policy_data.set_username("");
@@ -194,17 +193,40 @@ bool SignAndPersist(
   // TODO(b/328427460): Replace with hardcoded keys to avoid expensive
   // regeneration.
   const policy::KeyPair key_pair = policy::GenerateRsaKeyPair();
-  const brillo::Blob signature =
-      policy::SignData(serialized_policy_data, *key_pair.private_key);
+  const EVP_MD* digest_type = nullptr;
+  switch (signature_type) {
+    case enterprise_management::PolicyFetchRequest::SHA256_RSA:
+      digest_type = EVP_sha256();
+      break;
+    case enterprise_management::PolicyFetchRequest::SHA1_RSA:
+      digest_type = EVP_sha1();
+      break;
+    default:
+      return std::nullopt;
+  }
+  const brillo::Blob signature = policy::SignData(
+      serialized_policy_data, *key_pair.private_key, *digest_type);
   enterprise_management::PolicyFetchResponse policy_fetch_response;
   policy_fetch_response.set_policy_data(serialized_policy_data);
   policy_fetch_response.set_policy_data_signature(
       brillo::BlobToString(signature));
+  policy_fetch_response.set_policy_data_signature_type(signature_type);
   const std::string public_key = brillo::BlobToString(key_pair.public_key);
   policy_fetch_response.set_new_public_key(public_key);
 
+  return policy_fetch_response;
+}
+
+// Persists the proto to |policy_path|, and the public key to
+// |public_key_path|.
+// Returns false if fails to persist, true otherwise.
+bool PersistPolicyWithKey(
+    const enterprise_management::PolicyFetchResponse& policy_fetch_response,
+    const base::FilePath& policy_path,
+    const base::FilePath& public_key_path) {
   // Clients are expected to clean up in case of errors.
-  return base::WriteFile(public_key_path, public_key) &&
+  return base::WriteFile(public_key_path,
+                         policy_fetch_response.new_public_key()) &&
          base::WriteFile(policy_path,
                          policy_fetch_response.SerializeAsString());
 }
@@ -240,14 +262,36 @@ class LibpolicyTest : public testing::Test {
   base::ScopedTempDir tmp_dir_;
 };
 
+// Parametrized fixture to test that both SHA1_RSA and SHA256_RSA are
+// correctly supported.
+class LibpolicyParametrizedSignatureTypeTest
+    : public LibpolicyTest,
+      public testing::WithParamInterface<
+          enterprise_management::PolicyFetchRequest::SignatureType> {
+ public:
+  enterprise_management::PolicyFetchRequest::SignatureType GetSignatureType() {
+    return GetParam();
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    LibpolicyParametrizedSignatureTypeTest,
+    LibpolicyParametrizedSignatureTypeTest,
+    testing::Values(enterprise_management::PolicyFetchRequest::SHA1_RSA,
+                    enterprise_management::PolicyFetchRequest::SHA256_RSA));
+
 // Test that a policy file can be verified and parsed correctly. The file
 // contains all possible fields, so reading should succeed for all.
-TEST_F(LibpolicyTest, DevicePolicyAllSetTest) {
+TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   const enterprise_management::ChromeDeviceSettingsProto policy_data_value =
       CreateFullySetPolicyDataValue();
   const auto& policy_file = GetTmpDirPath().Append("policy");
   const auto& key_file = GetTmpDirPath().Append("key");
-  ASSERT_TRUE(SignAndPersist(policy_data_value, policy_file, key_file));
+  const auto policy_fetch_response =
+      BuildPolicyFetchResponse(policy_data_value, GetSignatureType());
+  ASSERT_TRUE(policy_fetch_response);
+  ASSERT_TRUE(
+      PersistPolicyWithKey(*policy_fetch_response, policy_file, key_file));
 
   PolicyProvider provider;
   provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
@@ -437,12 +481,16 @@ TEST_F(LibpolicyTest, DevicePolicyAllSetTest) {
 
 // Test the deprecated usb_detachable_whitelist using a copy of the test policy
 // data and removing the usb_detachable_allowlist.
-TEST_F(LibpolicyTest, DevicePolicyWhitelistTest) {
+TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyWhitelistTest) {
   const enterprise_management::ChromeDeviceSettingsProto policy_data_value =
       CreateFullySetPolicyDataValue();
   const auto& policy_file = GetTmpDirPath().Append("policy");
   const auto& key_file = GetTmpDirPath().Append("key");
-  ASSERT_TRUE(SignAndPersist(policy_data_value, policy_file, key_file));
+  const auto policy_fetch_response =
+      BuildPolicyFetchResponse(policy_data_value, GetSignatureType());
+  ASSERT_TRUE(policy_fetch_response);
+  ASSERT_TRUE(
+      PersistPolicyWithKey(*policy_fetch_response, policy_file, key_file));
 
   PolicyProvider provider;
   provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
@@ -473,11 +521,16 @@ TEST_F(LibpolicyTest, DevicePolicyWhitelistTest) {
 
 // Test that a policy file can be verified and parsed correctly. The file
 // contains none of the possible fields, so reading should fail for all.
-TEST_F(LibpolicyTest, DevicePolicyNoneSetTest) {
-  const enterprise_management::ChromeDeviceSettingsProto empty_policy_data;
+TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
+  const enterprise_management::ChromeDeviceSettingsProto
+      empty_policy_data_value;
   const auto& policy_file = GetTmpDirPath().Append("policy");
   const auto& key_file = GetTmpDirPath().Append("key");
-  ASSERT_TRUE(SignAndPersist(empty_policy_data, policy_file, key_file));
+  const auto policy_fetch_response =
+      BuildPolicyFetchResponse(empty_policy_data_value, GetSignatureType());
+  ASSERT_TRUE(policy_fetch_response);
+  ASSERT_TRUE(
+      PersistPolicyWithKey(*policy_fetch_response, policy_file, key_file));
 
   PolicyProvider provider;
   provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
@@ -542,6 +595,55 @@ TEST_F(LibpolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetHighestDeviceMinimumVersion(&device_minimum_version));
 }
 
+// Ensure that signature verification is enforced for a device in vanilla
+// enterprise mode.
+TEST_P(LibpolicyParametrizedSignatureTypeTest, DontSkipSignatureForEnterprise) {
+  const enterprise_management::ChromeDeviceSettingsProto
+      empty_policy_data_value;
+  const auto& policy_file = GetTmpDirPath().Append("policy");
+  const auto& key_file = GetTmpDirPath().Append("key");
+  const auto policy_fetch_response =
+      BuildPolicyFetchResponse(empty_policy_data_value, GetSignatureType());
+  ASSERT_TRUE(policy_fetch_response);
+  ASSERT_TRUE(
+      PersistPolicyWithKey(*policy_fetch_response, policy_file, key_file));
+  ASSERT_TRUE(brillo::DeleteFile(key_file));
+
+  PolicyProvider provider;
+  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeEnterprise, true),
+      policy_file, key_file, false));
+  provider.Reload();
+
+  // Ensure that unverifed policy is not loaded.
+  EXPECT_FALSE(provider.device_policy_is_loaded());
+}
+
+// Ensure that signature verification is enforced for a device in consumer mode.
+TEST_P(LibpolicyParametrizedSignatureTypeTest, DontSkipSignatureForConsumer) {
+  const enterprise_management::ChromeDeviceSettingsProto
+      empty_policy_data_value;
+  const auto& policy_file = GetTmpDirPath().Append("policy");
+  const auto& key_file = GetTmpDirPath().Append("key");
+  const auto policy_fetch_response =
+      BuildPolicyFetchResponse(empty_policy_data_value, GetSignatureType());
+  ASSERT_TRUE(policy_fetch_response);
+  ASSERT_TRUE(
+      PersistPolicyWithKey(*policy_fetch_response, policy_file, key_file));
+  ASSERT_TRUE(brillo::DeleteFile(key_file));
+
+  cryptohome::SerializedInstallAttributes install_attributes;
+  PolicyProvider provider;
+  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
+      std::make_unique<MockInstallAttributesReader>(install_attributes),
+      policy_file, key_file, false));
+  provider.Reload();
+
+  // Ensure that unverifed policy is not loaded.
+  EXPECT_FALSE(provider.device_policy_is_loaded());
+}
+
 // Verify that the library will correctly recognize and signal missing files.
 TEST_F(LibpolicyTest, DevicePolicyFailure) {
   LOG(INFO) << "Errors expected.";
@@ -559,44 +661,50 @@ TEST_F(LibpolicyTest, DevicePolicyFailure) {
   EXPECT_FALSE(provider.device_policy_is_loaded());
 }
 
-// Ensure that signature verification is enforced for a device in vanilla
-// enterprise mode.
-TEST_F(LibpolicyTest, DontSkipSignatureForEnterprise) {
+// If the `policy_data_signature_type` field is missing, should still
+// successfully fall back to SHA1_RSA.
+TEST_F(LibpolicyTest, DevicePolicyDefaultsSignatureTypeToSHA1) {
   const enterprise_management::ChromeDeviceSettingsProto
       empty_policy_data_value;
   const auto& policy_file = GetTmpDirPath().Append("policy");
   const auto& key_file = GetTmpDirPath().Append("key");
-  ASSERT_TRUE(SignAndPersist(empty_policy_data_value, policy_file, key_file));
-  ASSERT_TRUE(brillo::DeleteFile(key_file));
+  auto policy_fetch_response = BuildPolicyFetchResponse(
+      empty_policy_data_value,
+      enterprise_management::PolicyFetchRequest::SHA1_RSA);
+  ASSERT_TRUE(policy_fetch_response);
+  policy_fetch_response->clear_policy_data_signature_type();
 
   PolicyProvider provider;
-  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
-      std::make_unique<MockInstallAttributesReader>(
-          InstallAttributesReader::kDeviceModeEnterprise, true),
-      policy_file, key_file, false));
-  provider.Reload();
+  provider.SetDevicePolicyForTesting(
+      CreateDevicePolicyImpl(std::make_unique<MockInstallAttributesReader>(
+                                 cryptohome::SerializedInstallAttributes()),
+                             policy_file, key_file, true));
 
-  // Ensure that unverifed policy is not loaded.
+  // Even after reload the policy should still be not loaded.
+  ASSERT_FALSE(provider.Reload());
   EXPECT_FALSE(provider.device_policy_is_loaded());
 }
 
-// Ensure that signature verification is enforced for a device in consumer mode.
-TEST_F(LibpolicyTest, DontSkipSignatureForConsumer) {
+TEST_F(LibpolicyTest, DevicePolicySignatureTypeNoneFailure) {
   const enterprise_management::ChromeDeviceSettingsProto
       empty_policy_data_value;
   const auto& policy_file = GetTmpDirPath().Append("policy");
   const auto& key_file = GetTmpDirPath().Append("key");
-  ASSERT_TRUE(SignAndPersist(empty_policy_data_value, policy_file, key_file));
-  ASSERT_TRUE(brillo::DeleteFile(key_file));
+  auto policy_fetch_response = BuildPolicyFetchResponse(
+      empty_policy_data_value,
+      enterprise_management::PolicyFetchRequest::SHA1_RSA);
+  ASSERT_TRUE(policy_fetch_response);
+  policy_fetch_response->set_policy_data_signature_type(
+      enterprise_management::PolicyFetchRequest::NONE);
 
-  cryptohome::SerializedInstallAttributes install_attributes;
   PolicyProvider provider;
-  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
-      std::make_unique<MockInstallAttributesReader>(install_attributes),
-      policy_file, key_file, false));
-  provider.Reload();
+  provider.SetDevicePolicyForTesting(
+      CreateDevicePolicyImpl(std::make_unique<MockInstallAttributesReader>(
+                                 cryptohome::SerializedInstallAttributes()),
+                             policy_file, key_file, true));
 
-  // Ensure that unverifed policy is not loaded.
+  // Even after reload the policy should still be not loaded.
+  ASSERT_FALSE(provider.Reload());
   EXPECT_FALSE(provider.device_policy_is_loaded());
 }
 

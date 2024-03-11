@@ -25,7 +25,8 @@ BRILLO_EXPORT KeyPair GenerateRsaKeyPair();
 
 // Signs |data| with |private key|. Returns the signature.
 BRILLO_EXPORT brillo::Blob SignData(std::string_view data,
-                                    EVP_PKEY& private_key);
+                                    EVP_PKEY& private_key,
+                                    const EVP_MD& digest_type);
 }  // namespace policy
 
 #endif  // LIBBRILLO_POLICY_TESTS_CRYPTO_HELPERS_H_

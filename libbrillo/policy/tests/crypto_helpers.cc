@@ -33,11 +33,13 @@ KeyPair GenerateRsaKeyPair() {
   return KeyPair(std::move(private_key), public_key);
 }
 
-brillo::Blob SignData(std::string_view data, EVP_PKEY& private_key) {
+brillo::Blob SignData(std::string_view data,
+                      EVP_PKEY& private_key,
+                      const EVP_MD& digest_type) {
   crypto::ScopedEVP_MD_CTX ctx(EVP_MD_CTX_new());
   CHECK(ctx);
 
-  CHECK(EVP_SignInit(ctx.get(), EVP_sha1()));
+  CHECK(EVP_SignInit(ctx.get(), &digest_type));
   CHECK(EVP_SignUpdate(ctx.get(), data.data(), data.size()));
 
   brillo::Blob signature(EVP_PKEY_size(&private_key));

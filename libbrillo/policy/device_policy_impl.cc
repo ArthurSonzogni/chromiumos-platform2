@@ -62,16 +62,33 @@ bool ReadPublicKeyFromFile(const base::FilePath& key_file,
   return true;
 }
 
-// Verifies that the |signed_data| has correct |signature| with |public_key|.
-bool VerifySignature(const std::string& signed_data,
-                     const std::string& signature,
-                     const std::string& public_key) {
+// Verifies that the |signed_data| has correct |signature| with |public_key|
+// against |signature_type|.
+// |signature_type| of em::PolicyFetchRequest::NONE is rejected.
+bool VerifySignature(
+    const std::string& signed_data,
+    const std::string& signature,
+    const std::string& public_key,
+    const em::PolicyFetchRequest::SignatureType signature_type) {
   std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX*)> ctx(EVP_MD_CTX_new(),
                                                          EVP_MD_CTX_free);
   if (!ctx)
     return false;
 
-  const EVP_MD* digest = EVP_sha1();
+  const EVP_MD* digest_type = nullptr;
+  switch (signature_type) {
+    case em::PolicyFetchRequest::SHA256_RSA:
+      digest_type = EVP_sha256();
+      break;
+    case em::PolicyFetchRequest::SHA1_RSA:
+      digest_type = EVP_sha1();
+      break;
+    default:
+      // Treat `signature_type` of `em::PolicyFetchRequest::NONE` as unsigned,
+      // which is not supported.
+      LOG(ERROR) << "Unexpected signature_type: " << signature_type;
+      return false;
+  }
 
   char* key = const_cast<char*>(public_key.data());
   BIO* bio = BIO_new_mem_buf(key, public_key.length());
@@ -86,7 +103,7 @@ bool VerifySignature(const std::string& signed_data,
 
   const unsigned char* sig =
       reinterpret_cast<const unsigned char*>(signature.data());
-  int rv = EVP_VerifyInit_ex(ctx.get(), digest, nullptr);
+  int rv = EVP_VerifyInit_ex(ctx.get(), digest_type, nullptr);
   if (rv == 1) {
     EVP_VerifyUpdate(ctx.get(), signed_data.data(), signed_data.length());
     rv = EVP_VerifyFinal(ctx.get(), sig, signature.length(), public_key_ssl);
@@ -1122,8 +1139,23 @@ bool DevicePolicyImpl::VerifyPolicySignature() {
       LOG(ERROR) << "Could not read owner key off disk";
       return false;
     }
-    if (!VerifySignature(policy_data, policy_data_signature, public_key)) {
-      LOG(ERROR) << "Signature does not match the data or can not be verified!";
+
+    em::PolicyFetchRequest::SignatureType signature_type =
+        em::PolicyFetchRequest::SHA1_RSA;
+    // Use `policy_data_signature_type` field to determine which algorithm
+    // to use.
+    // In some cases the field is missing, but the blob is still signed
+    // with SHA1_RSA (e.g. device owner settings). That's why we default to
+    // SHA1_RSA.
+    if (policy_->has_policy_data_signature_type()) {
+      signature_type = policy_->policy_data_signature_type();
+    }
+    if (!VerifySignature(policy_data, policy_data_signature, public_key,
+                         signature_type)) {
+      LOG(ERROR) << "Failed to verify against signature_type: "
+                 << signature_type << ". "
+                 << "Signature does not match the data or can not be verified!";
+
       return false;
     }
     return true;
