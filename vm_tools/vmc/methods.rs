@@ -921,14 +921,16 @@ impl Methods {
         request.image_type = DiskImageType::DISK_IMAGE_AUTO.into();
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
 
-        let response: CreateDiskImageResponse = self.sync_protobus(
+        let response: CreateDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
             Message::new_method_call(
                 VM_CONCIERGE_SERVICE_NAME,
                 VM_CONCIERGE_SERVICE_PATH,
                 VM_CONCIERGE_INTERFACE,
-                CREATE_DISK_IMAGE_METHOD,
+                CREATE_DISK_IMAGE2_METHOD,
             )?,
             &request,
+            vec![],
+            DEFAULT_TIMEOUT,
         )?;
 
         match response.status.enum_value() {
@@ -983,24 +985,24 @@ impl Methods {
             request.params.push(param.as_ref().to_string());
         }
 
-        // We can't use sync_protobus because we need to append the file descriptor out of band from
-        // the protobuf message.
-        let mut method = Message::new_method_call(
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            VM_CONCIERGE_INTERFACE,
-            CREATE_DISK_IMAGE_METHOD,
-        )?
-        .append1(request.write_to_bytes()?);
-        if let Some(fd) = source_fd {
-            method = method.append1(fd);
-        }
+        let owned_fds = if let Some(fd) = source_fd {
+            vec![fd]
+        } else {
+            vec![]
+        };
 
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
+        let response: CreateDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                CREATE_DISK_IMAGE2_METHOD,
+            )?,
+            &request,
+            owned_fds,
+            DEFAULT_TIMEOUT,
+        )?;
 
-        let response: CreateDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
             Ok(DiskImageStatus::DISK_STATUS_CREATED) => Ok(None),
             Ok(DiskImageStatus::DISK_STATUS_IN_PROGRESS) => Ok(Some(response.command_uuid)),
