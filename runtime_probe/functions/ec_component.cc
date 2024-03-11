@@ -10,11 +10,13 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/values.h>
 #include <libec/get_version_command.h>
 #include <libec/i2c_read_command.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/ec_component_manifest.h"
 
 namespace runtime_probe {
@@ -87,10 +89,24 @@ bool EcComponentFunction::IsValidComponent(
   return false;
 }
 
+bool EcComponentFunction::PostParseArguments() {
+  if (manifest_path_ && !Context::Get()->factory_mode()) {
+    LOG(ERROR) << "manifest_path can only be set in factory_runtime_probe.";
+    return false;
+  }
+  return true;
+}
+
 EcComponentFunction::DataType EcComponentFunction::EvalImpl() const {
   base::ScopedFD ec_dev = GetEcDevice();
 
-  auto manifest = EcComponentManifestReader::Read();
+  std::optional<EcComponentManifest> manifest;
+  if (manifest_path_) {
+    manifest = EcComponentManifestReader::ReadFromFilePath(
+        base::FilePath(manifest_path_.value()));
+  } else {
+    manifest = EcComponentManifestReader::Read();
+  }
   if (!manifest) {
     LOG(ERROR) << "Get component manifest failed.";
     return {};

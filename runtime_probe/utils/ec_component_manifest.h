@@ -71,7 +71,6 @@ class EcComponentManifestReader {
   // obtained by `cros_config /firmware image-name`.
   static base::FilePath EcComponentManifestDefaultPath();
 
- private:
   // Reads and parses the component manifest from the given path, returning a
   // EcComponentManifest.
   // If the content is not a valid manifest, returns std::nullopt.

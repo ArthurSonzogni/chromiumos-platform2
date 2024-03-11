@@ -8,7 +8,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include <base/files/scoped_file.h>
 
@@ -31,6 +30,7 @@ class EcComponentFunction : public PrivilegedProbeFunction {
 
  private:
   // PrivilegedProbeFunction overrides.
+  bool PostParseArguments() final;
   DataType EvalImpl() const override;
 
   // Virtuals for testing.
@@ -47,6 +47,7 @@ class EcComponentFunction : public PrivilegedProbeFunction {
 
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, type);
   PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, name);
+  PROBE_FUNCTION_ARG_DEF(std::optional<std::string>, manifest_path);
 };
 
 }  // namespace runtime_probe
