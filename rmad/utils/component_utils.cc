@@ -34,7 +34,7 @@ std::string GetComponentFieldsIdentifier(
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Storage_Fields& fields) {
   // Storage. Identifier depends on storage type.
-  if (fields.type() == "MMC") {
+  if (fields.type() == "MMC_ASSEMBLY") {
     // eMMC storage. Identifier is "storage(eMMC)_<manufacturer id>_<name>".
     return "storage(eMMC)_" + Uint32ToHexString(fields.mmc_manfid(), 2) + "_" +
            fields.mmc_name();

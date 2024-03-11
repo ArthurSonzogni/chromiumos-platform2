@@ -47,7 +47,7 @@ TEST_F(ComponentUtilsTest, ComponentFields_Battery) {
 
 TEST_F(ComponentUtilsTest, Storage_MMC) {
   constexpr char prototext[] = R"(
-    type: "MMC"
+    type: "MMC_ASSEMBLY"
     mmc_manfid: 10
     mmc_name: "abc"
   )";
@@ -61,7 +61,7 @@ TEST_F(ComponentUtilsTest, Storage_MMC) {
 TEST_F(ComponentUtilsTest, ComponentFields_Storage_MMC) {
   constexpr char prototext[] = R"(
     storage: {
-      type: "MMC"
+      type: "MMC_ASSEMBLY"
       mmc_manfid: 10
       mmc_name: "abc"
     }
