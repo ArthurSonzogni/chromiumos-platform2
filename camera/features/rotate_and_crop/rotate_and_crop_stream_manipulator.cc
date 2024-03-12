@@ -379,7 +379,8 @@ bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
       }
 
       // A quirk for handling nautilus ipu3 limitation: b/323451172.
-      if (DeviceConfig::Create()->GetModelName() == "nautilus" &&
+      std::string model_name = DeviceConfig::Create()->GetModelName();
+      if ((model_name == "nautilus" || model_name == "nautiluslte") &&
           ((blob_stream_->width == 640 && blob_stream_->height == 480) ||
            (blob_stream_->width == 320 && blob_stream_->height == 240))) {
         for (auto* stream : stream_config->GetStreams()) {
