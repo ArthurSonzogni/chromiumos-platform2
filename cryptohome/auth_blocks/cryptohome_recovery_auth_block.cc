@@ -28,6 +28,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/filesystem_layout.h"
@@ -304,7 +305,7 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockLockedUntilReboot),
-            ErrorActionSet({PossibleAction::kReboot}),
+            ErrorActionSet(PrimaryAction::kFactorLockedOut),
             CryptoError::CE_CREDENTIAL_LOCKED),
         nullptr, std::nullopt);
     return;
