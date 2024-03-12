@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "shill/callbacks.h"
 
 namespace shill {
@@ -26,37 +28,39 @@ class ModemProxyInterface {
  public:
   virtual ~ModemProxyInterface() = default;
 
-  virtual void Enable(bool enable, ResultCallback callback, int timeout) = 0;
+  virtual void Enable(bool enable,
+                      ResultCallback callback,
+                      base::TimeDelta timeout) = 0;
   virtual void CreateBearer(const KeyValueStore& properties,
                             RpcIdentifierCallback callback,
-                            int timeout) = 0;
+                            base::TimeDelta timeout) = 0;
   virtual void DeleteBearer(const RpcIdentifier& bearer,
                             ResultCallback callback,
-                            int timeout) = 0;
-  virtual void Reset(ResultCallback callback, int timeout) = 0;
+                            base::TimeDelta timeout) = 0;
+  virtual void Reset(ResultCallback callback, base::TimeDelta timeout) = 0;
   virtual void FactoryReset(const std::string& code,
                             ResultCallback callback,
-                            int timeout) = 0;
+                            base::TimeDelta timeout) = 0;
   virtual void SetCurrentCapabilities(uint32_t capabilities,
                                       ResultCallback callback,
-                                      int timeout) = 0;
+                                      base::TimeDelta timeout) = 0;
   virtual void SetCurrentModes(uint32_t allowed_modes,
                                uint32_t preferred_mode,
                                ResultCallback callback,
-                               int timeout) = 0;
+                               base::TimeDelta timeout) = 0;
   virtual void SetCurrentBands(const std::vector<uint32_t>& bands,
                                ResultCallback callback,
-                               int timeout) = 0;
+                               base::TimeDelta timeout) = 0;
   virtual void SetPrimarySimSlot(uint32_t slot,
                                  ResultCallback callback,
-                                 int timeout) = 0;
+                                 base::TimeDelta timeout) = 0;
   virtual void Command(const std::string& cmd,
                        uint32_t user_timeout,
                        StringCallback callback,
-                       int timeout) = 0;
+                       base::TimeDelta timeout) = 0;
   virtual void SetPowerState(uint32_t power_state,
                              ResultCallback callback,
-                             int timeout) = 0;
+                             base::TimeDelta timeout) = 0;
 
   virtual void set_state_changed_callback(
       const ModemStateChangedSignalCallback& callback) = 0;

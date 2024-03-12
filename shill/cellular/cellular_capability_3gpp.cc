@@ -431,7 +431,7 @@ void CellularCapability3gpp::StartModem(ResultCallback callback) {
       true,
       base::BindOnce(&CellularCapability3gpp::EnableModemCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-      kTimeoutEnable.InMilliseconds());
+      kTimeoutEnable);
 }
 
 void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
@@ -453,10 +453,10 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
         std::move(callback), error);
 
     // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
-    modem_proxy_->SetPowerState(
-        cellular()->IsModemFM101() ? MM_MODEM_POWER_STATE_ON
-                                   : MM_MODEM_POWER_STATE_LOW,
-        std::move(cb), kTimeoutSetPowerState.InMilliseconds());
+    modem_proxy_->SetPowerState(cellular()->IsModemFM101()
+                                    ? MM_MODEM_POWER_STATE_ON
+                                    : MM_MODEM_POWER_STATE_LOW,
+                                std::move(cb), kTimeoutSetPowerState);
     return;
   }
 
@@ -525,7 +525,7 @@ void CellularCapability3gpp::StopModem(ResultCallback callback) {
       MM_MODEM_POWER_STATE_LOW,
       base::BindOnce(&CellularCapability3gpp::StopPowerDownCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-      kTimeoutSetPowerState.InMilliseconds());
+      kTimeoutSetPowerState);
   if (cellular()->service())
     cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
                                               PowerOpt::PowerState::kLow);
@@ -1421,7 +1421,7 @@ void CellularCapability3gpp::Reset(ResultCallback callback) {
   ResultCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnResetReply,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
-  modem_proxy_->Reset(std::move(cb), kTimeoutReset.InMilliseconds());
+  modem_proxy_->Reset(std::move(cb), kTimeoutReset);
 }
 
 void CellularCapability3gpp::OnResetReply(ResultCallback callback,
@@ -2028,7 +2028,7 @@ void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
           LOG(INFO) << "SetPrimarySimSlot Completed.";
         }
       }),
-      kTimeoutDefault.InMilliseconds());
+      kTimeoutDefault);
 }
 
 void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(

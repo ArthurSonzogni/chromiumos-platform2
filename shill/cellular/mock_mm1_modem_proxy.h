@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_proxy_interface.h"
@@ -24,41 +25,47 @@ class MockModemProxy : public ModemProxyInterface {
   ~MockModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  MOCK_METHOD(void, Enable, (bool, ResultCallback, int), (override));
+  MOCK_METHOD(void,
+              Enable,
+              (bool, ResultCallback, base::TimeDelta),
+              (override));
   MOCK_METHOD(void,
               CreateBearer,
-              (const KeyValueStore&, RpcIdentifierCallback, int),
+              (const KeyValueStore&, RpcIdentifierCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               DeleteBearer,
-              (const RpcIdentifier&, ResultCallback, int),
+              (const RpcIdentifier&, ResultCallback, base::TimeDelta),
               (override));
-  MOCK_METHOD(void, Reset, (ResultCallback, int), (override));
+  MOCK_METHOD(void, Reset, (ResultCallback, base::TimeDelta), (override));
   MOCK_METHOD(void,
               FactoryReset,
-              (const std::string&, ResultCallback, int),
+              (const std::string&, ResultCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               SetCurrentCapabilities,
-              (uint32_t, ResultCallback, int),
+              (uint32_t, ResultCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               SetCurrentModes,
-              (uint32_t, uint32_t, ResultCallback, int),
+              (uint32_t, uint32_t, ResultCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               SetCurrentBands,
-              (const std::vector<uint32_t>&, ResultCallback, int),
+              (const std::vector<uint32_t>&, ResultCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               SetPrimarySimSlot,
-              (uint32_t, ResultCallback, int),
+              (uint32_t, ResultCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               Command,
-              (const std::string&, uint32_t, StringCallback, int),
+              (const std::string&, uint32_t, StringCallback, base::TimeDelta),
               (override));
-  MOCK_METHOD(void, SetPowerState, (uint32_t, ResultCallback, int), (override));
+  MOCK_METHOD(void,
+              SetPowerState,
+              (uint32_t, ResultCallback, base::TimeDelta),
+              (override));
   MOCK_METHOD(void,
               set_state_changed_callback,
               (const ModemStateChangedSignalCallback&),

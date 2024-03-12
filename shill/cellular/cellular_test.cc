@@ -248,13 +248,10 @@ class CellularTest : public testing::Test {
     device_->set_mobile_operator_info_for_testing(mock_mobile_operator_info_);
   }
 
-  void InvokeEnable(bool enable, ResultCallback callback, int timeout) {
+  void InvokeEnable(bool enable,
+                    ResultCallback callback,
+                    base::TimeDelta timeout) {
     std::move(callback).Run(Error(Error::kSuccess));
-  }
-  void InvokeEnableReturningWrongState(bool enable,
-                                       ResultCallback callback,
-                                       int timeout) {
-    std::move(callback).Run(Error(Error::kWrongState));
   }
   void InvokeConnect(const KeyValueStore& props,
                      RpcIdentifierCallback callback,
@@ -282,11 +279,6 @@ class CellularTest : public testing::Test {
   }
   void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
     std::move(callback).Run(VariantDictionaries(), Error());
-  }
-  void InvokeSetPowerState(const uint32_t& power_state,
-                           ResultCallback callback,
-                           int timeout) {
-    std::move(callback).Run(Error(Error::kSuccess));
   }
 
   void ExpectDisconnectCapability3gpp() {
