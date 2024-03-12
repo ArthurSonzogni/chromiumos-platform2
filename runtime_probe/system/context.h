@@ -87,6 +87,9 @@ class Context {
   virtual cros_healthd_mojom::CrosHealthdProbeService*
   GetCrosHealthdProbeServiceProxy() = 0;
 
+  // Returns true if running in factory_runtime_probe.
+  virtual bool factory_mode();
+
  protected:
   Context();
   virtual ~Context();

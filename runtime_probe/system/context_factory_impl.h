@@ -13,6 +13,8 @@ class ContextFactoryImpl : public ContextImpl {
  public:
   ContextFactoryImpl();
   ~ContextFactoryImpl() override = default;
+
+  bool factory_mode() override { return true; }
 };
 
 }  // namespace runtime_probe

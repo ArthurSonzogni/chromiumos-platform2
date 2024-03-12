@@ -88,6 +88,10 @@ class ContextMockImpl : public Context {
     return mock_cros_healthd_service_;
   }
 
+  bool factory_mode() override { return factory_mode_; }
+
+  void SetFactoryMode(bool value) { factory_mode_ = value; }
+
  private:
   brillo::FakeCrosConfig fake_cros_config_;
   crossystem::Crossystem fake_crossystem_;
@@ -107,6 +111,8 @@ class ContextMockImpl : public Context {
       mock_shill_device_properties_;
 
   cros_healthd_mojom::CrosHealthdProbeService* mock_cros_healthd_service_;
+
+  bool factory_mode_;
 };
 
 }  // namespace runtime_probe

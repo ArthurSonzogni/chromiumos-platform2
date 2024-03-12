@@ -13,7 +13,7 @@ namespace {
 Context* g_instance = nullptr;
 
 const base::FilePath root_dir_{"/"};
-}
+}  // namespace
 
 // When the derived classes initialized, it will call the parent class's
 // constructor, which set the address of the derived classes to the
@@ -37,6 +37,10 @@ Context* Context::Get() {
 
 const base::FilePath& Context::root_dir() {
   return root_dir_;
+}
+
+bool Context::factory_mode() {
+  return false;
 }
 
 }  // namespace runtime_probe
