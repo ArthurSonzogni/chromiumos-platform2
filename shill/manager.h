@@ -543,6 +543,7 @@ class Manager {
   friend class TetheringManagerTest;
   friend class VPNServiceTest;
   friend class WiFiObjectTest;
+  friend class WiFiProviderTest;
   friend class DaemonTaskTest;
 
   FRIEND_TEST(CellularCapability3gppTest, TerminationAction);

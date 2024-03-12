@@ -28,6 +28,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_tethering_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
@@ -53,6 +54,7 @@ using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
@@ -384,6 +386,7 @@ class WiFiProviderTest : public testing::Test {
  public:
   WiFiProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
+        tethering_manager_(new NiceMock<MockTetheringManager>(&manager_)),
         provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
         user_profile_(new NiceMock<MockProfile>(&manager_, "user")) {}
@@ -426,6 +429,7 @@ class WiFiProviderTest : public testing::Test {
 
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     provider_->netlink_manager_ = &netlink_manager_;
+    manager_.tethering_manager_.reset(tethering_manager_);
   }
 
   // Used by mock invocations of RegisterService() to maintain the side-effect
@@ -717,6 +721,7 @@ class WiFiProviderTest : public testing::Test {
   MockMetrics metrics_;
   net_base::MockNetlinkManager netlink_manager_;
   StrictMock<MockManager> manager_;
+  MockTetheringManager* tethering_manager_;
   WiFiProvider* provider_;
   scoped_refptr<MockProfile> default_profile_;
   scoped_refptr<MockProfile> user_profile_;
@@ -2585,12 +2590,12 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
   EXPECT_EQ(link_name0, link_name);
 }
 
-TEST_F(WiFiProviderTest, CreateHotspotDeviceWithoutWiFiDevice) {
+TEST_F(WiFiProviderTest, RequestHotspotDeviceCreationWithoutWiFiDevice) {
   // Failed to create hotspot device when there is no WiFi device.
-  EXPECT_EQ(provider_->CreateHotspotDevice(
-                net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
-                WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing()),
-            nullptr);
+  EXPECT_FALSE(provider_->RequestHotspotDeviceCreation(
+      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
+      WiFiBand::kLowBand, WiFiSecurity::kWpa2, WiFiPhy::Priority(0),
+      base::DoNothing()));
 }
 
 TEST_F(WiFiProviderTest, CreateHotspotDevice) {
@@ -2604,7 +2609,6 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
 
   MockWiFiPhy* phy0 = AddMockPhy(0);
   phy0->AddWiFiDevice(std::move(wifi_device));
-
   provider_->hotspot_device_factory_ = base::BindRepeating(
       [](Manager* manager, const std::string& primary_link_name,
          const std::string& link_name, net_base::MacAddress mac_address,
@@ -2613,12 +2617,16 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
             new MockHotspotDevice(manager, primary_link_name, link_name,
                                   mac_address, phy_index, std::move(callback)));
       });
-
   // The hotspot device should be created and registered at |local_devices_|.
-  const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
+  HotspotDeviceRefPtr device;
+  EXPECT_CALL(*tethering_manager_, OnDeviceCreated)
+      .WillOnce(SaveArg<0>(&device));
+  EXPECT_TRUE(provider_->RequestHotspotDeviceCreation(
       net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
-      WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing());
-  ASSERT_NE(device, nullptr);
+      WiFiBand::kLowBand, WiFiSecurity::kWpa2, WiFiPhy::Priority(0),
+      base::DoNothing()));
+  DispatchPendingEvents();
+  EXPECT_NE(device, nullptr);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
 
@@ -2645,9 +2653,13 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
       });
 
   // The hotspot device should be created and registered at |local_devices_|.
-  const HotspotDeviceRefPtr device = provider_->CreateHotspotDeviceForTest(
+  HotspotDeviceRefPtr device;
+  EXPECT_CALL(*tethering_manager_, OnDeviceCreated)
+      .WillOnce(SaveArg<0>(&device));
+  EXPECT_TRUE(provider_->RequestHotspotDeviceCreationForTest(
       net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c), link_name,
-      phy_index, base::DoNothing());
+      phy_index, base::DoNothing()));
+  DispatchPendingEvents();
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(device->phy_index(), phy_index);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);

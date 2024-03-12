@@ -86,6 +86,9 @@ class TetheringManager : public Network::EventHandler {
     kAbort,
     // Start/stop tethering when previous action is ongoing
     kBusy,
+    // Cannot start tethering because the tethering interface cannot be
+    // operated concurrently with existing interfaces.
+    kConcurrencyNotSupported,
     // Other unknown failures
     kFailure,
   };
@@ -153,6 +156,11 @@ class TetheringManager : public Network::EventHandler {
   // Refresh the list of tethering capabilities
   void RefreshCapabilities();
 
+  // Indicates that a HotspotDevice has been created by WiFiProvider.
+  mockable void OnDeviceCreated(HotspotDeviceRefPtr hotspot_dev);
+  // Indicates that HotspotDevice creation has failed.
+  void OnDeviceCreationFailed();
+
  private:
   friend class TetheringManagerTest;
   FRIEND_TEST(TetheringManagerTest, TetheringConfigLoadAndUnload);
@@ -175,6 +183,7 @@ class TetheringManager : public Network::EventHandler {
     kDownstreamLinkDisconnect,  // Downstream link disconnects.
     kDownstreamNetDisconnect,   // Downstream network disconnects.
     kStartTimeout,              // Failed to start tethering within given time.
+    kResourceBusy,              // Device resources are busy with other tasks.
   };
 
   // Convert stop reason enum to string.
@@ -268,8 +277,8 @@ class TetheringManager : public Network::EventHandler {
   void OnStartingTetheringTimeout();
   // Handler function to be called when stopping tethering session times out.
   void OnStoppingTetheringTimeout();
-  // Prepare tethering resources to start a tethering session.
-  void StartTetheringSession();
+  // Prepare tethering resources to start a tethering session with |priority|.
+  void StartTetheringSession(WiFiPhy::Priority priority);
   // Stop and free tethering resources due to reason |reason|.
   // Keep upstream network untouched if |bypass_upstream| is true.
   void StopTetheringSession(StopReason reason, bool bypass_upstream = false);

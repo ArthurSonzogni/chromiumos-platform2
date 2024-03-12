@@ -76,7 +76,7 @@ static constexpr uint32_t kAllPhys = UINT32_MAX;
 static constexpr auto kPhyUpdateTimeout = base::Milliseconds(500);
 
 // Interface name prefix used in local connection interfaces.
-const char kHotspotIfacePrefix[] = "ap";
+static constexpr char kHotspotIfacePrefix[] = "ap";
 
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
@@ -1326,58 +1326,61 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
   local_devices_.erase(link_name);
 }
 
-HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
+bool WiFiProvider::RequestHotspotDeviceCreation(
     net_base::MacAddress mac_address,
     WiFiBand band,
     WiFiSecurity security,
+    WiFiPhy::Priority priority,
     LocalDevice::EventCallback callback) {
   if (wifi_phys_.empty()) {
     LOG(ERROR) << "No WiFiPhy available.";
-    return nullptr;
+    return false;
   }
-
-  // TODO(b/257340615) Select capable WiFiPhy according to band and security
-  // requirement.
-  const uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
-
   const std::string primary_link_name = GetPrimaryLinkName();
   if (primary_link_name.empty()) {
     LOG(ERROR) << "Failed to get primary link name.";
-    return nullptr;
+    return false;
   }
-
   const std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
+  // TODO(b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
+  const uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+  manager_->dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WiFiProvider::CreateHotspotDevice,
+                     weak_ptr_factory_while_started_.GetWeakPtr(), mac_address,
+                     primary_link_name, link_name, phy_index, callback));
 
+  return true;
+}
+
+bool WiFiProvider::RequestHotspotDeviceCreationForTest(
+    const net_base::MacAddress mac_address,
+    const std::string& device_name_for_test,
+    uint32_t device_phy_index_for_test,
+    LocalDevice::EventCallback callback) {
+  const std::string link_name = device_name_for_test;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&WiFiProvider::CreateHotspotDevice,
+                                weak_ptr_factory_while_started_.GetWeakPtr(),
+                                mac_address, device_name_for_test, link_name,
+                                device_phy_index_for_test, callback));
+  return true;
+}
+
+void WiFiProvider::CreateHotspotDevice(net_base::MacAddress mac_address,
+                                       const std::string& primary_link_name,
+                                       const std::string& link_name,
+                                       uint32_t phy_index,
+                                       LocalDevice::EventCallback callback) {
   HotspotDeviceRefPtr dev = hotspot_device_factory_.Run(
       manager_, primary_link_name, link_name, mac_address, phy_index, callback);
 
   if (dev->SetEnabled(true)) {
     RegisterLocalDevice(dev);
-    return dev;
+    manager_->tethering_manager()->OnDeviceCreated(dev);
   } else {
-    return nullptr;
-  }
-}
-
-HotspotDeviceRefPtr WiFiProvider::CreateHotspotDeviceForTest(
-    net_base::MacAddress mac_address,
-    const std::string& device_name_for_test,
-    uint32_t device_phy_index_for_test,
-    LocalDevice::EventCallback callback) {
-  // TODO(b/301897168): Investigate why mac80211_hwsim cannot work with
-  // the new created interface, and try to use the same logic:
-  // GetUniqueLocalDeviceName(kHotspotIfacePrefix).
-  const std::string& link_name = device_name_for_test;
-
-  HotspotDeviceRefPtr dev = hotspot_device_factory_.Run(
-      manager_, device_name_for_test, link_name, mac_address,
-      device_phy_index_for_test, callback);
-
-  if (dev->SetEnabled(true)) {
-    RegisterLocalDevice(dev);
-    return dev;
-  } else {
-    return nullptr;
+    manager_->tethering_manager()->OnDeviceCreationFailed();
   }
 }
 

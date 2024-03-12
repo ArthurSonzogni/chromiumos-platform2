@@ -1038,6 +1038,7 @@ constexpr char kTetheringIdleReasonDownstreamNetworkDisconnect[] =
 constexpr char kTetheringIdleReasonError[] = "error";
 constexpr char kTetheringIdleReasonInactive[] = "inactive";
 constexpr char kTetheringIdleReasonInitialState[] = "initial_state";
+constexpr char kTetheringIdleReasonResourceBusy[] = "resource_busy";
 constexpr char kTetheringIdleReasonStartTimeout[] = "start_timeout";
 constexpr char kTetheringIdleReasonSuspend[] = "suspend";
 constexpr char kTetheringIdleReasonUpstreamDisconnect[] = "upstream_disconnect";
@@ -1057,6 +1058,8 @@ constexpr char kTetheringStateStopping[] = "stopping";
 // SetTetheringEnabled and {Enable,Disable}Tethering result values
 constexpr char kTetheringEnableResultAbort[] = "abort";
 constexpr char kTetheringEnableResultBusy[] = "busy";
+constexpr char kTetheringEnableResultConcurrencyNotSupported[] =
+    "concurrency_not_supported";
 constexpr char kTetheringEnableResultDownstreamWiFiFailure[] =
     "downstream_wifi_failure";
 constexpr char kTetheringEnableResultFailure[] = "failure";

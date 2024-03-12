@@ -492,7 +492,8 @@ Methods		dict GetProperties()
 			Returns a string indicating the result. This could be any one of,
 			"success", "failure", "not_allowed", "invalid_properties", "abort",
 			"upstream_not_available", "downstream_wifi_failure", "wrong_state"
-			"network_setup_failure", "upstream_failure", "busy".
+			"network_setup_failure", "upstream_failure", "busy",
+			"concurrency_not_supported".
 
 		void EnableTethering(uint32_t priority)
 
@@ -1148,7 +1149,8 @@ Properties	object ActiveProfile [readonly]
 				"initial_state", "client_stop", "user_exit", "inactive", "error"
 				"upstream_disconnect", "upstream_no_internet", "suspend",
 				"config_change", "downstream_link_disconnect", "start_timeout",
-				"downstream_network_disconnect", "upstream_not_available".
+				"downstream_network_disconnect", "upstream_not_available",
+				"concurrency".
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the

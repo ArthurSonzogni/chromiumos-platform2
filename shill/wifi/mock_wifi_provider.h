@@ -108,12 +108,21 @@ class MockWiFiProvider : public WiFiProvider {
               DeregisterDeviceFromPhy,
               (WiFiConstRefPtr, uint32_t),
               (override));
-  MOCK_METHOD(HotspotDeviceRefPtr,
-              CreateHotspotDevice,
+  MOCK_METHOD(bool,
+              RequestHotspotDeviceCreation,
               (net_base::MacAddress,
                WiFiBand,
                WiFiSecurity,
+               WiFiPhy::Priority,
                LocalDevice::EventCallback),
+              (override));
+  MOCK_METHOD(void,
+              CreateHotspotDevice,
+              (net_base::MacAddress,
+               const std::string&,
+               const std::string&,
+               uint32_t phy_index,
+               LocalDevice::EventCallback callback),
               (override));
   MOCK_METHOD(bool,
               RequestP2PDeviceCreation,

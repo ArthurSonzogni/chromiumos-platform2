@@ -251,17 +251,17 @@ class WiFiProvider : public ProviderInterface {
   // called when interface event happens. The required WiFi band |band| and
   // security |security| are used in the WiFiPhy search to find the first
   // WiFiPhy which meets all the criteria.
-  mockable HotspotDeviceRefPtr
-  CreateHotspotDevice(net_base::MacAddress mac_address,
-                      WiFiBand band,
-                      WiFiSecurity security,
-                      LocalDevice::EventCallback callback);
-
+  mockable bool RequestHotspotDeviceCreation(
+      net_base::MacAddress mac_address,
+      WiFiBand band,
+      WiFiSecurity security,
+      WiFiPhy::Priority priority,
+      LocalDevice::EventCallback callback);
   // Create a WiFi hotspot device on the device |device_name_for_test| with the
   // phy index |device_phy_index_for_test|. |callback| is called when interface
   // event happens.
   // Note that this method is only used for testing.
-  HotspotDeviceRefPtr CreateHotspotDeviceForTest(
+  bool RequestHotspotDeviceCreationForTest(
       net_base::MacAddress mac_address,
       const std::string& device_name_for_test,
       uint32_t device_phy_index_for_test,
@@ -397,6 +397,12 @@ class WiFiProvider : public ProviderInterface {
 
   // Sort the internal list of services.
   void SortServices();
+
+  mockable void CreateHotspotDevice(net_base::MacAddress mac_address,
+                                    const std::string& primary_link_name,
+                                    const std::string& link_name,
+                                    uint32_t phy_index,
+                                    LocalDevice::EventCallback callback);
 
   // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
   // kP2PClient.

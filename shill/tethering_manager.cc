@@ -661,7 +661,7 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
 
   stop_timer_callback_.Cancel();
   if (state_ == TetheringState::kTetheringRestarting) {
-    StartTetheringSession();
+    StartTetheringSession(WiFiPhy::Priority(kDefaultPriority));
     return;
   }
 
@@ -744,8 +744,7 @@ void TetheringManager::OnStoppingTetheringTimeout() {
   }
 }
 
-void TetheringManager::StartTetheringSession() {
-  // Reset stop reason.
+void TetheringManager::StartTetheringSession(WiFiPhy::Priority priority) {
   stop_reason_ = StopReason::kInitial;
   if (state_ != TetheringState::kTetheringIdle &&
       state_ != TetheringState::kTetheringRestarting) {
@@ -777,25 +776,41 @@ void TetheringManager::StartTetheringSession() {
   const net_base::MacAddress mac_address =
       mar_ ? MACAddress::CreateRandom().address().value()
            : stable_mac_addr_.address().value();
-
+  bool request_accepted;
   if (downstream_device_for_test_ && downstream_phy_index_for_test_) {
-    hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDeviceForTest(
-        mac_address, *downstream_device_for_test_,
-        *downstream_phy_index_for_test_,
-        base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
-                            base::Unretained(this)));
+    request_accepted =
+        manager_->wifi_provider()->RequestHotspotDeviceCreationForTest(
+            mac_address, *downstream_device_for_test_,
+            *downstream_phy_index_for_test_,
+            base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
+                                base::Unretained(this)));
   } else {
-    hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
-        mac_address, band_, security_,
+    request_accepted = manager_->wifi_provider()->RequestHotspotDeviceCreation(
+        mac_address, band_, security_, priority,
         base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
                             base::Unretained(this)));
   }
-  if (!hotspot_dev_) {
+
+  if (!request_accepted) {
+    LOG(ERROR) << __func__ << ": WiFi AP interface rejected due to concurrency";
+    PostSetEnabledResult(SetEnabledResult::kConcurrencyNotSupported);
+    StopTetheringSession(StopReason::kResourceBusy);
+    return;
+  }
+}
+
+void TetheringManager::OnDeviceCreated(HotspotDeviceRefPtr hotspot_dev) {
+  if (!result_callback_) {
+    LOG(ERROR) << "HotspotDevice was created with no pending callback.";
+    return;
+  }
+  if (!hotspot_dev) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
     return;
   }
+  hotspot_dev_ = hotspot_dev;
 
   if (upstream_network_) {
     // No need to acquire a new upstream network.
@@ -830,6 +845,13 @@ void TetheringManager::StartTetheringSession() {
     PostSetEnabledResult(SetEnabledResult::kInvalidProperties);
     StopTetheringSession(StopReason::kError);
   }
+}
+
+void TetheringManager::OnDeviceCreationFailed() {
+  LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
+  PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
+  StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
+  return;
 }
 
 void TetheringManager::OnDownstreamDeviceEnabled() {
@@ -899,7 +921,7 @@ void TetheringManager::StopTetheringSession(StopReason reason,
 
   if (bypass_upstream && state_ == TetheringState::kTetheringRestarting) {
     // Downstream down, bypass upstream, restart tethering session immediately.
-    StartTetheringSession();
+    StartTetheringSession(WiFiPhy::Priority(kDefaultPriority));
     return;
   }
   stop_timer_callback_.Reset(base::BindOnce(
@@ -1193,7 +1215,7 @@ void TetheringManager::Enable(uint32_t priority,
     return;
   }
 
-  StartTetheringSession();
+  StartTetheringSession(WiFiPhy::Priority(priority));
 }
 
 void TetheringManager::Disable(SetEnabledResultCallback callback) {
@@ -1232,6 +1254,8 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultAbort;
     case SetEnabledResult::kBusy:
       return kTetheringEnableResultBusy;
+    case SetEnabledResult::kConcurrencyNotSupported:
+      return kTetheringEnableResultConcurrencyNotSupported;
   }
 }
 
@@ -1447,6 +1471,8 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonDownstreamNetworkDisconnect;
     case StopReason::kStartTimeout:
       return kTetheringIdleReasonStartTimeout;
+    case StopReason::kResourceBusy:
+      return kTetheringIdleReasonResourceBusy;
     default:
       NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";
