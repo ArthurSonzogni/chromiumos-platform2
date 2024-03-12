@@ -1842,46 +1842,18 @@ bool AttestationService::ActivateAttestationKeyInternal(
     return false;
   }
   const auto& identity_data = database_pb.identities().Get(identity);
-  std::string certificate_local;
-  if (encrypted_certificate.tpm_version() == TPM_1_2) {
-    // TPM 1.2 style activate.
-    if (!tpm_utility_->ActivateIdentity(
-            identity_data.identity_key().identity_key_blob(),
-            encrypted_certificate.asym_ca_contents(),
-            encrypted_certificate.sym_ca_attestation(), &certificate_local)) {
-      metrics_.ReportAttestationOpsStatus(
-          kAttestationActivateAttestationKey,
-          AttestationOpsStatus::kIdentityFailure);
-      LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
-                 << ".";
-      return false;
-    }
-  } else {
-    // TPM 2.0 style activate.
-    std::string credential;
-    if (!tpm_utility_->ActivateIdentityForTpm2(
-            ek_key_type, identity_data.identity_key().identity_key_blob(),
-            encrypted_certificate.encrypted_seed(),
-            encrypted_certificate.credential_mac(),
-            encrypted_certificate.wrapped_certificate().wrapped_key(),
-            &credential)) {
-      metrics_.ReportAttestationOpsStatus(
-          kAttestationActivateAttestationKey,
-          AttestationOpsStatus::kIdentityFailure);
-      LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
-                 << ".";
-      return false;
-    }
-    if (!crypto_utility_->DecryptIdentityCertificateForTpm2(
-            credential, encrypted_certificate.wrapped_certificate(),
-            &certificate_local)) {
-      metrics_.ReportAttestationOpsStatus(kAttestationActivateAttestationKey,
-                                          AttestationOpsStatus::kCryptoFailure);
-      LOG(ERROR) << __func__ << ": Failed to decrypt certificate for identity "
-                 << identity << ".";
-      return false;
-    }
+  auto activate_result = hwsec_->ActivateIdentity(
+      ek_key_type,
+      BlobFromString(identity_data.identity_key().identity_key_blob()),
+      encrypted_certificate);
+  if (!activate_result.ok()) {
+    LOG(ERROR) << __func__ << ": Failed to activate identity " << identity
+               << ": " << activate_result.status();
+    metrics_.ReportAttestationOpsStatus(kAttestationActivateAttestationKey,
+                                        AttestationOpsStatus::kIdentityFailure);
+    return false;
   }
+  std::string certificate_local = activate_result->to_string();
   if (save_certificate) {
     if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
       LOG(ERROR) << __func__

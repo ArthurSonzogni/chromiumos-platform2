@@ -216,6 +216,15 @@ std::string Transform(const std::string& method, const std::string& input) {
   return input + "_fake_transform_" + method;
 }
 
+MATCHER_P(EqualsProto,
+          message,
+          "Match a proto Message equal to the matcher's argument.") {
+  std::string expected_serialized, actual_serialized;
+  message.SerializeToString(&expected_serialized);
+  arg.SerializeToString(&actual_serialized);
+  return expected_serialized == actual_serialized;
+}
+
 }  // namespace
 
 class AttestationServiceBaseTest : public testing::Test {
@@ -286,6 +295,9 @@ class AttestationServiceBaseTest : public testing::Test {
         .WillRepeatedly(WithArg<1>(Invoke([](const brillo::Blob& in) {
           return BlobFromString(Transform("Sign", BlobToString(in)));
         })));
+    EXPECT_CALL(mock_hwsec_, ActivateIdentity)
+        .WillRepeatedly(
+            ReturnValue(brillo::SecureBlob("fake_activate_certificate")));
   }
 
  protected:
@@ -1285,16 +1297,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   SetUpIdentity(identity_);
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
-  if (GetTpmVersionUnderTest() == TPM_1_2) {
-    EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
-  } else {
-    EXPECT_CALL(
-        mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
-        .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
-  }
   // Set expectations on the outputs.
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
@@ -1315,6 +1317,10 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
+  EXPECT_CALL(
+      mock_hwsec_,
+      ActivateIdentity(_, _, EqualsProto(request.encrypted_certificate())))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob(cert_name)));
   service_->ActivateAttestationKey(
       request,
       base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
@@ -1327,16 +1333,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   EXPECT_CALL(mock_database_, GetMutableProtobuf()).Times(0);
   EXPECT_CALL(mock_database_, SaveChanges()).Times(0);
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
-  if (GetTpmVersionUnderTest() == TPM_1_2) {
-    EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
-  } else {
-    EXPECT_CALL(
-        mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
-        .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
-  }
   // Set expectations on the outputs.
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
@@ -1356,6 +1352,10 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   request.mutable_encrypted_certificate()
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
+  EXPECT_CALL(
+      mock_hwsec_,
+      ActivateIdentity(_, _, EqualsProto(request.encrypted_certificate())))
+      .WillRepeatedly(ReturnValue(brillo::SecureBlob(cert_name)));
   service_->ActivateAttestationKey(
       request,
       base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
@@ -1391,16 +1391,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
 
 TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   SetUpIdentity(identity_);
-  if (GetTpmVersionUnderTest() == TPM_1_2) {
-    EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, "encrypted1", "encrypted2", _))
-        .WillRepeatedly(Return(false));
-  } else {
-    EXPECT_CALL(
-        mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
-        .WillRepeatedly(Return(false));
-  }
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,
                      const ActivateAttestationKeyReply& reply) {
@@ -1419,6 +1409,10 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
       ->mutable_wrapped_certificate()
       ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
+  EXPECT_CALL(
+      mock_hwsec_,
+      ActivateIdentity(_, _, EqualsProto(request.encrypted_certificate())))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   service_->ActivateAttestationKey(request,
                                    base::BindOnce(callback, QuitClosure()));
   Run();
