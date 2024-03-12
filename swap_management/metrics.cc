@@ -7,19 +7,13 @@
 namespace swap_management {
 
 namespace {
-
-// Metrics file needs to be in stateful partition since it could be replayed in
-// next boot time.
-constexpr char kSwapMetricsFile[] = "/var/lib/swap/swap_metrics";
 constexpr char kSwapStartStatus[] = "ChromeOS.SwapManagement.SwapStart.Status";
 constexpr char kSwapStopStatus[] = "ChromeOS.SwapManagement.SwapStop.Status";
 constexpr uint32_t kNumAbslStatus = 21;
 }  // namespace
 
 Metrics* Metrics::Get() {
-  Metrics* m = *GetSingleton<Metrics>();
-  m->metrics_.SetOutputFile(kSwapMetricsFile);
-  return m;
+  return *GetSingleton<Metrics>();
 }
 
 void Metrics::ReportSwapStartStatus(absl::Status status) {

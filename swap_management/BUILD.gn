@@ -77,7 +77,6 @@ install_config("install_minijail_conf") {
 
 install_config("install_init") {
   sources = [
-    "share/send_swap_management_metrics.conf",
     "share/swap_management.conf",
     "share/swap_start.conf",
     "share/swap_stop.conf",
