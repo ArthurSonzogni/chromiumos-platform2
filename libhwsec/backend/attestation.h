@@ -54,6 +54,14 @@ class Attestation {
   virtual StatusOr<CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) = 0;
 
+  // Activates an attestation identity key.|identity_key| of |key_type| with
+  // the |encrypted_certificate| provided by the Attestation CA.
+  virtual StatusOr<brillo::SecureBlob> ActivateIdentity(
+      attestation::KeyType key_type,
+      Key identity_key,
+      const attestation::EncryptedIdentityCredential&
+          encrypted_certificate) = 0;
+
  protected:
   Attestation() = default;
   ~Attestation() = default;

@@ -31,6 +31,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/status.h"
@@ -201,34 +202,6 @@ bool IsKeyDataMatch(const KeyTpm2& key_data,
   }
 
   return true;
-}
-
-StatusOr<brillo::SecureBlob> GetEndorsementPassword(
-    org::chromium::TpmManagerProxyInterface& tpm_manager) {
-  tpm_manager::GetTpmStatusRequest status_request;
-  tpm_manager::GetTpmStatusReply status_reply;
-
-  if (brillo::ErrorPtr err; !tpm_manager.GetTpmStatus(
-          status_request, &status_reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
-    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
-        .Wrap(std::move(err));
-  }
-
-  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(status_reply.status()));
-
-  brillo::SecureBlob password(status_reply.local_data().endorsement_password());
-
-  if (password.empty()) {
-    return MakeStatus<TPMError>("Empty endorsement password",
-                                TPMRetryAction::kLater);
-  }
-
-  if (password.size() > kMaxPasswordLength) {
-    return MakeStatus<TPMError>("Endorsement password too large",
-                                TPMRetryAction::kLater);
-  }
-
-  return password;
 }
 
 StatusOr<brillo::SecureBlob> GetOwnerPassword(

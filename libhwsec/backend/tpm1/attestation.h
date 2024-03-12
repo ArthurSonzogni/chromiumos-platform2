@@ -46,6 +46,12 @@ class AttestationTpm1 : public Attestation {
   StatusOr<CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) override;
 
+  StatusOr<brillo::SecureBlob> ActivateIdentity(
+      attestation::KeyType key_type,
+      Key identity_key,
+      const attestation::EncryptedIdentityCredential& encrypted_certificate)
+      override;
+
  private:
   // Certifies the |key| by the |identity_key| with |external_data|.
   StatusOr<CertifyKeyResult> CertifyKey(Key key,

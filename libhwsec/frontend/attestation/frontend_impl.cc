@@ -164,4 +164,18 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::Sign(
       SigningOptions{.ecdsa_encoding = SigningOptions::EcdsaEncoding::kDer});
 }
 
+StatusOr<brillo::SecureBlob> AttestationFrontendImpl::ActivateIdentity(
+    attestation::KeyType key_type,
+    const brillo::Blob& identity_key_blob,
+    const attestation::EncryptedIdentityCredential& encrypted_certificate)
+    const {
+  ASSIGN_OR_RETURN(
+      const ScopedKey& identity_key,
+      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+          OperationPolicy{}, identity_key_blob,
+          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
+  return middleware_.CallSync<&Backend::Attestation::ActivateIdentity>(
+      key_type, identity_key.GetKey(), encrypted_certificate);
+}
+
 }  // namespace hwsec

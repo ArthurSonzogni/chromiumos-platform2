@@ -58,6 +58,7 @@ using FuzzCommandList =
                 &Backend::Attestation::IsQuoted,
                 &Backend::Attestation::CreateCertifiedKey,
                 &Backend::Attestation::CreateIdentity,
+                &Backend::Attestation::ActivateIdentity,
                 &Backend::Config::ToOperationPolicy,
                 &Backend::Config::SetCurrentUser,
                 &Backend::Config::IsCurrentUserSet,

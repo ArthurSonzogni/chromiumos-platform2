@@ -30,6 +30,12 @@ class MockAttestation : public Attestation {
     ON_CALL(*this, Quote).WillByDefault(Invoke(default_, &Attestation::Quote));
     ON_CALL(*this, IsQuoted)
         .WillByDefault(Invoke(default_, &Attestation::IsQuoted));
+    ON_CALL(*this, CreateCertifiedKey)
+        .WillByDefault(Invoke(default_, &Attestation::CreateCertifiedKey));
+    ON_CALL(*this, CreateIdentity)
+        .WillByDefault(Invoke(default_, &Attestation::CreateIdentity));
+    ON_CALL(*this, ActivateIdentity)
+        .WillByDefault(Invoke(default_, &Attestation::ActivateIdentity));
   }
 
   MOCK_METHOD(StatusOr<attestation::Quote>,
@@ -53,6 +59,13 @@ class MockAttestation : public Attestation {
               CreateIdentity,
               (attestation::KeyType key_type),
               (override));
+  MOCK_METHOD(
+      StatusOr<brillo::SecureBlob>,
+      ActivateIdentity,
+      (attestation::KeyType key_type,
+       Key identity_key,
+       const attestation::EncryptedIdentityCredential& encrypted_certificate),
+      (override));
 
  private:
   Attestation* default_;

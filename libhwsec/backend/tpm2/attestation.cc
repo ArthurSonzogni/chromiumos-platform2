@@ -8,14 +8,18 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/scoped_openssl_types.h>
+#include <crypto/secure_util.h>
 #include <crypto/sha2.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/multiple_authorization_delegate.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_generated.h>
 
@@ -36,12 +40,42 @@ namespace hwsec {
 namespace {
 
 constexpr size_t kRandomCertifiedKeyPasswordLength = 32;
+const char kHashHeaderForEncrypt[] = "ENCRYPT";
+const char kHashHeaderForMac[] = "MAC";
 
 std::string GetDescriptionForMode(const Mode& mode) {
   return base::StringPrintf(
       "(Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s)",
       mode.developer_mode ? "On" : "Off", mode.recovery_mode ? "On" : "Off",
       mode.verified_firmware ? "Verified" : "Developer");
+}
+
+StatusOr<brillo::SecureBlob> DecryptIdentityCertificate(
+    const std::string& credential, const attestation::EncryptedData& input) {
+  brillo::SecureBlob aes_key(
+      crypto::SHA256HashString(kHashHeaderForEncrypt + credential));
+  brillo::SecureBlob hmac_key(
+      crypto::SHA256HashString(kHashHeaderForMac + credential));
+  brillo::SecureBlob expected_mac = hwsec_foundation::HmacSha512(
+      hmac_key, brillo::SecureBlob(input.iv() + input.encrypted_data()));
+  if (expected_mac.size() != input.mac().size()) {
+    return MakeStatus<TPMError>("MAC size mismatch", TPMRetryAction::kNoRetry);
+  }
+  if (!crypto::SecureMemEqual(expected_mac.data(), input.mac().data(),
+                              expected_mac.size())) {
+    return MakeStatus<TPMError>("MAC mismatch", TPMRetryAction::kNoRetry);
+  }
+  brillo::SecureBlob decrypted;
+  brillo::Blob encrypted = BlobFromString(input.encrypted_data());
+  brillo::Blob iv = BlobFromString(input.iv());
+  if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
+          encrypted, 0, encrypted.size(), brillo::SecureBlob(aes_key), iv,
+          hwsec_foundation::PaddingScheme::kPaddingStandard,
+          hwsec_foundation::BlockMode::kCbc, &decrypted)) {
+    return MakeStatus<TPMError>("AES Decryption failed",
+                                TPMRetryAction::kNoRetry);
+  }
+  return decrypted;
 }
 
 }  // namespace
@@ -391,6 +425,103 @@ StatusOr<Attestation::CreateIdentityResult> AttestationTpm2::CreateIdentity(
       .identity_key = identity_key_info,
       .identity_binding = identity_binding_info,
   };
+}
+
+StatusOr<brillo::SecureBlob> AttestationTpm2::ActivateIdentity(
+    attestation::KeyType key_type,
+    Key identity_key,
+    const attestation::EncryptedIdentityCredential& encrypted_certificate) {
+  KeyAlgoType key_algo;
+  switch (key_type) {
+    case attestation::KEY_TYPE_RSA:
+      key_algo = hwsec::KeyAlgoType::kRsa;
+      break;
+    case attestation::KEY_TYPE_ECC:
+      key_algo = hwsec::KeyAlgoType::kEcc;
+      break;
+    default:
+      return MakeStatus<TPMError>("Unsupported key algorithm type",
+                                  TPMRetryAction::kNoRetry);
+  }
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
+
+  ASSIGN_OR_RETURN(ScopedKey endorsment_key,
+                   key_management_.GetEndorsementKey(key_algo));
+
+  ASSIGN_OR_RETURN(
+      const KeyTpm2& endorsement_key_data,
+      key_management_.GetKeyData(endorsment_key.GetKey()),
+      _.WithStatus<TPMError>("Failed to get endorsement key data"));
+  ASSIGN_OR_RETURN(const KeyTpm2& identity_key_data,
+                   key_management_.GetKeyData(identity_key),
+                   _.WithStatus<TPMError>("Failed to get identity key data"));
+  const trunks::TPM_HANDLE& endorsement_key_handle =
+      endorsement_key_data.key_handle;
+  const trunks::TPM_HANDLE& identity_key_handle = identity_key_data.key_handle;
+
+  std::string endorsement_key_name;
+  std::string identity_key_name;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
+                      endorsement_key_handle, &endorsement_key_name)))
+      .WithStatus<TPMError>("Failed to get endorsement key name");
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
+                      identity_key_handle, &identity_key_name)))
+      .WithStatus<TPMError>("Failed to get identity key name");
+
+  ASSIGN_OR_RETURN(
+      const brillo::SecureBlob& endorsement_password,
+      GetEndorsementPassword(tpm_manager_),
+      _.WithStatus<TPMError>("Failed to get endorsement password"));
+  std::unique_ptr<trunks::HmacSession> endorsement_session =
+      context_.GetTrunksFactory().GetHmacSession();
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(endorsement_session->StartUnboundSession(
+          true /* salted */, false /* enable_encryption */)))
+      .WithStatus<TPMError>("Failed to start hmac session");
+  endorsement_session->SetEntityAuthorizationValue(
+      endorsement_password.to_string());
+
+  ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
+                   config_.GetTrunksPolicySession(OperationPolicy{},
+                                                  std::vector<std::string>(),
+                                                  /*salted=*/true,
+                                                  /*enable_encryption=*/false),
+                   _.WithStatus<TPMError>("Failed to get session for policy"));
+
+  trunks::TPMI_DH_ENTITY auth_entity = trunks::TPM_RH_ENDORSEMENT;
+  std::string auth_entity_name;
+  trunks::Serialize_TPM_HANDLE(auth_entity, &auth_entity_name);
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(session->PolicySecret(
+          auth_entity, auth_entity_name, std::string(), std::string(),
+          std::string(), 0, endorsement_session->GetDelegate())))
+      .WithStatus<TPMError>("Failed to set secrete");
+
+  trunks::MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(delegate.get());
+  authorization.AddAuthorizationDelegate(session->GetDelegate());
+  std::string identity_object_data;
+  trunks::Serialize_TPM2B_DIGEST(
+      trunks::Make_TPM2B_DIGEST(encrypted_certificate.credential_mac()),
+      &identity_object_data);
+  identity_object_data +=
+      encrypted_certificate.wrapped_certificate().wrapped_key();
+  trunks::TPM2B_DIGEST encoded_credential;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(
+          context_.GetTrunksFactory().GetTpm()->ActivateCredentialSync(
+              identity_key_handle, identity_key_name, endorsement_key_handle,
+              endorsement_key_name,
+              trunks::Make_TPM2B_ID_OBJECT(identity_object_data),
+              trunks::Make_TPM2B_ENCRYPTED_SECRET(
+                  encrypted_certificate.encrypted_seed()),
+              &encoded_credential, &authorization)))
+      .WithStatus<TPMError>("Failed to activate credential");
+  std::string credential = trunks::StringFrom_TPM2B_DIGEST(encoded_credential);
+  return DecryptIdentityCertificate(
+      credential, encrypted_certificate.wrapped_certificate());
 }
 
 }  // namespace hwsec

@@ -130,6 +130,8 @@ class KeyManagementTpm2 : public KeyManagement {
   StatusOr<brillo::Blob> GetPublicKeyDerFromPublicData(
       const trunks::TPMT_PUBLIC& public_data, bool use_rsa_subject_key_info);
 
+  StatusOr<ScopedKey> GetEndorsementKey(KeyAlgoType key_algo);
+
  private:
   StatusOr<CreateKeyResult> CreateRsaKey(
       const OperationPolicySetting& policy,
@@ -156,7 +158,6 @@ class KeyManagementTpm2 : public KeyManagement {
       const trunks::TPMT_PUBLIC& public_data);
   StatusOr<crypto::ScopedRSA> GetRsaPublicKey(
       const trunks::TPMT_PUBLIC& public_data);
-  StatusOr<ScopedKey> GetEndorsementKey(KeyAlgoType key_algo);
 
   TrunksContext& context_;
   ConfigTpm2& config_;

@@ -28,12 +28,14 @@ class AttestationTpm2 : public Attestation {
                   ConfigTpm2& config,
                   KeyManagementTpm2& key_management,
                   RandomTpm2& random,
-                  SigningTpm2& signing)
+                  SigningTpm2& signing,
+                  org::chromium::TpmManagerProxyInterface& tpm_manager)
       : context_(context),
         config_(config),
         key_management_(key_management),
         random_(random),
-        signing_(signing) {}
+        signing_(signing),
+        tpm_manager_(tpm_manager) {}
 
   StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,
                                      Key key) override;
@@ -50,6 +52,12 @@ class AttestationTpm2 : public Attestation {
   StatusOr<CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) override;
 
+  StatusOr<brillo::SecureBlob> ActivateIdentity(
+      attestation::KeyType key_type,
+      Key identity_key,
+      const attestation::EncryptedIdentityCredential& encrypted_certificate)
+      override;
+
  private:
   // Certifies the |key| by the |identity_key| with |external_data|.
   StatusOr<CertifyKeyResult> CertifyKey(Key key,
@@ -61,6 +69,7 @@ class AttestationTpm2 : public Attestation {
   KeyManagementTpm2& key_management_;
   RandomTpm2& random_;
   SigningTpm2& signing_;
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 };
 
 }  // namespace hwsec

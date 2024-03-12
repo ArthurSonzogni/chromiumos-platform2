@@ -83,6 +83,14 @@ class AttestationFrontend : public Frontend {
   // Signs the |data| with |key_blob|.
   virtual StatusOr<brillo::Blob> Sign(const brillo::Blob& key_blob,
                                       const brillo::Blob& data) const = 0;
+
+  // Activates an attestation identity key.|identity_key_blob| of |key_type|
+  // with the |encrypted_certificate| provided by the Attestation CA.
+  virtual StatusOr<brillo::SecureBlob> ActivateIdentity(
+      attestation::KeyType key_type,
+      const brillo::Blob& identity_key_blob,
+      const attestation::EncryptedIdentityCredential& encrypted_certificate)
+      const = 0;
 };
 
 }  // namespace hwsec

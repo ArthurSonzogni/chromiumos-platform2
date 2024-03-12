@@ -500,4 +500,32 @@ StatusOr<Attestation::CreateIdentityResult> AttestationTpm1::CreateIdentity(
   };
 }
 
+StatusOr<brillo::SecureBlob> AttestationTpm1::ActivateIdentity(
+    attestation::KeyType key_type,
+    Key identity_key,
+    const attestation::EncryptedIdentityCredential& encrypted_certificate) {
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
+  ASSIGN_OR_RETURN(base::ScopedClosureRunner delegate_handle_cleanup,
+                   tss_helper_.SetTpmHandleAsDelegate());
+  ASSIGN_OR_RETURN(
+      const KeyTpm1& identity_key_data,
+      key_management_.GetKeyData(identity_key),
+      _.WithStatus<TPMError>("Failed to get the identity key data"));
+  brillo::Blob asym_ca_contents =
+      BlobFromString(encrypted_certificate.asym_ca_contents());
+  brillo::Blob sym_ca_attestation =
+      BlobFromString(encrypted_certificate.sym_ca_attestation());
+  UINT32 credential_length = 0;
+  ScopedTssMemory credential_buffer(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_TPM_ActivateIdentity(
+                      tpm_handle, identity_key_data.key_handle,
+                      asym_ca_contents.size(), asym_ca_contents.data(),
+                      sym_ca_attestation.size(), sym_ca_attestation.data(),
+                      &credential_length, credential_buffer.ptr())))
+      .WithStatus<TPMError>("Failed to activate identity");
+  return brillo::SecureBlob(credential_buffer.value(),
+                            credential_buffer.value() + credential_length);
+}
+
 }  // namespace hwsec

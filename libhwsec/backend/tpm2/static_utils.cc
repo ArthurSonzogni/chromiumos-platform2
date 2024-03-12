@@ -5,15 +5,22 @@
 #include "libhwsec/backend/tpm2/static_utils.h"
 
 #include <string>
+#include <utility>
 
 #include <base/hash/sha1.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/crypto/openssl.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/error/tpm2_error.h"
+#include "libhwsec/error/tpm_manager_error.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -21,6 +28,8 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 namespace {
+
+constexpr uint32_t kMaxPasswordLength = sizeof(trunks::TPMU_HA);
 
 StatusOr<crypto::ScopedBIGNUM> StringToBignum(const std::string& big_integer) {
   if (big_integer.empty()) {
@@ -107,6 +116,29 @@ std::string GetTpm2PCRValueForMode(
   mode_digest.resize(SHA256_DIGEST_LENGTH);
   const std::string pcr_initial_value(SHA256_DIGEST_LENGTH, 0);
   return crypto::SHA256HashString(pcr_initial_value + mode_digest);
+}
+
+StatusOr<brillo::SecureBlob> GetEndorsementPassword(
+    org::chromium::TpmManagerProxyInterface& tpm_manager) {
+  tpm_manager::GetTpmStatusRequest status_request;
+  tpm_manager::GetTpmStatusReply status_reply;
+  if (brillo::ErrorPtr err; !tpm_manager.GetTpmStatus(
+          status_request, &status_reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
+    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
+        .Wrap(std::move(err));
+  }
+  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(status_reply.status()));
+
+  brillo::SecureBlob password(status_reply.local_data().endorsement_password());
+  if (password.empty()) {
+    return MakeStatus<TPMError>("Empty endorsement password",
+                                TPMRetryAction::kLater);
+  }
+  if (password.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Endorsement password too large",
+                                TPMRetryAction::kLater);
+  }
+  return password;
 }
 
 }  // namespace hwsec

@@ -55,6 +55,11 @@ class AttestationFrontendImpl : public AttestationFrontend,
       const override;
   StatusOr<brillo::Blob> Sign(const brillo::Blob& key_blob,
                               const brillo::Blob& data) const override;
+  StatusOr<brillo::SecureBlob> ActivateIdentity(
+      attestation::KeyType key_type,
+      const brillo::Blob& identity_key_blob,
+      const attestation::EncryptedIdentityCredential& encrypted_certificate)
+      const override;
 };
 
 }  // namespace hwsec
