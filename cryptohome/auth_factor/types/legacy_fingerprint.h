@@ -21,7 +21,6 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/username.h"
 
 namespace cryptohome {
 

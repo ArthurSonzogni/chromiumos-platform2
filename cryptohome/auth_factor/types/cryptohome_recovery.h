@@ -5,25 +5,17 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_CRYPTOHOME_RECOVERY_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_CRYPTOHOME_RECOVERY_H_
 
-#include <memory>
 #include <optional>
-#include <set>
-#include <string>
 
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/label_arity.h"
-#include "cryptohome/auth_factor/metadata.h"
-#include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
-#include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 

@@ -18,7 +18,6 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 

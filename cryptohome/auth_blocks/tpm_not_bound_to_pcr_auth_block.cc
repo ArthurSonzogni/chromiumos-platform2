@@ -4,10 +4,8 @@
 
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 
-#include <map>
 #include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 #include <variant>
 
@@ -25,6 +23,7 @@
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
@@ -32,7 +31,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorActionSet;

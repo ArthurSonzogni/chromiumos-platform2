@@ -7,19 +7,13 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 
-#include <memory>
 #include <optional>
-#include <set>
-#include <string>
-#include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/storage_type.h"
-#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"

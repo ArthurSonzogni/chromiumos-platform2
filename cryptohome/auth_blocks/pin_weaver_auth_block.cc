@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -29,6 +28,7 @@
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -38,9 +38,6 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/util/async_init.h"
-#include "cryptohome/vault_keyset.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;

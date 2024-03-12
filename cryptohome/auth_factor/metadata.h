@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_METADATA_H_
 #define CRYPTOHOME_AUTH_FACTOR_METADATA_H_
 
-#include <optional>
-#include <string>
 #include <variant>
 
 #include <brillo/cryptohome.h>

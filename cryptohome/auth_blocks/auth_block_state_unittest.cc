@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <optional>
-#include <utility>
-#include <variant>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>

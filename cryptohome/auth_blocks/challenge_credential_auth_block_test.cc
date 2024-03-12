@@ -4,10 +4,6 @@
 
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 
-#include <stdint.h>
-
-#include <atomic>
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -28,7 +24,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
-#include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/signature_sealing_test_utils.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"

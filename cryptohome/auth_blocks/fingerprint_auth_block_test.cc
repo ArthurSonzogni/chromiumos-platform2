@@ -25,9 +25,7 @@
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
-#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 

@@ -8,7 +8,6 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 
 #include <memory>
-#include <string>
 
 #include <base/gtest_prod_util.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
@@ -19,7 +18,6 @@
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 

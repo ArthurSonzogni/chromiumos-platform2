@@ -6,7 +6,6 @@
 
 #include <optional>
 #include <string>
-#include <utility>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>

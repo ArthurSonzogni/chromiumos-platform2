@@ -5,15 +5,11 @@
 #ifndef CRYPTOHOME_CHALLENGE_CREDENTIALS_SIGNATURE_SEALING_TEST_UTILS_H_
 #define CRYPTOHOME_CHALLENGE_CREDENTIALS_SIGNATURE_SEALING_TEST_UTILS_H_
 
-#include <cstdint>
-#include <map>
-#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
-#include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

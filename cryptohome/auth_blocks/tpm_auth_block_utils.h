@@ -5,15 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
 #define CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
 
-#include <string>
-
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 

@@ -4,13 +4,9 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 
-#include <stdint.h>
-
 #include <memory>
 #include <optional>
-#include <set>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include <base/check.h>
@@ -22,19 +18,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
-#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/generic.h"
-#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
-#include "cryptohome/auth_factor/storage_type.h"
-#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -44,11 +28,9 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/vault_keyset.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;

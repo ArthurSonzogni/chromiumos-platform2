@@ -6,7 +6,6 @@
 #define CRYPTOHOME_AUTH_BLOCKS_PREPARE_TOKEN_H_
 
 #include <memory>
-#include <utility>
 
 #include <base/functional/callback.h>
 #include <libhwsec-foundation/status/status_chain.h>

@@ -4,6 +4,8 @@
 
 #include "cryptohome/auth_factor/types/kiosk.h"
 
+#include <memory>
+
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -15,7 +15,8 @@
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/type.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/migration_type.h"
 

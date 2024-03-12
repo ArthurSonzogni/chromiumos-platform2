@@ -9,7 +9,6 @@
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"

@@ -16,7 +16,6 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 

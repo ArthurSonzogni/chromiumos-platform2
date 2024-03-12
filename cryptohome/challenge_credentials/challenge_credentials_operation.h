@@ -7,14 +7,13 @@
 
 #include <algorithm>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/functional/callback.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/error/cryptohome_tpm_error.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/username.h"
 

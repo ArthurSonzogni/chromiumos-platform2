@@ -30,14 +30,10 @@
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/fake_features.h"
-#include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {

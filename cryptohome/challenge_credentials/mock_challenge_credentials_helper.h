@@ -5,11 +5,7 @@
 #ifndef CRYPTOHOME_CHALLENGE_CREDENTIALS_MOCK_CHALLENGE_CREDENTIALS_HELPER_H_
 #define CRYPTOHOME_CHALLENGE_CREDENTIALS_MOCK_CHALLENGE_CREDENTIALS_HELPER_H_
 
-#include <cstdint>
-#include <map>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <brillo/secure_blob.h>

@@ -12,6 +12,7 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <cryptohome/vault_keyset.pb.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -19,7 +20,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 

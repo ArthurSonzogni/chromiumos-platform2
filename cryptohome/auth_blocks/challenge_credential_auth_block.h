@@ -5,15 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 
-#include <map>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/memory/weak_ptr.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"

@@ -16,10 +16,8 @@
 
 #include <base/containers/flat_set.h>
 
-#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 
 namespace cryptohome {

@@ -22,6 +22,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_verify_key_operation.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/key_challenge_service.h"
 

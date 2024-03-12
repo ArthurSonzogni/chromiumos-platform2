@@ -20,10 +20,8 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
@@ -219,7 +217,7 @@ TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
       GetEmptyAuthFactorTypePolicy(verifier->auth_factor_type());
   auto intents = GetSupportedIntents(
       kObfuscatedUser, verifier->auth_factor_type(), manager_,
-      auth_factor_type_policy, /*light_auth_only=*/true);
+      auth_factor_type_policy, /*only_light_auth=*/true);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }

@@ -6,7 +6,6 @@
 #define CRYPTOHOME_CHALLENGE_CREDENTIALS_CHALLENGE_CREDENTIALS_VERIFY_KEY_OPERATION_H_
 
 #include <memory>
-#include <string>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>

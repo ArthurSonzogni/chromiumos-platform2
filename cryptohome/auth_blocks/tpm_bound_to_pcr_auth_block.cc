@@ -26,6 +26,7 @@
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
@@ -33,7 +34,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/username.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorActionSet;

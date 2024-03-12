@@ -7,8 +7,6 @@
 
 #include <memory>
 #include <optional>
-#include <set>
-#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -19,14 +17,10 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_factor/storage_type.h"
-#include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"

@@ -4,7 +4,6 @@
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 
-#include <string>
 #include <utility>
 
 #include <base/logging.h>
@@ -16,7 +15,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;

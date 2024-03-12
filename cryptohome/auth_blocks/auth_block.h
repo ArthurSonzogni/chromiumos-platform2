@@ -13,12 +13,12 @@
 #include <base/functional/callback.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 

@@ -6,7 +6,6 @@
 #define CRYPTOHOME_AUTH_BLOCKS_FINGERPRINT_AUTH_BLOCK_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "cryptohome/auth_blocks/auth_block.h"

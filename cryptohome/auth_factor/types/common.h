@@ -27,7 +27,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <utility>
 
 #include <base/containers/span.h>
 #include <base/time/time.h>

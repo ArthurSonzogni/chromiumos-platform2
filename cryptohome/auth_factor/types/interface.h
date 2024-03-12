@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_INTERFACE_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_INTERFACE_H_
 
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <set>
@@ -29,7 +28,6 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
-#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

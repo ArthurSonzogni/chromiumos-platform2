@@ -9,7 +9,6 @@
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
-#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/verifiers/smart_card.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

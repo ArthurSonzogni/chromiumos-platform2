@@ -7,18 +7,15 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/metadata.h"
-#include "cryptohome/auth_factor/type.h"
-#include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/key_challenge_service_factory.h"
-#include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {

@@ -17,7 +17,9 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 
 using brillo::Blob;
 using cryptohome::error::CryptohomeCryptoError;

@@ -4,6 +4,8 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 
+#include <utility>
+
 namespace cryptohome {
 
 namespace {

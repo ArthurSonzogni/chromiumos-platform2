@@ -8,7 +8,6 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/flatbuffer_schemas/enumerations.h"
 
 namespace cryptohome {
 namespace {

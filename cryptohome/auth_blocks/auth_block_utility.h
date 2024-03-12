@@ -5,10 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 
-#include <memory>
 #include <optional>
-#include <set>
-#include <string>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -17,12 +14,9 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/storage_type.h"
-#include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"

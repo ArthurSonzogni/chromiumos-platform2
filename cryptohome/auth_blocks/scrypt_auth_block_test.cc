@@ -4,7 +4,6 @@
 
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 
-#include <atomic>
 #include <memory>
 #include <string>
 #include <utility>
@@ -21,7 +20,6 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {

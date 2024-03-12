@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_NULL_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_NULL_H_
 
-#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -15,10 +14,7 @@
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
-#include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/credential_verifier.h"
-#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 

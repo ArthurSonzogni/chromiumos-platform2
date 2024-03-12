@@ -6,7 +6,7 @@
 
 #include <limits>
 #include <memory>
-#include <utility>
+#include <string>
 
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>

@@ -21,12 +21,12 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "gmock/gmock.h"
 
 namespace cryptohome {
 namespace {

@@ -4,7 +4,6 @@
 
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 
-#include <atomic>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -19,7 +18,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 
