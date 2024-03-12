@@ -74,4 +74,12 @@ void HeartdMojoService::EnableForceRebootAction() {
   action_runner_->EnableForceRebootAction();
 }
 
+void HeartdMojoService::RunAction(mojom::ActionType action,
+                                  RunActionCallback callback) {
+  LOG(INFO) << "Heartbeat service runs action: " << ToStr(action);
+  // Just use kKiosk as the service name, since this interface is used by test.
+  action_runner_->Run(mojom::ServiceName::kKiosk, action);
+  std::move(callback).Run(true);
+}
+
 }  // namespace heartd

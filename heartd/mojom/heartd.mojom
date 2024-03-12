@@ -7,7 +7,7 @@ module ash.heartd.mojom;
 // Control interface exposed by heartd. Chrome can use this interface to control
 // the behavior of heartd.
 //
-// NextMinVersion: 0, NextIndex: 2
+// NextMinVersion: 0, NextIndex: 3
 interface HeartdControl {
   // Enable the heartd daemon to perform normal reboot action, this asks the
   // powerd to reboot the device through D-Bus.
@@ -15,6 +15,8 @@ interface HeartdControl {
   // Enable the heartd daemon to perform force reboot action, this is done by
   // using /proc/sysrq-trigger.
   EnableForceRebootAction@1();
+  // Execute action immediately.
+  RunAction@2(ActionType action) => (bool success);
 };
 
 // Heartbeat service interface exposed by heartd. Clients can use this interface
@@ -91,4 +93,6 @@ enum ActionType {
   kNoOperation = 1,
   kNormalReboot = 2,
   kForceReboot = 3,
+  // Call `sync` to sync data to disk.
+  kSyncData = 4,
 };

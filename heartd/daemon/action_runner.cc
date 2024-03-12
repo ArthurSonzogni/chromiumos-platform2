@@ -22,6 +22,15 @@ namespace {
 
 namespace mojom = ::ash::heartd::mojom;
 
+void SyncData() {
+  brillo::ProcessImpl sync_process;
+  sync_process.AddArg("/bin/sync");
+  // We don't call `Wait()` because it may block the following flow.
+  // Instead, we sleep 10 seconds for sync.
+  sync_process.Start();
+  sleep(10);
+}
+
 }  // namespace
 
 ActionRunner::ActionRunner(DbusConnector* dbus_connector)
@@ -64,6 +73,8 @@ mojom::HeartbeatResponse ActionRunner::DryRun(mojom::ServiceName name,
         return mojom::HeartbeatResponse::kRateLimit;
       }
       break;
+    case mojom::ActionType::kSyncData:
+      return mojom::HeartbeatResponse::kSuccess;
   }
   return mojom::HeartbeatResponse::kSuccess;
 }
@@ -88,16 +99,16 @@ void ActionRunner::Run(mojom::ServiceName name, mojom::ActionType action) {
       case mojom::ActionType::kForceReboot:
         LOG(WARNING) << "Heartd starts to force reboot the device.";
         if (sync_flag_) {
-          brillo::ProcessImpl sync_process;
-          sync_process.AddArg("/bin/sync");
-          // We don't call `Wait()` because it may block the following flow.
-          // Instead, we sleep 10 seconds for sync.
-          sync_process.Start();
-          sleep(10);
+          SyncData();
         }
 
         if (!write(sysrq_fd_, "c", 1)) {
           LOG(ERROR) << "Heartd failed to force reboot the device";
+        }
+        break;
+      case mojom::ActionType::kSyncData:
+        if (sync_flag_) {
+          SyncData();
         }
         break;
     }

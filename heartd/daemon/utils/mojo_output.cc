@@ -33,6 +33,8 @@ std::string ToStr(mojom::ActionType action) {
       return "Normal Reboot";
     case mojom::ActionType::kForceReboot:
       return "Forced Reboot";
+    case mojom::ActionType::kSyncData:
+      return "Sync Data";
     case mojom::ActionType::kUnmappedEnumField:
       return "Unmapped Enum Field";
   }

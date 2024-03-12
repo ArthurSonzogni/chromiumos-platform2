@@ -61,6 +61,8 @@ mojom::ActionType GetActionEnum(std::string& action) {
     return mojom::ActionType::kNormalReboot;
   } else if (action == "kForceReboot") {
     return mojom::ActionType::kForceReboot;
+  } else if (action == "kSyncData") {
+    return mojom::ActionType::kSyncData;
   }
 
   LOG(ERROR) << "Unknow action: " << action;
@@ -79,15 +81,18 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(simulate_client_missing, false,
               "When this is set to true, this tool exits immediately after "
               "registration, so it won't send heartbeat anymore.");
+  DEFINE_bool(run_action_now, false,
+              "When this is set to true, this tool asks heartd to run action1 "
+              "immediately and then exit.");
   DEFINE_uint32(verification_window_seconds, 70,
                 "The verification window. Minimum is 70 seconds.");
   // For testing, supporting two actions should be enough.
   DEFINE_string(action1, "kNoOperation",
                 "The first action to take: "
-                "[kNoOperation, kNormalReboot, kForceReboot]");
+                "[kNoOperation, kNormalReboot, kForceReboot, kSyncData]");
   DEFINE_string(action2, "kNoOperation",
                 "The second action to take: "
-                "[kNoOperation, kNormalReboot, kForceReboot]");
+                "[kNoOperation, kNormalReboot, kForceReboot, kSyncData]");
   brillo::FlagHelper::Init(argc, argv, "Heartd test tool");
 
   // Initialize the mojo environment.
@@ -108,6 +113,16 @@ int main(int argc, char* argv[]) {
   }
   if (FLAGS_enable_force_reboot) {
     control_remote->EnableForceRebootAction();
+  }
+  if (FLAGS_run_action_now) {
+    base::RunLoop run_loop;
+    control_remote->RunAction(
+        GetActionEnum(FLAGS_action1),
+        base::BindOnce([](base::OnceClosure quit_closure,
+                          bool success) { std::move(quit_closure).Run(); },
+                       run_loop.QuitClosure()));
+    run_loop.Run();
+    return EXIT_SUCCESS;
   }
 
   auto argument = mojom::HeartbeatServiceArgument::New();

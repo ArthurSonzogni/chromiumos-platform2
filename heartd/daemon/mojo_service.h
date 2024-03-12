@@ -36,6 +36,8 @@ class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
   // ash::heartd::mojom::HeartdControl overrides:
   void EnableNormalRebootAction() override;
   void EnableForceRebootAction() override;
+  void RunAction(ash::heartd::mojom::ActionType action,
+                 RunActionCallback callback) override;
 
  private:
   // Mojo remote to mojo service manager, used to register mojo interface.

@@ -44,6 +44,9 @@ TEST_F(MojoOutputTest, ActionTypeToStr) {
     case mojom::ActionType::kForceReboot:
       EXPECT_EQ(ToStr(mojom::ActionType::kForceReboot), "Forced Reboot");
       [[fallthrough]];
+    case mojom::ActionType::kSyncData:
+      EXPECT_EQ(ToStr(mojom::ActionType::kSyncData), "Sync Data");
+      [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       EXPECT_EQ(ToStr(mojom::ActionType::kUnmappedEnumField),
                 "Unmapped Enum Field");

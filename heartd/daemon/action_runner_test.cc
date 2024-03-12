@@ -113,6 +113,7 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForOtherAction) {
               RequestRestartAsync(_, _, _, _, _))
       .Times(Exactly(0));
 
+  action_runner_.SetSyncFlag(false);
   action_runner_.EnableNormalRebootAction();
   auto start_action = mojom::ActionType::kNoOperation;
   switch (start_action) {
@@ -128,6 +129,10 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForOtherAction) {
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kForceReboot);
       [[fallthrough]];
+    case mojom::ActionType::kSyncData:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kSyncData);
+      [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kUnmappedEnumField);
@@ -136,6 +141,7 @@ TEST_F(ActionRunnerTest, EnableNormalRebootActionForOtherAction) {
 }
 
 TEST_F(ActionRunnerTest, EnableForceRebootActionForOtherAction) {
+  action_runner_.SetSyncFlag(false);
   action_runner_.EnableForceRebootAction();
   auto start_action = mojom::ActionType::kNoOperation;
   switch (start_action) {
@@ -151,6 +157,10 @@ TEST_F(ActionRunnerTest, EnableForceRebootActionForOtherAction) {
       // It should reboot, it's tested in
       // EnableForceRebootActionForForceReboot.
       [[fallthrough]];
+    case mojom::ActionType::kSyncData:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kSyncData);
+      [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kUnmappedEnumField);
@@ -165,6 +175,7 @@ TEST_F(ActionRunnerTest, DisableNormalRebootAction) {
               RequestRestartAsync(_, _, _, _, _))
       .Times(Exactly(0));
 
+  action_runner_.SetSyncFlag(false);
   action_runner_.EnableNormalRebootAction();
   action_runner_.DisableNormalRebootAction();
   auto start_action = mojom::ActionType::kNoOperation;
@@ -181,6 +192,10 @@ TEST_F(ActionRunnerTest, DisableNormalRebootAction) {
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kForceReboot);
       [[fallthrough]];
+    case mojom::ActionType::kSyncData:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kSyncData);
+      [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kUnmappedEnumField);
@@ -189,6 +204,7 @@ TEST_F(ActionRunnerTest, DisableNormalRebootAction) {
 }
 
 TEST_F(ActionRunnerTest, DisableForceRebootAction) {
+  action_runner_.SetSyncFlag(false);
   action_runner_.EnableForceRebootAction();
   action_runner_.DisableForceRebootAction();
   auto start_action = mojom::ActionType::kNoOperation;
@@ -204,6 +220,10 @@ TEST_F(ActionRunnerTest, DisableForceRebootAction) {
     case mojom::ActionType::kForceReboot:
       action_runner_.Run(mojom::ServiceName::kKiosk,
                          mojom::ActionType::kForceReboot);
+      [[fallthrough]];
+    case mojom::ActionType::kSyncData:
+      action_runner_.Run(mojom::ServiceName::kKiosk,
+                         mojom::ActionType::kSyncData);
       [[fallthrough]];
     case mojom::ActionType::kUnmappedEnumField:
       action_runner_.Run(mojom::ServiceName::kKiosk,
