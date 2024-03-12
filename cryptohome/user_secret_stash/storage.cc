@@ -9,12 +9,14 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
-
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
+
+namespace cryptohome {
+namespace {
 
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
@@ -24,20 +26,16 @@ using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
 
-namespace cryptohome {
-
 // Use rw------- for the USS files.
-constexpr mode_t kUserSecretStashFilePermissions = 0600;
+constexpr mode_t kUserSecretStashFilePermissions = S_IRUSR | S_IWUSR;
+
+}  // namespace
 
 UssStorage::UssStorage(libstorage::Platform* platform) : platform_(platform) {}
-
-UssStorage::~UssStorage() = default;
 
 CryptohomeStatus UssStorage::Persist(
     const brillo::Blob& uss_container_flatbuffer,
     const ObfuscatedUsername& obfuscated_username) {
-  // TODO(b:232299885): Write to the next available slot, and clean up old slots
-  // when necessary.
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
 
@@ -60,7 +58,6 @@ CryptohomeStatus UssStorage::Persist(
 
 CryptohomeStatusOr<brillo::Blob> UssStorage::LoadPersisted(
     const ObfuscatedUsername& obfuscated_username) const {
-  // TODO(b:232299885): Read from the latest available slot.
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);
   brillo::Blob uss_container_flatbuffer;

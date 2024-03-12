@@ -22,8 +22,6 @@ class UssStorage final {
   UssStorage(const UssStorage&) = delete;
   UssStorage& operator=(const UssStorage&) = delete;
 
-  ~UssStorage();
-
   // Persists the serialized USS container, as created by
   // `UserSecretStash::Getlibstorage::StorageContainer()`, in the given user's
   // directory in the shadow root. Returns a status on failure.
