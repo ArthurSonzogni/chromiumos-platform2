@@ -24,7 +24,7 @@ class FileHasherTest : public ::testing::Test {
  public:
   FileHasherTest() {}
   virtual ~FileHasherTest() = default;
-  void SetUp() {
+  void SetUp() override {
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     target_file_.reset(new base::File(
         temp_dir_.GetPath().Append("target_file.bin"),
