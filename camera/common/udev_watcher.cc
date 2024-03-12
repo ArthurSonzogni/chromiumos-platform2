@@ -177,7 +177,7 @@ void UdevWatcher::OnReadable() {
   } else if (strcmp(action, "remove") == 0) {
     callback = &Observer::OnDeviceRemoved;
   } else {
-    NOTREACHED() << "Unexpected action " << action;
+    // Ignore other events.
     return;
   }
 
