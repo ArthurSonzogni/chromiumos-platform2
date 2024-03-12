@@ -1,0 +1,48 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+access: 1
+brk: 1
+chmod: 1
+close: 1
+connect: 1
+creat: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
+exit_group: 1
+exit: 1
+fcntl: 1
+getdents64: 1
+getegid: 1
+geteuid: 1
+getgid: 1
+getpid: 1
+getresgid: 1
+getresuid: 1
+getsockname: 1
+gettid: 1
+getuid: 1
+mkdir: 1
+mremap: 1
+munmap: 1
+newfstatat: 1
+openat: 1
+pipe2: 1
+poll: 1
+read: 1
+recvmsg: 1
+rename: 1
+restart_syscall: 1
+rt_sigprocmask: 1
+rt_sigreturn: 1
+sendmsg: 1
+sendto: 1
+signalfd4: 1
+# For IPC and syslog.
+socket: arg0 == AF_UNIX
+# tgkill is used by abort() and CHECK()/LOG(FATAL).
+tgkill: 1
+unlinkat: 1
+write: 1

@@ -12,6 +12,7 @@ group("all") {
     ":fbpreprocessord",
     ":install_dbus_config",
     ":install_init",
+    ":install_seccomp_policy",
     ":install_tmpfiles_config",
     ":libfbpreprocessord",
   ]
@@ -78,6 +79,12 @@ executable("fbpreprocessord") {
 install_config("install_init") {
   sources = [ "init/fbpreprocessord.conf" ]
   install_path = "upstart"
+}
+
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp/fbpreprocessord-" + getenv("ARCH") + ".policy" ]
+  install_path = "seccomp_policy"
+  outputs = [ "fbpreprocessord.policy" ]
 }
 
 install_config("install_tmpfiles_config") {
