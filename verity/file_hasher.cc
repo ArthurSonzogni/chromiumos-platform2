@@ -159,8 +159,8 @@ std::string FileHasher::GetTable(const PrintArgs& args) {
 DmVerityTable FileHasher::GetRawTable(
     const DmVerityTable::HashPlacement& hash_placement) {
   // Grab the digest (up to 1kbit supported)
-  uint8_t digest[128];
-  char hexsalt[DM_BHT_SALT_SIZE * 2 + 1];
+  uint8_t digest[128] = {0};
+  char hexsalt[DM_BHT_SALT_SIZE * 2 + 1] = {'\0'};
   bool have_salt;
 
   dm_bht_root_hexdigest(&tree_, digest, sizeof(digest));
