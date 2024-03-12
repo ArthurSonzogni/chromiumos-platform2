@@ -184,6 +184,7 @@ bool SignAndPersist(
     const base::FilePath& policy_path,
     const base::FilePath& public_key_path) {
   enterprise_management::PolicyData policy_data;
+  policy_data.set_request_token("fake_request_token");
   policy_data.set_username("");
   policy_data.set_policy_type("google/chromeos/device");
   policy_data_value.SerializeToString(policy_data.mutable_policy_value());
