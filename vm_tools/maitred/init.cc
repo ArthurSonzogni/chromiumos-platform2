@@ -406,8 +406,7 @@ constexpr struct {
 } overlays[] = {
 // TODO(b/286177860): Use overlay /etc for Borealis once Borealis kernel has
 // overlayfs.
-// sludge kernel does not have overlayfs.
-#if !(USE_VM_BOREALIS || USE_VM_SLUDGE)
+#if !USE_VM_BOREALIS
     {
         .target = "/etc",
         .lower_dir = "/etc",
