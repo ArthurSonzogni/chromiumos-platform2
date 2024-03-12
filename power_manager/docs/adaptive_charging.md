@@ -81,5 +81,5 @@ improving battery health, but it has a larger benefit than Adaptive Charging.
 This feature is useful for the lab and other environments where you never need a
 full charge for the battery.
 
-[Adaptive Charging]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/powerd/policy/adaptive_charging.h
+[Adaptive Charging]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/powerd/policy/adaptive_charging_controller.h
 [PowerManagementPolicy]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/policy.proto
