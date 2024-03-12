@@ -251,6 +251,10 @@ class Suspender : public SuspendDelayObserver,
   void HandleShutdown();
   void HandleDisplayModeChange(DisplayMode mode);
 
+  // Handles key eviction events.
+  void HandleDeviceKeyEvicted();
+  void HandleDeviceKeyRestored();
+
   // Handles the D-Bus name |name| becoming owned by |new_owner| instead of
   // |old_owner|.
   void HandleDBusNameOwnerChanged(const std::string& name,

@@ -75,11 +75,22 @@ void SuspendDelayController::RegisterSuspendDelay(
   }
   info.dbus_client = dbus_client;
   info.description = request.description();
+  if (request.has_applicable_during_key_eviction()) {
+    info.applicable_during_key_eviction =
+        request.applicable_during_key_eviction();
+  } else {
+    // Consider the delay applicable if the field is not set, which is the
+    // default for existing clients that don't explicitly set it.
+    info.applicable_during_key_eviction = true;
+  }
 
   LOG(INFO) << "Registering " << GetLogDescription() << " delay " << delay_id
-            << " (" << info.description << ")"
-            << " of " << info.timeout.InMilliseconds() << " ms on behalf of "
-            << dbus_client;
+            << " (" << info.description << ")" << " of "
+            << info.timeout.InMilliseconds() << " ms on behalf of "
+            << dbus_client
+            << (!info.applicable_during_key_eviction
+                    ? " (not applicable during key eviction)"
+                    : "");
   registered_delays_.insert(std::make_pair(delay_id, info));
 
   reply->Clear();
@@ -144,6 +155,14 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   }
 }
 
+void SuspendDelayController::HandleDeviceKeyEvicted() {
+  device_key_evicted_ = true;
+}
+
+void SuspendDelayController::HandleDeviceKeyRestored() {
+  device_key_evicted_ = false;
+}
+
 bool SuspendDelayController::AddSuspendInternalDelay(
     const SuspendInternalDelay* delay) {
   if (suspend_readiness_notified_) {
@@ -169,8 +188,10 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
   size_t old_count = delay_ids_being_waited_on_.size();
   delay_ids_being_waited_on_.clear();
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-       it != registered_delays_.end(); ++it)
-    delay_ids_being_waited_on_.insert(it->first);
+       it != registered_delays_.end(); ++it) {
+    if (!device_key_evicted_ || it->second.applicable_during_key_eviction)
+      delay_ids_being_waited_on_.insert(it->first);
+  }
 
   LOG(INFO) << "Announcing " << GetLogDescription() << " request "
             << current_suspend_id_ << " with "
@@ -192,7 +213,8 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
          it != registered_delays_.end(); ++it) {
-      max_timeout = std::max(max_timeout, it->second.timeout);
+      if (!device_key_evicted_ || it->second.applicable_during_key_eviction)
+        max_timeout = std::max(max_timeout, it->second.timeout);
     }
     max_timeout = std::min(max_timeout, max_delay_timeout_);
     max_delay_expiration_timer_.Start(

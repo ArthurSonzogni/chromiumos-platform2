@@ -111,6 +111,11 @@ class SuspendDelayController {
   // request is aborted.
   void FinishSuspend(int suspend_id);
 
+  // Handles notification that the device key has been evicted.
+  void HandleDeviceKeyEvicted();
+  // Handles notification that the device key has been restored.
+  void HandleDeviceKeyRestored();
+
  private:
   // Information about a registered delay.
   struct DelayInfo {
@@ -123,6 +128,10 @@ class SuspendDelayController {
 
     // Human-readable description supplied with the registration request.
     std::string description;
+
+    // Indicates whether the delay is applicable while the device key is
+    // evicted.
+    bool applicable_during_key_eviction;
   };
 
   // Minimum time that the controller will wait before resuspending on dark
@@ -211,6 +220,9 @@ class SuspendDelayController {
   // Used to ensure SuspendInternalDelays are not added after we notify
   // observers of suspend readiness.
   bool suspend_readiness_notified_ = false;
+
+  // Used to track whether the device key is currently evicted.
+  bool device_key_evicted_ = false;
 
   // Defaulted to |kDarkResumeMinDelayTimeout|. Overridden for test
   // cases. Note that this timer is armed only on dark resume.

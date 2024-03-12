@@ -173,6 +173,16 @@ void Suspender::HandleDBusNameOwnerChanged(const std::string& name,
   }
 }
 
+void Suspender::HandleDeviceKeyEvicted() {
+  suspend_delay_controller_->HandleDeviceKeyEvicted();
+  dark_suspend_delay_controller_->HandleDeviceKeyEvicted();
+}
+
+void Suspender::HandleDeviceKeyRestored() {
+  suspend_delay_controller_->HandleDeviceKeyRestored();
+  dark_suspend_delay_controller_->HandleDeviceKeyRestored();
+}
+
 void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
                                   int suspend_id) {
   if (controller == suspend_delay_controller_.get() &&

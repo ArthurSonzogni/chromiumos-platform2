@@ -134,6 +134,7 @@ class SuspendDelayRegisterer {
     power_manager::RegisterSuspendDelayRequest request;
     request.set_timeout(base::Milliseconds(timeout_ms_).InMicroseconds());
     request.set_description(kSuspendDelayDescription);
+    request.set_applicable_during_key_eviction(true);
     std::string method_name =
         dark_suspend_delay_ ? power_manager::kRegisterDarkSuspendDelayMethod
                             : power_manager::kRegisterSuspendDelayMethod;

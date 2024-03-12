@@ -1890,6 +1890,7 @@ void Daemon::OnDeviceKeyRestored() {
   LOG(INFO) << "The device key has been restored";
 
   suspend_freezer_->ThawProcesses();
+  suspender_->HandleDeviceKeyRestored();
 }
 
 void Daemon::RequestTpmStatus() {
