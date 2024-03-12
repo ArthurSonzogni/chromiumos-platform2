@@ -84,8 +84,7 @@ void PrimeSearchRoutine::Run(
 
 void PrimeSearchRoutine::OnFinished(bool passed) {
   scoped_process_control_.Reset();
-  SetFinishedState(passed, mojom::RoutineDetail::NewPrimeSearch(
-                               mojom::PrimeSearchRoutineDetail::New()));
+  SetFinishedState(passed, /*detail=*/nullptr);
 }
 
 void PrimeSearchRoutine::UpdatePercentage() {

@@ -89,17 +89,13 @@ void VolumeButtonRoutine::OnEvent(
     mojom::VolumeButtonObserver::ButtonState button_state) {
   if (IsButtonTypeMatched(button, target_button_type_)) {
     CleanUp();
-    SetFinishedState(/*has_passed*/ true,
-                     mojom::RoutineDetail::NewVolumeButton(
-                         mojom::VolumeButtonRoutineDetail::New()));
+    SetFinishedState(/*has_passed=*/true, /*detail=*/nullptr);
   }
 }
 
 void VolumeButtonRoutine::OnTimeout() {
   CleanUp();
-  SetFinishedState(/*has_passed*/ false,
-                   mojom::RoutineDetail::NewVolumeButton(
-                       mojom::VolumeButtonRoutineDetail::New()));
+  SetFinishedState(/*has_passed=*/false, /*detail=*/nullptr);
 }
 
 void VolumeButtonRoutine::OnEventObserverDisconnect(

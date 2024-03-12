@@ -165,9 +165,8 @@ void LedLitUpRoutine::RunNextStep() {
                                 weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:
-      SetFinishedState(/*has_passed*/ color_matched_response_,
-                       mojom::RoutineDetail::NewLedLitUp(
-                           mojom::LedLitUpRoutineDetail::New()));
+      SetFinishedState(/*has_passed=*/color_matched_response_,
+                       /*detail=*/nullptr);
       break;
   }
 }

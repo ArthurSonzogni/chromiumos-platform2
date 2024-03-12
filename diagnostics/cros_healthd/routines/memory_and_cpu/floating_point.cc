@@ -67,8 +67,7 @@ void FloatingPointRoutine::Run(
 
 void FloatingPointRoutine::OnFinished(bool passed) {
   scoped_process_control_.Reset();
-  SetFinishedState(passed, mojom::RoutineDetail::NewFloatingPoint(
-                               mojom::FloatingPointRoutineDetail::New()));
+  SetFinishedState(passed, /*detail=*/nullptr);
 }
 
 void FloatingPointRoutine::UpdatePercentage() {

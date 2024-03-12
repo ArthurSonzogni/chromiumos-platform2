@@ -440,32 +440,30 @@ struct RoutineStateFinished {
 
 // Details about a finished routine.
 //
-// NextMinVersion: 4, NextIndex: 4
+// NextMinVersion: 1, NextIndex: 10
 [Extensible]
 union RoutineDetail {
   // Default field is required by extensible unions for backward compatibility.
   // Any unrecognized Mojo field will deserialize to this field. Don't use this.
-  [Default] bool unrecognizedArgument;
+  [Default] bool unrecognizedArgument@0;
   // Details of a completed memory routine.
-  [MinVersion=1] MemoryRoutineDetail memory;
-  // Details of a completed volume button routine.
-  [MinVersion=2] VolumeButtonRoutineDetail volume_button;
+  MemoryRoutineDetail memory@1;
   // Details of a completed fan routine.
-  [MinVersion=3] FanRoutineDetail fan;
-  AudioDriverRoutineDetail audio_driver;
-  CpuStressRoutineDetail cpu_stress;
-  UfsLifetimeRoutineDetail ufs_lifetime;
-  DiskReadRoutineDetail disk_read;
-  CpuCacheRoutineDetail cpu_cache;
-  PrimeSearchRoutineDetail prime_search;
-  LedLitUpRoutineDetail led_lit_up;
-  FloatingPointRoutineDetail floating_point;
-  BluetoothPowerRoutineDetail bluetooth_power;
-  BluetoothDiscoveryRoutineDetail bluetooth_discovery;
-  BluetoothScanningRoutineDetail bluetooth_scanning;
-  BluetoothPairingRoutineDetail bluetooth_pairing;
-  CameraAvailabilityRoutineDetail camera_availability;
-  UrandomRoutineDetail urandom;
+  FanRoutineDetail fan@2;
+  // Details of a completed audio driver routine.
+  AudioDriverRoutineDetail audio_driver@3;
+  // Details of a completed UFS lifetime routine.
+  UfsLifetimeRoutineDetail ufs_lifetime@4;
+  // Details of a completed Bluetooth power routine.
+  BluetoothPowerRoutineDetail bluetooth_power@5;
+  // Details of a completed Bluetooth discovery routine.
+  BluetoothDiscoveryRoutineDetail bluetooth_discovery@6;
+  // Details of a completed Bluetooth scanning routine.
+  BluetoothScanningRoutineDetail bluetooth_scanning@7;
+  // Details of a completed Bluetooth pairing routine.
+  BluetoothPairingRoutineDetail bluetooth_pairing@8;
+  // Details of a completed camera availability routine.
+  CameraAvailabilityRoutineDetail camera_availability@9;
 };
 
 // Details regarding memory routine.
@@ -488,11 +486,6 @@ struct AudioDriverRoutineDetail {
   bool audio_devices_succeed_to_open@1;
 };
 
-// Details regarding CPU stress routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct CpuStressRoutineDetail {};
-
 // Details regarding UFS lifetime routine.
 //
 // NextMinVersion: 1, NextIndex: 3
@@ -503,27 +496,6 @@ struct UfsLifetimeRoutineDetail {
   uint8 device_life_time_est_a@1;
   // Device life time estimation (type B).
   uint8 device_life_time_est_b@2;
-};
-
-// Details regarding disk_read routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct DiskReadRoutineDetail {};
-
-// Details regarding CPU cache routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct CpuCacheRoutineDetail {};
-
-// Details regarding prime search routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct PrimeSearchRoutineDetail {};
-
-// Details regarding floating point routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct FloatingPointRoutineDetail {
 };
 
 // Enumeration of each possible memtester test item.
@@ -592,16 +564,6 @@ struct MemtesterResult {
   // Tests that have failed.
   array<MemtesterTestItemEnum> failed_items@1;
 };
-
-// Details regarding volume button routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct VolumeButtonRoutineDetail {};
-
-// Details regarding LED lit up routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct LedLitUpRoutineDetail {};
 
 // Details regarding Bluetooth powered state.
 //
@@ -837,10 +799,4 @@ struct FanRoutineDetail {
   array<uint8> failed_fan_ids@1;
   // Whether the number of fan probed is matched.
   HardwarePresenceStatus fan_count_status@2;
-};
-
-// Details regarding urandom routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct UrandomRoutineDetail {
 };

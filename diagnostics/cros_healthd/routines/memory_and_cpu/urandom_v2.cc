@@ -67,8 +67,7 @@ void UrandomRoutineV2::Run(
 
 void UrandomRoutineV2::OnFinished(bool passed) {
   scoped_process_control_.Reset();
-  SetFinishedState(passed, mojom::RoutineDetail::NewUrandom(
-                               mojom::UrandomRoutineDetail::New()));
+  SetFinishedState(passed, /*detail=*/nullptr);
 }
 
 void UrandomRoutineV2::UpdatePercentage() {

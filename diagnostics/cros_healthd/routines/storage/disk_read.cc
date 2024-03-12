@@ -164,8 +164,7 @@ void DiskReadRoutine::RunNextStep() {
     case kComplete:
       remove_fio_cache_.RunAndReset();
       // The routine will pass if all fio jobs complete successfully.
-      SetFinishedState(true, mojom::RoutineDetail::NewDiskRead(
-                                 mojom::DiskReadRoutineDetail::New()));
+      SetFinishedState(/*has_passed=*/true, /*detail=*/nullptr);
       break;
   }
 }

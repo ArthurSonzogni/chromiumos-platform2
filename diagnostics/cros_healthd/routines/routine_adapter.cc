@@ -102,6 +102,9 @@ base::Value::Dict ConvertToValueInV1Format(
 
 base::Value::Dict ConvertRoutineDetailToOutputDict(
     const mojom::RoutineDetailPtr& detail) {
+  if (detail.is_null()) {
+    return base::Value::Dict();
+  }
   switch (detail->which()) {
     case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
       NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
@@ -109,16 +112,6 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     // Not exposed in the v1 interface.
     case mojom::RoutineDetail::Tag::kCameraAvailability:
       NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
-    // These routines do not produce printable output. Return empty output.
-    case mojom::RoutineDetail::Tag::kCpuStress:
-    case mojom::RoutineDetail::Tag::kDiskRead:
-    case mojom::RoutineDetail::Tag::kCpuCache:
-    case mojom::RoutineDetail::Tag::kPrimeSearch:
-    case mojom::RoutineDetail::Tag::kVolumeButton:
-    case mojom::RoutineDetail::Tag::kLedLitUp:
-    case mojom::RoutineDetail::Tag::kFloatingPoint:
-    case mojom::RoutineDetail::Tag::kUrandom:
-      return base::Value::Dict();
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertToValueInV1Format(detail->get_memory());
     case mojom::RoutineDetail::Tag::kAudioDriver:
@@ -321,14 +314,8 @@ void RoutineAdapter::PopulateStatusUpdate(bool include_output,
                            : mojom::DiagnosticRoutineStatusEnum::kFailed;
 
       if (include_output) {
-        if (finished_ptr->detail.is_null()) {
-          update->status = mojom::DiagnosticRoutineStatusEnum::kError;
-          update->status_message = "Got null routine output.";
-
-        } else {
-          response.output =
-              ConvertRoutineDetailToMojoHandle(finished_ptr->detail);
-        }
+        response.output =
+            ConvertRoutineDetailToMojoHandle(finished_ptr->detail);
       }
       NotifyStatusChanged(update->status);
       response.routine_update_union =

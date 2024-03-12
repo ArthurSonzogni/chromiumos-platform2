@@ -94,8 +94,7 @@ void CpuCacheRoutine::Run(
 void CpuCacheRoutine::HandleGetReturnCode(int return_code) {
   scoped_process_control_.Reset();
   bool passed = return_code == EXIT_SUCCESS;
-  SetFinishedState(passed, mojom::RoutineDetail::NewCpuCache(
-                               mojom::CpuCacheRoutineDetail::New()));
+  SetFinishedState(passed, /*detail=*/nullptr);
 }
 
 void CpuCacheRoutine::UpdatePercentage() {

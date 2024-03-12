@@ -127,49 +127,40 @@ void RoutineV2Client::OnFinishedState(
   std::cout << "Status: " << (finished->has_passed ? "Passed" : "Failed")
             << std::endl;
   const auto& detail = finished->detail;
-  switch (detail->which()) {
-    case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
-      NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
-      break;
+  if (!detail.is_null()) {
+    switch (detail->which()) {
+      case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
+        NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
+        break;
+      }
+      case mojom::RoutineDetail::Tag::kMemory:
+        PrintOutput(ConvertToValue(detail->get_memory()));
+        break;
+      case mojom::RoutineDetail::Tag::kAudioDriver:
+        PrintOutput(ConvertToValue(detail->get_audio_driver()));
+        break;
+      case mojom::RoutineDetail::Tag::kUfsLifetime:
+        PrintOutput(ConvertToValue(detail->get_ufs_lifetime()));
+        break;
+      case mojom::RoutineDetail::Tag::kBluetoothPower:
+        PrintOutput(ConvertToValue(detail->get_bluetooth_power()));
+        break;
+      case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
+        PrintOutput(ConvertToValue(detail->get_bluetooth_discovery()));
+        break;
+      case mojom::RoutineDetail::Tag::kFan:
+        PrintOutput(ConvertToValue(detail->get_fan()));
+        break;
+      case mojom::RoutineDetail::Tag::kBluetoothScanning:
+        PrintOutput(ConvertToValue(detail->get_bluetooth_scanning()));
+        break;
+      case mojom::RoutineDetail::Tag::kBluetoothPairing:
+        PrintOutput(ConvertToValue(detail->get_bluetooth_pairing()));
+        break;
+      case mojom::RoutineDetail::Tag::kCameraAvailability:
+        PrintOutput(ConvertToValue(detail->get_camera_availability()));
+        break;
     }
-    // These routines do not produce printable output. Printing passed or
-    // failed is enough.
-    case mojom::RoutineDetail::Tag::kCpuStress:
-    case mojom::RoutineDetail::Tag::kDiskRead:
-    case mojom::RoutineDetail::Tag::kCpuCache:
-    case mojom::RoutineDetail::Tag::kPrimeSearch:
-    case mojom::RoutineDetail::Tag::kVolumeButton:
-    case mojom::RoutineDetail::Tag::kLedLitUp:
-    case mojom::RoutineDetail::Tag::kFloatingPoint:
-    case mojom::RoutineDetail::Tag::kUrandom:
-      break;
-    case mojom::RoutineDetail::Tag::kMemory:
-      PrintOutput(ConvertToValue(detail->get_memory()));
-      break;
-    case mojom::RoutineDetail::Tag::kAudioDriver:
-      PrintOutput(ConvertToValue(detail->get_audio_driver()));
-      break;
-    case mojom::RoutineDetail::Tag::kUfsLifetime:
-      PrintOutput(ConvertToValue(detail->get_ufs_lifetime()));
-      break;
-    case mojom::RoutineDetail::Tag::kBluetoothPower:
-      PrintOutput(ConvertToValue(detail->get_bluetooth_power()));
-      break;
-    case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
-      PrintOutput(ConvertToValue(detail->get_bluetooth_discovery()));
-      break;
-    case mojom::RoutineDetail::Tag::kFan:
-      PrintOutput(ConvertToValue(detail->get_fan()));
-      break;
-    case mojom::RoutineDetail::Tag::kBluetoothScanning:
-      PrintOutput(ConvertToValue(detail->get_bluetooth_scanning()));
-      break;
-    case mojom::RoutineDetail::Tag::kBluetoothPairing:
-      PrintOutput(ConvertToValue(detail->get_bluetooth_pairing()));
-      break;
-    case mojom::RoutineDetail::Tag::kCameraAvailability:
-      PrintOutput(ConvertToValue(detail->get_camera_availability()));
-      break;
   }
   run_loop_.Quit();
 }
