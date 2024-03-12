@@ -149,6 +149,15 @@ const char* FileHasher::RandomSalt() {
 }
 
 std::string FileHasher::GetTable(const PrintArgs& args) {
+  return GetRawTable(args.colocated ? DmVerityTable::HashPlacement::COLOCATED
+                                    : DmVerityTable::HashPlacement::SEPARATE)
+      .Print(args.vanilla ? DmVerityTable::Format::VANILLA
+                          : DmVerityTable::Format::CROS)
+      .value_or("");
+}
+
+DmVerityTable FileHasher::GetRawTable(
+    const DmVerityTable::HashPlacement& hash_placement) {
   // Grab the digest (up to 1kbit supported)
   uint8_t digest[128];
   char hexsalt[DM_BHT_SALT_SIZE * 2 + 1];
@@ -157,7 +166,7 @@ std::string FileHasher::GetTable(const PrintArgs& args) {
   dm_bht_root_hexdigest(&tree_, digest, sizeof(digest));
   have_salt = dm_bht_salt(&tree_, hexsalt) == 0;
 
-  DmVerityTable table(
+  return DmVerityTable(
       alg_, std::to_array(digest),
       have_salt ? std::make_optional(std::to_array(hexsalt)) : std::nullopt,
       /*data_dev=*/
@@ -173,12 +182,7 @@ std::string FileHasher::GetTable(const PrintArgs& args) {
           .block_count =
               0,  // This value doesn't really matter for hash device.
       },
-      args.colocated ? DmVerityTable::HashPlacement::COLOCATED
-                     : DmVerityTable::HashPlacement::SEPARATE);
-  return table
-      .Print(args.vanilla ? DmVerityTable::Format::VANILLA
-                          : DmVerityTable::Format::CROS)
-      .value_or("");
+      hash_placement);
 }
 
 void FileHasher::PrintTable(const PrintArgs& args) {

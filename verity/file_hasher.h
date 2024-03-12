@@ -16,6 +16,7 @@
 #include <brillo/brillo_export.h>
 
 #include "verity/dm-bht.h"
+#include "verity/dm_verity_table.h"
 
 namespace verity {
 // FileHasher takes a |base::File| object and reads in |block_size|
@@ -49,6 +50,7 @@ class BRILLO_EXPORT FileHasher {
   // Print a table to stdout which contains a dmsetup compatible format
   virtual void PrintTable(const PrintArgs& args);
   virtual std::string GetTable(const PrintArgs& args);
+  virtual DmVerityTable GetRawTable(const DmVerityTable::HashPlacement& args);
 
   virtual const char* RandomSalt();
   virtual void set_salt(const char* salt);
