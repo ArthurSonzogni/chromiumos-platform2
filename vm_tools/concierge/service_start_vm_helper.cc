@@ -105,8 +105,7 @@ VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
   return result;
 }
 
-VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
-                         const std::optional<base::ScopedFD>& kernel_fd,
+VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
                          const std::optional<base::ScopedFD>& rootfs_fd,
                          const std::optional<base::ScopedFD>& initrd_fd,
                          const std::optional<base::ScopedFD>& bios_fd,
@@ -128,8 +127,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                  .Append(base::NumberToString(raw_fd));
   } else if (vmDlcPath.has_value()) {
     kernel = vmDlcPath.value().Append(kVmKernelName);
-  } else {
-    kernel = base::FilePath(vm.kernel());
   }
 
   if (rootfs_fd.has_value()) {
@@ -141,8 +138,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                  .Append(base::NumberToString(raw_fd));
   } else if (vmDlcPath.has_value()) {
     rootfs = vmDlcPath.value().Append(kVmRootfsName);
-  } else {
-    rootfs = base::FilePath(vm.rootfs());
   }
 
   if (initrd_fd.has_value()) {
@@ -152,8 +147,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
       return {};
     initrd = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
-  } else {
-    initrd = base::FilePath(vm.initrd());
   }
 
   if (bios_fd.has_value()) {

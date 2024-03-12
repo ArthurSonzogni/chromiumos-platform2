@@ -129,8 +129,7 @@ VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
 // Determines key components of a VM image. Also, decides if it's a trusted
 // VM. Returns the empty struct and sets |failure_reason| in the event of a
 // failure.
-VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
-                         const std::optional<base::ScopedFD>& kernel_fd,
+VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
                          const std::optional<base::ScopedFD>& rootfs_fd,
                          const std::optional<base::ScopedFD>& initrd_fd,
                          const std::optional<base::ScopedFD>& bios_fd,

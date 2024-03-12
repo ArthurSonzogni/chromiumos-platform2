@@ -1573,7 +1573,7 @@ StartVmResponse Service::StartVmInternal(
   auto root_fd = std::move(root_fd_result.first);
 
   VMImageSpec image_spec = internal::GetImageSpec(
-      request.vm(), vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
+      vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
       vm_start_image_fds.initrd_fd, vm_start_image_fds.bios_fd,
       vm_start_image_fds.pflash_fd, biosDlcPath, vmDlcPath, toolsDlcPath,
       failure_reason);

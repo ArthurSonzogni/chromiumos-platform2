@@ -29,20 +29,8 @@ import "arc/arc.proto";
 // TODO(crbug/1121046): This spec may be insufficient for DLC, consider
 // re-designing it.
 message VirtualMachineSpec {
-  // Path to the kernel that should be used for the VM.
-  string kernel = 1;
-
-  // Path to the disk image that should be used as the root file system for
-  // the VM.
-  string rootfs = 2;
-
-  // ID of a DLC package that contains the kernel and rootfs. If this field is
-  // set, the kernel() and rootfs() fields will be ignored when calculating the
-  // path to the VM's image files.
+  // ID of a DLC package that contains the kernel and rootfs.
   string dlc_id = 3;
-
-  // Optional path to the initrd that should be used for the VM.
-  string initrd = 4;
 
   // ID of a DLC package that contains the vm_tools.img for this vm. If empty
   // the vm_tools.img from the above dlc_id is used if available.
