@@ -115,7 +115,7 @@ const char WiFi::kWakeOnWiFiNotSupported[] = "Wake on WiFi not supported";
 namespace {
 const uint16_t kDefaultBgscanShortIntervalSeconds = 64;
 const uint16_t kSingleEndpointBgscanShortIntervalSeconds = 360;
-const int32_t kDefaultBgscanSignalThresholdDbm = -72;
+const int32_t kDefaultBgscanSignalThresholdDbm = -70;
 // Delay between scans when supplicant finds "No suitable network".
 const time_t kRescanIntervalSeconds = 1;
 const base::TimeDelta kPendingTimeout = base::Seconds(15);
