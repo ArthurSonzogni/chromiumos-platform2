@@ -1576,7 +1576,7 @@ StartVmResponse Service::StartVmInternal(
       request.vm(), vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
       vm_start_image_fds.initrd_fd, vm_start_image_fds.bios_fd,
       vm_start_image_fds.pflash_fd, biosDlcPath, vmDlcPath, toolsDlcPath,
-      classification == apps::VmType::TERMINA, failure_reason);
+      failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);

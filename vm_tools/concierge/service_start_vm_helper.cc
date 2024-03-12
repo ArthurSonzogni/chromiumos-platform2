@@ -114,7 +114,6 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                          const std::optional<base::FilePath>& biosDlcPath,
                          const std::optional<base::FilePath>& vmDlcPath,
                          const std::optional<base::FilePath>& toolsDlcPath,
-                         bool is_termina,
                          std::string& failure_reason) {
   DCHECK(failure_reason.empty());
   DCHECK_CALLED_ON_VALID_SEQUENCE(base::SequenceChecker);
@@ -127,6 +126,8 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
       return {};
     kernel = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
+  } else if (vmDlcPath.has_value()) {
+    kernel = vmDlcPath.value().Append(kVmKernelName);
   } else {
     kernel = base::FilePath(vm.kernel());
   }
@@ -138,6 +139,8 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
       return {};
     rootfs = base::FilePath(kProcFileDescriptorsPath)
                  .Append(base::NumberToString(raw_fd));
+  } else if (vmDlcPath.has_value()) {
+    rootfs = vmDlcPath.value().Append(kVmRootfsName);
   } else {
     rootfs = base::FilePath(vm.rootfs());
   }
@@ -174,34 +177,12 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                  .Append(base::NumberToString(raw_fd));
   }
 
-  base::FilePath vm_path;
-  // As a legacy fallback, use the component rather than the DLC.
-  //
-  // TODO(crbug/953544): remove this once we no longer distribute termina as a
-  // component.
-  if (vm.dlc_id().empty() && is_termina) {
-    vm_path = internal::GetLatestVMPath(base::FilePath(kVmDefaultPath));
-    if (vm_path.empty()) {
-      failure_reason = "Termina component is not loaded";
-      return {};
-    }
-  } else if (vmDlcPath.has_value()) {
-    vm_path = vmDlcPath.value();
-  }
-
-  // Pull in the DLC-provided files if requested.
-  if (!kernel_fd.has_value() && !vm_path.empty())
-    kernel = vm_path.Append(kVmKernelName);
-  if (!rootfs_fd.has_value() && !vm_path.empty())
-    rootfs = vm_path.Append(kVmRootfsName);
-
   base::FilePath tools_disk;
   if (toolsDlcPath.has_value()) {
-    base::FilePath tools_disk_path = toolsDlcPath.value();
-    tools_disk = tools_disk_path.Append(kVmToolsDiskName);
+    tools_disk = toolsDlcPath.value().Append(kVmToolsDiskName);
+  } else if (vmDlcPath.has_value()) {
+    tools_disk = vmDlcPath.value().Append(kVmToolsDiskName);
   }
-  if (tools_disk.empty() && !vm_path.empty())
-    tools_disk = vm_path.Append(kVmToolsDiskName);
 
   return VMImageSpec{
       .kernel = std::move(kernel),
@@ -223,24 +204,6 @@ std::string RemoveCloseOnExec(int raw_fd) {
     return "Failed to clear close-on-exec flag for fd";
   }
   return "";
-}
-
-base::FilePath GetLatestVMPath(base::FilePath component_dir) {
-  base::FileEnumerator dir_enum(component_dir, false,
-                                base::FileEnumerator::DIRECTORIES);
-  base::Version latest_version("0");
-  base::FilePath latest_path;
-  for (base::FilePath path = dir_enum.Next(); !path.empty();
-       path = dir_enum.Next()) {
-    base::Version version(path.BaseName().value());
-    if (!version.IsValid())
-      continue;
-    if (version > latest_version) {
-      latest_version = version;
-      latest_path = path;
-    }
-  }
-  return latest_path;
 }
 
 }  // namespace internal

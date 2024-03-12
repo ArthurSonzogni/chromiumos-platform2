@@ -138,15 +138,11 @@ VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
                          const std::optional<base::FilePath>& biosDlcPath,
                          const std::optional<base::FilePath>& vmDlcPath,
                          const std::optional<base::FilePath>& toolsDlcPath,
-                         bool is_termina,
                          std::string& failure_reason);
 
 // Clears close-on-exec flag for a file descriptor to pass it to a subprocess
 // such as crosvm. Returns a failure reason on failure.
 std::string RemoveCloseOnExec(int raw_fd);
-
-// Get the path to the latest available cros-termina component.
-base::FilePath GetLatestVMPath(base::FilePath component_dir);
 
 }  // namespace internal
 
