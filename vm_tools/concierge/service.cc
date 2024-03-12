@@ -1577,6 +1577,7 @@ StartVmResponse Service::StartVmInternal(
   response.set_status(VM_STATUS_FAILURE);
 
   VmId vm_id(request.owner_id(), request.name());
+  VmBuilder vm_builder;
 
   apps::VmType classification = internal::ClassifyVm(request);
 
@@ -1684,7 +1685,6 @@ StartVmResponse Service::StartVmInternal(
   bool use_pmem = USE_PMEM_DEVICE_FOR_ROOTFS;
   std::string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
-  std::vector<VmBuilder::Disk> disks;
 
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
@@ -1698,8 +1698,8 @@ StartVmResponse Service::StartVmInternal(
       response.set_failure_reason(failure_reason);
       return response;
     }
-    disks.push_back(VmBuilder::Disk{.path = std::move(image_spec.tools_disk),
-                                    .writable = false});
+    vm_builder.AppendDisk(VmBuilder::Disk{
+        .path = std::move(image_spec.tools_disk), .writable = false});
     tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
   }
 
@@ -1753,7 +1753,7 @@ StartVmResponse Service::StartVmInternal(
       return response;
     }
 
-    disks.push_back(disk);
+    vm_builder.AppendDisk(disk);
   }
 
   // Check if an opened storage image was passed over D-BUS.
@@ -1773,7 +1773,7 @@ StartVmResponse Service::StartVmInternal(
       writable = true;
     }
 
-    disks.push_back(
+    vm_builder.AppendDisk(
         VmBuilder::Disk{.path = base::FilePath(kProcFileDescriptorsPath)
                                     .Append(base::NumberToString(raw_fd)),
                         .writable = writable,
@@ -1915,13 +1915,11 @@ StartVmResponse Service::StartVmInternal(
   // Notify VmLogForwarder that a vm is starting up.
   SendVmStartingUpSignal(vm_id, classification, vsock_cid);
 
-  VmBuilder vm_builder;
   vm_builder.SetKernel(std::move(image_spec.kernel))
       .SetBios(std::move(image_spec.bios))
       .SetPflash(std::move(pflash))
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
-      .AppendDisks(std::move(disks))
       .AppendSharedDir(CreateFontsSharedDataParam())
       .EnableSmt(false /* enable */)
       .SetGpuCachePath(std::move(gpu_cache_spec.device))

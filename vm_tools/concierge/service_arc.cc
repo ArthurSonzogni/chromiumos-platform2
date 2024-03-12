@@ -306,7 +306,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  std::vector<VmBuilder::Disk> disks;
+  VmBuilder vm_builder;
   // Exists just to keep FDs around for crosvm to inherit
   std::vector<brillo::SafeFD> owned_fds;
   auto root_fd = brillo::SafeFD::Root();
@@ -339,7 +339,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
   rootdisk.path = rootfsPath;
-  disks.push_back(rootdisk);
+  vm_builder.AppendDisk(rootdisk);
 
   for (const auto& d : request.disks()) {
     VmBuilder::Disk disk{
@@ -366,7 +366,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       return response;
     }
 
-    disks.push_back(disk);
+    vm_builder.AppendDisk(disk);
   }
 
   base::FilePath data_disk_path;
@@ -542,9 +542,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   // boot/provisioning.
   params.emplace_back("squashfs.cached_blks=20");
 
-  VmBuilder vm_builder;
-  vm_builder.AppendDisks(std::move(disks))
-      .SetCpus(topology.NumCPUs())
+  vm_builder.SetCpus(topology.NumCPUs())
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kArcvmVcpuCpuCgroup).value())

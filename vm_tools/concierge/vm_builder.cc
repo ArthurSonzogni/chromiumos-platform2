@@ -136,8 +136,8 @@ VmBuilder& VmBuilder::SetVsockCid(uint32_t vsock_cid) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendDisks(std::vector<VmBuilder::Disk> disks) {
-  disks_ = std::move(disks);
+VmBuilder& VmBuilder::AppendDisk(VmBuilder::Disk disk) {
+  disks_.push_back(std::move(disk));
   return *this;
 }
 

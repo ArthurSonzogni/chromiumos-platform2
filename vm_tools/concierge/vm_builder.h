@@ -88,7 +88,7 @@ class VmBuilder {
   VmBuilder& SetCpus(int32_t cpus);
   VmBuilder& SetVmCpuArgs(const struct VmCpuArgs& vm_cpu_args);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
-  VmBuilder& AppendDisks(std::vector<Disk> disks);
+  VmBuilder& AppendDisk(Disk disk);
   VmBuilder& SetMemory(const std::string& memory_in_mb);
   VmBuilder& SetBalloonBias(const std::string& balloon_bias_mib);
   VmBuilder& EnableWorkingSetReporting(bool enable);

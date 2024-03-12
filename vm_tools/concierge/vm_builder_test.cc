@@ -80,16 +80,14 @@ TEST(VmBuilderTest, ODirectN) {
   CustomParametersForDev dev{R"(O_DIRECT_N=2)"};
 
   VmBuilder builder;
-  builder.AppendDisks(std::vector<VmBuilder::Disk>{
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/0"),
-      },
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/1"),
-      },
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/2"),
-      },
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/0"),
+  });
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/1"),
+  });
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/2"),
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
@@ -110,16 +108,14 @@ TEST(VmBuilderTest, ODirectNs) {
 O_DIRECT_N=2)"};
 
   VmBuilder builder;
-  builder.AppendDisks(std::vector<VmBuilder::Disk>{
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/0"),
-      },
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/1"),
-      },
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/2"),
-      },
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/0"),
+  });
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/1"),
+  });
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/2"),
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
@@ -206,17 +202,15 @@ TEST(VmBuilderTest, MultipleTapNetParams) {
 
 TEST(VmBuilderTest, CrostiniDisks) {
   VmBuilder builder;
-  builder.AppendDisks(std::vector<VmBuilder::Disk>{
-      // For rootfs.
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/0"),
-      },
-      // For user data.
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/1"),
-          .writable = true,
-          .sparse = false,
-      },
+  // For rootfs.
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/0"),
+  });
+  // For user data.
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/1"),
+      .writable = true,
+      .sparse = false,
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
@@ -234,25 +228,23 @@ TEST(VmBuilderTest, CrostiniDisks) {
 
 TEST(VmBuilderTest, ARCVMDisks) {
   VmBuilder builder;
-  builder.AppendDisks(std::vector<VmBuilder::Disk>{
-      // For system.img and vendor.img.
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/0"),
-          .o_direct = true,
-          .block_size = 4096,
-      },
-      // For dummy fds.
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/1"),
-          .o_direct = false,
-      },
-      // For user data image.
-      VmBuilder::Disk{
-          .path = base::FilePath("/dev/2"),
-          .writable = true,
-          .o_direct = true,
-          .block_size = 4096,
-      },
+  // For system.img and vendor.img.
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/0"),
+      .o_direct = true,
+      .block_size = 4096,
+  });
+  // For dummy fds.
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/1"),
+      .o_direct = false,
+  });
+  // For user data image.
+  builder.AppendDisk(VmBuilder::Disk{
+      .path = base::FilePath("/dev/2"),
+      .writable = true,
+      .o_direct = true,
+      .block_size = 4096,
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
