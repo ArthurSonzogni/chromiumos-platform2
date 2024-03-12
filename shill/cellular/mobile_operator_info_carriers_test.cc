@@ -108,7 +108,7 @@ class MobileOperatorInfoCarriersTest : public Test {
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
     operator_info_->ClearDatabasePaths();
     const char* out_dir = getenv("OUT");
-    CHECK_NE(out_dir, nullptr);
+    ASSERT_NE(out_dir, nullptr);
     base::FilePath database_path =
         base::FilePath(out_dir).Append("serviceproviders.pbf");
 
