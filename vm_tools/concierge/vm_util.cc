@@ -65,20 +65,12 @@ constexpr char kFontsSharedDirTag[] = "fonts";
 // SCHED_CAPACITY_SCALE. That is "1 << 10".
 constexpr int kMaxCapacity = 1024;
 
-constexpr char kUringAsyncExecutorString[] = "uring";
-constexpr char kEpollAsyncExecutorString[] = "epoll";
-
 constexpr char kSchedulerTunePath[] = "/scheduler-tune";
 constexpr char kBoostTopAppProperty[] = "boost-top-app";
 constexpr char kBoostArcVmProperty[] = "boost-arcvm";
 
 // Path to cpu information directories
 constexpr char kCpuInfosPath[] = "/sys/devices/system/cpu/";
-
-std::string BooleanParameter(const char* parameter, bool value) {
-  std::string result = base::StrCat({parameter, value ? "true" : "false"});
-  return result;
-}
 
 }  // namespace
 
@@ -123,71 +115,6 @@ int64_t GetVmMemoryMiBInternal(int64_t sys_memory_mb, bool is_32bit) {
   return vm_memory_mb;
 }
 }  // namespace internal
-
-std::optional<AsyncExecutor> StringToAsyncExecutor(
-    const std::string& async_executor) {
-  if (async_executor == kUringAsyncExecutorString) {
-    return std::optional{AsyncExecutor::kUring};
-  } else if (async_executor == kEpollAsyncExecutorString) {
-    return std::optional{AsyncExecutor::kEpoll};
-  } else {
-    LOG(ERROR) << "Failed to convert unknown string to AsyncExecutor"
-               << async_executor;
-    return std::nullopt;
-  }
-}
-
-std::string AsyncExecutorToString(AsyncExecutor async_executor) {
-  switch (async_executor) {
-    case AsyncExecutor::kUring:
-      return kUringAsyncExecutorString;
-    case AsyncExecutor::kEpoll:
-      return kEpollAsyncExecutorString;
-  }
-}
-
-base::StringPairs Disk::GetCrosvmArgs() const {
-  std::string first = "--block";
-
-  std::string readonly_arg = BooleanParameter(",ro=", !writable);
-
-  std::string sparse_arg;
-  if (sparse) {
-    sparse_arg = BooleanParameter(",sparse=", sparse.value());
-  }
-  std::string o_direct_arg;
-  if (o_direct) {
-    o_direct_arg = BooleanParameter(",o_direct=", o_direct.value());
-  }
-  std::string multiple_workers_arg;
-  if (multiple_workers) {
-    multiple_workers_arg =
-        BooleanParameter(",multiple-workers=", multiple_workers.value());
-  }
-  std::string block_size_arg;
-  if (block_size) {
-    block_size_arg =
-        base::StringPrintf(",block_size=%" PRIuS, block_size.value());
-  }
-  std::string async_executor_arg;
-  if (async_executor) {
-    async_executor_arg = base::StrCat(
-        {",async_executor=", AsyncExecutorToString(async_executor.value())});
-  }
-  std::string block_id_arg;
-  if (block_id) {
-    // Virtio_blk can't handle more than 20 chars:
-    // https://docs.oasis-open.org/virtio/virtio/v1.2/csd01/virtio-v1.2-csd01.html#x1-2850006
-    CHECK_LE(block_id.value().size(), 20);
-    block_id_arg = base::StrCat({",id=", block_id.value()});
-  }
-
-  std::string second = base::StrCat(
-      {path.value(), readonly_arg, sparse_arg, o_direct_arg,
-       multiple_workers_arg, block_size_arg, async_executor_arg, block_id_arg});
-  base::StringPairs result = {{std::move(first), std::move(second)}};
-  return result;
-}
 
 int64_t GetVmMemoryMiB() {
   return internal::GetVmMemoryMiBInternal(

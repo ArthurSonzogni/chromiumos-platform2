@@ -8,7 +8,6 @@
 #include <optional>
 #include <string>
 
-#include "base/containers/contains.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "gmock/gmock.h"
@@ -31,13 +30,6 @@ void LoadCustomParameters(const std::string& data, base::StringPairs& args) {
   custom.Apply(args);
 }
 
-std::string JoinStringPairs(const base::StringPairs& pairs) {
-  std::string result;
-  for (auto& pair : pairs) {
-    result += (pair.first + "=" + pair.second + " ");
-  }
-  return result;
-}
 }  // namespace
 
 TEST(VMUtilTest, LoadCustomParametersSupportsEmptyInput) {
@@ -224,55 +216,6 @@ TEST(CustomParametersForDevTest, BlockAsyncExecutor) {
   };
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(block_async_executor, "uring");
-}
-
-TEST(VMUtilTest, BlockMultipleWorkers) {
-  // multiple_workers option is not enabled by default
-  Disk disk{.path = base::FilePath("/path/to/image.img")};
-  EXPECT_FALSE(base::Contains(JoinStringPairs(disk.GetCrosvmArgs()),
-                              "multiple-workers=true"));
-
-  // Test that a disk config with multiple workers builds the correct arguments.
-  Disk disk_multiple_workers{.path = base::FilePath("/path/to/image.img"),
-                             .multiple_workers = true};
-  EXPECT_TRUE(
-      base::Contains(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs()),
-                     "multiple-workers=true"));
-}
-
-TEST(VMUtilTest, BlockSize) {
-  Disk disk{.path = base::FilePath("/path/to/image.img")};
-  EXPECT_FALSE(
-      base::Contains(JoinStringPairs(disk.GetCrosvmArgs()), "block_size"));
-
-  Disk disk_with_block_size{.path = base::FilePath("/path/to/image.img"),
-                            .block_size = 4096};
-  EXPECT_TRUE(
-      base::Contains(JoinStringPairs(disk_with_block_size.GetCrosvmArgs()),
-                     "block_size=4096"));
-}
-
-TEST(VMUtilTest, BlockAsyncExecutor) {
-  // Test that a disk config with uring executor builds the correct arguments.
-  Disk disk_uring{.path = base::FilePath("/path/to/image.img"),
-                  .async_executor = AsyncExecutor::kUring};
-  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_uring.GetCrosvmArgs()),
-                             "async_executor=uring"));
-
-  // Test that a disk config with epoll executor builds the correct arguments.
-  Disk disk_epoll{.path = base::FilePath("/path/to/image.img"),
-                  .async_executor = AsyncExecutor::kEpoll};
-  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_epoll.GetCrosvmArgs()),
-                             "async_executor=epoll"));
-}
-
-TEST(VMUtilTest, StringToAsyncExecutor) {
-  EXPECT_EQ(StringToAsyncExecutor("uring"),
-            std::optional{AsyncExecutor::kUring});
-  EXPECT_EQ(StringToAsyncExecutor("epoll"),
-            std::optional{AsyncExecutor::kEpoll});
-
-  EXPECT_EQ(StringToAsyncExecutor("unknown_value"), std::nullopt);
 }
 
 TEST(VMUtilTest, GetCpuAffinityFromClustersNoGroups) {

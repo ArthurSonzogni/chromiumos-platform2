@@ -22,6 +22,43 @@ namespace vm_tools::concierge {
 
 class VmBuilder {
  public:
+  // Describe the values for --async-executor options passed to crosvm
+  enum class AsyncExecutor {
+    kUring,
+    kEpoll,
+  };
+
+  // VM block storage device.
+  struct Disk {
+    // Gets the command line argument that needs to be passed to crosvm
+    // corresponding to this disk.
+    base::StringPairs GetCrosvmArgs() const;
+
+    // Path to the disk image on the host.
+    base::FilePath path;
+
+    // Whether the disk should be writable by the VM.
+    bool writable;
+
+    // Whether the disk should allow sparse file operations (discard) by the VM.
+    std::optional<bool> sparse;
+
+    // Whether the disk access should be done with O_DIRECT by the VM.
+    std::optional<bool> o_direct;
+
+    // Whether to enable multiple workers
+    std::optional<bool> multiple_workers;
+
+    // Async executor crosvm should use to run the disk devices.
+    std::optional<AsyncExecutor> async_executor;
+
+    // Block size.
+    std::optional<size_t> block_size;
+
+    // Block ID (max 20 chars).
+    std::optional<std::string> block_id;
+  };
+
   // Contains the rootfs device and path.
   struct Rootfs {
     std::string device;
@@ -182,6 +219,11 @@ class VmBuilder {
 
   base::StringPairs custom_params_;
 };
+
+// Convert a string to the corresponding AsyncExecutor. This returns nullopt if
+// the given string is unknown.
+std::optional<VmBuilder::AsyncExecutor> StringToAsyncExecutor(
+    const std::string& async_executor);
 
 }  // namespace vm_tools::concierge
 

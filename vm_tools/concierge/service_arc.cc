@@ -306,7 +306,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  std::vector<Disk> disks;
+  std::vector<VmBuilder::Disk> disks;
   // Exists just to keep FDs around for crosvm to inherit
   std::vector<brillo::SafeFD> owned_fds;
   auto root_fd = brillo::SafeFD::Root();
@@ -320,9 +320,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  Disk rootdisk{.writable = request.rootfs_writable(),
-                .o_direct = request.rootfs_o_direct(),
-                .multiple_workers = request.rootfs_multiple_workers()};
+  VmBuilder::Disk rootdisk{
+      .writable = request.rootfs_writable(),
+      .o_direct = request.rootfs_o_direct(),
+      .multiple_workers = request.rootfs_multiple_workers()};
   const size_t rootfs_block_size = request.rootfs_block_size();
   if (rootfs_block_size) {
     rootdisk.block_size = rootfs_block_size;
@@ -341,10 +342,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   disks.push_back(rootdisk);
 
   for (const auto& d : request.disks()) {
-    Disk disk{.path = GetImagePath(base::FilePath(d.path()), is_dev_mode),
-              .writable = d.writable(),
-              .o_direct = d.o_direct(),
-              .multiple_workers = d.multiple_workers()};
+    VmBuilder::Disk disk{
+        .path = GetImagePath(base::FilePath(d.path()), is_dev_mode),
+        .writable = d.writable(),
+        .o_direct = d.o_direct(),
+        .multiple_workers = d.multiple_workers()};
     if (!base::PathExists(disk.path)) {
       LOG(ERROR) << "Missing disk path: " << disk.path;
       response.set_failure_reason("One or more disk paths do not exist");

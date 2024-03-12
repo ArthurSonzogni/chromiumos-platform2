@@ -6,11 +6,24 @@
 
 #include <utility>
 
+#include "base/containers/contains.h"
 #include "base/files/scoped_file.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace vm_tools::concierge {
+
+namespace {
+
+std::string JoinStringPairs(const base::StringPairs& pairs) {
+  std::string result;
+  for (auto& pair : pairs) {
+    result += (pair.first + "=" + pair.second + " ");
+  }
+  return result;
+}
+
+}  // namespace
 
 TEST(VmBuilderTest, DefaultValuesSucceeds) {
   VmBuilder builder;
@@ -67,14 +80,14 @@ TEST(VmBuilderTest, ODirectN) {
   CustomParametersForDev dev{R"(O_DIRECT_N=2)"};
 
   VmBuilder builder;
-  builder.AppendDisks(std::vector<Disk>{
-      Disk{
+  builder.AppendDisks(std::vector<VmBuilder::Disk>{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/0"),
       },
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/1"),
       },
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/2"),
       },
   });
@@ -97,14 +110,14 @@ TEST(VmBuilderTest, ODirectNs) {
 O_DIRECT_N=2)"};
 
   VmBuilder builder;
-  builder.AppendDisks(std::vector<Disk>{
-      Disk{
+  builder.AppendDisks(std::vector<VmBuilder::Disk>{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/0"),
       },
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/1"),
       },
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/2"),
       },
   });
@@ -193,13 +206,13 @@ TEST(VmBuilderTest, MultipleTapNetParams) {
 
 TEST(VmBuilderTest, CrostiniDisks) {
   VmBuilder builder;
-  builder.AppendDisks(std::vector<Disk>{
+  builder.AppendDisks(std::vector<VmBuilder::Disk>{
       // For rootfs.
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/0"),
       },
       // For user data.
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/1"),
           .writable = true,
           .sparse = false,
@@ -221,20 +234,20 @@ TEST(VmBuilderTest, CrostiniDisks) {
 
 TEST(VmBuilderTest, ARCVMDisks) {
   VmBuilder builder;
-  builder.AppendDisks(std::vector<Disk>{
+  builder.AppendDisks(std::vector<VmBuilder::Disk>{
       // For system.img and vendor.img.
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/0"),
           .o_direct = true,
           .block_size = 4096,
       },
       // For dummy fds.
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/1"),
           .o_direct = false,
       },
       // For user data image.
-      Disk{
+      VmBuilder::Disk{
           .path = base::FilePath("/dev/2"),
           .writable = true,
           .o_direct = true,
@@ -283,6 +296,57 @@ TEST(VmBuilderTest, VmCpuArgs) {
   EXPECT_THAT(
       result,
       testing::Contains(std::make_pair("--cpu-cluster", "2,3")).Times(1));
+}
+
+TEST(VmBuilderTest, BlockMultipleWorkers) {
+  // multiple_workers option is not enabled by default
+  VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
+  EXPECT_FALSE(base::Contains(JoinStringPairs(disk.GetCrosvmArgs()),
+                              "multiple-workers=true"));
+
+  // Test that a disk config with multiple workers builds the correct arguments.
+  VmBuilder::Disk disk_multiple_workers{
+      .path = base::FilePath("/path/to/image.img"), .multiple_workers = true};
+  EXPECT_TRUE(
+      base::Contains(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs()),
+                     "multiple-workers=true"));
+}
+
+TEST(VmBuilderTest, BlockSize) {
+  VmBuilder::Disk disk{.path = base::FilePath("/path/to/image.img")};
+  EXPECT_FALSE(
+      base::Contains(JoinStringPairs(disk.GetCrosvmArgs()), "block_size"));
+
+  VmBuilder::Disk disk_with_block_size{
+      .path = base::FilePath("/path/to/image.img"), .block_size = 4096};
+  EXPECT_TRUE(
+      base::Contains(JoinStringPairs(disk_with_block_size.GetCrosvmArgs()),
+                     "block_size=4096"));
+}
+
+TEST(VmBuilderTest, BlockAsyncExecutor) {
+  // Test that a disk config with uring executor builds the correct arguments.
+  VmBuilder::Disk disk_uring{
+      .path = base::FilePath("/path/to/image.img"),
+      .async_executor = VmBuilder::AsyncExecutor::kUring};
+  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_uring.GetCrosvmArgs()),
+                             "async_executor=uring"));
+
+  // Test that a disk config with epoll executor builds the correct arguments.
+  VmBuilder::Disk disk_epoll{
+      .path = base::FilePath("/path/to/image.img"),
+      .async_executor = VmBuilder::AsyncExecutor::kEpoll};
+  EXPECT_TRUE(base::Contains(JoinStringPairs(disk_epoll.GetCrosvmArgs()),
+                             "async_executor=epoll"));
+}
+
+TEST(VmBuilderTest, StringToAsyncExecutor) {
+  EXPECT_EQ(StringToAsyncExecutor("uring"),
+            std::optional{VmBuilder::AsyncExecutor::kUring});
+  EXPECT_EQ(StringToAsyncExecutor("epoll"),
+            std::optional{VmBuilder::AsyncExecutor::kEpoll});
+
+  EXPECT_EQ(StringToAsyncExecutor("unknown_value"), std::nullopt);
 }
 
 }  // namespace vm_tools::concierge

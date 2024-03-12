@@ -54,7 +54,39 @@ constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 // Custom parameter key to override the kernel path
 constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 
+constexpr char kUringAsyncExecutorString[] = "uring";
+constexpr char kEpollAsyncExecutorString[] = "epoll";
+
+std::string BooleanParameter(const char* parameter, bool value) {
+  std::string result = base::StrCat({parameter, value ? "true" : "false"});
+  return result;
+}
+
+std::string AsyncExecutorToString(VmBuilder::AsyncExecutor async_executor) {
+  switch (async_executor) {
+    case VmBuilder::AsyncExecutor::kUring:
+      return kUringAsyncExecutorString;
+    case VmBuilder::AsyncExecutor::kEpoll:
+      return kEpollAsyncExecutorString;
+  }
+}
+
 }  // namespace
+
+// Convert a string to the corresponding AsyncExecutor. This returns nullopt if
+// the given string is unknown.
+std::optional<VmBuilder::AsyncExecutor> StringToAsyncExecutor(
+    const std::string& async_executor) {
+  if (async_executor == kUringAsyncExecutorString) {
+    return std::optional{VmBuilder::AsyncExecutor::kUring};
+  } else if (async_executor == kEpollAsyncExecutorString) {
+    return std::optional{VmBuilder::AsyncExecutor::kEpoll};
+  } else {
+    LOG(ERROR) << "Failed to convert unknown string to AsyncExecutor"
+               << async_executor;
+    return std::nullopt;
+  }
+}
 
 VmBuilder::VmBuilder() = default;
 
@@ -104,7 +136,7 @@ VmBuilder& VmBuilder::SetVsockCid(uint32_t vsock_cid) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendDisks(std::vector<Disk> disks) {
+VmBuilder& VmBuilder::AppendDisks(std::vector<VmBuilder::Disk> disks) {
   disks_ = std::move(disks);
   return *this;
 }
@@ -621,6 +653,48 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   }
 
   return args;
+}
+
+base::StringPairs VmBuilder::Disk::GetCrosvmArgs() const {
+  std::string first = "--block";
+
+  std::string readonly_arg = BooleanParameter(",ro=", !writable);
+
+  std::string sparse_arg;
+  if (sparse) {
+    sparse_arg = BooleanParameter(",sparse=", sparse.value());
+  }
+  std::string o_direct_arg;
+  if (o_direct) {
+    o_direct_arg = BooleanParameter(",o_direct=", o_direct.value());
+  }
+  std::string multiple_workers_arg;
+  if (multiple_workers) {
+    multiple_workers_arg =
+        BooleanParameter(",multiple-workers=", multiple_workers.value());
+  }
+  std::string block_size_arg;
+  if (block_size) {
+    block_size_arg = ",block_size=" + std::to_string(block_size.value());
+  }
+  std::string async_executor_arg;
+  if (async_executor) {
+    async_executor_arg = base::StrCat(
+        {",async_executor=", AsyncExecutorToString(async_executor.value())});
+  }
+  std::string block_id_arg;
+  if (block_id) {
+    // Virtio_blk can't handle more than 20 chars:
+    // https://docs.oasis-open.org/virtio/virtio/v1.2/csd01/virtio-v1.2-csd01.html#x1-2850006
+    CHECK_LE(block_id.value().size(), 20);
+    block_id_arg = base::StrCat({",id=", block_id.value()});
+  }
+
+  std::string second = base::StrCat(
+      {path.value(), readonly_arg, sparse_arg, o_direct_arg,
+       multiple_workers_arg, block_size_arg, async_executor_arg, block_id_arg});
+  base::StringPairs result = {{std::move(first), std::move(second)}};
+  return result;
 }
 
 }  // namespace vm_tools::concierge
