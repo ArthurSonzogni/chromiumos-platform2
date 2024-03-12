@@ -119,8 +119,16 @@ const DM_INTEGRITY_JOURNAL_SIZE: u64 = SECTOR_SIZE * 328;
 const DM_INITIAL_SEGMENT_SIZE: u64 = DM_INTEGRITY_SUPERBLOCK_SIZE + DM_INTEGRITY_JOURNAL_SIZE;
 
 lazy_static! {
-    pub static ref VOLUME_MANAGER: RwLock<VolumeManager> =
-        RwLock::new(VolumeManager::new().expect("failed to create VolumeManager instance"));
+    pub static ref VOLUME_MANAGER: RwLock<VolumeManager> = {
+        match VolumeManager::new() {
+            Ok(vm) => RwLock::new(vm),
+            Err(e) => {
+                let msg = format!("failed to create VolumeManager instance: {e:?}");
+                error!("{msg}");
+                panic!("{msg}");
+            }
+        }
+    };
 }
 
 /// The pending stateful merge is an object that when dropped will ask the
