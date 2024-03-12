@@ -152,10 +152,6 @@ std::optional<BalloonStats> GetBalloonStats(
 std::optional<BalloonWorkingSet> GetBalloonWorkingSet(
     const std::string& socket_path);
 
-// Parses balloon stats info from a JSON value.
-std::optional<BalloonStats> ParseBalloonStats(
-    const base::Value::Dict& balloon_stats);
-
 // Attach a host network tap device with tap_name.
 bool AttachNetDevice(const std::string& socket_path,
                      const std::string& tap_name,

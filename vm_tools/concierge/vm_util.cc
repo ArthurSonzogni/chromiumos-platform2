@@ -368,43 +368,6 @@ std::optional<BalloonWorkingSet> GetBalloonWorkingSet(
   return ws;
 }
 
-std::optional<BalloonStats> ParseBalloonStats(
-    const base::Value::Dict& balloon_stats) {
-  auto additional_stats = balloon_stats.FindDict("stats");
-  if (!additional_stats) {
-    LOG(ERROR) << "stats dict not found";
-    return std::nullopt;
-  }
-
-  BalloonStats stats;
-  // Using FindDouble here since the value may exceeds 32bit integer range.
-  // This is safe since double has 52bits of integer precision.
-  stats.balloon_actual = static_cast<int64_t>(
-      balloon_stats.FindDouble("balloon_actual").value_or(0));
-
-  stats.stats_ffi.available_memory = static_cast<int64_t>(
-      additional_stats->FindDouble("available_memory").value_or(0));
-  stats.stats_ffi.disk_caches = static_cast<int64_t>(
-      additional_stats->FindDouble("disk_caches").value_or(0));
-  stats.stats_ffi.free_memory = static_cast<int64_t>(
-      additional_stats->FindDouble("free_memory").value_or(0));
-  stats.stats_ffi.major_faults = static_cast<int64_t>(
-      additional_stats->FindDouble("major_faults").value_or(0));
-  stats.stats_ffi.minor_faults = static_cast<int64_t>(
-      additional_stats->FindDouble("minor_faults").value_or(0));
-  stats.stats_ffi.swap_in =
-      static_cast<int64_t>(additional_stats->FindDouble("swap_in").value_or(0));
-  stats.stats_ffi.swap_out = static_cast<int64_t>(
-      additional_stats->FindDouble("swap_out").value_or(0));
-  stats.stats_ffi.total_memory = static_cast<int64_t>(
-      additional_stats->FindDouble("total_memory").value_or(0));
-  stats.stats_ffi.shared_memory = static_cast<int64_t>(
-      additional_stats->FindDouble("shared_memory").value_or(0));
-  stats.stats_ffi.unevictable_memory = static_cast<int64_t>(
-      additional_stats->FindDouble("unevictable_memory").value_or(0));
-  return stats;
-}
-
 udev_device* FindUdevDevice(const std::string& path) {
   udev* udev = udev_new();
   udev_enumerate* enumerate = udev_enumerate_new(udev);
