@@ -225,18 +225,21 @@ void DBusWrapper::RegisterForInterfaceAvailability(
     dbus::ObjectManager* object_manager,
     const std::string& interface_name,
     InterfaceCallback callback) {
+  interface_callback_ = callback;
   object_manager->RegisterInterface(interface_name, this);
 }
 
 void DBusWrapper::ObjectAdded(const dbus::ObjectPath& object_path,
                               const std::string& interface_name) {
-  DCHECK(interface_callback_);
+  if (!interface_callback_)
+    return;
   std::move(interface_callback_).Run(interface_name, true);
 }
 
 void DBusWrapper::ObjectRemoved(const dbus::ObjectPath& object_path,
                                 const std::string& interface_name) {
-  DCHECK(interface_callback_);
+  if (!interface_callback_)
+    return;
   std::move(interface_callback_).Run(interface_name, false);
 }
 
