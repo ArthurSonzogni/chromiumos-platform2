@@ -83,6 +83,9 @@ class BRILLO_EXPORT DmVerityTable {
       return dev == o.dev && block_size == o.block_size &&
              block_count == o.block_count;
     }
+
+    // Returns the number of bytes used by device.
+    uint64_t NumBytes() const { return block_size * block_count; }
   };
 
   DmVerityTable(const std::string& alg,

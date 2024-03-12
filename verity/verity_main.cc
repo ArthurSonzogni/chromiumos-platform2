@@ -18,6 +18,7 @@
 #include <brillo/strings/string_utils.h>
 
 #include "verity/file_hasher.h"
+#include "verity/verity_action.h"
 #include "verity/verity_mode.h"
 
 namespace {
@@ -110,9 +111,9 @@ int main(int argc, char** argv) {
                 "Size of the image, in blocks (4096 bytes)");
   DEFINE_string(hashtree, hashtree,
                 "Path to a hash tree to create or read from");
-  // Silently drop root_hexdigest for now...
   DEFINE_string(root_hexdigest, "",
                 "Digest of the root node (in hex) for verification");
+  DEFINE_string(table, "", "Table to use for verification.");
   DEFINE_string(salt, salt, "Salt (in hex)");
   DEFINE_bool(vanilla, vanilla,
               "Table will be printed to match vanilla upstream kernel");
@@ -131,6 +132,26 @@ int main(int argc, char** argv) {
 
       return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
                            FLAGS_hashtree, FLAGS_salt, FLAGS_vanilla);
+    case verity::VERITY_VERIFY: {
+      if (FLAGS_payload.empty()) {
+        LOG(ERROR) << "Missing payload.";
+        return -1;
+      }
+      if (FLAGS_table.empty()) {
+        LOG(ERROR) << "Missing table.";
+        return -1;
+      }
+      const auto& format = FLAGS_vanilla
+                               ? verity::DmVerityTable::Format::VANILLA
+                               : verity::DmVerityTable::Format::CROS;
+      auto dm_verity_table = verity::DmVerityTable::Parse(FLAGS_table, format);
+      if (!dm_verity_table) {
+        LOG(ERROR) << "Invalid/badly formatted table given: " << FLAGS_table;
+        return -1;
+      }
+      return verity::DmVerityAction::Verify(base::FilePath{FLAGS_payload},
+                                            *dm_verity_table);
+    }
     default:
       break;
   }

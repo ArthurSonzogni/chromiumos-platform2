@@ -39,6 +39,7 @@ shared_library("libdm-bht") {
     "dm_verity_table.cc",
     "file_hasher.cc",
     "hasher.cc",
+    "verity_action.cc",
     "verity_mode.cc",
   ]
   install_path = "lib"
@@ -63,6 +64,7 @@ install_config("install_headers") {
     "dm-bht.h",
     "dm_verity_table.h",
     "file_hasher.h",
+    "verity_action.h",
     "verity_mode.h",
   ]
   install_path = "/usr/include/verity"
@@ -98,6 +100,7 @@ if (use.test) {
       "dm-bht_test.cc",
       "dm_verity_table_test.cc",
       "file_hasher_test.cc",
+      "verity_action_test.cc",
       "verity_mode_test.cc",
     ]
     configs += [
