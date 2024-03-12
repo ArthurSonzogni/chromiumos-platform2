@@ -125,6 +125,7 @@ const base::TimeDelta kRetryCreateInterfaceInterval = base::Seconds(10);
 const int16_t kDefaultDisconnectDbm = 0;
 const int16_t kDefaultDisconnectThresholdDbm = -75;
 const int kInvalidMaxSSIDs = -1;
+const int kRSSIDropThresholdDbm = 10;
 
 // Maximum time between two link monitor failures to declare this link (network)
 // as unreliable.
@@ -938,6 +939,22 @@ void WiFi::ClearCachedCredentials(const WiFiService* service) {
 
 void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
   provider_->OnEndpointUpdated(endpoint);
+  if (GetCurrentEndpoint() == endpoint) {
+    if (endpoint->signal_strength() > max_connected_dbm_) {
+      max_connected_dbm_ = endpoint->signal_strength();
+    } else if (endpoint->signal_strength() + kRSSIDropThresholdDbm <=
+                   max_connected_dbm_ &&
+               (last_rssi_drop_scan_.is_null() ||
+                (base::Time::Now() - last_rssi_drop_scan_).InSeconds() >
+                    base::Time::kSecondsPerMinute)) {
+      LOG(INFO) << "Significant movement away from AP, RSSI dropped from "
+                << max_connected_dbm_ << " to " << endpoint->signal_strength()
+                << ". Attempting to trigger scan.";
+      Scan(nullptr, __func__, false);
+      max_connected_dbm_ = endpoint->signal_strength();
+      last_rssi_drop_scan_ = base::Time::Now();
+    }
+  }
 }
 
 void WiFi::NotifyHS20InformationChanged(
@@ -1599,6 +1616,8 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   }
 
   const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
+  max_connected_dbm_ = endpoint->signal_strength();
+  last_rssi_drop_scan_ = base::Time();
   WiFiServiceRefPtr service = provider_->FindServiceForEndpoint(endpoint);
   if (!service) {
     LOG(WARNING) << "WiFi " << link_name()

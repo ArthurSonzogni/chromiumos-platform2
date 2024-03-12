@@ -2734,6 +2734,44 @@ TEST_F(WiFiMainTest, SignalChanged) {
   StopWiFi();
 }
 
+TEST_F(WiFiMainTest, LowRSSIScanTrigger) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+
+  // Trigger ScanDoneTask so that the phy state is idle
+  ReportScanDone();
+  test_event_dispatcher_->DispatchPendingEvents();
+
+  KeyValueStore props;
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -50);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  // Low RSSI (0 -> -50) should trigger scan
+  PropertiesChanged(properties);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  test_event_dispatcher_->DispatchPendingEvents();
+  EXPECT_EQ(endpoint->signal_strength(), -50);
+
+  ReportScanDone();
+  test_event_dispatcher_->DispatchPendingEvents();
+
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -60);
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  // Another RSSI drop should be throttled
+  PropertiesChanged(properties);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  test_event_dispatcher_->DispatchPendingEvents();
+  EXPECT_EQ(endpoint->signal_strength(), -60);
+
+  StopWiFi();
+}
+
 TEST_F(WiFiMainTest, SignalChangedBeaconAverage) {
   StartWiFi();
   MockWiFiServiceRefPtr service =
@@ -4500,8 +4538,11 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SignalPoll(_))
       .WillOnce(Return(false));
+  // Scan is triggered due to RSSI drop
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(1);
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriod));
+              PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriod))
+      .Times(1);
   SetSupplicantBSS(connected_bss);
 
   RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);

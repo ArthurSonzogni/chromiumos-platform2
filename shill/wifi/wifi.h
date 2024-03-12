@@ -864,6 +864,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   IEEE_80211::WiFiReasonCode supplicant_disconnect_reason_;
   int16_t disconnect_signal_dbm_;
   int16_t disconnect_threshold_dbm_;
+  // Local max connected RSSI in dBm. Decreased whenever there is a significant
+  // RSSI drop.
+  int16_t max_connected_dbm_;
+  // Last time a significant RSSI drop triggered a scan.
+  base::Time last_rssi_drop_scan_;
 
   // The maximum number of SSIDs that may be included in scan requests.
   int max_ssids_per_scan_;
