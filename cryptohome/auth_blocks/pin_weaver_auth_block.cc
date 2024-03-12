@@ -383,7 +383,7 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
 
   if (!result.ok()) {
     // If the underlying credential is currently locked, include the
-    // kLeLockedOut action.
+    // kFactorLockedOut action.
     if (GetLockoutDelay(auth_state->le_label.value()) > 0) {
       // If it is caused by invalid LE secret
       if (result.err_status()->ToTPMRetryAction() ==
@@ -392,7 +392,7 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
             MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocPinWeaverAuthBlockCheckCredLockedInDerive),
-                ErrorActionSet(PrimaryAction::kLeLockedOut),
+                ErrorActionSet(PrimaryAction::kFactorLockedOut),
                 CryptoError::CE_CREDENTIAL_LOCKED)
                 .Wrap(MakeStatus<CryptohomeTPMError>(
                     std::move(result).err_status())),
@@ -406,7 +406,7 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
             MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
-                ErrorActionSet(PrimaryAction::kLeLockedOut))
+                ErrorActionSet(PrimaryAction::kFactorLockedOut))
                 .Wrap(MakeStatus<CryptohomeTPMError>(
                     std::move(result).err_status())),
             nullptr, std::nullopt);

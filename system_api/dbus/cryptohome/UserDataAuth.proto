@@ -166,12 +166,13 @@ enum PrimaryAction {
   // probable_action field for more info.
   PRIMARY_INCORRECT_AUTH = 8;
 
-  // PRIMARY_LE_LOCKED_OUT indicates that authentication is attempted towards a
-  // locked out LE credential, or that its auth is incorrect and made a LE
-  // credential locked.
-  // Therefore, the caller should try another authentication method that resets
-  // the LE credential, or wait until the LE credential is available.
-  PRIMARY_LE_LOCKED_OUT = 9;
+  // PRIMARY_FACTOR_LOCKED_OUT indicates that authentication is attempted
+  // towards a locked out credential, or that its auth is incorrect and made a
+  // credential locked. For LE credentials the caller should try another
+  // authentication method that resets the LE credential, or wait until the LE
+  // credential is available. For CryptohomeRecovery the system needs to be
+  // rebooted, the caller may inform the user of the needed action.
+  PRIMARY_FACTOR_LOCKED_OUT = 9;
 
   // PRIMARY_LE_EXPIRED indicates that authentication is attempted towards an
   // expired LE credential. Therefore, the caller should try another

@@ -433,7 +433,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
   EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kIncorrectAuth));
-  EXPECT_FALSE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
+  EXPECT_FALSE(PrimaryActionIs(status, PrimaryAction::kFactorLockedOut));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -468,7 +468,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailedAndLocked) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
-  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kFactorLockedOut));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -577,7 +577,7 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
-  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kFactorLockedOut));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }

@@ -23,7 +23,7 @@ enum class PrimaryAction {
   kTpmUpdateRequired,
   kTpmLockout,
   kIncorrectAuth,
-  kLeLockedOut,
+  kFactorLockedOut,
   kLeExpired,
   kMaxValue = kLeExpired,
 };

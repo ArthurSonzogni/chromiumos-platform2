@@ -127,7 +127,7 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedNoRetry),
-          ErrorActionSet(PrimaryAction::kLeLockedOut),
+          ErrorActionSet(PrimaryAction::kFactorLockedOut),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
   }

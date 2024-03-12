@@ -861,7 +861,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
     // be set here.
     if (!status.ok() &&
-        PrimaryActionIs(status, error::PrimaryAction::kLeLockedOut)) {
+        PrimaryActionIs(status, error::PrimaryAction::kFactorLockedOut)) {
       // Get the corresponding encrypted vault keyset for the user and the label
       // to set the auth_locked.
       std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(

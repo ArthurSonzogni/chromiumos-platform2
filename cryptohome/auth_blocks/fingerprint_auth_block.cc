@@ -382,7 +382,7 @@ void FingerprintAuthBlock::ContinueSelect(
           MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(
                   kLocFingerprintAuthBlockAuthenticateCredentialLockedInSelect),
-              ErrorActionSet(PrimaryAction::kLeLockedOut),
+              ErrorActionSet(PrimaryAction::kFactorLockedOut),
               user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED)
               .Wrap(std::move(output).err_status()),
           std::nullopt, std::nullopt);
