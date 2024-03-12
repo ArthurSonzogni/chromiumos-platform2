@@ -376,8 +376,8 @@ void NetworkMonitor::SetValidationMode(
   if (validation_mode_ == validation_mode) {
     return;
   }
-  LOG(INFO) << logging_tag_ << __func__ << " " << validation_mode_ << " -> "
-            << validation_mode;
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << validation_mode_
+            << " -> " << validation_mode;
   // TODO(b/314693271): Stop or restart network validation if needed.
   validation_mode_ = validation_mode;
 }
