@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GPL v2 license that can
 // be found in the LICENSE file.
 //
-// Tests for verity::FileHasher
+// Tests for verity::VerityMode
 
 #include <gtest/gtest.h>
 
