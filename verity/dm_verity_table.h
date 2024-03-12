@@ -105,6 +105,8 @@ class BRILLO_EXPORT DmVerityTable {
   DmVerityTable(DmVerityTable&&) = default;
   DmVerityTable& operator=(DmVerityTable&&) = default;
 
+  bool operator==(const DmVerityTable& o) const;
+
   static std::optional<DmVerityTable> Parse(const std::string& table_str,
                                             Format format);
 

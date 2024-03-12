@@ -21,6 +21,10 @@ namespace verity {
 
 namespace {
 
+constexpr char kNoSalt[] = "-";
+constexpr char kVerityTarget[] = "verity";
+constexpr char kVersion[] = "0";
+
 std::optional<DmVerityTable> ParseVanilla(
     const std::vector<std::string>& table_split) {
   if (table_split.size() < DmVerityTable::V_LAST_INDEX) {
@@ -172,9 +176,13 @@ std::optional<DmVerityTable> ParseCrOS(
 
 }  // namespace
 
-constexpr char kNoSalt[] = "-";
-constexpr char kVerityTarget[] = "verity";
-constexpr char kVersion[] = "0";
+bool DmVerityTable::operator==(const DmVerityTable& o) const {
+  return GetAlgorithm() == o.GetAlgorithm() &&
+         GetRootDigest() == o.GetRootDigest() && GetSalt() == o.GetSalt() &&
+         GetDataDevice() == o.GetDataDevice() &&
+         GetHashDevice() == o.GetHashDevice() &&
+         GetHashPlacement() == o.GetHashPlacement();
+}
 
 std::optional<std::string> DmVerityTable::Print(Format format) {
   if (root_digest_.empty()) {

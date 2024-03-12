@@ -192,4 +192,23 @@ TEST(DmVerityTableTest, Getters) {
   EXPECT_EQ(kHashPlacement, kDmVerityTable.GetHashPlacement());
 }
 
+TEST(DmVerityTableTest, Equality) {
+  constexpr char kAlg[] = "sha256";
+  const DmVerityTable::DevInfo kDataDev{
+      .dev = "ROOT_DEV",
+      .block_count = 2,
+  };
+  const DmVerityTable::DevInfo kHashDev{
+      .dev = "HASH_DEV",
+  };
+  constexpr auto kHashPlacement(DmVerityTable::HashPlacement::COLOCATED);
+  const DmVerityTable kDmVerityTable1(kAlg, kRootDigest, kSalt, kDataDev,
+                                      kHashDev, kHashPlacement);
+  const DmVerityTable kDmVerityTable2("other-alg", kRootDigest, kSalt, kDataDev,
+                                      kHashDev, kHashPlacement);
+  EXPECT_TRUE(kDmVerityTable1 == kDmVerityTable1);
+  EXPECT_FALSE(kDmVerityTable1 == kDmVerityTable2);
+  EXPECT_FALSE(kDmVerityTable2 == kDmVerityTable1);
+}
+
 }  // namespace verity
