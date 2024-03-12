@@ -62,6 +62,7 @@ class Utils {
 
   uint64_t RoundupMultiple(uint64_t number, uint64_t alignment);
   absl::StatusOr<bool> SimpleAtob(const std::string& str);
+  absl::StatusOr<double> SimpleAtod(const std::string& str);
   template <typename int_type>
   absl::StatusOr<int_type> SimpleAtoi(const std::string& str) {
     int_type output;

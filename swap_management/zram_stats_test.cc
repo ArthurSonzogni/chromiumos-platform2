@@ -110,4 +110,18 @@ TEST_F(ZramStatsTest, ZramBdStat) {
   EXPECT_THAT(zram_bd_stat.status(),
               absl::InvalidArgumentError("Malformed zram bd_stat input"));
 }
+
+TEST_F(ZramStatsTest, ZramIoStat) {
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/io_stat"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(absl::StrCat(
+                          "       1        12        5        189\n")),
+                      Return(absl::OkStatus())));
+  absl::StatusOr<ZramIoStat> zram_io_stat = GetZramIoStat();
+  EXPECT_THAT(zram_io_stat.status(), absl::OkStatus());
+  ASSERT_EQ((*zram_io_stat).failed_reads, 1u);
+  ASSERT_EQ((*zram_io_stat).failed_writes, 12u);
+  ASSERT_EQ((*zram_io_stat).invalid_io, 5u);
+  ASSERT_EQ((*zram_io_stat).notify_free, 189u);
+}
 }  // namespace swap_management

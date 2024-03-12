@@ -70,6 +70,7 @@ struct ZramIoStat {
 
 absl::StatusOr<ZramMmStat> GetZramMmStat();
 absl::StatusOr<ZramBdStat> GetZramBdStat();
+absl::StatusOr<ZramIoStat> GetZramIoStat();
 
 }  // namespace swap_management
 

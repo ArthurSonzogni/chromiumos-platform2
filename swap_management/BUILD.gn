@@ -103,6 +103,7 @@ if (use.test) {
   }
   executable("test") {
     sources = [
+      "metrics_test.cc",
       "swap_tool_test.cc",
       "zram_recompression_test.cc",
       "zram_stats_test.cc",

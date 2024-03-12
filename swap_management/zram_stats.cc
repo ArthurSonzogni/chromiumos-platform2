@@ -83,6 +83,26 @@ absl::Status ParseZramBdStat(const std::string& input,
                 : absl::InvalidArgumentError("Failed to parse zram bd_stat");
 }
 
+absl::Status ParseZramIoStat(const std::string& input,
+                             ZramIoStat* zram_io_stat) {
+  std::vector<std::string> zram_io_stat_list = base::SplitString(
+      input, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  // Return false if the list size is less than number of items in ZramIoStat
+  if (zram_io_stat_list.size() < 3)
+    return absl::InvalidArgumentError("Malformed zram bd_stat input");
+
+  bool status =
+      base::StringToUint64(zram_io_stat_list[0], &zram_io_stat->failed_reads) &&
+      base::StringToUint64(zram_io_stat_list[1],
+                           &zram_io_stat->failed_writes) &&
+      base::StringToUint64(zram_io_stat_list[2], &zram_io_stat->invalid_io) &&
+      base::StringToUint64(zram_io_stat_list[3], &zram_io_stat->notify_free);
+
+  return status ? absl::OkStatus()
+                : absl::InvalidArgumentError("Failed to parse zram bd_stat");
+}
+
 absl::StatusOr<ZramBdStat> GetZramBdStat() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToString(
@@ -111,5 +131,20 @@ absl::StatusOr<ZramMmStat> GetZramMmStat() {
     return status;
 
   return std::move(zram_mm_stat);
+}
+
+absl::StatusOr<ZramIoStat> GetZramIoStat() {
+  std::string buf;
+  absl::Status status = Utils::Get()->ReadFileToString(
+      base::FilePath(kZramSysfsDir).Append("io_stat"), &buf);
+  if (!status.ok())
+    return status;
+
+  ZramIoStat zram_io_stat;
+  status = ParseZramIoStat(buf, &zram_io_stat);
+  if (!status.ok())
+    return status;
+
+  return std::move(zram_io_stat);
 }
 }  // namespace swap_management

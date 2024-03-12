@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "gmock/gmock.h"
+#include "swap_management/mock_metrics.h"
 #include "swap_management/mock_utils.h"
 #include "swap_management/swap_tool.h"
 
@@ -93,6 +95,11 @@ TEST_F(SwapToolTest, SwapStart) {
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/swapon", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
+  // Metrics::Get()->Start()
+  // We don't test metrics in swap_tool_test, just simply return.
+  MockMetrics mock_metrics_;
+  Metrics::OverrideForTesting(&mock_metrics_);
+  EXPECT_CALL(mock_metrics_, Start()).WillOnce(Return());
 
   EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 }

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "featured/c_feature_library.h"
+#include "swap_management/metrics.h"
 #include "swap_management/swap_tool.h"
 #include "swap_management/utils.h"
 #include "swap_management/zram_idle.h"
@@ -299,7 +300,10 @@ absl::Status SwapTool::SwapStart() {
   if (zram_recompression_configured_)
     ZramRecompression::Get()->Start();
 
-  return status;
+  // Start periodically reporting zram and psi metrics.
+  Metrics::Get()->Start();
+
+  return absl::OkStatus();
 }
 
 absl::Status SwapTool::SwapStop() {

@@ -205,4 +205,12 @@ void ScopedFilePathTraits::Free(const base::FilePath path) {
   LOG_IF(ERROR, !status.ok()) << status;
 }
 
+absl::StatusOr<double> Utils::SimpleAtod(const std::string& str) {
+  double output;
+  if (!absl::SimpleAtod(str, &output))
+    return absl::InvalidArgumentError("Failed to convert " + str +
+                                      " to double.");
+  return output;
+}
+
 }  // namespace swap_management
