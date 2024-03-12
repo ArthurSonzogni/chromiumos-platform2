@@ -31,7 +31,7 @@ void CollectShutdownTime(const base::FilePath& root_dir,
   auto path = file_enum.Next();
   base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
-    LOG(ERROR) << "Failed to open file: " << path;
+    LOG(ERROR) << "Failed to open shutdown metrics file: " << path;
     return;
   }
 
@@ -49,7 +49,7 @@ void CollectBootID(const base::FilePath& root_dir, const Database* db_ptr) {
   auto boot_id_path = root_dir.Append(kBootIDPath);
   base::File file(boot_id_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
-    LOG(ERROR) << "Failed to open file: " << boot_id_path;
+    LOG(ERROR) << "Failed to open boot id file: " << boot_id_path;
     return;
   }
 
