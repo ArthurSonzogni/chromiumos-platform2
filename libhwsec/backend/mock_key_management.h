@@ -122,7 +122,7 @@ class MockKeyManagement : public KeyManagement {
   MOCK_METHOD(StatusOr<ECCPublicInfo>, GetECCPublicInfo, (Key key), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               GetEndorsementPublicKey,
-              (KeyAlgoType key_algo),
+              (KeyAlgoType key_algo, PublicKeyEncoding encoding),
               (override));
 
  private:

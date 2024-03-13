@@ -64,7 +64,8 @@ class MockAttestationFrontend : public MockFrontend,
               (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               GetEndorsementPublicKey,
-              (attestation::KeyType key_type),
+              (attestation::KeyType key_type,
+               KeyManagement::PublicKeyEncoding encoding),
               (const override));
   MOCK_METHOD(StatusOr<std::vector<attestation::KeyType>>,
               GetSupportedKeyTypes,

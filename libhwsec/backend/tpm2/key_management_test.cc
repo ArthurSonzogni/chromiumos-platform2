@@ -1477,46 +1477,44 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKeyWrongPermissionType) {
   EXPECT_THAT(result, NotOk());
 }
 
-TEST_F(BackendKeyManagementTpm2Test, GetEndorsementKey) {
+TEST_F(BackendKeyManagementTpm2Test, GetEndorsementPublicKey) {
+  const std::string kFakeOwnerPass = "fake_owner_pass";
+  const std::string kFakeEndorsementPass = "fake_endorsement_pass";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  tpm_manager::GetTpmStatusReply reply;
+  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  reply.set_enabled(true);
+  reply.set_owned(true);
+  reply.mutable_local_data()->set_endorsement_password(kFakeEndorsementPass);
+  reply.mutable_local_data()->set_owner_password(kFakeOwnerPass);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
   for (auto [hwsec_algo, trunks_algo] :
        {std::pair(KeyAlgoType::kRsa, trunks::TPM_ALG_RSA)}) {
-    const std::string kFakeAuthValue = "fake_auth_value";
-    const std::string kFakeKeyBlob = "fake_key_blob";
-    const std::string kFakeOwnerPass = "fake_owner_pass";
-    const std::string kFakeEndorsementPass = "fake_endorsement_pass";
-    const trunks::TPMT_PUBLIC kFakePublicArea{
-        .type = trunks_algo,
-    };
-    const uint32_t kFakeKeyHandle = 0x1337;
+    for (auto encoding : {KeyManagement::PublicKeyEncoding::kRaw,
+                          KeyManagement::PublicKeyEncoding::kDer}) {
+      const trunks::TPMT_PUBLIC kFakePublicArea{
+          .type = trunks_algo,
+      };
+      EXPECT_CALL(proxy_->GetMockTpmUtility(),
+                  GetEndorsementKey(trunks_algo, _, _, _))
+          .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
+                          Return(trunks::TPM_RC_SUCCESS)));
 
-    tpm_manager::GetTpmStatusReply reply;
-    reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-    reply.set_enabled(true);
-    reply.set_owned(true);
-    reply.mutable_local_data()->set_endorsement_password(kFakeEndorsementPass);
-    reply.mutable_local_data()->set_owner_password(kFakeOwnerPass);
-    EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
-        .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
-        .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+      EXPECT_CALL(proxy_->GetMockTpmUtility(),
+                  GetKeyPublicArea(kFakeKeyHandle, _))
+          .WillOnce(DoAll(SetArgPointee<1>(kFakePublicArea),
+                          Return(trunks::TPM_RC_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMockTpmUtility(),
-                GetEndorsementKey(trunks_algo, _, _, _))
-        .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
-                        Return(trunks::TPM_RC_SUCCESS)));
-
-    EXPECT_CALL(proxy_->GetMockTpmUtility(),
-                GetKeyPublicArea(kFakeKeyHandle, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kFakePublicArea),
-                        Return(trunks::TPM_RC_SUCCESS)));
-
-    auto result =
-        backend_->GetKeyManagementTpm2().GetEndorsementPublicKey(hwsec_algo);
-
-    ASSERT_OK(result);
-
-    EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
-        .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+      auto result = backend_->GetKeyManagementTpm2().GetEndorsementPublicKey(
+          hwsec_algo, encoding);
+      ASSERT_OK(result);
+    }
   }
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
 }  // namespace hwsec

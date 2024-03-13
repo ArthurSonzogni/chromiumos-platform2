@@ -584,7 +584,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::GetPolicyEndorsementKey(
 }
 
 StatusOr<brillo::Blob> KeyManagementTpm1::GetEndorsementPublicKey(
-    KeyAlgoType key_algo) {
+    KeyAlgoType key_algo, PublicKeyEncoding encoding) {
   if (key_algo != KeyAlgoType::kRsa) {
     return MakeStatus<TPMError>("Unsupported key creation algorithm",
                                 TPMRetryAction::kNoRetry);
@@ -612,18 +612,26 @@ StatusOr<brillo::Blob> KeyManagementTpm1::GetEndorsementPublicKey(
                                     : TPMRetryAction::kNoRetry);
   }
 
-  // Get the public key in TPM_PUBKEY form.
+  if (encoding == PublicKeyEncoding::kDer) {
+    // Get the public key in TPM_PUBKEY form.
+    ASSIGN_OR_RETURN(
+        const brillo::Blob& ek_public_key_blob,
+        GetAttribData(overalls_, context, ek_handle, TSS_TSPATTRIB_KEY_BLOB,
+                      TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY),
+        _.WithStatus<TPMError>("Failed to get endorsement public key blob"));
+    ASSIGN_OR_RETURN(const brillo::Blob& ek_public_key_der,
+                     GetPublicKeyDerFromBlob(ek_public_key_blob),
+                     _.WithStatus<TPMError>(
+                         "Failed to get DER-encoded endorsement public key"));
+    return ek_public_key_der;
+  }
   ASSIGN_OR_RETURN(
-      const brillo::Blob& ek_public_key_blob,
-      GetAttribData(overalls_, context, ek_handle, TSS_TSPATTRIB_KEY_BLOB,
-                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY),
-      _.WithStatus<TPMError>("Failed to get endorsement public key blob"));
-  ASSIGN_OR_RETURN(const brillo::Blob& ek_public_key_der,
-                   GetPublicKeyDerFromBlob(ek_public_key_blob),
-                   _.WithStatus<TPMError>(
-                       "Failed to get DER-encoded endorsement public key"));
-
-  return ek_public_key_der;
+      const brillo::Blob& modulus,
+      GetAttribData(overalls_, context, ek_handle, TSS_TSPATTRIB_RSAKEY_INFO,
+                    TSS_TSPATTRIB_KEYINFO_RSA_MODULUS),
+      _.WithStatus<TPMError>(
+          "Failed to get modulus of endorsement public key"));
+  return modulus;
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(

@@ -130,10 +130,11 @@ AttestationFrontendImpl::CreateIdentity(attestation::KeyType key_type) const {
 }
 
 StatusOr<brillo::Blob> AttestationFrontendImpl::GetEndorsementPublicKey(
-    attestation::KeyType key_type) const {
+    attestation::KeyType key_type,
+    KeyManagement::PublicKeyEncoding encoding) const {
   ASSIGN_OR_RETURN(KeyAlgoType key_algo, ToKeyAlgoType(key_type));
   return middleware_.CallSync<&Backend::KeyManagement::GetEndorsementPublicKey>(
-      key_algo);
+      key_algo, encoding);
 }
 
 StatusOr<std::vector<attestation::KeyType>>

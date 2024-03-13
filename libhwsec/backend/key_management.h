@@ -51,6 +51,10 @@ class KeyManagement {
     ScopedKey key;
     brillo::Blob key_blob;
   };
+  enum class PublicKeyEncoding {
+    kRaw,  // modulus for RSA, concatenation of x and y for ECC.
+    kDer,  // Distinguished Encoding Rules (DER) format
+  };
 
   // Gets the supported algorithm.
   virtual StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() = 0;
@@ -123,7 +127,7 @@ class KeyManagement {
 
   // Gets the DER-encoded endorsement public key based on |key_algo|.
   virtual StatusOr<brillo::Blob> GetEndorsementPublicKey(
-      KeyAlgoType key_algo) = 0;
+      KeyAlgoType key_algo, PublicKeyEncoding encoding) = 0;
 
  protected:
   KeyManagement() = default;

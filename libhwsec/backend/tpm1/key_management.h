@@ -102,7 +102,8 @@ class KeyManagementTpm1 : public KeyManagement {
       const CreateKeyOptions& options) override;
   StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) override;
   StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) override;
-  StatusOr<brillo::Blob> GetEndorsementPublicKey(KeyAlgoType key_algo) override;
+  StatusOr<brillo::Blob> GetEndorsementPublicKey(
+      KeyAlgoType key_algo, PublicKeyEncoding encoding) override;
 
   // Below are TPM1.2 specific code.
 

@@ -800,10 +800,28 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetEndorsementKey(KeyAlgoType key_algo) {
 }
 
 StatusOr<brillo::Blob> KeyManagementTpm2::GetEndorsementPublicKey(
-    KeyAlgoType key_algo) {
+    KeyAlgoType key_algo, PublicKeyEncoding encoding) {
   ASSIGN_OR_RETURN(ScopedKey key, GetEndorsementKey(key_algo),
                    _.WithStatus<TPMError>("Failed to get endorsement key"));
-  return GetPublicKeyDer(key.GetKey(), /*use_rsa_subject_key_info=*/true);
+  if (encoding == PublicKeyEncoding::kDer) {
+    return GetPublicKeyDer(key.GetKey(), /*use_rsa_subject_key_info=*/true);
+  }
+  switch (key_algo) {
+    case KeyAlgoType::kRsa: {
+      ASSIGN_OR_RETURN(const RSAPublicInfo& info,
+                       GetRSAPublicInfo(key.GetKey()),
+                       _.WithStatus<TPMError>("Failed to get RSA public info"));
+      return info.modulus;
+    }
+    case KeyAlgoType::kEcc: {
+      ASSIGN_OR_RETURN(const ECCPublicInfo& info,
+                       GetECCPublicInfo(key.GetKey()),
+                       _.WithStatus<TPMError>("Failed to get RSA public info"));
+      return brillo::CombineBlobs({info.x_point, info.y_point});
+    }
+  }
+  return MakeStatus<TPMError>("Unknown key algorithm",
+                              TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(

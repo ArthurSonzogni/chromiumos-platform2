@@ -50,7 +50,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
   StatusOr<Attestation::CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) const override;
   StatusOr<brillo::Blob> GetEndorsementPublicKey(
-      attestation::KeyType key_type) const override;
+      attestation::KeyType key_type,
+      KeyManagement::PublicKeyEncoding encoding) const override;
   StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
       const override;
   StatusOr<brillo::Blob> Sign(const brillo::Blob& key_blob,

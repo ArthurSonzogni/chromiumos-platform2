@@ -14,6 +14,7 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/attestation.h"
+#include "libhwsec/backend/key_management.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
@@ -72,9 +73,10 @@ class AttestationFrontend : public Frontend {
   virtual StatusOr<Attestation::CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) const = 0;
 
-  // Gets the DER-encoded endorsement public key based on |key_type|.
+  // Gets the endorsement public key based on |key_type|.
   virtual StatusOr<brillo::Blob> GetEndorsementPublicKey(
-      attestation::KeyType key_type) const = 0;
+      attestation::KeyType key_type,
+      KeyManagement::PublicKeyEncoding encoding) const = 0;
 
   // Gets the vector of available attestation::KeyType.
   virtual StatusOr<std::vector<attestation::KeyType>> GetSupportedKeyTypes()
