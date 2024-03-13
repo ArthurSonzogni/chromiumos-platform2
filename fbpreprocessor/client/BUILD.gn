@@ -1,0 +1,40 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libfbpreprocessor-client-headers",
+    ":libfbpreprocessor-client-test.pc",
+    ":libfbpreprocessor-client.pc",
+  ]
+}
+
+# fbpreprocessor client library generated headers. Used by other daemons to
+# interact with fbpreprocessor.
+generate_dbus_proxies("libfbpreprocessor-client-headers") {
+  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/fbpreprocessor/dbus-proxies.h"
+  mock_output_file = "include/fbpreprocessor/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "fbpreprocessor/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.FbPreprocessor.xml" ]
+}
+
+generate_pkg_config("libfbpreprocessor-client.pc") {
+  name = "libfbpreprocessor-client"
+  version = getenv("PV")
+  description = "fbpreprocessor client interface library"
+  cflags = [ "-I/usr/include/fbpreprocessor-client" ]
+  install = true
+}
+
+generate_pkg_config("libfbpreprocessor-client-test.pc") {
+  name = "libfbpreprocessor-client-test"
+  version = getenv("PV")
+  description = "fbpreprocessor client interface mock library"
+  cflags = [ "-I/usr/include/fbpreprocessor-client-test" ]
+  install = true
+}
