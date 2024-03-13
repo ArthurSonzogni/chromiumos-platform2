@@ -60,7 +60,7 @@ int64_t GetAuthSchemes(
   if (auth_schemes.empty())
     return CURLAUTH_ANY;
   // Convert auth schemes to curl format.
-  int64_t curl_scheme = CURLAUTH_NEGOTIATE;
+  int64_t curl_scheme = 0;
   // Auth scheme is case insensitive, see
   // https://tools.ietf.org/html/rfc7235#section-2.1
   for (auto const& scheme : auth_schemes) {
@@ -71,6 +71,8 @@ int64_t GetAuthSchemes(
       curl_scheme |= CURLAUTH_DIGEST;
     if (lower_scheme == "ntlm")
       curl_scheme |= CURLAUTH_NTLM;
+    if (lower_scheme == "negotiate")
+      curl_scheme |= CURLAUTH_NEGOTIATE;
   }
   return curl_scheme;
 }

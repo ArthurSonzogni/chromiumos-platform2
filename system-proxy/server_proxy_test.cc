@@ -151,7 +151,7 @@ TEST_F(ServerProxyTest, FetchCredentials) {
       base::JoinString({kUsernameEncoded, kPasswordEncoded}, ":");
   EXPECT_EQ(server_proxy_->system_credentials_, expected_credentials);
   EXPECT_EQ(server_proxy_->system_credentials_auth_schemes_,
-            CURLAUTH_BASIC | CURLAUTH_DIGEST | CURLAUTH_NEGOTIATE);
+            CURLAUTH_BASIC | CURLAUTH_DIGEST);
 }
 
 TEST_F(ServerProxyTest, FetchListeningAddress) {
