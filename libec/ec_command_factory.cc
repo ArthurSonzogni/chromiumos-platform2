@@ -41,8 +41,8 @@ std::unique_ptr<ec::FpSeedCommand> EcCommandFactory::FpSeedCommand(
 }
 
 std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
-    std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-  return FpTemplateCommand::Create(std::move(tmpl), max_write_size);
+    std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+  return FpTemplateCommand::Create(std::move(tmpl), max_write_size, commit);
 }
 
 std::unique_ptr<ec::FpUnlockTemplateCommand>

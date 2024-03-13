@@ -22,7 +22,8 @@ class BRILLO_EXPORT FpTemplateCommand
  public:
   template <typename T = FpTemplateCommand>
   static std::unique_ptr<T> Create(std::vector<uint8_t> tmpl,
-                                   uint16_t max_write_size) {
+                                   uint16_t max_write_size,
+                                   bool commit) {
     static_assert(std::is_base_of<FpTemplateCommand, T>::value,
                   "Only classes derived from FpTemplateCommand can use Create");
 
@@ -32,7 +33,7 @@ class BRILLO_EXPORT FpTemplateCommand
 
     // Using new to access non-public constructor. See
     // https://abseil.io/tips/134.
-    return base::WrapUnique(new T(tmpl, max_write_size));
+    return base::WrapUnique(new T(tmpl, max_write_size, commit));
   }
 
   ~FpTemplateCommand() override = default;
@@ -40,15 +41,20 @@ class BRILLO_EXPORT FpTemplateCommand
   bool Run(int fd) override;
 
  protected:
-  FpTemplateCommand(std::vector<uint8_t> tmpl, uint16_t max_write_size)
+  FpTemplateCommand(std::vector<uint8_t> tmpl,
+                    uint16_t max_write_size,
+                    bool commit)
       : EcCommand(EC_CMD_FP_TEMPLATE),
         template_data_(std::move(tmpl)),
-        max_write_size_(max_write_size) {}
+        max_write_size_(max_write_size),
+        commit_(commit) {}
   virtual bool EcCommandRun(int fd);
 
  private:
   std::vector<uint8_t> template_data_;
   uint16_t max_write_size_;
+  // Whether to commit the template at the end of uploading.
+  bool commit_;
 };
 
 static_assert(!std::is_copy_constructible<FpTemplateCommand>::value,

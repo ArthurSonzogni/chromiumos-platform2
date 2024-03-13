@@ -18,8 +18,10 @@ bool FpTemplateCommand::Run(int fd) {
     uint32_t remaining = end - pos;
     uint32_t transfer_len = std::min(max_data_chunk, remaining);
     Req()->req.offset = pos - template_data_.begin();
-    Req()->req.size =
-        transfer_len | (remaining == transfer_len ? FP_TEMPLATE_COMMIT : 0);
+    Req()->req.size = transfer_len;
+    if ((remaining == transfer_len) && commit_) {
+      Req()->req.size |= FP_TEMPLATE_COMMIT;
+    }
     std::copy(pos, pos + transfer_len, Req()->data.begin());
     SetReqSize(transfer_len + sizeof(fp_template::Header));
     if (!EcCommandRun(fd)) {

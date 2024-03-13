@@ -624,8 +624,8 @@ bool CrosFpDevice::UnlockTemplates(size_t num) {
 }
 
 bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
-  auto fp_template_cmd =
-      ec_command_factory_->FpTemplateCommand(tmpl, ec_protocol_info_.max_write);
+  auto fp_template_cmd = ec_command_factory_->FpTemplateCommand(
+      tmpl, ec_protocol_info_.max_write, /*commit=*/true);
 
   if (!fp_template_cmd->Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to run FP_TEMPLATE command";

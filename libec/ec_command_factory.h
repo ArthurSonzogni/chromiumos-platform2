@@ -67,7 +67,7 @@ class EcCommandFactoryInterface {
                 "EcCommandInterface");
 
   virtual std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
-      std::vector<uint8_t> tmpl, uint16_t max_write_size) = 0;
+      std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) = 0;
   static_assert(
       std::is_base_of<EcCommandInterface, ec::FpTemplateCommand>::value,
       "All commands created by this class should derive from "
@@ -213,7 +213,7 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       int index, uint32_t frame_size, uint16_t max_read_size) override;
 
   std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
-      std::vector<uint8_t> tmpl, uint16_t max_write_size) override;
+      std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) override;
 
   std::unique_ptr<ec::FpUnlockTemplateCommand> FpUnlockTemplateCommand(
       uint16_t finger_num) override;

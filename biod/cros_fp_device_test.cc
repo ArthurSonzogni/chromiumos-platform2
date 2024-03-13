@@ -333,8 +333,10 @@ class CrosFpDevice_UploadTemplate : public testing::Test {
 
   class MockFpTemplateCommand : public FpTemplateCommand {
    public:
-    MockFpTemplateCommand(std::vector<uint8_t> tmpl, uint16_t max_write_size)
-        : FpTemplateCommand(tmpl, max_write_size) {
+    MockFpTemplateCommand(std::vector<uint8_t> tmpl,
+                          uint16_t max_write_size,
+                          bool commit)
+        : FpTemplateCommand(tmpl, max_write_size, commit) {
       ON_CALL(*this, Run).WillByDefault(Return(true));
       ON_CALL(*this, Result).WillByDefault(Return(EC_RES_SUCCESS));
     }
@@ -360,10 +362,11 @@ TEST_F(CrosFpDevice_UploadTemplate, Success) {
   std::vector<uint8_t> templ;
 
   EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
-      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-        return std::make_unique<NiceMock<MockFpTemplateCommand>>(
-            tmpl, max_write_size);
-      });
+      .WillOnce(
+          [](std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+            return std::make_unique<NiceMock<MockFpTemplateCommand>>(
+                tmpl, max_write_size, commit);
+          });
 
   EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_SUCCESS));
   EXPECT_TRUE(mock_cros_fp_device_->UploadTemplate(templ));
@@ -373,12 +376,13 @@ TEST_F(CrosFpDevice_UploadTemplate, RunFailure) {
   std::vector<uint8_t> templ;
 
   EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
-      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-        auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
-            tmpl, max_write_size);
-        EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
-        return cmd;
-      });
+      .WillOnce(
+          [](std::vector<uint8_t> tmpl, uint16_t max_write_size, bool commit) {
+            auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
+                tmpl, max_write_size, commit);
+            EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+            return cmd;
+          });
 
   EXPECT_CALL(mock_biod_metrics_,
               SendUploadTemplateResult(metrics::kCmdRunFailure));
