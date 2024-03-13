@@ -172,10 +172,6 @@ if get_option('commit_loop_fix')
   cpp_args += '-DCOMMIT_LOOP_FIX'
 endif
 
-if get_option('black_screen_fix')
-  cpp_args += '-DBLACK_SCREEN_FIX'
-endif
-
 sommelier_defines = [
     '-D_GNU_SOURCE',
     '-DWL_HIDE_DEPRECATED',

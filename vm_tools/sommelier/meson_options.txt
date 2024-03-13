@@ -46,12 +46,6 @@ option('commit_loop_fix',
   description: 'enable a fix to the commit-cycle, which is known to break some apps'
 )
 
-option('black_screen_fix',
-  type: 'boolean',
-  value: false,
-  description: 'enable a fix to fix some apps blackscreening when losing focus'
-)
-
 option('quirks',
   type: 'boolean',
   value: false,

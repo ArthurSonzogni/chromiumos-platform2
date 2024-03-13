@@ -16,6 +16,10 @@
 #include <xcb/xproto.h>
 #include <cstdint>
 
+#ifdef QUIRKS_SUPPORT
+#include "quirks/sommelier-quirks.h"
+#endif
+
 namespace vm_tools {
 namespace sommelier {
 
@@ -537,12 +541,19 @@ TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
   sl_handle_reparent_notify(&ctx, &reparent_event);
 }
 
-#ifdef BLACK_SCREEN_FIX
+#ifdef QUIRKS_SUPPORT
 TEST_F(X11Test, IconifySuppressesFullscreen) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not iconified.
   sl_window* window = CreateToplevelWindow();
   uint32_t xdg_toplevel_id = XdgToplevelId(window);
   EXPECT_EQ(window->iconified, 0);
+
+  window->steam_game_id = 123;
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  enable: FEATURE_BLACK_SCREEN_FIX\n"
+      "}");
 
   // Act: Pretend an X11 client owns the surface, and requests to iconify it.
   xcb_client_message_event_t event;
@@ -595,6 +606,13 @@ TEST_F(X11Test, IconifySuppressesUnmaximize) {
   sl_window* window = CreateToplevelWindow();
   uint32_t xdg_toplevel_id = XdgToplevelId(window);
   EXPECT_EQ(window->iconified, 0);
+
+  window->steam_game_id = 123;
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  enable: FEATURE_BLACK_SCREEN_FIX\n"
+      "}");
 
   // Arrange: Maximize it.
   xcb_client_message_event_t event;
@@ -651,7 +669,7 @@ TEST_F(X11Test, IconifySuppressesUnmaximize) {
       .Times(1);
   Pump();
 }
-#endif  // BLACK_SCREEN_FIX
+#endif  // QUIRKS_SUPPORT
 
 // Matcher for the value_list argument of an X11 ConfigureWindow request,
 // which is a const void* pointing to an int array whose size is implied by

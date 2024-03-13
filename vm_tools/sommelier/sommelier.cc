@@ -67,6 +67,10 @@
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-shim.h"             // NOLINT(build/include_directory)
 
+#ifdef QUIRKS_SUPPORT
+#include "quirks/sommelier-quirks.h"
+#endif
+
 // Check that required macro definitions exist.
 #ifndef XWAYLAND_PATH
 #error XWAYLAND_PATH must be defined
@@ -1870,48 +1874,52 @@ void sl_handle_client_message(struct sl_context* ctx,
                 "window->name", window ? window->name : "<unknown>");
     if (window && window->xdg_toplevel) {
       xdg_toplevel_set_minimized(window->xdg_toplevel);
-#ifdef BLACK_SCREEN_FIX
-      // Workaround for some borealis apps showing a black screen after losing
-      // focus from fullscreen.
-      // When a window is iconified, it should be unmapped. To return it back
-      // to a visible state, it should be remapped. However sommelier does not
-      // do this. Therefore we are sending a synthetic unmap then map notify
-      // so that the app is rendered again.
-      xcb_unmap_notify_event_t unmap_event = {.response_type = XCB_UNMAP_NOTIFY,
-                                              .pad0 = 0,
-                                              .event = window->id,
-                                              .window = window->id,
-                                              .from_configure = 0};
+#ifdef QUIRKS_SUPPORT
+      if (window->ctx->quirks.IsEnabled(window,
+                                        quirks::FEATURE_BLACK_SCREEN_FIX)) {
+        // Workaround for some borealis apps showing a black screen after losing
+        // focus from fullscreen.
+        // When a window is iconified, it should be unmapped. To return it back
+        // to a visible state, it should be remapped. However sommelier does not
+        // do this. Therefore we are sending a synthetic unmap then map notify
+        // so that the app is rendered again.
+        xcb_unmap_notify_event_t unmap_event = {
+            .response_type = XCB_UNMAP_NOTIFY,
+            .pad0 = 0,
+            .event = window->id,
+            .window = window->id,
+            .from_configure = 0};
 
-      xcb_send_event(ctx->connection, 0, window->id,
-                     XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                     reinterpret_cast<char*>(&unmap_event));
-      sl_send_configure_notify(window);
+        xcb_send_event(ctx->connection, 0, window->id,
+                       XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                       reinterpret_cast<char*>(&unmap_event));
+        sl_send_configure_notify(window);
 
-      sl_window_set_wm_state(window, WM_STATE_ICONIC);
-      sl_send_configure_notify(window);
+        sl_window_set_wm_state(window, WM_STATE_ICONIC);
+        sl_send_configure_notify(window);
 
-      xcb_map_notify_event_t map_event = {.response_type = XCB_MAP_NOTIFY,
-                                          .pad0 = 0,
-                                          .event = window->id,
-                                          .window = window->id,
-                                          .override_redirect = 0};
+        xcb_map_notify_event_t map_event = {.response_type = XCB_MAP_NOTIFY,
+                                            .pad0 = 0,
+                                            .event = window->id,
+                                            .window = window->id,
+                                            .override_redirect = 0};
 
-      xcb_send_event(ctx->connection, 0, window->id,
-                     XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                     reinterpret_cast<char*>(&map_event));
-      sl_send_configure_notify(window);
+        xcb_send_event(ctx->connection, 0, window->id,
+                       XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                       reinterpret_cast<char*>(&map_event));
+        sl_send_configure_notify(window);
 
-      sl_window_set_wm_state(window, WM_STATE_NORMAL);
-      sl_send_configure_notify(window);
+        sl_window_set_wm_state(window, WM_STATE_NORMAL);
+        sl_send_configure_notify(window);
 
-      sl_set_input_focus(ctx, nullptr);
-      xcb_flush(ctx->connection);
+        sl_set_input_focus(ctx, nullptr);
+        xcb_flush(ctx->connection);
 
-      // When we are iconified we want to suppress any calls that deiconify
-      // the window as it should in theory be unmapped.
-      window->iconified = 1;
-#endif
+        // When we are iconified we want to suppress any calls that deiconify
+        // the window as it should in theory be unmapped.
+        window->iconified = 1;
+      }
+#endif  // QUIRKS_SUPPORT
     }
   }
 }
