@@ -17,6 +17,7 @@ inline constexpr char kDaemonStorageRoot[] =
     "/run/daemon-store/fbpreprocessord";
 inline constexpr char kInputDirectory[] = "raw_dumps";
 inline constexpr char kProcessedDirectory[] = "processed_dumps";
+inline constexpr char kScratchDirectory[] = "scratch";
 
 }  // namespace fbpreprocessor
 
