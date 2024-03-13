@@ -29,6 +29,8 @@ class CrosFpSessionManagerImpl : public CrosFpSessionManager {
   const std::optional<std::string>& GetUser() const override;
   bool LoadUser(std::string user_id) override;
   void UnloadUser() override;
+  std::optional<SessionRecord> GetRecordWithId(
+      const std::string& record_id) override;
   bool CreateRecord(const BiodStorageInterface::RecordMetadata& record,
                     std::unique_ptr<VendorTemplate> templ) override;
   bool UpdateRecord(const BiodStorageInterface::RecordMetadata& record_metadata,

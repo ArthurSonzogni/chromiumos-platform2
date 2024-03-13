@@ -94,6 +94,19 @@ AuthenticateCredentialRequest MakeAuthenticateCredentialRequest(
   return request;
 }
 
+EnrollLegacyTemplateRequest MakeEnrollLegacyTemplateRequest(
+    const std::string& user_id,
+    const brillo::Blob& gsc_nonce,
+    const brillo::Blob& encrypted_label_seed,
+    const brillo::Blob& iv) {
+  EnrollLegacyTemplateRequest request;
+  request.set_legacy_record_id(user_id);
+  request.set_gsc_nonce(BlobToString(gsc_nonce));
+  request.set_encrypted_label_seed(BlobToString(encrypted_label_seed));
+  request.set_iv(BlobToString(iv));
+  return request;
+}
+
 }  // namespace
 
 MATCHER_P(EnrollProgressIs, progress, "") {
@@ -807,6 +820,102 @@ TEST_F(CrosFpAuthStackManagerTest, UpdateDirtyTemplates) {
 
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestListLegacyRecordsNoUser) {
+  const std::optional<std::string> kNoUserId = std::nullopt;
+
+  EXPECT_CALL(*mock_legacy_session_manager_, GetUser)
+      .WillOnce(ReturnRef(kNoUserId));
+  EXPECT_CALL(*mock_legacy_session_manager_, GetRecords).Times(0);
+
+  ListLegacyRecordsReply reply =
+      cros_fp_auth_stack_manager_->ListLegacyRecords();
+  EXPECT_EQ(reply.status(), ListLegacyRecordsReply::INCORRECT_STATE);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestListLegacyRecordsSuccess) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
+      {
+          .record_metadata = {.record_id = "record1", .label = "finger1"},
+          .tmpl = VendorTemplate(32, 1),
+      },
+      {
+          .record_metadata = {.record_id = "record2", .label = "finger2"},
+          .tmpl = VendorTemplate(32, 2),
+      }};
+
+  EXPECT_CALL(*mock_legacy_session_manager_, GetUser)
+      .WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_legacy_session_manager_, GetRecords)
+      .WillOnce(Return(kRecords));
+
+  ListLegacyRecordsReply reply =
+      cros_fp_auth_stack_manager_->ListLegacyRecords();
+  ASSERT_EQ(reply.status(), ListLegacyRecordsReply::SUCCESS);
+  ASSERT_EQ(reply.legacy_records_size(), 2);
+  EXPECT_EQ(reply.legacy_records(0).legacy_record_id(), "record1");
+  EXPECT_EQ(reply.legacy_records(0).label(), "finger1");
+  EXPECT_EQ(reply.legacy_records(1).legacy_record_id(), "record2");
+  EXPECT_EQ(reply.legacy_records(1).label(), "finger2");
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestEnrollLegacyTemplateSuccess) {
+  const std::optional<std::string> kUserId("testuser");
+  const std::string kLegacyRecordId("legacy_record");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
+  const CrosFpSessionManager::SessionRecord kRecord{.tmpl =
+                                                        VendorTemplate(32, 1)};
+
+  auto request = MakeEnrollLegacyTemplateRequest(
+      kLegacyRecordId, kGscNonce, kEncryptedLabelSeed, kLabelSeedIv);
+
+  EXPECT_CALL(*mock_legacy_session_manager_, GetUser)
+      .WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_legacy_session_manager_, GetRecordWithId(kLegacyRecordId))
+      .WillOnce(Return(kRecord));
+  // Expect biod will check if there is space for a new template.
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(3));
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, MigrateLegacyTemplate(*kUserId, _))
+      .WillOnce(Return(true));
+
+  bool success = false;
+  cros_fp_auth_stack_manager_->EnrollLegacyTemplate(
+      request,
+      base::BindOnce([](bool* success, bool s) { *success = s; }, &success));
+  EXPECT_TRUE(success);
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestEnrollLegacyTemplateNoUser) {
+  const std::optional<std::string> kNoUserId = std::nullopt;
+  const std::string kLegacyRecordId("legacy_record");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
+
+  auto request = MakeEnrollLegacyTemplateRequest(
+      kLegacyRecordId, kGscNonce, kEncryptedLabelSeed, kLabelSeedIv);
+
+  EXPECT_CALL(*mock_legacy_session_manager_, GetUser)
+      .WillOnce(ReturnRef(kNoUserId));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).Times(0);
+  EXPECT_CALL(*mock_legacy_session_manager_, GetRecordWithId).Times(0);
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).Times(0);
+  EXPECT_CALL(*mock_cros_dev_, SetNonceContext).Times(0);
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates).Times(0);
+  EXPECT_CALL(*mock_cros_dev_, MigrateLegacyTemplate).Times(0);
+
+  bool success = true;
+  cros_fp_auth_stack_manager_->EnrollLegacyTemplate(
+      request,
+      base::BindOnce([](bool* success, bool s) { *success = s; }, &success));
+  EXPECT_FALSE(success);
 }
 
 class CrosFpAuthStackManagerInitiallyEnrollDoneTest

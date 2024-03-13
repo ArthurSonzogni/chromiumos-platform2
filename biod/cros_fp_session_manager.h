@@ -33,6 +33,10 @@ class CrosFpSessionManager {
   // Wipe the current user session.
   virtual void UnloadUser() = 0;
 
+  // Return the record with |record_id|, if exists for the current user.
+  virtual std::optional<SessionRecord> GetRecordWithId(
+      const std::string& record_id) = 0;
+
   // Add a record to the current user session. It should persist the record both
   // on disk and in memory. It will fail if no user session exists.
   virtual bool CreateRecord(const BiodStorageInterface::RecordMetadata& record,

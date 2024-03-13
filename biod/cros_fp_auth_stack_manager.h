@@ -122,6 +122,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
     CrosFpMigrator(CrosFpAuthStackManager* manager,
                    std::unique_ptr<CrosFpSessionManager> session_manager);
 
+    void OnUserLoggedIn(const std::string& user_id);
+    void OnUserLoggedOut();
+
     // See AuthStackManager::ListLegacyRecords.
     ListLegacyRecordsReply ListLegacyRecords();
 

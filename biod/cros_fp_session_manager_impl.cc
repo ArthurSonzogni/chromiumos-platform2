@@ -55,6 +55,20 @@ void CrosFpSessionManagerImpl::UnloadUser() {
   record_manager_->SetAllowAccess(false);
 }
 
+std::optional<SessionRecord> CrosFpSessionManagerImpl::GetRecordWithId(
+    const std::string& record_id) {
+  if (!user_.has_value()) {
+    return std::nullopt;
+  }
+
+  for (size_t i = 0; i < records_.size(); i++) {
+    if (records_[i].record_metadata.record_id == record_id) {
+      return records_[i];
+    }
+  }
+  return std::nullopt;
+}
+
 bool CrosFpSessionManagerImpl::CreateRecord(
     const BiodStorageInterface::RecordMetadata& record,
     std::unique_ptr<VendorTemplate> templ) {

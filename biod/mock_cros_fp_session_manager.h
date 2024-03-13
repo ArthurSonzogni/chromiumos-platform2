@@ -28,6 +28,10 @@ class MockCrosFpSessionManager : public CrosFpSessionManager {
               (const, override));
   MOCK_METHOD(bool, LoadUser, (std::string), (override));
   MOCK_METHOD(void, UnloadUser, (), (override));
+  MOCK_METHOD(std::optional<SessionRecord>,
+              GetRecordWithId,
+              (const std::string&),
+              (override));
   MOCK_METHOD(bool,
               CreateRecord,
               (const BiodStorageInterface::RecordMetadata&,

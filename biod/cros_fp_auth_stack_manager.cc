@@ -448,10 +448,12 @@ void CrosFpAuthStackManager::OnUserLoggedOut() {
   // Note that CrOS currently always logouts all users together.
   session_manager_->UnloadUser();
   locked_to_current_user_ = false;
+  migrator_->OnUserLoggedOut();
 }
 
 void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
   LoadUser(user_id, true);
+  migrator_->OnUserLoggedIn(user_id);
 }
 
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
@@ -855,19 +857,99 @@ CrosFpAuthStackManager::CrosFpMigrator::CrosFpMigrator(
   CHECK(session_manager_);
 }
 
+void CrosFpAuthStackManager::CrosFpMigrator::OnUserLoggedIn(
+    const std::string& user_id) {
+  session_manager_->LoadUser(user_id);
+}
+
+void CrosFpAuthStackManager::CrosFpMigrator::OnUserLoggedOut() {
+  session_manager_->UnloadUser();
+}
+
 ListLegacyRecordsReply
 CrosFpAuthStackManager::CrosFpMigrator::ListLegacyRecords() {
-  // TODO(b/328734871): Implement migrator logic.
   ListLegacyRecordsReply reply;
-  reply.set_status(ListLegacyRecordsReply::UNKNOWN);
+
+  // Check if user is logged in.
+  const std::optional<std::string>& user = session_manager_->GetUser();
+  if (!user.has_value()) {
+    LOG(WARNING) << "ListLegacyRecords called while user is not logged in.";
+    reply.set_status(ListLegacyRecordsReply::INCORRECT_STATE);
+    return reply;
+  }
+  std::vector<CrosFpSessionManager::SessionRecord> records =
+      session_manager_->GetRecords();
+
+  for (const auto& record : records) {
+    LegacyRecord* legacy_record = reply.add_legacy_records();
+    legacy_record->set_legacy_record_id(record.record_metadata.record_id);
+    legacy_record->set_label(record.record_metadata.label);
+  }
+  reply.set_status(ListLegacyRecordsReply::SUCCESS);
   return reply;
 }
 
 void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
     const EnrollLegacyTemplateRequest& request,
     AuthStackManager::EnrollLegacyTemplateCallback callback) {
-  // TODO(b/328734871): Implement migrator logic.
-  std::move(callback).Run(false);
+  if (!manager_->CanStartEnroll()) {
+    LOG(ERROR) << "Can't enroll legacy template now, current state is: "
+               << manager_->CurrentStateToString();
+    std::move(callback).Run(false);
+    return;
+  }
+
+  const std::optional<std::string>& user_id = session_manager_->GetUser();
+  if (!user_id.has_value()) {
+    LOG(ERROR)
+        << "Can only enroll legacy template when there is a user session.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  size_t num_of_templates = manager_->session_manager_->GetNumOfTemplates();
+  if (num_of_templates >= manager_->cros_dev_->MaxTemplateCount()) {
+    LOG(ERROR) << "No space for an additional template.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  std::optional<CrosFpSessionManager::SessionRecord> legacy_record =
+      session_manager_->GetRecordWithId(request.legacy_record_id());
+  if (!legacy_record.has_value()) {
+    LOG(ERROR) << "Can't find legacy record with id: "
+               << request.legacy_record_id();
+    std::move(callback).Run(false);
+    return;
+  }
+
+  if (!manager_->cros_dev_->SetNonceContext(
+          brillo::BlobFromString(request.gsc_nonce()),
+          brillo::BlobFromString(request.encrypted_label_seed()),
+          brillo::BlobFromString(request.iv()))) {
+    LOG(ERROR) << "Failed to set nonce context";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  if (!manager_->cros_dev_->UnlockTemplates(num_of_templates)) {
+    LOG(ERROR) << "Failed to unlock templates.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  // Successful MigrateLegacyTemplate will leave the template in newly enrolled
+  // state, which is identical to the state where StartEnrollSession finishes
+  // and receives the enroll completed signal. The state machine is now
+  // kEnrollDone and ready to handle a CreateCredential.
+  if (!manager_->cros_dev_->MigrateLegacyTemplate(*user_id,
+                                                  legacy_record->tmpl)) {
+    LOG(ERROR) << "Failed to migrate legacy template.";
+    std::move(callback).Run(false);
+    return;
+  }
+  manager_->state_ = State::kEnrollDone;
+  std::move(callback).Run(true);
 }
 
 }  // namespace biod

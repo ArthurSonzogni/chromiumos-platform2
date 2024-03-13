@@ -156,6 +156,7 @@ message ListLegacyRecordsReply {
   enum ListLegacyRecordsStatus {
     UNKNOWN = 0;
     SUCCESS = 1;
+    INCORRECT_STATE = 2;  // E.g., no user is logged in.
   }
   optional ListLegacyRecordsStatus status = 2;
   repeated LegacyRecord legacy_records = 1;
