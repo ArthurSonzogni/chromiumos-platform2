@@ -81,14 +81,6 @@ bool OmahaRequestParams::Init(const string& app_version,
     image_props_.current_channel = kStableChannel;
   if (!IsValidChannel(mutable_image_props_.target_channel))
     mutable_image_props_.target_channel = image_props_.current_channel;
-
-  // Commercial channels can only be set by policy. This is taken from
-  // `params.target_channel` later.
-  if (IsCommercialChannel(mutable_image_props_.target_channel)) {
-    LOG(WARNING) << "Commercial channel " << mutable_image_props_.target_channel
-                 << " can only be set by policy. Defaulting to stable-channel";
-    mutable_image_props_.target_channel = kStableChannel;
-  }
   UpdateDownloadChannel();
 
   LOG(INFO) << "Running from channel " << image_props_.current_channel;

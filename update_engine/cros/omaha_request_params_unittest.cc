@@ -21,6 +21,10 @@
 using chromeos_update_engine::test_utils::WriteFileString;
 using std::string;
 
+namespace {
+constexpr char kLsbRelease[] = "/etc/lsb-release";
+}
+
 namespace chromeos_update_engine {
 
 class OmahaRequestParamsTest : public ::testing::Test {
@@ -32,6 +36,8 @@ class OmahaRequestParamsTest : public ::testing::Test {
     // Create a uniquely named test directory.
     ASSERT_TRUE(tempdir_.CreateUniqueTempDir());
     params_.set_root(tempdir_.GetPath().value());
+    lsb_path_ = base::FilePath(tempdir_.GetPath().value() + kLsbRelease);
+    ASSERT_TRUE(base::CreateDirectory(lsb_path_.DirName()));
     FakeSystemState::CreateInstance();
     SetLockDown(false);
   }
@@ -41,8 +47,14 @@ class OmahaRequestParamsTest : public ::testing::Test {
     FakeSystemState::Get()->fake_hardware()->SetIsNormalBootMode(locked_down);
   }
 
+  void SetImageChannel(const std::string& channel) {
+    auto lsb_content = std::string("CHROMEOS_RELEASE_TRACK=") + channel;
+    ASSERT_TRUE(base::WriteFile(lsb_path_, lsb_content));
+  }
+
   OmahaRequestParams params_;
   base::ScopedTempDir tempdir_;
+  base::FilePath lsb_path_;
 };
 
 namespace {
@@ -81,11 +93,13 @@ TEST_F(OmahaRequestParamsTest, MissingURLTest) {
 }
 
 TEST_F(OmahaRequestParamsTest, DeltaOKTest) {
+  SetImageChannel(kStableChannel);
   EXPECT_TRUE(params_.Init("", "", {}));
   EXPECT_TRUE(params_.delta_okay());
 }
 
 TEST_F(OmahaRequestParamsTest, NoDeltasTest) {
+  SetImageChannel(kStableChannel);
   ASSERT_TRUE(
       WriteFileString(tempdir_.GetPath().Append(".nodelta").value(), ""));
   EXPECT_TRUE(params_.Init("", "", {}));
@@ -115,7 +129,7 @@ TEST_F(OmahaRequestParamsTest, SetTargetCommercialChannelTest) {
   }
   params_.set_root(tempdir_.GetPath().value());
   EXPECT_TRUE(params_.Init("", "", {}));
-  EXPECT_EQ(kStableChannel, params_.target_channel());
+  EXPECT_EQ(kLtcChannel, params_.target_channel());
 }
 
 TEST_F(OmahaRequestParamsTest, SetCommercialChannelUsingParamTest) {
@@ -128,6 +142,48 @@ TEST_F(OmahaRequestParamsTest, SetCommercialChannelUsingParamTest) {
   params_.set_root(tempdir_.GetPath().value());
   EXPECT_TRUE(params_.Init("", "", {.target_channel = kLtcChannel}));
   EXPECT_EQ(kLtcChannel, params_.target_channel());
+}
+
+TEST_F(OmahaRequestParamsTest, LTCChannelSendsDeltaOkay) {
+  SetImageChannel(kLtcChannel);
+  params_.set_root(tempdir_.GetPath().value());
+  ASSERT_TRUE(params_.Init("", "", {.target_channel = kLtcChannel}));
+  EXPECT_TRUE(params_.delta_okay());
+}
+
+TEST_F(OmahaRequestParamsTest, LTSChannelSendsDeltaOkay) {
+  SetImageChannel(kLtsChannel);
+  params_.set_root(tempdir_.GetPath().value());
+  ASSERT_TRUE(params_.Init("", "", {.target_channel = kLtsChannel}));
+  EXPECT_TRUE(params_.delta_okay());
+}
+
+TEST_F(OmahaRequestParamsTest, LTSChannelToStableDisablesDeltas) {
+  {
+    OmahaRequestParams params;
+    params.set_root(tempdir_.GetPath().value());
+    EXPECT_TRUE(params.Init("", "", {}));
+    EXPECT_TRUE(params.SetTargetChannel(kStableChannel, false, nullptr));
+  }
+  SetImageChannel(kLtsChannel);
+
+  params_.set_root(tempdir_.GetPath().value());
+  ASSERT_TRUE(params_.Init("", "", {.target_channel = kStableChannel}));
+  EXPECT_FALSE(params_.delta_okay());
+}
+
+TEST_F(OmahaRequestParamsTest, StableChannelToLTSDisablesDeltas) {
+  {
+    OmahaRequestParams params;
+    params.set_root(tempdir_.GetPath().value());
+    EXPECT_TRUE(params.Init("", "", {}));
+    EXPECT_TRUE(params.SetTargetChannel(kLtsChannel, false, nullptr));
+  }
+  SetImageChannel(kStableChannel);
+
+  params_.set_root(tempdir_.GetPath().value());
+  ASSERT_TRUE(params_.Init("", "", {.target_channel = kLtsChannel}));
+  EXPECT_FALSE(params_.delta_okay());
 }
 
 TEST_F(OmahaRequestParamsTest, SetIsPowerwashAllowedTest) {
