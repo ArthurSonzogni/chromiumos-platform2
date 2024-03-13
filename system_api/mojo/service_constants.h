@@ -14,7 +14,9 @@ constexpr char kChromiumNetworkDiagnosticsRoutines[] =
     "ChromiumNetworkDiagnosticsRoutines";
 constexpr char kChromiumNetworkHealth[] = "ChromiumNetworkHealth";
 constexpr char kCrosCameraAppDeviceBridge[] = "CrosCameraAppDeviceBridge";
+constexpr char kCrosCameraController[] = "CrosCameraController";
 constexpr char kCrosCameraDiagnostics[] = "CrosCameraDiagnostics";
+constexpr char kCrosCameraDiagnosticsService[] = "CrosCameraDiagnosticsService";
 constexpr char kCrosCameraHalDispatcher[] = "CrosCameraHalDispatcher";
 constexpr char kCrosCameraService[] = "CrosCameraService";
 constexpr char kCrosDcadService[] = "CrosDcadService";
