@@ -172,7 +172,7 @@ UntrustedVMUtils::CheckUntrustedVMMitigationStatus() const {
   return GetMDSMitigationStatus(mds_status_path_);
 }
 
-bool UntrustedVMUtils::IsUntrustedVMAllowed(std::string* reason) const {
+bool UntrustedVMUtils::SafeToRunVirtualMachines(std::string* reason) const {
   DCHECK(reason);
 
   // Check if l1tf and mds mitigations are present on the host.

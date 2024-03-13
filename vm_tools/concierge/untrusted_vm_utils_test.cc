@@ -152,18 +152,18 @@ TEST_F(UntrustedVMUtilsTest, CheckMDSStatus) {
             UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
 }
 
-TEST_F(UntrustedVMUtilsTest, IsUntrustedVMAllowed) {
+TEST_F(UntrustedVMUtilsTest, SafeToRunVirtualMachines) {
   std::string reason;
 
   FakeUntrustedVMUtils new_kernel_utils(l1tf_status_path_, mds_status_path_);
-  EXPECT_TRUE(new_kernel_utils.IsUntrustedVMAllowed(&reason))
+  EXPECT_TRUE(new_kernel_utils.SafeToRunVirtualMachines(&reason))
       << "CPU has appropriate security mitigations";
 
   // Set the status to unmitigated.
   SetMDSStatus("foo");
   SetL1TFStatus("bar");
 
-  EXPECT_FALSE(new_kernel_utils.IsUntrustedVMAllowed(&reason))
+  EXPECT_FALSE(new_kernel_utils.SafeToRunVirtualMachines(&reason))
       << "CPU vulnerabilities are not mitigated";
 }
 

@@ -53,7 +53,7 @@ class UntrustedVMUtils {
 
   // Returns whether an untrusted VM is allowed on the host depending on the
   // security patches are applied.
-  bool IsUntrustedVMAllowed(std::string* reason) const;
+  bool SafeToRunVirtualMachines(std::string* reason) const;
 
  protected:
   // Protected constructor for testing.

@@ -1585,6 +1585,13 @@ StartVmResponse Service::StartVmInternal(
 
   std::string failure_reason;
   std::optional<base::FilePath> biosDlcPath, vmDlcPath, toolsDlcPath;
+
+  if (!untrusted_vm_utils_.SafeToRunVirtualMachines(&failure_reason)) {
+    LOG(ERROR) << failure_reason;
+    response.set_failure_reason(failure_reason);
+    return response;
+  }
+
   if (!vm_start_image_fds.bios_fd.has_value() &&
       !request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
@@ -1666,13 +1673,6 @@ StartVmResponse Service::StartVmInternal(
   // The path can be empty if no pflash file is installed or nothing sent by the
   // user.
   base::FilePath pflash = pflash_result.value();
-
-  std::string reason;
-  if (!untrusted_vm_utils_.IsUntrustedVMAllowed(&reason)) {
-    LOG(ERROR) << reason;
-    response.set_failure_reason(reason);
-    return response;
-  }
 
   // Track the next available virtio-blk device name.
   // Assume that the rootfs filesystem was assigned /dev/pmem0 if
@@ -4593,7 +4593,7 @@ void Service::GetVmLaunchAllowed(
   ASYNC_SERVICE_METHOD();
 
   std::string reason;
-  bool allowed = untrusted_vm_utils_.IsUntrustedVMAllowed(&reason);
+  bool allowed = untrusted_vm_utils_.SafeToRunVirtualMachines(&reason);
 
   GetVmLaunchAllowedResponse response;
   response.set_allowed(allowed);
