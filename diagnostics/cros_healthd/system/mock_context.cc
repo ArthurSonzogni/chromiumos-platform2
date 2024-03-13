@@ -57,7 +57,6 @@ MockContext::MockContext() {
   bluez_event_hub_ = std::make_unique<FakeBluezEventHub>();
   floss_controller_ = std::make_unique<MockFlossController>();
   floss_event_hub_ = std::make_unique<FakeFlossEventHub>();
-  tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   tpm_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
   udev_ = std::make_unique<brillo::MockUdev>();
@@ -137,10 +136,6 @@ FakeFlossEventHub* MockContext::fake_floss_event_hub() const {
 
 MockExecutor* MockContext::mock_executor() {
   return &mock_executor_;
-}
-
-base::SimpleTestTickClock* MockContext::mock_tick_clock() const {
-  return static_cast<base::SimpleTestTickClock*>(tick_clock_.get());
 }
 
 org::chromium::TpmManagerProxyMock* MockContext::mock_tpm_manager_proxy()

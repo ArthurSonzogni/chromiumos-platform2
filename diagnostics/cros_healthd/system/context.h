@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/udev/udev_monitor.h>
 #include <dbus/bus.h>
@@ -82,9 +81,6 @@ class Context {
   // Creates an object for accessing |PciUtil| interface.
   virtual std::unique_ptr<PciUtil> CreatePciUtil();
 
-  // Return current time.
-  virtual const base::Time time() const;
-
   // Accessors for the various helper objects:
   // Use the object returned by attestation_proxy() to get the attestation
   // information from attestation service.
@@ -145,8 +141,6 @@ class Context {
   // Use the object returned by floss_event_hub() to subscribe Bluetooth events
   // via Floss proxy.
   FlossEventHub* floss_event_hub() const { return floss_event_hub_.get(); }
-  // Use the object returned by tick_clock() to track the passage of time.
-  base::TickClock* tick_clock() const { return tick_clock_.get(); }
   // Use the object returned by tpm_manager_proxy() to get the tpm information
   // from tpm manager.
   org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const {
@@ -205,7 +199,6 @@ class Context {
   std::unique_ptr<BluezEventHub> bluez_event_hub_;
   std::unique_ptr<FlossController> floss_controller_;
   std::unique_ptr<FlossEventHub> floss_event_hub_;
-  std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;
   std::unique_ptr<org::chromium::SpacedProxyInterface> spaced_proxy_;

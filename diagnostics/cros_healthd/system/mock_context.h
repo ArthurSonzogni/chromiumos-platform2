@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/test/simple_test_tick_clock.h>
-
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
@@ -74,13 +72,10 @@ class MockContext final : public Context {
   MockFlossController* mock_floss_controller() const;
   FakeFlossEventHub* fake_floss_event_hub() const;
   MockExecutor* mock_executor();
-  base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
   brillo::MockUdev* mock_udev() const;
   brillo::MockUdevMonitor* mock_udev_monitor() const;
   org::chromium::SpacedProxyMock* mock_spaced_proxy() const;
-
-  MOCK_METHOD(const base::Time, time, (), (const, override));
 
  private:
   // Used to create a fake pci util.

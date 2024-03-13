@@ -12,7 +12,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/time/default_tick_clock.h>
 #include <brillo/udev/udev.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
@@ -133,7 +132,6 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
   floss_event_hub_ = std::make_unique<FlossEventHub>(
       dbus_bus, bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
-  tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
@@ -142,10 +140,6 @@ Context::~Context() = default;
 
 std::unique_ptr<PciUtil> Context::CreatePciUtil() {
   return std::make_unique<PciUtilImpl>();
-}
-
-const base::Time Context::time() const {
-  return base::Time().Now();
 }
 
 }  // namespace diagnostics
