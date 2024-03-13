@@ -617,7 +617,9 @@ std::optional<std::string> AttestationService::GetEndorsementPublicKey() const {
   // Try to read the public key directly.
   ASSIGN_OR_RETURN(
       const brillo::Blob& public_key,
-      hwsec_->GetEndorsementPublicKey(GetEndorsementKeyType()),
+      hwsec_->GetEndorsementPublicKey(
+          GetEndorsementKeyType(),
+          hwsec::KeyManagement::PublicKeyEncoding::kDer),
       _.WithStatus<TPMError>("Failed to get endorsement public key")
           .LogError()
           .As(std::nullopt));
@@ -1596,7 +1598,8 @@ void AttestationService::PrepareForEnrollment(
   KeyType key_type = GetEndorsementKeyType();
 
   // Gather information about the endorsement key.
-  auto result = hwsec_->GetEndorsementPublicKey(key_type);
+  auto result = hwsec_->GetEndorsementPublicKey(
+      key_type, hwsec::KeyManagement::PublicKeyEncoding::kDer);
   if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key with key_type "
                << key_type << ": " << result.status();
@@ -2169,7 +2172,8 @@ bool AttestationService::VerifyActivateIdentity(
     const std::string& aik_public_key_tpm_format) {
   ASSIGN_OR_RETURN(
       const brillo::Blob& rsa_ek_public_key,
-      hwsec_->GetEndorsementPublicKey(KEY_TYPE_RSA),
+      hwsec_->GetEndorsementPublicKey(
+          KEY_TYPE_RSA, hwsec::KeyManagement::PublicKeyEncoding::kDer),
       _.WithStatus<TPMError>("Failed to get endorsement public key")
           .LogError()
           .As(false));
@@ -3285,15 +3289,17 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
     return "";
   }
 
-  std::string ek_bytes;
-  if (!tpm_utility_->GetEndorsementPublicKeyBytes(
-          endorsement_key_type_for_enrollment_id_, &ek_bytes)) {
-    LOG(ERROR) << __func__ << ": Failed to key EK bytes.";
-    return "";
-  }
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& ek_blob,
+      hwsec_->GetEndorsementPublicKey(
+          endorsement_key_type_for_enrollment_id_,
+          hwsec::KeyManagement::PublicKeyEncoding::kRaw),
+      _.WithStatus<TPMError>("Failed to get endorsement public key")
+          .LogError()
+          .As(""));
 
   // Compute the EID based on DEN and EK bytes.
-  return crypto_utility_->HmacSha256(den, ek_bytes);
+  return crypto_utility_->HmacSha256(den, BlobToString(ek_blob));
 }
 
 KeyType AttestationService::GetEndorsementKeyType() const {

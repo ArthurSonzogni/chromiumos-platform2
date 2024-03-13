@@ -510,7 +510,7 @@ TEST_F(AttestationServiceBaseTest, GetFeatures) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
-  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_))
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_, _))
       .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,
@@ -686,9 +686,8 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyBytes(_, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(ReturnValue(BlobFromString("ekm")));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
   CryptoUtilityImpl crypto_utility(&mock_tpm_utility_, &mock_hwsec_);
@@ -2217,7 +2216,7 @@ TEST_P(AttestationServiceTest,
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_))
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_, _))
       .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
@@ -2264,9 +2263,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
 }
 
 TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKeyBytes(_, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(ReturnValue(BlobFromString("ekm")));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
   CryptoUtilityImpl crypto_utility(&mock_tpm_utility_, &mock_hwsec_);
