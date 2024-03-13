@@ -268,6 +268,7 @@ void BluetoothRoutineBase::HandleChangePoweredResponse(bool powered,
 
 void BluetoothRoutineBase::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
+  LOG(INFO) << "Get adapter added event";
   const auto adapter_path = GetAdapterPath(default_adapter_hci_);
   if (!adapter || adapter->GetObjectPath() != adapter_path) {
     return;
@@ -277,12 +278,15 @@ void BluetoothRoutineBase::OnAdapterAdded(
 
 void BluetoothRoutineBase::OnAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
+  LOG(INFO) << "Get adapter removed event";
   if (GetAdapterPath(default_adapter_hci_) == adapter_path)
     default_adapter_ = nullptr;
 }
 
 void BluetoothRoutineBase::OnAdapterPoweredChanged(int32_t hci_interface,
                                                    bool powered) {
+  LOG(INFO) << "Get adapter powered change event for hci" << hci_interface
+            << ", powered: " << powered;
   if (hci_interface != default_adapter_hci_ || !powered) {
     return;
   }
