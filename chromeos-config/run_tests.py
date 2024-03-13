@@ -52,6 +52,9 @@ def main(argv: Optional[List[str]]) -> int:
     # start unexpectedly depending on any host tools.
     os.environ["PATH"] = f"{cipd_root}/bin"
 
+    # Change to this directory for consistency.
+    os.chdir(HERE)
+
     # We do no argument parsing.  All arguments are passed directly to pytest.
     return pytest.main(argv)
 
