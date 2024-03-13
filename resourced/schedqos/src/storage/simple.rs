@@ -49,9 +49,16 @@ impl ProcessMap for SimpleProcessMap {
         match self.entry(process_id) {
             Entry::Occupied(mut entry) => {
                 let process = entry.get_mut();
-                process.timestamp = timestamp;
                 process.state = state;
-                Some(entry)
+                if process.timestamp == timestamp {
+                    Some(entry)
+                } else {
+                    process.timestamp = timestamp;
+                    // Clear all threads in the old process context.
+                    process.thread_map.clear();
+                    // If timestamp is different treat it as a new process.
+                    None
+                }
             }
             Entry::Vacant(entry) => {
                 entry.insert(SimpleProcessEntry {
@@ -126,9 +133,17 @@ mod tests {
         assert!(map
             .insert_or_update(ProcessId(1000), 12345, ProcessState::Normal)
             .is_none());
+        map.get_process(ProcessId(1000))
+            .unwrap()
+            .thread_map()
+            .insert_or_update(ThreadId(1000), 12345, ThreadState::Balanced, |_| true);
         assert!(map
             .insert_or_update(ProcessId(1001), 23456, ProcessState::Background)
             .is_none());
+        map.get_process(ProcessId(1001))
+            .unwrap()
+            .thread_map()
+            .insert_or_update(ThreadId(1001), 23456, ThreadState::Balanced, |_| true);
 
         let process = map.get(&ProcessId(1000)).unwrap();
         assert_eq!(process.timestamp, 12345);
@@ -142,14 +157,16 @@ mod tests {
             .is_some());
         assert!(map
             .insert_or_update(ProcessId(1001), 65432, ProcessState::Normal)
-            .is_some());
+            .is_none());
 
         let process = map.get(&ProcessId(1000)).unwrap();
         assert_eq!(process.timestamp, 12345);
         assert_eq!(process.state, ProcessState::Background);
+        assert_eq!(process.thread_map.len(), 1);
         let process = map.get(&ProcessId(1001)).unwrap();
         assert_eq!(process.timestamp, 65432);
         assert_eq!(process.state, ProcessState::Normal);
+        assert_eq!(process.thread_map.len(), 0);
 
         assert_eq!(
             map.get_process(ProcessId(1000)).unwrap().state(),

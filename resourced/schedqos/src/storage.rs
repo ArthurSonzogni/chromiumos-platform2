@@ -27,6 +27,10 @@ pub trait ProcessMap {
     /// Returns [None] if inserting.
     ///
     /// Returns [ProcessContext] if the process exists and is updated.
+    ///
+    /// If an entry for `process_id` exists whose timestamp does not equal `timestamp`, that process
+    /// entry is removed from the map before the new process entry is inserted, and [None] is
+    /// returned.
     fn insert_or_update(
         &mut self,
         process_id: ProcessId,

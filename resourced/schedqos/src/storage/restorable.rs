@@ -276,13 +276,21 @@ impl ProcessMap for RestorableProcessMap {
         match self.map.entry(process_id) {
             Entry::Occupied(mut entry) => {
                 let process = entry.get_mut();
-                process.cell.update_timestamp(&mut self.storage, timestamp);
                 process.cell.update_state(&mut self.storage, state as u8);
-                Some(RestorableProcessContext {
-                    storage: &mut self.storage,
-                    process_id,
-                    entry,
-                })
+                if process.cell.timestamp(&self.storage) == timestamp {
+                    Some(RestorableProcessContext {
+                        storage: &mut self.storage,
+                        process_id,
+                        entry,
+                    })
+                } else {
+                    process.cell.update_timestamp(&mut self.storage, timestamp);
+                    // Clear all threads in the old process context.
+                    for (_, thread) in process.thread_map.drain() {
+                        self.storage.free_cell(thread.cell.offset);
+                    }
+                    None
+                }
             }
             Entry::Vacant(entry) => {
                 entry.insert(RestorableProcessEntry {
@@ -611,9 +619,17 @@ mod tests {
         assert!(map
             .insert_or_update(ProcessId(1000), 12345, ProcessState::Normal)
             .is_none());
+        map.get_process(ProcessId(1000))
+            .unwrap()
+            .thread_map()
+            .insert_or_update(ThreadId(1000), 12345, ThreadState::Balanced, |_| true);
         assert!(map
             .insert_or_update(ProcessId(1001), 23456, ProcessState::Background)
             .is_none());
+        map.get_process(ProcessId(1001))
+            .unwrap()
+            .thread_map()
+            .insert_or_update(ThreadId(1001), 23456, ThreadState::Balanced, |_| true);
 
         let process = map.get_process(ProcessId(1000)).unwrap();
         assert_eq!(process.timestamp(), 12345);
@@ -627,14 +643,16 @@ mod tests {
             .is_some());
         assert!(map
             .insert_or_update(ProcessId(1001), 65432, ProcessState::Normal)
-            .is_some());
+            .is_none());
 
-        let process = map.get_process(ProcessId(1000)).unwrap();
+        let mut process = map.get_process(ProcessId(1000)).unwrap();
         assert_eq!(process.timestamp(), 12345);
         assert_eq!(process.state(), ProcessState::Background);
-        let process = map.get_process(ProcessId(1001)).unwrap();
+        assert_eq!(process.thread_map().len(), 1);
+        let mut process = map.get_process(ProcessId(1001)).unwrap();
         assert_eq!(process.timestamp(), 65432);
         assert_eq!(process.state(), ProcessState::Normal);
+        assert_eq!(process.thread_map().len(), 0);
 
         assert_eq!(
             map.get_process(ProcessId(1000)).unwrap().state(),

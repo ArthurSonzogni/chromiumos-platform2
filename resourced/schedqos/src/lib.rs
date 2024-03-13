@@ -359,12 +359,13 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             .set_cpu_cgroup(process_id, process_config.cpu_cgroup)
             .map_err(|e| Error::Cgroup(process_config.cpu_cgroup.name(), e))?;
 
-        // Update the timestamp to the latest one. Even if there are obsolete threads in the
-        // process context, those will be drained below.
         let Some(mut process) =
             self.process_map
                 .insert_or_update(process_id, timestamp, process_state)
         else {
+            // If process_id is the same but timestamp is different, the process is treated as a
+            // new process and clears old thread contexts inside.
+            self.process_map.compact();
             return Ok(Some(ProcessKey {
                 process_id,
                 timestamp,
@@ -747,6 +748,42 @@ mod tests {
         let process_key = process_key.unwrap();
         assert_eq!(process_key.process_id, process_id);
         assert_eq!(ctx.process_map.len(), 2);
+    }
+
+    #[test]
+    fn test_set_process_state_with_different_timestamp() {
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_simple(Config {
+            cgroup_context,
+            process_configs: Config::default_process_config(),
+            thread_configs: Config::default_thread_config(),
+        })
+        .unwrap();
+
+        let process_id = ProcessId(std::process::id());
+
+        ctx.process_map
+            .insert_or_update(process_id, 0, ProcessState::Normal);
+        let (thread_id, _thread) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id, thread_id, ThreadState::UrgentBursty)
+            .unwrap();
+
+        // set_process_state() with different timestamp is treated as a new process context.
+        let process_key = ctx
+            .set_process_state(process_id, ProcessState::Normal)
+            .unwrap();
+        assert!(process_key.is_some());
+        let process_key = process_key.unwrap();
+        assert_eq!(process_key.process_id, process_id);
+        assert_eq!(ctx.process_map.len(), 1);
+        assert_eq!(
+            ctx.process_map
+                .get_process(process_id)
+                .unwrap()
+                .thread_map()
+                .len(),
+            0
+        );
     }
 
     #[test]
