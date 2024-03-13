@@ -414,6 +414,18 @@ bool SessionStateManager::CreateUserDirectories() const {
     success = false;
   }
 
+  if (!base::CreateDirectoryAndGetError(root_dir.Append(kScratchDirectory),
+                                        &error)) {
+    LOG(ERROR) << "Failed to create scratch directory: "
+               << base::File::ErrorToString(error);
+    success = false;
+  }
+  if (HANDLE_EINTR(chmod(root_dir.Append(kScratchDirectory).value().c_str(),
+                         kInputDirMode))) {
+    LOG(ERROR) << "chmod of scratch directory failed.";
+    success = false;
+  }
+
   return success;
 }
 
