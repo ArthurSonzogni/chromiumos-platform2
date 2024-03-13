@@ -148,6 +148,11 @@ It periodically polls the vmstats of the container (or really, the whole termina
 VM, since the stats are not namespaced) and reports those to UMA by invoking
 `garcon`.
 
+## vmc
+
+Command line tool for user-facing VM operations. See
+[vmc/README.md](vmc/README.md) for more details.
+
 ## VM <-> host communication
 
 All communication between `vm_concierge` and the applications inside the VM
