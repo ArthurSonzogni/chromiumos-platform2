@@ -9,7 +9,8 @@
 
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
-#include "diagnostics/diagnostics_service_provider.h"
+#include "camera/common/utils/camera_mojo_service_provider.h"
+#include "diagnostics/camera_diagnostics_impl.h"
 #include "diagnostics/dirty_lens_analyzer.h"
 
 namespace cros {
@@ -26,7 +27,9 @@ class CameraDiagnostics {
 
  private:
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  DiagnosticsServiceProvider service_provider_;
+  CameraDiagnosticsImpl diagnostics_impl_;
+  internal::CameraMojoServiceProvider<mojom::CameraDiagnostics>
+      diagnostics_service_provider_{&diagnostics_impl_};
   DirtyLensAnalyzer dirty_lens_analyzer_;
 };
 

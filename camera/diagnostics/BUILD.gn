@@ -25,7 +25,6 @@ executable("cros_camera_diagnostics_service") {
     "camera_diagnostics.cc",
     "camera_diagnostics_impl.cc",
     "camera_diagnostics_main.cc",
-    "diagnostics_service_provider.cc",
     "dirty_lens_analyzer.cc",
   ]
   configs += [ "//camera/build:cros_camera_common" ]

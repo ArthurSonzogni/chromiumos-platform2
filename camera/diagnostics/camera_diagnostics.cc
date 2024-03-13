@@ -5,6 +5,7 @@
 #include "diagnostics/camera_diagnostics.h"
 
 #include <base/task/single_thread_task_runner.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/connect.h>
@@ -26,7 +27,8 @@ void CameraDiagnostics::Start() {
       service_manager{
           chromeos::mojo_service_manager::ConnectToMojoServiceManager()};
 
-  service_provider_.Register(service_manager.get());
+  diagnostics_service_provider_.Register(
+      service_manager.get(), chromeos::mojo_services::kCrosCameraDiagnostics);
 
   dirty_lens_analyzer_.Initialize();
 }
