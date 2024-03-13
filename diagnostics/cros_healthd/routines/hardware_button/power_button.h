@@ -13,11 +13,13 @@
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+class Context;
 
 class PowerButtonRoutine final
     : public DiagnosticRoutineWithStatus,

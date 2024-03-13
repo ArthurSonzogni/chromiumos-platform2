@@ -11,9 +11,9 @@
 #include <string>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+class Context;
 
 // Production implementation of the CrosHealthdRoutineFactory interface.
 class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {

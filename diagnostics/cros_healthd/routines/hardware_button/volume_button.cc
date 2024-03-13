@@ -13,6 +13,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {

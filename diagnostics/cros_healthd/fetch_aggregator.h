@@ -8,11 +8,11 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 // This class is responsible for aggregating probe data from various fetchers,
 // some of which may be asynchronous, and running the given callback when all

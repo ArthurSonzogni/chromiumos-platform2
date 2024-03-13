@@ -9,10 +9,10 @@
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/events/lid_events.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Production implementation of the LidEvents interface.
 class LidEventsImpl final : public LidEvents {

@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <cras/dbus-proxies.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
+
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;

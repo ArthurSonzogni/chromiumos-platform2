@@ -17,10 +17,10 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Checks the discharge rate of the battery.
 class BatteryDischargeRoutine final : public DiagnosticRoutineWithStatus {

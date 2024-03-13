@@ -44,6 +44,7 @@
 #include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/storage/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 

@@ -13,10 +13,10 @@
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/events/power_events.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Production implementation of the PowerEvents interface.
 class PowerEventsImpl final : public PowerEvents {

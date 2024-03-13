@@ -14,12 +14,12 @@
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 namespace floss {
 enum class BtPropertyType : uint32_t;

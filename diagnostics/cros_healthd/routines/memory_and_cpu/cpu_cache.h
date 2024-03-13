@@ -12,11 +12,11 @@
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // The cpu cache routine checks that the device's cpu cache system is working
 // correctly.

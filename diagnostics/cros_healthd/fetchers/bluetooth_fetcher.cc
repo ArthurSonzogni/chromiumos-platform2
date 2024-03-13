@@ -14,6 +14,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher_floss.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"

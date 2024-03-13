@@ -10,6 +10,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
+
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;

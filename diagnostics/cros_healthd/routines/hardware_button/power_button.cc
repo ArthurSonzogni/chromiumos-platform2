@@ -12,6 +12,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

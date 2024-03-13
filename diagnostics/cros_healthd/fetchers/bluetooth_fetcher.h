@@ -5,10 +5,10 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BLUETOOTH_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BLUETOOTH_FETCHER_H_
 
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Fetches Bluetooth info and pass the result to the callback. Returns a
 // structure with either the Bluetooth information or the error that occurred

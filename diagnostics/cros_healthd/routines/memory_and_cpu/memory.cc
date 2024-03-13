@@ -20,6 +20,7 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "diagnostics/cros_healthd/utils/mojo_utils.h"

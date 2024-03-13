@@ -6,10 +6,10 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_AUDIO_AUDIO_DRIVER_H_
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // The audio driver routine checks that the device's audio driver is working
 // correctly.

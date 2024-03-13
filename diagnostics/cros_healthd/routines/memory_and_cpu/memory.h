@@ -20,10 +20,10 @@
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Update the progress bar every kMemoryRoutineUpdatePeriod.
 inline constexpr base::TimeDelta kMemoryRoutineUpdatePeriod = base::Seconds(1);

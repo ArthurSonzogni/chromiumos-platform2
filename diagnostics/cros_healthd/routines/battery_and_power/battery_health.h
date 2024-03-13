@@ -12,9 +12,9 @@
 #include <base/files/file_path.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+class Context;
 
 // Status messages for the BatteryHealth routine when in various states.
 extern const char kBatteryHealthInvalidParametersMessage[];

@@ -12,6 +12,7 @@
 #include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 

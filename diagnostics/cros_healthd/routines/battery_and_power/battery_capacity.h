@@ -10,9 +10,9 @@
 #include <optional>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+class Context;
 
 // Output messages for the battery capacity routine when in various states.
 extern const char kBatteryCapacityRoutineParametersInvalidMessage[];

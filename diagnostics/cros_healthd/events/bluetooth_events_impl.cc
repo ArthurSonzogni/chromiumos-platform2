@@ -11,6 +11,7 @@
 #include <base/functional/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 
 namespace diagnostics {

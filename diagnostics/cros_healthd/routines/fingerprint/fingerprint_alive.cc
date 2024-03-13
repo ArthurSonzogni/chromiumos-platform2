@@ -9,6 +9,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

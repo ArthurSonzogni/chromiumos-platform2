@@ -14,13 +14,14 @@
 
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
+#include <base/types/expected.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 class FanRoutine final : public BaseRoutineControl {
  public:

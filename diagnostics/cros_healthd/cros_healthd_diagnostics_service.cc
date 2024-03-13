@@ -22,6 +22,7 @@
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"

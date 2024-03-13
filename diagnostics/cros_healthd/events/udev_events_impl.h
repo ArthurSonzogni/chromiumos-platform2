@@ -11,14 +11,15 @@
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <brillo/udev/udev_device.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/events/udev_events.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 class UdevEventsImpl final : public UdevEvents {
  public:

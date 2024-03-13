@@ -19,6 +19,7 @@
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Implements the "CrosHealthdService" Mojo interface exposed by the
 // cros_healthd daemon (see the API definition at mojo/cros_healthd.mojom)

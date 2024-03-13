@@ -18,7 +18,6 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -26,6 +25,7 @@
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // Production implementation of the CrosHealthdDiagnosticsService interface.
 class CrosHealthdDiagnosticsService final

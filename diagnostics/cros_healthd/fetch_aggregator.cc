@@ -34,6 +34,7 @@
 #include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

@@ -22,6 +22,7 @@
 #include <base/time/time.h>
 
 #include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"

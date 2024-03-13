@@ -11,6 +11,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
+
 namespace diagnostics {
 
 namespace {

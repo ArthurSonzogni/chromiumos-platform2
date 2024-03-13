@@ -21,12 +21,12 @@
 #include "diagnostics/cros_healthd/events/touchpad_events.h"
 #include "diagnostics/cros_healthd/events/touchscreen_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+class Context;
 
 // This class is responsible for aggregating event instances.
 class EventAggregator final {
