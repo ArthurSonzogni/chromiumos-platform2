@@ -165,6 +165,8 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     return std::nullopt;
   }
 
+  LOGF(INFO) << "Start upsampling processing";
+
   UpsampleRequest upsample_request = {
       .input_width = static_cast<int>(input_width),
       .input_height = static_cast<int>(input_height),
@@ -179,6 +181,8 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     LOGF(ERROR) << "Failed to upsample frame with Lancet";
     return std::nullopt;
   }
+
+  LOGF(INFO) << "Upsampling processing finished";
 
   uint32_t rgb_output_buf_stride = output_width * kRGBNumOfChannels;
   if (!ConvertRGBToNV12(output_rgb_buf.data(), rgb_output_buf_stride,
