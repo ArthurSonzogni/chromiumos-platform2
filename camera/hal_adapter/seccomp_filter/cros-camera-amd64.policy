@@ -12,6 +12,7 @@ brk: 1
 clock_getres: 1
 clock_gettime: 1
 clock_nanosleep: 1
+# clone is used to spawn threads
 clone: 1
 close: 1
 connect: 1
@@ -21,6 +22,8 @@ dup2: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+# execve is for DLC usage
+execve: 1
 eventfd2: 1
 exit: 1
 exit_group: 1
@@ -55,6 +58,7 @@ getuid: 1
 inotify_add_watch: 1
 inotify_init: 1
 inotify_rm_watch: 1
+# TODO: filter ioctl.
 ioctl: 1
 # kcmp is specific to AMD GPUs.
 kcmp: 1
@@ -65,6 +69,7 @@ memfd_create: 1
 mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munlock: 1
 munmap: 1
 name_to_handle_at: 1
@@ -76,7 +81,9 @@ pipe2: 1
 pipe: 1
 poll: 1
 ppoll: 1
+# prctl is used to create threads
 prctl: 1
+pread64: 1
 prlimit64: 1
 process_vm_readv: 1
 pselect6: 1
