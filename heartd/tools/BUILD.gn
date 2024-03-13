@@ -11,7 +11,7 @@ group("all") {
 
 executable("heartd-tool") {
   sources = [ "heartd_tool.cc" ]
-  install_path = "bin"
+  install_path = "/usr/local/bin"
   pkg_deps = [
     "libbrillo",
     "libchrome",
