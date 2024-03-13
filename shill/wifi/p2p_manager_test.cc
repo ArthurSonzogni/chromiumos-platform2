@@ -40,6 +40,7 @@ namespace shill {
 namespace {
 const uint32_t kDefaultShillId = 0;
 const char kPrimaryInterfaceName[] = "wlan0";
+const char kP2PDeviceInterfaceName[] = "p2p-wlan0-0";
 constexpr uint32_t kPhyIndex = 5678;
 const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
 }  // namespace
@@ -184,6 +185,10 @@ class P2PManagerTest : public testing::Test {
     p2p_manager_->GroupFormationFailure(reason);
   }
 
+  void SetDefaultDeviceLinkName(P2PDevice* p2p_device) {
+    p2p_device->link_name_ = kP2PDeviceInterfaceName;
+  }
+
  protected:
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
                                               const LocalDevice*)>>
@@ -326,13 +331,13 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
 
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  SetDefaultDeviceLinkName(p2p_device);
   p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
                                  p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultSuccess);
-  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID),
-            expected_shill_id);
+  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID), expected_shill_id);
   ASSERT_EQ(p2p_manager_->p2p_clients_[expected_shill_id], p2p_device);
 
   EXPECT_CALL(*p2p_device, GetClientInfo()).WillOnce(Return(info_pattern));
@@ -386,13 +391,13 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
 
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
+  SetDefaultDeviceLinkName(p2p_device);
   p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp,
                                  p2p_device);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
-  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID),
-            expected_shill_id);
+  ASSERT_EQ(response_dict.Get<uint32_t>(kP2PDeviceShillID), expected_shill_id);
   ASSERT_EQ(p2p_manager_->p2p_group_owners_[expected_shill_id], p2p_device);
 
   EXPECT_CALL(*p2p_device, GetGroupInfo()).WillOnce(Return(info_pattern));

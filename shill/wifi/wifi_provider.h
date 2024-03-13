@@ -288,10 +288,10 @@ class WiFiProvider : public ProviderInterface {
   // Getter for p2p_manager_.
   P2PManager* p2p_manager() const { return p2p_manager_.get(); }
 
-  // Register a P2P device object to WiFiProvider and a WiFiPhy object.
+  // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
   // This method asserts that there is a WiFiPhy object at the given phy_index,
   // so it is expected that the caller checks this condition before calling.
-  mockable void RegisterP2PDevice(P2PDeviceRefPtr device);
+  mockable void RegisterLocalDevice(LocalDeviceRefPtr device);
 
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
@@ -299,11 +299,6 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceForTest);
-
-  // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
-  // This method asserts that there is a WiFiPhy object at the given phy_index,
-  // so it is expected that the caller checks this condition before calling.
-  void RegisterLocalDevice(LocalDeviceRefPtr device);
 
   // Deregister a WiFi local device from WiFiProvider and it's associated
   // WiFiPhy object. This function is a no-op if the WiFi device is not

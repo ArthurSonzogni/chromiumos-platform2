@@ -117,7 +117,7 @@ class MockWiFiProvider : public WiFiProvider {
                LocalDevice::EventCallback,
                uint32_t shill_id),
               (override));
-  MOCK_METHOD(void, RegisterP2PDevice, (P2PDeviceRefPtr), (override));
+  MOCK_METHOD(void, RegisterLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, UpdateRegAndPhyInfo, (base::OnceClosure), (override));
   MOCK_METHOD(void, UpdatePhyInfo, (base::OnceClosure), (override));

@@ -102,9 +102,6 @@ class P2PDevice : public LocalDevice,
   // Functionality is stubbed.
   mockable bool Disconnect();
 
-  // Set device link_name;
-  void SetLinkName(std::string link_name) { link_name_ = link_name; }
-
   // Get log name prefix.
   const std::string& log_name() const { return log_name_; }
 

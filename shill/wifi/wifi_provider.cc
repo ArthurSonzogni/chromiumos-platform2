@@ -76,9 +76,6 @@ static constexpr auto kPhyUpdateTimeout = base::Milliseconds(500);
 // Interface name prefix used in local connection interfaces.
 const char kHotspotIfacePrefix[] = "ap";
 
-// Hard coded link_name value used for feature bringup.
-static constexpr char kDefaultP2PLinkName[] = "p2p0";
-
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
 // |security_class| and |hidden_ssid|, if successful.  Otherwise, this function
@@ -1409,15 +1406,6 @@ P2PDeviceRefPtr WiFiProvider::CreateP2PDevice(
   P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type, primary_link_name,
                                       phy_index, shill_id, callback);
   return dev;
-}
-
-void WiFiProvider::RegisterP2PDevice(P2PDeviceRefPtr device) {
-  // TODO(b/295050791): Device registration should only happen after
-  // wpa_supplicant creates the interface and selects a link_name. We provide a
-  // hard-coded link_name here so that we can validate the basic device creation
-  // flow before the supplicant interaction is implemented.
-  device->SetLinkName(kDefaultP2PLinkName);
-  RegisterLocalDevice(device);
 }
 
 void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {

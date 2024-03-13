@@ -630,7 +630,7 @@ void P2PManager::P2PNetworkStarted(P2PDeviceRefPtr device) {
                << device->link_name().value_or("(no link name)")
                << " with invalid type " << device->iface_type();
   }
-  manager_->wifi_provider()->RegisterP2PDevice(device);
+  manager_->wifi_provider()->RegisterLocalDevice(device);
   std::string result_code =
       device->iface_type() == LocalDevice::IfaceType::kP2PGO
           ? kCreateP2PGroupResultSuccess
