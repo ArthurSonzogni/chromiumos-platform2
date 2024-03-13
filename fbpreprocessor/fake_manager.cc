@@ -10,11 +10,11 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
 #include "fbpreprocessor/output_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr int kTestDefaultExpirationSeconds = 1800;

@@ -9,12 +9,12 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <gtest/gtest.h>
 
 #include "fbpreprocessor/fake_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};

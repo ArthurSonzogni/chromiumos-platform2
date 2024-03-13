@@ -6,12 +6,12 @@
 #include <string_view>
 
 #include <base/files/file_util.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <gtest/gtest.h>
 
 #include "fbpreprocessor/fake_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/input_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};

@@ -22,6 +22,7 @@
 #include <base/timer/timer.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <dbus/dbus-protocol.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
@@ -29,7 +30,6 @@
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/platform_features_client.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump,

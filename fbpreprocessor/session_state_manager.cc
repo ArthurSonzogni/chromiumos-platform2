@@ -28,6 +28,7 @@
 #include <bindings/policy_common_definitions.pb.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <dbus/bus.h>
 #include <debugd/dbus-proxies.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
@@ -35,7 +36,6 @@
 
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr char kSessionStateStarted[] = "started";

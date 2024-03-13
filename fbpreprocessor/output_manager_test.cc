@@ -13,13 +13,13 @@
 #include <base/test/bind.h>
 #include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gtest/gtest.h>
 
 #include "fbpreprocessor/fake_manager.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/output_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};

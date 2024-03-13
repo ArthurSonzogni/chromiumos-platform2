@@ -12,13 +12,13 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace fbpreprocessor {
 

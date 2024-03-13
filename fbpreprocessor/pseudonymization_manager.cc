@@ -17,13 +17,13 @@
 #include <base/synchronization/lock.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
-#include "fbpreprocessor/storage.h"
 
 namespace {
 constexpr int kMaxProcessedDumps = 5;
