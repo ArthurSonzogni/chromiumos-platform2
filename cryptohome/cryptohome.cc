@@ -266,6 +266,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_recoverable_key_stores",
                                     "is_pw_pk_establishment_blocked",
                                     "lock_factor_until_reboot",
+                                    "migrate_legacy_fingerprints",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -332,6 +333,7 @@ enum ActionEnum {
   ACTION_GET_RECOVERABLE_KEY_STORES,
   ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
   ACTION_LOCK_FACTOR_UNTIL_REBOOT,
+  ACTION_MIGRATE_LEGACY_FINGERPRINTS,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -3155,6 +3157,35 @@ int main(int argc, char** argv) {
       return static_cast<int>(reply.error());
     }
     printer.PrintHumanOutput("CryptohomeRecovery factor is locked.\n");
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_MIGRATE_LEGACY_FINGERPRINTS],
+                     action.c_str())) {
+    user_data_auth::MigrateLegacyFingerprintsRequest req;
+    user_data_auth::MigrateLegacyFingerprintsReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex, &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.MigrateLegacyFingerprints(req, &reply, &error,
+                                                      timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "MigrateLegacyFingerprints call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to migrate legacy fingerprints.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printer.PrintReplyProtobuf(reply);
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
