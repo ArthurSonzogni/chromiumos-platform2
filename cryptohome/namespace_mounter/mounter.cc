@@ -321,6 +321,22 @@ const char* MountTypeToString(MountType mount_type) {
   }
 }
 
+class SyncGuard {
+ public:
+  explicit SyncGuard(libstorage::Platform* const platform)
+      : platform_(platform) {
+    DCHECK(platform_);
+  }
+
+  ~SyncGuard() {
+    platform_->Sync();
+    LOG(INFO) << "Sync'ed filesystems";
+  }
+
+ private:
+  libstorage::Platform* const platform_;
+};
+
 }  // namespace
 
 const char kDefaultHomeDir[] = "/home/chronos/user";
@@ -633,6 +649,9 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   }
 
   bool ok;
+
+  // Ensure that the filesystems will be sync'ed.
+  const SyncGuard sync_guard(platform_);
 
   // If ~/Downloads doesn't exist and ~/MyFiles/Downloads does exist, this might
   // be a freshly set-up cryptohome or the previous xattr setting failed. Update
