@@ -9,7 +9,6 @@
 #include <memory>
 #include <optional>
 #include <ostream>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,13 +17,13 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/forwarding_service.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/vm_concierge_client.h"
@@ -57,14 +56,15 @@ class ArcService {
   // the ArcDevice is created.
   class ArcConfig {
    public:
-    ArcConfig(const MacAddress& mac_addr, std::unique_ptr<Subnet> ipv4_subnet);
+    ArcConfig(const net_base::MacAddress& mac_addr,
+              std::unique_ptr<Subnet> ipv4_subnet);
     ArcConfig(const ArcConfig&) = delete;
     ArcConfig& operator=(const ArcConfig&) = delete;
 
     ~ArcConfig() = default;
 
-    MacAddress mac_addr() const { return mac_addr_; }
-    void set_mac_addr(const MacAddress& mac) { mac_addr_ = mac; }
+    net_base::MacAddress mac_addr() const { return mac_addr_; }
+    void set_mac_addr(net_base::MacAddress mac) { mac_addr_ = mac; }
     // The static IPv4 subnet CIDR assigned to this ARC device.
     const net_base::IPv4CIDR& ipv4_subnet() const {
       return ipv4_subnet_->base_cidr();
@@ -86,7 +86,7 @@ class ArcService {
    private:
     // A random MAC address assigned to the ArcDevice for the guest facing
     // interface.
-    MacAddress mac_addr_;
+    net_base::MacAddress mac_addr_;
     // The static IPv4 subnet allocated for the ArcDevice for the host and guest
     // facing interfaces.
     std::unique_ptr<Subnet> ipv4_subnet_;
@@ -110,7 +110,7 @@ class ArcService {
               std::optional<ArcDevice::Technology> technology,
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
-              const MacAddress& arc_device_mac_address,
+              net_base::MacAddress arc_device_mac_address,
               const ArcConfig& arc_ipv4_subnet,
               std::string_view bridge_ifname,
               std::string_view guest_device_ifname);
@@ -141,7 +141,7 @@ class ArcService {
     const std::string& arc_device_ifname() const { return arc_device_ifname_; }
     // MAC address of the virtual interface created on the host for this ARC
     // device.
-    const MacAddress& arc_device_mac_address() const {
+    net_base::MacAddress arc_device_mac_address() const {
       return arc_device_mac_address_;
     }
     // The name of the bridge created for this ARC device and to which the
@@ -177,7 +177,7 @@ class ArcService {
     std::optional<Technology> technology_;
     std::optional<std::string> shill_device_ifname_;
     std::string arc_device_ifname_;
-    MacAddress arc_device_mac_address_;
+    net_base::MacAddress arc_device_mac_address_;
     net_base::IPv4CIDR arc_ipv4_subnet_;
     net_base::IPv4CIDR arc_ipv4_address_;
     net_base::IPv4CIDR bridge_ipv4_address_;

@@ -20,6 +20,7 @@
 #include <metrics/metrics_library_mock.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -118,9 +119,6 @@ MATCHER_P2(IsShillMultiplexedDevice,
 
 class ArcServiceTest : public testing::Test,
                        public patchpanel::DbusClientNotifier {
- public:
-  ArcServiceTest() : testing::Test() {}
-
  protected:
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
@@ -1845,7 +1843,7 @@ TEST_F(ArcServiceTest, ArcBridgeName) {
 }
 
 TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(0));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto expected_host_ipv4 =
@@ -1881,7 +1879,7 @@ TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
 }
 
 TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(0));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto expected_host_ipv4 =
@@ -1918,7 +1916,7 @@ TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
 }
 
 TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(3));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto expected_host_ipv4 =
@@ -1953,7 +1951,7 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
 }
 
 TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(3));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto expected_host_ipv4 =
@@ -1989,7 +1987,7 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
 }
 
 TEST_F(ArcServiceTest, ConvertARC0ForARCContainer) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(0));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto expected_host_ipv4 =
@@ -2027,7 +2025,7 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCContainer) {
 }
 
 TEST_F(ArcServiceTest, ConvertARC0ForARCVM) {
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
+  const net_base::MacAddress mac_addr(addr_mgr_->GenerateMacAddress(0));
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto expected_host_ipv4 =
