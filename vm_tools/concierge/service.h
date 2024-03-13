@@ -680,7 +680,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   base::FilePathWatcher localtime_watcher_;
 
   // Watchers to monitor for the vm socket becoming available.
-  std::map<VmId, base::FilePathWatcher> vm_socket_ready_watchers_;
+  std::map<VmId, base::FilePathWatcher> vm_socket_ready_watchers_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The vmm swap TBW (total bytes written) policy managing TBW from each VM on
   // vmm-swap. This is instantiated by Service and shared with each VM.
