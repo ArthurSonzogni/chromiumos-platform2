@@ -17,6 +17,8 @@ brk: 1
 clock_getres: 1
 clock_gettime: 1
 clock_nanosleep: 1
+# clone is used to spawn threads.
+clone: 1
 close: 1
 connect: 1
 exit_group: 1

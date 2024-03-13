@@ -8,7 +8,6 @@ use std::fs::{File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Duration;
@@ -19,11 +18,9 @@ use nix::sys::stat;
 use nix::sys::time::TimeVal;
 use nix::sys::time::TimeValLike;
 use nix::unistd;
-use system_api::metrics_event;
 
 // Imported from main program
-use crate::Dbus;
-use crate::FileWatcher;
+use crate::DbusEvent;
 use crate::Paths;
 use crate::Result;
 use crate::Sample;
@@ -74,8 +71,12 @@ fn read_nonblocking_pipe(file: &mut File, buf: &mut [u8]) -> Result<usize> {
 }
 
 fn non_blocking_select(inout_read_fds: &mut select::FdSet) -> i32 {
+    let highest = inout_read_fds.highest();
+    if highest.is_none() {
+        return 0;
+    }
     select::select(
-        inout_read_fds.highest().unwrap() + 1,
+        highest.unwrap() + 1,
         inout_read_fds,
         None,
         None,
@@ -104,20 +105,38 @@ struct TestEvent {
 }
 
 impl TestEvent {
-    fn deliver(&self, paths: &Paths, dbus_fifo: &mut File, low_mem_device: &mut File, time: i64) {
+    // Returns true if the event is delivered to the D-Bus channel.
+    fn deliver(
+        &self,
+        paths: &Paths,
+        dbus_event_sender: &mut crossbeam_channel::Sender<DbusEvent>,
+        low_mem_device: &mut File,
+        time: i64,
+    ) -> bool {
         debug!("delivering {:?}", self);
         match self.event_type {
             TestEventType::EnterLowPressure => {
-                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, paths, low_mem_device);
+                false
             }
             TestEventType::EnterMediumPressure => {
-                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, paths, low_mem_device);
+                false
             }
             TestEventType::EnterHighPressure => {
-                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, paths, low_mem_device)
+                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, paths, low_mem_device);
+                false
             }
-            TestEventType::OomKillBrowser => self.send_signal("oom-kill", time, dbus_fifo),
-            TestEventType::TabDiscard => self.send_signal("tab-discard", time, dbus_fifo),
+            TestEventType::OomKillBrowser => {
+                dbus_event_sender.send(DbusEvent::OomKill { time }).unwrap();
+                true
+            }
+            TestEventType::TabDiscard => {
+                dbus_event_sender
+                    .send(DbusEvent::TabDiscard { time })
+                    .unwrap();
+                true
+            }
         }
     }
 
@@ -134,10 +153,6 @@ impl TestEvent {
             read_nonblocking_pipe(low_mem_device, &mut buf).expect("low-mem-device: clear failed");
         }
     }
-
-    fn send_signal(&self, signal: &str, time: i64, dbus_fifo: &mut File) {
-        writeln!(dbus_fifo, "{} {}", signal, time).expect("mock dbus: write failed");
-    }
 }
 
 // Real time mock, for testing only.  It removes time races (for better or
@@ -149,17 +164,21 @@ impl TestEvent {
 // either sleep() or select() with a timeout.
 
 struct MockTimer {
-    current_time: i64,           // the current time
-    test_events: Vec<TestEvent>, // list events to be delivered
-    event_index: usize,          // index of next event to be delivered
-    paths: Paths,                // for event delivery
-    dbus_fifo_out: File,         // for mock dbus event delivery
-    low_mem_device: File,        // for delivery of low-mem notifications
-    quit_request: bool,          // for termination
+    current_time: i64,                                       // the current time
+    test_events: Vec<TestEvent>,                             // list events to be delivered
+    event_index: usize,                                      // index of next event to be delivered
+    paths: Paths,                                            // for event delivery
+    dbus_event_sender: crossbeam_channel::Sender<DbusEvent>, // for sending D-Bus events
+    low_mem_device: File, // for delivery of low-mem notifications
+    quit_request: bool,   // for termination
 }
 
 impl MockTimer {
-    fn new(test_events: Vec<TestEvent>, paths: Paths, dbus_fifo_out: File) -> MockTimer {
+    fn new(
+        test_events: Vec<TestEvent>,
+        paths: Paths,
+        dbus_event_sender: crossbeam_channel::Sender<DbusEvent>,
+    ) -> MockTimer {
         let low_mem_device = OpenOptions::new()
             .custom_flags(libc::O_NONBLOCK)
             .read(true)
@@ -171,7 +190,7 @@ impl MockTimer {
             test_events,
             event_index: 0,
             paths,
-            dbus_fifo_out,
+            dbus_event_sender,
             low_mem_device,
             quit_request: false,
         }
@@ -224,13 +243,16 @@ impl Timer for MockTimer {
             }
             // Deliver all events with the time stamp of the first event.  (There
             // is at least one.)
+            let mut channel_sent = 0;
             while {
-                self.test_events[self.event_index].deliver(
+                if self.test_events[self.event_index].deliver(
                     &self.paths,
-                    &mut self.dbus_fifo_out,
+                    &mut self.dbus_event_sender,
                     &mut self.low_mem_device,
                     first_event_time,
-                );
+                ) {
+                    channel_sent += 1;
+                }
                 self.event_index += 1;
                 self.event_index < self.test_events.len()
                     && self.test_events[self.event_index].time == first_event_time
@@ -239,68 +261,16 @@ impl Timer for MockTimer {
             // select.  First restore the original fd_set.
             *inout_read_fds = saved_inout_read_fds;
             let n = non_blocking_select(inout_read_fds);
-            if n > 0 {
-                debug!("returning at {} with {} events", first_event_time, n);
+            if n > 0 || channel_sent > 0 {
+                debug!(
+                    "returning at {} with {} events",
+                    first_event_time,
+                    n + channel_sent
+                );
                 self.current_time = first_event_time;
-                return Ok(n);
+                return Ok(n + channel_sent);
             }
         }
-    }
-}
-
-struct MockDbus {
-    fds: Vec<RawFd>,
-    fifo_in: File,
-    fifo_out: Option<File>, // using Option merely to use take()
-}
-
-impl Dbus for MockDbus {
-    fn get_fds(&self) -> &Vec<RawFd> {
-        &self.fds
-    }
-
-    // Processes any mock chrome events.  Events are strings separated by
-    // newlines sent to the event pipe.  We could check if the pipe fired in
-    // the watcher, but it's less code to just do a non-blocking read.
-    fn process_dbus_events(
-        &mut self,
-        _watcher: &mut FileWatcher,
-    ) -> Result<Vec<(metrics_event::event::Type, i64)>> {
-        let mut events: Vec<(metrics_event::event::Type, i64)> = Vec::new();
-        let mut buf = [0u8; 4096];
-        let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
-        let mock_events = str::from_utf8(&buf[..read_bytes])?.lines();
-        for mock_event in mock_events {
-            let mut split_iterator = mock_event.split_whitespace();
-            let event_type = split_iterator.next().unwrap();
-            let event_time_string = split_iterator.next().unwrap();
-            let event_time = event_time_string.parse::<i64>()?;
-            match event_type {
-                "tab-discard" => events.push((metrics_event::event::Type::TAB_DISCARD, event_time)),
-                "oom-kill" => events.push((metrics_event::event::Type::OOM_KILL, event_time)),
-                other => return Err(format!("unexpected mock event {:?}", other).into()),
-            };
-        }
-        Ok(events)
-    }
-}
-
-impl MockDbus {
-    fn new(fifo_path: &Path) -> Result<MockDbus> {
-        let fifo_in = OpenOptions::new()
-            .custom_flags(libc::O_NONBLOCK)
-            .read(true)
-            .open(fifo_path)?;
-        let fds = vec![fifo_in.as_raw_fd()];
-        let fifo_out = OpenOptions::new()
-            .custom_flags(libc::O_NONBLOCK)
-            .write(true)
-            .open(fifo_path)?;
-        Ok(MockDbus {
-            fds,
-            fifo_in,
-            fifo_out: Some(fifo_out),
-        })
     }
 }
 
@@ -313,16 +283,9 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
         std::fs::create_dir_all(&paths.log_directory).expect("cannot create /var/log/memd");
 
         let events = events_from_test_descriptor(test_desc);
-        let mut dbus = Box::new(
-            MockDbus::new(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME))
-                .expect("cannot create mock dbus"),
-        );
-        let timer = Box::new(MockTimer::new(
-            events,
-            paths.clone(),
-            dbus.fifo_out.take().unwrap(),
-        ));
-        let mut sampler = Sampler::new(false, paths, timer, dbus).expect("sampler creation error");
+        let (send, recv) = crossbeam_channel::unbounded();
+        let timer = Box::new(MockTimer::new(events, paths.clone(), send));
+        let mut sampler = Sampler::new(false, paths, timer, recv).expect("sampler creation error");
         loop {
             // Alternate between slow and fast poll.
             sampler.slow_poll().expect("slow poll error");

@@ -526,6 +526,12 @@ impl ZoneinfoFile {
     }
 }
 
+enum DbusEvent {
+    TabDiscard { time: i64 },
+    OomKill { time: i64 },
+    OomKillKernel { time: i64 },
+}
+
 trait Dbus {
     // Returns a vector of file descriptors that can be registered with a
     // Watcher.
@@ -539,97 +545,11 @@ trait Dbus {
     ) -> Result<Vec<(metrics_event::event::Type, i64)>>;
 }
 
-#[cfg(not(test))]
-struct GenuineDbus {
-    connection: Connection,
-    fds: Vec<RawFd>,
-}
-
-#[cfg(not(test))]
-impl Dbus for GenuineDbus {
-    fn get_fds(&self) -> &Vec<RawFd> {
-        &self.fds
-    }
-
-    // Called if any of the dbus file descriptors fired.  Receives metrics
-    // event signals, and return a vector of pairs, each pair containing the
-    // event type and time stamp of each incoming event.
-    //
-    // Debugging example:
-    //
-    // INTERFACE=org.chromium.MetricsEventServiceInterface
-    // dbus-monitor --system type=signal,interface=$INTERFACE
-    // PAYLOAD=array:byte:0x10,0xa8,0xa2,0xc5,0x51
-    // dbus-send --system --type=signal / $INTERFACE.ChromeEvent $PAYLOAD
-    //
-    fn process_dbus_events(
-        &mut self,
-        watcher: &mut FileWatcher,
-    ) -> Result<Vec<(metrics_event::event::Type, i64)>> {
-        let mut events: Vec<(metrics_event::event::Type, i64)> = Vec::new();
-        for &fd in self.fds.iter() {
-            if !watcher.has_fired_fd(fd)? {
-                continue;
-            }
-            let handle = self
-                .connection
-                .watch_handle(fd, WatchEvent::Readable as libc::c_uint);
-            for connection_item in handle {
-                // Only consider signals.
-                if let ConnectionItem::Signal(ref message) = connection_item {
-                    // Only consider signals with "ChromeEvent" or
-                    // "AnomalyEvent" members.
-                    if let Some(member) = message.member() {
-                        if &*member != "ChromeEvent" && &*member != "AnomalyEvent" {
-                            // Do not report spurious "NameAcquired" signal to avoid spam.
-                            if &*member != "NameAcquired" {
-                                warn!("unexpected dbus signal member {}", &*member);
-                            }
-                            continue;
-                        }
-                    }
-                    // Read first item in signal message as byte blob and
-                    // parse blob into protobuf.
-                    let raw_buffer: Vec<u8> = message.read1()?;
-                    let mut protobuf = metrics_event::Event::new();
-                    protobuf.merge_from_bytes(&raw_buffer)?;
-
-                    let event_type = protobuf.type_.enum_value_or_default();
-                    let time_stamp = protobuf.timestamp;
-                    events.push((event_type, time_stamp))
-                }
-            }
-        }
-        Ok(events)
-    }
-}
-
-#[cfg(not(test))]
-impl GenuineDbus {
-    // A GenuineDbus object contains a D-Bus connection used to receive
-    // information from Chrome about events of interest (e.g. tab discards).
-    fn new() -> Result<GenuineDbus> {
-        let connection = Connection::get_private(BusType::System)?;
-        let _m = connection.add_match(concat!(
-            "type='signal',",
-            "interface='org.chromium.AnomalyEventServiceInterface',",
-            "member='AnomalyEvent'"
-        ));
-        let _m = connection.add_match(concat!(
-            "type='signal',",
-            "interface='org.chromium.MetricsEventServiceInterface',",
-            "member='ChromeEvent'"
-        ));
-        let fds = connection.watch_fds().iter().map(|w| w.fd()).collect();
-        Ok(GenuineDbus { connection, fds })
-    }
-}
-
 // The main object.
 struct Sampler<'a> {
-    always_poll_fast: bool,       // When true, program stays in fast poll mode.
-    paths: &'a Paths,             // Paths of files used by the program.
-    dbus: Box<dyn Dbus>,          // Used to receive Chrome event notifications.
+    always_poll_fast: bool, // When true, program stays in fast poll mode.
+    paths: &'a Paths,       // Paths of files used by the program.
+    dbus_receiver: crossbeam_channel::Receiver<DbusEvent>,
     low_mem_margin: u32, // Low-memory notification margin, assumed to remain constant in a boot session.
     sample_header: String, // The text at the beginning of each clip file.
     files: Files,        // Files kept open by the program.
@@ -649,7 +569,7 @@ impl<'a> Sampler<'a> {
         always_poll_fast: bool,
         paths: &'a Paths,
         timer: Box<dyn Timer>,
-        dbus: Box<dyn Dbus>,
+        dbus_receiver: crossbeam_channel::Receiver<DbusEvent>,
     ) -> Result<Sampler> {
         let mut low_mem_file_flags = OpenOptions::new();
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
@@ -671,9 +591,6 @@ impl<'a> Sampler<'a> {
                 .set(low_mem_file)
                 .map_err(Error::LowMemWatcherError)?;
         }
-        for fd in dbus.get_fds().iter().by_ref() {
-            watcher.set_fd(*fd).map_err(Error::DbusWatchError)?;
-        }
 
         let files = Files {
             available_file_option: open_maybe(&paths.available)
@@ -685,7 +602,7 @@ impl<'a> Sampler<'a> {
 
         let mut sampler = Sampler {
             always_poll_fast,
-            dbus,
+            dbus_receiver,
             low_mem_margin: read_int(&paths.low_mem_margin).unwrap_or(0),
             paths,
             sample_header,
@@ -915,23 +832,15 @@ impl<'a> Sampler<'a> {
                 }
 
                 // Check for dbus events.
-                let events = self.dbus.process_dbus_events(&mut self.watcher)?;
-                if !events.is_empty() {
-                    debug!("dbus events at {}: {:?}", self.current_time, events);
-                    event_is_interesting = true;
-                }
-                for event in events {
-                    let sample_type = match event.0 {
-                        metrics_event::event::Type::TAB_DISCARD => SampleType::TabDiscard,
-                        metrics_event::event::Type::OOM_KILL => SampleType::OomKillBrowser,
-                        metrics_event::event::Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
-                        _ => {
-                            warn!("unknown event type {:?}", event.0);
-                            continue;
-                        }
+                while let Ok(dbus_event) = self.dbus_receiver.try_recv() {
+                    let (sample_type, sample_time) = match dbus_event {
+                        DbusEvent::TabDiscard { time } => (SampleType::TabDiscard, time),
+                        DbusEvent::OomKill { time } => (SampleType::OomKillBrowser, time),
+                        DbusEvent::OomKillKernel { time } => (SampleType::OomKillKernel, time),
                     };
-                    debug!("enqueue {:?}, {:?}", sample_type, event.1);
-                    self.enqueue_sample_external(sample_type, event.1)?;
+                    debug!("enqueue {:?}, {:?}", sample_type, sample_time);
+                    self.enqueue_sample_external(sample_type, sample_time)?;
+                    event_is_interesting = true;
                 }
             }
 
@@ -1246,6 +1155,74 @@ fn get_paths(root: Option<TempDir>) -> Paths {
     )
 }
 
+// Receive D-Bus events and resend via channel.
+#[cfg(not(test))]
+fn receive_dbus_events(sender: crossbeam_channel::Sender<DbusEvent>) -> Result<()> {
+    let connection = Connection::get_private(BusType::System)?;
+    let _m = connection.add_match(concat!(
+        "type='signal',",
+        "interface='org.chromium.AnomalyEventServiceInterface',",
+        "member='AnomalyEvent'"
+    ));
+    let _m = connection.add_match(concat!(
+        "type='signal',",
+        "interface='org.chromium.MetricsEventServiceInterface',",
+        "member='ChromeEvent'"
+    ));
+
+    let mut watch_fdset = select::FdSet::new();
+    for fd in connection.watch_fds() {
+        watch_fdset.insert(fd.fd());
+    }
+    let highest = watch_fdset.highest().ok_or("The fd set is empty")?;
+
+    loop {
+        let mut inout_fdset = watch_fdset;
+        let _n = select::select(highest + 1, &mut inout_fdset, None, None, None)?;
+
+        for fd in inout_fdset.fds(None) {
+            let handle = connection.watch_handle(fd, WatchEvent::Readable as libc::c_uint);
+            for connection_item in handle {
+                // Only consider signals.
+                if let ConnectionItem::Signal(ref message) = connection_item {
+                    // Only consider signals with "ChromeEvent" or "AnomalyEvent" members.
+                    if let Some(member) = message.member() {
+                        if &*member != "ChromeEvent" && &*member != "AnomalyEvent" {
+                            // Do not report spurious "NameAcquired" signal to avoid spam.
+                            if &*member != "NameAcquired" {
+                                warn!("unexpected dbus signal member {}", &*member);
+                            }
+                            continue;
+                        }
+                    }
+                    // Read first item in signal message as byte blob and
+                    // parse blob into protobuf.
+                    let raw_buffer: Vec<u8> = message.read1()?;
+                    let mut protobuf = metrics_event::Event::new();
+                    protobuf.merge_from_bytes(&raw_buffer)?;
+
+                    let event_type = protobuf.type_.enum_value_or_default();
+                    let time_stamp = protobuf.timestamp;
+                    match event_type {
+                        metrics_event::event::Type::TAB_DISCARD => {
+                            sender.send(DbusEvent::TabDiscard { time: time_stamp })?;
+                        }
+                        metrics_event::event::Type::OOM_KILL => {
+                            sender.send(DbusEvent::OomKill { time: time_stamp })?;
+                        }
+                        metrics_event::event::Type::OOM_KILL_KERNEL => {
+                            sender.send(DbusEvent::OomKillKernel { time: time_stamp })?;
+                        }
+                        _ => {
+                            warn!("unknown event type {:?}", event_type);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     let test_dir_option = make_testing_dir();
     let paths = get_paths(test_dir_option);
@@ -1274,8 +1251,11 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     #[cfg(not(test))]
     {
         let timer = Box::new(GenuineTimer {});
-        let dbus = Box::new(GenuineDbus::new()?);
-        let mut sampler = Sampler::new(always_poll_fast, &paths, timer, dbus)?;
+        let (send, recv) = crossbeam_channel::unbounded();
+        let _sender_thread = std::thread::spawn(move || {
+            let _ = receive_dbus_events(send);
+        });
+        let mut sampler = Sampler::new(always_poll_fast, &paths, timer, recv)?;
         loop {
             // Run forever, alternating between slow and fast poll.
             sampler.slow_poll()?;
