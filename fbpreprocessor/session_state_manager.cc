@@ -371,16 +371,11 @@ bool SessionStateManager::RefreshPrimaryUser() {
 
   bool update_result = UpdatePrimaryUser();
   update_result = update_result && UpdateActiveSessions();
-  update_result = update_result && UpdatePolicy();
 
   if (old_primary_user_hash.empty() && !primary_user_hash_.empty()) {
-    for (auto& observer : observers_) {
-      observer.OnUserLoggedIn(primary_user_hash_);
-    }
+    HandleUserLogin();
   } else if (!old_primary_user_hash.empty() && primary_user_hash_.empty()) {
-    for (auto& observer : observers_) {
-      observer.OnUserLoggedOut();
-    }
+    HandleUserLogout();
   }
 
   return update_result;
