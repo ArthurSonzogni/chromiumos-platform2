@@ -7,7 +7,7 @@ use serde::Deserialize;
 /// Enum representing syslog severities.
 ///
 /// Allows full severity name, keyword and numeric value.
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd)]
 pub enum Severity {
     #[serde(alias = "emerg", alias = "0")]
     Emergency = 0,

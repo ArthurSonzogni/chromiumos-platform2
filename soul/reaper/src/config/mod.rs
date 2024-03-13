@@ -10,11 +10,13 @@
 //! open_default_file(config.default_file_name);
 //! ```
 mod config;
+mod facility;
 mod log_file;
 mod program;
 mod reader;
 
 pub use crate::config::config::Config;
+pub use crate::config::facility::Facility;
 pub use crate::config::log_file::LogFile;
 pub use crate::config::program::Program;
 pub use crate::config::reader::read;

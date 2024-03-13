@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-use crate::config::{log_file::FileName, program::RawProgram, Program};
+use crate::config::{log_file::FileName, program::RawProgram, Facility, Program};
 use crate::syslog::Severity;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -16,6 +16,8 @@ pub(super) struct RawConfig {
     pub(super) default_file_severity: Severity,
     #[serde(default)]
     pub(super) programs: HashMap<Box<str>, RawProgram>,
+    #[serde(default)]
+    pub(super) facilities: HashMap<Box<str>, Facility>,
 }
 
 /// Main config structure containing the information from the main file and any
@@ -44,6 +46,9 @@ pub struct Config {
     /// More detailed configurations for individual programs. The key is the
     /// name of the program unless `Program::match_name` is set.
     pub programs: HashMap<Box<str>, Program>,
+    /// Syslog facilities with the facility name as key and the processing as
+    /// value.
+    pub facilities: HashMap<Box<str>, Facility>,
 }
 
 impl RawConfig {
@@ -66,6 +71,7 @@ impl RawConfig {
                 .into_iter()
                 .map(|(name, program)| (name, program.eager(self.default_file_severity)))
                 .collect(),
+            facilities: self.facilities,
         }
     }
 }
@@ -77,7 +83,26 @@ mod tests {
     use crate::config::LogFile;
 
     #[test]
-    fn eager_all_none() {
+    fn eager_but_empty_containers() {
+        let want = Config {
+            default_file_name: FileName::new("test"),
+            default_file_severity: Severity::Critical,
+            programs: HashMap::new(),
+            facilities: HashMap::new(),
+        };
+
+        let raw = RawConfig {
+            default_file_name: FileName::new("test"),
+            default_file_severity: Severity::Critical,
+            programs: HashMap::new(),
+            facilities: HashMap::new(),
+        };
+
+        assert_eq!(want, raw.eager());
+    }
+
+    #[test]
+    fn set_program() {
         let want = Config {
             default_file_name: FileName::new("test"),
             default_file_severity: Severity::Critical,
@@ -94,12 +119,14 @@ mod tests {
                     default_file_severity: None,
                 },
             )]),
+            facilities: HashMap::new(),
         };
 
         let mut raw = RawConfig {
             default_file_name: FileName::new("test"),
             default_file_severity: Severity::Critical,
             programs: HashMap::new(),
+            facilities: HashMap::new(),
         };
         raw.set_program(
             Box::from("foo"),
@@ -136,12 +163,14 @@ mod tests {
                     default_file_severity: None,
                 },
             )]),
+            facilities: HashMap::new(),
         };
 
         let mut raw = RawConfig {
             default_file_name: FileName::new("test"),
             default_file_severity: Severity::Critical,
             programs: HashMap::new(),
+            facilities: HashMap::new(),
         };
         raw.set_program(
             Box::from("foo"),
