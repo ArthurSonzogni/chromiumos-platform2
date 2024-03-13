@@ -14,7 +14,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
+#include <base/test/bind.h>
 #include <base/threading/thread.h>
+#include <brillo/errors/error.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -122,9 +124,18 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
 
+    std::optional<std::string> actual_error_code;
     service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-                    flags, MockPolicyService::CreateExpectFailureCallback());
+                    flags,
+                    base::BindLambdaForTesting(
+                        [&actual_error_code](brillo::ErrorPtr error) {
+                          actual_error_code = error->GetCode();
+                          return;
+                        }));
     fake_loop_.Run();
+
+    ASSERT_TRUE(actual_error_code.has_value());
+    EXPECT_EQ(*actual_error_code, code);
   }
 
   static const int kAllKeyFlags;
