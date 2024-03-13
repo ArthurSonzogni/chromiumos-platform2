@@ -20,15 +20,14 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/iptables.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/routing_service.h"
-#include "patchpanel/scoped_ns.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
@@ -90,9 +89,9 @@ struct ConnectedNamespace {
   // is used.
   std::optional<StaticIPv6Config> static_ipv6_config;
   // MAC address of the "local" veth interface visible on the host namespace.
-  MacAddress host_mac_addr;
+  net_base::MacAddress host_mac_addr;
   // MAC address of the "remote" veth interface.
-  MacAddress peer_mac_addr;
+  net_base::MacAddress peer_mac_addr;
   // shill Device for routing outbound traffic from the client namespace. The
   // Device selected matches |outbound_ifname| if it is defined in the original
   // request, otherwise it matches the default logical or physical Device
@@ -176,7 +175,7 @@ class Datapath {
   // If |user| is empty, no owner will be set.
   virtual std::string AddTunTap(
       const std::string& name,
-      const std::optional<MacAddress>& mac_addr,
+      const std::optional<net_base::MacAddress>& mac_addr,
       const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
       const std::string& user,
       DeviceMode dev_mode);
@@ -194,7 +193,7 @@ class Datapath {
       const std::string& netns_name,
       const std::string& veth_ifname,
       const std::string& peer_ifname,
-      const MacAddress& remote_mac_addr,
+      net_base::MacAddress remote_mac_addr,
       const net_base::IPv4CIDR& remote_ipv4_cidr,
       const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
       bool remote_multicast_flag);
@@ -476,7 +475,7 @@ class Datapath {
   // should be left undefined when configuring a physical interface used for a
   // downstream network.
   bool ConfigureInterface(const std::string& ifname,
-                          std::optional<MacAddress> mac_addr,
+                          std::optional<net_base::MacAddress> mac_addr,
                           const net_base::IPv4CIDR& ipv4_cidr,
                           const std::optional<net_base::IPv6CIDR>& ipv6_cidr,
                           bool up,

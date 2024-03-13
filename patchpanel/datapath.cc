@@ -6,7 +6,6 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <linux/if_tun.h>
 #include <linux/sockios.h>
 #include <net/if_arp.h>
@@ -15,7 +14,6 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -31,14 +29,15 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
 #include "patchpanel/bpf/constants.h"
-#include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
+#include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
 namespace {
@@ -368,7 +367,7 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
 
 std::string Datapath::AddTunTap(
     const std::string& name,
-    const std::optional<MacAddress>& mac_addr,
+    const std::optional<net_base::MacAddress>& mac_addr,
     const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
     const std::string& user,
     DeviceMode dev_mode) {
@@ -458,8 +457,8 @@ std::string Datapath::AddTunTap(
     memcpy(&hwaddr->sa_data, mac_addr.operator->(), sizeof(MacAddress));
     if (system_->Ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set mac address for " << dev_mode
-                  << " interface " << ifname << " {"
-                  << MacAddressToString(*mac_addr) << "}";
+                  << " interface " << ifname << " {" << mac_addr->ToString()
+                  << "}";
       RemoveTunTap(ifname, dev_mode);
       return "";
     }
@@ -493,7 +492,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
                                const std::string& netns_name,
                                const std::string& veth_ifname,
                                const std::string& peer_ifname,
-                               const MacAddress& remote_mac_addr,
+                               net_base::MacAddress remote_mac_addr,
                                const IPv4CIDR& remote_ipv4_cidr,
                                const std::optional<IPv6CIDR>& remote_ipv6_cidr,
                                bool remote_multicast_flag) {
@@ -554,7 +553,7 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 }
 
 bool Datapath::ConfigureInterface(const std::string& ifname,
-                                  std::optional<MacAddress> mac_addr,
+                                  std::optional<net_base::MacAddress> mac_addr,
                                   const IPv4CIDR& ipv4_cidr,
                                   const std::optional<IPv6CIDR>& ipv6_cidr,
                                   bool up,
@@ -577,8 +576,7 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
       up ? "up" : "down",
   };
   if (mac_addr) {
-    iplink_args.insert(iplink_args.end(),
-                       {"addr", MacAddressToString(*mac_addr)});
+    iplink_args.insert(iplink_args.end(), {"addr", mac_addr->ToString()});
   }
   iplink_args.insert(iplink_args.end(),
                      {"multicast", enable_multicast ? "on" : "off"});

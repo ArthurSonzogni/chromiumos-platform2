@@ -25,6 +25,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"
@@ -77,7 +78,9 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
  public:
   MockProcessRunnerForIptablesTest() = default;
 
-  ~MockProcessRunnerForIptablesTest() { VerifyAndClearIptablesExpectations(); }
+  ~MockProcessRunnerForIptablesTest() override {
+    VerifyAndClearIptablesExpectations();
+  }
 
   int iptables(Iptables::Table table,
                Iptables::Command command,
@@ -185,7 +188,7 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
 class MockFirewall : public Firewall {
  public:
   MockFirewall() = default;
-  ~MockFirewall() = default;
+  ~MockFirewall() override = default;
 
   MOCK_METHOD3(AddAcceptRules,
                bool(patchpanel::ModifyPortRuleRequest::Protocol protocol,
@@ -273,7 +276,7 @@ class DatapathTest : public testing::Test {
       : firewall_(new MockFirewall()),
         datapath_(&runner_, firewall_, &system_) {}
 
-  ~DatapathTest() = default;
+  ~DatapathTest() override = default;
 
   FakeSystem system_;
   MockProcessRunnerForIptablesTest runner_;
@@ -320,12 +323,12 @@ TEST_F(DatapathTest, Stop) {
 }
 
 TEST_F(DatapathTest, AddTUN) {
-  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  constexpr net_base::MacAddress mac(1, 2, 3, 4, 5, 6);
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto ifname = datapath_.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "",
-                                    DeviceMode::kTun);
+  const std::string ifname = datapath_.AddTunTap(
+      "foo0", mac, subnet.CIDRAtOffset(1), "", DeviceMode::kTun);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -355,12 +358,12 @@ TEST_F(DatapathTest, RemoveTUN) {
 }
 
 TEST_F(DatapathTest, AddTAP) {
-  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  constexpr net_base::MacAddress mac(1, 2, 3, 4, 5, 6);
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto ifname = datapath_.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "",
-                                    DeviceMode::kTap);
+  const std::string ifname = datapath_.AddTunTap(
+      "foo0", mac, subnet.CIDRAtOffset(1), "", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -370,12 +373,12 @@ TEST_F(DatapathTest, AddTAP) {
 }
 
 TEST_F(DatapathTest, AddTAPWithOwner) {
-  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  constexpr net_base::MacAddress mac(1, 2, 3, 4, 5, 6);
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto ifname = datapath_.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "root",
-                                    DeviceMode::kTap);
+  const std::string ifname = datapath_.AddTunTap(
+      "foo0", mac, subnet.CIDRAtOffset(1), "root", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -496,7 +499,7 @@ TEST_F(DatapathTest, ConfigureInterface) {
   Verify_ip(runner_, "addr add 100.115.92.2/30 brd 100.115.92.3 dev test0");
   Verify_ip(runner_,
             "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
-  MacAddress mac_addr = {2, 2, 2, 2, 2, 3};
+  constexpr net_base::MacAddress mac_addr(2, 2, 2, 2, 2, 3);
   EXPECT_TRUE(datapath_.ConfigureInterface(
       "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
       /*ipv6_cidr=*/std::nullopt, true, true));
@@ -516,8 +519,8 @@ TEST_F(DatapathTest, RemoveInterface) {
 }
 
 TEST_F(DatapathTest, StartRoutingNamespace) {
-  MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
-  MacAddress host_mac = {6, 5, 4, 3, 2, 1};
+  constexpr net_base::MacAddress peer_mac(1, 2, 3, 4, 5, 6);
+  constexpr net_base::MacAddress host_mac(6, 5, 4, 3, 2, 1);
 
   Verify_ip_netns_delete(runner_, "netns_foo");
   Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
@@ -602,8 +605,8 @@ TEST_F(DatapathTest, StopRoutingNamespace) {
 }
 
 TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
-  MacAddress peer_mac = {1, 2, 3, 4, 5, 6};
-  MacAddress host_mac = {6, 5, 4, 3, 2, 1};
+  constexpr net_base::MacAddress peer_mac(1, 2, 3, 4, 5, 6);
+  constexpr net_base::MacAddress host_mac(6, 5, 4, 3, 2, 1);
 
   Verify_ip_netns_delete(runner_, "netns_foo");
   Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
@@ -804,7 +807,7 @@ TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
 }
 
 TEST_F(DatapathTest, StartRoutingNewNamespace) {
-  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  constexpr net_base::MacAddress mac(1, 2, 3, 4, 5, 6);
 
   // The running may fail at checking ScopedNS.IsValid() in
   // Datapath::ConnectVethPair(), so we only check if `ip netns add` is invoked

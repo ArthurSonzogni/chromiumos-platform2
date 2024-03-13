@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
@@ -25,7 +26,7 @@ class MockDatapath : public Datapath {
   MockDatapath(const MockDatapath&) = delete;
   MockDatapath& operator=(const MockDatapath&) = delete;
 
-  ~MockDatapath();
+  ~MockDatapath() override;
 
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
@@ -51,7 +52,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(std::string,
               AddTunTap,
               (const std::string& name,
-               const std::optional<MacAddress>& mac_addr,
+               const std::optional<net_base::MacAddress>& mac_addr,
                const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
                const std::string& user,
                DeviceMode dev_mode),
@@ -66,7 +67,7 @@ class MockDatapath : public Datapath {
                const std::string& netns_name,
                const std::string& veth_ifname,
                const std::string& peer_ifname,
-               const MacAddress& remote_mac_addr,
+               net_base::MacAddress remote_mac_addr,
                const net_base::IPv4CIDR& remote_ipv4_cidr,
                const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
                bool remote_multicast_flag),

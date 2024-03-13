@@ -16,11 +16,11 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_process_runner.h"
 #include "patchpanel/firewall.h"
-#include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/system.h"
@@ -34,7 +34,7 @@ class NoopSystem : public System {
   NoopSystem() = default;
   NoopSystem(const NoopSystem&) = delete;
   NoopSystem& operator=(const NoopSystem&) = delete;
-  virtual ~NoopSystem() = default;
+  ~NoopSystem() override = default;
 
   int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
     return 0;
@@ -64,10 +64,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const auto ipv4_addr = net_base::IPv4Address(addr);
   const auto cidr =
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(ipv4_addr, prefix_len);
-  MacAddress mac;
-  std::vector<uint8_t> mac_addr_bytes =
-      provider.ConsumeBytes<uint8_t>(mac.size());
-  std::copy(mac_addr_bytes.begin(), mac_addr_bytes.end(), mac.begin());
+
+  std::vector<uint8_t> mac_data =
+      provider.ConsumeBytes<uint8_t>(net_base::MacAddress::kAddressLength);
+  mac_data.resize(net_base::MacAddress::kAddressLength);
+  const net_base::MacAddress mac =
+      *net_base::MacAddress::CreateFromBytes(mac_data);
 
   const std::vector<uint8_t> ipv6_addr_bytes =
       provider.ConsumeBytes<uint8_t>(net_base::IPv6Address::kAddressLength);
