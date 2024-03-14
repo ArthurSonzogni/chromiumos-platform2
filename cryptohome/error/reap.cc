@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/error/converter.h"
 #include "cryptohome/error/reap.h"
 
 #include <string>
@@ -11,6 +10,8 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+
+#include "cryptohome/error/converter.h"
 
 namespace cryptohome::error {
 

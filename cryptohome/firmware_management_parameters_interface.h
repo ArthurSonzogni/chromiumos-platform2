@@ -8,14 +8,13 @@
 #ifndef CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_INTERFACE_H_
 #define CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_INTERFACE_H_
 
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <device_management/proto_bindings/device_management_interface.pb.h>
-#include <device_management-client/device_management/dbus-proxies.h>
-
 #include <memory>
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
 
 namespace cryptohome {
 class FirmwareManagementParametersInterface {

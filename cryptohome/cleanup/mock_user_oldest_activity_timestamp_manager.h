@@ -5,13 +5,12 @@
 #ifndef CRYPTOHOME_CLEANUP_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_MANAGER_H_
 #define CRYPTOHOME_CLEANUP_MOCK_USER_OLDEST_ACTIVITY_TIMESTAMP_MANAGER_H_
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-
 #include <string>
 
 #include <base/time/time.h>
-
 #include <gmock/gmock.h>
+
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 
 namespace cryptohome {
 

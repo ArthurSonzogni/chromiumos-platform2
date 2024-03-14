@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_BIOMETRICS_COMMAND_PROCESSOR_IMPL_H_
 #define CRYPTOHOME_AUTH_BLOCKS_BIOMETRICS_COMMAND_PROCESSOR_IMPL_H_
 
-#include "cryptohome/auth_blocks/biometrics_command_processor.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,6 +17,8 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
+
+#include "cryptohome/auth_blocks/biometrics_command_processor.h"
 
 namespace cryptohome {
 

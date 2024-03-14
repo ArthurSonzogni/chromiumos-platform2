@@ -8,11 +8,6 @@
 
 #include <vector>
 
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -26,6 +21,10 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/filesystem_layout.h"

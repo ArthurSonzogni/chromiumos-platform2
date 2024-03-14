@@ -4,9 +4,10 @@
 
 #include "cryptohome/fido/public_key.h"
 
-#include <base/strings/string_number_conversions.h>
 #include <sstream>
 #include <utility>
+
+#include <base/strings/string_number_conversions.h>
 
 namespace cryptohome {
 namespace fido_device {
@@ -21,8 +22,7 @@ bool PublicKey::DumpToDer(brillo::SecureBlob* der) {
 
 std::string PublicKey::ToString() {
   std::stringstream ss;
-  ss << "algorithm: " << algorithm_ << ", "
-     << "COSE public key: "
+  ss << "algorithm: " << algorithm_ << ", " << "COSE public key: "
      << base::HexEncode(EncodeAsCOSEKey().data(), EncodeAsCOSEKey().size());
 
   return ss.str();

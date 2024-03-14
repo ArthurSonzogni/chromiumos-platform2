@@ -5,10 +5,6 @@
 #ifndef CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 #define CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 
-#include "base/files/file_path.h"
-#include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/keyset_management.h"
-
 #include <map>
 #include <memory>
 #include <optional>
@@ -19,8 +15,11 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gmock/gmock.h>
 
+#include "base/files/file_path.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {

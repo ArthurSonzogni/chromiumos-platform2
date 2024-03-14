@@ -4,8 +4,6 @@
 
 #include "cryptohome/mount_encrypted/encrypted_fs.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -16,6 +14,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/keyring/utils.h>
 #include <libstorage/platform/mock_platform.h>

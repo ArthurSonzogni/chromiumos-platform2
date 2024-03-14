@@ -5,17 +5,16 @@
 #ifndef CRYPTOHOME_FIDO_EC_PUBLIC_KEY_H_
 #define CRYPTOHOME_FIDO_EC_PUBLIC_KEY_H_
 
-#include "cryptohome/fido/public_key.h"
-
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
-#include <base/containers/span.h>
+#include "cryptohome/fido/public_key.h"
 
 namespace cryptohome {
 namespace fido_device {

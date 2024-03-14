@@ -5,6 +5,8 @@
 #include "cryptohome/fido/authenticator_data.h"
 
 #include <optional>
+#include <sstream>
+#include <utility>
 
 #include <base/big_endian.h>
 #include <base/check.h>
@@ -14,8 +16,6 @@
 #include <chromeos/cbor/diagnostic_writer.h>
 #include <chromeos/cbor/reader.h>
 #include <chromeos/cbor/writer.h>
-#include <sstream>
-#include <utility>
 
 #include "cryptohome/fido/attested_credential_data.h"
 #include "cryptohome/fido/fido_parsing_utils.h"

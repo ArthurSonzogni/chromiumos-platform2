@@ -4,18 +4,19 @@
 
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 
-#include <base/check.h>
-#include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <cryptohome/proto_bindings/key.pb.h>
-#include <cryptohome/proto_bindings/rpc.pb.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <stdint.h>
 
 #include <map>
 #include <memory>
 #include <utility>
 #include <vector>
+
+#include <base/check.h>
+#include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/key.pb.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"

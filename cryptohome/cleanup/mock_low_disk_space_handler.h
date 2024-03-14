@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_CLEANUP_MOCK_LOW_DISK_SPACE_HANDLER_H_
 #define CRYPTOHOME_CLEANUP_MOCK_LOW_DISK_SPACE_HANDLER_H_
 
-#include "cryptohome/cleanup/low_disk_space_handler.h"
-
 #include <cstdint>
 #include <string>
 
@@ -14,6 +12,7 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/util/async_init.h"
 

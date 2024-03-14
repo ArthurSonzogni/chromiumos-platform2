@@ -5,16 +5,15 @@
 #ifndef CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 #define CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 
-#include "cryptohome/install_attributes_interface.h"
-
-#include <device_management/proto_bindings/device_management_interface.pb.h>
-#include <device_management-client/device_management/dbus-proxies.h>
-
 #include <memory>
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
 #include <gmock/gmock.h>
+
+#include "cryptohome/install_attributes_interface.h"
 
 namespace cryptohome {
 

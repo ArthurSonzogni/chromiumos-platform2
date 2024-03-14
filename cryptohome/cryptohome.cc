@@ -5,10 +5,6 @@
 // Cryptohome client that uses the dbus client interface
 
 #include <inttypes.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -51,6 +47,10 @@
 #include <google/protobuf/message_lite.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libstorage/platform/platform.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "cryptohome/common/print_UserDataAuth_proto.h"
 #include "cryptohome/crypto.h"

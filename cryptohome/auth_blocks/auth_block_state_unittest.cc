@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+
 #include <optional>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 
 using brillo::Blob;

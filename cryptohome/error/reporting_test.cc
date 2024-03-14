@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/error/reporting.h"
+
 #include <optional>
 #include <set>
 #include <string>
@@ -15,7 +17,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
-#include "cryptohome/error/reporting.h"
 
 namespace cryptohome {
 

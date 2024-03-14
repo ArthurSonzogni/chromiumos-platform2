@@ -4,10 +4,10 @@
 
 #include "cryptohome/storage/ephemeral_policy_util.h"
 
+#include <string>
+
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
-
-#include <string>
 
 namespace cryptohome {
 

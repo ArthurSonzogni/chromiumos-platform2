@@ -6,7 +6,6 @@
 
 #include <arpa/inet.h>
 #include <limits.h>
-#include <openssl/sha.h>
 #include <stdint.h>
 
 #include <algorithm>
@@ -28,6 +27,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libstorage/platform/platform.h>
+#include <openssl/sha.h>
 
 using base::FilePath;
 using brillo::SecureBlob;

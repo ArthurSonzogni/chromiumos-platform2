@@ -8,13 +8,13 @@
 #ifndef CRYPTOHOME_INSTALL_ATTRIBUTES_PROXY_H_
 #define CRYPTOHOME_INSTALL_ATTRIBUTES_PROXY_H_
 
-#include "cryptohome/install_attributes_interface.h"
-
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <base/time/time.h>
+
+#include "cryptohome/install_attributes_interface.h"
 
 namespace cryptohome {
 

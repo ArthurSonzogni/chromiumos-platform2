@@ -6,6 +6,7 @@
 #define CRYPTOHOME_FIDO_PUBLIC_KEY_H_
 
 #include <stdint.h>
+
 #include <string>
 #include <vector>
 

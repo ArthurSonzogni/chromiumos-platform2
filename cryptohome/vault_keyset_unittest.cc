@@ -6,10 +6,10 @@
 
 #include "cryptohome/vault_keyset.h"
 
-#include <memory>
-#include <openssl/evp.h>
-#include <optional>
 #include <string.h>  // For memcmp().
+
+#include <memory>
+#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -33,6 +33,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
+#include <openssl/evp.h>
 
 #include "base/test/test_future.h"
 #include "cryptohome/auth_blocks/auth_block.h"

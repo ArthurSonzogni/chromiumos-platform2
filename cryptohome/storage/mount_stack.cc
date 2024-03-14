@@ -5,6 +5,7 @@
 #include "cryptohome/storage/mount_stack.h"
 
 #include <algorithm>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 

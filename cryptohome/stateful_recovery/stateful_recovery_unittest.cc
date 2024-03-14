@@ -4,18 +4,18 @@
 
 #include "cryptohome/stateful_recovery/stateful_recovery.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <libstorage/platform/mock_platform.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
-#include <libstorage/platform/mock_platform.h>
 
 namespace cryptohome {
 namespace {

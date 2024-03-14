@@ -5,13 +5,13 @@
 #ifndef CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_H_
 #define CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_H_
 
-#include "cryptohome/cleanup/disk_cleanup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "cryptohome/cleanup/disk_cleanup.h"
 
 namespace cryptohome {
 

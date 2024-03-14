@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fido/authenticator_data.h"
-
-#include <gtest/gtest.h>
+#include <stdint.h>
 
 #include <vector>
 
-#include <stdint.h>
+#include <gtest/gtest.h>
+
+#include "cryptohome/fido/authenticator_data.h"
 
 namespace cryptohome {
 namespace fido_device {

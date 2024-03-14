@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_TPM_ECC_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_TPM_ECC_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_blocks/auth_block.h"
-
 #include <memory>
 
 #include <base/gtest_prod_util.h>
@@ -14,6 +12,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/structures/key.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"

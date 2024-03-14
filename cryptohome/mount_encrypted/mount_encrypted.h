@@ -10,10 +10,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/files/file_path.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
-
-#include <base/files/file_path.h>
 
 #define DIGEST_LENGTH SHA256_DIGEST_LENGTH
 

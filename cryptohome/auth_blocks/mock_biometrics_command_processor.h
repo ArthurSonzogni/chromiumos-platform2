@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_MOCK_BIOMETRICS_COMMAND_PROCESSOR_H_
 #define CRYPTOHOME_AUTH_BLOCKS_MOCK_BIOMETRICS_COMMAND_PROCESSOR_H_
 
-#include "cryptohome/auth_blocks/biometrics_command_processor.h"
-
 #include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "cryptohome/auth_blocks/biometrics_command_processor.h"
 
 namespace cryptohome {
 

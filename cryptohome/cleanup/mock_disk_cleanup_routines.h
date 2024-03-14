@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_ROUTINES_H_
 #define CRYPTOHOME_CLEANUP_MOCK_DISK_CLEANUP_ROUTINES_H_
 
-#include "cryptohome/cleanup/disk_cleanup_routines.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "cryptohome/cleanup/disk_cleanup_routines.h"
 
 namespace cryptohome {
 

@@ -8,7 +8,6 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/filesystem_layout.h"

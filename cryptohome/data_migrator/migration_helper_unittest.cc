@@ -4,14 +4,11 @@
 
 #include "cryptohome/data_migrator/migration_helper.h"
 
-#include <string>
-#include <vector>
-
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -20,6 +17,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/data_migrator/fake_migration_helper_delegate.h"

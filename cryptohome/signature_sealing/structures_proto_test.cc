@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/signature_sealing/structures_proto.h"
+
 #include <string>
 #include <utility>
 #include <variant>
 
 #include <gtest/gtest.h>
 #include <libhwsec/structures/signature_sealed_data_test_utils.h>
-
-#include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::BlobFromString;
 

@@ -5,13 +5,13 @@
 #ifndef CRYPTOHOME_MOCK_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 #define CRYPTOHOME_MOCK_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 
-#include "cryptohome/firmware_management_parameters.h"
+#include <memory>
 
 #include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <device_management-client/device_management/dbus-proxies.h>
-
 #include <gmock/gmock.h>
-#include <memory>
+
+#include "cryptohome/firmware_management_parameters.h"
 
 namespace cryptohome {
 class MockFirmwareManagementParameters : public FirmwareManagementParameters {

@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_LOCKBOX_CACHE_MANAGER_MOCK_PLATFORM_H_
 #define CRYPTOHOME_LOCKBOX_CACHE_MANAGER_MOCK_PLATFORM_H_
 
-#include "cryptohome/lockbox-cache-manager/platform.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "cryptohome/lockbox-cache-manager/platform.h"
 
 namespace cryptohome {
 class MockPlatform : public Platform {

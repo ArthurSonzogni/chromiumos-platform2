@@ -5,14 +5,15 @@
 #ifndef CRYPTOHOME_FAKE_PLATFORM_H_
 #define CRYPTOHOME_FAKE_PLATFORM_H_
 
+#include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/types.h>
+
 #include <map>
 #include <memory>
 #include <optional>
 #include <random>
 #include <string>
-#include <sys/stat.h>
-#include <sys/statfs.h>
-#include <sys/types.h>
 #include <unordered_map>
 #include <utility>
 #include <vector>

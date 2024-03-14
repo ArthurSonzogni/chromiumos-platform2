@@ -5,11 +5,10 @@
 #ifndef CRYPTOHOME_MOCK_CRYPTOHOME_KEYS_MANAGER_H_
 #define CRYPTOHOME_MOCK_CRYPTOHOME_KEYS_MANAGER_H_
 
-#include "cryptohome/cryptohome_keys_manager.h"
-
 #include <gmock/gmock.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
+#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
 
 namespace cryptohome {

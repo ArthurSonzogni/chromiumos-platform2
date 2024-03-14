@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_STORAGE_MOCK_MOUNT_H_
 #define CRYPTOHOME_STORAGE_MOCK_MOUNT_H_
 
-#include "cryptohome/storage/mount.h"
-
 #include <string>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
+
+#include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
 class Credentials;

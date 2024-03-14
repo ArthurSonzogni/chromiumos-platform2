@@ -5,10 +5,11 @@
 #ifndef CRYPTOHOME_FIDO_ATTESTED_CREDENTIAL_DATA_H_
 #define CRYPTOHOME_FIDO_ATTESTED_CREDENTIAL_DATA_H_
 
-#include <memory>
-#include <optional>
 #include <stddef.h>
 #include <stdint.h>
+
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>

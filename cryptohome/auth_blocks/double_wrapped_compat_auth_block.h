@@ -5,13 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_blocks/auth_block.h"
-
 #include <memory>
 
 #include <base/gtest_prod_util.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"

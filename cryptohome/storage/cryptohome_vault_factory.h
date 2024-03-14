@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_STORAGE_CRYPTOHOME_VAULT_FACTORY_H_
 #define CRYPTOHOME_STORAGE_CRYPTOHOME_VAULT_FACTORY_H_
 
-#include "cryptohome/storage/cryptohome_vault.h"
-
 #include <memory>
 #include <string>
 
@@ -16,6 +14,7 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
+#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

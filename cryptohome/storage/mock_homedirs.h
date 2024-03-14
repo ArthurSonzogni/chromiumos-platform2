@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_STORAGE_MOCK_HOMEDIRS_H_
 #define CRYPTOHOME_STORAGE_MOCK_HOMEDIRS_H_
 
-#include "cryptohome/storage/homedirs.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,6 +14,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/storage/error.h"
+#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/username.h"
 

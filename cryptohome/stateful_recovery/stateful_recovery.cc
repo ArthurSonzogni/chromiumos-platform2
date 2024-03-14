@@ -6,7 +6,6 @@
 
 #include "cryptohome/stateful_recovery/stateful_recovery.h"
 
-#include <brillo/secure_blob.h>
 #include <unistd.h>
 
 #include <string>
@@ -17,6 +16,7 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <libstorage/platform/platform.h>

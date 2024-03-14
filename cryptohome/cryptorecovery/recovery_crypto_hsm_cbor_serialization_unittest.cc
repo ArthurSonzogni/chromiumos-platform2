@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/diagnostic_writer.h>
 #include <chromeos/cbor/reader.h>

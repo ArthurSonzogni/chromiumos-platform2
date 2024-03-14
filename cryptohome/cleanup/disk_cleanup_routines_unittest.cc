@@ -4,14 +4,14 @@
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>

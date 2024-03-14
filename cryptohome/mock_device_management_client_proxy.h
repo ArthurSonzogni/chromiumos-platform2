@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_MOCK_DEVICE_MANAGEMENT_CLIENT_PROXY_H_
 #define CRYPTOHOME_MOCK_DEVICE_MANAGEMENT_CLIENT_PROXY_H_
 
-#include "cryptohome/device_management_client_proxy.h"
-
 #include <gmock/gmock.h>
+
+#include "cryptohome/device_management_client_proxy.h"
 
 namespace cryptohome {
 class MockDeviceManagementClientProxy : public DeviceManagementClientProxy {

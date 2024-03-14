@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_ERROR_LOCATION_UTILS_H_
 #define CRYPTOHOME_ERROR_LOCATION_UTILS_H_
 
-#include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/locations.h"
-
 #include <string>
 #include <utility>
+
+#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/locations.h"
 
 namespace cryptohome::error {
 

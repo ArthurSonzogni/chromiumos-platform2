@@ -9,8 +9,8 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/functional/callback_helpers.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
 #include <base/test/mock_callback.h>

@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/error/utilities.h"
+
 #include <optional>
 
 #include "cryptohome/error/converter.h"
-#include "cryptohome/error/utilities.h"
 
 namespace cryptohome::error {
 

@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_MOCK_VAULT_KEYSET_H_
 #define CRYPTOHOME_MOCK_VAULT_KEYSET_H_
 
-#include "cryptohome/vault_keyset.h"
-
 #include <string>
 
 #include <base/files/file_path.h>
@@ -15,6 +13,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 class Crypto;

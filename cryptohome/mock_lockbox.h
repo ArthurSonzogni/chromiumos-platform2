@@ -5,10 +5,10 @@
 #ifndef CRYPTOHOME_MOCK_LOCKBOX_H_
 #define CRYPTOHOME_MOCK_LOCKBOX_H_
 
-#include "cryptohome/lockbox.h"
-
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+
+#include "cryptohome/lockbox.h"
 
 namespace cryptohome {
 

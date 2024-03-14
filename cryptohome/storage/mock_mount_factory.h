@@ -5,13 +5,12 @@
 #ifndef CRYPTOHOME_STORAGE_MOCK_MOUNT_FACTORY_H_
 #define CRYPTOHOME_STORAGE_MOCK_MOUNT_FACTORY_H_
 
-#include "cryptohome/storage/mount_factory.h"
-
 #include <gmock/gmock.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/storage/mount_factory.h"
 
 using ::testing::_;
 

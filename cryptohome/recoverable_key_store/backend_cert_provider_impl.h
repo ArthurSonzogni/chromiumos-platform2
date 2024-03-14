@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_RECOVERABLE_KEY_STORE_BACKEND_CERT_PROVIDER_IMPL_H_
 #define CRYPTOHOME_RECOVERABLE_KEY_STORE_BACKEND_CERT_PROVIDER_IMPL_H_
 
-#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,6 +17,7 @@
 #include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/backend_cert_verify.h"
 #include "cryptohome/recoverable_key_store/type.h"
 

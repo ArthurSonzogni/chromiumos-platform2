@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_STORAGE_ENCRYPTED_CONTAINER_BACKING_DEVICE_FACTORY_H_
 #define CRYPTOHOME_STORAGE_ENCRYPTED_CONTAINER_BACKING_DEVICE_FACTORY_H_
 
-#include "cryptohome/storage/encrypted_container/backing_device.h"
-
 #include <memory>
 
 #include <libstorage/platform/platform.h>
+
+#include "cryptohome/storage/encrypted_container/backing_device.h"
 
 namespace cryptohome {
 

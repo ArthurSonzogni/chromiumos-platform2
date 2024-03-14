@@ -10,8 +10,6 @@
 #include <memory>
 #include <utility>
 
-#include <openssl/rsa.h>
-
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -19,6 +17,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <vboot/tlcl.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"

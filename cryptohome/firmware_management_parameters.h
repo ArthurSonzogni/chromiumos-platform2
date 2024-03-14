@@ -7,8 +7,6 @@
 #ifndef CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 #define CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 
-#include "cryptohome/firmware_management_parameters_interface.h"
-
 #include <memory>
 
 #include <base/strings/string_util.h>
@@ -16,6 +14,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <openssl/sha.h>
 
+#include "cryptohome/firmware_management_parameters_interface.h"
 #include "cryptohome/proto_bindings/UserDataAuth.pb.h"
 
 namespace cryptohome {

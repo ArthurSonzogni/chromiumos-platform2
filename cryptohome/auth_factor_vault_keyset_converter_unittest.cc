@@ -5,7 +5,6 @@
 
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 
-#include <brillo/secure_blob.h>
 #include <stdint.h>
 
 #include <map>
@@ -15,6 +14,7 @@
 
 #include <base/check.h>
 #include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>

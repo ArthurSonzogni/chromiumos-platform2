@@ -5,10 +5,11 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_ENCRYPTED_H_
 #define CRYPTOHOME_USER_SECRET_STASH_ENCRYPTED_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <optional>
 #include <set>
-#include <stdint.h>
 #include <string>
 #include <string_view>
 

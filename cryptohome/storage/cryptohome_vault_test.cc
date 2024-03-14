@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/storage/cryptohome_vault.h>
+#include "cryptohome/storage/cryptohome_vault.h"
 
 #include <memory>
 #include <unordered_map>

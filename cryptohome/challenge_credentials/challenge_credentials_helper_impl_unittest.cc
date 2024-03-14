@@ -4,6 +4,8 @@
 
 // Tests for the ChallengeCredentialsHelperImpl class.
 
+#include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
+
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -21,7 +23,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
-#include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/challenge_credentials/signature_sealing_test_utils.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"

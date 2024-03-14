@@ -5,11 +5,11 @@
 #ifndef CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_H_
 #define CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_H_
 
+#include <sys/stat.h>
+
 #include <map>
 #include <memory>
 #include <string>
-
-#include <sys/stat.h>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>

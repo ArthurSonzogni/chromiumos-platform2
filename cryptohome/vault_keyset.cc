@@ -4,14 +4,12 @@
 
 #include "cryptohome/vault_keyset.h"
 
+#include <sys/types.h>
+
 #include <memory>
 #include <optional>
 #include <utility>
 #include <variant>
-
-#include <crypto/sha2.h>
-#include <openssl/sha.h>
-#include <sys/types.h>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -19,12 +17,14 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
+#include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libstorage/platform/platform.h>
+#include <openssl/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"

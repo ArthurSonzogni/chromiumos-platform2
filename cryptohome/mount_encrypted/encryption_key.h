@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"

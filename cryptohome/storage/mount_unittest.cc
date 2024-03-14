@@ -6,6 +6,9 @@
 
 #include "cryptohome/storage/mount.h"
 
+#include <linux/magic.h>
+#include <sys/statfs.h>
+
 #include <memory>
 #include <utility>
 
@@ -32,9 +35,7 @@
 #include <libstorage/storage_container/fake_backing_device.h>
 #include <libstorage/storage_container/fake_storage_container_factory.h>
 #include <libstorage/storage_container/storage_container.h>
-#include <linux/magic.h>
 #include <policy/libpolicy.h>
-#include <sys/statfs.h>
 
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"

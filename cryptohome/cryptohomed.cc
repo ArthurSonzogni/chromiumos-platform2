@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/dbus_service.h"
-
 #include <cstdlib>
 #include <string>
 
@@ -23,6 +21,7 @@
 
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/dbus_service.h"
 #include "cryptohome/userdataauth.h"
 
 namespace switches {

@@ -6,9 +6,10 @@
 #define CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_
 
 #include <inttypes.h>
+#include <sys/stat.h>
+
 #include <memory>
 #include <string>
-#include <sys/stat.h>
 #include <utility>
 #include <vector>
 

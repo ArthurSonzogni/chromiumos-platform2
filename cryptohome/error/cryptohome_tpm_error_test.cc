@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/error/cryptohome_tpm_error.h"
+
 #include <optional>
 #include <set>
 #include <string>
@@ -13,7 +15,6 @@
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/error/action.h"
-#include "cryptohome/error/cryptohome_tpm_error.h"
 
 namespace cryptohome {
 

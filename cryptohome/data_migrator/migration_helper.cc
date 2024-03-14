@@ -4,17 +4,17 @@
 
 #include "cryptohome/data_migrator/migration_helper.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <algorithm>
 #include <deque>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>

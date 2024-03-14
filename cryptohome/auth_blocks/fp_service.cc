@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/auth_blocks/fp_service.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -10,7 +12,6 @@
 #include <base/functional/bind.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"

@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_STORAGE_ENCRYPTED_CONTAINER_ENCRYPTED_CONTAINER_FACTORY_H_
 #define CRYPTOHOME_STORAGE_ENCRYPTED_CONTAINER_ENCRYPTED_CONTAINER_FACTORY_H_
 
-#include "cryptohome/storage/encrypted_container/encrypted_container.h"
-
 #include <memory>
 
 #include <base/files/file_path.h>
@@ -14,6 +12,7 @@
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"
 

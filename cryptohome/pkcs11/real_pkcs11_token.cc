@@ -9,9 +9,9 @@
 #include <utility>
 
 #include <brillo/secure_blob.h>
-
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
+
 #include "cryptohome/chaps_client_factory.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/pkcs11_init.h"

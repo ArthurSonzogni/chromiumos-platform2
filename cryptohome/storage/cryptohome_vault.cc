@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/storage/cryptohome_vault.h>
-
 #include <memory>
 #include <string>
 #include <tuple>
@@ -13,6 +11,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <cryptohome/storage/cryptohome_vault.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>

@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_MOCK_CRYPTOHOME_KEY_LOADER_H_
 #define CRYPTOHOME_MOCK_CRYPTOHOME_KEY_LOADER_H_
 
-#include "cryptohome/cryptohome_key_loader.h"
-
 #include <gmock/gmock.h>
+
+#include "cryptohome/cryptohome_key_loader.h"
 
 namespace cryptohome {
 

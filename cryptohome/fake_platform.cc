@@ -4,15 +4,15 @@
 
 #include "cryptohome/fake_platform.h"
 
-#include <stdint.h>
-
 #include <linux/fs.h>
+#include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <vector>
 
 #include <brillo/secure_blob.h>

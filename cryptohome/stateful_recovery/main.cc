@@ -4,19 +4,18 @@
 //
 // Provides the implementation of StatefulRecovery.
 
-#include "cryptohome/stateful_recovery/stateful_recovery.h"
-
 #include <linux/reboot.h>
 #include <sys/reboot.h>
 #include <unistd.h>
 
 #include <base/logging.h>
 #include <base/values.h>
-
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <libstorage/platform/platform.h>
+
+#include "cryptohome/stateful_recovery/stateful_recovery.h"
 
 int main(int argc, char** argv) {
   DEFINE_bool(reboot, true, "Reboot at end of recovery");

@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_MOCK_FINGERPRINT_MANAGER_H_
 #define CRYPTOHOME_MOCK_FINGERPRINT_MANAGER_H_
 
-#include "cryptohome/fingerprint_manager.h"
-
 #include <string>
+
+#include "cryptohome/fingerprint_manager.h"
 
 namespace cryptohome {
 

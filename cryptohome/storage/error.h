@@ -10,7 +10,6 @@
 
 #include <base/location.h>
 #include <dbus/cryptohome/dbus-constants.h>
-
 #include <libhwsec-foundation/error/error.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_or.h>

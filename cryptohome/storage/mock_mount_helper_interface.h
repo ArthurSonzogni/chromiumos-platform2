@@ -4,11 +4,12 @@
 #ifndef CRYPTOHOME_STORAGE_MOCK_MOUNT_HELPER_INTERFACE_H_
 #define CRYPTOHOME_STORAGE_MOCK_MOUNT_HELPER_INTERFACE_H_
 
-#include "cryptohome/storage/mount_helper_interface.h"
+#include <string>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
-#include <string>
+
+#include "cryptohome/storage/mount_helper_interface.h"
 
 namespace cryptohome {
 class MockMounterHelperInterface : public MountHelperInterface {

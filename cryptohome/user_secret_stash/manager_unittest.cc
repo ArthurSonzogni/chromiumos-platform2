@@ -12,8 +12,8 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"

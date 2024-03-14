@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/userdataauth.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -52,6 +50,7 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/userdataauth.h"
 #include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"

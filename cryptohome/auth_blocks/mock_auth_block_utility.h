@@ -5,14 +5,13 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_MOCK_AUTH_BLOCK_UTILITY_H_
 #define CRYPTOHOME_AUTH_BLOCKS_MOCK_AUTH_BLOCK_UTILITY_H_
 
-#include "cryptohome/auth_blocks/auth_block_utility.h"
-
 #include <optional>
 #include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

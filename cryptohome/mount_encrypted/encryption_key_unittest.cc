@@ -11,12 +11,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include <openssl/sha.h>
-
-#include <vboot/tlcl.h>
-
 #include <gtest/gtest.h>
+#include <openssl/sha.h>
+#include <vboot/tlcl.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted_metrics.h"
 #include "cryptohome/mount_encrypted/tlcl_stub.h"

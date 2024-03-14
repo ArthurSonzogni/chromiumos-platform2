@@ -6,11 +6,11 @@
 
 #include <string>
 
+#include <base/check.h>
+
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/stringprintf.h"
-
-#include <base/check.h>
 
 namespace cryptohome {
 namespace fido_device {

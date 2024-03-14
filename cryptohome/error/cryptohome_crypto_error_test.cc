@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/error/cryptohome_crypto_error.h"
+
 #include <optional>
 #include <set>
 #include <string>
@@ -11,8 +13,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/status/status_chain.h>
-
-#include "cryptohome/error/cryptohome_crypto_error.h"
 
 namespace cryptohome {
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/auth_factor/manager.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,13 +17,12 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/filesystem_layout.h"

@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_PKCS11_REAL_PKCS11_TOKEN_H_
 #define CRYPTOHOME_PKCS11_REAL_PKCS11_TOKEN_H_
 
-#include "cryptohome/pkcs11/pkcs11_token.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -15,6 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/chaps_client_factory.h"
+#include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

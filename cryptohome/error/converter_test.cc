@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/error/converter.h"
+
 #include <set>
 #include <string>
 #include <utility>
@@ -10,7 +12,6 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/error.h>
 
-#include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {

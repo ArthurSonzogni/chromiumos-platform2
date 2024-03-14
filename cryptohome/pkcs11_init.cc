@@ -6,9 +6,10 @@
 
 #include "cryptohome/pkcs11_init.h"
 
+#include <string.h>
+
 #include <iterator>
 #include <memory>
-#include <string.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
