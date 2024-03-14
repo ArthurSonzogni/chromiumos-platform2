@@ -57,7 +57,7 @@
 #include "features/portrait_mode/portrait_mode_stream_manipulator.h"
 #endif
 
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
 #endif
 
@@ -171,7 +171,7 @@ StreamManipulatorManager::StreamManipulatorManager(
   TRACE_COMMON();
 
   std::optional<FeatureProfile::DeviceMetadata> dev_mdata = std::nullopt;
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
   const auto* static_mdata =
       create_options.camera_info.static_camera_characteristics;
   base::span<const char> module_id =

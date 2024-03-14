@@ -125,12 +125,12 @@ inline uint32_t GetFrameNumber(const camera3_notify_msg_t& msg) {
 }
 
 inline void SetStillCaptureUsage(camera3_stream* stream) {
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
   // On Intel platforms, the GRALLOC_USAGE_PRIVATE_1 usage bit tells the
   // camera HAL to process the stream using the still pipe for higher quality
   // output.
   stream->usage |= GRALLOC_USAGE_PRIVATE_1;
-#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 }
 
 // Returns ANDROID_REQUEST_PARTIAL_RESULT_COUNT value if exists.

@@ -30,7 +30,7 @@ namespace cros {
 class HdrNetProcessorDeviceAdapter {
  public:
   struct OptionsOverrideData {
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
     // Initially, set an invalid sensor mode.
     int32_t sensor_mode = -1;
 #endif

@@ -22,12 +22,12 @@
 #include <sync/sync.h>
 #include <system/graphics.h>
 
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 #include <system/camera_metadata_hidden.h>
 #include <system/camera_vendor_tags.h>
 
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
-#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/camera_buffer_utils.h"
@@ -38,7 +38,7 @@ namespace cros {
 
 namespace {
 
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 // Minimal vendor_tag_ops_t implementation just to keep the test running.
 vendor_tag_ops_t ipu6ep_vendor_tag_ops = {
     .get_tag_count = [](const vendor_tag_ops_t* v) -> int { return 1; },
@@ -71,7 +71,7 @@ vendor_tag_ops_t ipu6ep_vendor_tag_ops = {
     }};
 
 constexpr int kGtmCurveResolution = 1024;
-#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 
 }  // namespace
 
@@ -111,7 +111,7 @@ void HdrNetProcessorTestFixture::LoadInputFile(base::FilePath input_file_path) {
 
 void HdrNetProcessorTestFixture::LoadProcessingMetadata(
     base::FilePath metadata_file_path) {
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
   ReloadableConfigFile metadata({
       .default_config_file_path = metadata_file_path,
   });
@@ -178,7 +178,7 @@ HdrNetProcessorTestFixture::ProduceFakeCaptureResult() {
     for (int i = 0; i < kGtmCurveResolution; ++i) {
       int idx = i * 2;
       gtm_curve[idx] = static_cast<float>(i) / kGtmCurveResolution;
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
       // 1.0 means 1x gain.
       gtm_curve[idx + 1] = 1.0;
 #else
@@ -186,7 +186,7 @@ HdrNetProcessorTestFixture::ProduceFakeCaptureResult() {
 #endif
     }
 
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
     CHECK_EQ(result_metadata_.update(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,
                                      gtm_curve.data(), gtm_curve.size()),
              0)
@@ -261,7 +261,7 @@ void HdrNetProcessorTestFixture::InitializeOnGpuThread(
   static_info.unlock(locked_info);
 
   // Platform-specific initialization.
-#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
   CHECK_EQ(set_camera_metadata_vendor_ops(&ipu6ep_vendor_tag_ops), 0)
       << "Cannot set vendor tag ops";
 #endif
