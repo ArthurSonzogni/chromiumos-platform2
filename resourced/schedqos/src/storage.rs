@@ -14,6 +14,7 @@ pub trait ProcessContext {
     type TM<'a>: ThreadMap
     where
         Self: 'a;
+    fn timestamp(&self) -> u64;
     fn state(&self) -> ProcessState;
     fn thread_map(&mut self) -> Self::TM<'_>;
 }

@@ -115,6 +115,11 @@ impl RestorableProcessContext<'_> {
 
 impl<'a> ProcessContext for RestorableProcessContext<'a> {
     type TM<'b> = RestorableThreadMap<'b>  where Self: 'b;
+
+    fn timestamp(&self) -> u64 {
+        self.entry.get().cell.timestamp(self.storage)
+    }
+
     fn state(&self) -> ProcessState {
         self.entry
             .get()

@@ -28,6 +28,10 @@ pub struct SimpleProcessEntry {
 impl<'a> ProcessContext for SimpleProcessContext<'a> {
     type TM<'b> = SimpleThreadMap<'b>  where Self: 'b;
 
+    fn timestamp(&self) -> u64 {
+        self.get().timestamp
+    }
+
     fn state(&self) -> ProcessState {
         self.get().state
     }
@@ -172,10 +176,12 @@ mod tests {
             map.get_process(ProcessId(1000)).unwrap().state(),
             ProcessState::Background
         );
+        assert_eq!(map.get_process(ProcessId(1000)).unwrap().timestamp(), 12345);
         assert_eq!(
             map.get_process(ProcessId(1001)).unwrap().state(),
             ProcessState::Normal
         );
+        assert_eq!(map.get_process(ProcessId(1001)).unwrap().timestamp(), 65432);
         assert!(map.get_process(ProcessId(1002)).is_none());
     }
 

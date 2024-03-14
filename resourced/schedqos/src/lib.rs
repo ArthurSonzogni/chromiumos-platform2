@@ -458,6 +458,15 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             other => other?,
         };
 
+        // Validate process timestamp after getting thread timestamp. This guarantees that the
+        // thread timestamp above is of the thread which belongs to the registered process.
+        if load_process_timestamp(process_id).ok() != Some(process.timestamp()) {
+            drop(process);
+            self.process_map.remove_process(process_id, None);
+            self.process_map.compact();
+            return Err(Error::ThreadNotFound);
+        };
+
         let mut thread_checker = ThreadChecker::new(process_id);
         process
             .thread_map()
@@ -765,8 +774,16 @@ mod tests {
         ctx.process_map
             .insert_or_update(process_id, 0, ProcessState::Normal);
         let (thread_id, _thread) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id, thread_id, ThreadState::UrgentBursty)
-            .unwrap();
+        ctx.process_map
+            .get_process(process_id)
+            .unwrap()
+            .thread_map()
+            .insert_or_update(
+                thread_id,
+                load_thread_timestamp(process_id, thread_id).unwrap(),
+                ThreadState::UrgentBursty,
+                |_| true,
+            );
 
         // set_process_state() with different timestamp is treated as a new process context.
         let process_key = ctx
@@ -1081,6 +1098,29 @@ mod tests {
         assert!(wait_for_thread_removed(process_id, thread_id));
         assert!(matches!(
             ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
+                .err()
+                .unwrap(),
+            Error::ThreadNotFound
+        ));
+    }
+
+    #[test]
+    fn test_set_thread_state_with_different_timestamp_process() {
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_simple(Config {
+            cgroup_context,
+            process_configs: Config::default_process_config(),
+            thread_configs: Config::default_thread_config(),
+        })
+        .unwrap();
+        let process_id = ProcessId(std::process::id());
+        ctx.process_map
+            .insert_or_update(process_id, 0, ProcessState::Normal);
+        let (thread_id, _thread) = spawn_thread_for_test();
+
+        // The timestamp of process does not match.
+        assert!(matches!(
+            ctx.set_thread_state(process_id, thread_id, ThreadState::UrgentBursty)
                 .err()
                 .unwrap(),
             Error::ThreadNotFound
