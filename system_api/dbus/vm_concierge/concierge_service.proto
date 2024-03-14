@@ -937,8 +937,9 @@ message ResizeDiskImageResponse {
 }
 
 // Request to concierge to export a disk image.
-// Must be accompanied by an FD, the contents of the image will be written to
-// the passed FD.
+// Must be accompanied by at least 1 FD, the contents of the image will be
+// written to the first passed FD.  Takes an optional second FD which takes the
+// sha256 digest.
 message ExportDiskImageRequest {
   // The cryptohome id for the user's encrypted storage.
   string cryptohome_id = 1;
