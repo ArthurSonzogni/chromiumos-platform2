@@ -535,23 +535,9 @@ message LowDiskSpace {
   uint64 disk_free_bytes = 1;
 }
 
-// These flags will define any requests from the caller for how to run an
-// AuthSession.
-enum AuthSessionFlags {
-  // Default Value.
-  AUTH_SESSION_FLAGS_NONE = 0;
-  // This flag is set when auth session is used for an ephemeral user.
-  AUTH_SESSION_FLAGS_EPHEMERAL_USER = 2;
-  reserved 1;
-}
-
 message StartAuthSessionRequest {
   // The account of the user whose home directory is requested for mounting.
   cryptohome.AccountIdentifier account_id = 1;
-  // Deprecated. Can be used to set the user to ephemeral by setting this to
-  // AUTH_SESSION_FLAGS_EPHEMERAL_USER. New code should prefer using the
-  // is_ephemeral_user flag instead.
-  uint32 flags = 2;
   // Specifies if this user is ephemeral or not.
   bool is_ephemeral_user = 4;
   // The target intent of the authentication. This parameter declares which kind
@@ -561,6 +547,8 @@ message StartAuthSessionRequest {
   // TODO(b/240596931): Stop assuming that leaving this unset is the same as
   // `AUTH_INTENT_DECRYPT`, and forbid `AUTH_INTENT_UNSPECIFIED`.
   AuthIntent intent = 3;
+
+  reserved 2;
 }
 
 message StatusInfo {

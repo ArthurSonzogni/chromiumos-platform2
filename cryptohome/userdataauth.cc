@@ -2590,11 +2590,6 @@ void UserDataAuth::StartAuthSession(
 
   // Determine if the request is for an ephemeral user.
   bool is_ephemeral_user = request.is_ephemeral_user();
-  // Also check the older flags field. For compatibility if either field says
-  // the user is ephemeral we assume they are ephemeral.
-  if (request.flags() & user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER) {
-    is_ephemeral_user = true;
-  }
 
   if (request.intent() == user_data_auth::AUTH_INTENT_UNSPECIFIED) {
     // TODO(b/240596931): Stop allowing the UNSPECIFIED value after Chrome's

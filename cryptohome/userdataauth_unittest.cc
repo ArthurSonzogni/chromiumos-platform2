@@ -3186,57 +3186,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
               UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
 }
 
-TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactorsLegacyFlags) {
-  PrepareArguments();
-  SetupMount("foo@example.com");
-  // Setup
-  start_auth_session_req_->mutable_account_id()->set_account_id(
-      "foo@example.com");
-  start_auth_session_req_->set_intent(user_data_auth::AUTH_INTENT_VERIFY_ONLY);
-  start_auth_session_req_->set_flags(
-      user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-
-  EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
-      .WillRepeatedly(Return(true));
-  session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
-      AuthFactorType::kPassword, "password-verifier-label",
-      AuthFactorMetadata{.metadata = PasswordMetadata()}));
-
-  TestFuture<user_data_auth::StartAuthSessionReply>
-      start_auth_session_reply_future;
-  userdataauth_->StartAuthSession(
-      *start_auth_session_req_,
-      start_auth_session_reply_future
-          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
-  const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
-      start_auth_session_reply_future.Get();
-
-  EXPECT_EQ(start_auth_session_reply.error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_THAT(start_auth_session_reply.auth_factors().size(), 1);
-  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
-              "password-verifier-label");
-  EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).type(),
-              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-
-  EXPECT_THAT(
-      start_auth_session_reply.configured_auth_factors_with_status().size(), 1);
-  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
-                  .at(0)
-                  .auth_factor()
-                  .label(),
-              "password-verifier-label");
-  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
-                  .at(0)
-                  .auth_factor()
-                  .type(),
-              user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  EXPECT_THAT(start_auth_session_reply.configured_auth_factors_with_status()
-                  .at(0)
-                  .available_for_intents(),
-              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
-}
-
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_))
       .WillOnce(Return(false));
