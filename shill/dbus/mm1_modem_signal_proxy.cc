@@ -33,7 +33,7 @@ ModemSignalProxy::~ModemSignalProxy() = default;
 void ModemSignalProxy::Setup(const int rate,
                              Error* /*error*/,
                              ResultCallback callback,
-                             int timeout) {
+                             base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << rate;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->SetupAsync(rate,
@@ -43,7 +43,7 @@ void ModemSignalProxy::Setup(const int rate,
                      base::BindOnce(&ModemSignalProxy::OnSetupFailure,
                                     weak_factory_.GetWeakPtr(),
                                     std::move(split_callback.second)),
-                     timeout);
+                     timeout.InMilliseconds());
 }
 
 void ModemSignalProxy::OnSetupSuccess(ResultCallback callback) {
@@ -62,7 +62,7 @@ void ModemSignalProxy::OnSetupFailure(ResultCallback callback,
 void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
                                        Error* /*error*/,
                                        ResultCallback callback,
-                                       int timeout) {
+                                       base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary settings_dict =
       KeyValueStore::ConvertToVariantDictionary(settings);
@@ -75,7 +75,7 @@ void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
       base::BindOnce(&ModemSignalProxy::OnSetupThresholdsFailure,
                      weak_factory_.GetWeakPtr(),
                      std::move(split_callback.second)),
-      timeout);
+      timeout.InMilliseconds());
 }
 
 void ModemSignalProxy::OnSetupThresholdsSuccess(ResultCallback callback) {

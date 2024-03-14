@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_signal_proxy_interface.h"
@@ -24,13 +25,14 @@ class MockModemSignalProxy : public ModemSignalProxyInterface {
 
   MOCK_METHOD(void,
               Setup,
-              (const int, Error*, ResultCallback, int),
+              (const int, Error*, ResultCallback, base::TimeDelta),
               (override));
 
-  MOCK_METHOD(void,
-              SetupThresholds,
-              (const KeyValueStore& settings, Error*, ResultCallback, int),
-              (override));
+  MOCK_METHOD(
+      void,
+      SetupThresholds,
+      (const KeyValueStore& settings, Error*, ResultCallback, base::TimeDelta),
+      (override));
 };
 
 }  // namespace mm1

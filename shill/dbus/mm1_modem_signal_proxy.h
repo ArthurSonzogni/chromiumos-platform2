@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "cellular/dbus-proxies.h"
 #include "shill/cellular/mm1_modem_signal_proxy_interface.h"
 #include "shill/store/key_value_store.h"
@@ -33,12 +35,12 @@ class ModemSignalProxy : public ModemSignalProxyInterface {
   void Setup(const int rate,
              Error* /*error*/,
              ResultCallback callback,
-             int timeout) override;
+             base::TimeDelta timeout) override;
 
   void SetupThresholds(const KeyValueStore& settings,
                        Error* /*error*/,
                        ResultCallback callback,
-                       int timeout) override;
+                       base::TimeDelta timeout) override;
 
  private:
   // Callbacks for Setup async call.

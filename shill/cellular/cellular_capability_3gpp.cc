@@ -1592,16 +1592,15 @@ void CellularCapability3gpp::SetupSignal(uint32_t rate,
   SLOG(this, 3) << __func__;
   Error error;
   modem_signal_proxy_->Setup(rate, &error, std::move(callback),
-                             kTimeoutSetupSignal.InMilliseconds());
+                             kTimeoutSetupSignal);
 }
 
 void CellularCapability3gpp::SetupSignalThresholds(
     const KeyValueStore& settings, ResultCallback callback) {
   SLOG(this, 3) << __func__;
   Error error;
-  modem_signal_proxy_->SetupThresholds(
-      settings, &error, std::move(callback),
-      kTimeoutSetupSignalThresholds.InMilliseconds());
+  modem_signal_proxy_->SetupThresholds(settings, &error, std::move(callback),
+                                       kTimeoutSetupSignalThresholds);
 }
 
 void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {

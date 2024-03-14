@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/time/time.h>
+
 #include "shill/callbacks.h"
 
 namespace shill {
@@ -26,12 +28,12 @@ class ModemSignalProxyInterface {
   virtual void Setup(const int rate,
                      Error* error,
                      ResultCallback callback,
-                     int timeout) = 0;
+                     base::TimeDelta timeout) = 0;
 
   virtual void SetupThresholds(const KeyValueStore& settings,
                                Error* error,
                                ResultCallback callback,
-                               int timeout) = 0;
+                               base::TimeDelta timeout) = 0;
 };
 
 }  // namespace mm1
