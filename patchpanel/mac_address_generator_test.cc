@@ -4,38 +4,20 @@
 
 #include <stdint.h>
 
-#include <functional>
 #include <map>
-#include <unordered_set>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include "patchpanel/mac_address_generator.h"
 
 namespace patchpanel {
-namespace {
-// The standard library sadly does not provide a hash function for std::array.
-// So implement one here for MacAddress based off boost::hash_combine.
-struct MacAddressHasher {
-  size_t operator()(const MacAddress& addr) const noexcept {
-    std::hash<uint8_t> hasher;
-
-    size_t hash = 0;
-    for (uint8_t octet : addr) {
-      hash ^= hasher(octet) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    }
-
-    return hash;
-  }
-};
-
-}  // namespace
 
 // Tests that the mac addresses created by the generator have the proper flags.
 TEST(MacAddressGenerator, Flags) {
   MacAddressGenerator generator;
 
-  MacAddress addr = generator.Generate();
+  const std::vector<uint8_t> addr = generator.Generate().ToBytes();
   EXPECT_EQ(static_cast<uint8_t>(0x02), addr[0] & static_cast<uint8_t>(0x02));
   EXPECT_EQ(static_cast<uint8_t>(0), addr[0] & static_cast<uint8_t>(0x01));
 }
@@ -58,11 +40,11 @@ TEST(MacAddressGenerator, DISABLED_Duplicates) {
   constexpr uint32_t kNumAddresses = (1 << 25);
 
   MacAddressGenerator generator;
-  std::unordered_set<MacAddress, MacAddressHasher> addrs;
+  net_base::MacAddress::UnorderedSet addrs;
   addrs.reserve(kNumAddresses);
 
   for (uint32_t i = 0; i < kNumAddresses; ++i) {
-    MacAddress addr = generator.Generate();
+    const net_base::MacAddress addr = generator.Generate();
     EXPECT_EQ(addrs.end(), addrs.find(addr));
     addrs.insert(addr);
   }
@@ -70,13 +52,13 @@ TEST(MacAddressGenerator, DISABLED_Duplicates) {
 
 TEST(MacAddressGenerator, Stable) {
   MacAddressGenerator generator1, generator2;
-  std::map<uint8_t, MacAddress> addrs;
+  std::map<uint8_t, net_base::MacAddress> addrs;
   for (uint8_t i = 0;; ++i) {
     addrs[i] = generator1.GetStable(i);
     EXPECT_EQ(static_cast<uint8_t>(0x02),
-              addrs[i][0] & static_cast<uint8_t>(0x02));
+              addrs[i].ToBytes()[0] & static_cast<uint8_t>(0x02));
     EXPECT_EQ(static_cast<uint8_t>(0),
-              addrs[i][0] & static_cast<uint8_t>(0x01));
+              addrs[i].ToBytes()[0] & static_cast<uint8_t>(0x01));
     if (i == 255)
       break;
   }

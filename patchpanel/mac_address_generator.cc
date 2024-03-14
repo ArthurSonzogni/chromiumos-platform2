@@ -5,33 +5,33 @@
 #include "patchpanel/mac_address_generator.h"
 
 #include <base/rand_util.h>
+#include <net-base/mac_address.h>
 
 namespace patchpanel {
 
-MacAddress MacAddressGenerator::Generate() {
-  MacAddress addr;
+net_base::MacAddress MacAddressGenerator::Generate() {
+  net_base::MacAddress addr;
   do {
-    base::RandBytes(addr.data(), addr.size());
+    net_base::MacAddress::DataType addr_data;
+    base::RandBytes(addr_data.data(), addr_data.size());
 
     // Set the locally administered flag.
-    addr[0] |= static_cast<uint8_t>(0x02);
-
+    addr_data[0] |= static_cast<uint8_t>(0x02);
     // Unset the multicast flag.
-    addr[0] &= static_cast<uint8_t>(0xfe);
+    addr_data[0] &= static_cast<uint8_t>(0xfe);
+
+    addr = net_base::MacAddress(addr_data);
   } while (addrs_.find(addr) != addrs_.end() ||
-           (addr[0] == kStableBaseAddr[0] && addr[1] == kStableBaseAddr[1] &&
-            addr[2] == kStableBaseAddr[2] && addr[3] == kStableBaseAddr[3] &&
-            addr[4] == kStableBaseAddr[4]));
+           memcmp(addr.data(), kStableBaseAddr.data(), 5) == 0);
 
   addrs_.insert(addr);
-
   return addr;
 }
 
-MacAddress MacAddressGenerator::GetStable(uint32_t id) const {
-  MacAddress addr = kStableBaseAddr;
+net_base::MacAddress MacAddressGenerator::GetStable(uint32_t id) const {
+  net_base::MacAddress::DataType addr = kStableBaseAddr;
   addr[5] = static_cast<uint8_t>(id);
-  return addr;
+  return net_base::MacAddress(addr);
 }
 
 }  // namespace patchpanel

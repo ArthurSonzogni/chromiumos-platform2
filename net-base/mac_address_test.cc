@@ -4,6 +4,9 @@
 
 #include "net-base/mac_address.h"
 
+#include <set>
+#include <unordered_set>
+
 #include <gtest/gtest.h>
 
 namespace net_base {
@@ -55,6 +58,14 @@ TEST(MacAddress, CmpOps) {
       }
     }
   }
+}
+
+TEST(MacAddressTest, Container) {
+  std::set<MacAddress> set;
+  set.insert(MacAddress());
+
+  MacAddress::UnorderedSet unordered_set;
+  unordered_set.insert(MacAddress());
 }
 
 }  // namespace

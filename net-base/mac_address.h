@@ -12,9 +12,11 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/hash/hash.h>
 #include <brillo/brillo_export.h>
 
 namespace net_base {
@@ -22,6 +24,13 @@ namespace net_base {
 // Represents an EUI-48 address.
 class BRILLO_EXPORT MacAddress {
  public:
+  struct Hash {
+    size_t operator()(const net_base::MacAddress& mac) const {
+      return base::FastHash(mac.ToBytes());
+    }
+  };
+  using UnorderedSet = std::unordered_set<MacAddress, Hash>;
+
   // The length in bytes of addresses.
   static constexpr size_t kAddressLength = ETHER_ADDR_LEN;
   // The type of the internal address data.
@@ -78,4 +87,5 @@ BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
                                        const MacAddress& address);
 
 }  // namespace net_base
+
 #endif  // NET_BASE_MAC_ADDRESS_H_

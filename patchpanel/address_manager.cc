@@ -72,9 +72,8 @@ AddressManager::AddressManager() {
 }
 
 net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
-  return net_base::MacAddress(index == kAnySubnetIndex
-                                  ? mac_addrs_.Generate()
-                                  : mac_addrs_.GetStable(index));
+  return index == kAnySubnetIndex ? mac_addrs_.Generate()
+                                  : mac_addrs_.GetStable(index);
 }
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
