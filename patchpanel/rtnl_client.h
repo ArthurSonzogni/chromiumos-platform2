@@ -7,13 +7,11 @@
 
 #include <map>
 #include <memory>
-#include <string>
 
 #include <base/files/scoped_file.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-
-#include "patchpanel/mac_address_generator.h"
+#include <net-base/mac_address.h>
 
 namespace patchpanel {
 
@@ -29,9 +27,9 @@ class RTNLClient {
   // If |ifindex| is not nullopt, then only returns the neighbors for this
   // network interface. The value of the |ifindex| could be retrieved by
   // System::IfNametoindex().
-  std::map<net_base::IPv4Address, MacAddress> GetIPv4NeighborMacTable(
+  std::map<net_base::IPv4Address, net_base::MacAddress> GetIPv4NeighborMacTable(
       const std::optional<int>& ifindex = std::nullopt) const;
-  std::map<net_base::IPv6Address, MacAddress> GetIPv6NeighborMacTable(
+  std::map<net_base::IPv6Address, net_base::MacAddress> GetIPv6NeighborMacTable(
       const std::optional<int>& ifindex = std::nullopt) const;
 
  private:

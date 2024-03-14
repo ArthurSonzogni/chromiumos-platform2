@@ -8,16 +8,17 @@
 #include <linux/rtnetlink.h>
 #include <net/ethernet.h>
 
-#include <algorithm>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
+#include <net-base/mac_address.h>
 
 namespace patchpanel {
 namespace {
 
 template <typename Address, unsigned char ip_family>
-std::map<Address, MacAddress> GetNeighborMacTable(
+std::map<Address, net_base::MacAddress> GetNeighborMacTable(
     const base::ScopedFD& rtnl_fd, const std::optional<int>& ifindex) {
   sockaddr_nl kernel;
   memset(&kernel, 0, sizeof(kernel));
@@ -67,7 +68,7 @@ std::map<Address, MacAddress> GetNeighborMacTable(
   rtnl_reply.msg_iovlen = 1;
 
   bool done = false;
-  std::map<Address, MacAddress> ret;
+  std::map<Address, net_base::MacAddress> ret;
   while (!done) {
     ssize_t len = recvmsg(rtnl_fd.get(), &rtnl_reply, 0);
     if (len < 0) {
@@ -82,9 +83,6 @@ std::map<Address, MacAddress> GetNeighborMacTable(
           done = true;
           break;
         case RTM_NEWNEIGH: {
-          std::optional<Address> addr;
-          std::optional<MacAddress> mac_addr;
-
           size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
           ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
           // Filter out the special IPs that get resolved into MAC without
@@ -97,6 +95,8 @@ std::map<Address, MacAddress> GetNeighborMacTable(
             continue;
           }
 
+          std::optional<Address> addr;
+          std::optional<net_base::MacAddress> mac_addr;
           rtattr* rt_attr = reinterpret_cast<rtattr*>(RTM_RTA(nd_msg));
           for (; RTA_OK(rt_attr, rt_attr_len);
                rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
@@ -105,9 +105,9 @@ std::map<Address, MacAddress> GetNeighborMacTable(
                   reinterpret_cast<const char*>(RTA_DATA(rt_attr)),
                   Address::kAddressLength));
             } else if (rt_attr->rta_type == NDA_LLADDR) {
-              mac_addr = MacAddress();
-              std::copy_n(reinterpret_cast<const uint8_t*>(RTA_DATA(rt_attr)),
-                          ETHER_ADDR_LEN, mac_addr->begin());
+              mac_addr = net_base::MacAddress::CreateFromBytes(base::make_span(
+                  reinterpret_cast<const uint8_t*>(RTA_DATA(rt_attr)),
+                  net_base::MacAddress::kAddressLength));
             }
           }
 
@@ -155,13 +155,13 @@ std::unique_ptr<RTNLClient> RTNLClient::Create() {
 RTNLClient::RTNLClient(base::ScopedFD rtnl_fd) : rtnl_fd_(std::move(rtnl_fd)) {}
 RTNLClient::~RTNLClient() = default;
 
-std::map<net_base::IPv4Address, MacAddress> RTNLClient::GetIPv4NeighborMacTable(
-    const std::optional<int>& ifindex) const {
+std::map<net_base::IPv4Address, net_base::MacAddress>
+RTNLClient::GetIPv4NeighborMacTable(const std::optional<int>& ifindex) const {
   return GetNeighborMacTable<net_base::IPv4Address, AF_INET>(rtnl_fd_, ifindex);
 }
 
-std::map<net_base::IPv6Address, MacAddress> RTNLClient::GetIPv6NeighborMacTable(
-    const std::optional<int>& ifindex) const {
+std::map<net_base::IPv6Address, net_base::MacAddress>
+RTNLClient::GetIPv6NeighborMacTable(const std::optional<int>& ifindex) const {
   return GetNeighborMacTable<net_base::IPv6Address, AF_INET6>(rtnl_fd_,
                                                               ifindex);
 }

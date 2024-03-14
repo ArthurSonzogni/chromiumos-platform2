@@ -22,7 +22,6 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/downstream_network_service.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
@@ -762,7 +761,7 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
     return {};
   }
 
-  std::map<MacAddress,
+  std::map<net_base::MacAddress,
            std::pair<net_base::IPv4Address, std::vector<net_base::IPv6Address>>>
       mac_to_ip;
   for (const auto& [ipv4_addr, mac_addr] :
@@ -781,11 +780,11 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
     std::string hostname = "";
     if (dhcp_server_controller_iter != dhcp_server_controllers_.end()) {
       hostname = dhcp_server_controller_iter->second->GetClientHostname(
-          MacAddressToString(mac_addr));
+          mac_addr.ToString());
     }
 
-    client_infos.push_back({net_base::MacAddress(mac_addr), ip.first, ip.second,
-                            hostname, /*vendor_class=*/""});
+    client_infos.push_back(
+        {mac_addr, ip.first, ip.second, hostname, /*vendor_class=*/""});
   }
   return client_infos;
 }
