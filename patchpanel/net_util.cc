@@ -5,15 +5,12 @@
 #include "patchpanel/net_util.h"
 
 #include <arpa/inet.h>
-#include <errno.h>
 #include <net/if.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <fstream>
 #include <iostream>
-#include <random>
 #include <utility>
 #include <vector>
 
@@ -70,25 +67,6 @@ net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
   in_addr new_addr;
   new_addr.s_addr = htonl(host_endian);
   return net_base::IPv4Address(new_addr);
-}
-
-std::string MacAddressToString(const MacAddress& addr) {
-  return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
-                            addr[2], addr[3], addr[4], addr[5]);
-}
-
-bool GenerateEUI64Address(in6_addr* address,
-                          const in6_addr& prefix,
-                          const MacAddress& mac) {
-  // RFC 4291, Appendix A: Insert 0xFF and 0xFE to form EUI-64, then flip
-  // universal/local bit
-  memcpy(address, &prefix, sizeof(in6_addr));
-  memcpy(&(address->s6_addr[8]), &(mac[0]), 3);
-  memcpy(&(address->s6_addr[13]), &(mac[3]), 3);
-  address->s6_addr[11] = 0xff;
-  address->s6_addr[12] = 0xfe;
-  address->s6_addr[8] ^= 0x2;
-  return true;
 }
 
 void SetSockaddrIn(struct sockaddr* sockaddr,

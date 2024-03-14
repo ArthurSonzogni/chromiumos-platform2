@@ -12,8 +12,6 @@
 
 namespace patchpanel {
 
-using MacAddress = std::array<uint8_t, 6>;
-
 // Generates locally managed EUI-48 MAC addresses and ensures no collisions
 // with any previously generated addresses by this instance.
 class BRILLO_EXPORT MacAddressGenerator {

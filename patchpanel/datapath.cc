@@ -454,7 +454,8 @@ std::string Datapath::AddTunTap(
   if (mac_addr) {
     struct sockaddr* hwaddr = &ifr.ifr_hwaddr;
     hwaddr->sa_family = ARPHRD_ETHER;
-    memcpy(&hwaddr->sa_data, mac_addr.operator->(), sizeof(MacAddress));
+    memcpy(&hwaddr->sa_data, mac_addr->data(),
+           net_base::MacAddress::kAddressLength);
     if (system_->Ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set mac address for " << dev_mode
                   << " interface " << ifname << " {" << mac_addr->ToString()

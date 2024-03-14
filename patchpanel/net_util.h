@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef PATCHPANEL_NET_UTIL_H_
+#define PATCHPANEL_NET_UTIL_H_
+
 #include <ifaddrs.h>
 #include <linux/if_packet.h>
 #include <linux/in6.h>
@@ -18,32 +21,18 @@
 #include <sys/un.h>
 
 #include <iostream>
-#include <optional>
 #include <string>
-#include <vector>
 
 #include <base/strings/stringprintf.h>
 #include <base/sys_byteorder.h>
 #include <brillo/brillo_export.h>
 #include <net-base/ipv4_address.h>
 
-#include "patchpanel/mac_address_generator.h"
-
-#ifndef PATCHPANEL_NET_UTIL_H_
-#define PATCHPANEL_NET_UTIL_H_
-
 namespace patchpanel {
 
 // Adds a positive offset of the IPv4Address.
 net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
                                 uint32_t offset);
-
-// Returns a string representation of MAC address given.
-BRILLO_EXPORT std::string MacAddressToString(const MacAddress& addr);
-
-BRILLO_EXPORT bool GenerateEUI64Address(in6_addr* address,
-                                        const in6_addr& prefix,
-                                        const MacAddress& mac);
 
 BRILLO_EXPORT void SetSockaddrIn(struct sockaddr* sockaddr,
                                  const net_base::IPv4Address& addr);
