@@ -104,6 +104,9 @@ pub enum HibernateError {
     /// Spawned process error
     #[error("Spawned process error: {0}")]
     SpawnedProcessError(i32),
+    /// PinWeaver credentials exist.
+    #[error("PinWeaver credentials exist")]
+    PinWeaverCredentialsExist(),
     /// Index out of range error
     #[error("Index out of range")]
     IndexOutOfRangeError(),

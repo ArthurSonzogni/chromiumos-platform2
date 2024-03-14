@@ -4,15 +4,25 @@
 
 use std::time::Duration;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use dbus::blocking::Connection;
+use dbus::blocking::Proxy;
 use libchromeos::secure_blob::SecureBlob;
 use protobuf::Message;
-use system_api::client::OrgChromiumUserDataAuthInterface; // For get_hibernate_secret
+use system_api::client::OrgChromiumCryptohomeMiscInterface;
+use system_api::client::OrgChromiumUserDataAuthInterface;
+use system_api::UserDataAuth::CryptohomeErrorCode;
 use system_api::UserDataAuth::GetHibernateSecretReply;
 use system_api::UserDataAuth::GetHibernateSecretRequest;
+use system_api::UserDataAuth::GetPinWeaverInfoReply;
+use system_api::UserDataAuth::GetPinWeaverInfoRequest;
+
 use zeroize::Zeroize;
+
+const CRYPTOHOME_DBUS_NAME: &str = "org.chromium.UserDataAuth";
+const CRYPTOHOME_DBUS_PATH: &str = "/org/chromium/UserDataAuth";
 
 // Define the timeout to connect to the dbus system.
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
@@ -21,16 +31,8 @@ const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 /// once, then cryptohome forgets the key. The return value's type is SecureBlob so its content is
 /// zeroed when no longer needed.
 pub fn get_user_key_for_session(session_id: &[u8]) -> Result<SecureBlob> {
-    const CRYPTOHOME_DBUS_NAME: &str = "org.chromium.UserDataAuth";
-    const CRYPTOHOME_DBUS_PATH: &str = "/org/chromium/UserDataAuth";
-
-    let conn =
-        Connection::new_system().context("Failed to connect to dbus for hibernate secret")?;
-    let proxy = conn.with_proxy(
-        CRYPTOHOME_DBUS_NAME,
-        CRYPTOHOME_DBUS_PATH,
-        DEFAULT_DBUS_TIMEOUT,
-    );
+    let conn = get_dbus_connection().context("Failed to connect to dbus for hibernate secret")?;
+    let proxy = get_cryptohome_proxy(&conn);
 
     let mut proto: GetHibernateSecretRequest = Message::new();
     proto.auth_session_id = session_id.to_vec();
@@ -47,4 +49,38 @@ pub fn get_user_key_for_session(session_id: &[u8]) -> Result<SecureBlob> {
     key_data.copy_from_slice(&reply.hibernate_secret);
     reply.hibernate_secret.fill(0);
     Ok(SecureBlob::from(key_data))
+}
+
+pub fn has_pin_weaver_credentials() -> Result<bool> {
+    let conn = get_dbus_connection().context("Failed to connect to dbus for hibernate secret")?;
+    let proxy = get_cryptohome_proxy(&conn);
+
+    let request: GetPinWeaverInfoRequest = Message::new();
+    let response = proxy
+        .get_pin_weaver_info(request.write_to_bytes().unwrap())
+        .context("Failed to call GetPinWeaverInfo dbus method")?;
+    let reply: GetPinWeaverInfoReply = Message::parse_from_bytes(&response)
+        .context("Failed to parse GetPinWeaverInfo dbus response")?;
+    if reply.error != CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET.into() {
+        return Err(anyhow!(
+            "GetPinWeaverInfo() returned an error: {:?}",
+            reply.error_info
+        ));
+    }
+
+    Ok(reply.has_credential)
+}
+
+// Helper function for getting a D-Bus connection.
+fn get_dbus_connection() -> Result<Connection> {
+    Connection::new_system().context("Failed to connect to dbus for swap management")
+}
+
+// Helper for getting a cryptohome proxy from a D-Bus connection.
+fn get_cryptohome_proxy(connection: &Connection) -> Proxy<'static, &Connection> {
+    connection.with_proxy(
+        CRYPTOHOME_DBUS_NAME,
+        CRYPTOHOME_DBUS_PATH,
+        DEFAULT_DBUS_TIMEOUT,
+    )
 }

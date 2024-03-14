@@ -30,6 +30,7 @@ use regex::Regex;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::cryptohome;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
@@ -82,7 +83,8 @@ enum SuspendAbortReason {
     UpdateEngineActive = 3,
     NoHiberimage = 4,
     PriorUserLogout = 5,
-    Count = 6,
+    PinWeaverCredentialsExist = 6,
+    Count = 7,
 }
 
 #[derive(PartialEq)]
@@ -166,6 +168,15 @@ impl SuspendConductor<'_> {
             }
 
             return Err(HibernateError::NoHiberimageError().into());
+        }
+
+        // TODO(b/237089652): remove this when PinWeaver data is stored on a dedicated partition.
+        if cryptohome::has_pin_weaver_credentials()
+            .context("failed to check for PinWeaver credentials")?
+        {
+            info!("PinWeaver credentials exist, aborting hibernate attempt");
+            Self::log_suspend_abort(SuspendAbortReason::PinWeaverCredentialsExist);
+            return Err(HibernateError::PinWeaverCredentialsExist().into());
         }
 
         if !self.volume_manager.is_hiberimage_thickened()? {
