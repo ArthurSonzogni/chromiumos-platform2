@@ -10,7 +10,7 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 

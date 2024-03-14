@@ -15,7 +15,6 @@
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 
 namespace cryptohome {

@@ -9,7 +9,7 @@
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {

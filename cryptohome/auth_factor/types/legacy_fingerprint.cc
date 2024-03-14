@@ -14,7 +14,6 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/username.h"
 

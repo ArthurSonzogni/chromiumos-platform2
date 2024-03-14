@@ -18,7 +18,6 @@
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"

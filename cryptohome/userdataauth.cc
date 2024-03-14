@@ -89,7 +89,6 @@
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fp_migration/utility.h"
 #include "cryptohome/key_challenge_service_factory.h"

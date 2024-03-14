@@ -22,7 +22,6 @@
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 
 namespace cryptohome {

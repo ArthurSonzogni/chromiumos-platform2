@@ -27,7 +27,6 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"

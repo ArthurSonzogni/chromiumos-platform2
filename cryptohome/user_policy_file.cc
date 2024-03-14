@@ -4,7 +4,7 @@
 
 #include "cryptohome/user_policy_file.h"
 
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 
 namespace cryptohome {
 

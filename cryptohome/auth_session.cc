@@ -66,7 +66,6 @@
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/reap.h"
 #include "cryptohome/error/reporting.h"
 #include "cryptohome/error/utilities.h"

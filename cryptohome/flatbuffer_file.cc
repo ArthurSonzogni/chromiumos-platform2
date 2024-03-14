@@ -14,7 +14,7 @@
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 
 namespace cryptohome {

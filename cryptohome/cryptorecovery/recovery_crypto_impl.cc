@@ -37,7 +37,7 @@
 #include "cryptohome/cryptorecovery/inclusion_proof.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 
 using cryptohome::error::CryptohomeCryptoError;

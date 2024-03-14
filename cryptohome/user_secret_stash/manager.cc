@@ -13,7 +13,6 @@
 
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/encrypted.h"

@@ -17,7 +17,6 @@
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
 

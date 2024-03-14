@@ -30,7 +30,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/username.h"
 

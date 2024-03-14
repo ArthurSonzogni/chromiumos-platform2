@@ -25,7 +25,6 @@
 #include <libhwsec/status.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

@@ -12,7 +12,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 
 namespace cryptohome {

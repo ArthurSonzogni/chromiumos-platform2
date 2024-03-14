@@ -31,7 +31,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

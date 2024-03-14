@@ -18,7 +18,6 @@
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

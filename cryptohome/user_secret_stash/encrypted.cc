@@ -16,7 +16,6 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 
 namespace cryptohome {

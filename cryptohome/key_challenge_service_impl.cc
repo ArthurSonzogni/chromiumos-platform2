@@ -18,7 +18,7 @@
 #include <dbus/bus.h>
 #include <google/protobuf/message_lite.h>
 
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;

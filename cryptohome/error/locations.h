@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_ERROR_LOCATIONS_H_
 #define CRYPTOHOME_ERROR_LOCATIONS_H_
 
+#include <string>  // IWYU pragma: keep
+
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome::error {
@@ -2213,6 +2215,17 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
 // Unified Error Code is allocated in cryptohome/error/cryptohome_tpm_error.h
 // and libhwsec/error/tpm_error.h so that “Cryptohome.Error.LeafErrorWithTPM”
 // UMA will continue to work.
+
+// CRYPTOHOME_ERR_LOC() is a macro that helps the preprocessor utility identify
+// use of error code.
+// Note that this takes a enum in the ErrorLocationSpecifier enum class, and
+// converts it to the integer accepted by CryptohomeError. See CryptohomeError
+// class on why we need int vs enum.
+#define CRYPTOHOME_ERR_LOC(x)                                           \
+  (::cryptohome::error::CryptohomeError::ErrorLocationPair(             \
+      static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>( \
+          ::cryptohome::error::ErrorLocationSpecifier::x),              \
+      std::string(#x)))
 
 }  // namespace cryptohome::error
 

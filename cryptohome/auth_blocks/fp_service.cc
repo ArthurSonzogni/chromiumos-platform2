@@ -13,7 +13,6 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/signalling.h"

@@ -21,7 +21,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/recoverable_key_store/type.h"
 
 namespace cryptohome {

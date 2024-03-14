@@ -1397,7 +1397,7 @@ class DBTool:
     """
 
     ALLOWED_SRC_EXT = frozenset({".cc", ".h"})
-    SCAN_DENYLIST = frozenset({"./error/location_utils.h"})
+    SCAN_DENYLIST = frozenset({"./error/locations.h"})
     LOCATIONS_H_PATH = "./error/locations.h"
 
     # TPM error range [ERROR_LOC_TPM_START, ERROR_LOC_TPM_END).
