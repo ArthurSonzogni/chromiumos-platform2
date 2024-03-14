@@ -1580,9 +1580,8 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(ResultCallback callback,
 void CellularCapability3gpp::SetupLocation(uint32_t sources,
                                            bool signal_location,
                                            ResultCallback callback) {
-  Error error;
-  modem_location_proxy_->Setup(sources, signal_location, &error,
-                               std::move(callback), kTimeoutSetupLocation);
+  modem_location_proxy_->Setup(sources, signal_location, std::move(callback),
+                               kTimeoutSetupLocation);
 }
 
 void CellularCapability3gpp::SetupSignal(uint32_t rate,
@@ -1631,12 +1630,10 @@ void CellularCapability3gpp::OnSetupSignalThresholdsReply(const Error& error) {
 }
 
 void CellularCapability3gpp::GetLocation(StringCallback callback) {
-  BrilloAnyCallback cb =
+  modem_location_proxy_->GetLocation(
       base::BindOnce(&CellularCapability3gpp::OnGetLocationReply,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
-  Error error;
-  modem_location_proxy_->GetLocation(&error, std::move(cb),
-                                     kTimeoutGetLocation);
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
+      kTimeoutGetLocation);
 }
 
 void CellularCapability3gpp::OnGetLocationReply(

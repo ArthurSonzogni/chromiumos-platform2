@@ -30,12 +30,10 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
   // Inherited methods from ModemLocationProxyInterface.
   void Setup(uint32_t sources,
              bool signal_location,
-             Error* error,
              ResultCallback callback,
              base::TimeDelta timeout) override;
 
-  void GetLocation(Error* error,
-                   BrilloAnyCallback callback,
+  void GetLocation(BrilloAnyCallback callback,
                    base::TimeDelta timeout) override;
 
  private:

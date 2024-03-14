@@ -4,6 +4,7 @@
 
 #include "shill/testing.h"
 
+#include <map>
 #include <utility>
 
 #include <base/check.h>
@@ -43,6 +44,12 @@ void ReturnOperationFailed<RpcIdentifierCallback>(
 template <>
 void ReturnOperationFailed<StringCallback>(StringCallback callback) {
   std::move(callback).Run("", Error(Error::kOperationFailed));
+}
+
+template <>
+void ReturnOperationFailed<BrilloAnyCallback>(BrilloAnyCallback callback) {
+  std::move(callback).Run(std::map<uint32_t, brillo::Any>(),
+                          Error(Error::kOperationFailed));
 }
 
 }  // namespace shill

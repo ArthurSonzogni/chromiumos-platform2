@@ -10,8 +10,6 @@
 #include "shill/callbacks.h"
 
 namespace shill {
-class Error;
-
 namespace mm1 {
 
 // These are the methods that an org.freedesktop.ModemManager1.Modem.Location
@@ -25,12 +23,10 @@ class ModemLocationProxyInterface {
 
   virtual void Setup(uint32_t sources,
                      bool signal_location,
-                     Error* error,
                      ResultCallback callback,
                      base::TimeDelta timeout) = 0;
 
-  virtual void GetLocation(Error* error,
-                           BrilloAnyCallback callback,
+  virtual void GetLocation(BrilloAnyCallback callback,
                            base::TimeDelta timeout) = 0;
 };
 

@@ -7,15 +7,19 @@
 #include "shill/testing.h"
 
 using testing::_;
+using testing::Invoke;
+using testing::WithArgs;
 
 namespace shill {
 namespace mm1 {
 
 MockModemLocationProxy::MockModemLocationProxy() {
-  ON_CALL(*this, Setup(_, _, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
-  ON_CALL(*this, GetLocation(_, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, Setup(_, _, _, _))
+      .WillByDefault(
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+  ON_CALL(*this, GetLocation(_, _))
+      .WillByDefault(
+          WithArgs<0>(Invoke(ReturnOperationFailed<BrilloAnyCallback>)));
 }
 
 MockModemLocationProxy::~MockModemLocationProxy() = default;
