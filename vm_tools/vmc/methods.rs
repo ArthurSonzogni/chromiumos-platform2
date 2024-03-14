@@ -490,7 +490,10 @@ struct InputFile {
 impl InputFile {
     pub fn new(file: File) -> Result<Self, Box<dyn Error>> {
         let size = file.metadata()?.len();
-        Ok(InputFile { fd: OwnedFd::from(file), size })
+        Ok(InputFile {
+            fd: OwnedFd::from(file),
+            size,
+        })
     }
 }
 
@@ -1085,31 +1088,29 @@ impl Methods {
         request.generate_sha256_digest = digest_name.is_some();
         request.force = force;
 
-        // We can't use sync_protobus because we need to append the file descriptor out of band from
-        // the protobuf message.
-        let mut method = Message::new_method_call(
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            VM_CONCIERGE_INTERFACE,
-            EXPORT_DISK_IMAGE_METHOD,
-        )?
-        .append1(request.write_to_bytes()?)
-        .append1(export_file.as_owned_fd());
+        let mut owned_fds = vec![export_file.as_owned_fd().try_clone()?];
 
         let digest_file = match digest_name {
             Some(name) => {
                 let digest = self.create_output_file(user_id_hash, name, removable_media)?;
-                method = method.append1(digest.as_owned_fd());
+                owned_fds.push(digest.as_owned_fd().try_clone()?);
                 Some(digest)
             }
             None => None,
         };
 
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, EXPORT_DISK_TIMEOUT)?;
+        let response: ExportDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                EXPORT_DISK_IMAGE_METHOD,
+            )?,
+            &request,
+            owned_fds,
+            EXPORT_DISK_TIMEOUT,
+        )?;
 
-        let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
             Ok(DiskImageStatus::DISK_STATUS_CREATED)
             | Ok(DiskImageStatus::DISK_STATUS_IN_PROGRESS) => {

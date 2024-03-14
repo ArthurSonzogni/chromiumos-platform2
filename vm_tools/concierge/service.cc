@@ -3258,45 +3258,38 @@ void Service::FinishResize(const VmId& vm_id,
 }
 
 void Service::ExportDiskImage(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  RAW_SERVICE_METHOD();
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ExportDiskImageResponse>> response_cb,
+    const ExportDiskImageRequest& request,
+    const std::vector<base::ScopedFD>& fds) {
+  ASYNC_SERVICE_METHOD();
 
-  dbus::MessageReader reader(method_call);
-
-  ExportDiskImageRequest request;
   ExportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ExportDiskImageRequest from message";
-    response.set_failure_reason("Unable to parse ExportDiskRequest");
-    SendDbusResponse(std::move(response_sender), method_call, response);
+  if (fds.size() == 0) {
+    LOG(ERROR) << "Need 1 or 2 fds";
+    response.set_failure_reason("Need 1 or 2 fds");
+    response_cb->Return(response);
     return;
   }
 
   // Get the FD to fill with disk image data.
-  base::ScopedFD storage_fd;
-  if (!reader.PopFileDescriptor(&storage_fd)) {
-    LOG(ERROR) << "export: no fd found";
-    response.set_failure_reason("export: no fd found");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
+  base::ScopedFD storage_fd{dup(fds[0].get())};
 
   base::ScopedFD digest_fd;
-  if (request.generate_sha256_digest() &&
-      !reader.PopFileDescriptor(&digest_fd)) {
-    LOG(ERROR) << "export: no digest fd found";
-    response.set_failure_reason("export: no digest fd found");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
+  if (request.generate_sha256_digest()) {
+    if (fds.size() != 2) {
+      LOG(ERROR) << "export: no digest fd found";
+      response.set_failure_reason("export: no digest fd found");
+      response_cb->Return(response);
+      return;
+    }
+    digest_fd.reset(dup(fds[1].get()));
   }
 
-  SendDbusResponse(
-      std::move(response_sender), method_call,
-      ExportDiskImageInternal(std::move(request), std::move(storage_fd),
-                              std::move(digest_fd)));
+  response_cb->Return(ExportDiskImageInternal(
+      std::move(request), std::move(storage_fd), std::move(digest_fd)));
   return;
 }
 
