@@ -1582,8 +1582,7 @@ void CellularCapability3gpp::SetupLocation(uint32_t sources,
                                            ResultCallback callback) {
   Error error;
   modem_location_proxy_->Setup(sources, signal_location, &error,
-                               std::move(callback),
-                               kTimeoutSetupLocation.InMilliseconds());
+                               std::move(callback), kTimeoutSetupLocation);
 }
 
 void CellularCapability3gpp::SetupSignal(uint32_t rate,
@@ -1637,7 +1636,7 @@ void CellularCapability3gpp::GetLocation(StringCallback callback) {
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
   modem_location_proxy_->GetLocation(&error, std::move(cb),
-                                     kTimeoutGetLocation.InMilliseconds());
+                                     kTimeoutGetLocation);
 }
 
 void CellularCapability3gpp::OnGetLocationReply(

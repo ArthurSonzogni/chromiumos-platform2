@@ -5,6 +5,8 @@
 #ifndef SHILL_CELLULAR_MM1_MODEM_LOCATION_PROXY_INTERFACE_H_
 #define SHILL_CELLULAR_MM1_MODEM_LOCATION_PROXY_INTERFACE_H_
 
+#include <base/time/time.h>
+
 #include "shill/callbacks.h"
 
 namespace shill {
@@ -25,11 +27,11 @@ class ModemLocationProxyInterface {
                      bool signal_location,
                      Error* error,
                      ResultCallback callback,
-                     int timeout) = 0;
+                     base::TimeDelta timeout) = 0;
 
   virtual void GetLocation(Error* error,
                            BrilloAnyCallback callback,
-                           int timeout) = 0;
+                           base::TimeDelta timeout) = 0;
 };
 
 }  // namespace mm1

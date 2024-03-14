@@ -35,7 +35,7 @@ void ModemLocationProxy::Setup(uint32_t sources,
                                bool signal_location,
                                Error* error,
                                ResultCallback callback,
-                               int timeout) {
+                               base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << ": " << sources << ", " << signal_location;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -46,12 +46,12 @@ void ModemLocationProxy::Setup(uint32_t sources,
                      base::BindOnce(&ModemLocationProxy::OnSetupFailure,
                                     weak_factory_.GetWeakPtr(),
                                     std::move(split_callback.second)),
-                     timeout);
+                     timeout.InMilliseconds());
 }
 
 void ModemLocationProxy::GetLocation(Error* error,
                                      BrilloAnyCallback callback,
-                                     int timeout) {
+                                     base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->GetLocationAsync(
@@ -61,7 +61,7 @@ void ModemLocationProxy::GetLocation(Error* error,
       base::BindOnce(&ModemLocationProxy::OnGetLocationFailure,
                      weak_factory_.GetWeakPtr(),
                      std::move(split_callback.second)),
-      timeout);
+      timeout.InMilliseconds());
 }
 
 void ModemLocationProxy::OnSetupSuccess(ResultCallback callback) {

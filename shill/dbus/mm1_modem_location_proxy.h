@@ -32,11 +32,11 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
              bool signal_location,
              Error* error,
              ResultCallback callback,
-             int timeout) override;
+             base::TimeDelta timeout) override;
 
   void GetLocation(Error* error,
                    BrilloAnyCallback callback,
-                   int timeout) override;
+                   base::TimeDelta timeout) override;
 
  private:
   // Callbacks for Setup async call.

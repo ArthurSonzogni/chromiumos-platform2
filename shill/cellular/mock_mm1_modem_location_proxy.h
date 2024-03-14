@@ -5,6 +5,7 @@
 #ifndef SHILL_CELLULAR_MOCK_MM1_MODEM_LOCATION_PROXY_H_
 #define SHILL_CELLULAR_MOCK_MM1_MODEM_LOCATION_PROXY_H_
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
@@ -23,9 +24,12 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
   // Inherited methods from ModemLocationProxyInterface.
   MOCK_METHOD(void,
               Setup,
-              (uint32_t, bool, Error*, ResultCallback, int),
+              (uint32_t, bool, Error*, ResultCallback, base::TimeDelta),
               (override));
-  MOCK_METHOD(void, GetLocation, (Error*, BrilloAnyCallback, int), (override));
+  MOCK_METHOD(void,
+              GetLocation,
+              (Error*, BrilloAnyCallback, base::TimeDelta),
+              (override));
 };
 
 }  // namespace mm1
