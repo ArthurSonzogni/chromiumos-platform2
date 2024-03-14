@@ -905,6 +905,11 @@
                     "description": "Contains attributes from the runtime firmware, to be used by the system in different aspects, such as tast tests and upstart.",
                     "type": "boolean"
                   },
+                  "has-ec-component-manifest": {
+                    "build-only-element": true,
+                    "description": "Enables EC component manifest to support EC component probing (go/ec-comp-probe).",
+                    "type": "boolean"
+                  },
                   "has-splash-screen": {
                     "build-only-element": false,
                     "description": "Indicates if firmware is setting up the initial splash screen.",

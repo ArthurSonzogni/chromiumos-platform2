@@ -68,6 +68,7 @@ some_base_config: &some_base_config
 
     ec-ro-image: "bcs://Some_EC.1111.11.1.tbz2"
     ec-rw-image: "bcs://Some_EC_RW.1111.11.1.tbz2"
+    has-ec-component-manifest: True
     main-ro-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
   fingerprint:

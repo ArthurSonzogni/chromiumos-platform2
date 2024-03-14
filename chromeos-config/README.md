@@ -783,6 +783,7 @@ In the tables below,
 | ec-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | firmware-config | integer |  | False |  | False | The firmware config bitmap to be flashed to the CBI. This field is used in the factory. |
 | has-alt-firmware | boolean |  | False |  | False | Contains attributes from the runtime firmware, to be used by the system in different aspects, such as tast tests and upstart. |
+| has-ec-component-manifest | boolean |  | False |  | True | Enables EC component manifest to support EC component probing (go/ec-comp-probe). |
 | has-splash-screen | boolean |  | False |  | False | Indicates if firmware is setting up the initial splash screen. |
 | image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |

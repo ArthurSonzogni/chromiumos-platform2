@@ -61,6 +61,8 @@ BaseFile = collections.namedtuple("BaseFile", ["source", "dest"])
 #   ec_image_uri: URI to use to obtain the EC (Embedded Controller) firmware
 #       image
 #   ec_rw_image_uri: URI to use to obtain the EC RW firmware image
+#   has_ec_component_manifest: Enables EC component manifest for EC component
+#       probing.
 #   pd_image_uri: URI to use to obtain the PD (Power Delivery controller)
 #       firmware image
 #   sig_id: Signature ID to put in the setvars.sh file. This is normally the
@@ -81,6 +83,7 @@ FirmwareInfo = collections.namedtuple(
         "main_rw_image_uri",
         "ec_image_uri",
         "ec_rw_image_uri",
+        "has_ec_component_manifest",
         "pd_image_uri",
         "sig_id",
         "brand_code",

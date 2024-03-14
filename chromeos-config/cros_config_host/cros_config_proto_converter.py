@@ -2129,6 +2129,7 @@ def _build_firmware(config):
     ec_ro = fw_payload_config.ec_ro_payload
     ec_rw = fw_payload_config.ec_rw_payload
     pd_ro = fw_payload_config.pd_ro_payload
+    has_ec_component_manifest = fw_payload_config.has_ec_component_manifest
 
     build_targets = {}
 
@@ -2199,6 +2200,8 @@ def _build_firmware(config):
     _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
     _upsert(_fw_bcs_path(ec_rw), result, "ec-rw-image")
     _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
+    if has_ec_component_manifest:
+        _upsert(has_ec_component_manifest, result, "has-ec-component-manifest")
 
     _upsert(
         config.hw_design_config.hardware_features.fw_config.value,
