@@ -68,6 +68,7 @@ setpgid: 1
 set_robust_list: 1
 setsid: 1
 set_tid_address: 1
+sched_yield: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 stat64: 1

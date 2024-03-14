@@ -36,15 +36,17 @@ use std::fs::{create_dir, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{io, str};
 
 use chrono::DateTime;
 use chrono::Local;
+#[cfg(not(test))]
 use nix::sys::select;
 use procfs::LoadAverage;
+#[cfg(not(test))]
 use system_api::metrics_event;
 use tempfile::TempDir;
 
@@ -54,7 +56,6 @@ mod test;
 const LOG_DIRECTORY: &str = "/var/log/memd";
 const STATIC_PARAMETERS_LOG: &str = "memd.parameters";
 const LOW_MEM_SYSFS: &str = "/sys/kernel/mm/chromeos-low_mem";
-const LOW_MEM_DEVICE: &str = "/dev/chromeos-low-mem";
 const MAX_CLIP_COUNT: usize = 20;
 
 const COLLECTION_DELAY_MS: i64 = 5_000; // Wait after event of interest.
@@ -159,15 +160,6 @@ fn open_maybe(path: &Path) -> Result<Option<File>> {
     }
 }
 
-// Opens a file with mode flags.  If the file does not exist, returns None.
-fn open_with_flags_maybe(path: &Path, options: &OpenOptions) -> Result<Option<File>> {
-    if !path.exists() {
-        Ok(None)
-    } else {
-        Ok(Some(options.open(path)?))
-    }
-}
-
 // Converts the result of an integer expression |e| to modulo |n|. |e| may be
 // negative. This differs from plain "%" in that the result of this function
 // is always be between 0 and n-1.
@@ -194,17 +186,13 @@ fn read_int(path: &Path) -> Result<u32> {
 // The Timer trait allows us to mock time for testing.
 trait Timer {
     // A wrapper for select() with only ready-to-read fds.
-    fn select(&mut self, fds: &mut select::FdSet, timeout: &Duration) -> Result<libc::c_int>;
+    fn select(
+        &mut self,
+        dbus_receiver: &crossbeam_channel::Receiver<DbusEvent>,
+        timeout: Duration,
+    ) -> Result<bool>;
     fn now(&self) -> i64;
     fn quit_request(&self) -> bool;
-}
-
-#[cfg(not(test))]
-fn duration_to_timeval(duration: &Duration) -> nix::sys::time::TimeVal {
-    nix::sys::time::TimeVal::new(
-        duration.as_secs() as nix::sys::time::time_t,
-        duration.subsec_micros() as nix::sys::time::suseconds_t,
-    )
 }
 
 #[cfg(not(test))]
@@ -226,68 +214,14 @@ impl Timer for GenuineTimer {
 
     fn select(
         &mut self,
-        inout_read_fds: &mut select::FdSet,
-        timeout: &Duration,
-    ) -> Result<libc::c_int> {
-        let mut timeval = duration_to_timeval(timeout);
-        Ok(select::select(
-            inout_read_fds.highest().ok_or("The fd set is empty")? + 1,
-            inout_read_fds,
-            None,
-            None,
-            &mut timeval,
-        )?)
-    }
-}
-
-struct FileWatcher {
-    read_fds: select::FdSet,
-    inout_read_fds: select::FdSet,
-}
-
-// Interface to the select(2) system call, for ready-to-read only.
-impl FileWatcher {
-    fn new() -> FileWatcher {
-        let read_fds = select::FdSet::new();
-        let inout_read_fds = select::FdSet::new();
-        FileWatcher {
-            read_fds,
-            inout_read_fds,
-        }
-    }
-
-    fn set(&mut self, f: &File) -> Result<()> {
-        self.set_fd(f.as_raw_fd())
-    }
-
-    // The ..._fd functions exist because other APIs (e.g. dbus) return RawFds
-    // instead of Files.
-    fn set_fd(&mut self, fd: RawFd) -> Result<()> {
-        self.read_fds.insert(fd);
-        Ok(())
-    }
-
-    fn clear_fd(&mut self, fd: RawFd) -> Result<()> {
-        self.read_fds.remove(fd);
-        Ok(())
-    }
-
-    // Mut self here and below are required (unnecessarily) by FD_ISSET.
-    fn has_fired(&mut self, f: &File) -> Result<bool> {
-        self.has_fired_fd(f.as_raw_fd())
-    }
-
-    fn has_fired_fd(&mut self, fd: RawFd) -> Result<bool> {
-        Ok(self.inout_read_fds.contains(fd))
-    }
-
-    fn watch(&mut self, timeout: &Duration, timer: &mut dyn Timer) -> Result<usize> {
-        self.inout_read_fds = self.read_fds;
-        let n = timer.select(&mut self.inout_read_fds, timeout)?;
-        if n < 0 {
-            Err(format!("unexpected return value {} from select", n).into())
-        } else {
-            Ok(n as usize)
+        dbus_receiver: &crossbeam_channel::Receiver<DbusEvent>,
+        timeout: Duration,
+    ) -> Result<bool> {
+        let mut channel_select = crossbeam_channel::Select::new();
+        let _operation = channel_select.recv(dbus_receiver);
+        match channel_select.ready_timeout(timeout) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
         }
     }
 }
@@ -530,19 +464,7 @@ enum DbusEvent {
     TabDiscard { time: i64 },
     OomKill { time: i64 },
     OomKillKernel { time: i64 },
-}
-
-trait Dbus {
-    // Returns a vector of file descriptors that can be registered with a
-    // Watcher.
-    fn get_fds(&self) -> &Vec<RawFd>;
-    // Processes incoming dbus events as indicated by |watcher|.  Returns
-    // vectors of tab discards reported by chrome, and OOM kills reported by
-    // the anomaly detector.
-    fn process_dbus_events(
-        &mut self,
-        watcher: &mut FileWatcher,
-    ) -> Result<Vec<(metrics_event::event::Type, i64)>>;
+    CriticalMemoryPressure,
 }
 
 // The main object.
@@ -553,8 +475,6 @@ struct Sampler<'a> {
     low_mem_margin: u32, // Low-memory notification margin, assumed to remain constant in a boot session.
     sample_header: String, // The text at the beginning of each clip file.
     files: Files,        // Files kept open by the program.
-    watcher: FileWatcher, // Maintains a set of files being watched for select().
-    low_mem_watcher: FileWatcher, // A watcher for the low-mem device.
     clip_counter: usize, // Index of next clip file (also part of file name).
     sample_queue: SampleQueue, // A running queue of samples of vm quantities.
     current_available: u32, // Amount of "available" memory (in MB) at last reading.
@@ -574,28 +494,10 @@ impl<'a> Sampler<'a> {
         let mut low_mem_file_flags = OpenOptions::new();
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
-        let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
-            .map_err(Error::LowMemFileError)?;
-        if low_mem_file_option.is_none() {
-            warn!("low-mem device: cannot open and will not use");
-        }
-
-        let mut watcher = FileWatcher::new();
-        let mut low_mem_watcher = FileWatcher::new();
-
-        if let Some(low_mem_file) = low_mem_file_option.as_ref() {
-            watcher
-                .set(low_mem_file)
-                .map_err(Error::LowMemFDWatchError)?;
-            low_mem_watcher
-                .set(low_mem_file)
-                .map_err(Error::LowMemWatcherError)?;
-        }
 
         let files = Files {
             available_file_option: open_maybe(&paths.available)
                 .map_err(Error::AvailableFileError)?,
-            low_mem_file_option,
         };
 
         let sample_header = build_sample_header();
@@ -607,8 +509,6 @@ impl<'a> Sampler<'a> {
             paths,
             sample_header,
             files,
-            watcher,
-            low_mem_watcher,
             sample_queue: SampleQueue::new(),
             clip_counter: 0,
             collecting: false,
@@ -711,17 +611,16 @@ impl<'a> Sampler<'a> {
         debug!("entering slow poll at {}", self.current_time);
         // Idiom for do ... while.
         while {
-            let fired_count = {
-                let watcher = &mut self.watcher;
-                watcher.watch(&SLOW_POLL_PERIOD_DURATION, &mut *self.timer)?
-            };
-            debug!("fired count: {} at {}", fired_count, self.timer.now());
+            let event_ready = self
+                .timer
+                .select(&self.dbus_receiver, SLOW_POLL_PERIOD_DURATION)?;
+            debug!("event_ready: {} at {}", event_ready, self.timer.now());
             self.quit_request = self.timer.quit_request();
             if let Some(available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
             self.refresh_time();
-            self.should_poll_slowly() && !self.quit_request && fired_count == 0
+            self.should_poll_slowly() && !self.quit_request && !event_ready
         } {}
         Ok(())
     }
@@ -740,7 +639,7 @@ impl<'a> Sampler<'a> {
         self.enqueue_sample(SampleType::Timer)?;
         // Keep track if we're in a low-mem state.  Initially assume we are
         // not.
-        let mut in_low_mem = false;
+        let mut was_in_low_mem = false;
         // |clip_{start,end}_time| are the collection start and end time for
         // the current clip.  Their value is valid only when |self.collecting|
         // is true.
@@ -750,7 +649,6 @@ impl<'a> Sampler<'a> {
         // samples for any clip (either the current one, or the next one).  Its
         // value is valid only when |self.collecting| is true.
         let mut final_collection_time = self.current_time;
-        let null_duration = Duration::from_secs(0);
 
         // |self.collecting| is true when we're in the middle of collecting a clip
         // because something interesting has happened.
@@ -763,14 +661,28 @@ impl<'a> Sampler<'a> {
             let mut event_is_interesting = false;
 
             let watch_start_time = self.current_time;
-            let fired_count = {
-                let watcher = &mut self.watcher;
-                watcher.watch(&FAST_POLL_PERIOD_DURATION, &mut *self.timer)?
-            };
+            let event_ready = self
+                .timer
+                .select(&self.dbus_receiver, FAST_POLL_PERIOD_DURATION)?;
+            // Check for dbus events.
+            while let Ok(dbus_event) = self.dbus_receiver.try_recv() {
+                let (sample_type, sample_time) = match dbus_event {
+                    DbusEvent::TabDiscard { time } => (SampleType::TabDiscard, time),
+                    DbusEvent::OomKill { time } => (SampleType::OomKillBrowser, time),
+                    DbusEvent::OomKillKernel { time } => (SampleType::OomKillKernel, time),
+                    DbusEvent::CriticalMemoryPressure => (SampleType::Uninitialized, 0),
+                };
+                if sample_type != SampleType::Uninitialized {
+                    debug!("enqueue {:?}, {:?}", sample_type, sample_time);
+                    self.enqueue_sample_external(sample_type, sample_time)?;
+                }
+                event_is_interesting = true;
+            }
             self.quit_request = self.timer.quit_request();
             if let Some(available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
+            let in_low_mem = self.current_available < self.low_mem_margin;
             self.refresh_time();
 
             // Record a sample when we sleep too long.  Such samples are
@@ -786,60 +698,28 @@ impl<'a> Sampler<'a> {
                 self.enqueue_sample(SampleType::Sleeper)?;
             }
 
-            // The low_mem file is level-triggered, not edge-triggered (my bad)
-            // so we don't watch it when memory stays low, because it would
-            // fire continuously.  Instead we poll it at every event, and when
-            // we detect a low-to-high transition we start watching it again.
-            // Unfortunately this requires an extra select() call: however we
-            // don't expect to spend too much time in this state (and when we
-            // do, this is the least of our worries).
-            if in_low_mem
-                && self
-                    .low_mem_watcher
-                    .watch(&null_duration, &mut *self.timer)?
-                    == 0
-            {
+            if was_in_low_mem && !in_low_mem {
                 // Refresh time since we may have blocked.  (That should
                 // not happen often because currently the run times between
                 // sleeps are well below the minimum timeslice.)
                 self.current_time = self.timer.now();
                 debug!("leaving low mem at {}", self.current_time);
-                in_low_mem = false;
+                was_in_low_mem = false;
                 self.enqueue_sample(SampleType::LeaveLowMem)?;
-                self.watcher
-                    .set(self.files.low_mem_file_option.as_ref().unwrap())?;
             }
 
-            if fired_count == 0 {
+            if !event_ready {
                 // Timer event.
                 self.enqueue_sample(SampleType::Timer)?;
             } else {
                 // See comment above about watching low_mem.
-                let low_mem_has_fired = !in_low_mem
-                    && match self.files.low_mem_file_option {
-                        Some(ref low_mem_file) => self.watcher.has_fired(low_mem_file)?,
-                        _ => false,
-                    };
+                let low_mem_has_fired = !was_in_low_mem && in_low_mem;
                 if low_mem_has_fired {
                     debug!("entering low mem at {}", self.current_time);
-                    in_low_mem = true;
+                    was_in_low_mem = true;
                     self.enqueue_sample(SampleType::EnterLowMem)?;
-                    let fd = self.files.low_mem_file_option.as_ref().unwrap().as_raw_fd();
-                    self.watcher.clear_fd(fd)?;
                     // Make this interesting at least until chrome events are
                     // plumbed, maybe permanently.
-                    event_is_interesting = true;
-                }
-
-                // Check for dbus events.
-                while let Ok(dbus_event) = self.dbus_receiver.try_recv() {
-                    let (sample_type, sample_time) = match dbus_event {
-                        DbusEvent::TabDiscard { time } => (SampleType::TabDiscard, time),
-                        DbusEvent::OomKill { time } => (SampleType::OomKillBrowser, time),
-                        DbusEvent::OomKillKernel { time } => (SampleType::OomKillKernel, time),
-                    };
-                    debug!("enqueue {:?}, {:?}", sample_type, sample_time);
-                    self.enqueue_sample_external(sample_type, sample_time)?;
                     event_is_interesting = true;
                 }
             }
@@ -990,7 +870,7 @@ fn fprint_datetime(out: &mut File) -> Result<()> {
     Ok(())
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 enum SampleType {
     EnterLowMem,    // Entering low-memory state, from the kernel low-mem notifier.
     LeaveLowMem,    // Leaving low-memory state, from the kernel low-mem notifier.
@@ -1043,7 +923,6 @@ impl SampleType {
 pub struct Paths {
     available: PathBuf,
     low_mem_margin: PathBuf,
-    low_mem_device: PathBuf,
     log_directory: PathBuf,
     static_parameters: PathBuf,
     zoneinfo: PathBuf,
@@ -1079,7 +958,6 @@ macro_rules! make_paths {
 struct Files {
     // These files might not exist.
     available_file_option: Option<File>,
-    low_mem_file_option: Option<File>,
 }
 
 fn build_sample_header() -> String {
@@ -1147,7 +1025,6 @@ fn get_paths(root: Option<TempDir>) -> Paths {
         &testing_root,
         available:         LOW_MEM_SYSFS.to_string() + "/available",
         low_mem_margin:    LOW_MEM_SYSFS.to_string() + "/margin",
-        low_mem_device:    LOW_MEM_DEVICE,
         log_directory:     LOG_DIRECTORY,
         static_parameters: LOG_DIRECTORY.to_string() + "/" + STATIC_PARAMETERS_LOG,
         zoneinfo:          "/proc/zoneinfo",
@@ -1169,6 +1046,11 @@ fn receive_dbus_events(sender: crossbeam_channel::Sender<DbusEvent>) -> Result<(
         "interface='org.chromium.MetricsEventServiceInterface',",
         "member='ChromeEvent'"
     ));
+    let _m = connection.add_match(concat!(
+        "type='signal',",
+        "interface='org.chromium.ResourceManager',",
+        "member='MemoryPressureChrome'"
+    ));
 
     let mut watch_fdset = select::FdSet::new();
     for fd in connection.watch_fds() {
@@ -1187,34 +1069,38 @@ fn receive_dbus_events(sender: crossbeam_channel::Sender<DbusEvent>) -> Result<(
                 if let ConnectionItem::Signal(ref message) = connection_item {
                     // Only consider signals with "ChromeEvent" or "AnomalyEvent" members.
                     if let Some(member) = message.member() {
-                        if &*member != "ChromeEvent" && &*member != "AnomalyEvent" {
-                            // Do not report spurious "NameAcquired" signal to avoid spam.
-                            if &*member != "NameAcquired" {
-                                warn!("unexpected dbus signal member {}", &*member);
-                            }
-                            continue;
-                        }
-                    }
-                    // Read first item in signal message as byte blob and
-                    // parse blob into protobuf.
-                    let raw_buffer: Vec<u8> = message.read1()?;
-                    let mut protobuf = metrics_event::Event::new();
-                    protobuf.merge_from_bytes(&raw_buffer)?;
+                        if &*member == "ChromeEvent" || &*member == "AnomalyEvent" {
+                            // Read first item in signal message as byte blob and
+                            // parse blob into protobuf.
+                            let raw_buffer: Vec<u8> = message.read1()?;
+                            let mut protobuf = metrics_event::Event::new();
+                            protobuf.merge_from_bytes(&raw_buffer)?;
 
-                    let event_type = protobuf.type_.enum_value_or_default();
-                    let time_stamp = protobuf.timestamp;
-                    match event_type {
-                        metrics_event::event::Type::TAB_DISCARD => {
-                            sender.send(DbusEvent::TabDiscard { time: time_stamp })?;
-                        }
-                        metrics_event::event::Type::OOM_KILL => {
-                            sender.send(DbusEvent::OomKill { time: time_stamp })?;
-                        }
-                        metrics_event::event::Type::OOM_KILL_KERNEL => {
-                            sender.send(DbusEvent::OomKillKernel { time: time_stamp })?;
-                        }
-                        _ => {
-                            warn!("unknown event type {:?}", event_type);
+                            let event_type = protobuf.type_.enum_value_or_default();
+                            let time_stamp = protobuf.timestamp;
+                            match event_type {
+                                metrics_event::event::Type::TAB_DISCARD => {
+                                    sender.send(DbusEvent::TabDiscard { time: time_stamp })?;
+                                }
+                                metrics_event::event::Type::OOM_KILL => {
+                                    sender.send(DbusEvent::OomKill { time: time_stamp })?;
+                                }
+                                metrics_event::event::Type::OOM_KILL_KERNEL => {
+                                    sender.send(DbusEvent::OomKillKernel { time: time_stamp })?;
+                                }
+                                _ => {
+                                    warn!("unknown event type {:?}", event_type);
+                                }
+                            }
+                        } else if &*member == "MemoryPressureChrome" {
+                            let pressure_level: u8 = message.read1()?;
+                            const PRESSURE_LEVEL_CHROME_CRITICAL: u8 = 2;
+                            if pressure_level == PRESSURE_LEVEL_CHROME_CRITICAL {
+                                sender.send(DbusEvent::CriticalMemoryPressure)?;
+                            }
+                        } else if &*member != "NameAcquired" {
+                            // Do not report spurious "NameAcquired" signal to avoid spam.
+                            warn!("unexpected dbus signal member {}", &*member);
                         }
                     }
                 }

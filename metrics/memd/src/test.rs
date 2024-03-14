@@ -7,16 +7,11 @@
 use std::fs::{File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Duration;
 
-use nix::errno::Errno;
-use nix::sys::select;
 use nix::sys::stat;
-use nix::sys::time::TimeVal;
-use nix::sys::time::TimeValLike;
 use nix::unistd;
 
 // Imported from main program
@@ -37,8 +32,6 @@ const LOW_MEM_HIGH_AVAILABLE: usize = 1000;
 const LOW_MEM_MARGIN: usize = 200;
 const MOCK_DBUS_FIFO_NAME: &str = "mock-dbus-fifo";
 
-const PAGE_SIZE: usize = 4096;
-
 macro_rules! print_to_path {
     ($path:expr, $format:expr $(, $arg:expr)*) => {{
         let r = OpenOptions::new().write(true).create(true).open($path);
@@ -58,31 +51,6 @@ fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
     }
     f.write_all(string.as_bytes())?;
     Ok(())
-}
-
-fn read_nonblocking_pipe(file: &mut File, buf: &mut [u8]) -> Result<usize> {
-    let status = file.read(buf);
-    let read_bytes = match status {
-        Ok(n) => n,
-        Err(_) if Errno::last() == Errno::EAGAIN => 0,
-        Err(_) => return Err("cannot read pipe".into()),
-    };
-    Ok(read_bytes)
-}
-
-fn non_blocking_select(inout_read_fds: &mut select::FdSet) -> i32 {
-    let highest = inout_read_fds.highest();
-    if highest.is_none() {
-        return 0;
-    }
-    select::select(
-        highest.unwrap() + 1,
-        inout_read_fds,
-        None,
-        None,
-        &mut TimeVal::seconds(0),
-    )
-    .expect("select failed")
 }
 
 // The types of events which are generated internally for testing.  They
@@ -110,22 +78,24 @@ impl TestEvent {
         &self,
         paths: &Paths,
         dbus_event_sender: &mut crossbeam_channel::Sender<DbusEvent>,
-        low_mem_device: &mut File,
         time: i64,
     ) -> bool {
         debug!("delivering {:?}", self);
         match self.event_type {
             TestEventType::EnterLowPressure => {
-                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, paths, low_mem_device);
+                self.set_available(LOW_MEM_HIGH_AVAILABLE, paths);
                 false
             }
             TestEventType::EnterMediumPressure => {
-                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, paths, low_mem_device);
+                self.set_available(LOW_MEM_MEDIUM_AVAILABLE, paths);
                 false
             }
             TestEventType::EnterHighPressure => {
-                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, paths, low_mem_device);
-                false
+                self.set_available(LOW_MEM_LOW_AVAILABLE, paths);
+                dbus_event_sender
+                    .send(DbusEvent::CriticalMemoryPressure)
+                    .unwrap();
+                true
             }
             TestEventType::OomKillBrowser => {
                 dbus_event_sender.send(DbusEvent::OomKill { time }).unwrap();
@@ -140,18 +110,9 @@ impl TestEvent {
         }
     }
 
-    fn low_mem_notify(&self, amount: usize, paths: &Paths, low_mem_device: &mut File) {
+    fn set_available(&self, amount: usize, paths: &Paths) {
         write_string(&amount.to_string(), &paths.available, false)
             .expect("available file: write failed");
-        if amount == LOW_MEM_LOW_AVAILABLE {
-            debug!("making low-mem device ready to read");
-            // Make low-mem device ready-to-read.
-            write!(low_mem_device, ".").expect("low-mem-device: write failed");
-        } else {
-            debug!("clearing low-mem device");
-            let mut buf = [0; PAGE_SIZE];
-            read_nonblocking_pipe(low_mem_device, &mut buf).expect("low-mem-device: clear failed");
-        }
     }
 }
 
@@ -169,8 +130,7 @@ struct MockTimer {
     event_index: usize,                                      // index of next event to be delivered
     paths: Paths,                                            // for event delivery
     dbus_event_sender: crossbeam_channel::Sender<DbusEvent>, // for sending D-Bus events
-    low_mem_device: File, // for delivery of low-mem notifications
-    quit_request: bool,   // for termination
+    quit_request: bool,                                      // for termination
 }
 
 impl MockTimer {
@@ -179,19 +139,12 @@ impl MockTimer {
         paths: Paths,
         dbus_event_sender: crossbeam_channel::Sender<DbusEvent>,
     ) -> MockTimer {
-        let low_mem_device = OpenOptions::new()
-            .custom_flags(libc::O_NONBLOCK)
-            .read(true)
-            .write(true)
-            .open(&paths.low_mem_device)
-            .expect("low-mem-device: cannot setup");
         MockTimer {
             current_time: 0,
             test_events,
             event_index: 0,
             paths,
             dbus_event_sender,
-            low_mem_device,
             quit_request: false,
         }
     }
@@ -211,17 +164,9 @@ impl Timer for MockTimer {
     // are delivered.
     fn select(
         &mut self,
-        inout_read_fds: &mut select::FdSet,
-        timeout: &Duration,
-    ) -> Result<libc::c_int> {
-        // First check for existing active fds (for instance, the low-mem
-        // device).  We must save the original fd_set because when
-        // non_blocking_select returns 0, the fd_set is cleared.
-        let saved_inout_read_fds = *inout_read_fds;
-        let n = non_blocking_select(inout_read_fds);
-        if n != 0 {
-            return Ok(n);
-        }
+        _dbus_receiver: &crossbeam_channel::Receiver<DbusEvent>,
+        timeout: Duration,
+    ) -> Result<bool> {
         let timeout_ms = timeout.as_millis() as i64;
         let end_time = self.current_time + timeout_ms;
         // Assume no events occur and we hit the timeout.  Fix later as needed.
@@ -230,7 +175,7 @@ impl Timer for MockTimer {
             if self.event_index == self.test_events.len() {
                 // No more events to deliver, so no need for further select() calls.
                 self.quit_request = true;
-                return Ok(0);
+                return Ok(false);
             }
             // There are still event to be delivered.
             let first_event_time = self.test_events[self.event_index].time;
@@ -239,7 +184,7 @@ impl Timer for MockTimer {
             if first_event_time >= end_time {
                 // No event to deliver before the timeout.
                 debug!("returning because fev = {}", first_event_time);
-                return Ok(0);
+                return Ok(false);
             }
             // Deliver all events with the time stamp of the first event.  (There
             // is at least one.)
@@ -248,7 +193,6 @@ impl Timer for MockTimer {
                 if self.test_events[self.event_index].deliver(
                     &self.paths,
                     &mut self.dbus_event_sender,
-                    &mut self.low_mem_device,
                     first_event_time,
                 ) {
                     channel_sent += 1;
@@ -257,18 +201,14 @@ impl Timer for MockTimer {
                 self.event_index < self.test_events.len()
                     && self.test_events[self.event_index].time == first_event_time
             } {}
-            // One or more events were delivered, and some of them may fire a
-            // select.  First restore the original fd_set.
-            *inout_read_fds = saved_inout_read_fds;
-            let n = non_blocking_select(inout_read_fds);
-            if n > 0 || channel_sent > 0 {
+            // One or more events were delivered.
+            if channel_sent > 0 {
                 debug!(
                     "returning at {} with {} events",
-                    first_event_time,
-                    n + channel_sent
+                    first_event_time, channel_sent
                 );
                 self.current_time = first_event_time;
-                return Ok(n + channel_sent);
+                return Ok(true);
             }
         }
     }
@@ -656,7 +596,6 @@ pub fn setup_test_environment(paths: &Paths) {
     create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
-    create_dir_all(paths.low_mem_device.parent().unwrap()).expect("cannot create /dev");
 
     let zoneinfo_content = include_str!("zoneinfo_content");
     print_to_path!(&paths.zoneinfo, "{}", zoneinfo_content).expect("cannot initialize zoneinfo");
@@ -676,9 +615,6 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot initialize min_free_kbytes");
     print_to_path!(sys_vm.join("extra_free_kbytes"), "60000\n")
         .expect("cannot initialize extra_free_kbytes");
-
-    unistd::mkfifo(&paths.low_mem_device, stat::Mode::S_IRWXU)
-        .expect("could not make mock low-mem device");
 }
 
 pub fn queue_loop() {
