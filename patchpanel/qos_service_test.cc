@@ -405,7 +405,7 @@ TEST(QoSServiceTest, OnBorealisVMStarted) {
   auto ipv4_subnet =
       std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
   CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
   EXPECT_CALL(mock_datapath, AddBorealisQoSRule("vmtap1"));
@@ -425,7 +425,7 @@ TEST(QoSServiceTest, OnBorealisVMStopped) {
   auto ipv4_subnet =
       std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
   CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
   EXPECT_CALL(mock_datapath, RemoveBorealisQoSRule("vmtap1"));

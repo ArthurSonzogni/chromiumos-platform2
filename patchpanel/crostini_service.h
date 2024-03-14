@@ -22,7 +22,6 @@
 #include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/ipc.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/subnet.h"
 
@@ -56,7 +55,6 @@ class CrostiniService {
    public:
     CrostiniDevice(VMType type,
                    std::string_view tap_device_ifname,
-                   const MacAddress& mac_address,
                    std::unique_ptr<Subnet> vm_ipv4_subnet,
                    std::unique_ptr<Subnet> lxd_ipv4_subnet);
     CrostiniDevice(const CrostiniDevice&) = delete;
@@ -65,7 +63,6 @@ class CrostiniService {
 
     VMType type() const { return type_; }
     const std::string& tap_device_ifname() const { return tap_device_ifname_; }
-    const MacAddress& mac_address() const { return mac_address_; }
     const net_base::IPv4CIDR& vm_ipv4_subnet() const {
       return vm_ipv4_subnet_->base_cidr();
     }
@@ -94,8 +91,6 @@ class CrostiniService {
     VMType type_;
     // The interface name of the tap device created for the VM.
     std::string tap_device_ifname_;
-    // A random MAC address assigned to the tap device created for the VM.
-    MacAddress mac_address_;
     // The static IPv4 subnet allocated for the VM.
     std::unique_ptr<Subnet> vm_ipv4_subnet_;
     // The static IPv4 address allocated to the VM and assigned on the virtual

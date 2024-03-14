@@ -4,7 +4,6 @@
 
 #include "patchpanel/crostini_service.h"
 
-#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
@@ -568,7 +567,6 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
 
 TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
   const uint32_t subnet_index = 0;
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kTerminaVM, subnet_index);
   auto lxd_subnet =
@@ -579,8 +577,8 @@ TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kTermina, "vmtap0", mac_addr,
-      std::move(ipv4_subnet), std::move(lxd_subnet));
+      CrostiniService::VMType::kTermina, "vmtap0", std::move(ipv4_subnet),
+      std::move(lxd_subnet));
 
   NetworkDevice proto_device;
   termina_device->ConvertToProto(&proto_device);
@@ -603,7 +601,6 @@ TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
 
 TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
   const uint32_t subnet_index = 1;
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kParallelsVM, subnet_index);
   auto expected_host_ipv4 =
@@ -612,8 +609,8 @@ TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, "vmtap1", mac_addr,
-      std::move(ipv4_subnet), nullptr);
+      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
+      nullptr);
 
   NetworkDevice proto_device;
   parallels_device->ConvertToProto(&proto_device);

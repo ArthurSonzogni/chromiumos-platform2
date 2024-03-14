@@ -19,7 +19,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
-#include "patchpanel/arc_service.h"
 #include "patchpanel/crostini_service.h"
 
 namespace patchpanel {
@@ -44,14 +43,13 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
       *net_base::IPv4Address::CreateFromString("100.115.92.193");
 
   const uint32_t subnet_index = 0;
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kTerminaVM, subnet_index);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
   auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kTermina, "vmtap0", mac_addr,
-      std::move(ipv4_subnet), std::move(lxd_subnet));
+      CrostiniService::VMType::kTermina, "vmtap0", std::move(ipv4_subnet),
+      std::move(lxd_subnet));
 
   TerminaVmStartupResponse proto;
   FillTerminaAllocationProto(*termina_device, &proto);
@@ -80,12 +78,11 @@ TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
   const auto parallels_ipv4_address =
       *net_base::IPv4Address::CreateFromString("100.115.93.2");
 
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kParallelsVM, subnet_index);
   auto parallels_device = std::make_unique<CrostiniService::CrostiniDevice>(
-      CrostiniService::VMType::kParallels, "vmtap1", mac_addr,
-      std::move(ipv4_subnet), nullptr);
+      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
+      nullptr);
 
   ParallelsVmStartupResponse proto;
   FillParallelsAllocationProto(*parallels_device, &proto);
@@ -110,7 +107,7 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
 
   // TODO(b/279994478): Add kBruschetta at VMType.
   CrostiniService::CrostiniDevice bruschetta_device(
-      CrostiniService::VMType::kParallels, "vmtap1", {}, std::move(ipv4_subnet),
+      CrostiniService::VMType::kParallels, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
   BruschettaVmStartupResponse proto;
@@ -137,7 +134,7 @@ TEST_F(ProtoUtilsTest, FillBorealisAllocationProto) {
       std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
 
   CrostiniService::CrostiniDevice borealis_device(
-      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
   BorealisVmStartupResponse proto;
