@@ -280,7 +280,7 @@ tast tests with it in cros\_sdk.
 #!/bin/sh
 # in cros_sdk
 cat << EOF > labels.yaml
-autotest_host_info_labels: '["model:MODEL", "hwid_component:battery/MODEL_COMPONENT1", "hwid_component:storage/MODEL_COMPONENT2"]'
+autotesthostinfolabels: '["model:MODEL", "hwid_component:battery/MODEL_COMPONENT1", "hwid_component:storage/MODEL_COMPONENT2"]'
 EOF
 tast -verbose=true -logtime=false run -build=true -logtime=false -varsfile=labels.yaml "$ACTIVE_DUT" '(!disabled && "group:runtime_probe")'
 ```
