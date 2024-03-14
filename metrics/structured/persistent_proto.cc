@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/rand_util.h>
 
+#include "metrics/structured/lib/proto/key.pb.h"
 #include "metrics/structured/proto/storage.pb.h"
 
 #define READ_WRITE_ALL_FILE_FLAGS \

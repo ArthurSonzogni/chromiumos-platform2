@@ -32,6 +32,7 @@ group("all") {
       ":persistent_integer_test",
       ":timer_test",
       ":upload_service_test",
+      "//metrics/structured:structured_metrics_test",
     ]
   }
   if (use.passive_metrics && use.test) {

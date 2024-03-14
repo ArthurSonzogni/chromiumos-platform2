@@ -4,7 +4,6 @@
 
 """Templates for generating event classes for structured metrics."""
 
-
 HEADER_FILE_TEMPLATE = """\
 // Generated from gen_events.py. DO NOT EDIT!
 // source: structured.xml
