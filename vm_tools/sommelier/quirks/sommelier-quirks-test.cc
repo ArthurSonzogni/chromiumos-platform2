@@ -141,4 +141,195 @@ TEST_F(QuirksTest, SetsQuirkAppliedProperty) {
             "FEATURE_X11_MOVE_WINDOWS");
 }
 
+TEST_F(QuirksTest, ConditionAlwaysAppliesToAllWindows) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+  sl_window* game456 = CreateToplevelWindow();
+  game456->steam_game_id = 456;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game456, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysFalseDoesNotMatchToAnything) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+  sl_window* game456 = CreateToplevelWindow();
+  game456->steam_game_id = 456;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: false }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game456, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysTrueButSteamIdFalse) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysDisableButSteamIdEnable) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysSteamIdBothEnable) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysSteamIdBothDisable) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysAfterSteamId) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysSandwiched) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+  sl_window* game456 = CreateToplevelWindow();
+  game456->steam_game_id = 456;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { steam_game_id: 456 }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game456, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysMultiple) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_BLACK_SCREEN_FIX\n"
+      "}");
+
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_BLACK_SCREEN_FIX));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysMultipleLastDefinedHasPriority1) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+  EXPECT_FALSE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
+TEST_F(QuirksTest, ConditionAlwaysMultipleLastDefinedHasPriority2) {
+  sl_window* game123 = CreateToplevelWindow();
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  disable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}\n"
+      "sommelier { \n"
+      "  condition { always: true }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+}
+
 }  // namespace vm_tools::sommelier

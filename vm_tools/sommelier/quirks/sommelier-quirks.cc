@@ -7,6 +7,7 @@
 #include <google/protobuf/text_format.h>
 #include <unistd.h>
 #include <xcb/xproto.h>
+#include <map>
 
 #include "quirks/quirks.pb.h"
 #include "quirks/sommelier-quirks.h"
@@ -49,9 +50,28 @@ void Quirks::LoadFromFile(std::string path) {
 }
 
 bool Quirks::IsEnabled(struct sl_window* window, int feature) {
-  bool is_enabled =
-      enabled_features_.find(std::make_pair(window->steam_game_id, feature)) !=
-      enabled_features_.end();
+  bool is_enabled = false;
+
+  // Check if feature is enabled while minimizing map looks ups as much as
+  // possible. |feature_to_steam_id_[feature][steam_id]| takes priority over
+  // |always_features_[feature]|. This allows rule ordering to take priority
+  // as we delete |feature_to_steam_id_[feature]| when
+  // |always_features_[feature]| is popoulated.
+  bool steam_id_override = false;
+  auto steam_id_iter = feature_to_steam_id_.find(feature);
+  if (steam_id_iter != feature_to_steam_id_.end()) {
+    auto enabled_iter = steam_id_iter->second.find(window->steam_game_id);
+    if (enabled_iter != steam_id_iter->second.end()) {
+      steam_id_override = true;
+      is_enabled = enabled_iter->second;
+    }
+  }
+  if (!steam_id_override) {
+    auto always_iter = always_features_.find(feature);
+    if (always_iter != always_features_.end()) {
+      is_enabled = always_iter->second;
+    }
+  }
 
   // Log enabled quirks once per quirk, per window.
   if (is_enabled && sl_window_should_log_quirk(window, feature)) {
@@ -80,22 +100,37 @@ bool Quirks::IsEnabled(struct sl_window* window, int feature) {
 }
 
 void Quirks::Update() {
-  enabled_features_.clear();
+  feature_to_steam_id_.clear();
+  always_features_.clear();
 
   for (quirks::SommelierRule rule : active_config_.sommelier()) {
-    // For now, only support a single instance of a single
-    // steam_game_id condition.
-    if (rule.condition_size() != 1 ||
-        !rule.condition()[0].has_steam_game_id()) {
+    // For now, only support a single instance of a single condition.
+    if (rule.condition_size() != 1) {
       continue;
     }
-    uint32_t id = rule.condition()[0].steam_game_id();
+    if (rule.condition()[0].has_steam_game_id()) {
+      uint32_t id = rule.condition()[0].steam_game_id();
 
-    for (int feature : rule.enable()) {
-      enabled_features_.insert(std::make_pair(id, feature));
-    }
-    for (int feature : rule.disable()) {
-      enabled_features_.erase(std::make_pair(id, feature));
+      for (int feature : rule.enable()) {
+        feature_to_steam_id_[feature][id] = true;
+      }
+      for (int feature : rule.disable()) {
+        feature_to_steam_id_[feature][id] = false;
+      }
+    } else if (rule.condition()[0].has_always() &&
+               rule.condition()[0].always()) {
+      for (int feature : rule.enable()) {
+        always_features_[feature] = true;
+        // Clear Steam ID definitions defined so far, so that this always rule
+        // takes priority since it is defined later.
+        feature_to_steam_id_.erase(feature);
+      }
+      for (int feature : rule.disable()) {
+        always_features_[feature] = false;
+        // Clear Steam ID definitions defined so far, so that this always rule
+        // takes priority since it is defined later.
+        feature_to_steam_id_.erase(feature);
+      }
     }
   }
 }

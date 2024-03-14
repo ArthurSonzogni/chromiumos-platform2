@@ -5,7 +5,7 @@
 #ifndef VM_TOOLS_SOMMELIER_QUIRKS_SOMMELIER_QUIRKS_H_
 #define VM_TOOLS_SOMMELIER_QUIRKS_SOMMELIER_QUIRKS_H_
 
-#include <set>
+#include <map>
 #include <string>
 #include <utility>
 
@@ -35,10 +35,13 @@ class Quirks {
   quirks::Config active_config_;
 
   // The active config in a more easily queryable form.
-  //
-  // Each pair is built from a Steam Game ID and a Feature enum, indicating
-  // that the Feature is enabled for windows with that STEAM_GAME property.
-  std::set<std::pair<uint32_t, int>> enabled_features_;
+  // This is a map of Feature ID (see quirks.proto) to Steam game ID to
+  // enabled boolean. The boolean represents if the Feature is enabled for
+  // the windows with that STEAM_GAME property - note that false explicitly
+  // disables the property.
+  std::map<int, std::map<uint32_t, bool>> feature_to_steam_id_;
+
+  std::map<int, bool> always_features_;
 };
 
 #endif  // VM_TOOLS_SOMMELIER_QUIRKS_SOMMELIER_QUIRKS_H_

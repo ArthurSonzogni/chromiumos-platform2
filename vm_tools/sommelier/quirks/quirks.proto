@@ -8,6 +8,8 @@ package quirks;
 option java_multiple_files = true;
 
 message Config {
+  // The order of SommelierRule determines the priority -
+  // i.e. last-defined SommelierRule has the highest prioirity.
   repeated SommelierRule sommelier = 1;
 }
 
@@ -31,7 +33,10 @@ message SommelierCondition {
   // older versions of Sommelier applying rules containing unrecognized
   // conditions.
   oneof condition {
+    // Match by Steam game ID.
     uint32 steam_game_id = 1;
+    // Match if true, useful for defining default configuration.
+    bool always = 2;
   }
 }
 
