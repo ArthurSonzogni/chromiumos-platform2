@@ -5,16 +5,17 @@
 
 #include <stdio.h>
 
+#include <array>
 #include <optional>
 #include <string>
 #include <utility>
 
-#include <base/big_endian.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/numerics/byte_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/default_clock.h>
@@ -251,10 +252,10 @@ bool Serializer::WriteFetchCrashesResponse(
                 "size_t is too big to fit in 8 bytes");
   uint64_t size_uint64 = size;
 
-  char size_bytes[sizeof(size_uint64)];
-  base::WriteBigEndian(size_bytes, size_uint64);
+  std::array<uint8_t, sizeof(uint64_t)> size_bytes =
+      base::numerics::U64ToBigEndian(size_uint64);
 
-  std::string buf(size_bytes, size_bytes + sizeof(size_uint64));
+  std::string buf(size_bytes.begin(), size_bytes.end());
   if (!crash_data.AppendToString(&buf)) {
     LOG(ERROR) << "Failed to serialize proto to string";
     return false;
