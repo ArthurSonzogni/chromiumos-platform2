@@ -7,6 +7,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -951,12 +952,103 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesHardCodedPlatformMapping) {
   auto temp_dir = GetTempDir();
   auto socinfo_path = temp_dir.Append("directory.nothere");
 
-  config()->SetString("/identity", "platform-name", "Kukui");
+  config()->SetString("/identity", "platform-name", "Trogdor");
   std::string dest;
   AppendArmSocProperties(socinfo_path, config(), &dest);
 
-  EXPECT_THAT(dest, HasSubstr("ro.soc.manufacturer=Mediatek\n"));
-  EXPECT_THAT(dest, HasSubstr("ro.soc.model=MT8183\n"));
+  EXPECT_THAT(dest, HasSubstr("ro.soc.manufacturer=Qualcomm\n"));
+  EXPECT_THAT(dest, HasSubstr("ro.soc.model=SC7180\n"));
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacy) {
+  auto socinfo_devices_dir = GetTempDir();
+  auto soc0_path = socinfo_devices_dir.Append("soc0");
+  auto family0_path = soc0_path.Append("family");
+  auto machine0_path = soc0_path.Append("machine");
+
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
+  ASSERT_TRUE(base::WriteFile(family0_path, "MediaTek\n"));
+
+  for (auto& testcase :
+       {std::tuple<const char*, const char*>{
+            "MT8173 (MT8173)\n",
+            "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8173\n"},
+        {"Kompanio 500 (MT8183)\n",
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8183\n"},
+        {"Kompanio 820 (MT8192)\n",
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8192\n"},
+        {"Kompanio 828 (MT8192T)\n",
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8192\n"},
+        {"Kompanio 1200 (MT8195)\n",
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8195\n"},
+        {"Kompanio 1380 (MT8195T)\n",
+         "ro.soc.manufacturer=Mediatek\nro.soc.model=MT8195\n"}}) {
+    std::string_view machine = std::get<0>(testcase);
+    std::string_view expected = std::get<1>(testcase);
+
+    ASSERT_TRUE(base::WriteFile(machine0_path, machine));
+
+    std::string actual;
+    AppendArmSocProperties(socinfo_devices_dir, config(), &actual);
+
+    // Without the trailing `<< actual`, EXPECT_EQ treats `actual` as binary
+    // and truncates it.
+    EXPECT_EQ(expected, actual) << actual;
+  }
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
+  auto socinfo_devices_dir = GetTempDir();
+  auto soc0_path = socinfo_devices_dir.Append("soc0");
+  auto family0_path = soc0_path.Append("family");
+  auto machine0_path = soc0_path.Append("machine");
+  auto soc1_path = socinfo_devices_dir.Append("soc1");
+  auto soc_id1_path = soc1_path.Append("soc_id");
+  auto family1_path = soc1_path.Append("family");
+
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
+  ASSERT_TRUE(base::WriteFile(family0_path, "MediaTek\n"));
+  ASSERT_TRUE(base::WriteFile(machine0_path, "Kompanio 520 (MT8186)\n"));
+
+  ASSERT_TRUE(base::CreateDirectory(soc1_path));
+  ASSERT_TRUE(base::WriteFile(soc_id1_path, "jep106:0426:8186\n"));
+  ASSERT_TRUE(base::WriteFile(family1_path, "jep106:0426\n"));
+
+  // Make sure the file is opened read-only by turning off the writable perms.
+  ASSERT_EQ(chmod(machine0_path.value().c_str(), 0444), 0);
+  ASSERT_EQ(chmod(family0_path.value().c_str(), 0444), 0);
+  ASSERT_EQ(chmod(soc_id1_path.value().c_str(), 0444), 0);
+  ASSERT_EQ(chmod(family1_path.value().c_str(), 0444), 0);
+
+  std::string dest = "nofrid\n";
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
+  EXPECT_EQ(dest,
+            "nofrid\n"
+            "ro.soc.manufacturer=Mediatek\n"
+            "ro.soc.model=MT8186\n");
+
+  dest = "notyetlaunched\n";
+  config()->SetString("/identity", "frid", "Google_Chinchou");
+  AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
+  EXPECT_EQ(dest,
+            "notyetlaunched\n"
+            "ro.soc.manufacturer=Mediatek\n"
+            "ro.soc.model=Kompanio 520 MT8186\n");
+
+  const std::vector<std::string> launched_devices = {
+      "Google_Magneton",   "Google_Ponyta",  "Google_Rusty",
+      "Google_Starmie",    "Google_Steelix", "Google_Tentacool",
+      "Google_Tentacruel", "Google_Voltorb"};
+
+  for (auto& device : launched_devices) {
+    config()->SetString("/identity", "frid", device);
+    dest = "launched\n";
+    AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
+    EXPECT_EQ(dest,
+              "launched\n"
+              "ro.soc.manufacturer=Mediatek\n"
+              "ro.soc.model=MT8186\n");
+  }
 }
 
 }  // namespace

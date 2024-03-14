@@ -380,7 +380,8 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 }  // namespace
 
 static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
-                            std::string* dest) {
+                            std::string* dest,
+                            brillo::CrosConfigInterface* config) {
   auto machine_path = soc_dir_path.Append("machine");
   auto family_path = soc_dir_path.Append("family");
   auto soc_id_path = soc_dir_path.Append("soc_id");
@@ -431,11 +432,42 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   std::string manufacturer;
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
-  } else if (family == "jep106:0426\n") {
+  } else if (family == "MediaTek\n") {
     manufacturer = "Mediatek";
-    machine = soc_id;
-    constexpr std::string_view mtk_prefix("jep106:0426:");
-    machine.replace(0, mtk_prefix.length(), "MT");
+
+    // Remove brackets to align the SOC_MODEL requirement in Android CCD - "The
+    // value of this field MUST be encodable as 7-bit ASCII and match the
+    // regular expression “^([0-9A-Za-z ._/+-]+)$”"
+    base::RemoveChars(machine, "()", &machine);
+
+    // Leave the model name of the legacy platforms unchanged as the property is
+    // not allowed to be changed throughout the device lifetime. Note that
+    // MT8186 has new devices in the pipeline and requires special attention.
+    if (machine.find("MT8186") != std::string::npos) {
+      std::string frid;
+      if (config && config->GetString("/identity", "frid", &frid)) {
+        // Frid format is Google_XXXX
+        std::string device = frid.substr(7);
+        const std::vector<std::string> launched_devices = {
+            "Magneton", "Ponyta",    "Rusty",      "Starmie",
+            "Steelix",  "Tentacool", "Tentacruel", "Voltorb"};
+        if (std::find(launched_devices.begin(), launched_devices.end(),
+                      device) != launched_devices.end()) {
+          machine = "MT8186\n";
+        }
+      } else {
+        machine = "MT8186\n";
+      }
+    } else {
+      const std::vector<std::string> mtk_legacy_model = {"MT8173", "MT8183",
+                                                         "MT8192", "MT8195"};
+      for (const auto& model : mtk_legacy_model) {
+        if (machine.find(model) != std::string::npos) {
+          machine = model + "\n";
+          break;
+        }
+      }
+    }
   } else {
     return false;
   }
@@ -459,7 +491,7 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
   for (auto soc_dir_path = soc_dir_it.Next(); !soc_dir_path.empty();
        soc_dir_path = soc_dir_it.Next()) {
-    if (ParseOneSocinfo(soc_dir_path, dest))
+    if (ParseOneSocinfo(soc_dir_path, dest, config))
       return;
   }
 
@@ -473,13 +505,9 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
     // Platform names:
     //   Trogdor: also matches Strongbad and Homestar.
-    //   Kukui: also matches Jacuzzi.
     // These devices do not have recent-enough firmware and/or kernels to have
     // a populated /sys/bus/soc/devices.
-    if (platform == "Kukui") {
-      *dest += "ro.soc.manufacturer=Mediatek\n";
-      *dest += "ro.soc.model=MT8183\n";
-    } else if (platform == "Trogdor") {
+    if (platform == "Trogdor") {
       *dest += "ro.soc.manufacturer=Qualcomm\n";
       *dest += "ro.soc.model=SC7180\n";
     } else {
