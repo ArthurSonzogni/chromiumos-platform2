@@ -16,11 +16,11 @@ use log::warn;
 use regex::Regex;
 
 use std::ffi::OsStr;
-use std::fs::File;
 use std::fs::create_dir;
 use std::fs::read_dir;
 use std::fs::read_link;
 use std::fs::remove_file;
+use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::IoSlice;
 use std::io::Read;
@@ -36,8 +36,8 @@ use std::time::Instant;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::device_mapper::DeviceMapper;
-use crate::files::HIBERMETA_DIR;
 use crate::files::HIBERIMAGE_SIZE_FILE;
+use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
@@ -967,7 +967,6 @@ impl ActiveMount {
             HIBERIMAGE_SIZE_FILE.display()
         ))
     }
-
 }
 
 impl Drop for ActiveMount {

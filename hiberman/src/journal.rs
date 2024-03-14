@@ -5,10 +5,10 @@
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::path::PathBuf;
-use std::os::unix::fs::OpenOptionsExt;
-use std::io::Write;
 use std::time::Duration;
 
 use log::warn;
@@ -17,16 +17,15 @@ use anyhow::Context;
 use anyhow::Result;
 
 use crate::files::HIBERMETA_DIR;
-use crate::hiberutil::HibernateStage;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
+use crate::hiberutil::HibernateStage;
 use crate::volume::ActiveMount;
 
 /// Define the name of the resume log file.
 const RESUME_LOG_FILE_NAME: &str = "resume_log";
 /// Define the name of the suspend log file.
 const SUSPEND_LOG_FILE_NAME: &str = "suspend_log";
-
 
 /// Struct with associated functions for creating and opening hibernate
 /// log files.
@@ -63,7 +62,8 @@ impl<'m> LogFile<'m> {
             .truncate(true)
             .write(true)
             .custom_flags(libc::O_SYNC)
-            .open(p.clone()).context(format!("Failed to create log file '{}'", p.display()))
+            .open(p.clone())
+            .context(format!("Failed to create log file '{}'", p.display()))
     }
 
     /// Open existing log file at given hibernation stage. The file is opened with
@@ -76,7 +76,8 @@ impl<'m> LogFile<'m> {
             .read(true)
             .write(true)
             .custom_flags(libc::O_SYNC)
-            .open(p.clone()).context(format!("Failed to open log file '{}'", p.display()))
+            .open(p.clone())
+            .context(format!("Failed to open log file '{}'", p.display()))
     }
 
     /// Check if log file exists for a given hibernation stage.
@@ -111,12 +112,14 @@ impl Drop for LogFile<'_> {
 
 /// Provides an API for recording and reading timestamps from disk.
 #[allow(dead_code)]
-pub struct TimestampFile<'a> { am: &'a ActiveMount }
+pub struct TimestampFile<'a> {
+    am: &'a ActiveMount,
+}
 
 impl<'a> TimestampFile<'a> {
     /// Create new timestamp file record.
     pub fn new(am: &'a ActiveMount) -> Self {
-        TimestampFile {am}
+        TimestampFile { am }
     }
 
     /// Record a timestamp to a file.

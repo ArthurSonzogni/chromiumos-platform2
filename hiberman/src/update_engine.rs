@@ -21,9 +21,13 @@ use update_engine_dbus::client::OrgChromiumUpdateEngineInterface;
 const UPDATE_ENGINE_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub fn is_update_in_progress() -> Result<bool> {
-    let not_in_progress_ops = [Operation::IDLE, Operation::CHECKING_FOR_UPDATE,
-                               Operation::UPDATE_AVAILABLE, Operation::DISABLED,
-                               Operation::NEED_PERMISSION_TO_UPDATE];
+    let not_in_progress_ops = [
+        Operation::IDLE,
+        Operation::CHECKING_FOR_UPDATE,
+        Operation::UPDATE_AVAILABLE,
+        Operation::DISABLED,
+        Operation::NEED_PERMISSION_TO_UPDATE,
+    ];
 
     let status = get_status().context("Failed to get update engine status")?;
     let current_operation = match status.current_operation.enum_value() {

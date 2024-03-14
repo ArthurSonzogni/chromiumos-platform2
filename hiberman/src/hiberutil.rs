@@ -50,14 +50,11 @@ lazy_static! {
         let path = Path::new(TMPFS_DIR);
         path.join("user_logged_out")
     };
-
-    static ref ZRAM_SYSFS_PATH: PathBuf = {
-        Path::new("/sys/block/zram0").to_path_buf()
-    };
+    static ref ZRAM_SYSFS_PATH: PathBuf = Path::new("/sys/block/zram0").to_path_buf();
 }
 
 /// Define the hibernate stages.
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum HibernateStage {
     Suspend,
     Resume,
@@ -447,11 +444,12 @@ pub struct ZramWritebackStats {
 /// Get zram write back stats.
 pub fn zram_get_bd_stats() -> Result<ZramWritebackStats> {
     let path = ZRAM_SYSFS_PATH.join("bd_stat");
-    let content = std::fs::read_to_string(&path)
-        .context(format!("Failed to read {:?}", path))?;
+    let content = std::fs::read_to_string(&path).context(format!("Failed to read {:?}", path))?;
 
-    let values: Vec<_> = content.split_whitespace()
-        .map(|s| s.parse::<u64>().unwrap() * 4096).collect();
+    let values: Vec<_> = content
+        .split_whitespace()
+        .map(|s| s.parse::<u64>().unwrap() * 4096)
+        .collect();
 
     Ok(ZramWritebackStats {
         bytes_on_disk: values[0],
@@ -464,8 +462,7 @@ pub fn zram_get_bd_stats() -> Result<ZramWritebackStats> {
 pub fn zram_is_writeback_enabled() -> Result<bool> {
     let path = ZRAM_SYSFS_PATH.join("backing_dev");
 
-    let content = std::fs::read_to_string(&path)
-        .context(format!("Failed to read {:?}", path))?;
+    let content = std::fs::read_to_string(&path).context(format!("Failed to read {:?}", path))?;
 
     Ok(content.trim_end() != "none")
 }

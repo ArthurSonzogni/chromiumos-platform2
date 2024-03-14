@@ -134,7 +134,8 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
         let end_time = Instant::now() + POWERD_REPRINT_PERIOD;
         while Instant::now() < end_time {
             // Wait for signals.
-            conn.process(POWERD_PROCESS_PERIOD).context("Timeout while waiting for HibernateResumeReady signal")?;
+            conn.process(POWERD_PROCESS_PERIOD)
+                .context("Timeout while waiting for HibernateResumeReady signal")?;
 
             if signals.lock().unwrap().len() != 0 {
                 let duration = start.elapsed();

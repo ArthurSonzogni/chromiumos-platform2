@@ -22,8 +22,8 @@ mod resume_dbus;
 mod resume_init;
 mod snapdev;
 mod snapwatch;
-mod swap_management;
 mod suspend;
+mod swap_management;
 mod update_engine;
 mod volume;
 

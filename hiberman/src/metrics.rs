@@ -309,9 +309,10 @@ fn read_metric_file(_: &ActiveMount) -> Result<Vec<String>> {
         return Ok(v);
     }
 
-    let mut f = File::open(metrics_file_path).context(
-        format!("Failed to open metrics file {}", METRICS_FILE_PATH.display())
-        )?;
+    let mut f = File::open(metrics_file_path).context(format!(
+        "Failed to open metrics file {}",
+        METRICS_FILE_PATH.display()
+    ))?;
 
     for line in BufReader::new(&mut f).lines() {
         let line = match line {

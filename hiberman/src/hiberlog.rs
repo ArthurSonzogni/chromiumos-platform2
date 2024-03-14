@@ -153,7 +153,7 @@ impl Hiberlog {
                 let _ = f.write_all(&l);
             }
             // If sending to the syslog, just forward there
-            HiberlogOut::Syslog => self.syslogger.log(record)
+            HiberlogOut::Syslog => self.syslogger.log(record),
         }
     }
 
@@ -162,7 +162,9 @@ impl Hiberlog {
             // Write any ending lines to the file.
             HiberlogOut::File(f) => {
                 // self.pending will be empty if previously not logging to memory.
-                if self.pending.is_empty() { return; }
+                if self.pending.is_empty() {
+                    return;
+                }
                 map_log_entries(&self.pending, |s| {
                     let _ = f.write_all(&[s, &[b'\n']].concat());
                 });
@@ -194,7 +196,10 @@ fn map_log_entries<F>(entries: &[Vec<u8>], mut f: F)
 where
     F: FnMut(&[u8]),
 {
-    entries.iter().filter(|e| !e.is_empty()).for_each(|e| f(e.as_slice()));
+    entries
+        .iter()
+        .filter(|e| !e.is_empty())
+        .for_each(|e| f(e.as_slice()));
 }
 
 /// Divert the log to a new output. If the log was previously pointing to syslog
@@ -307,7 +312,7 @@ fn replay_line(syslogger: &BasicLogger, prefix: &str, s: &[u8]) {
                     .level(level)
                     .build(),
             );
-        },
+        }
         Err(e) => {
             warn!("{}", e);
         }
@@ -318,25 +323,31 @@ fn parse_rfc3164_record(line: &str) -> Result<(&str, Level)> {
     let mut elements = line.splitn(2, ": ");
     let header = elements.next().unwrap();
     let contents = elements.next().ok_or_else(|| {
-            anyhow!(
-                "Failed to split on colon: header: {}, line {:x?}, len {}",
-                header,
-                line.as_bytes(),
-                line.len()
-            )
+        anyhow!(
+            "Failed to split on colon: header: {}, line {:x?}, len {}",
+            header,
+            line.as_bytes(),
+            line.len()
+        )
     })?;
 
     // Now trim <11>hiberman into <11, and parse 11 out of the combined
     // priority + facility.
     let facprio_string = header.split_once('>').map_or(header, |x| x.0);
     if facprio_string.len() < 2 {
-        return Err(anyhow!("Failed to extract facprio string for next line, '{}'", contents));
+        return Err(anyhow!(
+            "Failed to extract facprio string for next line, '{}'",
+            contents
+        ));
     }
 
     let level = match facprio_string[1..].parse::<u8>() {
         Ok(v) => level_from_u8(v & 7),
         Err(_) => {
-            return Err(anyhow!("Failed to parse facprio for next line, '{}'", contents));
+            return Err(anyhow!(
+                "Failed to parse facprio for next line, '{}'",
+                contents
+            ));
         }
     };
 
@@ -445,6 +456,9 @@ mod test {
             .file(Some("/the/file"))
             .build();
         let m = record_to_rfc3164_line(&r, 0, Duration::new(0, 0));
-        assert_eq!(str::from_utf8(&m).unwrap(), "<14>hiberman: 0.000 0 [/the/file:0] XXX\n");
+        assert_eq!(
+            str::from_utf8(&m).unwrap(),
+            "<14>hiberman: 0.000 0 [/the/file:0] XXX\n"
+        );
     }
 }

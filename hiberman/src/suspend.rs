@@ -68,7 +68,6 @@ use crate::volume::VOLUME_MANAGER;
 
 const DROP_CACHES_ATTR_PATH: &str = "/proc/sys/vm/drop_caches";
 
-
 /// Value to tell zram to write back all eligible memory.
 const ZRAM_WRITEBACK_LIMIT_MB_MAX: u32 = 32768;
 
@@ -132,7 +131,7 @@ impl SuspendConductor<'_> {
         replay_logs(
             &hibermeta_mount,
             res.is_ok() && !self.options.dry_run, // push_resume_logs
-            !self.options.dry_run, // clear
+            !self.options.dry_run,                // clear
         );
 
         match res {
@@ -401,8 +400,7 @@ impl SuspendConductor<'_> {
     /// Apply tweaks to reduce memory usage.
     fn tweak_memory_usage() -> Result<()> {
         // Push all non-file backed reclaimable memory to zram.
-        reclaim_all_processes()
-            .context("Failed to perform memory reclaim")?;
+        reclaim_all_processes().context("Failed to perform memory reclaim")?;
 
         if zram_is_writeback_enabled()? {
             Self::trigger_zram_writeback()?;
@@ -418,23 +416,27 @@ impl SuspendConductor<'_> {
         swap_zram_set_writeback_limit(ZRAM_WRITEBACK_LIMIT_MB_MAX)
             .context("Failed to set zram writeback limit")?;
 
-        swap_zram_mark_idle(0)
-            .context("Failed to configure zram writeback")?;
+        swap_zram_mark_idle(0).context("Failed to configure zram writeback")?;
 
         if let Err(e) = initiate_swap_zram_writeback(WritebackMode::Idle) {
             if nix::Error::last() != nix::Error::EAGAIN {
                 return Err(e.context("Failed to initiate zram writeback"));
             }
 
-            warn!("The zram backing device is full, some zram data will be \
-                   part of the hibernate image");
+            warn!(
+                "The zram backing device is full, some zram data will be \
+                   part of the hibernate image"
+            );
         }
 
         let on_disk_now = zram_get_bd_stats()?.bytes_on_disk;
         let written = on_disk_now.saturating_sub(on_disk_before);
 
-        debug!("{}MB of zram written back before hibernate, total of {}MB on disk",
-               written / (1024 * 1024), on_disk_now / (1024 * 1024));
+        debug!(
+            "{}MB of zram written back before hibernate, total of {}MB on disk",
+            written / (1024 * 1024),
+            on_disk_now / (1024 * 1024)
+        );
 
         // TODO: report metric(s)
 
@@ -545,8 +547,10 @@ fn might_have_enough_free_memory_for_snapshot() -> bool {
     let free_mb = get_available_memory_mb() as u64;
 
     if free_mb < required_mb {
-        info!("not enough free memory ({}MB) for creating the hibernate snapshot (min: {}MB)",
-        free_mb, required_mb);
+        info!(
+            "not enough free memory ({}MB) for creating the hibernate snapshot (min: {}MB)",
+            free_mb, required_mb
+        );
         return false;
     }
 

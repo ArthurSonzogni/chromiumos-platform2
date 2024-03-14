@@ -37,8 +37,7 @@ impl DeviceMapper {
 
     /// Remove an existing DM device.
     pub fn remove_device(name: &str) -> Result<()> {
-        Self::run_dmsetup(["remove", name])
-            .context(format!("Failed to remove DM device '{name}'"))
+        Self::run_dmsetup(["remove", name]).context(format!("Failed to remove DM device '{name}'"))
     }
 
     /// Rename a DM device.
@@ -62,8 +61,7 @@ impl DeviceMapper {
 
     /// Resume a suspended DM device.
     pub fn resume_device(name: &str) -> Result<()> {
-        Self::run_dmsetup(["resume", name])
-            .context(format!("Failed to resume DM device '{name}'"))
+        Self::run_dmsetup(["resume", name]).context(format!("Failed to resume DM device '{name}'"))
     }
 
     /// Reload the device table of a DM device.
