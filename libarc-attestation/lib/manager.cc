@@ -114,17 +114,4 @@ AndroidStatus ArcAttestationManager::QuoteCrOSBlob(
   return result;
 }
 
-ArcAttestationManagerSingleton::ArcAttestationManagerSingleton()
-    : manager_(nullptr) {}
-
-void ArcAttestationManagerSingleton::Setup() {
-  CHECK(!manager_);
-  manager_ = std::make_unique<ArcAttestationManager>();
-  manager_->Setup();
-}
-
-// This instance is intentionally allowed to leak as this is a singleton in a
-// library.
-ArcAttestationManagerSingleton* ArcAttestationManagerSingleton::g_instance;
-
 }  // namespace arc_attestation

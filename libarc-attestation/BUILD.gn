@@ -67,6 +67,7 @@ source_set("libarc-attestation-source") {
   sources = [
     "lib/interface.cc",
     "lib/manager.cc",
+    "lib/manager_base.cc",
     "lib/provisioner.cc",
     "lib/version_attester.cc",
   ]
