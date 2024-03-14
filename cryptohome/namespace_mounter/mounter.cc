@@ -739,6 +739,7 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   if (!ok) {
     PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
                 << "Cannot move ~/Downloads to ~/MyFiles/Downloads";
+    ReportDownloadsMigrationStatus(kCannotMoveToMyFiles);
 
     // Restore the ~/Downloads-backup folder back to ~/MyFiles/Downloads to
     // ensure the upcoming bind-mount has a destination.
@@ -754,15 +755,18 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
       // both having failed to rename. This indicates some sort of file system
       // corruption and may require the user to remove their profile to restore.
       ReportDownloadsMigrationStatus(kCannotRestore);
-    } else {
-      // Successfully restored ~/Downloads-backup to ~/MyFiles/Downloads
-      // however the migration was unsuccessful. This will leave both
-      // ~/Downloads and ~/MyFiles/Downloads so on next login the migration can
-      // try again.
-      ReportDownloadsMigrationStatus(kCannotMoveToMyFiles);
-      LOG(ERROR) << "Failed moving ~/Downloads into ~/MyFiles but successfully "
-                    "restored the backup directory";
+
+      // Return true to prevent the bind-mount from happening, since there is no
+      // ~/MyFiles/Downloads mount point for that to succeed. If we return false
+      // here, then the user cannot log in at all.
+      return true;
     }
+
+    // Successfully restored ~/Downloads-backup to ~/MyFiles/Downloads. However
+    // the migration was unsuccessful. This leaves both ~/Downloads and
+    // ~/MyFiles/Downloads, so on next login the migration can be tried again.
+    LOG(ERROR) << "Failed moving ~/Downloads into ~/MyFiles but successfully "
+                  "restored the backup directory";
 
     return false;
   }
