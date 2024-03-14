@@ -24,7 +24,6 @@
 #include <base/no_destructor.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
 #include <mojo/service_constants.h>
 
@@ -97,10 +96,6 @@ DiagActions::DiagActions() {
   RequestMojoServiceWithDisconnectHandler(
       chromeos::mojo_services::kCrosHealthdDiagnostics,
       cros_healthd_diagnostics_service_);
-
-  default_tick_clock_ = std::make_unique<base::DefaultTickClock>();
-  tick_clock_ = default_tick_clock_.get();
-  DCHECK(tick_clock_);
 }
 
 DiagActions::~DiagActions() = default;
@@ -539,7 +534,7 @@ bool DiagActions::ProcessRoutineResponse(
 
 bool DiagActions::PollRoutineAndProcessResult() {
   mojom::RoutineUpdatePtr response;
-  const base::TimeTicks start_time = tick_clock_->NowTicks();
+  const base::TimeTicks start_time = base::TimeTicks::Now();
 
   do {
     // Poll the routine until it's either interactive and requires user input,
@@ -567,7 +562,7 @@ bool DiagActions::PollRoutineAndProcessResult() {
       response->routine_update_union->is_noninteractive_update() &&
       response->routine_update_union->get_noninteractive_update()->status ==
           mojom::DiagnosticRoutineStatusEnum::kRunning &&
-      tick_clock_->NowTicks() < start_time + kMaximumRoutineExecution);
+      base::TimeTicks::Now() < start_time + kMaximumRoutineExecution);
 
   if (response.is_null()) {
     std::cout << '\n' << "No GetRoutineUpdateResponse received." << std::endl;

@@ -6,13 +6,10 @@
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_DIAG_ACTIONS_H_
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <base/time/default_tick_clock.h>
-#include <base/time/tick_clock.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -144,12 +141,6 @@ class DiagActions final {
   // If set, the next routine run will be cancelled when its progress is
   // greater than or equal to |force_cancellation_percent_|.
   std::optional<uint32_t> force_cancellation_percent_;
-
-  // Tracks the passage of time.
-  std::unique_ptr<base::DefaultTickClock> default_tick_clock_;
-  // Unowned pointer which should outlive this instance. Allows the default tick
-  // clock to be overridden for testing.
-  const base::TickClock* tick_clock_;
 };
 
 }  // namespace diagnostics
