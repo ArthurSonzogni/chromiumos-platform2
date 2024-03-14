@@ -258,8 +258,11 @@ enum class DownloadsMigrationStatus {
   // xattr is set to "migrated".
   kSetXattrForNewCryptoHome = 9,
 
+  // ~/MyFiles/Downloads is already marked as "migrated".
+  kAlreadyMigrated = 10,
+
   // Maximum enum value. Must be updated if more values are added.
-  kMaxValue = kSetXattrForNewCryptoHome
+  kMaxValue = kAlreadyMigrated
 };
 
 // Various counts for ReportVaultKeysetMetrics.

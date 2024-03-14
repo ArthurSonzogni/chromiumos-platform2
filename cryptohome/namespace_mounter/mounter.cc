@@ -640,6 +640,8 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
 
   if (stage == MigrationStage::kMigrated) {
     LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated'";
+    ReportDownloadsMigrationStatus(kAlreadyMigrated);
+
     if (platform_->FileExists(downloads)) {
       LOG(WARNING) << "The ~/Downloads folder has been re-created after it was "
                       "migrated to ~/MyFiles/Downloads";
