@@ -294,7 +294,8 @@ bool DmcryptContainer::SetLazyTeardownWhenUnused() {
 }
 
 bool DmcryptContainer::Teardown() {
-  if (!IsDeviceKeyValid()) {
+  if (!(device_mapper_->GetTable(dmcrypt_device_name_).GetType() == "") &&
+      !IsDeviceKeyValid()) {
     // To force remove the block device, replace device with an error, read-only
     // target. It should stop processes from reading it and also removed
     // underlying device from mapping, so it is usable again. If some process
