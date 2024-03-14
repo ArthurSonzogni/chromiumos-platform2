@@ -319,7 +319,7 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
     auto hierarchy = process_cache_->GetProcessHierarchy(
         process_start.task_info.pid, process_start.task_info.start_time, 2);
     if (hierarchy.empty()) {
-      LOG(ERROR) << absl::StrFormat(
+      VLOG(1) << absl::StrFormat(
           "pid %d cmdline(%s) not in process cache. "
           "Creating a degraded %s filled with information available from BPF "
           "process map.",
