@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
@@ -24,11 +25,11 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
 
   MOCK_METHOD(void,
               Connect,
-              (const KeyValueStore&, RpcIdentifierCallback, int),
+              (const KeyValueStore&, RpcIdentifierCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               Disconnect,
-              (const RpcIdentifier&, ResultCallback, int),
+              (const RpcIdentifier&, ResultCallback, base::TimeDelta),
               (override));
 };
 

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/time/time.h>
+
 #include "shill/callbacks.h"
 #include "shill/store/key_value_store.h"
 
@@ -26,10 +28,10 @@ class ModemSimpleProxyInterface {
 
   virtual void Connect(const KeyValueStore& properties,
                        RpcIdentifierCallback callback,
-                       int timeout) = 0;
+                       base::TimeDelta timeout) = 0;
   virtual void Disconnect(const RpcIdentifier& bearer,
                           ResultCallback callback,
-                          int timeout) = 0;
+                          base::TimeDelta timeout) = 0;
 };
 
 }  // namespace mm1

@@ -836,10 +836,8 @@ TEST_F(CellularCapability3gppTest, DisconnectAllBearers) {
 
   ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
-  EXPECT_CALL(
-      *modem_simple_proxy,
-      Disconnect(CellularCapability3gpp::kRootPath, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*modem_simple_proxy,
+              Disconnect(CellularCapability3gpp::kRootPath, _, _))
       .WillOnce(WithArg<1>(Invoke(return_success)));
 
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
@@ -863,10 +861,7 @@ TEST_F(CellularCapability3gppTest, DisconnectSingleBearer) {
 
   ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
-  EXPECT_CALL(
-      *modem_simple_proxy,
-      Disconnect(dun_bearer_path, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*modem_simple_proxy, Disconnect(dun_bearer_path, _, _))
       .WillOnce(WithArg<1>(Invoke(return_success)));
   EXPECT_CALL(*modem_simple_proxy, Disconnect(default_bearer_path, _, _))
       .Times(0);

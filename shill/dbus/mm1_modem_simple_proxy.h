@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <base/time/time.h>
+
 #include "cellular/dbus-proxies.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 
@@ -30,10 +32,10 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   // Inherited methods from SimpleProxyInterface.
   void Connect(const KeyValueStore& properties,
                RpcIdentifierCallback callback,
-               int timeout) override;
+               base::TimeDelta timeout) override;
   void Disconnect(const RpcIdentifier& bearer,
                   ResultCallback callback,
-                  int timeout) override;
+                  base::TimeDelta timeout) override;
 
  private:
   // Callbacks for Connect async call.

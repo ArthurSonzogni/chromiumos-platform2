@@ -32,7 +32,7 @@ ModemSimpleProxy::~ModemSimpleProxy() = default;
 
 void ModemSimpleProxy::Connect(const KeyValueStore& properties,
                                RpcIdentifierCallback callback,
-                               int timeout) {
+                               base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
@@ -44,12 +44,12 @@ void ModemSimpleProxy::Connect(const KeyValueStore& properties,
                        base::BindOnce(&ModemSimpleProxy::OnConnectFailure,
                                       weak_factory_.GetWeakPtr(),
                                       std::move(split_callback.second)),
-                       timeout);
+                       timeout.InMilliseconds());
 }
 
 void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
                                   ResultCallback callback,
-                                  int timeout) {
+                                  base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->DisconnectAsync(dbus::ObjectPath(bearer),
@@ -59,7 +59,7 @@ void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
                           base::BindOnce(&ModemSimpleProxy::OnDisconnectFailure,
                                          weak_factory_.GetWeakPtr(),
                                          std::move(split_callback.second)),
-                          timeout);
+                          timeout.InMilliseconds());
 }
 
 void ModemSimpleProxy::OnConnectSuccess(RpcIdentifierCallback callback,

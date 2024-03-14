@@ -255,25 +255,25 @@ class CellularTest : public testing::Test {
   }
   void InvokeConnect(const KeyValueStore& props,
                      RpcIdentifierCallback callback,
-                     int timeout) {
+                     base::TimeDelta timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     std::move(callback).Run(kTestBearerDBusPath, Error());
   }
   void InvokeConnectFail(const KeyValueStore& props,
                          RpcIdentifierCallback callback,
-                         int timeout) {
+                         base::TimeDelta timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     std::move(callback).Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(const RpcIdentifier& bearer,
                         ResultCallback callback,
-                        int timeout) {
+                        base::TimeDelta timeout) {
     if (!callback.is_null())
       std::move(callback).Run(Error());
   }
   void InvokeDisconnectFail(const RpcIdentifier& bearer,
                             ResultCallback callback,
-                            int timeout) {
+                            base::TimeDelta timeout) {
     if (!callback.is_null())
       std::move(callback).Run(Error(Error::kOperationFailed));
   }
@@ -817,9 +817,8 @@ TEST_F(CellularTest, Connect) {
   // Common state for the successful connection attempts
   device_->set_skip_establish_link_for_testing(true);
   error.Populate(Error::kSuccess);
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Connect(_, _, CellularCapability3gpp::kTimeoutConnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
       .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
@@ -937,10 +936,8 @@ TEST_F(CellularTest, Disconnect) {
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   EXPECT_CALL(*default_pdn_, Stop());
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->Disconnect(&error, "in test");
@@ -962,10 +959,8 @@ TEST_F(CellularTest, DisconnectFailure) {
                                    Cellular::LinkState::kUp);
   device_->set_state_for_testing(Cellular::State::kConnected);
 
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   SetCapability3gppModemSimpleProxy();
@@ -985,9 +980,8 @@ TEST_F(CellularTest, DisconnectFailure) {
 TEST_F(CellularTest, ConnectFailure) {
   SetRegisteredWithService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Connect(_, _, CellularCapability3gpp::kTimeoutConnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
   SetCapability3gppModemSimpleProxy();
   Error error;
@@ -1548,10 +1542,8 @@ TEST_F(CellularTest, EstablishLinkFailureNoBearer) {
   // disconnection
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->EstablishLink();
@@ -1711,10 +1703,8 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
               Start(Field(&Network::StartOptions::dhcp, Optional(_))))
       .Times(0);
 
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -1785,10 +1775,8 @@ TEST_F(CellularTest, DefaultLinkUpConfigureFailure) {
               Start(Field(&Network::StartOptions::dhcp, Optional(_))))
       .Times(0);
 
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -2024,10 +2012,8 @@ TEST_F(CellularTest, DefaultLinkUpToDown) {
                                    Cellular::LinkState::kUp);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -3048,14 +3034,15 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
 
   // Will request reconnection with the DUN APN.
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
-      .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
-        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
-                  MM_BEARER_APN_TYPE_TETHERING);
-        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
-                  "apn-dun");
-        std::move(callback).Run(kTestBearerDBusPath, Error());
-      }));
+      .WillOnce(
+          Invoke([](const KeyValueStore& props, RpcIdentifierCallback callback,
+                    base::TimeDelta timeout) {
+            EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                      MM_BEARER_APN_TYPE_TETHERING);
+            EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                      "apn-dun");
+            std::move(callback).Run(kTestBearerDBusPath, Error());
+          }));
 
   SetCapability3gppModemSimpleProxy();
 
@@ -3201,18 +3188,20 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
 
   // Will request reconnection with the DUN APN
   EXPECT_CALL(*mm1_simple_proxy_, Connect(KeyValueStoreHasApn("apn-dun"), _, _))
-      .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
-        // Connect operation with DUN FAILS.
-        std::move(callback).Run(kTestBearerDBusPath,
-                                Error(Error::kOperationFailed));
-      }));
+      .WillOnce(
+          Invoke([](const KeyValueStore& props, RpcIdentifierCallback callback,
+                    base::TimeDelta timeout) {
+            // Connect operation with DUN FAILS.
+            std::move(callback).Run(kTestBearerDBusPath,
+                                    Error(Error::kOperationFailed));
+          }));
 
   // The recovery logic after the failure will reconnect with DEFAULT APN
   EXPECT_CALL(*mm1_simple_proxy_,
               Connect(KeyValueStoreHasApn("apn-default"), _, _))
       .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
+                          RpcIdentifierCallback callback,
+                          base::TimeDelta timeout) {
         // Connect operation with DUN FAILS.
         std::move(callback).Run(kTestBearerDBusPath, Error(Error::kSuccess));
       }));
@@ -3388,14 +3377,15 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
 
   // Will request a new connection with the DUN APN.
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
-      .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
-        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
-                  MM_BEARER_APN_TYPE_TETHERING);
-        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
-                  "apn-dun");
-        std::move(callback).Run(kTestBearerDBusPath2, Error());
-      }));
+      .WillOnce(
+          Invoke([](const KeyValueStore& props, RpcIdentifierCallback callback,
+                    base::TimeDelta timeout) {
+            EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                      MM_BEARER_APN_TYPE_TETHERING);
+            EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                      "apn-dun");
+            std::move(callback).Run(kTestBearerDBusPath2, Error());
+          }));
 
   SetCapability3gppModemSimpleProxy();
 
@@ -3527,7 +3517,8 @@ TEST_F(CellularTest,
   // aborted via the disconnect call, so we mimic that with an error.
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillOnce(Invoke([this](const KeyValueStore& props,
-                              RpcIdentifierCallback callback, int timeout) {
+                              RpcIdentifierCallback callback,
+                              base::TimeDelta timeout) {
         EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
                   MM_BEARER_APN_TYPE_TETHERING);
         EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
@@ -3660,15 +3651,16 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
 
   // Will request reconnection with the DEFAULT APN.
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
-      .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
-        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
-                  MM_BEARER_APN_TYPE_DEFAULT);
-        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
-                  "apn-default");
-        // When reconnecting back DEFAULT service should still be connected.
-        std::move(callback).Run(kTestBearerDBusPath, Error());
-      }));
+      .WillOnce(
+          Invoke([](const KeyValueStore& props, RpcIdentifierCallback callback,
+                    base::TimeDelta timeout) {
+            EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                      MM_BEARER_APN_TYPE_DEFAULT);
+            EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                      "apn-default");
+            // When reconnecting back DEFAULT service should still be connected.
+            std::move(callback).Run(kTestBearerDBusPath, Error());
+          }));
 
   SetCapability3gppModemSimpleProxy();
 
@@ -3812,16 +3804,17 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefaultFailedConnect) {
   // Will request reconnection with the DEFAULT APN.
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
-      .WillOnce(Invoke([](const KeyValueStore& props,
-                          RpcIdentifierCallback callback, int timeout) {
-        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
-                  MM_BEARER_APN_TYPE_DEFAULT);
-        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
-                  "apn-default");
-        // This operation WILL fail in this test.
-        std::move(callback).Run(RpcIdentifier(),
-                                Error(Error::kOperationNotAllowed));
-      }));
+      .WillOnce(
+          Invoke([](const KeyValueStore& props, RpcIdentifierCallback callback,
+                    base::TimeDelta timeout) {
+            EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                      MM_BEARER_APN_TYPE_DEFAULT);
+            EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                      "apn-default");
+            // This operation WILL fail in this test.
+            std::move(callback).Run(RpcIdentifier(),
+                                    Error(Error::kOperationNotAllowed));
+          }));
 
   SetCapability3gppModemSimpleProxy();
 
