@@ -6,12 +6,13 @@
 
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <net-base/mac_address.h>
 
 namespace patchpanel {
 
 namespace {
 
-constexpr MacAddress guest_if_mac({0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53});
+constexpr net_base::MacAddress guest_if_mac(0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53);
 
 class NDProxyForFuzzer : public NDProxy {
  public:

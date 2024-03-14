@@ -25,6 +25,7 @@
 
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -35,6 +36,7 @@
 #include <base/strings/string_split.h>
 #include <net-base/byte_utils.h>
 #include <net-base/socket.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -50,13 +52,12 @@ namespace {
 // there is a legitimate case that these packets are actually required.
 constexpr bool kDropUnresolvableUnicastToUpstream = false;
 
-const unsigned char kZeroMacAddress[] = {0, 0, 0, 0, 0, 0};
-const unsigned char kAllNodesMulticastMacAddress[] = {0x33, 0x33, 0,
-                                                      0,    0,    0x01};
-const unsigned char kAllRoutersMulticastMacAddress[] = {0x33, 0x33, 0,
-                                                        0,    0,    0x02};
-const unsigned char kSolicitedNodeMulticastMacAddressPrefix[] = {
-    0x33, 0x33, 0xff, 0, 0, 0};
+constexpr net_base::MacAddress kAllNodesMulticastMacAddress(
+    0x33, 0x33, 0, 0, 0, 0x01);
+constexpr net_base::MacAddress kAllRoutersMulticastMacAddress(
+    0x33, 0x33, 0, 0, 0, 0x02);
+constexpr net_base::MacAddress kSolicitedNodeMulticastMacAddressPrefix(
+    0x33, 0x33, 0xff, 0, 0, 0);
 constexpr net_base::IPv6Address kAllNodesMulticastAddress(
     0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01);
 constexpr net_base::IPv6Address kAllRoutersMulticastAddress(
@@ -206,7 +207,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
                                      size_t icmp6_len,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
-                                     const MacAddress& target_mac) {
+                                     net_base::MacAddress target_mac) {
   size_t opt_offset = nd_hdr_len;
   while (opt_offset + sizeof(nd_opt_hdr) <= icmp6_len) {
     nd_opt_hdr* opt = reinterpret_cast<nd_opt_hdr*>(icmp6 + opt_offset);
@@ -232,7 +233,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
 ssize_t NDProxy::TranslateNDPacket(
     const uint8_t* in_packet,
     size_t packet_len,
-    const MacAddress& local_mac_addr,
+    net_base::MacAddress local_mac_addr,
     const std::optional<net_base::IPv6Address>& new_src_ip,
     const std::optional<net_base::IPv6Address>& new_dst_ip,
     uint8_t* out_packet) {
@@ -377,9 +378,11 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
   const auto& target_ifs = map_entry->second;
   for (int target_if : target_ifs) {
-    MacAddress local_mac;
-    if (!GetLocalMac(target_if, &local_mac))
+    const std::optional<net_base::MacAddress> local_mac =
+        GetLocalMac(target_if);
+    if (!local_mac.has_value()) {
       continue;
+    }
 
     // b/246444885: Overwrite source IP address with host address and set
     // prefix offlink, to prevent internal traffic causing ICMP messaged being
@@ -409,7 +412,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     }
 
     const ssize_t result = TranslateNDPacket(
-        in_packet, len, local_mac, new_src_ip, new_dst_ip, out_packet);
+        in_packet, len, *local_mac, new_src_ip, new_dst_ip, out_packet);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Packet:
@@ -444,8 +447,11 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
 
     ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
     const net_base::IPv6Address dst_addr(new_ip6->ip6_dst);
-    ResolveDestinationMac(dst_addr, send_ll_addr.sll_addr);
-    if (memcmp(send_ll_addr.sll_addr, &kZeroMacAddress, ETHER_ADDR_LEN) == 0) {
+    const std::optional<net_base::MacAddress> dst_mac =
+        ResolveDestinationMac(dst_addr);
+    if (dst_mac.has_value()) {
+      memcpy(send_ll_addr.sll_addr, dst_mac->data(), ETHER_ADDR_LEN);
+    } else {
       VLOG(1) << "Cannot resolve " << Icmp6TypeName(icmp6->icmp6_type)
               << " packet dest IP " << dst_addr
               << " into MAC address. In: " << recv_ll_addr.sll_ifindex
@@ -453,7 +459,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       if (IsGuestInterface(target_if) || !kDropUnresolvableUnicastToUpstream) {
         // If we can't resolve the destination IP into MAC from kernel neighbor
         // table, fill destination MAC with all-nodes multicast MAC instead.
-        memcpy(send_ll_addr.sll_addr, &kAllNodesMulticastMacAddress,
+        memcpy(send_ll_addr.sll_addr, kAllNodesMulticastMacAddress.data(),
                ETHER_ADDR_LEN);
       } else {
         // Drop the packet.
@@ -576,33 +582,28 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
   }
 }
 
-void NDProxy::ResolveDestinationMac(const net_base::IPv6Address& dest_ipv6,
-                                    uint8_t* dest_mac) {
+std::optional<net_base::MacAddress> NDProxy::ResolveDestinationMac(
+    const net_base::IPv6Address& dest_ipv6) {
   if (dest_ipv6 == kAllNodesMulticastAddress) {
-    memcpy(dest_mac, &kAllNodesMulticastMacAddress, ETHER_ADDR_LEN);
-    return;
+    return kAllNodesMulticastMacAddress;
   }
   if (dest_ipv6 == kAllRoutersMulticastAddress) {
-    memcpy(dest_mac, &kAllRoutersMulticastMacAddress, ETHER_ADDR_LEN);
-    return;
+    return kAllRoutersMulticastMacAddress;
   }
+
   if (kSolicitedNodeMulticastCIDR.InSameSubnetWith(dest_ipv6)) {
     const in6_addr dest_in6_addr = dest_ipv6.ToIn6Addr();
-    memcpy(dest_mac, &kSolicitedNodeMulticastMacAddressPrefix, ETHER_ADDR_LEN);
+    net_base::MacAddress::DataType dest_mac_data;
+    memcpy(dest_mac_data.data(), kSolicitedNodeMulticastMacAddressPrefix.data(),
+           ETHER_ADDR_LEN);
     memcpy(
-        dest_mac + ETHER_ADDR_LEN - kSolicitedGroupSuffixLength,
+        dest_mac_data.data() + ETHER_ADDR_LEN - kSolicitedGroupSuffixLength,
         &dest_in6_addr.s6_addr[sizeof(in6_addr) - kSolicitedGroupSuffixLength],
         kSolicitedGroupSuffixLength);
-    return;
+    return net_base::MacAddress(dest_mac_data);
   }
 
-  MacAddress neighbor_mac;
-  if (GetNeighborMac(dest_ipv6, &neighbor_mac)) {
-    memcpy(dest_mac, neighbor_mac.data(), ETHER_ADDR_LEN);
-    return;
-  }
-
-  memcpy(dest_mac, &kZeroMacAddress, ETHER_ADDR_LEN);
+  return GetNeighborMac(dest_ipv6);
 }
 
 std::optional<net_base::IPv6Address> NDProxy::GetLinkLocalAddress(int ifindex) {
@@ -639,35 +640,35 @@ std::optional<net_base::IPv6Address> NDProxy::GetLinkLocalAddress(int ifindex) {
   return std::nullopt;
 }
 
-bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
+std::optional<net_base::MacAddress> NDProxy::GetLocalMac(int if_id) {
   ifreq ifr = {
       .ifr_ifindex = if_id,
   };
   if (ioctl(dummy_fd_.get(), SIOCGIFNAME, &ifr) < 0) {
     PLOG(ERROR) << "ioctl() failed to get interface name on interface "
                 << if_id;
-    return false;
+    return std::nullopt;
   }
   if (ioctl(dummy_fd_.get(), SIOCGIFHWADDR, &ifr) < 0) {
     PLOG(ERROR) << "ioctl() failed to get MAC address on interface " << if_id;
-    return false;
+    return std::nullopt;
   }
-  memcpy(mac_addr->data(), ifr.ifr_addr.sa_data, ETHER_ADDR_LEN);
-  return true;
+
+  return net_base::MacAddress::CreateFromBytes(
+      {ifr.ifr_addr.sa_data, net_base::MacAddress::kAddressLength});
 }
 
-bool NDProxy::GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
-                             MacAddress* mac_addr) {
+std::optional<net_base::MacAddress> NDProxy::GetNeighborMac(
+    const net_base::IPv6Address& ipv6_addr) {
   DCHECK(rtnl_client_);
 
   const auto neighbor_mac_table = rtnl_client_->GetIPv6NeighborMacTable();
   const auto it = neighbor_mac_table.find(ipv6_addr);
   if (it == neighbor_mac_table.end()) {
-    return false;
+    return std::nullopt;
   }
 
-  *mac_addr = it->second;
-  return true;
+  return net_base::MacAddress(it->second);
 }
 
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(

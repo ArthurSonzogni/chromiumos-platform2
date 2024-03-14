@@ -56,6 +56,9 @@ class BRILLO_EXPORT MacAddress {
   bool operator!=(const MacAddress& rhs) const;
   bool operator<(const MacAddress& rhs) const;
 
+  // Returns the pointer to the underlying byte.
+  const uint8_t* data() const { return data_.data(); }
+
   // Returns the address in byte.
   std::vector<uint8_t> ToBytes() const;
 

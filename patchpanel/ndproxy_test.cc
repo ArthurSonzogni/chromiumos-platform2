@@ -9,6 +9,7 @@
 #include <net/ethernet.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,6 +17,7 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/net_util.h"
 
@@ -23,8 +25,9 @@ using testing::_;
 
 namespace patchpanel {
 
-const MacAddress physical_if_mac({0xa0, 0xce, 0xc8, 0xc6, 0x91, 0x0a});
-const MacAddress guest_if_mac({0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53});
+constexpr net_base::MacAddress physical_if_mac(
+    0xa0, 0xce, 0xc8, 0xc6, 0x91, 0x0a);
+constexpr net_base::MacAddress guest_if_mac(0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53);
 
 const uint8_t ping_frame[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -299,24 +302,26 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
 class NDProxyUnderTest : public NDProxy {
  public:
   void RegisterNeighbor(const net_base::IPv6Address& ipv6_addr,
-                        const MacAddress& mac_addr) {
+                        net_base::MacAddress mac_addr) {
     neighbor_table_.emplace_back(ipv6_addr, mac_addr);
   }
 
  private:
-  std::vector<std::pair<net_base::IPv6Address, MacAddress>> neighbor_table_;
+  std::vector<std::pair<net_base::IPv6Address, net_base::MacAddress>>
+      neighbor_table_;
 
-  bool GetLocalMac(int if_id, MacAddress* mac_addr) override { return false; }
+  std::optional<net_base::MacAddress> GetLocalMac(int if_id) override {
+    return std::nullopt;
+  }
 
-  bool GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
-                      MacAddress* mac_addr) override {
+  std::optional<net_base::MacAddress> GetNeighborMac(
+      const net_base::IPv6Address& ipv6_addr) override {
     for (const auto& neighbor : neighbor_table_) {
       if (ipv6_addr == neighbor.first) {
-        memcpy(mac_addr, &neighbor.second, ETHER_ADDR_LEN);
-        return true;
+        return neighbor.second;
       }
     }
-    return false;
+    return std::nullopt;
   }
 
   std::optional<net_base::IPv6Address> GetLinkLocalAddress(int if_id) override {
@@ -338,7 +343,7 @@ TEST(NDProxyTest, TranslateFrame) {
     std::string name;
     const uint8_t* input_frame;
     size_t input_frame_len;
-    MacAddress local_mac;
+    net_base::MacAddress local_mac;
     std::optional<net_base::IPv6Address> src_ip;
     std::optional<net_base::IPv6Address> dst_ip;
     ssize_t expected_error;
@@ -469,41 +474,38 @@ TEST(NDProxyTest, TranslateFrame) {
 
 TEST(NDProxyTest, ResolveDestinationMac) {
   NDProxyUnderTest ndproxy;
-  ndproxy.RegisterNeighbor(*net_base::IPv6Address::CreateFromString(
-                               "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c"),
-                           {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c});
+  ndproxy.RegisterNeighbor(
+      *net_base::IPv6Address::CreateFromString(
+          "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c"),
+      net_base::MacAddress(0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c));
   ndproxy.RegisterNeighbor(
       *net_base::IPv6Address::CreateFromString("ff02::1:ff89:2083"),
-      {0x33, 0x33, 0xff, 0x89, 0x20, 0x83});
+      net_base::MacAddress(0x33, 0x33, 0xff, 0x89, 0x20, 0x83));
 
   struct {
     std::string name;
     std::string dest_ip;
-    MacAddress dest_mac;
+    std::optional<net_base::MacAddress> dest_mac;
   } test_cases[] = {
-      {"all_nodes", "ff02::1", {0x33, 0x33, 0, 0, 0, 0x01}},
-      {"all_routers", "ff02::2", {0x33, 0x33, 0, 0, 0, 0x02}},
-      {"solicited_node_1",
-       "ff02::1:ff6a:b4d2",
-       {0x33, 0x33, 0xff, 0x6a, 0xb4, 0xd2}},
-      {"solicited_node_2",
-       "ff02::1:ff89:2083",
-       {0x33, 0x33, 0xff, 0x89, 0x20, 0x83}},
-      {"known_neighbor",
-       "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c",
-       {0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c}},
-      {"unknown_neighbor", "fe80::4868:8aff:fedc:b071", {0, 0, 0, 0, 0, 0}},
+      {"all_nodes", "ff02::1", net_base::MacAddress(0x33, 0x33, 0, 0, 0, 0x01)},
+      {"all_routers", "ff02::2",
+       net_base::MacAddress(0x33, 0x33, 0, 0, 0, 0x02)},
+      {"solicited_node_1", "ff02::1:ff6a:b4d2",
+       net_base::MacAddress(0x33, 0x33, 0xff, 0x6a, 0xb4, 0xd2)},
+      {"solicited_node_2", "ff02::1:ff89:2083",
+       net_base::MacAddress(0x33, 0x33, 0xff, 0x89, 0x20, 0x83)},
+      {"known_neighbor", "2a01:db8:abc:f605:5c5e:a5ff:fe32:743c",
+       net_base::MacAddress(0x5e, 0x5e, 0xa5, 0x32, 0x74, 0x3c)},
+      {"unknown_neighbor", "fe80::4868:8aff:fedc:b071", std::nullopt},
   };
 
   for (const auto& test_case : test_cases) {
     LOG(INFO) << test_case.name;
-    MacAddress dest_mac;
     const auto dest_ip =
         *net_base::IPv6Address::CreateFromString(test_case.dest_ip);
-    ndproxy.ResolveDestinationMac(dest_ip, dest_mac.data());
-    const auto expected = MacAddressToString(test_case.dest_mac);
-    const auto received = MacAddressToString(dest_mac);
-    EXPECT_EQ(expected, received);
+    const std::optional<net_base::MacAddress> dest_mac =
+        ndproxy.ResolveDestinationMac(dest_ip);
+    EXPECT_EQ(dest_mac, test_case.dest_mac);
   }
 }
 

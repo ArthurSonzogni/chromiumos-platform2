@@ -15,16 +15,17 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 #include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/rtnl_client.h"
 
@@ -120,7 +121,7 @@ class NDProxy {
   static ssize_t TranslateNDPacket(
       const uint8_t* in_packet,
       size_t packet_len,
-      const MacAddress& local_mac_addr,
+      net_base::MacAddress local_mac_addr,
       const std::optional<net_base::IPv6Address>& new_src_ip,
       const std::optional<net_base::IPv6Address>& new_dst_ip,
       uint8_t* out_packet);
@@ -134,14 +135,13 @@ class NDProxy {
                                      size_t icmp6_len,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
-                                     const MacAddress& target_mac);
+                                     net_base::MacAddress target_mac);
 
-  // For destination IP address |dest_ipv6|, resolve it into destination MAC
-  // and fill in |dest_mac|. A neighbor table lookup may take place but no NS
-  // message will be sent. If the IP cannot be resolved, all-nodes multicast
-  // address 33:33:00:00:00:01 will be used as a fallback.
-  void ResolveDestinationMac(const net_base::IPv6Address& dest_ipv6,
-                             uint8_t* dest_mac);
+  // Returns the resolved MAC for destination IP address |dest_ipv6|. A neighbor
+  // table lookup may take place but no NS message will be sent.
+  // Returns std::nullopt the IP cannot be resolved.
+  std::optional<net_base::MacAddress> ResolveDestinationMac(
+      const net_base::IPv6Address& dest_ipv6);
 
   // Trigger the router discovery and neighbor discovery callbacks upon
   // receiving a corresponding packet.
@@ -156,13 +156,13 @@ class NDProxy {
   using interface_mapping = std::map<int, std::set<int>>;
 
   // Get MAC address on a local interface through ioctl().
-  // Returns false upon failure.
-  virtual bool GetLocalMac(int if_id, MacAddress* mac_addr);
+  // Returns std::nullopt upon failure.
+  virtual std::optional<net_base::MacAddress> GetLocalMac(int if_id);
 
   // Query kernel NDP table and get the MAC address of a certain IPv6 neighbor.
-  // Returns false when neighbor entry is not found.
-  virtual bool GetNeighborMac(const net_base::IPv6Address& ipv6_addr,
-                              MacAddress* mac_addr);
+  // Returns std::nullopt when neighbor entry is not found.
+  virtual std::optional<net_base::MacAddress> GetNeighborMac(
+      const net_base::IPv6Address& ipv6_addr);
 
   // Get the link local IPv6 address on a local interface.
   // Returns std::nullopt upon failure.
