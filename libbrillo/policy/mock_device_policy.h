@@ -58,11 +58,6 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, IsEnterpriseEnrolled, (), (const, override));
 
   MOCK_METHOD(std::optional<int>, GetPolicyRefreshRate, (), (const, override));
-  MOCK_METHOD(bool, GetGuestModeEnabled, (bool*), (const, override));
-  MOCK_METHOD(bool, GetCameraEnabled, (bool*), (const, override));
-  MOCK_METHOD(bool, GetShowUserNames, (bool*), (const, override));
-  MOCK_METHOD(bool, GetDataRoamingEnabled, (bool*), (const, override));
-  MOCK_METHOD(bool, GetAllowNewUsers, (bool*), (const, override));
   MOCK_METHOD(bool, GetMetricsEnabled, (bool*), (const, override));
   MOCK_METHOD(std::optional<bool>,
               GetUnenrolledHwDataUsageEnabled,
@@ -72,14 +67,6 @@ class MockDevicePolicy : public DevicePolicy {
               GetEnrolledHwDataUsageEnabled,
               (),
               (const, override));
-  MOCK_METHOD(bool, GetReportSystemInfo, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportCpuInfo, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportGraphicsStatus, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportMemoryInfo, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportNetworkConfig, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportVersionInfo, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportActivityTimes, (bool*), (const, override));
-  MOCK_METHOD(bool, GetReportBootMode, (bool*), (const, override));
   MOCK_METHOD(bool,
               GetEphemeralSettings,
               (EphemeralSettings*),
@@ -100,10 +87,6 @@ class MockDevicePolicy : public DevicePolicy {
               GetAllowedConnectionTypesForUpdate,
               (std::set<std::string>*),
               (const, override));
-  MOCK_METHOD(bool,
-              GetOpenNetworkConfiguration,
-              (std::string*),
-              (const, override));
   MOCK_METHOD(bool, GetOwner, (std::string*), (const, override));
   MOCK_METHOD(bool, GetHttpDownloadsEnabled, (bool*), (const, override));
   MOCK_METHOD(bool, GetAuP2PEnabled, (bool*), (const, override));
@@ -114,10 +97,6 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool,
               GetUsbDetachableWhitelist,
               (std::vector<DevicePolicy::UsbDeviceId>*),
-              (const, override));
-  MOCK_METHOD(bool,
-              GetAutoLaunchedKioskAppId,
-              (std::string*),
               (const, override));
   MOCK_METHOD(bool, IsEnterpriseManaged, (), (const, override));
   MOCK_METHOD(bool,
@@ -159,10 +138,6 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool,
               GetDeviceKeylockerForStorageEncryptionEnabled,
               (bool*),
-              (const, override));
-  MOCK_METHOD(std::optional<bool>,
-              GetReportDeviceSecurityStatus,
-              (),
               (const, override));
   MOCK_METHOD(std::optional<bool>,
               GetDeviceReportXDREvents,

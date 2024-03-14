@@ -99,26 +99,6 @@ class DevicePolicy {
   // Returns the value of the DevicePolicyRefreshRate policy on success.
   virtual std::optional<int> GetPolicyRefreshRate() const = 0;
 
-  // Writes the value of the GuestModeEnabled policy in |guest_mode_enabled|.
-  // Returns true on success.
-  virtual bool GetGuestModeEnabled(bool* guest_mode_enabled) const = 0;
-
-  // Writes the value of the CameraEnabled policy in |camera_enabled|. Returns
-  // true on success.
-  virtual bool GetCameraEnabled(bool* camera_enabled) const = 0;
-
-  // Writes the value of the ShowUserNamesOnSignIn policy in |show_user_names|.
-  // Returns true on success.
-  virtual bool GetShowUserNames(bool* show_user_names) const = 0;
-
-  // Writes the value of the DataRoamingEnabled policy in |data_roaming_enabled|
-  // Returns true on success.
-  virtual bool GetDataRoamingEnabled(bool* data_roaming_enabled) const = 0;
-
-  // Writes the value of the AllowNewUsers policy in |allow_new_users|. Returns
-  // true on success.
-  virtual bool GetAllowNewUsers(bool* allow_new_users) const = 0;
-
   // Writes the value of MetricEnabled policy in |metrics_enabled|. Returns true
   // on success.
   virtual bool GetMetricsEnabled(bool* metrics_enabled) const = 0;
@@ -129,38 +109,6 @@ class DevicePolicy {
   // Returns value of DeviceFlexHwDataForProductImprovementEnabled policy
   // (defaulting to true), or std::nullopt if not enrolled.
   virtual std::optional<bool> GetEnrolledHwDataUsageEnabled() const = 0;
-
-  // Writes the value of ReportSystemInfo policy in |report_system_info|.
-  // Returns true on success.
-  virtual bool GetReportSystemInfo(bool* report_system_info) const = 0;
-
-  // Writes the value of ReportCpuInfo policy in |report_cpu_info|.
-  // Returns true on success.
-  virtual bool GetReportCpuInfo(bool* report_cpu_info) const = 0;
-
-  // Writes the value of ReportGraphicsStatus policy in
-  // |report_graphics_status|. Returns true on success.
-  virtual bool GetReportGraphicsStatus(bool* report_graphics_status) const = 0;
-
-  // Writes the value of ReportMemoryInfo policy in |report_memory_info|.
-  // Returns true on success.
-  virtual bool GetReportMemoryInfo(bool* report_memory_info) const = 0;
-
-  // Writes the value of ReportNetworkConfiguration policy in
-  // |report_network_config|. Returns true on success.
-  virtual bool GetReportNetworkConfig(bool* report_network_config) const = 0;
-
-  // Writes the value of ReportVersionInfo policy in |report_version_info|.
-  // Returns true on success.
-  virtual bool GetReportVersionInfo(bool* report_version_info) const = 0;
-
-  // Writes the value of ReportActivityTimes policy in |report_activity_times|.
-  // Returns true on success.
-  virtual bool GetReportActivityTimes(bool* report_activity_times) const = 0;
-
-  // Writes the value of ReportBootMode policy in |report_boot_mode|. Returns
-  // true on success.
-  virtual bool GetReportBootMode(bool* report_boot_mode) const = 0;
 
   // Writes the value of the EphemeralUsersEnabled policy and the values from
   // DeviceLocalAccountInfoProto EphemeralMode to |ephemeral_settings|.
@@ -218,11 +166,6 @@ class DevicePolicy {
   virtual bool GetAllowedConnectionTypesForUpdate(
       std::set<std::string>* connection_types) const = 0;
 
-  // Writes the value of the OpenNetworkConfiguration policy in
-  // |open_network_configuration|. Returns true on success.
-  virtual bool GetOpenNetworkConfiguration(
-      std::string* open_network_configuration) const = 0;
-
   // Writes the name of the device owner in |owner|. For enterprise enrolled
   // devices, this will be an empty string.
   // Returns true on success.
@@ -245,10 +188,6 @@ class DevicePolicy {
   // Returns true on success.
   virtual bool GetUsbDetachableWhitelist(
       std::vector<UsbDeviceId>* usb_whitelist) const = 0;
-
-  // Writes the value of the kiosk app id into |app_id_out|.
-  // Only succeeds if the device is in auto-launched kiosk mode.
-  virtual bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const = 0;
 
   // Returns true if the policy data indicates that the device is enterprise
   // managed. Note that this potentially could be faked by an exploit, therefore
@@ -335,10 +274,6 @@ class DevicePolicy {
   // the policy was not set. |allowed| is modified only when the function
   // returns true.
   virtual bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const = 0;
-
-  // Returns the value of the ReportDeviceSecurityStatus policy. On
-  // error or if the policy is not set, returns an empty value.
-  virtual std::optional<bool> GetReportDeviceSecurityStatus() const = 0;
 
   // Returns the value of the DeviceReportXDREvents policy. On
   // error or if the policy is not set, return an empty value.

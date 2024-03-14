@@ -512,27 +512,6 @@ TEST_F(DevicePolicyImplTest, GetRunAutomaticCleanupOnLogin_Set) {
               testing::Eq(std::optional(true)));
 }
 
-TEST_F(DevicePolicyImplTest, GetReportDeviceSecurityStatus_NotSet) {
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
-                   device_policy_proto);
-
-  ASSERT_THAT(device_policy_.GetReportDeviceSecurityStatus(),
-              testing::Eq(std::nullopt));
-}
-
-TEST_F(DevicePolicyImplTest, GetReportDeviceSecurityStatus_Set) {
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::DeviceReportingProto* device_reporting =
-      device_policy_proto.mutable_device_reporting();
-  device_reporting->set_report_security_status(true);
-  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
-                   device_policy_proto);
-
-  ASSERT_THAT(device_policy_.GetReportDeviceSecurityStatus(),
-              testing::Eq(std::optional(true)));
-}
-
 TEST_F(DevicePolicyImplTest, GetDeviceReportXDREvents_NotSet) {
   em::ChromeDeviceSettingsProto device_policy_proto;
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,

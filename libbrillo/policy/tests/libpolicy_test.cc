@@ -309,31 +309,7 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   EXPECT_EQ(100, refresh_rate);
 
   bool bool_value = true;
-  ASSERT_TRUE(policy.GetGuestModeEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetCameraEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetShowUserNames(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetDataRoamingEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetAllowNewUsers(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
   ASSERT_TRUE(policy.GetMetricsEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(bool_value);
 
   std::optional<bool> optional_bool = policy.GetUnenrolledHwDataUsageEnabled();
@@ -343,34 +319,6 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   optional_bool = policy.GetEnrolledHwDataUsageEnabled();
   ASSERT_TRUE(optional_bool.has_value());
   EXPECT_FALSE(*optional_bool);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportSystemInfo(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportCpuInfo(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportGraphicsStatus(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportMemoryInfo(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportNetworkConfig(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportActivityTimes(&bool_value));
-  EXPECT_FALSE(bool_value);
-
-  bool_value = true;
-  ASSERT_TRUE(policy.GetReportBootMode(&bool_value));
-  EXPECT_FALSE(bool_value);
 
   DevicePolicy::EphemeralSettings ephemeral_settings;
   ASSERT_TRUE(policy.GetEphemeralSettings(&ephemeral_settings));
@@ -420,9 +368,6 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   EXPECT_TRUE(types.end() != types.find("wifi"));
   EXPECT_EQ(2, types.size());
 
-  ASSERT_TRUE(policy.GetOpenNetworkConfiguration(&string_value));
-  EXPECT_EQ("{}", string_value);
-
   ASSERT_TRUE(policy.GetOwner(&string_value));
   EXPECT_EQ("", string_value);
 
@@ -450,9 +395,6 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   EXPECT_EQ(0x2105, list_device[0].product_id);
   EXPECT_EQ(0x0403, list_device[1].vendor_id);
   EXPECT_EQ(0x6001, list_device[1].product_id);
-
-  ASSERT_TRUE(policy.GetAutoLaunchedKioskAppId(&string_value));
-  EXPECT_EQ("my_kiosk_app", string_value);
 
   int_value = -1;
   ASSERT_TRUE(policy.GetSecondFactorAuthenticationMode(&int_value));
@@ -554,26 +496,13 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
   base::Version device_minimum_version;
   DevicePolicy::EphemeralSettings ephemeral_settings;
 
-  EXPECT_FALSE(policy.GetPolicyRefreshRate().has_value());
-  EXPECT_FALSE(policy.GetGuestModeEnabled(&bool_value));
-  EXPECT_FALSE(policy.GetCameraEnabled(&bool_value));
-  EXPECT_FALSE(policy.GetShowUserNames(&bool_value));
-  EXPECT_FALSE(policy.GetDataRoamingEnabled(&bool_value));
-  EXPECT_FALSE(policy.GetAllowNewUsers(&bool_value));
+  EXPECT_EQ(policy.GetPolicyRefreshRate(), std::nullopt);
   EXPECT_FALSE(policy.GetMetricsEnabled(&bool_value));
-  EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(policy.GetUnenrolledHwDataUsageEnabled().has_value());
   // DeviceFlexHwDataForProductImprovementEnabled defaults to true,
   // so failure to read is success.
   EXPECT_TRUE(policy.GetEnrolledHwDataUsageEnabled().has_value());
   EXPECT_TRUE(*policy.GetEnrolledHwDataUsageEnabled());
-  EXPECT_FALSE(policy.GetReportSystemInfo(&bool_value));
-  EXPECT_FALSE(policy.GetReportCpuInfo(&bool_value));
-  EXPECT_FALSE(policy.GetReportGraphicsStatus(&bool_value));
-  EXPECT_FALSE(policy.GetReportMemoryInfo(&bool_value));
-  EXPECT_FALSE(policy.GetReportNetworkConfig(&bool_value));
-  EXPECT_FALSE(policy.GetReportActivityTimes(&bool_value));
-  EXPECT_FALSE(policy.GetReportBootMode(&bool_value));
   EXPECT_FALSE(policy.GetEphemeralSettings(&ephemeral_settings));
   EXPECT_FALSE(policy.GetReleaseChannel(&string_value));
   EXPECT_FALSE(policy.GetDeviceExtendedAutoUpdateEnabled().has_value());
@@ -585,7 +514,6 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
   ASSERT_TRUE(policy.GetRollbackAllowedMilestones(&int_value));
   EXPECT_EQ(4, int_value);
   EXPECT_FALSE(policy.GetScatterFactorInSeconds(&int64_value));
-  EXPECT_FALSE(policy.GetOpenNetworkConfiguration(&string_value));
   EXPECT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAuP2PEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));

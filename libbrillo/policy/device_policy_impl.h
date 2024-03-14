@@ -62,22 +62,9 @@ class DevicePolicyImpl : public DevicePolicy {
   bool LoadPolicy(bool delete_invalid_files) override;
   bool IsEnterpriseEnrolled() const override;
   std::optional<int> GetPolicyRefreshRate() const override;
-  bool GetGuestModeEnabled(bool* guest_mode_enabled) const override;
-  bool GetCameraEnabled(bool* camera_enabled) const override;
-  bool GetShowUserNames(bool* show_user_names) const override;
-  bool GetDataRoamingEnabled(bool* data_roaming_enabled) const override;
-  bool GetAllowNewUsers(bool* allow_new_users) const override;
   bool GetMetricsEnabled(bool* metrics_enabled) const override;
   std::optional<bool> GetUnenrolledHwDataUsageEnabled() const override;
   std::optional<bool> GetEnrolledHwDataUsageEnabled() const override;
-  bool GetReportSystemInfo(bool* report_system_info) const override;
-  bool GetReportCpuInfo(bool* report_cpu_info) const override;
-  bool GetReportGraphicsStatus(bool* report_graphics_status) const override;
-  bool GetReportMemoryInfo(bool* report_memory_info) const override;
-  bool GetReportNetworkConfig(bool* report_network_config) const override;
-  bool GetReportVersionInfo(bool* report_version_info) const override;
-  bool GetReportActivityTimes(bool* report_activity_times) const override;
-  bool GetReportBootMode(bool* report_boot_mode) const override;
   bool GetEphemeralSettings(
       EphemeralSettings* ephemeral_settings) const override;
   std::optional<bool> GetDeviceExtendedAutoUpdateEnabled() const override;
@@ -96,8 +83,6 @@ class DevicePolicyImpl : public DevicePolicy {
       int64_t* scatter_factor_in_seconds) const override;
   bool GetAllowedConnectionTypesForUpdate(
       std::set<std::string>* connection_types) const override;
-  bool GetOpenNetworkConfiguration(
-      std::string* open_network_configuration) const override;
   bool GetOwner(std::string* owner) const override;
   bool GetHttpDownloadsEnabled(bool* http_downloads_enabled) const override;
   bool GetAuP2PEnabled(bool* au_p2p_enabled) const override;
@@ -105,7 +90,6 @@ class DevicePolicyImpl : public DevicePolicy {
       bool* allow_kiosk_app_control_chrome_version) const override;
   bool GetUsbDetachableWhitelist(
       std::vector<UsbDeviceId>* usb_whitelist) const override;
-  bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const override;
   bool IsEnterpriseManaged() const override;
   bool GetSecondFactorAuthenticationMode(int* mode_out) const override;
   std::optional<bool> GetRunAutomaticCleanupOnLogin() const override;
@@ -127,7 +111,6 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const override;
   bool GetDeviceKeylockerForStorageEncryptionEnabled(
       bool* keylocker_enabled) const override;
-  std::optional<bool> GetReportDeviceSecurityStatus() const override;
   std::optional<bool> GetDeviceReportXDREvents() const override;
 
   // Methods that can be used only for testing.

@@ -273,43 +273,6 @@ std::optional<int> DevicePolicyImpl::GetPolicyRefreshRate() const {
                               .device_policy_refresh_rate());
 }
 
-bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
-  if (!device_policy_->has_guest_mode_enabled())
-    return false;
-  *guest_mode_enabled =
-      device_policy_->guest_mode_enabled().guest_mode_enabled();
-  return true;
-}
-
-bool DevicePolicyImpl::GetCameraEnabled(bool* camera_enabled) const {
-  if (!device_policy_->has_camera_enabled())
-    return false;
-  *camera_enabled = device_policy_->camera_enabled().camera_enabled();
-  return true;
-}
-
-bool DevicePolicyImpl::GetShowUserNames(bool* show_user_names) const {
-  if (!device_policy_->has_show_user_names())
-    return false;
-  *show_user_names = device_policy_->show_user_names().show_user_names();
-  return true;
-}
-
-bool DevicePolicyImpl::GetDataRoamingEnabled(bool* data_roaming_enabled) const {
-  if (!device_policy_->has_data_roaming_enabled())
-    return false;
-  *data_roaming_enabled =
-      device_policy_->data_roaming_enabled().data_roaming_enabled();
-  return true;
-}
-
-bool DevicePolicyImpl::GetAllowNewUsers(bool* allow_new_users) const {
-  if (!device_policy_->has_allow_new_users())
-    return false;
-  *allow_new_users = device_policy_->allow_new_users().allow_new_users();
-  return true;
-}
-
 bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   if (!device_policy_->has_metrics_enabled())
     return false;
@@ -349,105 +312,6 @@ std::optional<bool> DevicePolicyImpl::GetEnrolledHwDataUsageEnabled() const {
     return true;
 
   return proto.enabled();
-}
-
-bool DevicePolicyImpl::GetReportSystemInfo(bool* report_system_info) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_system_info())
-    return false;
-
-  *report_system_info = proto.report_system_info();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportCpuInfo(bool* report_cpu_info) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_cpu_info())
-    return false;
-
-  *report_cpu_info = proto.report_cpu_info();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportGraphicsStatus(
-    bool* report_graphics_status) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_graphics_status())
-    return false;
-
-  *report_graphics_status = proto.report_graphics_status();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportMemoryInfo(bool* report_memory_info) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_memory_info())
-    return false;
-
-  *report_memory_info = proto.report_memory_info();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportNetworkConfig(
-    bool* report_network_config) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_network_configuration())
-    return false;
-
-  *report_network_config = proto.report_network_configuration();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_version_info())
-    return false;
-
-  *report_version_info = proto.report_version_info();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportActivityTimes(
-    bool* report_activity_times) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_activity_times())
-    return false;
-
-  *report_activity_times = proto.report_activity_times();
-  return true;
-}
-
-bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
-  if (!device_policy_->has_device_reporting())
-    return false;
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_boot_mode())
-    return false;
-
-  *report_boot_mode = proto.report_boot_mode();
-  return true;
 }
 
 bool DevicePolicyImpl::GetEphemeralSettings(
@@ -661,20 +525,6 @@ bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
   return true;
 }
 
-bool DevicePolicyImpl::GetOpenNetworkConfiguration(
-    std::string* open_network_configuration) const {
-  if (!device_policy_->has_open_network_configuration())
-    return false;
-
-  const em::DeviceOpenNetworkConfigurationProto& proto =
-      device_policy_->open_network_configuration();
-  if (!proto.has_open_network_configuration())
-    return false;
-
-  *open_network_configuration = proto.open_network_configuration();
-  return true;
-}
-
 bool DevicePolicyImpl::GetOwner(std::string* owner) const {
   if (IsEnterpriseManaged()) {
     *owner = "";
@@ -801,40 +651,6 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   }
 
   return true;
-}
-
-bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
-    std::string* app_id_out) const {
-  if (!device_policy_->has_device_local_accounts())
-    return false;
-
-  const em::DeviceLocalAccountsProto& local_accounts =
-      device_policy_->device_local_accounts();
-
-  // For auto-launched kiosk apps, the delay needs to be 0.
-  if (local_accounts.has_auto_login_delay() &&
-      local_accounts.auto_login_delay() != 0)
-    return false;
-
-  for (const em::DeviceLocalAccountInfoProto& account :
-       local_accounts.account()) {
-    // If this isn't an auto-login account, move to the next one.
-    if (account.account_id() != local_accounts.auto_login_id())
-      continue;
-
-    // If the auto-launched account is not a kiosk app, bail out, we aren't
-    // running in auto-launched kiosk mode.
-    if (account.type() !=
-        em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_APP) {
-      return false;
-    }
-
-    *app_id_out = account.kiosk_app().app_id();
-    return true;
-  }
-
-  // No auto-launched account found.
-  return false;
 }
 
 bool DevicePolicyImpl::IsEnterpriseManaged() const {
@@ -1079,17 +895,6 @@ bool DevicePolicyImpl::GetDeviceKeylockerForStorageEncryptionEnabled(
           .has_enabled() &&
       device_policy_->keylocker_for_storage_encryption_enabled().enabled();
   return true;
-}
-
-std::optional<bool> DevicePolicyImpl::GetReportDeviceSecurityStatus() const {
-  if (!device_policy_->has_device_reporting())
-    return {};
-
-  const em::DeviceReportingProto& proto = device_policy_->device_reporting();
-  if (!proto.has_report_security_status())
-    return {};
-
-  return proto.report_security_status();
 }
 
 std::optional<bool> DevicePolicyImpl::GetDeviceReportXDREvents() const {
