@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
@@ -52,7 +53,8 @@ class BRILLO_EXPORT AddressManager {
   // If |index| is provided, a MAC address will be returned that is stable
   // across all invocations and instantions.
   // Virtual for testing only.
-  virtual MacAddress GenerateMacAddress(uint32_t index = kAnySubnetIndex);
+  virtual net_base::MacAddress GenerateMacAddress(
+      uint32_t index = kAnySubnetIndex);
 
   // Allocates a subnet from the specified guest network pool if available.
   // Returns nullptr if the guest was configured or no more subnets are

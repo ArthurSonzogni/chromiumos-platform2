@@ -965,8 +965,8 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   nsinfo.peer_ipv4_subnet = std::move(ipv4_subnet);
   nsinfo.host_ipv4_cidr = *host_ipv4_cidr;
   nsinfo.peer_ipv4_cidr = *peer_ipv4_cidr;
-  nsinfo.host_mac_addr = net_base::MacAddress(addr_mgr_.GenerateMacAddress());
-  nsinfo.peer_mac_addr = net_base::MacAddress(addr_mgr_.GenerateMacAddress());
+  nsinfo.host_mac_addr = addr_mgr_.GenerateMacAddress();
+  nsinfo.peer_mac_addr = addr_mgr_.GenerateMacAddress();
   if (nsinfo.host_mac_addr == nsinfo.peer_mac_addr) {
     LOG(ERROR) << "Failed to generate unique MAC address for connected "
                   "namespace host and peer interface";

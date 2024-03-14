@@ -469,8 +469,7 @@ void ArcService::AllocateArc0Config() {
   }
   uint32_t subnet_index = (IsVM(arc_type_)) ? 1 : kAnySubnetIndex;
   arc0_config_ = std::make_unique<ArcConfig>(
-      net_base::MacAddress(addr_mgr_->GenerateMacAddress(subnet_index)),
-      std::move(ipv4_subnet));
+      addr_mgr_->GenerateMacAddress(subnet_index), std::move(ipv4_subnet));
   all_configs_.push_back(arc0_config_.get());
 }
 
@@ -485,19 +484,19 @@ void ArcService::AllocateAddressConfigs() {
       LOG(ERROR) << __func__ << ": Subnet already in use or unavailable";
       continue;
     }
-    MacAddress mac_addr = (arc_type_ == ArcType::kVMStatic)
-                              ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
-                              : addr_mgr_->GenerateMacAddress();
-    const auto& config =
-        available_configs_.emplace_back(std::make_unique<ArcConfig>(
-            net_base::MacAddress(mac_addr), std::move(ipv4_subnet)));
+    const net_base::MacAddress mac_addr =
+        (arc_type_ == ArcType::kVMStatic)
+            ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
+            : addr_mgr_->GenerateMacAddress();
+    const auto& config = available_configs_.emplace_back(
+        std::make_unique<ArcConfig>(mac_addr, std::move(ipv4_subnet)));
     all_configs_.push_back(config.get());
   }
 }
 
 void ArcService::RefreshMacAddressesInConfigs() {
   for (auto* config : all_configs_) {
-    config->set_mac_addr(net_base::MacAddress(addr_mgr_->GenerateMacAddress()));
+    config->set_mac_addr(addr_mgr_->GenerateMacAddress());
   }
 }
 

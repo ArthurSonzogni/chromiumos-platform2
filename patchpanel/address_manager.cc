@@ -4,7 +4,6 @@
 
 #include "patchpanel/address_manager.h"
 
-#include <array>
 #include <climits>
 #include <optional>
 #include <vector>
@@ -13,6 +12,7 @@
 #include <base/logging.h>
 #include <crypto/random.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 
 #include "patchpanel/net_util.h"
 
@@ -71,9 +71,10 @@ AddressManager::AddressManager() {
           *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32));
 }
 
-MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
-  return index == kAnySubnetIndex ? mac_addrs_.Generate()
-                                  : mac_addrs_.GetStable(index);
+net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
+  return net_base::MacAddress(index == kAnySubnetIndex
+                                  ? mac_addrs_.Generate()
+                                  : mac_addrs_.GetStable(index));
 }
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
