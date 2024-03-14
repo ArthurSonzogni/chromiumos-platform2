@@ -22,6 +22,7 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/downstream_network_service.h"
+#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
@@ -783,8 +784,8 @@ std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
           MacAddressToString(mac_addr));
     }
 
-    client_infos.push_back(
-        {mac_addr, ip.first, ip.second, hostname, /*vendor_class=*/""});
+    client_infos.push_back({net_base::MacAddress(mac_addr), ip.first, ip.second,
+                            hostname, /*vendor_class=*/""});
   }
   return client_infos;
 }

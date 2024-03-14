@@ -16,6 +16,7 @@
 #include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -152,7 +153,7 @@ TEST_F(ProtoUtilsTest, FillBorealisAllocationProto) {
 
 TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
   DownstreamClientInfo info;
-  info.mac_addr = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+  info.mac_addr = net_base::MacAddress(0x11, 0x22, 0x33, 0x44, 0x55, 0x66);
   info.ipv4_addr = net_base::IPv4Address(127, 0, 0, 1);
   info.ipv6_addresses.push_back(
       *net_base::IPv6Address::CreateFromString("fe80::1"));

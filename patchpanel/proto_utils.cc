@@ -4,8 +4,7 @@
 
 #include "patchpanel/proto_utils.h"
 
-#include <memory>
-
+#include <net-base/byte_utils.h>
 #include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
@@ -103,8 +102,8 @@ void FillDownstreamNetworkProto(
 
 void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
                                 NetworkClientInfo* output) {
-  output->set_mac_addr(network_client_info.mac_addr.data(),
-                       network_client_info.mac_addr.size());
+  output->set_mac_addr(net_base::byte_utils::ByteStringFromBytes(
+      network_client_info.mac_addr.ToBytes()));
   output->set_ipv4_addr(network_client_info.ipv4_addr.ToByteString());
   for (const auto& ipv6_addr : network_client_info.ipv6_addresses) {
     output->add_ipv6_addresses(ipv6_addr.ToByteString());
