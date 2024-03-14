@@ -31,7 +31,6 @@ ModemSignalProxy::ModemSignalProxy(const scoped_refptr<dbus::Bus>& bus,
 ModemSignalProxy::~ModemSignalProxy() = default;
 
 void ModemSignalProxy::Setup(const int rate,
-                             Error* /*error*/,
                              ResultCallback callback,
                              base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << rate;
@@ -60,7 +59,6 @@ void ModemSignalProxy::OnSetupFailure(ResultCallback callback,
 }
 
 void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
-                                       Error* /*error*/,
                                        ResultCallback callback,
                                        base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;

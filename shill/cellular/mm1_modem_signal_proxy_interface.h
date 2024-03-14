@@ -12,8 +12,6 @@
 #include "shill/callbacks.h"
 
 namespace shill {
-class Error;
-
 namespace mm1 {
 
 // These are the methods that a
@@ -26,12 +24,10 @@ class ModemSignalProxyInterface {
   virtual ~ModemSignalProxyInterface() = default;
 
   virtual void Setup(const int rate,
-                     Error* error,
                      ResultCallback callback,
                      base::TimeDelta timeout) = 0;
 
   virtual void SetupThresholds(const KeyValueStore& settings,
-                               Error* error,
                                ResultCallback callback,
                                base::TimeDelta timeout) = 0;
 };

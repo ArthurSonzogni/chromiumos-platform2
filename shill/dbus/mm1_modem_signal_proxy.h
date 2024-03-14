@@ -33,12 +33,10 @@ class ModemSignalProxy : public ModemSignalProxyInterface {
 
   // Inherited methods from ModemSignalProxyInterface.
   void Setup(const int rate,
-             Error* /*error*/,
              ResultCallback callback,
              base::TimeDelta timeout) override;
 
   void SetupThresholds(const KeyValueStore& settings,
-                       Error* /*error*/,
                        ResultCallback callback,
                        base::TimeDelta timeout) override;
 

@@ -7,15 +7,19 @@
 #include "shill/testing.h"
 
 using testing::_;
+using testing::Invoke;
+using testing::WithArgs;
 
 namespace shill {
 namespace mm1 {
 
 MockModemSignalProxy::MockModemSignalProxy() {
-  ON_CALL(*this, Setup(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, SetupThresholds(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, Setup(_, _, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+  ON_CALL(*this, SetupThresholds(_, _, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
 }
 
 MockModemSignalProxy::~MockModemSignalProxy() = default;
