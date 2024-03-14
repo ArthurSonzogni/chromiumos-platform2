@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
@@ -29,7 +30,7 @@ class MockModemModem3gppProfileManagerProxy
   // Inherited methods from ModemModem3gppProfileManagerProxyInterface.
   MOCK_METHOD(void,
               List,
-              (ResultVariantDictionariesOnceCallback, int),
+              (ResultVariantDictionariesOnceCallback, base::TimeDelta),
               (override));
   MOCK_METHOD(void,
               SetUpdatedCallback,

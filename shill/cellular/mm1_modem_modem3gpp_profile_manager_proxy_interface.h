@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/time/time.h>
+
 #include "shill/callbacks.h"
 
 namespace shill {
@@ -27,7 +29,7 @@ class ModemModem3gppProfileManagerProxyInterface {
   virtual ~ModemModem3gppProfileManagerProxyInterface() = default;
 
   virtual void List(ResultVariantDictionariesOnceCallback callback,
-                    int timeout) = 0;
+                    base::TimeDelta timeout) = 0;
 
   virtual void SetUpdatedCallback(
       const Modem3gppProfileManagerUpdatedSignalCallback& callback) = 0;

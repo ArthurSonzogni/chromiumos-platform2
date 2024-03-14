@@ -277,7 +277,8 @@ class CellularTest : public testing::Test {
     if (!callback.is_null())
       std::move(callback).Run(Error(Error::kOperationFailed));
   }
-  void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
+  void InvokeList(ResultVariantDictionariesOnceCallback callback,
+                  base::TimeDelta timeout) {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
 

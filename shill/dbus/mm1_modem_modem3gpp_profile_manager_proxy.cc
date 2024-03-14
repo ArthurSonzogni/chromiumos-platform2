@@ -40,7 +40,7 @@ ModemModem3gppProfileManagerProxy::~ModemModem3gppProfileManagerProxy() =
     default;
 
 void ModemModem3gppProfileManagerProxy::List(
-    ResultVariantDictionariesOnceCallback callback, int timeout) {
+    ResultVariantDictionariesOnceCallback callback, base::TimeDelta timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->ListAsync(
@@ -50,7 +50,7 @@ void ModemModem3gppProfileManagerProxy::List(
       base::BindOnce(&ModemModem3gppProfileManagerProxy::OnListFailure,
                      weak_factory_.GetWeakPtr(),
                      std::move(split_callback.second)),
-      timeout);
+      timeout.InMilliseconds());
 }
 
 void ModemModem3gppProfileManagerProxy::OnListSuccess(

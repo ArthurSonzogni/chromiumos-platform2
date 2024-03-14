@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "cellular/dbus-proxies.h"
 #include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
 #include "shill/store/key_value_store.h"
@@ -33,7 +35,7 @@ class ModemModem3gppProfileManagerProxy
   ~ModemModem3gppProfileManagerProxy() override;
   // Inherited methods from ModemModem3gppProfileManagerProxyInterface.
   void List(ResultVariantDictionariesOnceCallback callback,
-            int timeout) override;
+            base::TimeDelta timeout) override;
 
   // Non inherited methods.
   // Sets the callback to be used when the |Updated| signal is triggered.

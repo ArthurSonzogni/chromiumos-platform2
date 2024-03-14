@@ -340,7 +340,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
                                 base::TimeDelta timeout) {
     std::move(callback).Run(Error(Error::kWrongState));
   }
-  void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
+  void InvokeList(ResultVariantDictionariesOnceCallback callback,
+                  base::TimeDelta timeout) {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,

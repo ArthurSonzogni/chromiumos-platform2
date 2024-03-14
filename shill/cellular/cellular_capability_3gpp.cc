@@ -490,8 +490,7 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
   ResultVariantDictionariesOnceCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
-  modem_3gpp_profile_manager_proxy_->List(std::move(cb),
-                                          kTimeoutDefault.InMilliseconds());
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
   if (cellular()->service())
     cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
                                               PowerOpt::PowerState::kOn);
@@ -2544,8 +2543,7 @@ void CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal() {
   ResultVariantDictionariesOnceCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
                      weak_ptr_factory_.GetWeakPtr(), base::DoNothing());
-  modem_3gpp_profile_manager_proxy_->List(std::move(cb),
-                                          kTimeoutDefault.InMilliseconds());
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
 }
 
 void CellularCapability3gpp::OnProfilesListReply(ResultCallback callback,
