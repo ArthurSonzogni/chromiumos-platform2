@@ -225,9 +225,9 @@ Process::SendMojoInvitationAndGetRemote(pid_t worker_pid,
   worker_info.process_metrics =
       base::ProcessMetrics::CreateProcessMetrics(worker_pid);
   // Baseline the CPU usage counter in `process_metrics` to be zero as of now.
-  const double initial_cpu_usage =
+  const std::optional<double> initial_cpu_usage =
       worker_info.process_metrics->GetPlatformIndependentCPUUsage();
-  DCHECK_EQ(initial_cpu_usage, 0);
+  DCHECK_EQ(initial_cpu_usage.value_or(0), 0);
 
   worker_pid_info_map_[worker_pid] = std::move(worker_info);
 

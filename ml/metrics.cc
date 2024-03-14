@@ -105,9 +105,9 @@ void Metrics::StartCollectingProcessMetrics() {
   }
 
   // Baseline the CPU usage counter in `process_metrics_` to be zero as of now.
-  const double initial_cpu_usage =
+  const std::optional<double> initial_cpu_usage =
       process_metrics_->GetPlatformIndependentCPUUsage();
-  DCHECK_EQ(initial_cpu_usage, 0);
+  DCHECK_EQ(initial_cpu_usage.value_or(0), 0);
 
   cumulative_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
       base::FilePath(kCumulativeMetricsBackingDir),
@@ -145,11 +145,13 @@ void Metrics::UpdateAndRecordMetrics(
   if (record_current_metrics) {
     // Record CPU usage (units = milli-percent i.e. 0.001%):
     // First get the CPU usage of the control process.
-    auto cpu_usage = process_metrics_->GetPlatformIndependentCPUUsage();
+    auto cpu_usage =
+        process_metrics_->GetPlatformIndependentCPUUsage().value_or(0);
     // Then get the CPU usages of the worker processes.
     for (const auto& pid_info : Process::GetInstance()->GetWorkerPidInfoMap()) {
       cpu_usage +=
-          pid_info.second.process_metrics->GetPlatformIndependentCPUUsage();
+          pid_info.second.process_metrics->GetPlatformIndependentCPUUsage()
+              .value_or(0);
     }
 
     const int cpu_usage_milli_percent = static_cast<int>(
