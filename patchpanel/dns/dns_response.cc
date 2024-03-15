@@ -13,7 +13,9 @@
 #include <utility>
 
 #include "base/big_endian.h"
+#include "base/containers/span.h"
 #include "base/logging.h"
+#include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/sys_byteorder.h"
@@ -214,9 +216,8 @@ size_t DnsRecordParser::ReadName(const void* const vpos,
           LOG(ERROR) << kAbortMsg << " Detected loop in label pointers.";
           return 0;
         }
-        uint16_t offset;
-        base::ReadBigEndian<uint16_t>(reinterpret_cast<const uint8_t*>(p),
-                                      &offset);
+        uint16_t offset = base::numerics::U16FromBigEndian(
+            base::span<const uint8_t, 2u>(p, 2u));
         offset &= dns_protocol::kOffsetMask;
         p = packet + offset;
         if (p >= end) {
@@ -519,10 +520,10 @@ uint16_t DnsResponse::qtype() const {
   DCHECK(parser_.IsValid());
   // QTYPE starts where QNAME ends.
   const size_t type_offset = parser_.GetOffset() - 2 * sizeof(uint16_t);
-  uint16_t type;
-  base::ReadBigEndian<uint16_t>(
-      reinterpret_cast<const uint8_t*>(io_buffer_->data() + type_offset),
-      &type);
+  uint16_t type =
+      base::numerics::U16FromBigEndian(base::span<const uint8_t, 2u>(
+          reinterpret_cast<const uint8_t*>(io_buffer_->data() + type_offset),
+          2u));
   return type;
 }
 

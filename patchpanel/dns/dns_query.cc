@@ -8,8 +8,10 @@
 #include <utility>
 
 #include "base/big_endian.h"
+#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
+#include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/sys_byteorder.h"
 
@@ -85,12 +87,10 @@ std::string_view DnsQuery::qname() const {
 }
 
 uint16_t DnsQuery::qtype() const {
-  uint16_t type;
-  base::ReadBigEndian<uint16_t>(
+  return base::numerics::U16FromBigEndian(base::span<const uint8_t, 2u>(
       reinterpret_cast<const uint8_t*>(io_buffer_->data() + kHeaderSize +
                                        qname_size_),
-      &type);
-  return type;
+      2u));
 }
 
 std::string_view DnsQuery::question() const {
