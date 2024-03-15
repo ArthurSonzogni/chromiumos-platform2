@@ -14,6 +14,7 @@
 #include <re2/re2.h>
 
 #include "typecd/pd_vdo_constants.h"
+#include "typecd/peripheral.h"
 #include "typecd/utils.h"
 
 namespace {
@@ -186,8 +187,10 @@ bool Cable::TBT3PDIdentityCheck() {
     return false;
   }
 
+  auto pd_revision = GetPDRevision();
   auto usb_speed = GetProductTypeVDO1() & kUSBSpeedBitMask;
-  if (GetPDRevision() == PDRevision::k30) {
+  if (pd_revision == PDRevision::k30 || pd_revision == PDRevision::k31 ||
+      pd_revision == PDRevision::k32) {
     return usb_speed == kUSBSuperSpeed32Gen1 ||
            usb_speed == kUSBSuperSpeed32Or40Gen2 ||
            usb_speed == kUSB40SuperSpeedGen3;

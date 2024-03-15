@@ -16,7 +16,7 @@
 #include "typecd/utils.h"
 
 namespace {
-constexpr char kPDRevisionRegex[] = R"((\d)\.\d)";
+constexpr char kPDRevisionRegex[] = R"((\d)\.(\d))";
 }  // namespace
 
 namespace typecd {
@@ -103,16 +103,19 @@ void Peripheral::UpdatePDRevision() {
   }
   base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
 
-  int maj;
-  if (!RE2::FullMatch(val_str, kPDRevisionRegex, &maj)) {
+  int maj, min;
+  if (!RE2::FullMatch(val_str, kPDRevisionRegex, &maj, &min)) {
     LOG(ERROR) << "PD revision in incorrect format: " << val_str;
     return;
   }
 
-  // TODO(pmalani): Handle min revision correctly. For now, we just use the
-  // major revision.
   if (maj == 3) {
-    SetPDRevision(PDRevision::k30);
+    if (min == 2)
+      SetPDRevision(PDRevision::k32);
+    else if (min == 1)
+      SetPDRevision(PDRevision::k31);
+    else
+      SetPDRevision(PDRevision::k30);
   } else if (maj == 2) {
     SetPDRevision(PDRevision::k20);
   } else {

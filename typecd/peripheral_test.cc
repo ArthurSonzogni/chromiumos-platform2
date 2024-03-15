@@ -56,4 +56,19 @@ TEST_F(PeripheralTest, CheckPDRevision) {
   EXPECT_EQ(p.GetPDRevision(), PDRevision::k30);
 }
 
+TEST_F(PeripheralTest, CheckPDMinorRevision) {
+  // Set up fake sysfs paths.
+  auto path = temp_dir_.Append(std::string("port1-fake_periheral"));
+  ASSERT_TRUE(base::CreateDirectory(path));
+  Peripheral p(path);
+  EXPECT_EQ(p.GetPDRevision(), PDRevision::kNone);
+
+  // Legitimate PD revision minor version values should be parsed correctly.
+  auto pd_rev = base::StringPrintf("3.1");
+  ASSERT_TRUE(base::WriteFile(path.Append("usb_power_delivery_revision"),
+                              pd_rev.c_str(), pd_rev.length()));
+  p.UpdatePDRevision();
+  EXPECT_EQ(p.GetPDRevision(), PDRevision::k31);
+}
+
 }  // namespace typecd

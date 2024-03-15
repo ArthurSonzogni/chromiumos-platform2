@@ -9,6 +9,8 @@
 
 #include <base/logging.h>
 
+#include "typecd/peripheral.h"
+
 namespace typecd {
 
 DBusManager::DBusManager(brillo::dbus_utils::DBusObject* dbus_object)
@@ -128,10 +130,16 @@ bool DBusManager::GetRevision(brillo::ErrorPtr* err,
 
   switch (port_mgr_->GetPDRevision(port, recipient)) {
     case PDRevision::k20:
-      *revision = 0x0200;
+      *revision = kPDRevision20;
       break;
     case PDRevision::k30:
-      *revision = 0x0300;
+      *revision = kPDRevision30;
+      break;
+    case PDRevision::k31:
+      *revision = kPDRevision31;
+      break;
+    case PDRevision::k32:
+      *revision = kPDRevision32;
       break;
     default:
       *revision = 0;

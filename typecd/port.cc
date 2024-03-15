@@ -14,6 +14,7 @@
 #include <re2/re2.h>
 
 #include "typecd/pd_vdo_constants.h"
+#include "typecd/peripheral.h"
 
 namespace {
 
@@ -528,17 +529,18 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
   if (tbt3_alt_mode) {
     partner_speed = kUSB40SuperSpeedGen3;
   } else {
-    // Check for partner product type.
+    // Check for partner product type and PD revision.
     auto partner_type =
         (partner_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
         kIDHeaderVDOProductTypeMask;
-    if (partner_->GetPDRevision() == PDRevision::k20) {
+    auto partner_pd_revision = partner_->GetPDRevision();
+    if (partner_pd_revision == PDRevision::k20) {
       // PD rev 2.0, v 1.3
       // Table 6-24 Product Types (UFP)
       // Only AMAs use a product type VDO.
       if (partner_type != kIDHeaderVDOProductTypeUFPAMA)
         return false;
-    } else if (partner_->GetPDRevision() == PDRevision::k30) {
+    } else if (partner_pd_revision == PDRevision::k30) {
       // PD rev 3.0, v 2.0
       // Table 6-30 Product Types (UFP)
       // Only PDUSB hubs, PDUSB peripherals and AMAs use a product type VDO with
@@ -547,6 +549,16 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
           partner_type != kIDHeaderVDOProductTypeUFPPeripheral &&
           partner_type != kIDHeaderVDOProductTypeUFPAMA)
         return false;
+    } else if (partner_pd_revision == PDRevision::k31 ||
+               partner_pd_revision == PDRevision::k32) {
+      // PD rev 3.1, v1.8 Table 6-36 Product Types (UFP)
+      // PD rev 3.2, v1.0 Table 6-35 Product Types (UFP)
+      // Only PDUSB hubs, PDUSB peripherals use a product type VDO with
+      // USB speed.
+      if (partner_type != kIDHeaderVDOProductTypeUFPHub &&
+          partner_type != kIDHeaderVDOProductTypeUFPPeripheral) {
+        return false;
+      }
     } else {
       // Return false on undetermined PD revision.
       return false;
@@ -555,8 +567,8 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
     // In USB PD Rev 2.0 and 3.0, 0x3 in the AMA VDO USB Highest speed field
     // represents billboard only, and should not be compared against cable
     // speed.
-    if ((partner_->GetPDRevision() == PDRevision::k20 ||
-         partner_->GetPDRevision() == PDRevision::k30) &&
+    if ((partner_pd_revision == PDRevision::k20 ||
+         partner_pd_revision == PDRevision::k30) &&
         partner_type == kIDHeaderVDOProductTypeUFPAMA &&
         partner_speed == kAMAVDOUSBSpeedBillboard) {
       return false;

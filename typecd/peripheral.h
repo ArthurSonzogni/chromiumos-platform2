@@ -22,7 +22,9 @@ enum class PDRevision {
   kNone = 0,
   k20,
   k30,
-  kMaxValue = k30,
+  k31,
+  k32,
+  kMaxValue = k32,
 };
 
 // This is a base class which can represent the components connected to a Type C
@@ -86,6 +88,7 @@ class Peripheral {
   FRIEND_TEST(PartnerTest, AltModeManualAddition);
   FRIEND_TEST(PartnerTest, PDIdentityScan);
   FRIEND_TEST(PeripheralTest, CheckPDRevision);
+  FRIEND_TEST(PeripheralTest, CheckPDMinorRevision);
 
   // PD Identity Data objects; expected to be read from the peripheral sysfs.
   uint32_t id_header_vdo_;
