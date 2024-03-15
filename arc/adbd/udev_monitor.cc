@@ -27,6 +27,10 @@ constexpr char kPciBusIdPlaceholderRegex[] = R"(\{PCI_BUS_ID\})";
 constexpr char kDbcEnable[] = "enable";
 constexpr char kDbcDisable[] = "disable";
 
+// User space control to modify the USB Type-C role.
+// Refer Documentation/ABI/testing/sysfs-class-usb_role.
+constexpr char kTypecUsbRoleSysPath[] =
+    "/sys/class/typec/port{PORT}/usb-role-switch/role";
 constexpr char kUsbRoleSysPath[] =
     "/sys/class/usb_role/CON{PORT}-role-switch/role";
 // Regex to replace PORT in USB role setting.
@@ -228,23 +232,49 @@ void UdevMonitor::UpdatePortRole(int port_num, const std::string& role) {
     return;
   }
 
+  // There are two possible paths to the typec usb role control file
+  // 1. /sys/class/typec/port{PORT}/usb-role-switch/role. This should exist
+  // in Linux 6.10+
+  auto typec_path_string = std::string(kTypecUsbRoleSysPath);
+  RE2::Replace(&typec_path_string, kUsbRolePortRegex, std::to_string(port_num));
+  base::FilePath typec_usb_role_path = base::FilePath(typec_path_string);
+
+  // 2. /sys/class/usb_role/CON{PORT}-role-switch/role. This should always
+  // exist but port_num may not match with CON{port_num}-role-switch so it is
+  // used only as a fallback case.
   auto usb_role_path_string = std::string(kUsbRoleSysPath);
   RE2::Replace(&usb_role_path_string, kUsbRolePortRegex,
                std::to_string(port_num));
   base::FilePath usb_role_path = base::FilePath(usb_role_path_string);
 
-  if (!base::PathExists(usb_role_path)) {
-    PLOG(ERROR) << "Usb role switch control file does not exist";
-    return;
+  // First check the /sys/class/typec path
+  if (base::PathExists(typec_usb_role_path)) {
+    // update typec USB role on the /sys/class/typec/portX path
+    if (!base::WriteFile(typec_usb_role_path, role)) {
+      PLOG(ERROR) << "Failed to write typec usb role to "
+                  << typec_usb_role_path;
+      return;
+    } else {
+      VLOG(1) << "Successfully updated usb_role to " << role << " for "
+              << typec_usb_role_path;
+    }
+  } else {
+    // Fallback to using /sys/class/usb_role
+    if (!base::PathExists(usb_role_path)) {
+      PLOG(ERROR) << "Usb role switch control files " << typec_usb_role_path
+                  << " and " << usb_role_path << " do not exist";
+      return;
+    } else {
+      // update USB role on the /sys/class/typec path
+      if (!base::WriteFile(usb_role_path, role)) {
+        PLOG(ERROR) << "Failed to write usb role";
+        return;
+      } else {
+        VLOG(1) << "Successfully updated usb_role to " << role << " for "
+                << usb_role_path;
+      }
+    }
   }
-
-  // update USB role
-  if (!base::WriteFile(usb_role_path, role)) {
-    PLOG(ERROR) << "Failed to write usb role";
-    return;
-  }
-  VLOG(1) << "Successfully updated usb_role to " << role << " for "
-          << usb_role_path_string;
 }
 
 // Callback for subscribed udev events.
