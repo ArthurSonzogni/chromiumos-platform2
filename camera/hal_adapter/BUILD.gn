@@ -27,7 +27,6 @@ pkg_config("target_defaults") {
     "libcros_camera_android_deps",
     "libdrm",
     "libmojo",
-    "libsegmentation",
     "libsync",
     "libyuv",
     "mojo_service_manager",

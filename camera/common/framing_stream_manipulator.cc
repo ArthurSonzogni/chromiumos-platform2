@@ -9,6 +9,7 @@
 #include <sync/sync.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -30,6 +31,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/constants.h"
 #include "cutils/native_handle.h"
 #include "features/auto_framing/tracing.h"
 #include "gpu/egl/egl_fence.h"
@@ -68,6 +70,20 @@ constexpr int kSyncWaitTimeoutMs = 300;
 inline int DivideRoundUp(int dividend, int divisor) {
   CHECK_GT(divisor, 0);
   return (dividend + divisor - 1) / divisor;
+}
+
+// Return true if single frame super resolution is enabled.
+bool CanCreateUpsampler() {
+  if (base::PathExists(base::FilePath(constants::kForceDisableSuperResPath))) {
+    return false;
+  }
+  // TODO(b/330079735): Temporarily disabled on ARM device. Remove it once
+  // b/330079735 is solved.
+  if (base::SysInfo::OperatingSystemArchitecture() != "x86_64" &&
+      base::SysInfo::OperatingSystemArchitecture() != "x86") {
+    return false;
+  }
+  return base::PathExists(base::FilePath(constants::kForceEnableSuperResPath));
 }
 
 // Ensure even input dimensions for GPU cropping.
@@ -368,7 +384,7 @@ FramingStreamManipulator::FramingStreamManipulator(
 #if USE_DLC
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (!dlc_root_path.empty()) {
+  if (CanCreateUpsampler() && !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
 #endif  // USE_DLC
@@ -522,6 +538,7 @@ void FramingStreamManipulator::CreateUpsampler(
   DCHECK(!single_frame_upsampler_);
   single_frame_upsampler_ = std::make_unique<SingleFrameUpsampler>();
 
+  LOGF(INFO) << "Single frame super resolution is enabled.";
   if (!single_frame_upsampler_->Initialize(dlc_root_path)) {
     LOGF(ERROR) << "Failed to initialize SingleFrameUpsampler";
     single_frame_upsampler_ = nullptr;
@@ -1049,7 +1066,8 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
 #if USE_DLC
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (!single_frame_upsampler_ && !dlc_root_path.empty()) {
+  if (CanCreateUpsampler() && !single_frame_upsampler_ &&
+      !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
 #endif  // USE_DLC
@@ -1154,7 +1172,8 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
 #if USE_DLC
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (!single_frame_upsampler_ && !dlc_root_path.empty()) {
+  if (CanCreateUpsampler() && !single_frame_upsampler_ &&
+      !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
 #endif  // USE_DLC

@@ -26,7 +26,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/files/file_util.h>
 #include <camera/camera_metadata.h>
-#include <libsegmentation/feature_management.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <system/camera_metadata_hidden.h>
 
@@ -73,12 +72,6 @@ constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 
 const char kEffectsLibraryPath[] = "/usr/share/cros-camera/libfs";
-
-// Return true if single frame super resolution is supported on the device.
-bool IsSuperResolutionSupported() {
-  segmentation::FeatureManagement feature_management;
-  return feature_management.GetFeatureLevel() == 1;
-}
 
 }  // namespace
 
@@ -155,27 +148,22 @@ bool CameraHalAdapter::Start() {
     LOGF(INFO) << "Effects are not enabled, skipping DLC.";
   }
 
-  if (IsSuperResolutionSupported()) {
-    LOGF(INFO) << "Super resolution is enabled. Setting DLC root path.";
-
-    super_res_dlc_client_ = DlcClient::Create(
-        dlc_client::kSuperResDlcId,
-        base::BindOnce(
-            [](StreamManipulator::RuntimeOptions* options,
-               const base::FilePath& dlc_path) {
-              options->SetDlcRootPath(dlc_client::kSuperResDlcId, dlc_path);
-            },
-            base::Unretained(&stream_manipulator_runtime_options_)),
-        base::BindOnce([](const std::string& error_msg) {
-          LOGF(ERROR) << "DLC failed:" << error_msg;
-        }));
-    if (!super_res_dlc_client_) {
-      LOGF(ERROR) << "Failed to create DLC client for super resolution.";
-    } else {
-      super_res_dlc_client_->InstallDlc();
-    }
+  LOGF(INFO) << "Setting DLC root path for super resolution.";
+  super_res_dlc_client_ = DlcClient::Create(
+      dlc_client::kSuperResDlcId,
+      base::BindOnce(
+          [](StreamManipulator::RuntimeOptions* options,
+             const base::FilePath& dlc_path) {
+            options->SetDlcRootPath(dlc_client::kSuperResDlcId, dlc_path);
+          },
+          base::Unretained(&stream_manipulator_runtime_options_)),
+      base::BindOnce([](const std::string& error_msg) {
+        LOGF(ERROR) << "DLC failed:" << error_msg;
+      }));
+  if (!super_res_dlc_client_) {
+    LOGF(ERROR) << "Failed to create DLC client for super resolution.";
   } else {
-    LOGF(INFO) << "Super resolution is disabled, skipping DLC.";
+    super_res_dlc_client_->InstallDlc();
   }
 
   auto future = cros::Future<bool>::Create(nullptr);
