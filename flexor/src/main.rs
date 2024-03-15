@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 use std::{
+    fs,
+    io::Write,
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -241,6 +243,15 @@ fn try_safe_logs(config: &InstallConfig) -> Result<()> {
     Ok(())
 }
 
+// Tries to log to the Kernel messages with the highest priority log level (0).
+fn try_log_to_kmsg(msg: &str) {
+    let kmsg = format!("<0>{msg}");
+    let Ok(mut kmsg_fd) = fs::OpenOptions::new().append(true).open("/dev/kmsg") else {
+        return;
+    };
+    let _ = kmsg_fd.write_all(kmsg.as_bytes());
+}
+
 fn main() -> ExitCode {
     // Setup the panic handler and logging.
     panic_handler::install_memfd_handler();
@@ -249,6 +260,8 @@ fn main() -> ExitCode {
     }
 
     info!("Hello from Flexor!");
+    try_log_to_kmsg("Installing ChromeOS Flex, please wait and don't turn off the device");
+
     let config = match InstallConfig::new() {
         Ok(config) => config,
         Err(err) => {
@@ -267,6 +280,7 @@ fn main() -> ExitCode {
         // TODO(b/314965086): Add an error screen displaying the log.
         ExitCode::FAILURE
     } else {
+        try_log_to_kmsg("Successfully installed, rebooting");
         ExitCode::SUCCESS
     }
 }
