@@ -697,7 +697,7 @@ TEST_F(DlcBaseTest, MarkVerified) {
   EXPECT_FALSE(dlc.IsVerified());
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_TRUE(dlc.IsVerified());
-  EXPECT_TRUE(Prefs(DlcBase(kFirstDlc), SystemState::Get()->active_boot_slot())
+  EXPECT_TRUE(Prefs(dlc, SystemState::Get()->active_boot_slot())
                   .Exists(kDlcPrefVerified));
 }
 
@@ -708,7 +708,7 @@ TEST_F(DlcBaseTest, MarkUnverified) {
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_TRUE(dlc.MarkUnverified());
   EXPECT_FALSE(dlc.IsVerified());
-  EXPECT_FALSE(Prefs(DlcBase(kFirstDlc), SystemState::Get()->active_boot_slot())
+  EXPECT_FALSE(Prefs(dlc, SystemState::Get()->active_boot_slot())
                    .Exists(kDlcPrefVerified));
 }
 
@@ -1063,13 +1063,9 @@ TEST_F(DlcBaseTest, GetDaemonStorePath) {
   DlcBase dlc(kUserTiedDlc);
   dlc.Initialize();
 
-  EXPECT_CALL(*mock_session_manager_proxy_ptr_,
-              RetrievePrimarySession(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>("user_hash"), Return(true)));
-
   ASSERT_EQ(
       dlc.GetImagePath(BootSlot::Slot::A),
-      JoinPaths(kDlcDaemonStorePath, "user_hash", "dlc", kUserTiedDlc, kPackage,
+      JoinPaths(daemon_store_path_, "user_hash", "dlc", kUserTiedDlc, kPackage,
                 BootSlot::ToString(BootSlot::Slot::A), kDlcImageFileName));
 }
 

@@ -115,6 +115,7 @@ void Daemon::RegisterDBusObjectsAsync(
       base::FilePath(kDeployedImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(kDlcServicePrefsPath), base::FilePath(kUsersPath),
+      base::FilePath(kDlcDaemonStorePath),
       base::FilePath(kDlcPrefVerifiedValueFile),
       base::FilePath(hiberman::kHibernateResumeInProgressFile),
       base::DefaultClock::GetInstance());

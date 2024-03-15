@@ -17,6 +17,7 @@ namespace dlcservice {
 extern const char kDlcPrefVerified[];
 extern const char kDlcPrefVerifiedValueFile[];
 extern const char kDlcRootMount[];
+extern const char kUserPrefsDir[];
 
 // |Prefs| class can be used to persist key value pairs to disk.
 class Prefs {
@@ -27,6 +28,11 @@ class Prefs {
   // Initializes prefs starting path using |SystemState::dlc_prefs_dir()| with
   // |DlcBase|'s DLC ID and |BootSlot::Slot|.
   Prefs(const DlcBase& dlc, BootSlot::Slot slot);
+
+  // The factory function to create prefs base on DLC types and manifest.
+  // Returns `std::nullopt` on error.
+  static std::optional<Prefs> CreatePrefs(const DlcInterface* dlc,
+                                          BootSlot::Slot slot);
 
   // Sets the given |value| for |key|, creating the |key| if it did not exist.
   bool SetKey(const std::string& key, const std::string& value);

@@ -37,6 +37,8 @@ const char kDlcPowerwashSafeFile[] = "/opt/google/dlc/_powerwash_safe_";
 const char kPackage[] = "package";
 const char kManifestName[] = "imageloader.json";
 
+constexpr char kDlcDaemonStorePath[] = "/run/daemon-store-cache/dlcservice";
+
 std::string Utils::LogicalVolumeName(const std::string& id,
                                      PartitionSlot slot) {
   static const std::string& kPrefix(kDlcLogicalVolumePrefix);

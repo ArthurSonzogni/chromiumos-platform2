@@ -45,6 +45,7 @@ SystemState::SystemState(
     const base::FilePath& content_dir,
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
+    const base::FilePath& daemon_store_dir,
     const base::FilePath& verification_file,
     const base::FilePath& hibernate_resuming_file,
     base::Clock* clock)
@@ -67,6 +68,7 @@ SystemState::SystemState(
       content_dir_(content_dir),
       prefs_dir_(prefs_dir),
       users_dir_(users_dir),
+      daemon_store_dir_(daemon_store_dir),
       verification_file_(verification_file),
       hibernate_resuming_file_(hibernate_resuming_file),
       clock_(clock) {
@@ -95,6 +97,7 @@ void SystemState::Initialize(
     const base::FilePath& content_dir,
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
+    const base::FilePath& daemon_store_dir,
     const base::FilePath& verification_file,
     const base::FilePath& hibernate_resuming_file,
     base::Clock* clock,
@@ -110,7 +113,8 @@ void SystemState::Initialize(
       state_change_reporter, std::move(boot_slot), std::move(metrics),
       std::move(system_properties), manifest_dir, preloaded_content_dir,
       factory_install_dir, deployed_content_dir, content_dir, prefs_dir,
-      users_dir, verification_file, hibernate_resuming_file, clock));
+      users_dir, daemon_store_dir, verification_file, hibernate_resuming_file,
+      clock));
 }
 
 // static
@@ -207,6 +211,10 @@ base::FilePath SystemState::dlc_prefs_dir() const {
 
 const base::FilePath& SystemState::users_dir() const {
   return users_dir_;
+}
+
+const base::FilePath& SystemState::daemon_store_dir() const {
+  return daemon_store_dir_;
 }
 
 const base::FilePath& SystemState::verification_file() const {

@@ -58,6 +58,7 @@ class SystemState {
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
+      const base::FilePath& daemon_store_dir,
       const base::FilePath& verification_file,
       const base::FilePath& hibernate_resuming_file,
       base::Clock* clock,
@@ -86,6 +87,7 @@ class SystemState {
   const base::FilePath& prefs_dir() const;
   base::FilePath dlc_prefs_dir() const;
   const base::FilePath& users_dir() const;
+  const base::FilePath& daemon_store_dir() const;
   const base::FilePath& verification_file() const;
 
   // Getting active and inactive boot slots easily.
@@ -134,6 +136,7 @@ class SystemState {
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
+      const base::FilePath& daemon_store_dir,
       const base::FilePath& verification_file,
       const base::FilePath& hibernate_resuming_file,
       base::Clock* clock);
@@ -166,6 +169,7 @@ class SystemState {
   base::FilePath content_dir_;
   base::FilePath prefs_dir_;
   base::FilePath users_dir_;
+  base::FilePath daemon_store_dir_;
   base::FilePath verification_file_;
   base::FilePath hibernate_resuming_file_;
   base::Clock* clock_;

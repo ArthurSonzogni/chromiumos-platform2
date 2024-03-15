@@ -264,6 +264,9 @@ class DlcBase : public DlcInterface {
   // reporter that a state change has been made.
   void ChangeState(DlcState::State state);
 
+  // Load the prefs and update the DLC state.
+  void LoadPrefs();
+
   // Sets the DLC as being active or not based on |active| value.
   void SetActiveValue(bool active);
   void OnSetActiveValueSuccess();

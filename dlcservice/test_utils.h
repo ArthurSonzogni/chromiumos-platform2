@@ -110,6 +110,7 @@ class BaseTest : public testing::Test {
   base::FilePath content_path_;
   base::FilePath prefs_path_;
   base::FilePath users_path_;
+  base::FilePath daemon_store_path_;
   base::FilePath verification_file_path_;
   base::FilePath mount_path_;
   base::FilePath resume_in_progress_path_;

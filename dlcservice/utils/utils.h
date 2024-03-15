@@ -34,6 +34,9 @@ BRILLO_EXPORT extern const char kPackage[];
 // Default DLC manifest name.
 BRILLO_EXPORT extern const char kManifestName[];
 
+// DLC cryptohome daemon-store path.
+BRILLO_EXPORT extern const char kDlcDaemonStorePath[];
+
 class BRILLO_EXPORT Utils : public UtilsInterface {
  public:
   Utils() = default;

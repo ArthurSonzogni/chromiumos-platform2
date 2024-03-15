@@ -81,8 +81,7 @@ BaseTest::BaseTest() {
   mock_installer_ = std::make_unique<MockInstaller>();
   mock_installer_ptr_ = mock_installer_.get();
 
-  mock_session_manager_proxy_ =
-      std::make_unique<StrictMock<SessionManagerProxyMock>>();
+  mock_session_manager_proxy_ = std::make_unique<SessionManagerProxyMock>();
   mock_session_manager_proxy_ptr_ = mock_session_manager_proxy_.get();
 
   mock_boot_slot_ = std::make_unique<MockBootSlot>();
@@ -113,12 +112,16 @@ void BaseTest::SetUp() {
       std::move(mock_metrics), std::move(mock_system_properties),
       manifest_path_, preloaded_content_path_, factory_install_path_,
       deployed_content_path_, content_path_, prefs_path_, users_path_,
-      verification_file_path_, resume_in_progress_path_, &clock_,
+      daemon_store_path_, verification_file_path_, resume_in_progress_path_,
+      &clock_,
       /*for_test=*/true);
   ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(true));
 #if USE_LVM_STATEFUL_PARTITION
   SystemState::Get()->SetIsLvmStackEnabled(true);
 #endif  // USE_LVM_STATEFUL_PARTITION
+
+  ON_CALL(*mock_session_manager_proxy_ptr_, RetrievePrimarySession(_, _, _, _))
+      .WillByDefault(DoAll(SetArgPointee<1>("user_hash"), Return(true)));
 }
 
 void BaseTest::SetUpFilesAndDirectories() {
@@ -134,6 +137,7 @@ void BaseTest::SetUpFilesAndDirectories() {
   content_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "stateful");
   prefs_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "var_lib_dlcservice");
   users_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "users");
+  daemon_store_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "daemon_store");
   verification_file_path_ =
       JoinPaths(scoped_temp_dir_.GetPath(), "verification_file");
   mount_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "mount");
@@ -147,6 +151,7 @@ void BaseTest::SetUpFilesAndDirectories() {
   base::CreateDirectory(content_path_);
   base::CreateDirectory(prefs_path_);
   base::CreateDirectory(users_path_);
+  base::CreateDirectory(daemon_store_path_);
   base::CreateDirectory(mount_root_path);
   testdata_path_ = JoinPaths(getenv("SRC"), "testdata");
 

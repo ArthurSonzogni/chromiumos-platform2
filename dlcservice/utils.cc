@@ -84,7 +84,6 @@ const char kCategoryUninstall[] = "uninstall";
 const char kCategoryInit[] = "init";
 const char kCategoryCleanup[] = "cleanup";
 
-const char kDlcDaemonStorePath[] = "/run/daemon-store-cache/dlcservice";
 const char kDlcImagesDir[] = "dlc";
 
 bool SplitPartitionName(std::string partition_name,
@@ -299,10 +298,11 @@ FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
 }
 
 FilePath GetDaemonStorePath() {
+  auto* system_state = SystemState::Get();
   std::string username;
   std::string sanitized_username;
   brillo::ErrorPtr err;
-  if (!SystemState::Get()->session_manager()->RetrievePrimarySession(
+  if (!system_state->session_manager()->RetrievePrimarySession(
           &username, &sanitized_username, &err)) {
     const char* error_msg = err ? err->GetMessage().c_str() : "Unknown";
     LOG(ERROR) << "Failed to RetrievePrimarySession, err=" << error_msg;
@@ -312,7 +312,7 @@ FilePath GetDaemonStorePath() {
     LOG(ERROR) << "Primary session is not available.";
     return {};
   }
-  return JoinPaths(kDlcDaemonStorePath, sanitized_username);
+  return JoinPaths(system_state->daemon_store_dir(), sanitized_username);
 }
 
 set<string> ScanDirectory(const FilePath& dir) {

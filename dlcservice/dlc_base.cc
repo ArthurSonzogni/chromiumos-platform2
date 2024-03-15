@@ -79,13 +79,9 @@ bool DlcBase::Initialize() {
     LOG(WARNING) << "Failed to read DLC verification value file.";
   }
 
-  // Verify that the verification is actually valid.
-  if (Prefs(*this, system_state->active_boot_slot()).Exists(kDlcPrefVerified)) {
-    std::string value;
-    state_.set_is_verified(Prefs(*this, system_state->active_boot_slot())
-                               .GetKey(kDlcPrefVerified, &value) &&
-                           value == verification_value_);
-  }
+  // Load and validate the `kDlcPrefVerified` prefs during initialization and
+  // set the DLC state.
+  LoadPrefs();
 
   // If factory install isn't allowed, free up the space.
   if (!IsFactoryInstall()) {
@@ -221,8 +217,9 @@ bool DlcBase::InstallCompleted(ErrorPtr* err) {
 }
 
 bool DlcBase::UpdateCompleted(ErrorPtr* err) {
-  if (!Prefs(*this, SystemState::Get()->inactive_boot_slot())
-           .Create(kDlcPrefVerified)) {
+  auto prefs =
+      Prefs::CreatePrefs(this, SystemState::Get()->inactive_boot_slot());
+  if (!prefs || !prefs->Create(kDlcPrefVerified)) {
     *err = Error::Create(
         FROM_HERE, kErrorInternal,
         base::StringPrintf("Failed to mark inactive DLC=%s as verified.",
@@ -257,9 +254,11 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
     const auto& content_path = JoinPaths(daemon_store, kDlcImagesDir);
     const auto& content_id_path = JoinPaths(content_path, id_);
     const auto& content_package_path = JoinPaths(content_id_path, package_);
+    const auto& prefs_path = JoinPaths(daemon_store, kUserPrefsDir);
+    const auto& prefs_id_path = JoinPaths(prefs_path, id_);
     // File permissions needs to be set along the path.
-    paths = {daemon_store, content_path, content_id_path, content_package_path,
-             prefs_path_};
+    paths = {daemon_store,         content_path, content_id_path,
+             content_package_path, prefs_path,   prefs_id_path};
   } else {
     paths = {content_id_path_, content_package_path_, prefs_path_};
   }
@@ -336,8 +335,9 @@ bool DlcBase::MakeReadyForUpdate() const {
   // Deleting the inactive verified pref should always happen before anything
   // else here otherwise if we failed to delete, on a reboot after an update, we
   // might assume the image is verified, which is not.
-  if (!Prefs(*this, SystemState::Get()->inactive_boot_slot())
-           .Delete(kDlcPrefVerified)) {
+  auto prefs =
+      Prefs::CreatePrefs(this, SystemState::Get()->inactive_boot_slot());
+  if (prefs && !prefs->Delete(kDlcPrefVerified)) {
     PLOG(ERROR) << "Failed to mark inactive DLC=" << id_ << " as not-verified.";
     return false;
   }
@@ -385,14 +385,14 @@ bool DlcBase::MakeReadyForUpdateInternal() const {
 
 bool DlcBase::MarkVerified() {
   state_.set_is_verified(true);
-  return Prefs(*this, SystemState::Get()->active_boot_slot())
-      .SetKey(kDlcPrefVerified, verification_value_);
+  auto prefs = Prefs::CreatePrefs(this, SystemState::Get()->active_boot_slot());
+  return prefs && prefs->SetKey(kDlcPrefVerified, verification_value_);
 }
 
 bool DlcBase::MarkUnverified() {
   state_.set_is_verified(false);
-  return Prefs(*this, SystemState::Get()->active_boot_slot())
-      .Delete(kDlcPrefVerified);
+  auto prefs = Prefs::CreatePrefs(this, SystemState::Get()->active_boot_slot());
+  return !prefs || prefs->Delete(kDlcPrefVerified);
 }
 
 bool DlcBase::Verify() {
@@ -606,6 +606,11 @@ bool DlcBase::Install(ErrorPtr* err) {
       // control of state changes.
       ChangeState(DlcState::INSTALLING);
 
+      // Try to reload the verified pref for user-tied DLC in case the
+      // prefs are outdated from session changes.
+      if (IsUserTied() && !IsVerified())
+        LoadPrefs();
+
       // Finish the installation for verified images so they can be mounted.
       if (IsVerified()) {
         LOG(INFO) << "Installing already verified DLC=" << id_;
@@ -774,14 +779,19 @@ bool DlcBase::Mount(ErrorPtr* err) {
 
   // Creates a file which holds the root mount path, allowing for indirect
   // access for processes/scripts which can't access DBus.
-  if (manifest_->mount_file_required() &&
-      !Prefs(prefs_package_path_).SetKey(kDlcRootMount, GetRoot().value())) {
-    // TODO(kimjae): Test this by injecting |Prefs| class.
-    LOG(ERROR) << "Failed to create indirect root mount file: "
-               << JoinPaths(prefs_package_path_, kDlcRootMount);
-    ErrorPtr tmp_err;
-    Unmount(&tmp_err);
-    return false;
+  if (manifest_->mount_file_required()) {
+    if (IsUserTied()) {
+      LOG(WARNING) << "Root mount file creation is skipped for user-tied DLC="
+                   << id_;
+    } else if (!Prefs(prefs_package_path_)
+                    .SetKey(kDlcRootMount, GetRoot().value())) {
+      // TODO(kimjae): Test this by injecting |Prefs| class.
+      LOG(ERROR) << "Failed to create indirect root mount file: "
+                 << JoinPaths(prefs_package_path_, kDlcRootMount);
+      ErrorPtr tmp_err;
+      Unmount(&tmp_err);
+      return false;
+    }
   }
 
   ChangeState(DlcState::INSTALLED);
@@ -1060,9 +1070,21 @@ bool DlcBase::Unload(ErrorPtr* err) {
     return false;
   }
 
-  ChangeState(DlcState::NOT_INSTALLED);
   SetActiveValue(false);
+  state_.set_is_verified(false);
+  state_.clear_image_path();
+  ChangeState(DlcState::NOT_INSTALLED);
   return Unmount(err);
+}
+
+void DlcBase::LoadPrefs() {
+  auto* system_state = SystemState::Get();
+  auto prefs = Prefs::CreatePrefs(this, system_state->active_boot_slot());
+  if (prefs && prefs->Exists(kDlcPrefVerified)) {
+    std::string value;
+    state_.set_is_verified(prefs->GetKey(kDlcPrefVerified, &value) &&
+                           value == verification_value_);
+  }
 }
 
 }  // namespace dlcservice

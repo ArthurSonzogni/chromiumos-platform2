@@ -40,7 +40,6 @@ extern const char kCategoryUninstall[];
 extern const char kCategoryInit[];
 extern const char kCategoryCleanup[];
 
-extern const char kDlcDaemonStorePath[];
 extern const char kDlcImagesDir[];
 
 constexpr char kAlertComponent[] = "CoreServicesAlert";
