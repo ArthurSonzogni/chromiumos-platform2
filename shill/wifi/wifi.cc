@@ -378,21 +378,21 @@ void WiFi::Scan(Error* /*error*/,
   }
   SLOG(this, 1) << __func__ << " on " << link_name() << " from " << reason
                 << (is_dbus_call ? " D-Bus call" : "");
+  std::string scan_type = manager()->GetWiFiRequestScanType(nullptr);
+  if (is_dbus_call && scan_type == kWiFiRequestScanTypeDefault) {
+    request_scan_count_++;
+  }
+  bool is_active_scan =
+      !is_dbus_call || (scan_type == kWiFiRequestScanTypeActive ||
+                        (scan_type == kWiFiRequestScanTypeDefault &&
+                         request_scan_count_ % kRequestScanCycle != 0));
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
-  if (is_dbus_call && manager()->GetWiFiRequestScanType(nullptr) ==
-                          kWiFiRequestScanTypePassive) {
-    dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&WiFi::ScanTask,
-                       weak_ptr_factory_while_started_.GetWeakPtr(), false));
-  } else {
-    dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&WiFi::ScanTask,
-                       weak_ptr_factory_while_started_.GetWeakPtr(), true));
-  }
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&WiFi::ScanTask,
+                                weak_ptr_factory_while_started_.GetWeakPtr(),
+                                is_active_scan));
 }
 
 int16_t WiFi::GetSignalLevelForActiveService() {

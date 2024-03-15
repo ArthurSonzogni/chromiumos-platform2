@@ -3166,14 +3166,22 @@ TEST_F(WiFiMainTest, WiFiRequestScanTypeDefault) {
   // Dispatch any scan tasks that may have been called previously.
   test_event_dispatcher_->DispatchPendingEvents();
   manager()->props_.request_scan_type = kWiFiRequestScanTypeDefault;
-  // kWiFiRequestScanTypeDefault is equivalent to kWiFiRequestScanTypeActive
+
   EXPECT_CALL(
       *GetSupplicantInterfaceProxy(),
-      Scan(RequestScanType(WPASupplicant::kScanTypeActive, false, false)));
+      Scan(RequestScanType(WPASupplicant::kScanTypeActive, false, false)))
+      .Times(WiFi::kRequestScanCycle - 1);
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      Scan(RequestScanType(WPASupplicant::kScanTypePassive, true, true)));
   SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
                __func__);
-  Scan(&error, "RequestScan", true);
-  test_event_dispatcher_->DispatchPendingEvents();
+  for (int i = 0; i < WiFi::kRequestScanCycle; i++) {
+    Scan(&error, "RequestScan", true);
+    test_event_dispatcher_->DispatchPendingEvents();
+    ReportScanDone();
+    test_event_dispatcher_->DispatchPendingEvents();
+  }
   StopWiFi();
 }
 

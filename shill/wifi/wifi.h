@@ -376,6 +376,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
               UnreliableConnectionInvokesNotifyWiFiConnectionUnreliable);
   FRIEND_TEST(WiFiMainTest,
               UpdateGeolocationObjects);  // kWiFiGeolocationInfoExpiration
+  FRIEND_TEST(WiFiMainTest,
+              WiFiRequestScanTypeDefault);              // kRequestScanCycle
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   // interworking_select_enabled_ and need_interworking_select_
   FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
@@ -447,6 +449,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // be evicted when updating the geolocation cache
   static constexpr base::TimeDelta kWiFiGeolocationInfoExpiration =
       base::Minutes(20);
+
+  static constexpr uint16_t kRequestScanCycle = 4;
+  static constexpr base::TimeDelta kPassiveScanDelay = base::Seconds(1);
 
   void GetPhyInfo();
   std::string AppendBgscan(WiFiService* service,
@@ -999,6 +1004,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   std::set<uint32_t> supported_cipher_suites_;
+
+  uint16_t request_scan_count_ = 0;
 };
 
 }  // namespace shill
