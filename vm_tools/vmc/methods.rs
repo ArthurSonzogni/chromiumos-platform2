@@ -1505,7 +1505,7 @@ impl Methods {
                 VM_CONCIERGE_SERVICE_NAME,
                 VM_CONCIERGE_SERVICE_PATH,
                 VM_CONCIERGE_INTERFACE,
-                START_VM_METHOD,
+                START_VM2_METHOD,
             )?,
             &request,
             owned_fds,
