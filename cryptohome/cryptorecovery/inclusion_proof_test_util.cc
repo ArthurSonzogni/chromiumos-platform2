@@ -4,12 +4,13 @@
 
 #include "cryptohome/cryptorecovery/inclusion_proof_test_util.h"
 
+#include <array>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <base/big_endian.h>
 #include <base/time/time.h>
+#include <base/numerics/byte_conversions.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>
@@ -95,8 +96,10 @@ bool SignForTesting(const std::string& text,
     // Truncate the buffer to the size returned by `ECDSA_sign()`.
     signature_bytes.resize(signature_length);
 
-    std::string key_hash(sizeof(uint32_t), 0);
-    base::WriteBigEndian(key_hash.data(), ledger_info.key_hash.value());
+    std::array<uint8_t, sizeof(uint32_t)> key_bytes =
+        base::numerics::U32ToBigEndian(ledger_info.key_hash.value());
+
+    std::string key_hash(key_bytes.begin(), key_bytes.end());
     // `signature_str` has the format: "{key_hash}{signature_bytes}".
     std::string signature_str = key_hash + signature_bytes;
     std::string base64_signature =

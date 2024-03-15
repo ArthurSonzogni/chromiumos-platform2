@@ -11,7 +11,8 @@
 #include <absl/strings/numbers.h>
 #include <base/base64.h>
 #include <base/base64url.h>
-#include <base/big_endian.h>
+#include <base/containers/span.h>
+#include <base/numerics/byte_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
@@ -152,11 +153,9 @@ bool ReadSignatures(const std::string& text,
       LOG(ERROR) << "The length of the signature is not long enough.";
       return false;
     }
-    uint32_t key_hash;
-    base::ReadBigEndian(
-        reinterpret_cast<const uint8_t*>(
-            signature_str.substr(0, kSignatureHashSize).c_str()),
-        &key_hash);
+    uint32_t key_hash = base::numerics::U32FromBigEndian(
+        base::as_byte_span(signature_str.substr(0, kSignatureHashSize))
+            .first<4u>());
 
     brillo::SecureBlob text_hash = hwsec_foundation::Sha256(
         brillo::SecureBlob(text + kInclusionProofSigSplit[0]));
