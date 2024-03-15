@@ -603,14 +603,15 @@
         VmStartedSignal instead before making control requests to the VM, as the
         control socket may not be ready when StartVmResponse is sent.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
+      <!--
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::StartVmRequest"/>
       </arg>
-      <arg type="ah" name="fd" direction="in" optional="true">
+      <arg type="h" name="fd" direction="in" optional="true">
         <tp:docstring>
-          An array of file descriptors, as described in the protocol buffer.
+          File descriptors.
         </tp:docstring>
       </arg>
       <arg type="ay" name="response" direction="out">
@@ -619,14 +620,16 @@
         <tp:docstring>
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
-      </arg>
+        </arg>
+        -->
     </method>
     <method name="StartVm2">
       <tp:docstring>
         Starts VM. Returns when the crosvm child process starts. Wait for
         VmStartedSignal instead before making control requests to the VM, as the
         control socket may not be ready when StartVmResponse is sent.
-        TODO: migrate to StartVm.
+        This version takes 2 parameters instead of variable number of parameters
+        compared to StartVm.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
