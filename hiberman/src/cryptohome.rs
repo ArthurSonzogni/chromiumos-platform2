@@ -44,6 +44,13 @@ pub fn get_user_key_for_session(session_id: &[u8]) -> Result<SecureBlob> {
         .context("Failed to parse GetHibernateSecret dbus response")?;
     response.zeroize();
 
+    if reply.error != CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET.into() {
+        return Err(anyhow!(
+            "GetHibernateSecret() returned an error: {:?}",
+            reply.error_info
+        ));
+    }
+
     // Copy the key to the output parameter so the reply structure can be zeroed.
     let mut key_data: Vec<u8> = vec![0; reply.hibernate_secret.len()];
     key_data.copy_from_slice(&reply.hibernate_secret);
