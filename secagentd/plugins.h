@@ -452,18 +452,18 @@ class AuthenticationPlugin : public PluginInterface {
                            cros_xdr::reporting::UserEventAtomicVariant>;
 
   // Creates and sends a screen Lock event.
-  void HandleScreenLock();
+  void OnScreenLock();
   // Creates and sends a screen Unlock event.
-  void HandleScreenUnlock();
+  void OnScreenUnlock();
   // Logs error if registration fails.
-  void HandleRegistrationResult(const std::string& interface,
-                                const std::string& signal,
-                                bool success);
+  void OnRegistrationResult(const std::string& interface,
+                            const std::string& signal,
+                            bool success);
   // Creates and sends a login/out event based on the state.
-  void HandleSessionStateChange(const std::string& state);
+  void OnSessionStateChange(const std::string& state);
   // Used to fill the auth factor for login and unlock.
   // Also fills in the device user.
-  void HandleAuthenticateAuthFactorCompleted(
+  void OnAuthenticateAuthFactorCompleted(
       const user_data_auth::AuthenticateAuthFactorCompleted& result);
   // Fills the proto's auth factor if auth_factor_ is known.
   // Returns if auth factor was filled.

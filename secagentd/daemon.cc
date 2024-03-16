@@ -49,6 +49,7 @@ int Daemon::OnInit() {
   common::SetDBus(bus_);
   auto device_user = base::MakeRefCounted<DeviceUser>(
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_));
+  device_user->RegisterRemoveCompletedHandler();
 
   secagent_ = std::make_unique<SecAgent>(
       base::BindOnce(&Daemon::QuitDaemon, weak_ptr_factory_.GetWeakPtr()),

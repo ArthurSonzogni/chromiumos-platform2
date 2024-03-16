@@ -134,26 +134,26 @@ absl::Status AuthenticationPlugin::Activate() {
           },
           cryptohome_proxy_.get(),
           base::BindRepeating(
-              &AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted,
+              &AuthenticationPlugin::OnAuthenticateAuthFactorCompleted,
               weak_ptr_factory_.GetWeakPtr()),
-          base::BindOnce(&AuthenticationPlugin::HandleRegistrationResult,
+          base::BindOnce(&AuthenticationPlugin::OnRegistrationResult,
                          weak_ptr_factory_.GetWeakPtr())));
 
   // Register for lock/unlock signals.
   device_user_->RegisterScreenLockedHandler(
-      base::BindRepeating(&AuthenticationPlugin::HandleScreenLock,
+      base::BindRepeating(&AuthenticationPlugin::OnScreenLock,
                           weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&AuthenticationPlugin::HandleRegistrationResult,
+      base::BindOnce(&AuthenticationPlugin::OnRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
   device_user_->RegisterScreenUnlockedHandler(
-      base::BindRepeating(&AuthenticationPlugin::HandleScreenUnlock,
+      base::BindRepeating(&AuthenticationPlugin::OnScreenUnlock,
                           weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&AuthenticationPlugin::HandleRegistrationResult,
+      base::BindOnce(&AuthenticationPlugin::OnRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
 
   // Register for login/out signal.
   device_user_->RegisterSessionChangeListener(
-      base::BindRepeating(&AuthenticationPlugin::HandleSessionStateChange,
+      base::BindRepeating(&AuthenticationPlugin::OnSessionStateChange,
                           weak_ptr_factory_.GetWeakPtr()));
 
   is_active_ = true;
@@ -169,7 +169,7 @@ bool AuthenticationPlugin::IsActive() const {
   return is_active_;
 }
 
-void AuthenticationPlugin::HandleScreenLock() {
+void AuthenticationPlugin::OnScreenLock() {
   auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_lock->mutable_lock();
   screen_lock->mutable_common()->set_create_timestamp_us(
@@ -180,7 +180,7 @@ void AuthenticationPlugin::HandleScreenLock() {
                      weak_ptr_factory_.GetWeakPtr(), std::move(screen_lock)));
 }
 
-void AuthenticationPlugin::HandleScreenUnlock() {
+void AuthenticationPlugin::OnScreenUnlock() {
   auto screen_unlock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_unlock->mutable_common()->set_create_timestamp_us(
       base::Time::Now().InMillisecondsSinceUnixEpoch() *
@@ -208,7 +208,7 @@ void AuthenticationPlugin::HandleScreenUnlock() {
                      weak_ptr_factory_.GetWeakPtr(), std::move(screen_unlock)));
 }
 
-void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
+void AuthenticationPlugin::OnSessionStateChange(const std::string& state) {
   auto log_event = std::make_unique<pb::UserEventAtomicVariant>();
   log_event->mutable_common()->set_create_timestamp_us(
       base::Time::Now().InMillisecondsSinceUnixEpoch() *
@@ -250,15 +250,16 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
                      weak_ptr_factory_.GetWeakPtr(), std::move(log_event)));
 }
 
-void AuthenticationPlugin::HandleRegistrationResult(
-    const std::string& interface, const std::string& signal, bool success) {
+void AuthenticationPlugin::OnRegistrationResult(const std::string& interface,
+                                                const std::string& signal,
+                                                bool success) {
   if (!success) {
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
   }
 }
 
-void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
+void AuthenticationPlugin::OnAuthenticateAuthFactorCompleted(
     const user_data_auth::AuthenticateAuthFactorCompleted& completed) {
   if (completed.user_creation()) {
     // If the proto contains an error indicating that creating the user failed,
@@ -395,7 +396,7 @@ void AuthenticationPlugin::OnFirstSessionStart(const std::string& device_user) {
   // When the device_user is filled there is already a user signed in so a login
   // will be simulated.
   if (!device_user.empty()) {
-    HandleSessionStateChange(kStarted);
+    OnSessionStateChange(kStarted);
     signed_in_user_ = device_user;
   }
 }

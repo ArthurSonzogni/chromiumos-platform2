@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -25,21 +26,30 @@
 #include "base/uuid.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
+#include "brillo/files/file_util.h"
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
 #include "policy/device_local_account_policy_util.h"
+#include "secagentd/common.h"
 
 namespace secagentd {
 
 DeviceUser::DeviceUser(
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager)
-    : DeviceUser(std::move(session_manager), base::FilePath("/")) {}
+    : DeviceUser(std::move(session_manager),
+                 std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(
+                     common::GetDBus()),
+                 base::FilePath("/")) {}
 
 DeviceUser::DeviceUser(
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager,
+    std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+        cryptohome_proxy,
     const base::FilePath& root_path)
     : weak_ptr_factory_(this),
       session_manager_(std::move(session_manager)),
+      cryptohome_proxy_(std::move(cryptohome_proxy)),
       root_path_(root_path) {}
 
 void DeviceUser::RegisterSessionChangeHandler() {
@@ -56,13 +66,35 @@ void DeviceUser::RegisterSessionChangeHandler() {
             session_manager->RegisterSessionStateChangedSignalHandler(
                 base::BindRepeating(&DeviceUser::OnSessionStateChange,
                                     weak_ptr),
-                base::BindOnce(&DeviceUser::HandleRegistrationResult,
-                               weak_ptr));
+                base::BindOnce(&DeviceUser::OnRegistrationResult, weak_ptr));
             session_manager->GetObjectProxy()->SetNameOwnerChangedCallback(
                 base::BindRepeating(&DeviceUser::OnSessionManagerNameChange,
                                     weak_ptr));
           },
           session_manager_.get(), weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DeviceUser::RegisterRemoveCompletedHandler() {
+  cryptohome_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::BindOnce(
+          [](org::chromium::UserDataAuthInterfaceProxyInterface*
+                 cryptohome_proxy,
+             base::RepeatingCallback<void(
+                 const user_data_auth::RemoveCompleted&)> signal_callback,
+             dbus::ObjectProxy::OnConnectedCallback on_connected_callback,
+             bool available) {
+            if (!available) {
+              LOG(ERROR) << "Failed to register for RemoveCompleted signal";
+              return;
+            }
+            cryptohome_proxy->RegisterRemoveCompletedSignalHandler(
+                std::move(signal_callback), std::move(on_connected_callback));
+          },
+          cryptohome_proxy_.get(),
+          base::BindRepeating(&DeviceUser::OnRemoveCompleted,
+                              weak_ptr_factory_.GetWeakPtr()),
+          base::BindOnce(&DeviceUser::OnRegistrationResult,
+                         weak_ptr_factory_.GetWeakPtr())));
 }
 
 void DeviceUser::RegisterScreenLockedHandler(
@@ -133,15 +165,29 @@ std::list<std::string> DeviceUser::GetUsernamesForRedaction() {
   return redacted_usernames_;
 }
 
-void DeviceUser::HandleRegistrationResult(const std::string& interface,
-                                          const std::string& signal,
-                                          bool success) {
+void DeviceUser::OnRegistrationResult(const std::string& interface,
+                                      const std::string& signal,
+                                      bool success) {
   if (!success) {
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
     device_user_ = "Unknown";
   } else {
     OnSessionStateChange(kInit);
+  }
+}
+
+void DeviceUser::OnRemoveCompleted(
+    const user_data_auth::RemoveCompleted& remove_completed) {
+  if (remove_completed.sanitized_username().empty()) {
+    LOG(ERROR) << "RemoveCompleted signal has no username";
+    return;
+  }
+
+  auto remove_directory = root_path_.Append(kSecagentdDirectory)
+                              .Append(remove_completed.sanitized_username());
+  if (!brillo::DeletePathRecursively(remove_directory)) {
+    LOG(ERROR) << "Failed to delete removed user's affiliation file";
   }
 }
 

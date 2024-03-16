@@ -21,8 +21,10 @@
 #include "base/time/time.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "session_manager/dbus-proxies.h"
+#include "user_data_auth/dbus-proxies.h"
 
 namespace secagentd {
 
@@ -52,6 +54,7 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
   virtual void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) = 0;
+  virtual void RegisterRemoveCompletedHandler() = 0;
   virtual void GetDeviceUserAsync(
       base::OnceCallback<void(const std::string& device_user)> cb) = 0;
   virtual std::list<std::string> GetUsernamesForRedaction() = 0;
@@ -90,6 +93,8 @@ class DeviceUser : public DeviceUserInterface {
   // Registers a callback to be notified when the session state changes.
   void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) override;
+  // Starts listening for RemoveCompleted signal.
+  void RegisterRemoveCompletedHandler() override;
   // Returns the current device user.
   void GetDeviceUserAsync(
       base::OnceCallback<void(const std::string& device_user)> cb) override;
@@ -118,13 +123,18 @@ class DeviceUser : public DeviceUserInterface {
   explicit DeviceUser(
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manager,
+      std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+          cryptohome_proxy,
       const base::FilePath& root_path);
 
   // Logs an error if registering for session changes fails.
-  void HandleRegistrationResult(const std::string& interface,
-                                const std::string& signal,
-                                bool success);
-  // Handles if Session Manager's name changes, possibly indicating a crash.
+  void OnRegistrationResult(const std::string& interface,
+                            const std::string& signal,
+                            bool success);
+  // Handles when a user is removed from the device.
+  void OnRemoveCompleted(
+      const user_data_auth::RemoveCompleted& remove_completed);
+  // Handles if Session Manager's name changes, gipossibly indicating a crash.
   void OnSessionManagerNameChange(const std::string& old_owner,
                                   const std::string& new_owner);
   // Handles when there is a login/out event.
@@ -153,6 +163,8 @@ class DeviceUser : public DeviceUserInterface {
   base::RepeatingCallback<void()> flush_cb_ = base::DoNothing();
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_;
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+      cryptohome_proxy_;
   std::vector<base::RepeatingCallback<void(const std::string&)>>
       session_change_listeners_;
   std::vector<base::OnceCallback<void(const std::string&)>>

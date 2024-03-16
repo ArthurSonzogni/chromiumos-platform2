@@ -66,7 +66,7 @@ class SecAgent {
   // the user is affiliated reporting will start.
   void OnDeviceUserRetrieved(const std::string& state);
   // If the device user is unaffiliated restart secagentd and stop reporting.
-  void HandleSessionStateChange(const std::string& state);
+  void OnSessionStateChange(const std::string& state);
   // Flush all plugins after new sign in to avoid mixing old events with
   // unaffiliated ones.
   void FlushAllPluginEvents();

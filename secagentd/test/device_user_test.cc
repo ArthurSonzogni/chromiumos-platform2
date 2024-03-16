@@ -17,12 +17,15 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
+#include "dbus/cryptohome/dbus-constants.h"
 #include "dbus/login_manager/dbus-constants.h"
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "session_manager-client-test/session_manager/dbus-proxy-mocks.h"
+#include "user_data_auth/dbus-proxy-mocks.h"
 
 namespace secagentd::testing {
 
@@ -47,12 +50,35 @@ class DeviceUserTestFixture : public ::testing::Test {
         std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
     session_manager_ref_ = session_manager_.get();
 
+    // Setup root directory.
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     secagentd_directory_ = fake_root_.GetPath().Append(kSecagentdDirectory);
     ASSERT_TRUE(base::CreateDirectory(secagentd_directory_));
 
+    // Setup mock cryptohome.
+    cryptohome_proxy_ =
+        std::make_unique<org::chromium::UserDataAuthInterfaceProxyMock>();
+    cryptohome_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(), user_data_auth::kUserDataAuthServiceName,
+        dbus::ObjectPath(user_data_auth::kUserDataAuthServicePath));
+    EXPECT_CALL(*cryptohome_proxy_, GetObjectProxy)
+        .WillRepeatedly(Return(cryptohome_object_proxy_.get()));
+    EXPECT_CALL(*cryptohome_object_proxy_, DoWaitForServiceToBeAvailable(_))
+        .WillRepeatedly(
+            WithArg<0>(Invoke([](base::OnceCallback<void(bool)>* cb) mutable {
+              std::move(*cb).Run(true);
+            })));
+    EXPECT_CALL(*cryptohome_proxy_, DoRegisterRemoveCompletedSignalHandler)
+        .WillOnce(WithArg<0>(
+            Invoke([this](base::RepeatingCallback<void(
+                              const user_data_auth::RemoveCompleted&)> cb) {
+              remove_completed_cb_ = cb;
+            })));
+
     device_user_ = DeviceUser::CreateForTesting(std::move(session_manager_),
+                                                std::move(cryptohome_proxy_),
                                                 fake_root_.GetPath());
+    device_user_->RegisterRemoveCompletedHandler();
   }
 
   std::string GetUser() { return device_user_->device_user_; }
@@ -151,9 +177,14 @@ class DeviceUserTestFixture : public ::testing::Test {
   base::RepeatingCallback<void(const std::string&)> registration_cb_;
   base::RepeatingCallback<void(const std::string&, const std::string&)>
       name_change_cb_;
+  base::RepeatingCallback<void(const user_data_auth::RemoveCompleted&)>
+      remove_completed_cb_;
   scoped_refptr<DeviceUser> device_user_;
   scoped_refptr<dbus::MockObjectProxy> session_manager_object_proxy_;
   scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<dbus::MockObjectProxy> cryptohome_object_proxy_;
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyMock>
+      cryptohome_proxy_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyMock>
       session_manager_;
   org::chromium::SessionManagerInterfaceProxyMock* session_manager_ref_;
@@ -968,6 +999,21 @@ TEST_F(DeviceUserTestFixture, TestGetUsernameBasedOnAffiliation) {
               base::Uuid::ParseCaseInsensitive(
                   username.substr(strlen(kUnaffiliatedPrefix)))
                   .is_valid());
+}
+
+TEST_F(DeviceUserTestFixture, TestRemoveAffiliationStatus) {
+  base::FilePath user_directory = secagentd_directory_.Append(kSanitized);
+  ASSERT_TRUE(base::CreateDirectory(user_directory));
+  ASSERT_TRUE(base::WriteFile(user_directory.Append("affiliated"), ""));
+  EXPECT_TRUE(base::PathExists(user_directory.Append("affiliated")));
+  EXPECT_TRUE(base::DirectoryExists(user_directory));
+
+  user_data_auth::RemoveCompleted remove_completed;
+  remove_completed.set_sanitized_username(kSanitized);
+  remove_completed_cb_.Run(remove_completed);
+
+  EXPECT_FALSE(base::PathExists(user_directory.Append("affiliated")));
+  EXPECT_FALSE(base::DirectoryExists(user_directory));
 }
 
 }  // namespace secagentd::testing

@@ -93,7 +93,7 @@ void SecAgent::Activate() {
     // The session change listener will indirectly call CheckPolicyAndFeature
     // to start polling.
     device_user_->RegisterSessionChangeListener(base::BindRepeating(
-        &SecAgent::HandleSessionStateChange, weak_ptr_factory_.GetWeakPtr()));
+        &SecAgent::OnSessionStateChange, weak_ptr_factory_.GetWeakPtr()));
     device_user_->RegisterSessionChangeHandler();
   } else {
     policies_features_broker_->StartAndBlockForSync(
@@ -271,7 +271,7 @@ void SecAgent::CreateAndActivatePlugins() {
   ActivateOrDeactivatePlugins();
 }
 
-void SecAgent::HandleSessionStateChange(const std::string& state) {
+void SecAgent::OnSessionStateChange(const std::string& state) {
   static bool started_polling = false;
 
   // Make sure device user is updated before starting reporting.
