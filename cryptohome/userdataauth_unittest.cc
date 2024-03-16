@@ -2524,6 +2524,9 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
       start_auth_session_req_;
 
+  // Mock to use to capture any signals sent.
+  NiceMock<MockSignalling> signalling_;
+
   const Username kUser{"chromeos-user"};
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
 };
@@ -2665,17 +2668,21 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidity) {
+  // Setup.
   PrepareArguments();
-
   const Username kUsername1("foo@gmail.com");
-
   MakeUssWithLabels(GetObfuscatedUsername(kUsername1), {"password"});
-
   remove_homedir_req_->mutable_identifier()->set_account_id(*kUsername1);
+  userdataauth_->SetSignallingInterface(signalling_);
 
   // Test for successful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(true));
+  user_data_auth::RemoveCompleted remove_completed;
+  EXPECT_CALL(signalling_, SendRemoveCompleted)
+      .WillOnce([&](user_data_auth::RemoveCompleted signal) {
+        remove_completed = signal;
+      });
   TestFuture<user_data_auth::RemoveReply> remove_reply_future1;
   userdataauth_->Remove(
       *remove_homedir_req_,
@@ -2686,6 +2693,10 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   // The USS state should have been removed. Test by adding the same user's USS
   // again.
   MakeUssWithLabels(GetObfuscatedUsername(kUsername1), {"password"});
+
+  // Verify signal was called;
+  EXPECT_EQ(*GetObfuscatedUsername(kUsername1),
+            remove_completed.sanitized_username());
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
@@ -2702,7 +2713,9 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   PrepareArguments();
   SetupMount(*kUser);
   remove_homedir_req_->mutable_identifier()->set_account_id(*kUser);
+  userdataauth_->SetSignallingInterface(signalling_);
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
+  EXPECT_CALL(signalling_, SendRemoveCompleted).Times(0);
   TestFuture<user_data_auth::RemoveReply> remove_reply_future;
   userdataauth_->Remove(
       *remove_homedir_req_,
@@ -2713,8 +2726,10 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
 
 TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   PrepareArguments();
+  userdataauth_->SetSignallingInterface(signalling_);
 
   // No account_id and AuthSession ID
+  EXPECT_CALL(signalling_, SendRemoveCompleted).Times(0);
   TestFuture<user_data_auth::RemoveReply> remove_reply_future1;
   userdataauth_->Remove(
       *remove_homedir_req_,
@@ -2736,6 +2751,8 @@ TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
   PrepareArguments();
   std::string invalid_token = "invalid_token_16";
   remove_homedir_req_->set_auth_session_id(invalid_token);
+  userdataauth_->SetSignallingInterface(signalling_);
+  EXPECT_CALL(signalling_, SendRemoveCompleted).Times(0);
 
   // Test.
   TestFuture<user_data_auth::RemoveReply> remove_reply_future;
@@ -2751,6 +2768,12 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
 
   // Setup
   const Username kUsername1("foo@gmail.com");
+  userdataauth_->SetSignallingInterface(signalling_);
+  user_data_auth::RemoveCompleted remove_completed;
+  EXPECT_CALL(signalling_, SendRemoveCompleted)
+      .WillOnce([&](user_data_auth::RemoveCompleted signal) {
+        remove_completed = signal;
+      });
 
   start_auth_session_req_->mutable_account_id()->set_account_id(*kUsername1);
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
@@ -2779,6 +2802,8 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
       }));
+  EXPECT_EQ(*GetObfuscatedUsername(kUsername1),
+            remove_completed.sanitized_username());
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSession) {

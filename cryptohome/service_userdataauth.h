@@ -487,6 +487,10 @@ class UserDataAuthAdaptor
         const user_data_auth::EvictedKeyRestored& signal) override {
       adaptor_->SendEvictedKeyRestoredSignal(signal);
     }
+    void SendRemoveCompleted(
+        const user_data_auth::RemoveCompleted& signal) override {
+      adaptor_->SendRemoveCompletedSignal(signal);
+    }
 
     UserDataAuthInterfaceAdaptor* adaptor_;
   };

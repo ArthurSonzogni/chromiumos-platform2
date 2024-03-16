@@ -1922,6 +1922,11 @@ void UserDataAuth::OnPreparedUserForRemoval(
   auth_session_manager_->RemoveUserAuthSessions(obfuscated);
   std::move(auth_session).Release();
 
+  // Send RemoveCompleted signal.
+  user_data_auth::RemoveCompleted signal;
+  signal.set_sanitized_username(*obfuscated);
+  signalling_intf_->SendRemoveCompleted(signal);
+
   // We should have removed the auth sessions of the user-to-be-removed. Try
   // to unload the encrypted USS from manager otherwise the same account can't
   // be added again. If the unload failed, the same account can't be added again
