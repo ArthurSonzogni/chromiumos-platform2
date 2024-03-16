@@ -352,6 +352,11 @@ message RemoveReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
+// Signal that account has been removed.
+message RemoveCompleted {
+  string sanitized_username = 1;
+}
+
 // Input parameters to GetWebAuthnSecret()
 message GetWebAuthnSecretRequest {
   // This represents the "single user" that the secret belongs to.

@@ -118,6 +118,7 @@ inline constexpr char kAuthFactorAddedl[] = "AuthFactorAdded";
 inline constexpr char kAuthFactorRemoved[] = "AuthFactorRemoved";
 inline constexpr char kAuthFactorUpdted[] = "AuthFactorUpdated";
 inline constexpr char kAuthSessionExpiring[] = "AuthSessionExpiring";
+inline constexpr char kRemoveCompleted[] = "RemoveCompleted";
 
 }  // namespace user_data_auth
 
