@@ -11,6 +11,7 @@
 #define CRASH_REPORTER_ARCPP_CXX_COLLECTOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -127,8 +128,9 @@ class ArcppCxxCollector : public UserCollectorBase {
   // Adds the |process| and other ARC-related info as metadata.
   void AddArcMetaData(const std::string& process);
 
-  // Returns whether the process identified by |pid| is 32- or 64-bit.
-  ErrorType Is64BitProcess(int pid, bool* is_64_bit) const;
+  // Returns whether the process identified by |pid| is 32- or 64-bit. Returns
+  // std::nullopt on error.
+  std::optional<bool> Is64BitProcess(int pid) const;
 
   const ContextPtr context_;
 };

@@ -28,6 +28,7 @@ using brillo::FindLog;
 using brillo::GetLog;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
+using ::testing::Optional;
 using ::testing::Return;
 
 namespace {
@@ -320,19 +321,15 @@ TEST_F(ArcppCxxCollectorTest, ShouldDump) {
 }
 
 TEST_F(ArcppCxxCollectorTest, CorrectlyDetectBitness) {
-  bool is_64_bit;
-
   context_->AddProcess(100, "arc", "app_process64", "/sbin", "zygote64",
                        k64BitAuxv);
-  EXPECT_EQ(ArcppCxxCollector::kErrorNone,
-            collector_->Is64BitProcess(100, &is_64_bit));
-  EXPECT_TRUE(is_64_bit);
+  EXPECT_THAT(collector_->Is64BitProcess(100), Optional(true));
 
   context_->AddProcess(101, "arc", "app_process32", "/sbin", "zygote32",
                        k32BitAuxv);
-  EXPECT_EQ(ArcppCxxCollector::kErrorNone,
-            collector_->Is64BitProcess(101, &is_64_bit));
-  EXPECT_FALSE(is_64_bit);
+  EXPECT_THAT(collector_->Is64BitProcess(101), Optional(false));
+
+  EXPECT_EQ(collector_->Is64BitProcess(102), std::nullopt);
 }
 
 TEST_F(ArcppCxxCollectorTest, ComputeSeverity) {

@@ -229,15 +229,16 @@ UserCollectorBase::ErrorType ArcppCxxCollector::ConvertCoreToMinidump(
   }
 
   const char* collector_path = kCoreCollectorPath;
-  bool is_64_bit;
-  ErrorType elf_class_error = Is64BitProcess(pid, &is_64_bit);
+  std::optional<bool> maybe_is_64_bit = Is64BitProcess(pid);
   // Still try to run core_collector32 if 64-bit detection failed.
-  if (__WORDSIZE == 64 && (elf_class_error != kErrorNone || !is_64_bit))
+  if (__WORDSIZE == 64 && (!maybe_is_64_bit.has_value() || !*maybe_is_64_bit)) {
     collector_path = kCoreCollector32Path;
+  }
 
   // Still try to run core_collector64 if 64-bit detection failed.
-  if (__WORDSIZE == 32 && (elf_class_error != kErrorNone || is_64_bit))
+  if (__WORDSIZE == 32 && (maybe_is_64_bit.has_value() || *maybe_is_64_bit)) {
     collector_path = kCoreCollector64Path;
+  }
 
   ProcessImpl core_collector;
   core_collector.AddArg(collector_path);
@@ -313,12 +314,11 @@ void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
   }
 }
 
-UserCollectorBase::ErrorType ArcppCxxCollector::Is64BitProcess(
-    int pid, bool* is_64_bit) const {
+std::optional<bool> ArcppCxxCollector::Is64BitProcess(int pid) const {
   std::string auxv_contents;
   if (!context_->ReadAuxvForProcess(pid, &auxv_contents)) {
     PLOG(ERROR) << "Could not read /proc/" << pid << "/auxv";
-    return kErrorSystemIssue;
+    return std::nullopt;
   }
   // auxv is an array of unsigned long[2], and the first element in each entry
   // is an AT_* key. We assume we are running a 32-bit process (hence the
@@ -346,9 +346,9 @@ UserCollectorBase::ErrorType ArcppCxxCollector::Is64BitProcess(
   if (auxv_contents.size() % sizeof(Auxv32BitEntry) != 0) {
     LOG(ERROR) << "Could not parse the contents of the auxv file. "
                << "Size not a multiple of 8: " << auxv_contents.size();
-    return kErrorSystemIssue;
+    return std::nullopt;
   }
-  *is_64_bit = false;
+  bool is_64_bit = false;
 
   const Auxv32BitEntry* auxv_32_bit_entries =
       reinterpret_cast<const Auxv32BitEntry*>(auxv_contents.data());
@@ -357,12 +357,12 @@ UserCollectorBase::ErrorType ArcppCxxCollector::Is64BitProcess(
 
   for (size_t i = 0; i < auxv_32_bit_entries_length; ++i) {
     if (auxv_32_bit_entries[i].key > 256) {
-      *is_64_bit = true;
+      is_64_bit = true;
       break;
     }
   }
 
-  return kErrorNone;
+  return is_64_bit;
 }
 
 bool GetArcProperties(const base::FilePath& build_prop_path,
