@@ -352,29 +352,6 @@ message RemoveReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
-// Deprecated.
-// Input parameters to StartFingerprintAuthSession()
-message StartFingerprintAuthSessionRequest {
-  // This represents the "single user" that we are will be fingerprint for.
-  cryptohome.AccountIdentifier account_id = 1;
-}
-
-// Deprecated.
-// Output parameters for StartFingerprintAuthSession()
-message StartFingerprintAuthSessionReply {
-  CryptohomeErrorCode error = 1;
-}
-
-// Deprecated.
-// Input parameters to EndFingerprintAuthSession()
-message EndFingerprintAuthSessionRequest {}
-
-// Deprecated.
-// Output parameters for EndFingerprintAuthSession()
-message EndFingerprintAuthSessionReply {
-  CryptohomeErrorCode error = 1;
-}
-
 // Input parameters to GetWebAuthnSecret()
 message GetWebAuthnSecretRequest {
   // This represents the "single user" that the secret belongs to.
