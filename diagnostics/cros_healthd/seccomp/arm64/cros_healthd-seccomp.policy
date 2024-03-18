@@ -55,11 +55,14 @@ getuid: 1
 #   0x40108014 == _IOC(_IOC_WRITE, 0x80, 0x14, 0x10)
 #   0x40208018 == _IOC(_IOC_WRITE, 0x80, 0x18, 0x20)
 #   0x4018800e == _IOC(_IOC_WRITE, 0x80, 0xe, 0x18)
+#   0x40206441 == _IOC(_IOC_WRITE, 0x64, 0x41, 0x20)
 #   0x80048011 == _IOC(_IOC_READ, 0x80, 0x11, 0x4)
+#   0x80086444 == _IOC(_IOC_READ, 0x64, 0x44, 0x8)
 #   0xc0018036 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x36, 0x1)
 #   0xc0048000 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0, 0x4)
 #   0xc0186440 == _IOC(_IOC_READ|_IOC_WRITE, 0x64, 0x40, 0x18)
 #   0xc0208005 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x5, 0x20)
+#   0xc0306443 == _IOC(_IOC_READ|_IOC_WRITE, 0x64, 0x43, 0x30)
 #   0x40086409 == DRM_IOCTL_GEM_CLOSE
 #   0xc00c644a == DRM_IOCTL_MSM_SUBMITQUEUE_NEW
 #   0xc00c6448 == DRM_IOCTL_MSM_GEM_MADVISE or DRM_IOCTL_PANFROST_MADVISE
@@ -80,6 +83,9 @@ getuid: 1
 #   0xc01464a6 == DRM_IOCTL_MODE_GETENCODER
 #   0xc06864a1 == DRM_IOCTL_MODE_GETCRTC
 #   0xc01064ac == DRM_IOCTL_MODE_GETPROPBLOB
+#   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE
+#   0x6442     == DRM_IOCTL_I915_FLIP
+#   0x40046445 == DRM_IOCTL_I915_IRQ_WAIT or DRM_IOCTL_MSM_GEM_CPU_FINI
 ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == SIOCGIFFLAGS || arg1 == TCGETS || arg1 == 0x40048001 || \
        arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x40208018 || \
@@ -90,7 +96,9 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == 0x4004644b || arg1 == 0xc04064a0 || arg1 == 0xc04064aa || \
        arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || arg1 == 0xc06864a1 || \
        arg1 == 0xc0186440 || arg1 == 0xc01064ac || arg1 == 0x40088026 || \
-       arg1 == 0xc0018036 || arg1 == 0x4018800e
+       arg1 == 0xc0018036 || arg1 == 0x4018800e || arg1 == 0xc0206440 || \
+       arg1 == 0x80086444 || arg1 == 0x6442 || arg1 == 0x40046445 || \
+       arg1 == 0x40206441 || arg1 == 0xc0306443
 kcmp: 1
 kill: 1
 lseek: 1
