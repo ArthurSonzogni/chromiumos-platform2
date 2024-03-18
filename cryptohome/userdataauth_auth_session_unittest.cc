@@ -1595,7 +1595,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Verify
   ASSERT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  ASSERT_THAT(reply.authorized_for(), IsEmpty());
+  ASSERT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
@@ -1623,7 +1623,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
 
   // Verify
   ASSERT_NE(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_THAT(reply.authorized_for(), IsEmpty());
+  ASSERT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
@@ -1715,10 +1715,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
 
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_FALSE(reply.auth_properties().has_seconds_left());
-  EXPECT_FALSE(reply.has_seconds_left());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
   EXPECT_THAT(reply.auth_properties().authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
-  EXPECT_THAT(reply.authorized_for(),
+  EXPECT_THAT(reply.auth_properties().authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_VERIFY_ONLY));
 }
 
@@ -1741,8 +1741,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -1766,8 +1766,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -1803,8 +1803,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   // Assert.
   EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -1837,8 +1837,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -1886,7 +1886,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
       reply.auth_properties().authorized_for(),
       UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   EXPECT_THAT(
-      reply.authorized_for(),
+      reply.auth_properties().authorized_for(),
       UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
@@ -1906,8 +1906,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -1929,8 +1929,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_FALSE(reply.has_seconds_left());
-  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
+  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
@@ -2205,7 +2205,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_THAT(reply.auth_properties().authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
                                    AUTH_INTENT_WEBAUTHN));
-  EXPECT_THAT(reply.authorized_for(),
+  EXPECT_THAT(reply.auth_properties().authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
                                    AUTH_INTENT_WEBAUTHN));
 }

@@ -524,14 +524,6 @@ void HandleAuthenticationResult(
 
   // If we get here we have a valid session. Fill out the reply with it.
   PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
-  // TODO(b/301078137): Remove the following after ash adopts new APIs.
-  *reply.mutable_authorized_for() = {
-      reply.auth_properties().authorized_for().begin(),
-      reply.auth_properties().authorized_for().end()};
-  // TODO(b/301078137): Remove the following after ash adopts new APIs.
-  if (reply.auth_properties().has_seconds_left()) {
-    reply.set_seconds_left(reply.auth_properties().seconds_left());
-  }
   bool auth_succeeded = status.ok();
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 
