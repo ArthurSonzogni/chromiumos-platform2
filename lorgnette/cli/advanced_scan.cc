@@ -28,6 +28,8 @@ using org::chromium::lorgnette::ManagerProxy;
 
 namespace {
 
+constexpr base::TimeDelta kSlowOperationTimeout = base::Seconds(60);
+
 std::string ExtensionForMimeType(const std::string& mime_type) {
   if (mime_type == lorgnette::kPngMimeType) {
     return "png";
@@ -58,7 +60,8 @@ bool ReadNextDocument(ManagerProxy* manager,
   while (keep_reading) {
     lorgnette::ReadScanDataResponse read_response;
     brillo::ErrorPtr error;
-    if (!manager->ReadScanData(read_request, &read_response, &error)) {
+    if (!manager->ReadScanData(read_request, &read_response, &error,
+                               kSlowOperationTimeout.InMilliseconds())) {
       std::cerr << "ReadScanData failed: " << error->GetMessage() << std::endl;
       return false;
     }
@@ -247,7 +250,8 @@ bool DoAdvancedScan(ManagerProxy* manager,
     *scan_request.mutable_scanner() = open_response.config().scanner();
     scan_request.set_image_format(mime_type);
     lorgnette::StartPreparedScanResponse scan_response;
-    if (!manager->StartPreparedScan(scan_request, &scan_response, &error)) {
+    if (!manager->StartPreparedScan(scan_request, &scan_response, &error,
+                                    kSlowOperationTimeout.InMilliseconds())) {
       std::cerr << "StartPreparedScan failed: " << error->GetMessage()
                 << std::endl;
       return false;
