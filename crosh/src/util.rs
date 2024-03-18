@@ -10,11 +10,8 @@ use std::env;
 use std::error;
 use std::fmt::{self, Display};
 use std::fs::read_to_string;
-use std::fs::File;
 use std::io::stdin;
 use std::io::stdout;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -35,7 +32,6 @@ pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 // Path to update_engine_client.
 pub const UPDATE_ENGINE: &str = "/usr/bin/update_engine_client";
 
-const BOARD_NAME_PREFIX: &str = "CHROMEOS_RELEASE_BOARD=";
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
 // The return value of cryptohome when call install_attributes_get and the value is not set.
@@ -215,18 +211,6 @@ pub fn clear_signal_handlers(signums: &[Signal]) {
             error!("sigaction failed for {}", signum);
         }
     }
-}
-
-pub fn board_name() -> String {
-    let file = File::open("/etc/lsb-release").unwrap();
-
-    for line in BufReader::new(file).lines().flatten() {
-        if let Some(board) = line.strip_prefix(BOARD_NAME_PREFIX) {
-            return board.to_string();
-        }
-    }
-
-    "UNKNOWN".to_string()
 }
 
 pub fn is_guest_session_active() -> Result<bool> {

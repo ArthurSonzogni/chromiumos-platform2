@@ -16,7 +16,6 @@ use getopts::{Matches, Options};
 use log::error;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::board_name;
 use crate::util::is_chrome_feature_enabled;
 use crate::util::is_guest_session_active;
 use crate::util::DEFAULT_DBUS_TIMEOUT;
@@ -61,7 +60,7 @@ fn hibernate(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> 
     };
 
     if !board_supports_hibernate() {
-        println!("  hibernate is not available for {}", board_name());
+        println!("  hibernate is not available for this device");
         return Ok(());
     }
 
