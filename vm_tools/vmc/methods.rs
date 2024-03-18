@@ -24,6 +24,7 @@ use dbus::{
     strings::{Interface, Member},
     Message,
 };
+use libchromeos::chromeos::is_dev_mode;
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
 
@@ -531,7 +532,7 @@ fn open_user_path(
     }
 
     // The path must be a descendant of one of these directories.
-    let allowed_roots = [
+    let mut allowed_roots = vec![
         PathBuf::from(REMOVABLE_MEDIA_ROOT),
         Path::new(CRYPTOHOME_USER)
             .join(user_id_hash)
@@ -539,6 +540,11 @@ fn open_user_path(
         PathBuf::from("/home/chronos/user/Downloads"),
         PathBuf::from("/home/chronos/user/MyFiles"),
     ];
+
+    if is_dev_mode().unwrap_or_default() {
+        // Used for preloaded tast test data files.
+        allowed_roots.push(PathBuf::from("/usr/local/share/tast"));
+    }
 
     if !allowed_roots
         .iter()
