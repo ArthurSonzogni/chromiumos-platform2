@@ -55,7 +55,6 @@ Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
       {shill::kStatePortalSuspected,
        Client::Device::ConnectionState::kPortalSuspected},
       {shill::kStateOnline, Client::Device::ConnectionState::kOnline},
-      {shill::kStateOffline, Client::Device::ConnectionState::kOffline},
       {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
       {shill::kStateDisconnect, Client::Device::ConnectionState::kDisconnect},
   };
@@ -77,7 +76,6 @@ const char* ToString(Client::Device::ConnectionState state) {
       {Client::Device::ConnectionState::kPortalSuspected,
        shill::kStatePortalSuspected},
       {Client::Device::ConnectionState::kOnline, shill::kStateOnline},
-      {Client::Device::ConnectionState::kOffline, shill::kStateOffline},
       {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
       {Client::Device::ConnectionState::kDisconnect, shill::kStateDisconnect},
   };
@@ -91,7 +89,6 @@ bool IsConnectedState(Client::Device::ConnectionState state) {
     case Client::Device::ConnectionState::kIdle:
     case Client::Device::ConnectionState::kAssociation:
     case Client::Device::ConnectionState::kConfiguration:
-    case Client::Device::ConnectionState::kOffline:
     case Client::Device::ConnectionState::kFailure:
     case Client::Device::ConnectionState::kDisconnect:
       return false;

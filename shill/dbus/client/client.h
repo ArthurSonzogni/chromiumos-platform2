@@ -98,7 +98,6 @@ class BRILLO_EXPORT Client {
       kRedirectFound,
       kPortalSuspected,
       kOnline,
-      kOffline,
       kFailure,
       kDisconnect,
     };
