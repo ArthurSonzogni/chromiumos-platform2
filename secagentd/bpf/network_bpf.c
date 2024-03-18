@@ -26,7 +26,13 @@ struct {
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
-#define CROS_NF_HOOK_OK (1)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#define CROS_FULL_SK_STORAGE_SUPPORT
+#define CROS_FULL_GET_SOCKET_COOKIE_SUPPORT
+#else
+#undef CROS_FULL_SK_STORAGE_SUPPORT
+#undef CROS_FULL_GET_SOCKET_COOKIE_SUPPORT
+#endif
 
 struct cros_sk_info {
   enum cros_network_family family;
@@ -52,12 +58,98 @@ struct {
   __type(value, int64_t);
 } cros_network_external_interfaces SEC(".maps");
 
+#ifdef CROS_FULL_SK_STORAGE_SUPPORT
 struct {
   __uint(type, BPF_MAP_TYPE_SK_STORAGE);
   __uint(map_flags, BPF_F_NO_PREALLOC);
   __type(key, int);
   __type(value, struct cros_sk_info);
 } sk_storage SEC(".maps");
+
+static inline __attribute__((always_inline)) uint64_t cros_get_socket_id(
+    struct sock* sk) {
+  return bpf_get_socket_cookie(sk);
+}
+
+static inline __attribute__((always_inline)) struct cros_sk_info*
+cros_sk_storage_get_mutable(struct sock* sk) {
+  struct cros_sk_info* sk_info =
+      (struct cros_sk_info*)bpf_sk_storage_get(&sk_storage, sk, 0, 0);
+  return sk_info;
+}
+
+static inline __attribute__((always_inline)) const struct cros_sk_info*
+cros_sk_storage_get(struct sock* sk) {
+  return cros_sk_storage_get_mutable(sk);
+}
+
+static inline __attribute__((always_inline)) struct cros_sk_info*
+cros_sk_storage_get_or_create(struct sock* sk) {
+  return (struct cros_sk_info*)bpf_sk_storage_get(&sk_storage, sk, 0,
+                                                  BPF_SK_STORAGE_GET_F_CREATE);
+}
+
+static inline __attribute__((always_inline)) int cros_sk_storage_set(
+    const struct cros_sk_info* sk_info, const struct sock* sk) {
+  // storage mutation does not require an update call for sk_storage.
+  return 0;
+}
+#else
+/* BPF Verifier only allows a stack of 512 bytes max.
+ * Use this one simple trick that BPF verifiers hate
+ * to get around this limitation.
+ */
+struct {
+  // kernel v5.10 does not properly support sk_storage and get socket cookie
+  // support.
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __uint(key_size, sizeof(uint32_t));
+  __uint(value_size, sizeof(struct cros_sk_info));
+  __uint(max_entries, 1);
+} heap_cros_sk_info SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_HASH);
+  __uint(max_entries, CROS_MAX_SOCKET);
+  __type(key, uint64_t);
+  __type(value, struct cros_sk_info);
+} sk_addr_storage SEC(".maps");
+
+static inline __attribute__((always_inline)) uint64_t cros_get_socket_id(
+    struct sock* sk) {
+  return (uint64_t)sk;
+}
+
+static inline __attribute__((always_inline)) struct cros_sk_info*
+cros_sk_storage_get_mutable(struct sock* sk) {
+  uint64_t key = (uint64_t)sk;
+  struct cros_sk_info* sk_info = bpf_map_lookup_elem(&sk_addr_storage, &key);
+  return sk_info;
+}
+
+static inline __attribute__((always_inline)) const struct cros_sk_info*
+cros_sk_storage_get(struct sock* sk) {
+  return cros_sk_storage_get_mutable(sk);
+}
+
+static inline __attribute__((always_inline)) struct cros_sk_info*
+cros_sk_storage_get_or_create(struct sock* sk) {
+  uint64_t key = (uint64_t)sk;
+  const uint32_t zero = 0;
+  struct cros_sk_info* sk_info = bpf_map_lookup_elem(&sk_addr_storage, &key);
+  if (sk_info) {
+    return sk_info;
+  }
+  return bpf_map_lookup_elem(&heap_cros_sk_info, &zero);
+}
+
+static inline __attribute__((always_inline)) int cros_sk_storage_set(
+    const struct cros_sk_info* sk_info, const struct sock* sk) {
+  uint64_t key = (uint64_t)sk;
+  bpf_map_update_elem(&sk_addr_storage, &key, sk_info, BPF_NOEXIST);
+  return 0;
+}
+#endif
 
 // Populated by process exec bpf program and reused by network events bpf
 // to achieve full process context.
@@ -370,8 +462,8 @@ static inline __attribute__((always_inline)) bool cros_socket_is_monitored(
 }
 static inline __attribute__((always_inline)) bool fill_process_start(
     struct cros_process_start* process_start) {
-  struct task_struct* t = (struct task_struct*)bpf_get_current_task_btf();
-  int pid = t->tgid;
+  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
+  int pid = BPF_CORE_READ(t, tgid);
   struct cros_process_start* process_start_from_exec =
       bpf_map_lookup_elem(&shared_process_info, &pid);
   if (process_start_from_exec != NULL) {
@@ -392,23 +484,22 @@ static inline __attribute__((always_inline)) bool fill_process_start(
 
 // Create a sk_storage and populate it. If storage already exists then do
 // nothing.
-static inline __attribute__((always_inline)) struct cros_sk_info*
+static inline __attribute__((always_inline)) const struct cros_sk_info*
 create_process_map_entry(struct socket* sock, const char* ctx) {
-  struct cros_sk_info* sk_info =
-      bpf_sk_storage_get(&sk_storage, sock->sk, 0, 0);
+  struct cros_sk_info* sk_info = cros_sk_storage_get_mutable(sock->sk);
   if (sk_info != NULL) {
     return sk_info;
   }
-  sk_info =
-      bpf_sk_storage_get(&sk_storage, sock->sk, 0, BPF_SK_STORAGE_GET_F_CREATE);
+  sk_info = cros_sk_storage_get_or_create(sock->sk);
   if (!sk_info) {
     return sk_info;
   }
   sk_info->family = sock->sk->__sk_common.skc_family;
   sk_info->protocol =
       determine_protocol(sk_info->family, sock->type, sock->sk->sk_protocol);
-  sk_info->sock_id = bpf_get_socket_cookie(sock->sk);
+  sk_info->sock_id = cros_get_socket_id(sock->sk);
   sk_info->has_full_process_info = fill_process_start(&sk_info->process_start);
+  cros_sk_storage_set(sk_info, sock->sk);
   return sk_info;
 }
 
@@ -455,7 +546,6 @@ static inline __attribute__((always_inline)) int cros_new_flow_entry(
   }
   return 0;
 }
-
 static inline __attribute__((always_inline)) int cros_handle_tx_rx(
     const struct sk_buff* skb,
     bool is_ipv6,
@@ -465,7 +555,7 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
   if (!cros_is_ifindex_external(skb)) {
     return -CROS_IF_NOT_EXTERNAL;
   }
-  struct cros_sk_info* sk_info = bpf_sk_storage_get(&sk_storage, skb->sk, 0, 0);
+  struct cros_sk_info* sk_info = cros_sk_storage_get_mutable(skb->sk);
   if (sk_info == NULL) {
     return -CROS_NO_SK_STORAGE_ALLOCATED;
   }
@@ -522,7 +612,7 @@ int BPF_PROG(cros_handle_inet_listen,
   if (rv != 0) {
     return 0;
   }
-  struct task_struct* t = (struct task_struct*)bpf_get_current_task_btf();
+  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
   if (is_kthread(t)) {
     return 0;
   }
@@ -629,7 +719,7 @@ int BPF_PROG(cros_handle_inet_accept_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  struct cros_sk_info* sk_info =
+  const struct cros_sk_info* sk_info =
       create_process_map_entry(newsock, "inet_accept");
   if (!sk_info) {
     bpf_printk(
@@ -671,7 +761,8 @@ int BPF_PROG(cros_handle___inet_stream_connect_exit,
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&key, 0, sizeof(key));
-  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_connect");
+  const struct cros_sk_info* sk_info =
+      create_process_map_entry(sock, "inet_connect");
   if (!sk_info) {
     bpf_printk("inet_connect was unable to allocate and populate sk_info");
     return 0;
@@ -705,7 +796,8 @@ int BPF_PROG(cros_handle_inet_sendmsg_enter,
              struct msghdr* msg,
              size_t size) {
   // This is a safe area to grab process context.
-  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_sendmsg");
+  const struct cros_sk_info* sk_info =
+      create_process_map_entry(sock, "inet_sendmsg");
   if (!sk_info) {
     bpf_printk("inet_sendmsg was unable to allocate and populate sk_info");
     return 0;
@@ -722,7 +814,8 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
              int flags,
              int rv) {
   // This is a safe area to grab process context.
-  struct cros_sk_info* sk_info = create_process_map_entry(sock, "inet_recvmsg");
+  const struct cros_sk_info* sk_info =
+      create_process_map_entry(sock, "inet_recvmsg");
   if (!sk_info) {
     bpf_printk("inet_recvmsg was unable to allocate and populate sk_info");
     return 0;
