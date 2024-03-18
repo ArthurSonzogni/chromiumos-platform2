@@ -518,10 +518,6 @@ constexpr char kStateFailure[] = "failure";
 // TODO(b/260792466): Remove deprecated states once Chrome stops referring to
 // them in system_api/dbus/shill/dbus-constants.h
 constexpr char kStateDisconnect[] = "disconnecting";
-// TODO(b/260792466): This state is only used in the State property of Manager.
-// Consider changing the to kStateIdle too, or removing the State property
-// altogether if nothing depends on it.
-constexpr char kStateOffline[] = "offline";
 
 // Shill CheckPortal property values.
 constexpr char kCheckPortalTrue[] = "true";
