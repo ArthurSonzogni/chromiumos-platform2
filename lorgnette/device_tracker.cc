@@ -40,7 +40,8 @@ namespace {
 constexpr char kDefaultCacheDirectory[] = "/run/lorgnette/cache";
 constexpr char kKnownDevicesFileName[] = "known_devices";
 constexpr base::TimeDelta kMaxCancelWaitTime = base::Seconds(3);
-constexpr base::TimeDelta kReadPollInterval = base::Milliseconds(100);
+constexpr base::TimeDelta kReadPollInterval = base::Milliseconds(50);
+constexpr base::TimeDelta kInitialPollInterval = base::Milliseconds(250);
 
 lorgnette::OperationResult ToOperationResult(SANE_Status status) {
   switch (status) {
@@ -1050,6 +1051,7 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
       .last_result = OPERATION_RESULT_UNKNOWN,
       .cancel_requested = false,
       .cancel_needed = false,
+      .next_read = base::Time::Now(),
   };
   state.buffer = std::move(buffer);
   state.expected_lines = expected_lines;
@@ -1292,6 +1294,13 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
     return response;
   }
 
+  // If a previous read didn't produce data, wait until the delay has elapsed
+  // before trying again.
+  auto now = base::Time::Now();
+  if (now < job_state.next_read) {
+    base::PlatformThread::Sleep(job_state.next_read - now);
+  }
+
   brillo::ErrorPtr error;
   size_t read;
   size_t rows;
@@ -1323,7 +1332,11 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
       state.buffer->pos = state.buffer->len;
       if (encoded_len == 0) {
         // Rate-limit polling from the client if no data was available yet.
-        base::PlatformThread::Sleep(kReadPollInterval);
+        // If no lines have been read yet, use a longer delay because it's
+        // likely that we're still waiting for physical hardware to move.
+        job_state.next_read = base::Time::Now() + (state.completed_lines > 0
+                                                       ? kReadPollInterval
+                                                       : kInitialPollInterval);
       }
       break;
     }

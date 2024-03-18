@@ -180,6 +180,9 @@ class DeviceTracker {
 
     // Cancel request still needs to be sent to the device.
     bool cancel_needed;
+
+    // Minimum time when the next check for readable data is allowed.
+    base::Time next_read;
   };
 
   std::optional<DiscoverySessionState*> GetSession(
