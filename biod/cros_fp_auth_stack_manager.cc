@@ -450,18 +450,6 @@ void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
   LoadUser(user_id, true);
 }
 
-void CrosFpAuthStackManager::ReloadUserWhenResumed(const std::string& user_id) {
-  // Check: If this is called, it should mean that the same user is loaded
-  // before hibernation.
-  const std::optional<std::string>& current_user = session_manager_->GetUser();
-  if (!current_user.has_value() || current_user.value() != user_id) {
-    // We are in a strange state. Lock the state machine.
-    state_ = State::kLocked;
-    return;
-  }
-  UploadCurrentUserTemplates();
-}
-
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
     const AuthStackManager::EnrollScanDoneCallback& on_enroll_scan_done) {
   on_enroll_scan_done_ = on_enroll_scan_done;

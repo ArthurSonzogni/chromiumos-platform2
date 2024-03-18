@@ -19,14 +19,6 @@
 #include "biod/utils.h"
 
 namespace biod {
-namespace {
-// Deserializes |raw_buf| received from D-Bus to |proto|.
-// Returns true, if successful.
-bool DeserializeProto(const std::vector<uint8_t>& raw_buf,
-                      google::protobuf::MessageLite* proto) {
-  return proto->ParseFromArray(&raw_buf.front(), raw_buf.size());
-}
-}  // namespace
 
 using dbus::ObjectPath;
 using RetrievePrimarySessionResult = BiodMetrics::RetrievePrimarySessionResult;
@@ -51,12 +43,6 @@ SessionStateManager::SessionStateManager(dbus::Bus* bus,
   session_manager_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &SessionStateManager::OnSessionManagerNameOwnerChanged,
       base::Unretained(this)));
-
-  // Monitor for SuspendDone events from PowerManager.
-  power_manager_proxy_->RegisterSuspendDoneSignalHandler(
-      base::BindRepeating(&SessionStateManager::OnSuspendDone,
-                          base::Unretained(this)),
-      base::BindOnce(&LogOnSignalConnected));
 }
 
 std::string SessionStateManager::GetPrimaryUser() const {
@@ -202,30 +188,6 @@ void SessionStateManager::OnSessionStateChanged(dbus::Signal* signal) {
     for (auto& observer : observers_) {
       observer.OnUserLoggedOut();
     }
-  }
-}
-
-void SessionStateManager::OnSuspendDone(
-    const std::vector<uint8_t>& serialized_proto) {
-  power_manager::SuspendDone signal;
-  if (!DeserializeProto(serialized_proto, &signal)) {
-    LOG(ERROR) << "Failed to parse SuspendDone signal.";
-    return;
-  }
-
-  switch (signal.deepest_state()) {
-    case power_manager::SuspendDone_SuspendState_TO_RAM:
-      break;
-    case power_manager::SuspendDone_SuspendState_TO_DISK: {
-      LOG(INFO) << "System resumed from hibernate";
-      for (auto& observer : observers_) {
-        observer.OnSessionResumedFromHibernate();
-      }
-      break;
-    }
-    default:
-      LOG(ERROR) << "Unknown deepest state for OnSuspendDone";
-      return;
   }
 }
 

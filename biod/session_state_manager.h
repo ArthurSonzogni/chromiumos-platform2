@@ -44,9 +44,6 @@ class SessionStateManagerInterface {
     // Called when user was logged out.
     virtual void OnUserLoggedOut() = 0;
 
-    // Called when an existing session has resumed.
-    virtual void OnSessionResumedFromHibernate() = 0;
-
     virtual ~Observer() = default;
   };
 
@@ -83,9 +80,6 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // Read or delete records in memory when users log in or out.
   void OnSessionStateChanged(dbus::Signal* signal);
-
-  // A received signal when the system has resumed (suspend done).
-  void OnSuspendDone(const std::vector<uint8_t>& serialized_proto);
 
   // Called when org.chromium.SessionManager name changes owner.
   void OnSessionManagerNameOwnerChanged(const std::string& old_owner,

@@ -52,7 +52,6 @@ class MockSessionStateObserver : public SessionStateManagerInterface::Observer {
               (const std::string& sanitized_username, bool is_new_login),
               (override));
   MOCK_METHOD(void, OnUserLoggedOut, (), (override));
-  MOCK_METHOD(void, OnSessionResumedFromHibernate, (), (override));
 };
 
 class SessionStateManagerTest : public ::testing::Test {
@@ -692,39 +691,6 @@ TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerNotEmpty) {
   const auto& old_owner = "";
   const auto& new_owner = kExampleConnectionName;
   on_name_owner_changed_.Run(old_owner, new_owner);
-}
-
-// This test validates that the PowerManager SuspendDone signal will trigger
-// a OnSessionResumedFromHibernate when it's deepest state was "ToDisk".
-TEST_F(SessionStateManagerTest, TestPowerManagerSuspendDoneToDisk) {
-  manager_->AddObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnSessionResumedFromHibernate).Times(1);
-
-  power_manager::SuspendDone signal;
-  signal.set_deepest_state(power_manager::SuspendDone_SuspendState_TO_DISK);
-
-  std::vector<uint8_t> msg(signal.ByteSizeLong());
-  signal.SerializeToArray(&msg[0], msg.size());
-
-  EmitSuspendDone(msg);
-}
-
-// This test validates that a SuspendDone where the deepest state is to RAM does
-// not trigger OnSessionResumedFromHibernate.
-TEST_F(SessionStateManagerTest, TestPowerManagerSuspendDoneToRam) {
-  manager_->AddObserver(&observer_);
-
-  // We suspend to ram only so we will not call OnSessionResumedFromHibernate.
-  EXPECT_CALL(observer_, OnSessionResumedFromHibernate).Times(0);
-
-  power_manager::SuspendDone signal;
-  signal.set_deepest_state(power_manager::SuspendDone_SuspendState_TO_RAM);
-
-  std::vector<uint8_t> msg(signal.ByteSizeLong());
-  signal.SerializeToArray(&msg[0], msg.size());
-
-  EmitSuspendDone(msg);
 }
 
 }  // namespace
