@@ -13,7 +13,6 @@
 #include <numeric>
 #include <optional>
 #include <string>
-#include <system/camera_metadata.h>
 #include <utility>
 
 #include <base/check.h>
@@ -592,17 +591,25 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
     stream_config->PopulateEventAnnotation(ctx);
   });
 
+  // Check from session parameters in the stream config if manual zoom is
+  // requested from the camera client.
+  session_parameters_ =
+      clone_camera_metadata(stream_config->session_parameters());
+  auto request_entry =
+      session_parameters_.find(kCrosDigitalZoomRequestedVendorKey);
+  manual_zoom_requested_ = manual_zoom_supported_ && request_entry.count > 0 &&
+                           request_entry.data.i32[0] == 1;
+  // Clean up the custom vendor tag in the stream config before sending to the
+  // HAL to prevent "invalid vendor tag" crash. See b/330110878 for details.
+  if (request_entry.count > 0) {
+    session_parameters_.erase(kCrosDigitalZoomRequestedVendorKey);
+    stream_config->SetSessionParameters(session_parameters_.getAndLock());
+  }
+
   if (setup_failed_) {
     return false;
   }
   ResetOnThread();
-
-  android::CameraMetadata session_parameters(
-      clone_camera_metadata(stream_config->session_parameters()));
-  auto request_entry =
-      session_parameters.find(kCrosDigitalZoomRequestedVendorKey);
-  manual_zoom_requested_ = manual_zoom_supported_ && request_entry.count > 0 &&
-                           request_entry.data.i32[0] == 1;
 
   // Skip stream configuration if neither auto framing nor manual zoom will be
   // performed throughout the session.

@@ -306,6 +306,16 @@ bool Camera3StreamConfiguration::RemoveStream(const camera3_stream_t* stream) {
   return true;
 }
 
+bool Camera3StreamConfiguration::SetSessionParameters(
+    const camera_metadata_t* session_parameters) {
+  if (IsLocked()) {
+    LOGF(ERROR) << "Cannot set session parameters when locked";
+    return false;
+  }
+  session_parameters_ = session_parameters;
+  return true;
+}
+
 camera3_stream_configuration_t* Camera3StreamConfiguration::Lock() {
   CHECK(!IsLocked());
   raw_configuration_ = camera3_stream_configuration_t{

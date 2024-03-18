@@ -296,6 +296,9 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   // Removes |stream| from the stream configuration.
   bool RemoveStream(const camera3_stream_t* stream);
 
+  // Sets the updated session parameters.
+  bool SetSessionParameters(const camera_metadata_t* session_parameters);
+
   // Locks the internal data and get the camera3_stream_configuration_t that can
   // be consumed by the Android HAL3 API.
   camera3_stream_configuration_t* Lock();

@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <system/camera_metadata.h>
 #include <utility>
 #include <vector>
 
@@ -258,6 +259,9 @@ class FramingStreamManipulator : public StreamManipulator {
   // Flagged if manual zoom is requested when configuring streams and the device
   // supports manual zoom.
   bool manual_zoom_requested_ = false;
+
+  // Session parameters of the latest stream configuration.
+  android::CameraMetadata session_parameters_;
 
   Metrics metrics_;
 };
