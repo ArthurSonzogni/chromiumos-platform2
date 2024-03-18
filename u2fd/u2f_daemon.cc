@@ -281,6 +281,7 @@ int U2fDaemon::StartService() {
 int U2fDaemon::StartU2fHidService(hwsec::u2f::FipsInfo fips_info) {
   if (!u2fhid_service_) {
     // No need to start u2f HID service on this device.
+    service_started_ = true;
     return EX_OK;
   }
 
@@ -295,6 +296,8 @@ int U2fDaemon::StartU2fHidService(hwsec::u2f::FipsInfo fips_info) {
     return EX_CONFIG;
   }
 
+  service_started_ = true;
+
   LOG(INFO) << "Starting U2fHid service, enable_corp_protocol: "
             << enable_corp_protocol_ << ".";
 
@@ -306,8 +309,6 @@ int U2fDaemon::StartU2fHidService(hwsec::u2f::FipsInfo fips_info) {
     IgnorePowerButtonPress();
     SendWinkSignal();
   };
-
-  service_started_ = true;
 
   return u2fhid_service_->CreateU2fHid(
              u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
