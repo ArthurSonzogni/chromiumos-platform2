@@ -99,7 +99,7 @@ class BRILLO_EXPORT Client {
       kPortalSuspected,
       kOnline,
       kFailure,
-      kDisconnect,
+      kDisconnecting,
     };
 
     bool operator==(const Device& that) const {

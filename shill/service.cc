@@ -1960,7 +1960,7 @@ std::string Service::GetStateString() const {
     case kStateOnline:
       return shill::kStateOnline;
     case kStateDisconnecting:
-      return shill::kStateDisconnect;
+      return shill::kStateDisconnecting;
     case kStateUnknown:
     default:
       return "";

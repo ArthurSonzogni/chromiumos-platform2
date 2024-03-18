@@ -56,7 +56,7 @@ Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
        Client::Device::ConnectionState::kPortalSuspected},
       {shill::kStateOnline, Client::Device::ConnectionState::kOnline},
       {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
-      {shill::kStateDisconnect, Client::Device::ConnectionState::kDisconnect},
+      {shill::kStateDisconnecting, Client::Device::ConnectionState::kDisconnecting},
   };
   const auto it = m.find(s);
   return it != m.end() ? it->second : Client::Device::ConnectionState::kUnknown;
@@ -77,7 +77,7 @@ const char* ToString(Client::Device::ConnectionState state) {
        shill::kStatePortalSuspected},
       {Client::Device::ConnectionState::kOnline, shill::kStateOnline},
       {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
-      {Client::Device::ConnectionState::kDisconnect, shill::kStateDisconnect},
+      {Client::Device::ConnectionState::kDisconnecting, shill::kStateDisconnecting},
   };
   const auto it = m.find(state);
   return it != m.end() ? it->second : "unknown";
@@ -90,7 +90,7 @@ bool IsConnectedState(Client::Device::ConnectionState state) {
     case Client::Device::ConnectionState::kAssociation:
     case Client::Device::ConnectionState::kConfiguration:
     case Client::Device::ConnectionState::kFailure:
-    case Client::Device::ConnectionState::kDisconnect:
+    case Client::Device::ConnectionState::kDisconnecting:
       return false;
     case Client::Device::ConnectionState::kReady:
     case Client::Device::ConnectionState::kNoConnectivity:
