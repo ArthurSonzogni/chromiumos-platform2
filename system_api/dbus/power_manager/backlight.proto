@@ -85,7 +85,9 @@ message BacklightBrightnessChange {
     USER_TOGGLED_ON = 12;
     // Changed due to battery saver state change.
     BATTERY_SAVER_STATE_CHANGED = 13;
-    // Next value to use: 14
+    // User request via the Settings app.
+    USER_REQUEST_FROM_SETTINGS_APP = 14;
+    // Next value to use: 15
   }
   optional Cause cause = 2;
 
