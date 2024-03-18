@@ -24,40 +24,6 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
 
-namespace {
-
-// Interface names must be shorter than 'IFNAMSIZ' chars.
-// See http://man7.org/linux/man-pages/man7/netdevice.7.html
-// 'IFNAMSIZ' is 16 in recent kernels.
-// See
-// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/if.h?h=v4.14#n33
-constexpr size_t kInterfaceNameSize = 16;
-
-// Interface names are passed directly to the 'iptables' command. Rather than
-// auditing 'iptables' source code to see how it handles malformed names,
-// do some sanitization on the names beforehand.
-bool IsValidInterfaceName(const std::string& iface) {
-  // |iface| should be shorter than |kInterfaceNameSize| chars and have only
-  // alphanumeric characters (embedded hypens and periods are also permitted).
-  if (iface.length() >= kInterfaceNameSize) {
-    return false;
-  }
-  if (base::StartsWith(iface, "-", base::CompareCase::SENSITIVE) ||
-      base::EndsWith(iface, "-", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(iface, ".", base::CompareCase::SENSITIVE) ||
-      base::EndsWith(iface, ".", base::CompareCase::SENSITIVE)) {
-    return false;
-  }
-  for (auto c : iface) {
-    if (!std::isalnum(c) && (c != '-') && (c != '.')) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace
-
 namespace patchpanel {
 
 const std::string ProtocolName(Protocol proto) {
@@ -80,11 +46,6 @@ bool Firewall::AddAcceptRules(Protocol protocol,
     return false;
   }
 
-  if (!IsValidInterfaceName(interface)) {
-    LOG(ERROR) << "Invalid interface name '" << interface << "'";
-    return false;
-  }
-
   if (!AddAcceptRule(IpFamily::kIPv4, protocol, port, interface)) {
     LOG(ERROR) << "Could not add IPv4 ACCEPT rule";
     return false;
@@ -104,11 +65,6 @@ bool Firewall::DeleteAcceptRules(Protocol protocol,
                                  const std::string& interface) {
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
-    return false;
-  }
-
-  if (!IsValidInterfaceName(interface)) {
-    LOG(ERROR) << "Invalid interface name '" << interface << "'";
     return false;
   }
 
@@ -173,8 +129,8 @@ bool Firewall::ModifyIpv4DNATRule(
     return false;
   }
 
-  if (!IsValidInterfaceName(interface) || interface.empty()) {
-    LOG(ERROR) << "Invalid interface name '" << interface << "'";
+  if (interface.empty()) {
+    LOG(ERROR) << "Interface name should not be empty";
     return false;
   }
 
@@ -215,8 +171,8 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
                                       const net_base::IPv4Address& dst_ip,
                                       uint16_t dst_port,
                                       Iptables::Command command) {
-  if (!IsValidInterfaceName(interface) || interface.empty()) {
-    LOG(ERROR) << "Invalid interface name '" << interface << "'";
+  if (interface.empty()) {
+    LOG(ERROR) << "Interface name should not be empty";
     return false;
   }
 

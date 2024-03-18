@@ -150,74 +150,6 @@ TEST(FirewallTest, AddAcceptRules_ValidInterfaceName) {
   Mock::VerifyAndClearExpectations(&runner);
 }
 
-TEST(FirewallTest, AddAcceptRules_InvalidInterfaceName) {
-  MockProcessRunner runner;
-  Firewall firewall(&runner);
-
-  EXPECT_CALL(runner, iptables).Times(0);
-  EXPECT_CALL(runner, ip6tables).Times(0);
-
-  EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80,
-                                       "reallylonginterfacename"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "with spaces"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "with$ymbols"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "-startdash"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "enddash-"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, ".startdot"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::TCP, 80, "enddot."));
-
-  EXPECT_FALSE(firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53,
-                                       "reallylonginterfacename"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "with spaces"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "with$ymbols"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "-startdash"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "enddash-"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, ".startdot"));
-  EXPECT_FALSE(
-      firewall.AddAcceptRules(ModifyPortRuleRequest::UDP, 53, "enddot."));
-
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80,
-                                          "reallylonginterfacename"));
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80,
-                                          "with spaces"));
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80,
-                                          "with$ymbols"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80, "-startdash"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80, "enddash-"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80, ".startdot"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::TCP, 80, "enddot."));
-
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53,
-                                          "reallylonginterfacename"));
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53,
-                                          "with spaces"));
-  EXPECT_FALSE(firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53,
-                                          "with$ymbols"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53, "-startdash"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53, "enddash-"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53, ".startdot"));
-  EXPECT_FALSE(
-      firewall.DeleteAcceptRules(ModifyPortRuleRequest::UDP, 53, "enddot."));
-}
-
 TEST(FirewallTest, AddAcceptRules_IptablesFails) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
@@ -384,24 +316,24 @@ TEST(FirewallTest, AddIpv4ForwardRules_InvalidArguments) {
   MockProcessRunner runner;
   Firewall firewall(&runner);
 
-  // Invalid input interface. No iptables commands are issued.
+  // Empty input interface. No iptables commands are issued.
   EXPECT_CALL(runner, iptables).Times(0);
   EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
-      ModifyPortRuleRequest::TCP, std::nullopt, 80, "-startdash",
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
-      ModifyPortRuleRequest::UDP, std::nullopt, 80, "enddash-",
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::TCP, std::nullopt, 80, ".startdot",
+      ModifyPortRuleRequest::TCP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   ASSERT_FALSE(firewall.DeleteIpv4ForwardRule(
-      ModifyPortRuleRequest::UDP, std::nullopt, 80, "enddot.",
+      ModifyPortRuleRequest::UDP, std::nullopt, 80, "",
       net_base::IPv4Address(100, 115, 92, 5), 8080));
   Mock::VerifyAndClearExpectations(&runner);
 
-  // Empty interface. No iptables commands are issused.
+  // Empty interface. No iptables commands are issued.
   EXPECT_CALL(runner, iptables).Times(0);
   EXPECT_CALL(runner, ip6tables).Times(0);
   ASSERT_FALSE(firewall.AddIpv4ForwardRule(
