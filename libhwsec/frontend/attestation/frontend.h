@@ -93,6 +93,10 @@ class AttestationFrontend : public Frontend {
       const brillo::Blob& identity_key_blob,
       const attestation::EncryptedIdentityCredential& encrypted_certificate)
       const = 0;
+
+  // Gets the endorsement certificate of key type |key_type|.
+  virtual StatusOr<brillo::Blob> GetEndorsementCert(
+      attestation::KeyType key_type) const = 0;
 };
 
 }  // namespace hwsec

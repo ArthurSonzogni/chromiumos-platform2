@@ -61,6 +61,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
       const brillo::Blob& identity_key_blob,
       const attestation::EncryptedIdentityCredential& encrypted_certificate)
       const override;
+  StatusOr<brillo::Blob> GetEndorsementCert(
+      attestation::KeyType key_type) const override;
 };
 
 }  // namespace hwsec

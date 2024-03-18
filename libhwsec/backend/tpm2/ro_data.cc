@@ -118,6 +118,13 @@ StatusOr<SpaceInfo> GetSpaceInfo(RoSpace space) {
           .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
+    case RoSpace::kEndorsementEccCert:
+      return SpaceInfo{
+          .index = trunks::kEccEndorsementCertificateIndex,
+          .read_with_owner_auth = false,
+          .trim_x509_cert = false,
+          .require_attributes = kDefaultRoRequiredAttributes,
+      };
     case RoSpace::kRsuDeviceId:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_RSU_DEV_ID,

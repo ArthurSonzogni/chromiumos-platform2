@@ -37,6 +37,17 @@ StatusOr<KeyAlgoType> ToKeyAlgoType(attestation::KeyType key_type) {
                               TPMRetryAction::kNoRetry);
 }
 
+StatusOr<RoSpace> ToEndorsementCertSpace(attestation::KeyType key_type) {
+  switch (key_type) {
+    case attestation::KeyType::KEY_TYPE_RSA:
+      return RoSpace::kEndorsementRsaCert;
+    case attestation::KeyType::KEY_TYPE_ECC:
+      return RoSpace::kEndorsementEccCert;
+  }
+  return MakeStatus<TPMError>("Unsuported attestation key algorithm type",
+                              TPMRetryAction::kNoRetry);
+}
+
 attestation::KeyType key_types[] = {attestation::KeyType::KEY_TYPE_RSA,
                                     attestation::KeyType::KEY_TYPE_ECC};
 
@@ -177,6 +188,12 @@ StatusOr<brillo::SecureBlob> AttestationFrontendImpl::ActivateIdentity(
           Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
   return middleware_.CallSync<&Backend::Attestation::ActivateIdentity>(
       key_type, identity_key.GetKey(), encrypted_certificate);
+}
+
+StatusOr<brillo::Blob> AttestationFrontendImpl::GetEndorsementCert(
+    attestation::KeyType key_type) const {
+  ASSIGN_OR_RETURN(RoSpace space, ToEndorsementCertSpace(key_type));
+  return middleware_.CallSync<&Backend::RoData::Read>(space);
 }
 
 }  // namespace hwsec

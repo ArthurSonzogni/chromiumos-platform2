@@ -82,6 +82,10 @@ class MockAttestationFrontend : public MockFrontend,
        const brillo::Blob& identity_key_blob,
        const attestation::EncryptedIdentityCredential& encrypted_certificate),
       (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetEndorsementCert,
+              (attestation::KeyType key_type),
+              (const override));
 };
 
 }  // namespace hwsec
